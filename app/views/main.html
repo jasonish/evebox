@@ -78,7 +78,7 @@
       <table class="table hit-table"
              ng-class="{loading: state == 'loading'}">
         <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits">
-        <tr ng-class="severityToBootstrapClass(hit)">
+        <tr class="hit-row" ng-class="severityToBootstrapClass(hit)">
           <td>
             <span ng-show="currentSelection._id == hit._id"
                   class="glyphicon glyphicon-expand"></span>
