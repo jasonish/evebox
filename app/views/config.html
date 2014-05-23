@@ -1,0 +1,22 @@
+<div class="modal-header">
+  <h2>Settings</h2>
+</div>
+<div class="modal-body">
+  <form>
+    <div class="form-group">
+      <label>Elastic Search URL:</label>
+      <input type="text" class="form-control"
+             ng-model="config.elasticSearch.url"/>
+    </div>
+
+    <div class="form-group">
+      <label>Events/Page:</label>
+      <input type="text" class="form-control"
+             ng-model="config.elasticSearch.size"/>
+    </div>
+  </form>
+</div>
+<div class="modal-footer">
+  <button class="btn btn-primary" ng-click="ok()">OK</button>
+  <button class="btn btn-default" ng-click="cancel()">Cancel</button>
+</div>

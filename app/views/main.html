@@ -1,0 +1,126 @@
+<div id="errorMessage" class="label-danger">
+  {{ errorMessage }}
+</div>
+
+<div class="container-fluid" style="padding-left: 5%; padding-right: 5%">
+
+  <form ng-submit="refresh()">
+    <div class="input-group">
+      <input id="query-input" type="text" class="form-control"
+             ng-model="userQuery"/>
+    <span class="input-group-btn">
+        <button class="btn btn-default" type="submit">
+          <span class="glyphicon glyphicon-search"></span>
+        </button>
+      </span>
+    </div>
+  </form>
+
+  <br/>
+
+  <div class="row">
+    <div class="col-md-4">
+      <div class="btn-group" style="vertical-align: middle;">
+        <button id="selectAllButton" type="button"
+                class="btn btn-default btn-sm"
+                ng-click="selectAll()">Select All
+        </button>
+        <button id="deselectAllButton" type="button"
+                class="btn btn-default btn-sm"
+                ng-click="deselectAll()">
+          Deselect All
+        </button>
+        <button ng-show="$routeParams.view == 'inbox'" type="button"
+                class="btn btn-default btn-sm"
+                ng-disabled="selectedCount() == 0"
+                ng-click="archiveSelected()">Archive
+        </button>
+        <button type="button"
+                class="btn btn-default btn-sm"
+                ng-disabled="selectedCount() == 0"
+                ng-click="deleteSelected()">Delete
+        </button>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div style="float: right; overflow: hidden;" ng-show="state == 'loading'">
+        Loading...
+      </div>
+      <div ng-show="state != 'loading'">
+        <div ng-show="hits.total > 0"
+             style="float: right; overflow: hidden; margin: 0px; vertical-align: middle">
+          <label>{{ ((Config.elasticSearch.size * (page - 1))) + 1 }} to {{
+            (Config.elasticSearch.size * (page - 1)) + hits.hits.length }}
+            of {{ hits.total }} hits</label>
+          <pagination style="padding: 0px; margin: 0px; vertical-align: middle;"
+                      class="pagination-sm"
+                      total-items="hits.total"
+                      max-size="5"
+                      boundary-links="true"
+                      rotate="false"
+                      items-per-page="Config.elasticSearch.size"
+                      ng-model="page"
+                      ng-change="refresh()"></pagination>
+        </div>
+      </div>
+      <div style="float: right; overflow: hidden;"
+           ng-show="hits.total == 0">
+        No results.
+      </div>
+    </div>
+  </div>
+
+  <hr/>
+
+  <div class="row" id="result-container">
+
+    <div class="col-md-12">
+      <table class="table hit-table"
+             ng-class="{loading: state == 'loading'}">
+        <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits">
+        <tr ng-class="severityToBootstrapClass(hit)">
+          <td>
+            <span ng-show="currentSelection._id == hit._id"
+                  class="glyphicon glyphicon-expand"></span>
+          </td>
+          <td><input tabindex="-1"
+                     type="checkbox"
+                     id="checkbox-{{hit._id}}"
+                     ng-model="hit.__selected"
+                     ng-change="blurById('#checkbox-{{hit._id}}')"
+                     ng-checked="hit.__selected"/>
+          </td>
+          <td>
+            <span ng-show="hit._source.tags.indexOf('starred') == -1"
+                  ng-click="toggleStar(hit)"
+                  class="glyphicon glyphicon-star-empty"></span>
+            <span ng-show="hit._source.tags.indexOf('starred') > -1"
+                  ng-click="toggleStar(hit)"
+                  class="glyphicon glyphicon-star"></span>
+          </td>
+          <td ng-click="toggleOpenItem(hit)" style="white-space: nowrap;">
+            {{hit._source["@timestamp"]}}
+          </td>
+          <td ng-click="toggleOpenItem(hit)">
+            {{hit._source.alert.signature}}
+          </td>
+          <td ng-click="toggleOpenItem(hit)">{{hit._source.proto}}</td>
+          <td ng-click="toggleOpenItem(hit)">
+            {{renderIpAddress(hit._source.src_ip)}}
+          </td>
+          <td ng-click="toggleOpenItem(hit)">
+            {{renderIpAddress(hit._source.dest_ip)}}
+          </td>
+        </tr>
+        <tr  ng-class="severityToBootstrapClass(hit)" class="hit-detail" ng-show="hit.__open">
+          <td colspan="8">
+            <div ng-if="hit.__open" ng-include="'views/detail.html'"></div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+</div>

@@ -1,0 +1,30 @@
+<div class="row">
+  <div class="col-md-1"></div>
+  <div class="col-md-9">
+    <div class="btn-group" style="vertical-align: middle;">
+      <button type="button"
+              class="btn btn-default btn-xs"
+              ng-click="archiveHit(hit)">Archive
+      </button>
+      <button type="button"
+              class="btn btn-default btn-xs"
+              ng-click="deleteHit(hit)">
+        Delete
+      </button>
+      <button type="button" class="btn btn-default btn-xs"
+              ng-click="toggleStar(hit)">
+        <span ng-show="hit._source.tags.indexOf('starred') == -1">Star</span>
+        <span ng-show="hit._source.tags.indexOf('starred') >= 0">Unstar</span>
+      </button>
+      <a href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank" ng-if="Config.dumpy.url != undefined && Config.dumpy.url != ''" type="button" class="btn btn-default btn-xs">
+        Send to Dumpy
+      </a>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-1"></div>
+  <div class="col-md-11">
+    <pre>{{ hitAsJson(hit, true) }}</pre>
+  </div>
+</div>
