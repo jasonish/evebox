@@ -55,7 +55,11 @@ body {
     border: 0px !important;
 }
 
-.hit-table pre {
-    background: inherit;
-    border: 0px;
+.record-detail-panel .panel-heading {
+    margin: 0px;
+    padding-left: 15px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    font-size: 1.1em;
+    font-weight: bold;
 }

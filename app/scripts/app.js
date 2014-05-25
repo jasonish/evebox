@@ -109,6 +109,7 @@ app.controller('MainController', function (Keyboard, $route, $location, $timeout
     scope.Keyboard = Keyboard;
     scope.$location = $location;
     scope.$route = $route;
+    scope.moment = moment;
 
     // Initial state.
     $scope.state = "loading";
@@ -509,4 +510,3 @@ function isScrolledIntoView(elem) {
 
     return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop));
 }
-
