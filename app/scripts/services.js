@@ -82,11 +82,62 @@ app.factory("Config", function ($http, $location) {
 });
 
 /**
- * Elastic Search operations.
+ * Service containing utility functions.
  */
-app.factory("ElasticSearch", function ($resource, Config) {
+app.factory("Util", function () {
 
     var service = {};
+
+    /**
+     * Return an object as JSON.  Used in EveBox mainly for rendering search
+     * results as JSON.
+     *
+     * Fields prefixed with __ are filtered out as those are internal state
+     * variables for the application.
+     */
+    service.toJson = function (data, pretty) {
+        var filtered = _.pick(data, function (value, key) {
+            return key.substring(0, 2) != "__";
+        });
+        return angular.toJson(filtered, pretty);
+    };
+
+
+    /**
+     * Convert an alert severity into a Bootstrap class for colorization.
+     */
+    service.severityToBootstrapClass = function (severity, prefix) {
+        if (prefix === undefined) {
+            prefix = "";
+        }
+        switch (severity) {
+            case 1:
+                return prefix + "danger";
+                break;
+            case 2:
+                return prefix + "warning";
+                break;
+            default:
+                return prefix + "info";
+        }
+    };
+
+    return service;
+});
+
+/**
+ * Elastic Search operations.
+ */
+app.factory("ElasticSearch", function ($resource, $http, Config) {
+
+    var service = {};
+
+    var buildUrl = function (url, params) {
+        for (var param in params) {
+            url = url.replace()
+        }
+        return url;
+    };
 
     service.resource = $resource(Config.elasticSearch.url, null, {
 
@@ -116,7 +167,28 @@ app.factory("ElasticSearch", function ($resource, Config) {
 
     service.logFailure = function (failure) {
         console.log("elastic search server failure: " + failure);
-    }
+    };
+
+    /**
+     * Get/search for a record by ID.
+     *
+     * Used for getting a single event by ID, but may return multiple results.
+     */
+    service.searchEventById = function (id) {
+        var request = {
+            query: {
+                filtered: {
+                    filter: {
+                        term: {
+                            "_id": id
+                        }
+                    }
+                }
+            }
+        };
+        var url = Config.elasticSearch.url + "/_all/_search?refresh=true";
+        return $http.post(url, request);
+    };
 
     service.delete = function (doc, success, fail) {
         if (success == undefined) {

@@ -1,32 +1,32 @@
-<div class="row">
-  <div class="col-md-12">
-    <div class="btn-group">
-      <button type="button"
-              class="btn btn-default btn-xs"
-              ng-click="archiveHit(hit)">Archive
+<div class="panel panel-default record-detail-panel">
+  <div class="panel-heading">
+    Alert
+    <div class="record-action-buttons" style="float: right;">
+      <button ng-if="hit._source.tags.indexOf('inbox') > -1"
+              ng-click="archiveHit(hit)"
+              class="btn btn-default btn-xs">Archive
       </button>
-      <button type="button"
-              class="btn btn-default btn-xs"
-              ng-click="deleteHit(hit)">
-        Delete
+      <button ng-click="deleteHit(hit)"
+              class="btn btn-default btn-xs">Delete
       </button>
       <button type="button" class="btn btn-default btn-xs"
               ng-click="toggleStar(hit)">
         <span ng-show="hit._source.tags.indexOf('starred') == -1">Star</span>
         <span ng-show="hit._source.tags.indexOf('starred') >= 0">Unstar</span>
       </button>
-      <a href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank"
-         ng-if="Config.dumpy.url != undefined && Config.dumpy.url != ''"
-         type="button" class="btn btn-default btn-xs">
-        Send to Dumpy
-      </a>
-    </div>
-  </div>
-</div>
 
-<div class="panel panel-default record-detail-panel">
-  <div class="panel-heading">
-    Alert
+      <div class="btn-group">
+        <button type="button" class="btn btn-default btn-xs dropdown-toggle"
+                data-toggle="dropdown">
+          More <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" role="menu">
+          <li><a href="/#/record/{{hit._id}}" target="_blank">Open in New
+            Window</a></li>
+        </ul>
+      </div>
+
+    </div>
   </div>
   <div class="panel-body">
 
@@ -135,6 +135,8 @@
     JSON
   </div>
   <div class="panel-body">
-    <pre>{{ hitAsJson(hit, true) }}</pre>
+    <pre>{{ Util.toJson(hit, true) }}</pre>
   </div>
 </div>
+
+

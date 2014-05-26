@@ -63,3 +63,15 @@ body {
     font-size: 1.1em;
     font-weight: bold;
 }
+
+/* Set the width of the buttons in the panel headings, as using col-* classes
+ * doesn't seem to work well here. */
+.panel-heading .btn {
+    width: 100px;
+}
+
+/* When viewing a single record, hide the buttons embedded int he panel
+ * heading. */
+#record-view-container .panel-heading .record-action-buttons {
+    visibility: hidden;
+}

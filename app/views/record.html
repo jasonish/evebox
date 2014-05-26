@@ -1,0 +1,32 @@
+<!-- Template/view for an individual record. -->
+<div id="record-view-container" class="container">
+
+  <div ng-repeat="hit in hits.hits">
+
+    <!--<div class="row" style="margin-bottom: 20px;">-->
+      <!--<button ng-if="hit._source.tags.indexOf('inbox') > -1"-->
+              <!--type="button" class="btn btn-default">Archive</button>-->
+      <!--<button type="button" class="btn btn-default">Delete</button>-->
+      <!--<button ng-if="hit._source.tags.indexOf('starred') == -1"-->
+              <!--type="button" class="btn btn-default">Star</button>-->
+      <!--<button ng-if="hit._source.tags.indexOf('starred') > -1"-->
+              <!--type="button" class="btn btn-default">Unstar</button>-->
+      <!--<button type="button" class="btn btn-default">Tag</button>-->
+    <!--</div>-->
+
+    <div class="row">
+      <div
+        class="alert"
+        ng-class="Util.severityToBootstrapClass(hit._source.alert.severity, 'alert-')"
+        >
+        <h3 style="padding: 0px; margin: 0px;">{{hit._source.alert.signature}}</h3>
+      </div>
+    </div>
+
+    <div class="row">
+      <div ng-include="'views/detail.html'"></div>
+    </div>
+
+  </div>
+
+</div>

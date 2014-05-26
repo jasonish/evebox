@@ -31,6 +31,11 @@ var app = angular.module("app", [
 
 app.config(function ($routeProvider) {
 
+    $routeProvider.when("/record/:id", {
+        controller: "RecordController",
+        templateUrl: "views/record.html"
+    });
+
     $routeProvider.when("/:view", {
         controller: "MainController",
         templateUrl: "views/main.html"
@@ -40,7 +45,8 @@ app.config(function ($routeProvider) {
 
 });
 
-app.controller("NavBarController", function ($routeParams, $scope, $modal, $location, Keyboard) {
+app.controller("NavBarController", function ($routeParams, $scope, $modal,
+    $location, Keyboard) {
 
     $scope.$routeParams = $routeParams;
 
@@ -97,7 +103,9 @@ app.controller("ConfigController", function ($scope, $modalInstance, Config) {
 
 });
 
-app.controller('MainController', function (Keyboard, $route, $location, $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch) {
+app.controller('MainController', function (Keyboard, $route, $location,
+    $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch,
+    Util) {
 
     // Debugging.
     scope = $scope;
@@ -111,12 +119,16 @@ app.controller('MainController', function (Keyboard, $route, $location, $timeout
     scope.$route = $route;
     scope.moment = moment;
 
+    // Exports to scope.
+    $scope.Util = Util;
+
     // Initial state.
-    $scope.state = "loading";
+    $scope.state = "ready";
     $scope.errorMessage = "";
     $scope.page = 1;
     $scope.userQuery = "";
     $scope.currentSelectionIdx = 0;
+    $scope.toJson = Util.toJson;
 
     if ($routeParams.view == "inbox") {
         $scope.queryPrefix = "(event_type:alert AND tags:inbox)";
@@ -137,7 +149,6 @@ app.controller('MainController', function (Keyboard, $route, $location, $timeout
             return $scope.queryPrefix;
         }
 
-        //return "event_type:alert AND " + $scope.userQuery;
         if ($scope.userQuery != "") {
             return "(event_type:alert AND tags:inbox) AND (" + $scope.userQuery + ")";
         }
@@ -195,13 +206,6 @@ app.controller('MainController', function (Keyboard, $route, $location, $timeout
             }
         }
     };
-
-    $scope.hitAsJson = function (hit, pretty) {
-        var filtered = _.pick(hit, function (value, key) {
-            return key.substring(0, 2) != "__";
-        });
-        return angular.toJson(filtered, pretty);
-    }
 
     $scope.removeHit = function (hit) {
         _.remove($scope.hits.hits, hit);
@@ -329,6 +333,23 @@ app.controller('MainController', function (Keyboard, $route, $location, $timeout
         }
     };
 
+    var handleSearchResponse = function (response) {
+        $scope.hits = response.hits;
+        $scope.currentSelection = $scope.hits.hits[0];
+        $scope.currentSelectionIdx = 0;
+
+        _.forEach($scope.hits.hits, function (hit) {
+            hit._source["@timestamp"] =
+                moment(hit._source["@timestamp"]).format();
+
+            // Add a tags list if it doesn't exist.
+            if (hit._source.tags == undefined) {
+                hit._source.tags = [];
+            }
+
+        });
+    };
+
     $scope.refresh = function () {
 
         $("#query-input").blur();
@@ -338,23 +359,7 @@ app.controller('MainController', function (Keyboard, $route, $location, $timeout
         ElasticSearch.queryStringSearch($scope.buildQuery(),
             {page: $scope.page - 1}).$promise.then(
             function (result) {
-                var data = result;
-
-                $scope.hits = result.hits;
-                $scope.currentSelection = $scope.hits.hits[0];
-                $scope.currentSelectionIdx = 0;
-
-                _.forEach($scope.hits.hits, function (hit) {
-                    hit._source["@timestamp"] =
-                        moment(hit._source["@timestamp"]).format();
-
-                    // Add a tags list if it doesn't exist.
-                    if (hit._source.tags == undefined) {
-                        hit._source.tags = [];
-                    }
-
-                });
-
+                handleSearchResponse(result);
                 $(window).scrollTop(0);
             },
             function (error) {
@@ -364,7 +369,7 @@ app.controller('MainController', function (Keyboard, $route, $location, $timeout
                 }
                 else {
                     $scope.displayErrorMessage(
-                        "Error: " + error.status + " " + error.statusText);
+                            "Error: " + error.status + " " + error.statusText);
                 }
             }).finally(function () {
                 $scope.state = "ready";
