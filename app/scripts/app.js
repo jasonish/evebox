@@ -62,7 +62,7 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
             templateUrl: "views/help.html",
             size: "lg"
         });
-    }
+    };
 
     Keyboard.scopeBind($scope, "g i", function (e) {
         $location.url("/inbox");
@@ -208,8 +208,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
     };
 
     $scope.removeHit = function (hit) {
-        _.remove($scope.hits.hits, hit);
-
+        
         // Update the currently selected item.
         var newIdx = $scope.hits.hits.indexOf($scope.currentSelection);
         if (newIdx >= 0) {
@@ -225,6 +224,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
 
     $scope.archiveHit = function (hit) {
         ElasticSearch.removeTag(hit, "inbox",
+
             function () {
                 $scope.removeHit(hit);
                 if ($scope.hits.hits.length == 0) {
@@ -266,7 +266,29 @@ app.controller('MainController', function (Keyboard, $route, $location,
             return hit.__selected;
         });
 
-        _.forEach(toDelete, $scope.deleteHit);
+        ElasticSearch.deleteEvents(toDelete)
+            .success(function (response) {
+                var zipped = _.zip(response.items, toDelete);
+                _.forEach(zipped, function (item) {
+                    var result = item[0];
+                    var event = item[1];
+                    if (result.delete.found) {
+                        $scope.removeHit(event);
+                    }
+                    else {
+                        /* TODO: Make user visible. */
+                        console.log(Util.formatString("Failed to delete event {0}: {1}",
+                            result.delete._id, result.delete.status));
+                    }
+                });
+
+                if ($scope.hits.hits.length == 0) {
+                    $scope.refresh();
+                }
+            })
+            .error(function (error) {
+                console.log(error);
+            });
     };
 
     $scope.selectedCount = function () {
@@ -460,7 +482,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "#", function (e) {
-        $scope.deleteSelected();
+        $scope.$apply($scope.deleteSelected());
     });
 
     Keyboard.scopeBind($scope, ">", function (e) {

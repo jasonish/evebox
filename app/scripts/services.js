@@ -102,6 +102,20 @@ app.factory("Util", function () {
         return angular.toJson(filtered, pretty);
     };
 
+    /**
+     * String formatter.
+     *
+     * Example: formatString("Numbers {0}, {1}, {2}.", "one", "two", "three");
+     *
+     * Based on:
+     * http://stackoverflow.com/questions/610406/javascript-equivalent-to-printf-string-format/4673436#4673436
+     */
+    service.formatString = function (format) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        return format.replace(/{(\d+)}/g, function (match, number) {
+            return typeof args[number] != 'undefined' ? args[number] : match;
+        });
+    };
 
     /**
      * Convert an alert severity into a Bootstrap class for colorization.
@@ -200,6 +214,27 @@ app.factory("ElasticSearch", function ($resource, $http, Config) {
         }
         return service.resource.delete(
             {index: doc._index, type: doc._type, id: doc._id}, success, fail);
+    };
+
+    /**
+     * Bulk delete events.
+     *
+     * @param events The list of events to delete.
+     * @param callback Callback on response.
+     */
+    service.deleteEvents = function (events, callback) {
+        var request = events.map(function (event) {
+            return angular.toJson({
+                delete: {
+                    _index: event._index,
+                    _type: event._type,
+                    _id: event._id
+                }
+            });
+        }).join("\n") + "\n";
+
+        var url = Config.elasticSearch.url + "/_bulk?refresh=true";
+        return $http.post(url, request);
     };
 
     service.updateTags = function (doc) {
