@@ -3,10 +3,10 @@
     Alert
     <div class="record-action-buttons" style="float: right;">
       <button ng-if="hit._source.tags.indexOf('inbox') > -1"
-              ng-click="archiveHit(hit)"
+              ng-click="archiveEvent(hit)"
               class="btn btn-default btn-xs">Archive
       </button>
-      <button ng-click="deleteHit(hit)"
+      <button ng-click="deleteEvent(hit)"
               class="btn btn-default btn-xs">Delete
       </button>
       <button type="button" class="btn btn-default btn-xs"

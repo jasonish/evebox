@@ -142,45 +142,38 @@ app.factory("Util", function () {
 /**
  * Elastic Search operations.
  */
-app.factory("ElasticSearch", function ($resource, $http, Config) {
+app.factory("ElasticSearch", function ($http, Config) {
 
     var service = {};
 
-    var buildUrl = function (url, params) {
-        for (var param in params) {
-            url = url.replace()
-        }
-        return url;
-    };
-
-    service.resource = $resource(Config.elasticSearch.url, null, {
-
-        "update": {
-            method: "POST",
-            url: Config.elasticSearch.url + "/:index/:type/:id/_update?refresh=true",
-            params: {
-                index: "@index",
-                type: "@type",
-                id: "@id"
-            }
-        },
-
-        "search": {
-            method: "POST",
-            url: Config.elasticSearch.url + "/_all/_search?refresh=true"
-        },
-
-        "delete": {
-            method: "DELETE",
-            url: Config.elasticSearch.url + "/:index/:type/:id?refresh=true"
-        }
-
-    });
-    service.update = service.resource.update;
-    service.search = service.resource.search;
-
     service.logFailure = function (failure) {
         console.log("elastic search server failure: " + failure);
+    };
+
+    /**
+     * Search.
+     */
+    service.search = function (query) {
+        var url = Config.elasticSearch.url + "/_all/_search?refresh=true";
+        return $http.post(url, query);
+    };
+
+    service.bulk = function (request) {
+        var url = Config.elasticSearch.url + "/_bulk?refresh=true";
+        return $http.post(url, request);
+    };
+
+    service.update = function (index, type, id, request) {
+        var url = Config.elasticSearch.url + "/" + index +
+            "/" + type +
+            "/" + id +
+            "/_update?refresh=true";
+        return $http.post(url, request);
+    };
+
+    service.delete = function (index, type, id) {
+        var url = Config.elasticSearch.url + "/" + index + "/" + type + "/" + id + "?refresh=true";
+        return $http.delete(url);
     };
 
     /**
@@ -200,20 +193,7 @@ app.factory("ElasticSearch", function ($resource, $http, Config) {
                 }
             }
         };
-        var url = Config.elasticSearch.url + "/_all/_search?refresh=true";
-        return $http.post(url, request);
-    };
-
-    service.delete = function (doc, success, fail) {
-        if (success == undefined) {
-            success = function () {
-            };
-        }
-        if (fail == undefined) {
-            fail = service.logFailure;
-        }
-        return service.resource.delete(
-            {index: doc._index, type: doc._type, id: doc._id}, success, fail);
+        return service.search(request);
     };
 
     /**
@@ -222,7 +202,7 @@ app.factory("ElasticSearch", function ($resource, $http, Config) {
      * @param events The list of events to delete.
      * @param callback Callback on response.
      */
-    service.deleteEvents = function (events, callback) {
+    service.deleteEvents = function (events) {
         var request = events.map(function (event) {
             return angular.toJson({
                 delete: {
@@ -232,50 +212,19 @@ app.factory("ElasticSearch", function ($resource, $http, Config) {
                 }
             });
         }).join("\n") + "\n";
-
-        var url = Config.elasticSearch.url + "/_bulk?refresh=true";
-        return $http.post(url, request);
+        return service.bulk(request);
     };
 
     service.updateTags = function (doc) {
-        return service.resource.update({index: doc._index, type: doc._type, id: doc._id},
+        return service.update(doc._index, doc._type, doc._id,
             {doc: {tags: doc._source.tags}});
     }
 
     service.removeTag = function (doc, tag, success, fail) {
-        return service.resource.update({index: doc._index, type: doc._type, id: doc._id},
-            {script: "ctx._source.tags.remove('" + tag + "')"}, success, fail);
-    }
-
-    service.queryStringSearch = function (queryString, params) {
-
-        var size = Config.elasticSearch.size;
-        var page = 0
-
-        if (params.size != undefined) {
-            size = params.size;
-        }
-        if (params.page != undefined) {
-            page = params.page;
-        }
-
-        return service.resource.search({
-            query: {
-                filtered: {
-                    query: {
-                        query_string: {
-                            query: queryString
-                        }
-                    }
-                }
-            },
-            size: size,
-            from: size * page,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ]
+        return service.update(doc._index, doc._type, doc._id, {
+            script: "ctx._source.tags.remove('" + tag + "')"
         });
-    };
+    }
 
     return service;
 

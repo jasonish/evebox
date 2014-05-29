@@ -20,7 +20,7 @@
 
 /*
  * TODO:
- * - Normalize on "hit", or "result" or "entry" or "event".
+ * - Normalize on "hit", "result", "entry" to "event".
  * - Don't do DOM manipulation in controllers.
  */
 
@@ -74,8 +74,8 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
         $scope.$apply();
     });
 
-    Keyboard.scopeBind($scope, "g a", function (e) {
-        $location.url("/all");
+    Keyboard.scopeBind($scope, "g e", function (e) {
+        $location.url("/events");
         $scope.$apply();
     });
 
@@ -223,11 +223,10 @@ app.controller('MainController', function (Keyboard, $route, $location,
         }
     };
 
-    $scope.archiveHit = function (hit) {
-        ElasticSearch.removeTag(hit, "inbox",
-
-            function () {
-                $scope.removeEvent(hit);
+    $scope.archiveEvent = function (event) {
+        ElasticSearch.removeTag(event, "inbox")
+            .success(function () {
+                $scope.removeEvent(event);
                 if ($scope.hits.hits.length == 0) {
                     $scope.refresh();
                 }
@@ -246,14 +245,14 @@ app.controller('MainController', function (Keyboard, $route, $location,
             return $scope.displayErrorMessage("No events selected.");
         }
 
-        _.forEach(toArchive, $scope.archiveHit);
+        _.forEach(toArchive, $scope.archiveEvent);
 
     };
 
-    $scope.deleteHit = function (hit) {
-        ElasticSearch.delete(hit,
-            function () {
-                $scope.removeEvent(hit);
+    $scope.deleteEvent = function (event) {
+        ElasticSearch.delete(event._index, event._type, event._id)
+            .success(function () {
+                $scope.removeEvent(event);
 
                 if ($scope.hits.hits.length == 0) {
                     $scope.refresh();
@@ -375,29 +374,43 @@ app.controller('MainController', function (Keyboard, $route, $location,
 
     $scope.refresh = function () {
 
-        $("#query-input").blur();
-
-        $scope.state = "loading";
-
-        ElasticSearch.queryStringSearch($scope.buildQuery(),
-            {page: $scope.page - 1}).$promise.then(
-            function (result) {
-                handleSearchResponse(result);
-                $(window).scrollTop(0);
+        var request = {
+            query: {
+                filtered: {
+                    query: {
+                        query_string: {
+                            query: $scope.buildQuery()
+                        }
+                    }
+                }
             },
-            function (error) {
-                if (error.status == 0) {
-                    $scope.displayErrorMessage(
-                            "No response from Elastic Search at " + Config.elasticSearch.url);
-                }
-                else {
-                    $scope.displayErrorMessage(
-                            "Error: " + error.status + " " + error.statusText);
-                }
-            }).finally(function () {
-                $scope.state = "ready";
-            });
+            size: Config.elasticSearch.size,
+            from: Config.elasticSearch.size * ($scope.page - 1),
+            sort: [
+                {"@timestamp": {order: "desc"}}
+            ]
+        };
 
+        $scope.submitSearch(request);
+    };
+
+    $scope.submitSearch = function (request) {
+        $scope.loading = true;
+        ElasticSearch.search(request).success(function (response) {
+            handleSearchResponse(response);
+            $(window).scrollTop(0);
+        }).error(function (error) {
+            if (error.status == 0) {
+                $scope.displayErrorMessage(
+                        "No response from Elastic Search at " + Config.elasticSearch.url);
+            }
+            else {
+                $scope.displayErrorMessage(
+                        "Error: " + error.status + " " + error.statusText);
+            }
+        }).finally(function () {
+            $scope.loading = false;
+        });
     };
 
     $scope.renderIpAddress = function (addr) {
