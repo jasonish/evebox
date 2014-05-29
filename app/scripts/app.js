@@ -249,7 +249,38 @@ app.controller('MainController', function (Keyboard, $route, $location,
             return $scope.displayErrorMessage("No events selected.");
         }
 
-        _.forEach(toArchive, $scope.archiveEvent);
+        ElasticSearch.bulkRemoveTag(toArchive, "inbox")
+            .success(function (response) {
+
+                if (!response.errors) {
+                    _.forEach(toArchive, $scope.removeEvent);
+                }
+                else {
+                    /* There were errors. Only remove those that were archived
+                     * and log an error for the events that errored out. */
+                    var zipped = _.zip(response.items, toArchive);
+                    _.forEach(zipped, function (item) {
+                        var result = item[0];
+                        var event = item[1];
+                        if (result.update.status == 200) {
+                            $scope.removeEvent(event);
+                        }
+                        else {
+                            /* TODO: Make user visible. */
+                            console.log(Util.formatString("Failed to delete event {0}: {1}",
+                                result.update._id, result.update.status));
+                        }
+                    });
+                }
+
+                if ($scope.hits.hits.length == 0) {
+                    $scope.refresh();
+                }
+
+            })
+            .error(function (error) {
+                console.log(error);
+            });
 
     };
 
@@ -437,7 +468,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "r", function (e) {
-        $scope.$apply(function() {
+        $scope.$apply(function () {
             $scope.refresh();
         })
     });

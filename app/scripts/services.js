@@ -215,7 +215,28 @@ app.factory("ElasticSearch", function ($http, Config) {
         return service.bulk(request);
     };
 
-    service.addTag = function(doc, tag) {
+    service.bulkRemoveTag = function (events, tag) {
+        var request = events.map(function (event) {
+            return [
+                angular.toJson({
+                    update: {
+                        _index: event._index,
+                        _type: event._type,
+                        _id: event._id
+                    }
+                }),
+                angular.toJson({
+                    script: "ctx._source.tags.remove(tag)",
+                    params: {
+                        "tag": tag
+                    }
+                })
+            ];
+        });
+        return service.bulk(_.flatten(request).join("\n") + "\n");
+    };
+
+    service.addTag = function (doc, tag) {
         var request = {
             script: "ctx._source.tags.contains(tag) ? (ctx.op = \"none\") : ctx._source.tags += tag",
             params: {
@@ -225,7 +246,7 @@ app.factory("ElasticSearch", function ($http, Config) {
         return service.update(doc._index, doc._type, doc._id, request);
     };
 
-    service.removeTag = function(doc, tag) {
+    service.removeTag = function (doc, tag) {
         var request = {
             script: "ctx._source.tags.remove(tag)",
             params: {
