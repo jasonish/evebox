@@ -43,10 +43,10 @@
       </div>
     </div>
     <div class="col-md-8">
-      <div style="float: right; overflow: hidden;" ng-show="state == 'loading'">
+      <div style="float: right; overflow: hidden;" ng-show="loading == true">
         Loading...
       </div>
-      <div ng-show="state != 'loading'">
+      <div ng-show="loading == false">
         <div ng-show="hits.total > 0"
              style="float: right; overflow: hidden; margin: 0px; vertical-align: middle">
           <label>{{ ((Config.elasticSearch.size * (page - 1))) + 1 }} to {{

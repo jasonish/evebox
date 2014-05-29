@@ -215,16 +215,25 @@ app.factory("ElasticSearch", function ($http, Config) {
         return service.bulk(request);
     };
 
-    service.updateTags = function (doc) {
-        return service.update(doc._index, doc._type, doc._id,
-            {doc: {tags: doc._source.tags}});
-    }
+    service.addTag = function(doc, tag) {
+        var request = {
+            script: "ctx._source.tags.contains(tag) ? (ctx.op = \"none\") : ctx._source.tags += tag",
+            params: {
+                "tag": tag
+            }
+        };
+        return service.update(doc._index, doc._type, doc._id, request);
+    };
 
-    service.removeTag = function (doc, tag, success, fail) {
-        return service.update(doc._index, doc._type, doc._id, {
-            script: "ctx._source.tags.remove('" + tag + "')"
-        });
-    }
+    service.removeTag = function(doc, tag) {
+        var request = {
+            script: "ctx._source.tags.remove(tag)",
+            params: {
+                "tag": tag
+            }
+        };
+        return service.update(doc._index, doc._type, doc._id, request);
+    };
 
     return service;
 

@@ -123,7 +123,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
     $scope.Util = Util;
 
     // Initial state.
-    $scope.state = "ready";
+    $scope.loading = false;
     $scope.errorMessage = "";
     $scope.page = 1;
     $scope.userQuery = "";
@@ -164,15 +164,19 @@ app.controller('MainController', function (Keyboard, $route, $location,
     }
 
     $scope.toggleStar = function (item) {
-        if (item._source.tags.indexOf("starred") < 0) {
-            item._source.tags.push("starred");
+
+        var tag = "starred";
+
+        if (item._source.tags.indexOf(tag) == -1) {
+            item._source.tags.push(tag);
+            return ElasticSearch.addTag(item, tag);
         }
         else {
             item._source.tags = _.filter(item._source.tags, function (tag) {
                 return tag != "starred";
             });
+            return ElasticSearch.removeTag(item, tag);
         }
-        ElasticSearch.updateTags(item);
     };
 
     $scope.selectAll = function () {
@@ -373,7 +377,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
     };
 
     $scope.refresh = function () {
-
+        $("#query-input").blur();
         var request = {
             query: {
                 filtered: {
@@ -433,8 +437,10 @@ app.controller('MainController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "r", function (e) {
-        $scope.refresh();
-    })
+        $scope.$apply(function() {
+            $scope.refresh();
+        })
+    });
 
     Keyboard.scopeBind($scope, "/", function (e) {
         e.preventDefault();
