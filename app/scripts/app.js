@@ -207,8 +207,9 @@ app.controller('MainController', function (Keyboard, $route, $location,
         }
     };
 
-    $scope.removeHit = function (hit) {
-        
+    $scope.removeEvent = function (hit) {
+        _.remove($scope.hits.hits, hit);
+
         // Update the currently selected item.
         var newIdx = $scope.hits.hits.indexOf($scope.currentSelection);
         if (newIdx >= 0) {
@@ -226,7 +227,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
         ElasticSearch.removeTag(hit, "inbox",
 
             function () {
-                $scope.removeHit(hit);
+                $scope.removeEvent(hit);
                 if ($scope.hits.hits.length == 0) {
                     $scope.refresh();
                 }
@@ -252,7 +253,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
     $scope.deleteHit = function (hit) {
         ElasticSearch.delete(hit,
             function () {
-                $scope.removeHit(hit);
+                $scope.removeEvent(hit);
 
                 if ($scope.hits.hits.length == 0) {
                     $scope.refresh();
@@ -273,7 +274,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
                     var result = item[0];
                     var event = item[1];
                     if (result.delete.found) {
-                        $scope.removeHit(event);
+                        $scope.removeEvent(event);
                     }
                     else {
                         /* TODO: Make user visible. */
