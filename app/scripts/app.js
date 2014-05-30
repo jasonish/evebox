@@ -406,6 +406,14 @@ app.controller('MainController', function (Keyboard, $route, $location,
         $scope.currentSelection = $scope.hits.hits[0];
         $scope.currentSelectionIdx = 0;
 
+        // If no hits and we are not on page 1, decrement the page count
+        // and try again.
+        if ($scope.hits.hits.length == 0 && $scope.page > 1) {
+            $scope.page--;
+            $scope.refresh();
+            return;
+        }
+
         _.forEach($scope.hits.hits, function (hit) {
             hit._source["@timestamp"] =
                 moment(hit._source["@timestamp"]).format();
@@ -483,7 +491,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
                 }
             }
         }).result.then(function () {
-                console.log("modal is closed");
+                $scope.page = 1;
                 $scope.refresh();
             });
     };
@@ -525,6 +533,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
 
         ElasticSearch.deleteByQuery(query)
             .success(function (response) {
+                $scope.page = 1;
                 $scope.refresh();
             })
             .error(function (error) {
@@ -612,12 +621,14 @@ app.controller('MainController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, ">", function (e) {
-        $scope.page++;
-        $scope.refresh();
+        if ($scope.page * Config.elasticSearch.size < $scope.hits.total) {
+            $scope.page++;
+            $scope.refresh();
+        }
     });
 
     Keyboard.scopeBind($scope, "<", function (e) {
-        if ($scope.page > 0) {
+        if ($scope.page > 1) {
             $scope.page--;
             $scope.refresh();
         }
@@ -638,7 +649,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, ".", function (e) {
-        $(".dropdown-toggle").first().dropdown("toggle");
+        $(".dropdown-toggle.keyboard").first().dropdown("toggle");
     });
 
 })

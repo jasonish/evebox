@@ -46,7 +46,7 @@
         </div>
 
         <div class="btn-group">
-          <button type="button" class="btn btn-default btn-sm dropdown-toggle"
+          <button type="button" class="btn btn-default btn-sm dropdown-toggle keyboard"
                   data-toggle="dropdown">
             More <span class="caret"></span></button>
           <ul class="dropdown-menu" role="menu">
@@ -152,8 +152,9 @@
     </div>
   </div>
 
-  <div ng-if="hits.hits.length > 0" class="row">
-    <div ng-include src="'searchResultStatusRow.html'"></div>
-  </div>
+  <!-- Disabled for now, appears to be issues with 2 pagination controls. -->
+  <!--<div ng-if="hits.hits.length > 0" class="row">-->
+    <!--<div ng-include src="'searchResultStatusRow.html'"></div>-->
+  <!--</div>-->
 
 </div>

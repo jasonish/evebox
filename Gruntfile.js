@@ -7,10 +7,12 @@
 // use this if you want to recursively match all subfolders:
 // 'test/spec/**/*.js'
 
+var VERSION = "0.2.0dev"
+
 module.exports = function (grunt) {
 
     var pkg = grunt.file.readJSON('package.json');
-    var dist = "evebox-" + pkg.version;
+    var dist = "evebox-" + VERSION;
 
     // Load grunt tasks automatically
     require('load-grunt-tasks')(grunt);
@@ -335,6 +337,19 @@ module.exports = function (grunt) {
                 configFile: 'karma.conf.js',
                 singleRun: true
             }
+        },
+
+        replace: {
+            another_example: {
+                src: ['app/views/about.html'],
+                overwrite: true,
+                replacements: [
+                    {
+                        from: /\<span id=\"version\"\>.*\<\/span\>/,
+                        to: "<span id=\"version\">" + VERSION + "</span>"
+                    }
+                ]
+            }
         }
 
     });
@@ -370,6 +385,7 @@ module.exports = function (grunt) {
     grunt.registerTask('build', [
         'clean:dist',
         'bowerInstall',
+        'replace',
         'useminPrepare',
         'concurrent:dist',
         'autoprefixer',
