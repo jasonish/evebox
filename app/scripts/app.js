@@ -27,7 +27,8 @@
 var NAV_BAR_HEIGHT = 60;
 
 var app = angular.module("app", [
-    "ngRoute", "ngResource", "ui.bootstrap", "ui.bootstrap.pagination"]);
+    "ngRoute", "ngResource", "ui.bootstrap", "ui.bootstrap.pagination",
+    "ui.bootstrap.modal"]);
 
 app.config(function ($routeProvider) {
 
@@ -38,7 +39,7 @@ app.config(function ($routeProvider) {
 
     $routeProvider.when("/:view", {
         controller: "MainController",
-        templateUrl: "views/main.html"
+        templateUrl: "views/events.html"
     });
 
     $routeProvider.otherwise({redirectTo: "/inbox"});
@@ -104,8 +105,8 @@ app.controller("ConfigController", function ($scope, $modalInstance, Config) {
 });
 
 app.controller('MainController', function (Keyboard, $route, $location,
-    $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch,
-    Util) {
+    $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch, Util,
+    $modal) {
 
     // Debugging.
     scope = $scope;
@@ -124,6 +125,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
 
     // Initial state.
     $scope.loading = false;
+    $scope.state = "";
     $scope.errorMessage = "";
     $scope.page = 1;
     $scope.userQuery = "";
@@ -138,6 +140,10 @@ app.controller('MainController', function (Keyboard, $route, $location,
     }
     else {
         $scope.queryPrefix = "(event_type:alert)";
+    }
+
+    if ("q" in $routeParams) {
+        $scope.userQuery = $routeParams.q;
     }
 
     $scope.buildQuery = function () {
@@ -386,7 +392,12 @@ app.controller('MainController', function (Keyboard, $route, $location,
         if ($scope.currentSelectionIdx > 0) {
             $scope.currentSelectionIdx -= 1;
             $scope.currentSelection = $scope.hits.hits[$scope.currentSelectionIdx];
-            scrollIdIntoView($scope.currentSelection._id);
+            if ($scope.currentSelectionIdx == 0) {
+                $(window).scrollTop(0);
+            }
+            else {
+                scrollIdIntoView($scope.currentSelection._id);
+            }
         }
     };
 
@@ -426,6 +437,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
             ]
         };
 
+        $scope.queryAsString = angular.toJson(request);
         $scope.submitSearch(request);
     };
 
@@ -456,6 +468,69 @@ app.controller('MainController', function (Keyboard, $route, $location,
         addr = addr.replace(/:::+/g, "::");
         return addr;
     };
+
+    $scope.archiveByQuery = function () {
+        if ($scope.hits == undefined || $scope.hits.hits.length == 0) {
+            $scope.displayErrorMessage("No events to archive.");
+            return;
+        }
+        var modal = $modal.open({
+            templateUrl: "templates/archive-by-query-progress-modal.html",
+            controller: "ArchiveByQueryProgressModal",
+            resolve: {
+                inboxScope: function () {
+                    return $scope;
+                }
+            }
+        }).result.then(function () {
+                console.log("modal is closed");
+                $scope.refresh();
+            });
+    };
+
+    $scope.deleteByQuery = function() {
+        if ($scope.hits == undefined || $scope.hits.hits.length == 0) {
+            $scope.displayErrorMessage("No events to delete.");
+            return;
+        }
+
+        var latestTimestamp = $scope.hits.hits[0]._source["@timestamp"];
+
+        var query = {
+            query: {
+                filtered: {
+                    query: {
+                        query_string: {
+                            query: $scope.buildQuery()
+                        }
+                    },
+                    filter: {
+                        and: [
+                            {
+                                range: {
+                                    "@timestamp": {
+                                        "lte": latestTimestamp
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        };
+
+        if ($routeParams.view == "inbox") {
+            query.query.filtered.filter.and.push({term: {tags: "inbox"}});
+        }
+
+        ElasticSearch.deleteByQuery(query)
+            .success(function (response) {
+                $scope.refresh();
+            })
+            .error(function (error) {
+                console.log(error);
+            })
+    }
 
     $scope.refresh();
 
@@ -563,8 +638,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, ".", function (e) {
-        $("#dropdown-for-" + $scope.currentSelection._id).dropdown("toggle");
-        $("#dropdown-group-for-" + $scope.currentSelection._id + " button").focus();
+        $(".dropdown-toggle").first().dropdown("toggle");
     });
 
 })

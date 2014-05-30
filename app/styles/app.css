@@ -4,6 +4,7 @@
 
 body {
     padding-top: 70px;
+    padding-bottom: 50px;
 }
 
 .navbar-fixed-top {
@@ -74,4 +75,9 @@ body {
  * heading. */
 #record-view-container .panel-heading .record-action-buttons {
     visibility: hidden;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu a:focus {
+    background-color: darkgrey !important;
 }

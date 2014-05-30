@@ -1,0 +1,13 @@
+<div class="modal-body">
+  <label>Archiving...</label>
+  <progressbar class="progress-striped active" value="numberArchived"
+               max="numberToArchive">{{numberArchived}} of {{numberToArchive}}
+  </progressbar>
+  <div ng-if="error" class="alert alert-danger">
+    Error:
+    <pre class="alert alert-danger">{{error}}</pre>
+  </div>
+</div>
+<div ng-if="error" class="modal-footer">
+  <button class="btn btn-primary" ng-click="$close()">Close</button>
+</div>

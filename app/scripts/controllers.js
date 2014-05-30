@@ -18,7 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-app.controller("RecordController", function ($scope, $routeParams, Util, ElasticSearch) {
+app.controller("RecordController", function ($scope, $routeParams, Util,
+    ElasticSearch) {
 
     // Export some functions to $scope.
     $scope.Util = Util;
@@ -28,5 +29,78 @@ app.controller("RecordController", function ($scope, $routeParams, Util, Elastic
             $scope.response = response;
             $scope.hits = response.hits;
         });
+
+});
+
+app.controller("ArchiveByQueryProgressModal", function ($scope, ElasticSearch,
+    inboxScope, Util, $timeout) {
+
+    modalScope = $scope;
+
+    $scope.numberToArchive = inboxScope.hits.total;
+    $scope.numberArchived = 0;
+    $scope.error = undefined;
+
+    var latestTimestamp = inboxScope.hits.hits[0]._source["@timestamp"];
+    var searchRequest = {
+        query: {
+            filtered: {
+                query: {
+                    query_string: {
+                        query: inboxScope.buildQuery()
+                    }
+                },
+                filter: {
+                    and: [
+                        {
+                            term: { tags: "inbox" }
+                        },
+                        {
+                            range: {
+                                "@timestamp": {
+                                    "lte": latestTimestamp
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        size: 1000,
+        fields: ["_index", "_type", "_id"],
+        sort: [
+            {"@timestamp": {order: "desc"}}
+        ]
+    };
+
+    var archiveEventsByQuery = function () {
+        ElasticSearch.search(searchRequest)
+            .success(function (response) {
+                if (response.hits.hits.length > 0) {
+                    ElasticSearch.bulkRemoveTag(response.hits.hits, "inbox")
+                        .success(function (response) {
+                            $scope.numberArchived += response.items.length;
+                            archiveEventsByQuery();
+                        })
+                        .error(function (error) {
+                            console.log("error removing inbox tag:");
+                            console.log(error);
+                            $scope.error = angular.toJson(angular.fromJson(error), true);
+                        });
+                }
+                else {
+                    // Wrapped in timeout so the user can see the modal if
+                    // there were very few events to archive.
+                    $timeout($scope.$close, 500);
+                }
+            })
+            .error(function (error) {
+                console.log("error searching events:");
+                console.log(error);
+                $scope.error = angular.toJson(angular.fromJson(error), true);
+            });
+    };
+
+    archiveEventsByQuery();
 
 });

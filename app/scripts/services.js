@@ -176,6 +176,11 @@ app.factory("ElasticSearch", function ($http, Config) {
         return $http.delete(url);
     };
 
+    service.deleteByQuery = function(request) {
+        var url = Config.elasticSearch.url + "/_all/_query?refresh=true";
+        return $http.delete(url, {data: request});
+    }
+
     /**
      * Get/search for a record by ID.
      *
