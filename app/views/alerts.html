@@ -59,8 +59,10 @@
           More <span class="caret"></span></button>
         <ul class="dropdown-menu" role="menu">
           <li><a href="" ng-click="rollUp()">Roll Up</a>
-          <li><a href="" ng-click="increaseRequestSize()">Increase Request Size (+)</a></li>
-          <li><a href="" ng-click="decreaseRequestSize()">Decrease Request Size (-)</a></li>
+          <li><a href="" ng-click="increaseRequestSize()">Increase Request Size
+            (+)</a></li>
+          <li><a href="" ng-click="decreaseRequestSize()">Decrease Request Size
+            (-)</a></li>
           <li ng-show="$routeParams.view == 'inbox'">
             <a href="" ng-click="archiveByQuery()">Archive
               All in Query</a>
@@ -106,23 +108,74 @@
 </h6>
 
 <div ng-if="response.aggregations" ng-controller="AggregationController">
+  <div class="row">
+    <div class="col-md-5">
+      <div class="btn-group" style="vertical-align: middle;">
+        <button id="selectAllButton" type="button"
+                class="btn btn-default btn-sm"
+                ng-click="selectAll()">Select All
+        </button>
+        <button id="deselectAllButton" type="button"
+                class="btn btn-default btn-sm"
+                ng-click="deselectAll()">
+          Deselect All
+        </button>
+        <button ng-show="$routeParams.view == 'inbox'" type="button"
+                class="btn btn-default btn-sm"
+                ng-disabled="selectedCount() == 0"
+                ng-click="archiveSelected()">Archive
+        </button>
+        <!--<button type="button"-->
+                <!--class="btn btn-default btn-sm"-->
+                <!--ng-disabled="selectedCount() == 0"-->
+                <!--ng-click="deleteSelected()">Delete-->
+        <!--</button>-->
+      </div>
+
+      <div class="btn-group">
+        <button type="button"
+                class="btn btn-default btn-sm dropdown-toggle keyboard"
+                data-toggle="dropdown">
+          More <span class="caret"></span></button>
+        <ul class="dropdown-menu" role="menu">
+          <li><a href="" ng-click="rollUp()">Roll Up</a>
+          <li><a href="" ng-click="increaseRequestSize()">Increase Request Size
+            (+)</a></li>
+          <li><a href="" ng-click="decreaseRequestSize()">Decrease Request Size
+            (-)</a></li>
+          <li ng-show="$routeParams.view == 'inbox'">
+            <a href="" ng-click="archiveByQuery()">Archive
+              All in Query</a>
+          </li>
+          <li><a href="" ng-click="deleteByQuery()">Delete All in Query</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
   <table class="table table-condensed" key-table
          rows="response.aggregations.signature.buckets"
-    active-row-index="activeRowIndex">
+         active-row-index="activeRowIndex">
     <thead>
+    <th></th>
     <th></th>
     <th>#</th>
     <th></th>
     <th>Last</th>
     </thead>
     <tbody>
-    <tr class="clickable" ng-click="openAggregation(bucket)"
+    <tr class="clickable"
         ng-repeat="bucket in response.aggregations.signature.buckets">
       <td><span ng-show="$index == activeRowIndex"
                 class="glyphicon glyphicon-chevron-right"></span></td>
-      <td>{{bucket.doc_count}}</td>
-      <td>{{bucket.key}}</td>
-      <td>{{moment(bucket.last_timestamp.value).format()}}</td>
+      <td>
+        <input type="checkbox" ng-model="bucket.__selected"/>
+      </td>
+      <td ng-click="openAggregation(bucket)">{{bucket.doc_count}}</td>
+      <td ng-click="openAggregation(bucket)">{{bucket.key}}</td>
+      <td ng-click="openAggregation(bucket)">
+        {{moment(bucket.last_timestamp.value).format()}}
+      </td>
     </tr>
     </tbody>
   </table>

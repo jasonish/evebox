@@ -336,7 +336,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         catch (err) {
             return 0;
         }
-    }
+    };
 
     /** Blur/unfocus an item by ID. */
     $scope.blurById = function (id) {
@@ -388,6 +388,13 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         $scope.response = response;
         $scope.hits = response.hits;
         $scope.activeRowIndex = 0;
+
+        if ($scope.aggregateBy == "signature") {
+            $scope.buckets = $scope.response.aggregations.signature.buckets;
+        }
+        else {
+            $scope.buckets = undefined;
+        }
 
         // If no hits and we are not on page 1, decrement the page count
         // and try again.
@@ -448,7 +455,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                     },
                     "aggs": {
                         "last_timestamp": {
-                            "max": { "field": "timestamp"}
+                            "max": { "field": "@timestamp"}
                         }
                     }
                 }

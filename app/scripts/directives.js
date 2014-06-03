@@ -44,9 +44,6 @@ app.directive("keyTable", function () {
         };
 
         Keyboard.scopeBind($scope, "j", function () {
-            console.log($scope.rows.length);
-            console.log(angular.element($element).find("tr").length);
-            console.log(angular.element($element).find("tbody").length);
             $scope.$apply(function () {
                 if ($scope.activeRowIndex < $scope.rows.length - 1) {
                     $scope.activeRowIndex++;
