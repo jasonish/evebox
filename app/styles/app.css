@@ -2,16 +2,40 @@
     opacity: 0.3;
 }
 
-body {
-    padding-top: 70px;
-    padding-bottom: 50px;
+/**
+ * Decrease the size of the Bootstrap 3 top navbar.
+ */
+.navbar {
+    height: 30px;
+    min-height: inherit;
+}
+
+.navbar-nav > li > a {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.navbar-brand {
+    padding-top: 5px;
+    padding-bottom: 5px;
 }
 
 .navbar-fixed-top {
     padding-right: 20px;
 }
 
+/* As we're using a fixed size navbar, push the body down. */
+body {
+    padding-top: 50px;
+    padding-bottom: 50px;
+}
+
 .hit-row {
+    cursor: pointer;
+    cursor: hand;
+}
+
+table > tbody > tr.clickable {
     cursor: pointer;
     cursor: hand;
 }
@@ -80,4 +104,35 @@ body {
 .dropdown-menu a:hover,
 .dropdown-menu a:focus {
     background-color: darkgrey !important;
+}
+
+.evebox-grouped-table {
+}
+
+.evebox-grouped-table > tbody > tr {
+    cursor: pointer;
+    cursor: hand;
+}
+
+.evebox-grouped-table > thead > tr > td {
+    border: 0px !important;
+
+}
+
+.evebox-grouped-table > tbody > tr > td {
+    padding: 0px !important;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    margin: 0px !important;
+    border: 0px !important;
+    border-top: 1px solid #dcdcdc !important;
+
+}
+
+#search-form .form-group {
+    margin-bottom: 7px !important;
+}
+
+#search-form .form-group:last-of-type {
+    margin-bottom: 0px !important;
 }

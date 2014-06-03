@@ -38,8 +38,8 @@ app.config(function ($routeProvider) {
     });
 
     $routeProvider.when("/:view", {
-        controller: "MainController",
-        templateUrl: "views/events.html"
+        controller: "AlertsController",
+        templateUrl: "views/alerts.html"
     });
 
     $routeProvider.otherwise({redirectTo: "/inbox"});
@@ -104,7 +104,7 @@ app.controller("ConfigController", function ($scope, $modalInstance, Config) {
 
 });
 
-app.controller('MainController', function (Keyboard, $route, $location,
+app.controller('AlertsController', function (Keyboard, $route, $location,
     $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch, Util,
     $modal) {
 
@@ -124,13 +124,15 @@ app.controller('MainController', function (Keyboard, $route, $location,
     $scope.Util = Util;
 
     // Initial state.
+    $scope.querySize = Config.elasticSearch.size;
     $scope.loading = false;
     $scope.state = "";
     $scope.errorMessage = "";
-    $scope.page = 1;
-    $scope.userQuery = "";
-    $scope.currentSelectionIdx = 0;
+    $scope.activeRowIndex = 0;
     $scope.toJson = Util.toJson;
+    $scope.aggregateBy = $routeParams.aggregateBy || "";
+    $scope.userQuery = $routeParams.q || "";
+    $scope.page = $routeParams.page || 1;
 
     if ($routeParams.view == "inbox") {
         $scope.queryPrefix = "(event_type:alert AND tags:inbox)";
@@ -140,10 +142,6 @@ app.controller('MainController', function (Keyboard, $route, $location,
     }
     else {
         $scope.queryPrefix = "(event_type:alert)";
-    }
-
-    if ("q" in $routeParams) {
-        $scope.userQuery = $routeParams.q;
     }
 
     $scope.buildQuery = function () {
@@ -218,18 +216,15 @@ app.controller('MainController', function (Keyboard, $route, $location,
     };
 
     $scope.removeEvent = function (hit) {
+        var activeItem = $scope.hits.hits[$scope.activeRowIndex];
         _.remove($scope.hits.hits, hit);
-
         // Update the currently selected item.
-        var newIdx = $scope.hits.hits.indexOf($scope.currentSelection);
+        var newIdx = $scope.hits.hits.indexOf(activeItem);
         if (newIdx >= 0) {
-            $scope.currentSelectionIdx = newIdx;
+            $scope.activeRowIndex = newIdx;
         }
-        else {
-            if ($scope.currentSelectionIdx >= $scope.hits.hits.length) {
-                $scope.currentSelectionIdx = $scope.hits.hits.length - 1;
-            }
-            $scope.currentSelection = $scope.hits.hits[$scope.currentSelectionIdx];
+        else if ($scope.activeRowIndex >= $scope.hits.hits.length) {
+            $scope.activeRowIndex = $scope.hits.hits.length - 1;
         }
     };
 
@@ -362,49 +357,37 @@ app.controller('MainController', function (Keyboard, $route, $location,
         }
     }
 
-    var scrollIdIntoView = function (elementId) {
-        var element = $("#" + elementId);
-        if (!isScrolledIntoView(element)) {
-            $(window).scrollTop(element.position().top - ($(window).height() / 2));
-        }
-    };
-
-    var toggleCurrentSelection = function () {
-        $scope.currentSelection.__selected = !$scope.currentSelection.__selected;
-    };
-
     var setActiveAvent = function (event) {
         if (_.isNumber(event)) {
-            $scope.currentSelectionIdx = event;
-            $scope.currentSelection = $scope.hits.hits[$scope.currentSelectionIdx];
+            $scope.activeRowIndex = event;
         }
     };
 
     var moveToNextEntry = function () {
-        if ($scope.currentSelectionIdx + 1 < $scope.hits.hits.length) {
-            $scope.currentSelectionIdx += 1;
-            $scope.currentSelection = $scope.hits.hits[$scope.currentSelectionIdx];
-            scrollIdIntoView($scope.currentSelection._id);
+        if ($scope.activeRowIndex + 1 < $scope.hits.hits.length) {
+            $scope.activeRowIndex += 1;
+            var element = $("#" + $scope.hits.hits[$scope.activeRowIndex]._id);
+            Util.scrollElementIntoView(element);
         }
     };
 
     var moveToPreviousEntry = function () {
-        if ($scope.currentSelectionIdx > 0) {
-            $scope.currentSelectionIdx -= 1;
-            $scope.currentSelection = $scope.hits.hits[$scope.currentSelectionIdx];
-            if ($scope.currentSelectionIdx == 0) {
+        if ($scope.activeRowIndex > 0) {
+            $scope.activeRowIndex -= 1;
+            if ($scope.activeRowIndex == 0) {
                 $(window).scrollTop(0);
             }
             else {
-                scrollIdIntoView($scope.currentSelection._id);
+                var element = $("#" + $scope.hits.hits[$scope.activeRowIndex]._id);
+                Util.scrollElementIntoView(element);
             }
         }
     };
 
     var handleSearchResponse = function (response) {
+        $scope.response = response;
         $scope.hits = response.hits;
-        $scope.currentSelection = $scope.hits.hits[0];
-        $scope.currentSelectionIdx = 0;
+        $scope.activeRowIndex = 0;
 
         // If no hits and we are not on page 1, decrement the page count
         // and try again.
@@ -424,6 +407,14 @@ app.controller('MainController', function (Keyboard, $route, $location,
             }
 
         });
+
+        if ($scope.grouped != undefined) {
+            $scope.rollUp();
+        }
+    };
+
+    $scope.aggregateByChanged = function () {
+        $location.search("aggregateBy", $scope.aggregateBy);
     };
 
     $scope.refresh = function () {
@@ -438,12 +429,31 @@ app.controller('MainController', function (Keyboard, $route, $location,
                     }
                 }
             },
-            size: Config.elasticSearch.size,
+            size: $scope.querySize,
             from: Config.elasticSearch.size * ($scope.page - 1),
             sort: [
                 {"@timestamp": {order: "desc"}}
             ]
         };
+
+        if ($scope.aggregateBy == "signature") {
+            request.size = 0;
+            delete(request.from);
+            request.aggs = {
+                "signature": {
+                    "terms": {
+                        "field": "alert.signature.raw",
+                        "order": {"_count": "desc"},
+                        "size": 0
+                    },
+                    "aggs": {
+                        "last_timestamp": {
+                            "max": { "field": "timestamp"}
+                        }
+                    }
+                }
+            }
+        }
 
         $scope.queryAsString = angular.toJson(request);
         $scope.submitSearch(request);
@@ -467,6 +477,15 @@ app.controller('MainController', function (Keyboard, $route, $location,
             $scope.loading = false;
         });
     };
+
+    $scope.rollUp = function () {
+        var grouped = _.groupBy($scope.hits.hits, function (event) {
+            var key = event._source.alert.gid + ":" + event._source.alert.signature_id;
+            return key;
+        });
+        $scope.grouped = _.sortBy(grouped, 'length').reverse();
+        console.log(Util.formatString("Rolled up into {0} groups.", $scope.grouped.length));
+    }
 
     $scope.renderIpAddress = function (addr) {
         addr = addr.replace(/0000/g, "");
@@ -496,7 +515,7 @@ app.controller('MainController', function (Keyboard, $route, $location,
             });
     };
 
-    $scope.deleteByQuery = function() {
+    $scope.deleteByQuery = function () {
         if ($scope.hits == undefined || $scope.hits.hits.length == 0) {
             $scope.displayErrorMessage("No events to delete.");
             return;
@@ -541,7 +560,22 @@ app.controller('MainController', function (Keyboard, $route, $location,
             })
     }
 
+    var toggleSelected = function () {
+        var event = $scope.hits.hits[$scope.activeRowIndex];
+        event.__selected = !event.__selected;
+    };
+
     $scope.refresh();
+
+    $scope.increaseRequestSize = function () {
+        $scope.querySize = $scope.querySize * 2;
+        $scope.refresh();
+    };
+
+    $scope.decreaseRequestSize = function () {
+        $scope.querySize = $scope.querySize / 2;
+        $scope.refresh();
+    };
 
     /*
      * Keyboard bindings.
@@ -549,6 +583,18 @@ app.controller('MainController', function (Keyboard, $route, $location,
 
     $scope.$on("$destroy", function () {
         Keyboard.resetScope($scope);
+    });
+
+    Keyboard.scopeBind($scope, "+", function () {
+        $scope.$apply(function () {
+            $scope.increaseRequestSize();
+        });
+    });
+
+    Keyboard.scopeBind($scope, "-", function () {
+        $scope.$apply(function () {
+            $scope.decreaseRequestSize();
+        });
     });
 
     Keyboard.scopeBind($scope, "r", function (e) {
@@ -565,13 +611,14 @@ app.controller('MainController', function (Keyboard, $route, $location,
 
     Keyboard.scopeBind($scope, "j", function (e) {
         $scope.$apply(function () {
+            console.log("AlertsController: keyboard: j");
             moveToNextEntry();
         });
     });
 
     Keyboard.scopeBind($scope, "shift+j", function (e) {
         $scope.$apply(function () {
-            toggleCurrentSelection();
+            toggleSelected();
             moveToNextEntry();
         });
     })
@@ -584,19 +631,22 @@ app.controller('MainController', function (Keyboard, $route, $location,
 
     Keyboard.scopeBind($scope, "shift+k", function (e) {
         $scope.$apply(function () {
-            toggleCurrentSelection();
+            toggleSelected();
             moveToPreviousEntry();
         });
     });
 
     Keyboard.scopeBind($scope, "x", function (e) {
-        $scope.currentSelection.__selected = !$scope.currentSelection.__selected;
-        $scope.$apply();
+        $scope.$apply(function () {
+            toggleSelected();
+        });
     });
 
     Keyboard.scopeBind($scope, "s", function (e) {
-        $scope.toggleStar($scope.currentSelection);
-        $scope.$apply();
+        $scope.$apply(function () {
+            $scope.toggleStar($scope.hits.hits[$scope.activeRowIndex]);
+            ;
+        });
     });
 
     Keyboard.scopeBind($scope, "* a", function (e) {
@@ -608,8 +658,9 @@ app.controller('MainController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "o", function (e) {
-        $scope.toggleOpenItem($scope.currentSelection);
-        $scope.$apply();
+        $scope.$apply(function () {
+            $scope.toggleOpenItem($scope.hits.hits[$scope.activeRowIndex]);
+        });
     });
 
     Keyboard.scopeBind($scope, "e", function (e) {
@@ -652,24 +703,4 @@ app.controller('MainController', function (Keyboard, $route, $location,
         $(".dropdown-toggle.keyboard").first().dropdown("toggle");
     });
 
-})
-;
-
-/*
- * Non-Angular code - utility functions, etc.
- */
-
-/**
- * Check if an element is currently within the visible area of the window.
- *
- * From http://stackoverflow.com/questions/487073/check-if-element-is-visible-after-scrolling.
- */
-function isScrolledIntoView(elem) {
-    var docViewTop = $(window).scrollTop() + NAV_BAR_HEIGHT;
-    var docViewBottom = docViewTop + $(window).height() - NAV_BAR_HEIGHT;
-
-    var elemTop = $(elem).offset().top;
-    var elemBottom = elemTop + $(elem).height();
-
-    return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop));
-}
+});

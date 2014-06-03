@@ -18,6 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+var NAV_BAR_HEIGHT = 60;
+
 /**
  * Centralized configuration.
  *
@@ -136,6 +138,25 @@ app.factory("Util", function () {
         }
     };
 
+    /**
+     * Check if an element is currently within the visible area of the window.
+     *
+     * From http://stackoverflow.com/questions/487073/check-if-element-is-visible-after-scrolling.
+     */
+    service.isScrolledIntoView = function(element) {
+        var docViewTop = $(window).scrollTop();
+        var docViewBottom = docViewTop + $(window).height();
+        var elemTop = $(element).offset().top;
+        var elemBottom = elemTop + $(element).height();
+        return ((elemBottom < docViewBottom) && (elemTop >= docViewTop));
+    };
+
+    service.scrollElementIntoView = function (element) {
+        if (!service.isScrolledIntoView(element)) {
+            $(window).scrollTop(element.position().top - ($(window).height() / 2));
+        }
+    };
+
     return service;
 });
 
@@ -176,7 +197,7 @@ app.factory("ElasticSearch", function ($http, Config) {
         return $http.delete(url);
     };
 
-    service.deleteByQuery = function(request) {
+    service.deleteByQuery = function (request) {
         var url = Config.elasticSearch.url + "/_all/_query?refresh=true";
         return $http.delete(url, {data: request});
     }
@@ -275,7 +296,9 @@ app.factory("Keyboard", function () {
     service.scopeBindings = {};
 
     service.scopeBind = function (scope, key, callback) {
-        Mousetrap.bind(key, callback);
+        Mousetrap.bind(key, function (e) {
+            callback(e);
+        });
         if (!(scope.$id in service.scopeBindings)) {
             service.scopeBindings[scope.$id] = [];
         }
@@ -287,12 +310,12 @@ app.factory("Keyboard", function () {
             _.forEach(service.scopeBindings[scope.$id], function (binding) {
                 Mousetrap.unbind(binding.key);
             });
-            service.scopeBindings[scope.$id] = [];
+            delete(service.scopeBindings[scope.$id]);
         }
 
         // Something is up with Mousetrap bindings, rebinding existing
         // bindings seems to fix it.
-        for (scopeId in service.scopeBindings) {
+        for (var scopeId in service.scopeBindings) {
             _.forEach(service.scopeBindings[scopeId], function (binding) {
                 Mousetrap.bind(binding.key, binding.callback);
             });
