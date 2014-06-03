@@ -11,6 +11,10 @@ EveBox is a Suricata "eve" event viewer for Elastic Search.
 
 # Installation.
 
+Clone this repo and serve up the app directory.
+
+Or...
+
 1. Get the latest release from https://github.com/jasonish/evebox/releases.
 2. Extract evebox-<version>.zip to your webserver.
 3. Optionally copy sample-config.js to config.js and modify.  The
