@@ -508,18 +508,55 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             $scope.displayErrorMessage("No events to archive.");
             return;
         }
-        var modal = $modal.open({
-            templateUrl: "templates/archive-by-query-progress-modal.html",
-            controller: "ArchiveByQueryProgressModal",
+
+        var lastTimestamp = $scope.hits.hits[0]._source["@timestamp"];
+        var query = {
+            query: {
+                filtered: {
+                    query: {
+                        query_string: {
+                            query: $scope.buildQuery()
+                        }
+                    },
+                    filter: {
+                        and: [
+                            {
+                                term: { tags: "inbox" }
+                            },
+                            {
+                                range: {
+                                    "@timestamp": {
+                                        "lte": lastTimestamp
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            size: 1000,
+            fields: ["_index", "_type", "_id"],
+            sort: [
+                {"@timestamp": {order: "desc"}}
+            ]
+        };
+
+        $modal.open({
+            templateUrl: "templates/archive-events-by-query-modal.html",
+            controller: "ArchiveEventsByQueryModal",
             resolve: {
-                inboxScope: function () {
-                    return $scope;
+                args: function () {
+                    return {
+                        "title": "Archiving...",
+                        "query": query
+                    }
                 }
             }
-        }).result.then(function () {
+        }).result.then(function() {
                 $scope.page = 1;
                 $scope.refresh();
             });
+
     };
 
     $scope.deleteByQuery = function () {

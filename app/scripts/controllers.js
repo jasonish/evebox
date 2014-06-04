@@ -32,78 +32,37 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
 
 });
 
-app.controller("ArchiveByQueryProgressModal", function ($scope, ElasticSearch,
-    inboxScope, Util, $timeout) {
+app.controller("ArchiveEventsByQueryModal", function ($scope, ElasticSearch,
+    args) {
+
+    $scope.title = args.title;
+    $scope.archived = 0;
+    $scope.total = undefined;
 
     modalScope = $scope;
 
-    $scope.numberToArchive = inboxScope.hits.total;
-    $scope.numberArchived = 0;
-    $scope.error = undefined;
+    console.log(args.query);
 
-    var latestTimestamp = inboxScope.hits.hits[0]._source["@timestamp"];
-    var searchRequest = {
-        query: {
-            filtered: {
-                query: {
-                    query_string: {
-                        query: inboxScope.buildQuery()
-                    }
-                },
-                filter: {
-                    and: [
-                        {
-                            term: { tags: "inbox" }
-                        },
-                        {
-                            range: {
-                                "@timestamp": {
-                                    "lte": latestTimestamp
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
-        },
-        size: 1000,
-        fields: ["_index", "_type", "_id"],
-        sort: [
-            {"@timestamp": {order: "desc"}}
-        ]
-    };
-
-    var archiveEventsByQuery = function () {
-        ElasticSearch.search(searchRequest)
+    var searchThenArchive = function () {
+        ElasticSearch.search(args.query)
             .success(function (response) {
+                if ($scope.total == undefined) {
+                    $scope.total = response.hits.total;
+                }
                 if (response.hits.hits.length > 0) {
                     ElasticSearch.bulkRemoveTag(response.hits.hits, "inbox")
                         .success(function (response) {
-                            $scope.numberArchived += response.items.length;
-                            archiveEventsByQuery();
-                        })
-                        .error(function (error) {
-                            console.log("error removing inbox tag:");
-                            console.log(error);
-                            $scope.error = angular.toJson(angular.fromJson(error),
-                                true);
+                            $scope.archived += response.items.length;
+                            searchThenArchive();
                         });
                 }
                 else {
-                    // Wrapped in timeout so the user can see the modal if
-                    // there were very few events to archive.
-                    $timeout($scope.$close, 500);
+                    $scope.$close();
                 }
-            })
-            .error(function (error) {
-                console.log("error searching events:");
-                console.log(error);
-                $scope.error = angular.toJson(angular.fromJson(error),
-                    true);
             });
     };
 
-    archiveEventsByQuery();
+    searchThenArchive();
 
 });
 
@@ -174,7 +133,7 @@ app.controller("GroupedAlertController", function ($scope, Keyboard,
 });
 
 app.controller("AggregationController", function ($scope, $location, Keyboard,
-    ElasticSearch) {
+    ElasticSearch, $modal) {
 
     var getActiveBucket = function () {
         return $scope.buckets[$scope.activeRowIndex];
@@ -213,64 +172,75 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         }
     };
 
-    $scope.archiveSelected = function () {
-        var selectedBuckets = _.filter($scope.buckets, "__selected");
-        _.forEach(selectedBuckets, function (bucket) {
-            if (_.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
-                $scope.activeRowIndex--;
-            }
-            _.remove($scope.buckets, bucket);
-
-            var query = {
-                query: {
-                    filtered: {
-                        query: {
-                            query_string: {
-                                query: $scope.buildQuery()
-                            }
-                        },
-                        filter: {
-                            and: [
-                                {
-                                    term: { tags: "inbox"}
-                                },
-                                {
-                                    range: {
-                                        "@timestamp": {
-                                            "lte": bucket.last_timestamp.value
-                                        }
-                                    }
-                                },
-                                {
-                                    term: {
-                                        "alert.signature.raw": bucket.key
+    $scope.archiveBucket = function(bucket) {
+        var query = {
+            query: {
+                filtered: {
+                    query: {
+                        query_string: {
+                            query: $scope.buildQuery()
+                        }
+                    },
+                    filter: {
+                        and: [
+                            {
+                                term: { tags: "inbox"}
+                            },
+                            {
+                                range: {
+                                    "@timestamp": {
+                                        "lte": bucket.last_timestamp.value
                                     }
                                 }
-                            ]
-                        }
+                            },
+                            {
+                                term: {
+                                    "alert.signature.raw": bucket.key
+                                }
+                            }
+                        ]
                     }
-                },
-                size: 1000,
-                fields: ["_index", "_type", "_id"],
-                sort: [
-                    {"@timestamp": {order: "desc"}}
-                ]
-            };
+                }
+            },
+            size: 1000,
+            fields: ["_index", "_type", "_id"],
+            sort: [
+                {"@timestamp": {order: "desc"}}
+            ]
+        };
 
-            ElasticSearch.search(query)
-                .success(function (response) {
-                    console.log(response);
-                    if (response.hits.hits.length > 0) {
-                        ElasticSearch.bulkRemoveTag(response.hits.hits, "inbox")
-                            .success(function (response) {
-                                console.log(response);
-                            })
+        return $modal.open({
+            templateUrl: "templates/archive-events-by-query-modal.html",
+            controller: "ArchiveEventsByQueryModal",
+            resolve: {
+                args: function () {
+                    return {
+                        "title": "Archiving: " + bucket.key,
+                        "query": query
                     }
-                })
-                .error(function (error) {
-                    console.log(error);
-                })
+                }
+            }
         });
+    };
+
+    $scope.archiveSelected = function () {
+        var selectedBuckets = _.filter($scope.buckets, "__selected");
+
+        var archiveBucket = function() {
+            if (selectedBuckets.length > 0) {
+                var bucket = selectedBuckets.pop();
+                $scope.archiveBucket(bucket)
+                    .result.then(function() {
+                        _.remove($scope.buckets, bucket);
+                        if (_.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
+                            $scope.activeRowIndex--;
+                        }
+                        archiveBucket();
+                    });
+            }
+        };
+
+        archiveBucket();
     };
 
     $scope.$on("$destroy", function () {
