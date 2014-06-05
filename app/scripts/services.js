@@ -50,31 +50,28 @@ app.factory("Config", function ($http, $location) {
     _.merge(service, serverConfig);
     _.merge(service, localConfig);
 
-    service.save = function () {
+    var pruneConfig = function (config, serverConfig) {
+        _.forIn(config, function (value, key) {
+            if (!_.isFunction(value)) {
+                if (serverConfig[key] != undefined) {
+                    if (_.isObject(value)) {
+                        pruneConfig(value, serverConfig[key]);
+                    }
+                    else if (serverConfig[key] == config[key]) {
+                        delete(config[key]);
+                    }
+                }
 
-        if (localConfig.elasticSearch === undefined) {
-            localConfig.elasticSearch = {};
-        }
-
-        if (localConfig.elasticSearch != undefined && service.elasticSearch.url == serverConfig.elasticSearch.url) {
-            console.log("Deleting current elasticSearch.url");
-            delete(localConfig.elasticSearch.url);
-        }
-        else {
-            if (localConfig.elasticSearch === undefined) {
-                localConfig.elasticSearch = {};
+                if (_.size(value) == 0) {
+                    delete(config[key]);
+                }
             }
-            localConfig.elasticSearch.url = service.elasticSearch.url;
-        }
+        });
+    };
 
-        if (service.elasticSearch.size == serverConfig.elasticSearch.size) {
-            delete(localConfig.elasticSearch.size);
-        }
-        else {
-            localConfig.elasticSearch.size = service.elasticSearch.size;
-        }
-
-        localStorage.config = angular.toJson(localConfig);
+    service.save = function () {
+        pruneConfig(service, serverConfig);
+        localStorage.config = angular.toJson(service);
 
         // Force full refresh.
         window.location.reload();
@@ -143,7 +140,7 @@ app.factory("Util", function () {
      *
      * From http://stackoverflow.com/questions/487073/check-if-element-is-visible-after-scrolling.
      */
-    service.isScrolledIntoView = function(element) {
+    service.isScrolledIntoView = function (element) {
         var docViewTop = $(window).scrollTop();
         var docViewBottom = docViewTop + $(window).height();
         var elemTop = $(element).offset().top;

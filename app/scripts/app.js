@@ -130,8 +130,26 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     $scope.errorMessage = "";
     $scope.activeRowIndex = 0;
     $scope.toJson = Util.toJson;
-    $scope.aggregateBy = $routeParams.aggregateBy || "";
+    $scope.view = $routeParams.view;
+
+    // Use the provided aggregateBy, if none provided use the default as
+    // provided by the user.
+    if ("aggregateBy" in $routeParams) {
+        $scope.aggregateBy = $routeParams.aggregateBy;
+    }
+    else if ($scope.view == "inbox") {
+        $scope.aggregateBy = Config.defaultInboxAggregation || "";
+    }
+    else {
+        $scope.aggregateBy = "";
+    }
+
+
     $scope.userQuery = $routeParams.q || "";
+    if (_.isArray($scope.userQuery)) {
+        $scope.userQuery = $scope.userQuery.join(" AND ");
+    }
+
     $scope.page = $routeParams.page || 1;
 
     if ($routeParams.view == "inbox") {
@@ -384,7 +402,97 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         }
     };
 
-    var handleSearchResponse = function (response) {
+    /**
+     * Refreshes the current search request to look for new events.
+     */
+    $scope.refresh = function () {
+        $scope.submitSearchRequest();
+    };
+
+    /**
+     * Called when the search form is submitted.
+     *
+     * Update the URL so the back-button works as expected.
+     */
+    $scope.onSearchFormSubmit = function () {
+        var searchParams = {};
+
+        if ($scope.userQuery) {
+            searchParams.q = $scope.userQuery;
+        }
+
+        searchParams.aggregateBy = $scope.aggregateBy;
+
+        $location.search(searchParams);
+    };
+
+    $scope.createSearchRequest = function () {
+        var request = {
+            query: {
+                filtered: {
+                    query: {
+                        bool: {
+                            must: {
+                                query_string: {
+                                    query: $scope.buildQuery()
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            size: $scope.querySize,
+            from: Config.elasticSearch.size * ($scope.page - 1),
+            sort: [
+                {"@timestamp": {order: "desc"}}
+            ]
+        };
+
+        if ($scope.aggregateBy == "signature") {
+            request.size = 0;
+            delete(request.from);
+            request.aggs = {
+                "signature": {
+                    "terms": {
+                        "field": "alert.signature.raw",
+                        "order": {"_count": "desc"},
+                        "size": 0
+                    },
+                    "aggs": {
+                        "last_timestamp": {
+                            "max": { "field": "@timestamp"}
+                        }
+                    }
+                }
+            }
+        }
+
+        return request;
+    };
+
+    $scope.submitSearchRequest = function () {
+
+        var request = $scope.createSearchRequest();
+
+        $scope.loading = true;
+        ElasticSearch.search(request).success(function (response) {
+            $scope.handleSearchResponse(response);
+            $(window).scrollTop(0);
+        }).error(function (error) {
+            if (error.status == 0) {
+                $scope.displayErrorMessage(
+                        "No response from Elastic Search at " + Config.elasticSearch.url);
+            }
+            else {
+                $scope.displayErrorMessage(
+                        "Error: " + error.status + " " + error.statusText);
+            }
+        }).finally(function () {
+            $scope.loading = false;
+        });
+    };
+
+    $scope.handleSearchResponse = function (response) {
         $scope.response = response;
         $scope.hits = response.hits;
         $scope.activeRowIndex = 0;
@@ -418,71 +526,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         if ($scope.grouped != undefined) {
             $scope.rollUp();
         }
-    };
-
-    $scope.aggregateByChanged = function () {
-        $location.search("aggregateBy", $scope.aggregateBy);
-    };
-
-    $scope.refresh = function () {
-        $("#query-input").blur();
-        var request = {
-            query: {
-                filtered: {
-                    query: {
-                        query_string: {
-                            query: $scope.buildQuery()
-                        }
-                    }
-                }
-            },
-            size: $scope.querySize,
-            from: Config.elasticSearch.size * ($scope.page - 1),
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ]
-        };
-
-        if ($scope.aggregateBy == "signature") {
-            request.size = 0;
-            delete(request.from);
-            request.aggs = {
-                "signature": {
-                    "terms": {
-                        "field": "alert.signature.raw",
-                        "order": {"_count": "desc"},
-                        "size": 0
-                    },
-                    "aggs": {
-                        "last_timestamp": {
-                            "max": { "field": "@timestamp"}
-                        }
-                    }
-                }
-            }
-        }
-
-        $scope.queryAsString = angular.toJson(request);
-        $scope.submitSearch(request);
-    };
-
-    $scope.submitSearch = function (request) {
-        $scope.loading = true;
-        ElasticSearch.search(request).success(function (response) {
-            handleSearchResponse(response);
-            $(window).scrollTop(0);
-        }).error(function (error) {
-            if (error.status == 0) {
-                $scope.displayErrorMessage(
-                        "No response from Elastic Search at " + Config.elasticSearch.url);
-            }
-            else {
-                $scope.displayErrorMessage(
-                        "Error: " + error.status + " " + error.statusText);
-            }
-        }).finally(function () {
-            $scope.loading = false;
-        });
     };
 
     $scope.rollUp = function () {
@@ -552,7 +595,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                     }
                 }
             }
-        }).result.then(function() {
+        }).result.then(function () {
                 $scope.page = 1;
                 $scope.refresh();
             });
@@ -609,8 +652,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         event.__selected = !event.__selected;
     };
 
-    $scope.refresh();
-
     $scope.increaseRequestSize = function () {
         $scope.querySize = $scope.querySize * 2;
         $scope.refresh();
@@ -651,7 +692,11 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         e.preventDefault();
         $("#query-input").focus();
         $("#query-input").select();
-    })
+    });
+
+    Keyboard.scopeBind($scope, "^", function() {
+        $("#aggregate-by-input").focus();
+    });
 
     Keyboard.scopeBind($scope, "j", function (e) {
         $scope.$apply(function () {
@@ -747,4 +792,5 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         $(".dropdown-toggle.keyboard").first().dropdown("toggle");
     });
 
+    $scope.submitSearchRequest();
 });

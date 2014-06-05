@@ -41,8 +41,6 @@ app.controller("ArchiveEventsByQueryModal", function ($scope, ElasticSearch,
 
     modalScope = $scope;
 
-    console.log(args.query);
-
     var searchThenArchive = function () {
         ElasticSearch.search(args.query)
             .success(function (response) {
@@ -133,15 +131,24 @@ app.controller("GroupedAlertController", function ($scope, Keyboard,
 });
 
 app.controller("AggregationController", function ($scope, $location, Keyboard,
-    ElasticSearch, $modal) {
+    ElasticSearch, $modal, $routeParams) {
 
     var getActiveBucket = function () {
         return $scope.buckets[$scope.activeRowIndex];
     };
 
     $scope.openAggregation = function (bucket) {
-        $location.search({"q": "alert.signature.raw:\"" + bucket.key + "\"",
-            "aggregateBy": ""});
+        var searchParams = {
+
+            // Explicit no aggregation.
+            aggregateBy: ""
+
+        };
+        searchParams.q = ["alert.signature.raw:\"" + bucket.key + "\""];
+        if ("q" in $routeParams) {
+            searchParams.q.push($routeParams.q);
+        }
+        $location.search(searchParams);
     };
 
     $scope.toggleSelected = function () {
@@ -172,7 +179,7 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         }
     };
 
-    $scope.archiveBucket = function(bucket) {
+    $scope.archiveBucket = function (bucket) {
         var query = {
             query: {
                 filtered: {
@@ -226,11 +233,11 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
     $scope.archiveSelected = function () {
         var selectedBuckets = _.filter($scope.buckets, "__selected");
 
-        var archiveBucket = function() {
+        var archiveBucket = function () {
             if (selectedBuckets.length > 0) {
                 var bucket = selectedBuckets.pop();
                 $scope.archiveBucket(bucket)
-                    .result.then(function() {
+                    .result.then(function () {
                         _.remove($scope.buckets, bucket);
                         if (_.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
                             $scope.activeRowIndex--;
