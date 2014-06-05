@@ -406,6 +406,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
      * Refreshes the current search request to look for new events.
      */
     $scope.refresh = function () {
+        $(".results").addClass("loading");
         $scope.submitSearchRequest();
     };
 
@@ -526,6 +527,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         if ($scope.grouped != undefined) {
             $scope.rollUp();
         }
+
+        $(".results").removeClass("loading");
     };
 
     $scope.rollUp = function () {

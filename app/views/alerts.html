@@ -32,9 +32,9 @@
   <div class="row">
     <div class="col-md-5">
       <div class="btn-group" style="vertical-align: middle;">
-        <butteon id="refreshButton" type="button" class="btn btn-default btn-sm"
+        <button id="refreshButton" type="button" class="btn btn-default btn-sm"
                  ng-click="refresh()">Refresh
-        </butteon>
+        </button>
         <button id="selectAllButton" type="button"
                 class="btn btn-default btn-sm"
                 ng-click="selectAll()">Select All
@@ -111,10 +111,13 @@
   {{queryAsString}}
 </h6>
 
-<div ng-if="response.aggregations" ng-controller="AggregationController">
+<div class="results" ng-if="response.aggregations" ng-controller="AggregationController">
   <div class="row">
     <div class="col-md-5">
       <div class="btn-group" style="vertical-align: middle;">
+        <button id="refreshButton" type="button" class="btn btn-default btn-sm"
+                ng-click="refresh()">Refresh
+        </button>
         <button id="selectAllButton" type="button"
                 class="btn btn-default btn-sm"
                 ng-click="selectAll()">Select All
@@ -186,7 +189,7 @@
 
 </div>
 
-<div ng-if="grouped" ng-controller="GroupedAlertController">
+<div class="results" ng-if="grouped" ng-controller="GroupedAlertController">
   <table class="table table-condensed evebox-grouped-table">
     <thead>
     <th></th>
@@ -217,7 +220,7 @@
   </table>
 </div>
 
-<div ng-if="grouped == undefined && response.aggregations == undefined">
+<div class="results" ng-if="grouped == undefined && response.aggregations == undefined">
 
   <div ng-include src="'searchResultStatusRow.html'"></div>
 
@@ -274,4 +277,5 @@
     </div>
   </div>
 </div>
+
 </div>
