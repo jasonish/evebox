@@ -179,6 +179,57 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         }
     };
 
+    $scope.deleteBucket = function (bucket) {
+        var query = {
+            query: {
+                filtered: {
+                    query: {
+                        query_string: {
+                            query: $scope.buildQuery()
+                        }
+                    },
+                    filter: {
+                        and: [
+                            {
+                                term: { tags: "inbox"}
+                            },
+                            {
+                                range: {
+                                    "@timestamp": {
+                                        "lte": bucket.last_timestamp.value
+                                    }
+                                }
+                            },
+                            {
+                                term: {
+                                    "alert.signature.raw": bucket.key
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        };
+
+        return ElasticSearch.deleteByQuery(query);
+
+    };
+
+    $scope.deleteSelected = function () {
+        var selectedBuckets = _.filter($scope.buckets, "__selected");
+
+        _.forEach(selectedBuckets, function (bucket) {
+            $scope.deleteBucket(bucket)
+                .success(function (response) {
+                    _.remove($scope.buckets, bucket);
+                    if ($scope.activeRowIndex > 0 && _.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
+                        $scope.activeRowIndex--;
+                    }
+                });
+
+        });
+    };
+
     $scope.archiveBucket = function (bucket) {
         var query = {
             query: {
@@ -292,4 +343,9 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         });
     });
 
+    Keyboard.scopeBind($scope, "#", function () {
+        $scope.$apply(function () {
+            $scope.deleteSelected();
+        });
+    });
 });
