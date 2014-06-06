@@ -164,7 +164,7 @@
       </div>
     </div>
   </div>
-  <table ng-if="buckets.length > 0" class="table table-condensed" key-table
+  <table ng-show="buckets.length > 0" class="table table-condensed" key-table
          rows="response.aggregations.signature.buckets"
          active-row-index="activeRowIndex">
     <thead>
