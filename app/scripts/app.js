@@ -66,18 +66,21 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
     };
 
     Keyboard.scopeBind($scope, "g i", function (e) {
-        $location.url("/inbox");
-        $scope.$apply();
+        $scope.$apply(function() {
+            $location.url("/inbox");
+        });
     });
 
     Keyboard.scopeBind($scope, "g s", function (e) {
-        $location.url("/starred");
-        $scope.$apply();
+        $scope.$apply(function() {
+            $location.url("/starred")
+        });
     });
 
     Keyboard.scopeBind($scope, "g e", function (e) {
-        $location.url("/events");
-        $scope.$apply();
+        $scope.$apply(function() {
+            $location.url("/events");
+        });
     });
 
     Keyboard.scopeBind($scope, "g c", function (e) {
@@ -737,7 +740,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
     Keyboard.scopeBind($scope, "j", function (e) {
         $scope.$apply(function () {
-            console.log("AlertsController: keyboard: j");
             moveToNextEntry();
         });
     });
@@ -775,11 +777,15 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "* a", function (e) {
-        $scope.$apply($scope.selectAll());
+        $scope.$apply(function() {
+            $scope.selectAll()
+        });
     });
 
     Keyboard.scopeBind($scope, "* n", function (e) {
-        $scope.$apply($scope.deselectAll());
+        $scope.$apply(function() {
+            $scope.deselectAll()
+        });
     });
 
     Keyboard.scopeBind($scope, "o", function (e) {
@@ -789,11 +795,15 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "e", function (e) {
-        $scope.$apply($scope.archiveSelected());
+        $scope.$apply(function () {
+            $scope.archiveSelected();
+        });
     });
 
     Keyboard.scopeBind($scope, "#", function (e) {
-        $scope.$apply($scope.deleteSelected());
+        $scope.$apply(function() {
+            $scope.deleteSelected()
+        });
     });
 
     Keyboard.scopeBind($scope, ">", function (e) {
@@ -829,5 +839,4 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     $scope.submitSearchRequest();
-})
-;
+});

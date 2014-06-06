@@ -52,9 +52,6 @@ quickly.
 # TODOs
 - Support for any "eve" record type.
 - A better event "detail" view.
-- Include 'vendor' sources so a git clone is immediately usable
-  (currently using what "yo angular" spit out with minor
-  modification).
 - A darker theme.
 - Arbitrary tagging.
 - A backend might be needed to do such things as large bulk tagging.

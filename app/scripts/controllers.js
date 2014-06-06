@@ -310,7 +310,6 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
     };
 
     $scope.$on("$destroy", function () {
-        console.log("GroupedAlertController: scope destroyed.");
         Keyboard.resetScope($scope);
     });
 

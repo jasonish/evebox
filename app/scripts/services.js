@@ -228,7 +228,6 @@ app.factory("ElasticSearch", function ($http, Config) {
      * Bulk delete events.
      *
      * @param events The list of events to delete.
-     * @param callback Callback on response.
      */
     service.deleteEvents = function (events) {
         var request = events.map(function (event) {
