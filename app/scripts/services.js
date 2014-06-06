@@ -181,6 +181,11 @@ app.factory("ElasticSearch", function ($http, Config) {
         return $http.post(url, request);
     };
 
+    service.msearch = function (request) {
+        var url = Config.elasticSearch.url + "/_msearch?refresh=true";
+        return $http.post(url, request);
+    };
+
     service.update = function (index, type, id, request) {
         var url = Config.elasticSearch.url + "/" + index +
             "/" + type +

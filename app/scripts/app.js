@@ -493,6 +493,39 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         });
     };
 
+    $scope.handleAggregateResponse = function (response) {
+        for (var i = 0; i < $scope.buckets.length; i++) {
+
+            var bucket = $scope.buckets[i];
+
+            var query = {
+                "query": {
+                    "query_string": {
+                        "query": "alert.signature.raw:\"" + bucket.key + "\""
+                    }
+                },
+                "size": 1,
+                "sort": [
+                    {"@timestamp": {"order": "desc"}}
+                ]
+            };
+
+            !function (bucket, index) {
+                ElasticSearch.search(query)
+                    .success(function (response) {
+                        if (response.hits.hits.length > 0) {
+                            var event = response.hits.hits[0];
+                            var element = $("table").find("tr").eq(index + 1);
+                            element.addClass($scope.severityToBootstrapClass(event));
+                        }
+                    })
+                    .error(function (error) {
+                        console.log(error);
+                    });
+            }(bucket, i);
+        }
+    };
+
     $scope.handleSearchResponse = function (response) {
         $scope.response = response;
         $scope.hits = response.hits;
@@ -500,6 +533,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
         if ($scope.aggregateBy == "signature") {
             $scope.buckets = $scope.response.aggregations.signature.buckets;
+            $scope.handleAggregateResponse(response);
         }
         else {
             $scope.buckets = undefined;
@@ -697,7 +731,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         $("#query-input").select();
     });
 
-    Keyboard.scopeBind($scope, "^", function() {
+    Keyboard.scopeBind($scope, "^", function () {
         $("#aggregate-by-input").focus();
     });
 
@@ -796,4 +830,5 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     $scope.submitSearchRequest();
-});
+})
+;
