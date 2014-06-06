@@ -747,7 +747,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             toggleSelected();
             moveToNextEntry();
         });
-    })
+    });
 
     Keyboard.scopeBind($scope, "k", function (e) {
         $scope.$apply(function () {
@@ -771,7 +771,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     Keyboard.scopeBind($scope, "s", function (e) {
         $scope.$apply(function () {
             $scope.toggleStar($scope.hits.hits[$scope.activeRowIndex]);
-            ;
         });
     });
 

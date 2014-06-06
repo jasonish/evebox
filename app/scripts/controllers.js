@@ -151,7 +151,7 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         $location.search(searchParams);
     };
 
-    $scope.toggleSelected = function () {
+    $scope.toggleActiveRow = function () {
         var bucket = getActiveBucket();
         bucket.__selected = !bucket.__selected;
     };
@@ -255,6 +255,14 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         Keyboard.resetScope($scope);
     });
 
+    Keyboard.scopeBind($scope, "* a", function (e) {
+        $scope.$apply($scope.selectAll());
+    });
+
+    Keyboard.scopeBind($scope, "* n", function (e) {
+        $scope.$apply($scope.deselectAll());
+    });
+
     Keyboard.scopeBind($scope, "o", function () {
         $scope.$apply(function () {
             var bucket = getActiveBucket();
@@ -264,14 +272,24 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
 
     Keyboard.scopeBind($scope, "x", function () {
         $scope.$apply(function () {
-            $scope.toggleSelected();
+            $scope.toggleActiveRow();
         });
+    });
+
+    Keyboard.scopeBind($scope, "shift+j", function () {
+        $scope.toggleActiveRow();
+        Mousetrap.trigger("j");
+    });
+
+    Keyboard.scopeBind($scope, "shift+k", function () {
+        $scope.toggleActiveRow();
+        Mousetrap.trigger("k");
     });
 
     Keyboard.scopeBind($scope, "e", function () {
         $scope.$apply(function () {
             $scope.archiveSelected();
         });
-    })
+    });
 
 });
