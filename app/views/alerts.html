@@ -33,7 +33,7 @@
     <div class="col-md-5">
       <div class="btn-group" style="vertical-align: middle;">
         <button id="refreshButton" type="button" class="btn btn-default btn-sm"
-                 ng-click="refresh()">Refresh
+                ng-click="refresh()">Refresh
         </button>
         <button id="selectAllButton" type="button"
                 class="btn btn-default btn-sm"
@@ -100,18 +100,16 @@
       </div>
       <div style="float: right; overflow: hidden;"
            ng-show="loading == false && hits.total == 0">
-        No results.
+        <label class="label label-warning">No events found.</label>
       </div>
     </div>
   </div>
 </script>
 
-<h6>
-  <b>Query:</b>
-  {{queryAsString}}
-</h6>
+<br/>
 
-<div class="results" ng-if="response.aggregations" ng-controller="AggregationController">
+<div class="results" ng-if="response.aggregations"
+     ng-controller="AggregationController">
   <div class="row">
     <div class="col-md-5">
       <div class="btn-group" style="vertical-align: middle;">
@@ -145,11 +143,6 @@
                 data-toggle="dropdown">
           More <span class="caret"></span></button>
         <ul class="dropdown-menu" role="menu">
-          <li><a href="" ng-click="rollUp()">Roll Up</a>
-          <li><a href="" ng-click="increaseRequestSize()">Increase Request Size
-            (+)</a></li>
-          <li><a href="" ng-click="decreaseRequestSize()">Decrease Request Size
-            (-)</a></li>
           <li ng-show="$routeParams.view == 'inbox'">
             <a href="" ng-click="archiveByQuery()">Archive
               All in Query</a>
@@ -159,8 +152,19 @@
         </ul>
       </div>
     </div>
+    <div class="col-md-7">
+      <div style="float: right">
+        <div ng-show="buckets.length == 0">
+          <label class="label label-warning">No events found.</label>
+        </div>
+        <div ng-show="buckets.length > 0">
+          <label>Found {{totalEventCount()}} events in {{buckets.length}}
+            groups.</label>
+        </div>
+      </div>
+    </div>
   </div>
-  <table class="table table-condensed" key-table
+  <table ng-if="buckets.length > 0" class="table table-condensed" key-table
          rows="response.aggregations.signature.buckets"
          active-row-index="activeRowIndex">
     <thead>
@@ -220,7 +224,8 @@
   </table>
 </div>
 
-<div class="results" ng-if="grouped == undefined && response.aggregations == undefined">
+<div class="results"
+     ng-if="grouped == undefined && response.aggregations == undefined">
 
   <div ng-include src="'searchResultStatusRow.html'"></div>
 

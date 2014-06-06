@@ -133,6 +133,8 @@ app.controller("GroupedAlertController", function ($scope, Keyboard,
 app.controller("AggregationController", function ($scope, $location, Keyboard,
     ElasticSearch, $modal, $routeParams) {
 
+    AggregationController = $scope;
+
     var getActiveBucket = function () {
         return $scope.buckets[$scope.activeRowIndex];
     };
@@ -177,6 +179,12 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         catch (err) {
             return 0;
         }
+    };
+
+    $scope.totalEventCount = function() {
+        return _.reduce($scope.buckets, function(sum, bucket) {
+           return sum + bucket.doc_count;
+        }, 0);
     };
 
     $scope.deleteBucket = function (bucket) {
