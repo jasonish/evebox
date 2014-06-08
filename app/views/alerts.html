@@ -81,16 +81,18 @@
           <label>{{ ((Config.elasticSearch.size * (page - 1))) + 1 }} to {{
             (Config.elasticSearch.size * (page - 1)) + hits.hits.length }}
             of {{ hits.total }} hits</label>
-          <pagination
-            style="padding: 0px; margin: 0px; vertical-align: middle;"
-            class="pagination-sm"
-            total-items="hits.total"
-            max-size="5"
-            boundary-links="true"
-            rotate="false"
-            items-per-page="querySize"
-            ng-model="page"
-            ng-change="refresh()"></pagination>
+
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-default"
+                    ng-disabled="page == 1" ng-click="gotoPage('first')">&lt;&lt;</button>
+            <button type="button" class="btn btn-default"
+                    ng-disabled="page == 1" ng-click="gotoPage('prev')">&lt;</button>
+            <button type="button" class="btn btn-default"
+                    ng-click="gotoPage('next')">&gt;</button>
+            <button type="button" class="btn btn-default"
+                    ng-click="gotoPage('last')">&gt;&gt;</button>
+          </div>
+
         </div>
       </div>
       <div style="float: right; overflow: hidden;"

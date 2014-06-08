@@ -27,8 +27,7 @@
 var NAV_BAR_HEIGHT = 60;
 
 var app = angular.module("app", [
-    "ngRoute", "ngResource", "ui.bootstrap", "ui.bootstrap.pagination",
-    "ui.bootstrap.modal"]);
+    "ngRoute", "ngResource", "ui.bootstrap", "ui.bootstrap.modal"]);
 
 app.config(function ($routeProvider) {
 
@@ -66,19 +65,19 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
     };
 
     Keyboard.scopeBind($scope, "g i", function (e) {
-        $scope.$apply(function() {
+        $scope.$apply(function () {
             $location.url("/inbox");
         });
     });
 
     Keyboard.scopeBind($scope, "g s", function (e) {
-        $scope.$apply(function() {
+        $scope.$apply(function () {
             $location.url("/starred")
         });
     });
 
     Keyboard.scopeBind($scope, "g e", function (e) {
-        $scope.$apply(function() {
+        $scope.$apply(function () {
             $location.url("/events");
         });
     });
@@ -679,6 +678,27 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         event.__selected = !event.__selected;
     };
 
+    $scope.gotoPage = function (what) {
+        switch (what) {
+            case "first":
+                $scope.page = 1;
+                break;
+            case "prev":
+                if ($scope.page > 1) {
+                    $scope.page--;
+                }
+                break;
+            case "next":
+                $scope.page++;
+                break;
+            case "last":
+                var last = Math.floor($scope.hits.total / $scope.querySize);
+                $scope.page = last + 1;
+                break;
+        }
+        $scope.refresh();
+    };
+
     /*
      * Keyboard bindings.
      */
@@ -754,13 +774,13 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "* a", function (e) {
-        $scope.$apply(function() {
+        $scope.$apply(function () {
             $scope.selectAll()
         });
     });
 
     Keyboard.scopeBind($scope, "* n", function (e) {
-        $scope.$apply(function() {
+        $scope.$apply(function () {
             $scope.deselectAll()
         });
     });
@@ -778,23 +798,21 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "#", function (e) {
-        $scope.$apply(function() {
+        $scope.$apply(function () {
             $scope.deleteSelected()
         });
     });
 
     Keyboard.scopeBind($scope, ">", function (e) {
-        if ($scope.page * Config.elasticSearch.size < $scope.hits.total) {
-            $scope.page++;
-            $scope.refresh();
-        }
+        $scope.$apply(function () {
+            $scope.gotoPage("next");
+        });
     });
 
     Keyboard.scopeBind($scope, "<", function (e) {
-        if ($scope.page > 1) {
-            $scope.page--;
-            $scope.refresh();
-        }
+        $scope.$apply(function () {
+            $scope.gotoPage("prev");
+        });
     });
 
     Keyboard.scopeBind($scope, "H", function (e) {
