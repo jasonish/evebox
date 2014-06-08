@@ -561,21 +561,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
         });
 
-        if ($scope.grouped != undefined) {
-            $scope.rollUp();
-        }
-
         $(".results").removeClass("loading");
     };
-
-    $scope.rollUp = function () {
-        var grouped = _.groupBy($scope.hits.hits, function (event) {
-            var key = event._source.alert.gid + ":" + event._source.alert.signature_id;
-            return key;
-        });
-        $scope.grouped = _.sortBy(grouped, 'length').reverse();
-        console.log(Util.formatString("Rolled up into {0} groups.", $scope.grouped.length));
-    }
 
     $scope.renderIpAddress = function (addr) {
         addr = addr.replace(/0000/g, "");
@@ -690,16 +677,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     var toggleSelected = function () {
         var event = $scope.hits.hits[$scope.activeRowIndex];
         event.__selected = !event.__selected;
-    };
-
-    $scope.increaseRequestSize = function () {
-        $scope.querySize = $scope.querySize * 2;
-        $scope.refresh();
-    };
-
-    $scope.decreaseRequestSize = function () {
-        $scope.querySize = $scope.querySize / 2;
-        $scope.refresh();
     };
 
     /*

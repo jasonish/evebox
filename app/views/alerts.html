@@ -62,11 +62,6 @@
                 data-toggle="dropdown">
           More <span class="caret"></span></button>
         <ul class="dropdown-menu" role="menu">
-          <li><a href="" ng-click="rollUp()">Roll Up</a>
-          <li><a href="" ng-click="increaseRequestSize()">Increase Request Size
-            (+)</a></li>
-          <li><a href="" ng-click="decreaseRequestSize()">Decrease Request Size
-            (-)</a></li>
           <li ng-show="$routeParams.view == 'inbox'">
             <a href="" ng-click="archiveByQuery()">Archive
               All in Query</a>
@@ -191,37 +186,6 @@
     </tbody>
   </table>
 
-</div>
-
-<div class="results" ng-if="grouped" ng-controller="GroupedAlertController">
-  <table class="table table-condensed evebox-grouped-table">
-    <thead>
-    <th></th>
-    <th></th>
-    <th><b>#</b></th>
-    <th></th>
-    <th></th>
-    <th></th>
-    <th>Last</th>
-    </thead>
-    <tbody>
-    <tr ng-repeat="group in grouped"
-        ng-class="severityToBootstrapClass(group[0])">
-      <td><span ng-show="$index == activeRowIndex"
-                class="glyphicon glyphicon-chevron-right"></span></td>
-      <td>
-        <input type="checkbox" ng-model="group.__selected"/>
-      </td>
-      <td>{{group.length}}</td>
-      <td>{{group[0]._source.alert.signature}}</td>
-      <td>{{renderIpAddress(group[0]._source.src_ip)}}</td>
-      <td>{{renderIpAddress(group[0]._source.dest_ip)}}</td>
-      <td>{{moment(group[0]._source["@timestamp"])
-        .format("YYYY-MM-DD HH:mm:ss")}}
-      </td>
-    </tr>
-    </tbody>
-  </table>
 </div>
 
 <div class="results"

@@ -64,72 +64,6 @@ app.controller("ArchiveEventsByQueryModal", function ($scope, ElasticSearch,
 
 });
 
-/**
- * Controller for table of alerts grouped client side.
- */
-app.controller("GroupedAlertController", function ($scope, Keyboard,
-    ElasticSearch) {
-
-    console.log("GroupedAlertController: id=" + $scope.$id);
-
-    GroupedAlertController = $scope;
-
-    $scope.activeRowIndex = 0;
-
-    $scope.archiveSelected = function () {
-        var groupsToArchive = _.filter($scope.grouped, function (group) {
-            return group.__selected || false;
-        });
-        var eventsToArchive = _.flatten(groupsToArchive);
-        ElasticSearch.bulkRemoveTag(eventsToArchive, "inbox")
-            .success(function (response) {
-                _.forEach(eventsToArchive, function (event) {
-                    var removed = _.remove($scope.hits.hits, event);
-                });
-            })
-            .error(function (error) {
-                console.log("error archiving events...");
-                console.log(error);
-            })
-            .finally(function () {
-                $scope.rollUp();
-            })
-    };
-
-    $scope.$on("$destroy", function () {
-        console.log("GroupedAlertController: scope destroyed.");
-        Keyboard.resetScope($scope);
-    });
-
-    Keyboard.scopeBind($scope, "e", function () {
-        $scope.$apply(function () {
-            $scope.archiveSelected();
-        });
-    });
-
-    Keyboard.scopeBind($scope, "j", function () {
-        $scope.$apply(function () {
-            if ($scope.activeRowIndex < $scope.grouped.length - 1) {
-                $scope.activeRowIndex++;
-            }
-        });
-    });
-
-    Keyboard.scopeBind($scope, "k", function () {
-        $scope.$apply(function () {
-            if ($scope.activeRowIndex > 0) {
-                $scope.activeRowIndex--;
-            }
-        });
-    });
-
-    Keyboard.scopeBind(scope, "x", function () {
-        $scope.$apply(function () {
-            $scope.grouped[$scope.activeRowIndex].__selected = !$scope.grouped[$scope.activeRowIndex].__selected;
-        });
-    })
-});
-
 app.controller("AggregationController", function ($scope, $location, Keyboard,
     ElasticSearch, $modal, $routeParams) {
 
@@ -181,9 +115,9 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         }
     };
 
-    $scope.totalEventCount = function() {
-        return _.reduce($scope.buckets, function(sum, bucket) {
-           return sum + bucket.doc_count;
+    $scope.totalEventCount = function () {
+        return _.reduce($scope.buckets, function (sum, bucket) {
+            return sum + bucket.doc_count;
         }, 0);
     };
 
@@ -298,7 +232,7 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
                 $scope.archiveBucket(bucket)
                     .result.then(function () {
                         _.remove($scope.buckets, bucket);
-                        if (_.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
+                        if ($scope.activeRowIndex > 0 && _.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
                             $scope.activeRowIndex--;
                         }
                         archiveBucket();
