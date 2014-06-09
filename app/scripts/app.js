@@ -45,67 +45,6 @@ app.config(function ($routeProvider) {
 
 });
 
-app.controller("NavBarController", function ($routeParams, $scope, $modal,
-    $location, Keyboard) {
-
-    $scope.$routeParams = $routeParams;
-
-    $scope.openConfig = function () {
-        $modal.open({
-            templateUrl: "views/config.html",
-            controller: "ConfigController"
-        });
-    };
-
-    $scope.openHelp = function () {
-        $modal.open({
-            templateUrl: "views/help.html",
-            size: "lg"
-        });
-    };
-
-    Keyboard.scopeBind($scope, "g i", function (e) {
-        $scope.$apply(function () {
-            $location.url("/inbox");
-        });
-    });
-
-    Keyboard.scopeBind($scope, "g s", function (e) {
-        $scope.$apply(function () {
-            $location.url("/starred")
-        });
-    });
-
-    Keyboard.scopeBind($scope, "g e", function (e) {
-        $scope.$apply(function () {
-            $location.url("/events");
-        });
-    });
-
-    Keyboard.scopeBind($scope, "g c", function (e) {
-        $scope.openConfig();
-    });
-
-    Keyboard.scopeBind($scope, "?", function (e) {
-        $scope.openHelp();
-    })
-});
-
-app.controller("ConfigController", function ($scope, $modalInstance, Config) {
-
-    $scope.config = Config;
-
-    $scope.ok = function () {
-        Config.save();
-        $modalInstance.close();
-    };
-
-    $scope.cancel = function () {
-        $modalInstance.dismiss();
-    };
-
-});
-
 app.controller('AlertsController', function (Keyboard, $route, $location,
     $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch, Util,
     $modal) {
@@ -146,46 +85,42 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         $scope.aggregateBy = "";
     }
 
-
     $scope.userQuery = $routeParams.q || "";
-    if (_.isArray($scope.userQuery)) {
-        $scope.userQuery = $scope.userQuery.join(" AND ");
-    }
-
     $scope.page = $routeParams.page || 1;
 
+    $scope.filters = [
+        {
+            "match_all": {}
+        }
+    ];
+
+    $scope.filters.push({
+        "term": {
+            "event_type": "alert"
+        }
+    });
+
     if ($routeParams.view == "inbox") {
-        $scope.queryPrefix = "(event_type:alert AND tags:inbox)";
-    }
-    else if ($routeParams.view == "starred") {
-        $scope.queryPrefix = "(event_type:alert AND tags:starred)";
-    }
-    else {
-        $scope.queryPrefix = "(event_type:alert)";
+        $scope.filters.push({
+            "term": {
+                "tags": "inbox"
+            }
+        });
     }
 
-    $scope.buildQuery = function () {
-
-        if ($scope.userQuery != "") {
-            return $scope.queryPrefix + " AND (" + $scope.userQuery + ")";
-        }
-        else {
-            return $scope.queryPrefix;
-        }
-
-        if ($scope.userQuery != "") {
-            return "(event_type:alert AND tags:inbox) AND (" + $scope.userQuery + ")";
-        }
-        else {
-            return "(event_type:alert AND tags:inbox)";
-        }
-    };
+    if ($routeParams.view == "starred") {
+        $scope.filters.push({
+            "term": {
+                "tags": "starred"
+            }
+        });
+    }
 
     $scope.displayErrorMessage = function (msg) {
         $scope.errorMessage = msg;
         $("#errorMessage").fadeIn();
         $("#errorMessage").delay(3000).fadeOut("slow");
-    }
+    };
 
     $scope.toggleStar = function (item) {
 
@@ -437,7 +372,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                         bool: {
                             must: {
                                 query_string: {
-                                    query: $scope.buildQuery()
+                                    query: $scope.userQuery || "*"
                                 }
                             }
                         }
@@ -451,9 +386,13 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             ]
         };
 
+        request.query.filtered.filter = {
+            "and": $scope.filters
+        };
+
         if ($scope.aggregateBy == "signature") {
-            request.size = 0;
             delete(request.from);
+            request.size = 0;
             request.aggs = {
                 "signature": {
                     "terms": {
@@ -526,20 +465,23 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                     });
             }(bucket, i);
         }
+
+        $(".results").removeClass("loading");
     };
 
     $scope.handleSearchResponse = function (response) {
         $scope.response = response;
-        $scope.hits = response.hits;
+        delete($scope.hits);
+        delete($scope.buckets);
         $scope.activeRowIndex = 0;
 
         if ($scope.aggregateBy == "signature") {
             $scope.buckets = $scope.response.aggregations.signature.buckets;
             $scope.handleAggregateResponse(response);
+            return;
         }
-        else {
-            $scope.buckets = undefined;
-        }
+
+        $scope.hits = response.hits;
 
         // If no hits and we are not on page 1, decrement the page count
         // and try again.
@@ -572,8 +514,26 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         return addr;
     };
 
+    $scope.doArchiveByQuery = function (title, query) {
+        $modal.open({
+            templateUrl: "templates/archive-events-by-query-modal.html",
+            controller: "ArchiveEventsByQueryModal",
+            resolve: {
+                args: function () {
+                    return {
+                        "title": title,
+                        "query": query
+                    }
+                }
+            }
+        }).result.then(function () {
+                $scope.page = 1;
+                $scope.refresh();
+            });
+    };
+
     $scope.archiveByQuery = function () {
-        if ($scope.hits == undefined || $scope.hits.hits.length == 0) {
+        if ($scope.response.hits.total == 0) {
             $scope.displayErrorMessage("No events to archive.");
             return;
         }
@@ -584,7 +544,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.buildQuery()
+                            query: $scope.userQuery || "*"
                         }
                     },
                     filter: {
@@ -610,26 +570,11 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             ]
         };
 
-        $modal.open({
-            templateUrl: "templates/archive-events-by-query-modal.html",
-            controller: "ArchiveEventsByQueryModal",
-            resolve: {
-                args: function () {
-                    return {
-                        "title": "Archiving...",
-                        "query": query
-                    }
-                }
-            }
-        }).result.then(function () {
-                $scope.page = 1;
-                $scope.refresh();
-            });
-
+        $scope.doArchiveByQuery("Archiving...", query);
     };
 
     $scope.deleteByQuery = function () {
-        if ($scope.hits == undefined || $scope.hits.hits.length == 0) {
+        if ($scope.response.hits.total == 0) {
             $scope.displayErrorMessage("No events to delete.");
             return;
         }
@@ -641,27 +586,24 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.buildQuery()
+                            query: $scope.userQuery || "*"
                         }
-                    },
-                    filter: {
-                        and: [
-                            {
-                                range: {
-                                    "@timestamp": {
-                                        "lte": latestTimestamp
-                                    }
-                                }
-                            }
-                        ]
                     }
                 }
             }
         };
 
-        if ($routeParams.view == "inbox") {
-            query.query.filtered.filter.and.push({term: {tags: "inbox"}});
-        }
+        query.query.filtered.filter = {
+            "and": _.cloneDeep($scope.filters)
+        };
+
+        query.query.filtered.filter.and.push({
+            "range": {
+                "@timestamp": {
+                    "lte": latestTimestamp
+                }
+            }
+        });
 
         ElasticSearch.deleteByQuery(query)
             .success(function (response) {
@@ -671,7 +613,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             .error(function (error) {
                 console.log(error);
             })
-    }
+    };
 
     var toggleSelected = function () {
         var event = $scope.hits.hits[$scope.activeRowIndex];
@@ -679,6 +621,9 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     $scope.gotoPage = function (what) {
+
+        var last = Math.floor($scope.hits.total / $scope.querySize) + 1;
+
         switch (what) {
             case "first":
                 $scope.page = 1;
@@ -689,14 +634,15 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 }
                 break;
             case "next":
-                $scope.page++;
+                if ($scope.page < last) {
+                    $scope.page++;
+                }
                 break;
             case "last":
-                var last = Math.floor($scope.hits.total / $scope.querySize);
-                $scope.page = last + 1;
+                $scope.page = last;
                 break;
         }
-        $scope.refresh();
+        $location.search("page", $scope.page);
     };
 
     /*
@@ -792,6 +738,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "e", function (e) {
+        console.log("AlertsController: e");
         $scope.$apply(function () {
             $scope.archiveSelected();
         });

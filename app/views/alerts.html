@@ -30,7 +30,7 @@
 <br/>
 
 <div class="results" ng-if="response.aggregations"
-     ng-controller="AggregationController">
+     ng-controller="AggregatedController">
   <div class="row">
     <div class="col-md-5">
       <div class="btn-group" style="vertical-align: middle;">
@@ -123,11 +123,13 @@
         <button id="refreshButton" type="button" class="btn btn-default btn-sm"
                 ng-click="refresh()">Refresh
         </button>
-        <button ng-disabled="hits.hits.length == 0" id="selectAllButton" type="button"
+        <button ng-disabled="hits.hits.length == 0" id="selectAllButton"
+                type="button"
                 class="btn btn-default btn-sm"
                 ng-click="selectAll()">Select All
         </button>
-        <button ng-disabled="hits.hits.length == 0" id="deselectAllButton" type="button"
+        <button ng-disabled="hits.hits.length == 0" id="deselectAllButton"
+                type="button"
                 class="btn btn-default btn-sm"
                 ng-click="deselectAll()">
           Deselect All

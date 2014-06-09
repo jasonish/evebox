@@ -18,6 +18,67 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+app.controller("NavBarController", function ($routeParams, $scope, $modal,
+    $location, Keyboard) {
+
+    $scope.$routeParams = $routeParams;
+
+    $scope.openConfig = function () {
+        $modal.open({
+            templateUrl: "views/config.html",
+            controller: "ConfigController"
+        });
+    };
+
+    $scope.openHelp = function () {
+        $modal.open({
+            templateUrl: "views/help.html",
+            size: "lg"
+        });
+    };
+
+    Keyboard.scopeBind($scope, "g i", function (e) {
+        $scope.$apply(function () {
+            $location.url("/inbox");
+        });
+    });
+
+    Keyboard.scopeBind($scope, "g s", function (e) {
+        $scope.$apply(function () {
+            $location.url("/starred")
+        });
+    });
+
+    Keyboard.scopeBind($scope, "g e", function (e) {
+        $scope.$apply(function () {
+            $location.url("/events");
+        });
+    });
+
+    Keyboard.scopeBind($scope, "g c", function (e) {
+        $scope.openConfig();
+    });
+
+    Keyboard.scopeBind($scope, "?", function (e) {
+        $scope.openHelp();
+    })
+});
+
+app.controller("ConfigController", function ($scope, $modalInstance, Config) {
+
+    $scope.config = Config;
+
+    $scope.ok = function () {
+        Config.save();
+        $modalInstance.close();
+    };
+
+    $scope.cancel = function () {
+        $modalInstance.dismiss();
+    };
+
+});
+
 app.controller("RecordController", function ($scope, $routeParams, Util,
     ElasticSearch) {
 
@@ -64,26 +125,26 @@ app.controller("ArchiveEventsByQueryModal", function ($scope, ElasticSearch,
 
 });
 
-app.controller("AggregationController", function ($scope, $location, Keyboard,
+app.controller("AggregatedController", function ($scope, $location, Keyboard,
     ElasticSearch, $modal, $routeParams) {
 
-    AggregationController = $scope;
+    AggregatedController = $scope;
 
     var getActiveBucket = function () {
         return $scope.buckets[$scope.activeRowIndex];
     };
 
+    /**
+     * Opens an aggregation in "flat" view by explicitly setting no aggregation
+     * and constructing a query.
+     */
     $scope.openAggregation = function (bucket) {
-        var searchParams = {
+        var searchParams = $location.search();
+        searchParams.aggregateBy = "";
+        searchParams.q = "q" in searchParams ? searchParams.q : "";
+        searchParams.q += " +alert.signature.raw:\"" + bucket.key + "\"";
+        searchParams.q = searchParams.q.trim();
 
-            // Explicit no aggregation.
-            aggregateBy: ""
-
-        };
-        searchParams.q = ["alert.signature.raw:\"" + bucket.key + "\""];
-        if ("q" in $routeParams) {
-            searchParams.q.push($routeParams.q);
-        }
         $location.search(searchParams);
     };
 
@@ -127,31 +188,30 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.buildQuery()
+                            query: $scope.userQuery || "*"
                         }
-                    },
-                    filter: {
-                        and: [
-                            {
-                                term: { tags: "inbox"}
-                            },
-                            {
-                                range: {
-                                    "@timestamp": {
-                                        "lte": bucket.last_timestamp.value
-                                    }
-                                }
-                            },
-                            {
-                                term: {
-                                    "alert.signature.raw": bucket.key
-                                }
-                            }
-                        ]
                     }
                 }
             }
         };
+
+        query.query.filtered.filter = {
+            "and": _.cloneDeep($scope.filters)
+        };
+
+        query.query.filtered.filter.and.push({
+            "range": {
+                "@timestamp": {
+                    "lte": bucket.last_timestamp.value
+                }
+            }
+        });
+
+        query.query.filtered.filter.and.push({
+            "term": {
+                "alert.signature.raw": bucket.key
+            }
+        });
 
         return ElasticSearch.deleteByQuery(query);
 
@@ -160,16 +220,22 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
     $scope.deleteSelected = function () {
         var selectedBuckets = _.filter($scope.buckets, "__selected");
 
-        _.forEach(selectedBuckets, function (bucket) {
-            $scope.deleteBucket(bucket)
-                .success(function (response) {
-                    _.remove($scope.buckets, bucket);
-                    if ($scope.activeRowIndex > 0 && _.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
-                        $scope.activeRowIndex--;
-                    }
-                });
+        if (!selectedBuckets) {
+            return;
+        }
 
-        });
+        var bucket = selectedBuckets.pop();
+
+        $scope.deleteBucket(bucket)
+            .success(function (response) {
+                _.remove($scope.buckets, bucket);
+                if ($scope.activeRowIndex > 0 && _.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
+                    $scope.activeRowIndex--;
+                }
+            })
+            .finally(function () {
+                $scope.deleteSelected();
+            });
     };
 
     $scope.archiveBucket = function (bucket) {
@@ -178,7 +244,7 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.buildQuery()
+                            query: $scope.userQuery || "*"
                         }
                     },
                     filter: {
@@ -226,6 +292,10 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
     $scope.archiveSelected = function () {
         var selectedBuckets = _.filter($scope.buckets, "__selected");
 
+        if (selectedBuckets.length == 0) {
+            return $scope.displayErrorMessage("No events selected.");
+        }
+
         var archiveBucket = function () {
             if (selectedBuckets.length > 0) {
                 var bucket = selectedBuckets.pop();
@@ -241,6 +311,97 @@ app.controller("AggregationController", function ($scope, $location, Keyboard,
         };
 
         archiveBucket();
+    };
+
+    $scope.archiveByQuery = function () {
+        if ($scope.response.hits.total == 0) {
+            $scope.displayErrorMessage("No events to archive.");
+            return;
+        }
+
+        var lastTimestamp = _.max($scope.buckets, function (bucket) {
+            return bucket.last_timestamp.value;
+        }).last_timestamp.value;
+
+        var query = {
+            query: {
+                filtered: {
+                    query: {
+                        query_string: {
+                            query: $scope.userQuery || "*"
+                        }
+                    },
+                    filter: {
+                        and: [
+                            {
+                                term: { tags: "inbox" }
+                            },
+                            {
+                                range: {
+                                    "@timestamp": {
+                                        "lte": lastTimestamp
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            size: 1000,
+            fields: ["_index", "_type", "_id"],
+            sort: [
+                {"@timestamp": {order: "desc"}}
+            ]
+        };
+
+        $scope.doArchiveByQuery("Archiving...", query);
+    };
+
+    $scope.deleteByQuery = function () {
+        if ($scope.response.hits.total == 0) {
+            $scope.displayErrorMessage("No events to delete.");
+            return;
+        }
+
+        var lastTimestamp = _.max($scope.buckets, function (bucket) {
+            return bucket.last_timestamp.value;
+        }).last_timestamp.value;
+
+        var query = {
+            query: {
+                filtered: {
+                    query: {
+                        query_string: {
+                            query: $scope.userQuery || "*"
+                        }
+                    },
+                    filter: {
+                        and: [
+                            {
+                                range: {
+                                    "@timestamp": {
+                                        "lte": lastTimestamp
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        };
+
+        if ($routeParams.view == "inbox") {
+            query.query.filtered.filter.and.push({term: {tags: "inbox"}});
+        }
+
+        ElasticSearch.deleteByQuery(query)
+            .success(function (response) {
+                $scope.page = 1;
+                $scope.refresh();
+            })
+            .error(function (error) {
+                console.log(error);
+            })
     };
 
     $scope.$on("$destroy", function () {
