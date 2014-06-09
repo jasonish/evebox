@@ -18,12 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * TODO:
- * - Normalize on "hit", "result", "entry" to "event".
- * - Don't do DOM manipulation in controllers.
- */
-
 var NAV_BAR_HEIGHT = 60;
 
 var app = angular.module("app", [
@@ -85,9 +79,11 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         $scope.aggregateBy = "";
     }
 
+    $scope.sortBy = $routeParams.sortBy || "last";
     $scope.userQuery = $routeParams.q || "";
     $scope.page = $routeParams.page || 1;
 
+    // Setup the search filters.
     $scope.filters = [
         {
             "match_all": {}
@@ -142,29 +138,33 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         _.forEach($scope.hits.hits, function (hit) {
             hit.__selected = true;
         });
-        $("#selectAllButton").blur();
+        $("button").blur();
     };
 
     $scope.deselectAll = function () {
         _.forEach($scope.hits.hits, function (hit) {
             hit.__selected = false;
         });
-        $("#deselectAllButton").blur();
+        $("button").blur();
     };
 
-    $scope.toggleOpenItem = function (item) {
+    $scope.toggleOpenEvent = function (event) {
 
-        if (item.__open) {
-            item.__open = false;
-        }
-        else {
-            item.__open = true;
+        /* Close all other events. */
+        _.forEach($scope.response.hits.hits, function (hit) {
+            if (hit != event) {
+                hit.__open = false;
+            }
+        });
 
+        event.__open = !event.__open;
+
+        if (event.__open) {
             // If open, do the scroll in a timeout as it has to be done after
             // apply.
-            if (item.__open) {
+            if (event.__open) {
                 $timeout(function () {
-                    $(window).scrollTop($("#" + item._id).offset().top - NAV_BAR_HEIGHT);
+                    $(window).scrollTop($("#" + event._id).offset().top - NAV_BAR_HEIGHT);
                 }, 0);
             }
         }
@@ -198,9 +198,10 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             return $scope.displayErrorMessage("Archive not valid in this context.");
         }
 
-        var toArchive = _.filter($scope.hits.hits, function (hit) {
+        var toArchive = _.filter($scope.response.hits.hits, function (hit) {
             return hit.__selected;
         });
+
         if (toArchive.length == 0) {
             return $scope.displayErrorMessage("No events selected.");
         }
@@ -397,7 +398,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 "signature": {
                     "terms": {
                         "field": "alert.signature.raw",
-                        "order": {"_count": "desc"},
                         "size": 0
                     },
                     "aggs": {
@@ -435,6 +435,20 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     $scope.handleAggregateResponse = function (response) {
+
+        switch ($scope.sortBy) {
+            case "last":
+                $scope.buckets = _.sortBy($scope.buckets, function (bucket) {
+                    return bucket.last_timestamp.value;
+                }).reverse();
+                break;
+            case "count":
+                $scope.buckets = _.sortBy($scope.buckets, function (bucket) {
+                    return bucket.doc_count;
+                }).reverse();
+                break;
+        }
+
         for (var i = 0; i < $scope.buckets.length; i++) {
 
             var bucket = $scope.buckets[i];
@@ -733,7 +747,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
     Keyboard.scopeBind($scope, "o", function (e) {
         $scope.$apply(function () {
-            $scope.toggleOpenItem($scope.hits.hits[$scope.activeRowIndex]);
+            $scope.toggleOpenEvent($scope.hits.hits[$scope.activeRowIndex]);
         });
     });
 

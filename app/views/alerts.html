@@ -79,25 +79,31 @@
           <label class="label label-warning">No events found.</label>
         </div>
         <div ng-show="buckets.length > 0">
-          <label>Found {{totalEventCount()}} events in {{buckets.length}}
-            group(s).</label>
+          <label>Found {{totalEventCount()}} event{{totalEventCount() > 1 ? "s"
+            : ""}} in {{buckets.length}}
+            group{{buckets.length > 1 ? "s" : ""}}.</label>
         </div>
       </div>
     </div>
   </div>
   <table ng-show="buckets.length > 0" class="table table-condensed" key-table
-         rows="response.aggregations.signature.buckets"
+         rows="buckets"
          active-row-index="activeRowIndex">
     <thead>
     <th></th>
     <th></th>
-    <th>#</th>
+    <th><a href="" ng-click="changeSortBy('count')">#<span
+      ng-show="sortBy == 'count'"
+      class="caret"></span></a>
+    </th>
     <th></th>
-    <th>Last</th>
+    <th><a href="" ng-click="changeSortBy('last')">Last<span
+      ng-show="sortBy == 'last'"
+      class="caret"></span></a></th>
     </thead>
     <tbody>
     <tr class="clickable"
-        ng-repeat="bucket in response.aggregations.signature.buckets">
+        ng-repeat="bucket in buckets">
       <td><span ng-show="$index == activeRowIndex"
                 class="glyphicon glyphicon-chevron-right"></span></td>
       <td>
@@ -114,41 +120,40 @@
 
 </div>
 
-<div class="results"
-     ng-if="grouped == undefined && response.aggregations == undefined">
+<div class="results" ng-if="response.aggregations == undefined">
 
   <div class="row">
     <div class="col-md-5">
-      <div class="btn-group" style="vertical-align: middle;">
+      <div class="btn-group btn-group-sm" style="vertical-align: middle;">
         <button id="refreshButton" type="button" class="btn btn-default btn-sm"
                 ng-click="refresh()">Refresh
         </button>
-        <button ng-disabled="hits.hits.length == 0" id="selectAllButton"
+        <button ng-disabled="hits.hits.length == 0"
                 type="button"
-                class="btn btn-default btn-sm"
+                class="btn btn-default"
                 ng-click="selectAll()">Select All
         </button>
-        <button ng-disabled="hits.hits.length == 0" id="deselectAllButton"
+        <button ng-disabled="hits.hits.length == 0"
                 type="button"
-                class="btn btn-default btn-sm"
+                class="btn btn-default"
                 ng-click="deselectAll()">
           Deselect All
         </button>
         <button ng-show="$routeParams.view == 'inbox'" type="button"
-                class="btn btn-default btn-sm"
+                class="btn btn-default"
                 ng-disabled="selectedCount() == 0"
                 ng-click="archiveSelected()">Archive
         </button>
         <button type="button"
-                class="btn btn-default btn-sm"
+                class="btn btn-default"
                 ng-disabled="selectedCount() == 0"
                 ng-click="deleteSelected()">Delete
         </button>
       </div>
 
-      <div class="btn-group">
+      <div class="btn-group btn-group-sm">
         <button type="button"
-                class="btn btn-default btn-sm dropdown-toggle keyboard"
+                class="btn btn-default dropdown-toggle keyboard"
                 data-toggle="dropdown">
           More <span class="caret"></span></button>
         <ul class="dropdown-menu" role="menu">
@@ -221,17 +226,17 @@
                   ng-click="toggleStar(hit)"
                   class="glyphicon glyphicon-star"></span>
           </td>
-          <td ng-click="toggleOpenItem(hit)" style="white-space: nowrap;">
+          <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
             {{hit._source["@timestamp"]}}
           </td>
-          <td ng-click="toggleOpenItem(hit)">
+          <td ng-click="toggleOpenEvent(hit)">
             {{hit._source.alert.signature}}
           </td>
-          <td ng-click="toggleOpenItem(hit)">{{hit._source.proto}}</td>
-          <td ng-click="toggleOpenItem(hit)">
+          <td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>
+          <td ng-click="toggleOpenEvent(hit)">
             {{renderIpAddress(hit._source.src_ip)}}
           </td>
-          <td ng-click="toggleOpenItem(hit)">
+          <td ng-click="toggleOpenEvent(hit)">
             {{renderIpAddress(hit._source.dest_ip)}}
           </td>
         </tr>

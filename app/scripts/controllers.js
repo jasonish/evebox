@@ -404,6 +404,10 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             })
     };
 
+    $scope.changeSortBy = function(what) {
+        $location.search("sortBy", what);
+    };
+
     $scope.$on("$destroy", function () {
         Keyboard.resetScope($scope);
     });
@@ -440,6 +444,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
     });
 
     Keyboard.scopeBind($scope, "e", function () {
+        console.log("AggregatedController: e");
         $scope.$apply(function () {
             $scope.archiveSelected();
         });
