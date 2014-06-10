@@ -19,7 +19,7 @@
 
         <div class="btn-group">
           <button type="button" class="btn btn-default btn-xs dropdown-toggle"
-                  data-toggle="dropdown"  id="event-detail-more-button">
+                  data-toggle="dropdown" id="event-detail-more-button">
             More <span class="caret"></span>
           </button>
           <ul class="dropdown-menu" role="menu">
@@ -41,7 +41,9 @@
           {{hit._source.timestamp}}
         </dd>
         <dt>Description:</dt>
-        <dd>{{hit._source.alert.signature}}</dd>
+        <dd><a
+          href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
+        </dd>
         <dt>Category:</dt>
         <dd>{{hit._source.alert.category}}</dd>
         <dt>Singature ID:</dt>
@@ -70,7 +72,7 @@
         <dd>
           <div class="col-md-3" style="padding: 0px;">
             <div class="input-group">
-              {{hit._source.src_ip}}
+              <a href="#/events?q=+{{hit._source.src_ip}}">{{hit._source.src_ip}}</a>
               <!--<button type="button"-->
               <!--class="btn btn-default btn-xs dropdown-toggle"-->
               <!--data-toggle="dropdown" style="border: 0px;">-->
@@ -102,7 +104,7 @@
         <dd>
           <div class="col-md-3" style="padding: 0px;">
             <div class="input-group">
-              {{hit._source.dest_ip}}
+              <a href="#/events?q=+{{hit._source.dest_ip}}">{{hit._source.dest_ip}}</a>
               <!--<button type="button"-->
               <!--class="btn btn-default btn-xs dropdown-toggle"-->
               <!--data-toggle="dropdown" style="border: 0px;">-->
