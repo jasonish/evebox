@@ -93,6 +93,18 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
 
 });
 
+app.controller("EventDetailController", function ($scope, Keyboard) {
+
+    $scope.$on("$destroy", function () {
+        Keyboard.resetScope($scope);
+    });
+
+    Keyboard.scopeBind($scope, ".", function () {
+        $("#event-detail-more-button").first().dropdown('toggle');
+    });
+
+});
+
 app.controller("ArchiveEventsByQueryModal", function ($scope, ElasticSearch,
     args) {
 
@@ -404,7 +416,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             })
     };
 
-    $scope.changeSortBy = function(what) {
+    $scope.changeSortBy = function (what) {
         $location.search("sortBy", what);
     };
 

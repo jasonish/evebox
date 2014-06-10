@@ -15,11 +15,8 @@ config = {
     },
 
     // If URL is set, will add a "Send to Dumpy" button.
-    //
-    // This should turn into a list of configurable items you can "send" an
-    // event to.
     dumpy: {
-        url: null
+        //url: "http://10.16.1.1:7000"
     }
 
 };

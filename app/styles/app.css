@@ -84,7 +84,7 @@ table > tbody > tr.clickable {
     margin: 0px;
     padding-left: 15px;
     padding-top: 2px;
-    padding-bottom: 2px;
+    padding-bottom: 4px;
     font-size: 1.1em;
     font-weight: bold;
 }
