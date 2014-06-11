@@ -457,7 +457,6 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
     });
 
     Keyboard.scopeBind($scope, "e", function () {
-        console.log("AggregatedController: e");
         $scope.$apply(function () {
             $scope.archiveSelected();
         });

@@ -750,7 +750,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     Keyboard.scopeBind($scope, "e", function (e) {
-        console.log("AlertsController: e");
         $scope.$apply(function () {
             $scope.archiveSelected();
         });
