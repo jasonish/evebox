@@ -325,3 +325,21 @@ app.factory("Keyboard", function () {
     return service;
 
 });
+
+app.factory("Cache", function() {
+
+    var service = {
+        caches: {}
+    };
+
+    // Return a cache of the given name.
+    service.get = function(name) {
+        if (service.caches[name] === undefined) {
+            service.caches[name] = {};
+        }
+        return service.caches[name];
+    };
+
+    return service;
+
+});

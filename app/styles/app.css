@@ -40,15 +40,15 @@ table > tbody > tr.clickable {
     border-bottom-right-radius: 5px;
 }
 
-.hit-table {
+.event-table th {
+    border: 0px !important;
+}
+
+.event-table tbody {
     border: 1px solid #dcdcdc !important;
 }
 
-.hit-table tbody {
-    border: 1px solid #dcdcdc !important;
-}
-
-.hit-table td {
+.event-table td {
     padding: 0px !important;
     padding-left: 3px !important;
     padding-right: 3px !important;

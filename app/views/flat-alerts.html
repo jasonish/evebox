@@ -1,0 +1,131 @@
+
+<div class="row">
+  <div class="col-md-5">
+    <div class="btn-group btn-group-sm" style="vertical-align: middle;">
+      <button id="refreshButton" type="button"
+              class="btn btn-default btn-sm"
+              ng-click="refresh()">Refresh
+      </button>
+      <button ng-disabled="hits.hits.length == 0"
+              type="button"
+              class="btn btn-default"
+              ng-click="selectAll()">Select All
+      </button>
+      <button ng-disabled="hits.hits.length == 0"
+              type="button"
+              class="btn btn-default"
+              ng-click="deselectAll()">
+        Deselect All
+      </button>
+      <button ng-show="$routeParams.view == 'inbox'" type="button"
+              class="btn btn-default"
+              ng-disabled="selectedCount() == 0"
+              ng-click="archiveSelected()">Archive
+      </button>
+      <button type="button"
+              class="btn btn-default"
+              ng-disabled="selectedCount() == 0"
+              ng-click="deleteSelected()">Delete
+      </button>
+    </div>
+
+    <div class="btn-group btn-group-sm">
+      <button type="button"
+              class="btn btn-default dropdown-toggle keyboard"
+              data-toggle="dropdown">
+        More <span class="caret"></span></button>
+      <ul class="dropdown-menu" role="menu">
+        <li ng-show="$routeParams.view == 'inbox'">
+          <a href="" ng-click="archiveByQuery()">Archive
+            All in Query</a>
+        </li>
+        <li><a href="" ng-click="deleteByQuery()">Delete All in Query</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div class="col-md-7">
+    <div style="float: right; overflow: hidden;" ng-show="loading == true">
+      Loading...
+    </div>
+    <div ng-show="loading == false">
+      <div ng-show="hits.total > 0"
+           style="float: right; overflow: hidden; margin: 0px; vertical-align: middle">
+        <label>{{ ((Config.elasticSearch.size * (page - 1))) + 1 }} to {{
+          (Config.elasticSearch.size * (page - 1)) + hits.hits.length }}
+          of {{ hits.total }} events</label>
+
+        <div class="btn-group btn-group-sm">
+          <button type="button" class="btn btn-default"
+                  ng-disabled="page == 1" ng-click="gotoPage('first')">&lt;&lt;</button>
+          <button type="button" class="btn btn-default"
+                  ng-disabled="page == 1" ng-click="gotoPage('prev')">
+            &lt;</button>
+          <button type="button" class="btn btn-default"
+                  ng-click="gotoPage('next')">&gt;</button>
+          <button type="button" class="btn btn-default"
+                  ng-click="gotoPage('last')">&gt;&gt;</button>
+        </div>
+
+      </div>
+    </div>
+    <div style="float: right; overflow: hidden;"
+         ng-show="loading == false && hits.total == 0">
+      <label class="label label-warning">No events found.</label>
+    </div>
+  </div>
+</div>
+
+<br/>
+
+<div class="row" id="result-container">
+
+  <div class="col-md-12">
+    <table class="table table-responsive event-table"
+           ng-class="{loading: state == 'loading'}">
+      <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits">
+      <tr class="hit-row" ng-class="severityToBootstrapClass(hit._source.alert.severity)">
+        <td>
+            <span ng-show="$index == activeRowIndex"
+                  class="glyphicon glyphicon-chevron-right"></span>
+        </td>
+        <td><input tabindex="-1"
+                   type="checkbox"
+                   id="checkbox-{{hit._id}}"
+                   ng-model="hit.__selected"
+                   ng-change="blurById('#checkbox-{{hit._id}}')"
+                   ng-checked="hit.__selected"/>
+        </td>
+        <td>
+            <span ng-show="hit._source.tags.indexOf('starred') == -1"
+                  ng-click="toggleStar(hit)"
+                  class="glyphicon glyphicon-star-empty"></span>
+            <span ng-show="hit._source.tags.indexOf('starred') > -1"
+                  ng-click="toggleStar(hit)"
+                  class="glyphicon glyphicon-star"></span>
+        </td>
+        <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
+          {{hit._source["@timestamp"]}}
+        </td>
+        <td ng-click="toggleOpenEvent(hit)">
+          {{hit._source.alert.signature}}
+        </td>
+        <td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>
+        <td ng-click="toggleOpenEvent(hit)">
+          {{renderIpAddress(hit._source.src_ip)}}
+        </td>
+        <td ng-click="toggleOpenEvent(hit)">
+          {{renderIpAddress(hit._source.dest_ip)}}
+        </td>
+      </tr>
+      <tr ng-class="severityToBootstrapClass(hit)" class="hit-detail"
+          ng-show="hit.__open">
+        <td colspan="3"></td>
+        <td colspan="5">
+          <div ng-if="hit.__open" ng-include="'views/detail.html'"></div>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

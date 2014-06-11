@@ -105,82 +105,63 @@ app.controller("EventDetailController", function ($scope, Keyboard) {
 
 });
 
-app.controller("ArchiveEventsByQueryModal", function ($scope, ElasticSearch,
-    args) {
+app.controller("ModalProgressController", function ($scope, jobs) {
 
-    $scope.title = args.title;
-    $scope.archived = 0;
-    $scope.total = undefined;
-
-    modalScope = $scope;
-
-    var searchThenArchive = function () {
-        ElasticSearch.search(args.query)
-            .success(function (response) {
-                if ($scope.total == undefined) {
-                    $scope.total = response.hits.total;
-                }
-                if (response.hits.hits.length > 0) {
-                    ElasticSearch.bulkRemoveTag(response.hits.hits, "inbox")
-                        .success(function (response) {
-                            $scope.archived += response.items.length;
-                            searchThenArchive();
-                        });
-                }
-                else {
-                    $scope.$close();
-                }
-            });
-    };
-
-    searchThenArchive();
+    $scope.jobs = jobs;
 
 });
 
 app.controller("AggregatedController", function ($scope, $location, Keyboard,
     ElasticSearch, $modal, $routeParams) {
 
+    console.log("AggregatedController");
+
     AggregatedController = $scope;
 
-    var getActiveBucket = function () {
-        return $scope.buckets[$scope.activeRowIndex];
+    $scope.activeRowIndex = 0;
+
+    var getActiveRow = function () {
+        return $scope.aggregations[$scope.activeRowIndex];
     };
 
     /**
      * Opens an aggregation in "flat" view by explicitly setting no aggregation
      * and constructing a query.
      */
-    $scope.openAggregation = function (bucket) {
+    $scope.openAggregation = function (agg) {
         var searchParams = $location.search();
         searchParams.aggregateBy = "";
         searchParams.q = "q" in searchParams ? searchParams.q : "";
-        searchParams.q += " +alert.signature.raw:\"" + bucket.key + "\"";
+        searchParams.q += " +alert.signature.raw:\"" + agg.signature + "\"";
+        if (agg.src_ip) {
+            searchParams.q += " +src_ip.raw:\"" + agg.src_ip + "\"";
+        }
         searchParams.q = searchParams.q.trim();
 
         $location.search(searchParams);
     };
 
     $scope.toggleActiveRow = function () {
-        var bucket = getActiveBucket();
-        bucket.__selected = !bucket.__selected;
+        var row = getActiveRow();
+        row.__selected = !row.__selected;
     };
 
     $scope.selectAll = function () {
-        _.forEach($scope.buckets, function (bucket) {
-            bucket.__selected = true;
+        _.forEach($scope.aggregations, function (agg) {
+            agg.__selected = true;
         });
     };
 
     $scope.deselectAll = function () {
-        _.forEach($scope.buckets, function (bucket) {
-            bucket.__selected = false;
+        _.forEach($scope.aggregations, function (agg) {
+            agg.__selected = false;
         });
     };
 
     $scope.selectedCount = function () {
         try {
-            return _.filter($scope.buckets, function (bucket) {
-                return bucket.__selected;
+            return _.filter($scope.aggregations, function (agg) {
+                return agg.__selected;
             }).length;
         }
         catch (err) {
@@ -189,12 +170,12 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
     };
 
     $scope.totalEventCount = function () {
-        return _.reduce($scope.buckets, function (sum, bucket) {
-            return sum + bucket.doc_count;
+        return _.reduce($scope.aggregations, function (sum, agg) {
+            return sum + agg.count;
         }, 0);
     };
 
-    $scope.deleteBucket = function (bucket) {
+    $scope.deleteRow = function (row) {
         var query = {
             query: {
                 filtered: {
@@ -214,34 +195,42 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
         query.query.filtered.filter.and.push({
             "range": {
                 "@timestamp": {
-                    "lte": bucket.last_timestamp.value
+                    "lte": row.last_timestamp
                 }
             }
         });
 
         query.query.filtered.filter.and.push({
             "term": {
-                "alert.signature.raw": bucket.key
+                "alert.signature.raw": row.signature
             }
         });
+
+        if (row.src_ip) {
+            query.query.filtered.filter.and.push({
+                "term": {
+                    "src_ip.raw": row.src_ip
+                }
+            });
+        }
 
         return ElasticSearch.deleteByQuery(query);
 
     };
 
     $scope.deleteSelected = function () {
-        var selectedBuckets = _.filter($scope.buckets, "__selected");
+        var selectedRows = _.filter($scope.aggregations, "__selected");
 
-        if (!selectedBuckets) {
+        if (!selectedRows) {
             return;
         }
 
-        var bucket = selectedBuckets.pop();
+        var row = selectedRows.pop();
 
-        $scope.deleteBucket(bucket)
+        $scope.deleteRow(row)
             .success(function (response) {
-                _.remove($scope.buckets, bucket);
-                if ($scope.activeRowIndex > 0 && _.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
+                _.remove($scope.aggregations, row);
+                if ($scope.activeRowIndex > 0 && _.indexOf($scope.aggregations, row) < $scope.activeRowIndex) {
                     $scope.activeRowIndex--;
                 }
             })
@@ -250,7 +239,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             });
     };
 
-    $scope.archiveBucket = function (bucket) {
+    $scope.buildArchiveRowQuery = function (row) {
         var query = {
             query: {
                 filtered: {
@@ -267,13 +256,13 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                             {
                                 range: {
                                     "@timestamp": {
-                                        "lte": bucket.last_timestamp.value
+                                        "lte": row.last_timestamp
                                     }
                                 }
                             },
                             {
                                 term: {
-                                    "alert.signature.raw": bucket.key
+                                    "alert.signature.raw": row.signature
                                 }
                             }
                         ]
@@ -287,43 +276,75 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             ]
         };
 
-        return $modal.open({
-            templateUrl: "templates/archive-events-by-query-modal.html",
-            controller: "ArchiveEventsByQueryModal",
-            resolve: {
-                args: function () {
-                    return {
-                        "title": "Archiving: " + bucket.key,
-                        "query": query
-                    }
+        if (row.src_ip) {
+            query.query.filtered.filter.and.push({
+                "term": {
+                    "src_ip.raw": row.src_ip
                 }
-            }
-        });
+            });
+        }
+
+        return query;
     };
 
     $scope.archiveSelected = function () {
-        var selectedBuckets = _.filter($scope.buckets, "__selected");
+        var selectedRows = _.filter($scope.aggregations, "__selected");
 
-        if (selectedBuckets.length == 0) {
+        if (selectedRows.length == 0) {
             return $scope.displayErrorMessage("No events selected.");
         }
 
-        var archiveBucket = function () {
-            if (selectedBuckets.length > 0) {
-                var bucket = selectedBuckets.pop();
-                $scope.archiveBucket(bucket)
-                    .result.then(function () {
-                        var bucketIndex = _.indexOf($scope.buckets, bucket);
-                        if (($scope.activeRowIndex > 0) && (bucketIndex <= $scope.activeRowIndex)) {
+        var archiveJobs = selectedRows.map(function (row) {
+            return {
+                row: row,
+                label: row.signature,
+                query: $scope.buildArchiveRowQuery(row)
+            };
+        });
+
+        var modal = $modal.open({
+            templateUrl: "templates/modal-progress.html",
+            controller: "ModalProgressController",
+            resolve: {
+                jobs: function () {
+                    return archiveJobs;
+                }
+            }
+        });
+
+        var doArchiveJob = function (job) {
+
+            ElasticSearch.search(job.query)
+                .success(function (response) {
+                    if (job.max === undefined) {
+                        job.max = response.hits.total;
+                        job.value = 0;
+                    }
+                    if (response.hits.hits.length > 0) {
+                        ElasticSearch.bulkRemoveTag(response.hits.hits, "inbox")
+                            .success(function (response) {
+                                job.value += response.items.length;
+                                doArchiveJob(job);
+                            });
+                    }
+                    else {
+                        var row = job.row;
+                        var rowIndex = _.indexOf($scope.aggregations, row);
+                        if (($scope.activeRowIndex > 0) && (rowIndex <= $scope.activeRowIndex)) {
                             $scope.activeRowIndex--;
                         }
-                        _.remove($scope.buckets, bucket);
-                        archiveBucket();
-                    });
-            }
+                        _.remove($scope.aggregations, row);
+                        _.remove(archiveJobs, job);
+                        if (archiveJobs.length == 0) {
+                            modal.close();
+                        }
+                    }
+                });
+
         };
 
-        archiveBucket();
+        _.forEach(archiveJobs, doArchiveJob);
+
     };
 
     $scope.archiveByQuery = function () {
@@ -332,9 +353,9 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             return;
         }
 
-        var lastTimestamp = _.max($scope.buckets, function (bucket) {
-            return bucket.last_timestamp.value;
-        }).last_timestamp.value;
+        var lastTimestamp = _.max($scope.aggregations, function (row) {
+            return row.last_timestamp;
+        }).last_timestamp;
 
         var query = {
             query: {
@@ -376,9 +397,9 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             return;
         }
 
-        var lastTimestamp = _.max($scope.buckets, function (bucket) {
-            return bucket.last_timestamp.value;
-        }).last_timestamp.value;
+        var lastTimestamp = _.max($scope.aggregations, function (row) {
+            return row.last_timestamp;
+        }).last_timestamp;
 
         var query = {
             query: {
@@ -435,8 +456,8 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
 
     Keyboard.scopeBind($scope, "o", function () {
         $scope.$apply(function () {
-            var bucket = getActiveBucket();
-            $scope.openAggregation(bucket);
+            var row = getActiveRow();
+            $scope.openAggregation(row);
         });
     });
 

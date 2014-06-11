@@ -31,6 +31,8 @@ app.directive("keyTable", function () {
 
     directive.controller = function ($scope, Keyboard, Util, $element) {
 
+        console.log("keyTable");
+
         keyTableScope = $scope;
 
         $scope.$element = $element;

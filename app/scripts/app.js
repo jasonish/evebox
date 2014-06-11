@@ -39,7 +39,7 @@ app.config(function ($routeProvider) {
 
 app.controller('AlertsController', function (Keyboard, $route, $location,
     $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch, Util,
-    $modal) {
+    $modal, Cache) {
 
     // Debugging.
     scope = $scope;
@@ -298,8 +298,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     /** Convert an alert severity into a Bootstrap class for colorization. */
-    $scope.severityToBootstrapClass = function (event) {
-        switch (event._source.alert.severity) {
+    $scope.severityToBootstrapClass = function (severity) {
+        switch (severity) {
             case 1:
                 return "danger";
                 break;
@@ -309,7 +309,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             default:
                 return "info";
         }
-    }
+    };
 
     var setActiveAvent = function (event) {
         if (_.isNumber(event)) {
@@ -389,7 +389,32 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             "and": $scope.filters
         };
 
-        if ($scope.aggregateBy == "signature") {
+        if ($scope.aggregateBy == "signature+src") {
+            delete(request.from);
+            request.size = 0;
+            request.aggs = {
+                "signature": {
+                    "terms": {
+                        "field": "alert.signature.raw",
+                        "size": 0
+                    },
+                    "aggs": {
+                        "source_addrs": {
+                            "terms": {
+                                "field": "src_ip.raw",
+                                "size": 0
+                            },
+                            "aggs": {
+                                "last_timestamp": {
+                                    "max": { "field": "@timestamp"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else if ($scope.aggregateBy == "signature") {
             delete(request.from);
             request.size = 0;
             request.aggs = {
@@ -406,7 +431,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 }
             }
         }
-
         return request;
     };
 
@@ -434,49 +458,106 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
     $scope.handleAggregateResponse = function (response) {
 
+        $scope.aggregations = [];
+
+        if ($scope.aggregateBy == "signature+src") {
+            _.forEach(response.aggregations.signature.buckets, function (signature) {
+                _.forEach(signature.source_addrs.buckets, function (addr) {
+                    $scope.aggregations.push({
+                        "signature": signature.key,
+                        "last_timestamp": addr.last_timestamp.value,
+                        "count": addr.doc_count,
+                        "src_ip": addr.key
+                    });
+                });
+            });
+        }
+        else if ($scope.aggregateBy == "signature") {
+            _.forEach(response.aggregations.signature.buckets, function (signature) {
+                $scope.aggregations.push({
+                    "signature": signature.key,
+                    "last_timestamp": signature.last_timestamp.value,
+                    "count": signature.doc_count,
+                });
+            });
+        }
+
         switch ($scope.sortBy) {
             case "last":
-                $scope.buckets = _.sortBy($scope.buckets, function (bucket) {
-                    return bucket.last_timestamp.value;
+                $scope.aggregations = _.sortBy($scope.aggregations, function (agg) {
+                    return agg.last_timestamp;
                 }).reverse();
                 break;
             case "count":
-                $scope.buckets = _.sortBy($scope.buckets, function (bucket) {
-                    return bucket.doc_count;
+                $scope.aggregations = _.sortBy($scope.aggregations, function (agg) {
+                    return agg.count;
                 }).reverse();
                 break;
         }
 
-        for (var i = 0; i < $scope.buckets.length; i++) {
+        var severityCache = Cache.get("severityCache");
 
-            var bucket = $scope.buckets[i];
+        // Resolve severity.
+        _.forEach($scope.aggregations, function (agg) {
 
-            var query = {
-                "query": {
-                    "query_string": {
-                        "query": "alert.signature.raw:\"" + bucket.key + "\""
-                    }
-                },
-                "size": 1,
-                "sort": [
-                    {"@timestamp": {"order": "desc"}}
-                ]
-            };
+            if (agg.signature in severityCache) {
+                agg.severity = severityCache[agg.signature];
+            }
+            else {
 
-            !function (bucket, index) {
-                ElasticSearch.search(query)
-                    .success(function (response) {
-                        if (response.hits.hits.length > 0) {
-                            var event = response.hits.hits[0];
-                            var element = $("table").find("tr").eq(index + 1);
-                            element.addClass($scope.severityToBootstrapClass(event));
+                var query = {
+                    "query": {
+                        "filtered": {
+                            "filter": {
+                                "and": [
+                                    {
+                                        "term": {
+                                            "alert.signature.raw": agg.signature
+                                        }
+                                    },
+                                    {
+                                        "range": {
+                                            "@timestamp": {
+                                                "lte": agg.last_timestamp
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
                         }
-                    })
-                    .error(function (error) {
-                        console.log(error);
+                    },
+                    "size": 1,
+                    "sort": [
+                        {
+                            "@timestamp": {
+                                "order": "desc"
+                            }
+                        }
+                    ],
+                    "fields": [
+                        "alert.severity"
+                    ]
+                };
+
+                if (agg.src_ip) {
+                    query.query.filtered.filter.and.push({
+                        "term": {
+                            "src_ip.raw": agg.src_ip
+                        }
                     });
-            }(bucket, i);
-        }
+                }
+
+                !function (agg) {
+                    ElasticSearch.search(query)
+                        .success(function (response) {
+                            if (response.hits.hits.length > 0) {
+                                agg.severity = response.hits.hits[0].fields["alert.severity"][0];
+                                severityCache[agg.signature] = agg.severity;
+                            }
+                        });
+                }(agg);
+            }
+        });
 
         $(".results").removeClass("loading");
     };
@@ -487,7 +568,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         delete($scope.buckets);
         $scope.activeRowIndex = 0;
 
-        if ($scope.aggregateBy == "signature") {
+        if ($scope.aggregateBy) {
             $scope.buckets = $scope.response.aggregations.signature.buckets;
             $scope.handleAggregateResponse(response);
             return;
@@ -518,6 +599,9 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     $scope.renderIpAddress = function (addr) {
+        if (addr === undefined) {
+            return "";
+        }
         addr = addr.replace(/0000/g, "");
         while (addr.indexOf(":0:") > -1) {
             addr = addr.replace(/:0:/g, "::");
@@ -527,21 +611,52 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     $scope.doArchiveByQuery = function (title, query) {
-        $modal.open({
-            templateUrl: "templates/archive-events-by-query-modal.html",
-            controller: "ArchiveEventsByQueryModal",
+
+        var jobs = [
+            {
+                label: title,
+                query: query
+            }
+        ];
+
+        var modal = $modal.open({
+            templateUrl: "templates/modal-progress.html",
+            controller: "ModalProgressController",
             resolve: {
-                args: function () {
-                    return {
-                        "title": title,
-                        "query": query
-                    }
+                jobs: function () {
+                    return jobs;
                 }
             }
-        }).result.then(function () {
-                $scope.page = 1;
-                $scope.refresh();
-            });
+        });
+
+        var doArchiveJob = function (job) {
+
+            ElasticSearch.search(job.query)
+                .success(function (response) {
+                    if (job.max === undefined) {
+                        job.max = response.hits.total;
+                        job.value = 0;
+                    }
+                    if (response.hits.hits.length > 0) {
+                        ElasticSearch.bulkRemoveTag(response.hits.hits, "inbox")
+                            .success(function (response) {
+                                job.value += response.items.length;
+                                doArchiveJob(job);
+                            });
+                    }
+                    else {
+                        _.remove(jobs, job);
+                        if (jobs.length == 0) {
+                            modal.close();
+                            $scope.page = 1;
+                            $scope.refresh();
+                        }
+                    }
+                });
+
+        };
+
+        _.forEach(jobs, doArchiveJob);
     };
 
     $scope.archiveByQuery = function () {
@@ -792,4 +907,5 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     });
 
     $scope.submitSearchRequest();
-});
+})
+;

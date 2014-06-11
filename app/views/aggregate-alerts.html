@@ -1,0 +1,94 @@
+<div ng-controller="AggregatedController">
+  <div class="row">
+    <div class="col-md-5">
+      <div class="btn-group" style="vertical-align: middle;">
+        <button id="refreshButton" type="button" class="btn btn-default btn-sm"
+                ng-click="refresh()">Refresh
+        </button>
+        <button ng-disabled="aggregations == 0" id="selectAllButton"
+                type="button"
+                class="btn btn-default btn-sm"
+                ng-click="selectAll()">Select All
+        </button>
+        <button ng-disabled="aggregations == 0" id="deselectAllButton"
+                type="button"
+                class="btn btn-default btn-sm"
+                ng-click="deselectAll()">
+          Deselect All
+        </button>
+        <button ng-show="$routeParams.view == 'inbox'" type="button"
+                class="btn btn-default btn-sm"
+                ng-disabled="selectedCount() == 0"
+                ng-click="archiveSelected()">Archive
+        </button>
+        <button type="button"
+                class="btn btn-default btn-sm"
+                ng-disabled="selectedCount() == 0"
+                ng-click="deleteSelected()">Delete
+        </button>
+      </div>
+
+      <div class="btn-group">
+        <button type="button"
+                class="btn btn-default btn-sm dropdown-toggle keyboard"
+                data-toggle="dropdown">
+          More <span class="caret"></span></button>
+        <ul class="dropdown-menu" role="menu">
+          <li ng-show="$routeParams.view == 'inbox'">
+            <a href="" ng-click="archiveByQuery()">Archive
+              All in Query</a>
+          </li>
+          <li><a href="" ng-click="deleteByQuery()">Delete All in Query</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-7">
+      <div style="float: right">
+        <div ng-show="buckets.length == 0">
+          <label class="label label-warning">No events found.</label>
+        </div>
+        <div ng-show="buckets.length > 0">
+          <label>Found {{totalEventCount()}} event{{totalEventCount() > 1 ? "s"
+            : ""}} in {{aggregations.length}}
+            group{{aggregations.length > 1 ? "s" : ""}}.</label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <table ng-show="aggregations.length > 0"
+         class="table table-responsive table-condensed"
+         key-table="{'rows': aggregations, activeRowIndex: activeRowIndex}"
+         rows="aggregations"
+         active-row-index="activeRowIndex">
+    <thead>
+    <th></th>
+    <th></th>
+    <th><a href="" ng-click="changeSortBy('count')">#<span
+      ng-show="sortBy == 'count'"
+      class="caret"></span></a>
+    </th>
+    <th>Message</th>
+    <th ng-show="aggregations[0].src_ip">Source</th>
+    <th colspan="3"><a href="" ng-click="changeSortBy('last')">Last<span
+      ng-show="sortBy == 'last'"
+      class="caret"></span></a></th>
+    </thead>
+    <tbody>
+    <tr class="clickable" ng-class="severityToBootstrapClass(row.severity)"
+        ng-repeat="row in aggregations">
+      <td><span ng-show="$index == activeRowIndex"
+                class="glyphicon glyphicon-chevron-right"></span></td>
+      <td>
+        <input type="checkbox" ng-model="row.__selected"/>
+      </td>
+      <td ng-click="openAggregation(row)">{{row.count}}</td>
+      <td ng-click="openAggregation(row)">{{row.signature}}</td>
+      <td ng-show="row.src_ip">{{renderIpAddress(row.src_ip)}}</td>
+      <td ng-click="openAggregation(row)">
+        {{moment(row.last_timestamp).format("YYYY-MM-DD HH:mm:ss")}}
+      </td>
+    </tr>
+    </tbody>
+  </table>
+</div>
