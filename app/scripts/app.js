@@ -18,8 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-var NAV_BAR_HEIGHT = 60;
-
 var app = angular.module("app", [
     "ngRoute", "ngResource", "ui.bootstrap", "ui.bootstrap.modal"]);
 
@@ -164,7 +162,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             // apply.
             if (event.__open) {
                 $timeout(function () {
-                    $(window).scrollTop($("#" + event._id).offset().top - NAV_BAR_HEIGHT);
+                    $(window).scrollTop($("#" + event._id).offset().top);
                 }, 0);
             }
         }

@@ -203,7 +203,7 @@
   <div class="row" id="result-container">
 
     <div class="col-md-12">
-      <table class="table hit-table"
+      <table class="table table-responsive hit-table"
              ng-class="{loading: state == 'loading'}">
         <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits">
         <tr class="hit-row" ng-class="severityToBootstrapClass(hit)">

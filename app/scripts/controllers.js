@@ -313,10 +313,11 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                 var bucket = selectedBuckets.pop();
                 $scope.archiveBucket(bucket)
                     .result.then(function () {
-                        _.remove($scope.buckets, bucket);
-                        if ($scope.activeRowIndex > 0 && _.indexOf($scope.buckets, bucket) < $scope.activeRowIndex) {
+                        var bucketIndex = _.indexOf($scope.buckets, bucket);
+                        if (($scope.activeRowIndex > 0) && (bucketIndex <= $scope.activeRowIndex)) {
                             $scope.activeRowIndex--;
                         }
+                        _.remove($scope.buckets, bucket);
                         archiveBucket();
                     });
             }

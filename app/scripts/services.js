@@ -18,8 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-var NAV_BAR_HEIGHT = 60;
-
 /**
  * Centralized configuration.
  *
@@ -297,6 +295,7 @@ app.factory("Keyboard", function () {
     service.scopeBindings = {};
 
     service.scopeBind = function (scope, key, callback) {
+        Mousetrap.unbind(key);
         Mousetrap.bind(key, function (e) {
             callback(e);
         });

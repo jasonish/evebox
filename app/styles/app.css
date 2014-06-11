@@ -2,31 +2,7 @@
     opacity: 0.3;
 }
 
-/**
- * Decrease the size of the Bootstrap 3 top navbar.
- */
-.navbar {
-    height: 30px;
-    min-height: inherit;
-}
-
-.navbar-nav > li > a {
-    padding-top: 5px;
-    padding-bottom: 5px;
-}
-
-.navbar-brand {
-    padding-top: 5px;
-    padding-bottom: 5px;
-}
-
-.navbar-fixed-top {
-    padding-right: 20px;
-}
-
-/* As we're using a fixed size navbar, push the body down. */
 body {
-    padding-top: 50px;
     padding-bottom: 50px;
 }
 
