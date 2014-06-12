@@ -112,3 +112,14 @@ table > tbody > tr.clickable {
 #search-form .form-group:last-of-type {
     margin-bottom: 0px !important;
 }
+
+.caret-up {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 2px;
+    vertical-align: middle;
+    border-bottom: 4px solid;
+    border-right: 4px solid transparent;
+    border-left: 4px solid transparent;
+}

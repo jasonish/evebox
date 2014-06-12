@@ -439,7 +439,13 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
     };
 
     $scope.changeSortBy = function (what) {
-        $location.search("sortBy", what);
+        if ($scope.sortBy == what) {
+            $location.search("sortByOrder",
+                $scope.sortByOrder == "desc" ? "asc" : "desc");
+        }
+        else {
+            $location.search("sortBy", what);
+        }
     };
 
     $scope.$on("$destroy", function () {

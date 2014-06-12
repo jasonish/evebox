@@ -78,6 +78,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     }
 
     $scope.sortBy = $routeParams.sortBy || "last";
+    $scope.sortByOrder = $routeParams.sortByOrder || "desc";
     $scope.userQuery = $routeParams.q || "";
     $scope.page = $routeParams.page || 1;
 
@@ -302,10 +303,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         switch (severity) {
             case 1:
                 return "danger";
-                break;
             case 2:
                 return "warning";
-                break;
             default:
                 return "info";
         }
@@ -486,12 +485,12 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             case "last":
                 $scope.aggregations = _.sortBy($scope.aggregations, function (agg) {
                     return agg.last_timestamp;
-                }).reverse();
+                });
                 break;
             case "count":
                 $scope.aggregations = _.sortBy($scope.aggregations, function (agg) {
                     return agg.count;
-                }).reverse();
+                });
                 break;
             case "message":
                 $scope.aggregations = _.sortBy($scope.aggregations, function (agg) {
@@ -503,6 +502,9 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                     return agg.src_ip;
                 });
                 break;
+        }
+        if ($scope.sortByOrder == "desc") {
+            $scope.aggregations = $scope.aggregations.reverse();
         }
 
         var severityCache = Cache.get("severityCache");
