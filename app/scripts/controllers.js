@@ -312,6 +312,12 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             }
         });
 
+        modal.result.then(function () {
+            if ($scope.aggregations.length == 0) {
+                $scope.refresh();
+            }
+        });
+
         var doArchiveJob = function (job) {
 
             ElasticSearch.search(job.query)
@@ -442,7 +448,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
     $scope.changeSortBy = function (what) {
         if ($scope.sortBy == what) {
             $location.search("sortByOrder",
-                $scope.sortByOrder == "desc" ? "asc" : "desc");
+                    $scope.sortByOrder == "desc" ? "asc" : "desc");
         }
         else {
             $location.search("sortBy", what);
