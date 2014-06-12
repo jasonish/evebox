@@ -493,6 +493,16 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                     return agg.count;
                 }).reverse();
                 break;
+            case "message":
+                $scope.aggregations = _.sortBy($scope.aggregations, function (agg) {
+                    return agg.signature;
+                });
+                break;
+            case "src_ip":
+                $scope.aggregations = _.sortBy($scope.aggregations, function (agg) {
+                    return agg.src_ip;
+                });
+                break;
         }
 
         var severityCache = Cache.get("severityCache");

@@ -68,8 +68,8 @@
       ng-show="sortBy == 'count'"
       class="caret"></span></a>
     </th>
-    <th>Message</th>
-    <th ng-show="aggregations[0].src_ip">Source</th>
+    <th><a href="" ng-click="changeSortBy('message')">Message</a></th>
+    <th ng-show="aggregations[0].src_ip"><a href="" ng-click="changeSortBy('src_ip')">Source</a></th>
     <th colspan="3"><a href="" ng-click="changeSortBy('last')">Last<span
       ng-show="sortBy == 'last'"
       class="caret"></span></a></th>
