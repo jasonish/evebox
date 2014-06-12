@@ -336,6 +336,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                         _.remove($scope.aggregations, row);
                         _.remove(archiveJobs, job);
                         if (archiveJobs.length == 0) {
+                            console.log("No archive jobs left; closing modal.");
                             modal.close();
                         }
                     }

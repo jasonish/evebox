@@ -105,7 +105,7 @@
                   class="glyphicon glyphicon-star"></span>
         </td>
         <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
-          {{hit._source["@timestamp"]}}
+          {{moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
         </td>
         <td ng-click="toggleOpenEvent(hit)">
           {{hit._source.alert.signature}}
