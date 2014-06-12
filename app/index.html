@@ -62,13 +62,25 @@
           href="#/starred">Starred</a>
         </li>
         <li ng-class="{active: $routeParams.view == 'alerts'}"><a
-          href="#/alerts">Alerts</a></li>
+          href="#/events">Alerts</a></li>
+
+        <li>
+          <a href="" class="dropdown-toggle"
+             id="other-menu-dropdown-toggle"
+             data-toggle="dropdown">Other <span
+            class="caret"></span></a>
+          <ul id="other-menu-dropdown" class="dropdown-menu" role="menu">
+            <li><a href="#/all">All</a></li>
+            <li><a href="#/all?q=event_type:http">HTTP</a></li>
+            <li><a href="#/all?q=event_type:dns">DNS</a></li>
+          </ul>
+        </li>
+
       </ul>
 
       <ul class="nav navbar-nav navbar-right">
         <li>
           <a href="" ng-click="openHelp()">Help</a>
-
         </li>
         <li>
           <a href="" ng-click="openConfig()">Settings</a>

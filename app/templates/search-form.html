@@ -1,0 +1,26 @@
+<form ng-submit="onSearchFormSubmit()" id="search-form">
+
+  <div class="form-group">
+    <div class="input-group">
+      <input id="user-query-input" type="text" class="form-control"
+             ng-model="searchForm.userQuery"/>
+      <span class="input-group-btn">
+        <button class="btn btn-default" type="submit">
+          <span class="glyphicon glyphicon-search"></span>
+        </button>
+      </span>
+    </div>
+  </div>
+
+  <div ng-if="aggregationOptions" class="form-group">
+    <label tooltip="Server Side Aggregation">Aggregate by:</label>
+    <select id="aggregate-by-input" class="form-control input-sm"
+            ng-model="aggregateBy"
+            ng-change="onSearchFormSubmit()">
+      <option value="">-</option>
+      <option value="signature">Signature</option>
+      <option value="signature+src">Signature+Source</option>
+    </select>
+  </div>
+
+</form>

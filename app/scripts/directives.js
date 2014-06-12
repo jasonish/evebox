@@ -18,15 +18,42 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+app.directive("eventDetail", function() {
+
+    directive = {
+        restrict: "A",
+        templateUrl: "views/detail.html",
+        scope: {
+            hit: "=event"
+        }
+    };
+
+    directive.controller = function($scope, Keyboard, Util) {
+
+        $scope.Util = Util;
+
+        $scope.$on("$destroy", function () {
+            Keyboard.resetScope($scope);
+        });
+
+        Keyboard.scopeBind($scope, ".", function () {
+            $("#event-detail-more-button").first().dropdown('toggle');
+        });
+
+    };
+
+    return directive;
+});
+
 app.directive("keyTable", function () {
 
-    directive = {};
-
-    directive.restrict = "A";
+    directive = {
+        restrict: "A"
+    };
 
     directive.scope = {
-        rows: "=",
-        activeRowIndex: "="
+        rows: "=keyTableRows",
+        activeRowIndex: "=keyTableActiveRowIndex"
     };
 
     directive.controller = function ($scope, Keyboard, Util, $element) {
@@ -40,9 +67,17 @@ app.directive("keyTable", function () {
         $scope.activeRowIndex = 0;
 
         var scrollToView = function () {
-            Util.scrollElementIntoView(
-                angular.element(
-                    $element).find("tr").eq($scope.activeRowIndex));
+
+            var rowIndexClass = "row-index-" + $scope.activeRowIndex;
+            var row = angular.element($element).find("." + rowIndexClass);
+            if (row.hasClass(rowIndexClass)) {
+                Util.scrollElementIntoView(row);
+            }
+            else {
+                Util.scrollElementIntoView(
+                    angular.element(
+                        $element).find("tr").eq($scope.activeRowIndex));
+            }
         };
 
         Keyboard.scopeBind($scope, "j", function () {

@@ -28,6 +28,11 @@ app.config(function ($routeProvider) {
         templateUrl: "views/record.html"
     });
 
+    $routeProvider.when("/all", {
+        controller: "AllEventsController",
+        templateUrl: "views/all.html"
+    });
+
     $routeProvider.when("/:view", {
         controller: "AlertsController",
         templateUrl: "views/alerts.html"
@@ -608,18 +613,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         });
 
         $(".results").removeClass("loading");
-    };
-
-    $scope.renderIpAddress = function (addr) {
-        if (addr === undefined) {
-            return "";
-        }
-        addr = addr.replace(/0000/g, "");
-        while (addr.indexOf(":0:") > -1) {
-            addr = addr.replace(/:0:/g, "::");
-        }
-        addr = addr.replace(/:::+/g, "::");
-        return addr;
     };
 
     $scope.doArchiveByQuery = function (title, query) {

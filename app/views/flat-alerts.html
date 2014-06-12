@@ -112,17 +112,17 @@
         </td>
         <td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>
         <td ng-click="toggleOpenEvent(hit)">
-          {{renderIpAddress(hit._source.src_ip)}}
+          {{Util.printIpAddress(hit._source.src_ip)}}
         </td>
         <td ng-click="toggleOpenEvent(hit)">
-          {{renderIpAddress(hit._source.dest_ip)}}
+          {{Util.printIpAddress(hit._source.dest_ip)}}
         </td>
       </tr>
-      <tr ng-class="severityToBootstrapClass(hit)" class="hit-detail"
+      <tr ng-class="severityToBootstrapClass(hit._source.alert.severity)" class="hit-detail"
           ng-show="hit.__open">
         <td colspan="3"></td>
         <td colspan="5">
-          <div ng-if="hit.__open" ng-include="'views/detail.html'"></div>
+          <div ng-if="hit.__open" event-detail event="hit"></div>
         </td>
       </tr>
       </tbody>

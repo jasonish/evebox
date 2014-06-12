@@ -16,17 +16,6 @@ table > tbody > tr.clickable {
     cursor: hand;
 }
 
-.tab-content {
-    border-left: 1px solid #ddd;
-    border-right: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
-    padding: 10px;
-}
-
-.nav-tabs {
-    margin-bottom: 0;
-}
-
 #errorMessage {
     position: fixed;
     top: 0px;
@@ -54,6 +43,23 @@ table > tbody > tr.clickable {
     padding-right: 3px !important;
     margin: 0px !important;
     border: 0px !important;
+}
+
+.event-table > tbody > tr > td > dl {
+    margin-bottom: 0px;
+    padding-bottom: 0px;
+}
+
+.event-table > tbody > tr > td > dl > dt {
+    width: 100px;
+    margin: 0px;
+}
+.event-table > tbody > tr > td > dl > dd {
+    margin-left: 120px;
+}
+
+.record-detail-panel {
+    margin-top: 15px;
 }
 
 .record-detail-panel .panel-heading {
@@ -122,4 +128,8 @@ table > tbody > tr.clickable {
     border-bottom: 4px solid;
     border-right: 4px solid transparent;
     border-left: 4px solid transparent;
+}
+
+.event-force-wrap {
+    word-break: break-all;
 }

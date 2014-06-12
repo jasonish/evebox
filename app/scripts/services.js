@@ -152,6 +152,21 @@ app.factory("Util", function () {
         }
     };
 
+    /**
+     * Print an IP address.  Really only used to shorten up IPv6 addresses.
+     */
+    service.printIpAddress = function (addr) {
+        if (addr === undefined) {
+            return "";
+        }
+        addr = addr.replace(/0000/g, "");
+        while (addr.indexOf(":0:") > -1) {
+            addr = addr.replace(/:0:/g, "::");
+        }
+        addr = addr.replace(/:::+/g, "::");
+        return addr;
+    };
+
     return service;
 });
 

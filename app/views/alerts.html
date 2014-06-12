@@ -4,19 +4,19 @@
 
 <div class="container-fluid" style="padding-left: 5%; padding-right: 5%;">
 
-  <form ng-submit="onSearchFormSubmit()" class="form-inline" id="search-form">
+  <form ng-submit="onSearchFormSubmit()" id="search-form">
     <div class="form-group">
       <div class="input-group">
         <input id="query-input" type="text" class="form-control"
                ng-model="userQuery"/>
-    <span class="input-group-btn">
+      <span class="input-group-btn">
         <button class="btn btn-default" type="submit">
           <span class="glyphicon glyphicon-search"></span>
         </button>
       </span>
       </div>
     </div>
-    <div class="form-group">
+    <div class="form-group form-inline">
       <label tooltip="Server Side Aggregation">Aggregate by:</label>
       <select id="aggregate-by-input" class="form-control input-sm"
               ng-model="aggregateBy"

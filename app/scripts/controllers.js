@@ -55,13 +55,19 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
         });
     });
 
+    Keyboard.scopeBind($scope, "g o", function () {
+        $scope.$apply(function () {
+            $("#other-menu-dropdown-toggle").dropdown('toggle');
+        });
+    });
+
     Keyboard.scopeBind($scope, "g c", function (e) {
         $scope.openConfig();
     });
 
     Keyboard.scopeBind($scope, "?", function (e) {
         $scope.openHelp();
-    })
+    });
 });
 
 app.controller("ConfigController", function ($scope, $modalInstance, Config) {
@@ -80,35 +86,46 @@ app.controller("ConfigController", function ($scope, $modalInstance, Config) {
 });
 
 app.controller("RecordController", function ($scope, $routeParams, Util,
-    ElasticSearch) {
+    ElasticSearch, Config) {
 
     // Export some functions to $scope.
     $scope.Util = Util;
+    $scope.Config = Config;
 
     ElasticSearch.searchEventById($routeParams.id)
         .success(function (response) {
             $scope.response = response;
             $scope.hits = response.hits;
+
+            _.forEach($scope.hits.hits, function (hit) {
+
+                if (hit._source.alert) {
+                    hit.__title = hit._source.alert.signature;
+                    hit.__titleClass = Util.severityToBootstrapClass(hit._source.alert.severity, "alert-");
+                }
+                else if (hit._source.dns) {
+                    hit.__title = hit._source.event_type.toUpperCase() + ": " +
+                        hit._source.dns.rrname;
+                    hit.__titleClass = "alert-info";
+                }
+                else if (hit._source.tls) {
+                    hit.__title = hit._source.event_type.toUpperCase() + ": " +
+                        hit._source.tls.subject;
+                    hit.__titleClass = "alert-info";
+                }
+                else {
+                    hit.__title = hit._source.event_type.toUpperCase();
+                    hit.__titleClass = "alert-info";
+                }
+
+            });
+
         });
 
 });
 
-app.controller("EventDetailController", function ($scope, Keyboard) {
-
-    $scope.$on("$destroy", function () {
-        Keyboard.resetScope($scope);
-    });
-
-    Keyboard.scopeBind($scope, ".", function () {
-        $("#event-detail-more-button").first().dropdown('toggle');
-    });
-
-});
-
 app.controller("ModalProgressController", function ($scope, jobs) {
-
     $scope.jobs = jobs;
-
 });
 
 app.controller("AggregatedController", function ($scope, $location, Keyboard,
@@ -509,3 +526,177 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
         });
     });
 });
+
+app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
+    ElasticSearch, $routeParams, $location) {
+
+    console.log("AllEventsController");
+
+    AllEventsController = $scope;
+
+    $scope.page = $routeParams.page || 1;
+    $scope.querySize = Config.elasticSearch.size;
+
+    $scope.searchForm = {
+        userQuery: ""
+    };
+
+    $scope.filters = [
+        {
+            "exists": { "field": "event_type" }
+        }
+    ];
+
+    $scope.activeRowIndex = 0;
+
+    $scope.eventMessage = function (event) {
+        switch (event.event_type) {
+            default:
+                return angular.toJson(event[event.event_type]);
+        }
+    };
+
+    $scope.submitSearchRequest = function (request) {
+        $scope.searchRequest = request;
+        $scope.loading = true;
+        ElasticSearch.search(request)
+            .success($scope.onSearchResponseSuccess)
+            .finally(function () {
+                $scope.loading = false;
+            });
+    };
+
+    $scope.onSearchResponseSuccess = function (response) {
+        $scope.response = response;
+
+        $scope.rows = response.hits.hits.map(function (hit) {
+
+            // If row is an event, set the class based on the severity.
+            if (hit._source.alert) {
+                var trClass = Util.severityToBootstrapClass(hit._source.alert.severity);
+            }
+            else {
+                var trClass = "info";
+            }
+
+            return {
+                trClass: trClass,
+
+                source: hit,
+
+                timestamp: moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss"),
+                src_ip: Util.printIpAddress(hit._source.src_ip),
+                dest_ip: Util.printIpAddress(hit._source.dest_ip),
+                message: $scope.eventMessage(hit._source),
+                event_type: hit._source.event_type
+            };
+        });
+
+        $scope.columnStyles = {
+            "timestamp": {"white-space": "nowrap"},
+            "message": {"word-break": "break-all"}
+        };
+    };
+
+    $scope.toggleOpenEvent = function (event) {
+        _.forEach($scope.rows, function (row) {
+            if (row != event) {
+                row.__open = false;
+            }
+        });
+        event.__open = !event.__open;
+    };
+
+    $scope.refresh = function() {
+        $scope.submitSearchRequest($scope.searchRequest);
+    };
+
+    $scope.gotoPage = function (what) {
+
+        var last = Math.floor($scope.response.hits.total / $scope.querySize) + 1;
+
+        switch (what) {
+            case "first":
+                $scope.page = 1;
+                break;
+            case "prev":
+                if ($scope.page > 1) {
+                    $scope.page--;
+                }
+                break;
+            case "next":
+                if ($scope.page < last) {
+                    $scope.page++;
+                }
+                break;
+            case "last":
+                $scope.page = last;
+                break;
+        }
+        $location.search("page", $scope.page);
+    };
+
+    $scope.$on("$destroy", function () {
+        Keyboard.resetScope($scope);
+    });
+
+    Keyboard.scopeBind($scope, "o", function () {
+        $scope.$apply(function () {
+            console.log($scope.activeRowIndex);
+            $scope.toggleOpenEvent($scope.rows[$scope.activeRowIndex]);
+        });
+    });
+
+});
+
+app.controller("SearchController", function ($scope, ElasticSearch, Config,
+    Keyboard, $location, $routeParams) {
+
+    console.log("SearchController");
+
+    SearchController = $scope;
+
+    $scope.searchForm.userQuery = $routeParams.q || "";
+
+    $scope.doSearch = function () {
+
+        var query = {
+            query: {
+                filtered: {
+                    query: {
+                        query_string: {
+                            query: $scope.searchForm.userQuery || "*"
+                        }
+                    },
+                    filter: {
+                        and: _.cloneDeep($scope.filters)
+                    }
+                }
+            },
+            size: $scope.querySize || 100,
+            from: Config.elasticSearch.size * (($scope.page || 1) - 1),
+            sort: [
+                {"@timestamp": {order: "desc"}}
+            ]
+        };
+
+        $scope.submitSearchRequest(query);
+    };
+
+    $scope.onSearchFormSubmit = function () {
+        $location.search("q", $scope.searchForm.userQuery);
+    };
+
+    $scope.$on("$destroy", function () {
+        Keyboard.resetScope($scope);
+    });
+
+    Keyboard.scopeBind($scope, "/", function (e) {
+        e.preventDefault();
+        $("#user-query-input").focus();
+        $("#user-query-input").select();
+    });
+
+    $scope.doSearch();
+});
+

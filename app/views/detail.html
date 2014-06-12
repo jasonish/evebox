@@ -1,149 +1,167 @@
-<div ng-controller="EventDetailController">
+<div class="panel panel-default record-detail-panel">
+  <div class="panel-heading">
+    Event
+    <div class="record-action-buttons" style="float: right;">
+      <button ng-if="hit._source.tags.indexOf('inbox') > -1"
+              ng-click="archiveEvent(hit)"
+              class="btn btn-default btn-xs">Archive
+      </button>
+      <button ng-click="deleteEvent(hit)"
+              class="btn btn-default btn-xs">Delete
+      </button>
+      <button type="button" class="btn btn-default btn-xs"
+              ng-if="hit._source.alert"
+              ng-click="toggleStar(hit)">
+        <span ng-show="hit._source.tags.indexOf('starred') == -1">Star</span>
+        <span ng-show="hit._source.tags.indexOf('starred') >= 0">Unstar</span>
+      </button>
 
-  <div class="panel panel-default record-detail-panel">
-    <div class="panel-heading">
-      Alert
-      <div class="record-action-buttons" style="float: right;">
-        <button ng-if="hit._source.tags.indexOf('inbox') > -1"
-                ng-click="archiveEvent(hit)"
-                class="btn btn-default btn-xs">Archive
+      <div class="btn-group">
+        <button type="button" class="btn btn-default btn-xs dropdown-toggle"
+                data-toggle="dropdown" id="event-detail-more-button">
+          More <span class="caret"></span>
         </button>
-        <button ng-click="deleteEvent(hit)"
-                class="btn btn-default btn-xs">Delete
-        </button>
-        <button type="button" class="btn btn-default btn-xs"
-                ng-click="toggleStar(hit)">
-          <span ng-show="hit._source.tags.indexOf('starred') == -1">Star</span>
-          <span ng-show="hit._source.tags.indexOf('starred') >= 0">Unstar</span>
-        </button>
+        <ul class="dropdown-menu" role="menu">
+          <li><a href="/#/record/{{hit._id}}" target="_blank">Open in New
+            Window</a></li>
+          <li><a
+            href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank">Send
+            to Dumpy</a></li>
+        </ul>
+      </div>
 
-        <div class="btn-group">
-          <button type="button" class="btn btn-default btn-xs dropdown-toggle"
-                  data-toggle="dropdown" id="event-detail-more-button">
-            More <span class="caret"></span>
-          </button>
-          <ul class="dropdown-menu" role="menu">
-            <li><a href="/#/record/{{hit._id}}" target="_blank">Open in New
-              Window</a></li>
-            <li ng-if="Config.dumpy.url"><a
-              href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank">Send
-              to Dumpy</a></li>
-          </ul>
+    </div>
+  </div>
+  <div class="panel-body">
+
+    <dl class="dl-horizontal">
+      <dt>Timestamp:</dt>
+      <dd>
+        {{hit._source.timestamp}}
+      </dd>
+    </dl>
+
+    <!-- Event type: alert. -->
+    <dl ng-if="hit._source.event_type == 'alert'" class="dl-horizontal">
+      <dt>Signature:</dt>
+      <dd><a
+        href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
+      </dd>
+      <dt>Category:</dt>
+      <dd>{{hit._source.alert.category}}</dd>
+      <dt>Singature ID:</dt>
+      <dd>
+        {{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}:{{hit._source.alert.rev}}
+      </dd>
+      <dt>Severity:</dt>
+      <dd>{{hit._source.alert.severity}}</dd>
+    </dl>
+
+    <!-- Event type: DNS. -->
+    <dl ng-if="hit._source.event_type == 'dns'" class="dl-horizontal">
+      <dt>Type:</dt>
+      <dd>{{hit._source.dns.type}}</dd>
+      <dt>ID:</dt>
+      <dd>{{hit._source.dns.id}}</dd>
+      <dt>TTL:</dt>
+      <dd>{{hit._source.dns.ttl}}</dd>
+      <dt>RRType:</dt>
+      <dd>{{hit._source.dns.rrtype}}</dd>
+      <dt>RRName:</dt>
+      <dd>{{hit._source.dns.rrname}}</dd>
+      <dt>RRData:</dt>
+      <dd>{{hit._source.dns.rrdata}}</dd>
+    </dl>
+
+    <dl ng-if="hit._source.event_type == 'tls'" class="dl-horizontal">
+      <dt>Subject:</dt>
+      <dd>{{hit._source.tls.subject}}</dd>
+      <dt>Issuer DN:</dt>
+      <dd>{{hit._source.tls.issuerdn}}</dd>
+      <dt>Fingerprint:</dt>
+      <dd>{{hit._source.tls.fingerprint}}</dd>
+      <dt>Version:</dt>
+      <dd>{{hit._source.tls.version}}</dd>
+    </dl>
+
+  </div>
+</div>
+
+<div class="panel panel-default record-detail-panel">
+  <div class="panel-heading">
+    Packet
+  </div>
+  <div class="panel-body">
+
+    <dl class="dl-horizontal">
+
+      <dt>Protocol:</dt>
+      <dd>{{hit._source.proto}}</dd>
+
+      <dt>Source:</dt>
+      <dd>
+        <div class="col-md-3" style="padding: 0px;">
+          <div class="input-group">
+            <a href="#/events?q=+{{hit._source.src_ip}}">{{hit._source.src_ip}}</a>
+            <button type="button" class="btn btn-default btn-xs dropdown-toggle"
+                    data-toggle="dropdown"
+                    style="border: 0px;"><span class="caret"></span></button>
+            <ul class="dropdown-menu" role="menu">
+              <li><a href="#/all?q={{hit._source.src_ip}}">Search in all...</a></li>
+            </ul>
+          </div>
         </div>
 
-      </div>
-    </div>
-    <div class="panel-body">
+        <!-- Source port/ICMP type... -->
+        <div ng-if="hit._source.proto == 'ICMP'">
+          <b>ICMP Type:</b>
+          {{hit._source.icmp_type}}
+        </div>
+        <div
+          ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
+          <b>Port:</b>
+          {{hit._source.src_port}}
+        </div>
 
-      <dl class="dl-horizontal">
-        <dt>Timestamp:</dt>
-        <dd>
-          {{hit._source.timestamp}}
-        </dd>
-        <dt>Description:</dt>
-        <dd><a
-          href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
-        </dd>
-        <dt>Category:</dt>
-        <dd>{{hit._source.alert.category}}</dd>
-        <dt>Singature ID:</dt>
-        <dd>
-          {{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}:{{hit._source.alert.rev}}
-        </dd>
-        <dt>Severity:</dt>
-        <dd>{{hit._source.alert.severity}}</dd>
-      </dl>
+      </dd>
 
-    </div>
+      <dt>Destination:</dt>
+      <dd>
+        <div class="col-md-3" style="padding: 0px;">
+          <div class="input-group">
+            <a href="#/events?q=+{{hit._source.dest_ip}}">{{hit._source.dest_ip}}</a>
+            <button type="button" class="btn btn-default btn-xs dropdown-toggle"
+                    data-toggle="dropdown"
+                    style="border: 0px;"><span class="caret"></span></button>
+            <ul class="dropdown-menu" role="menu">
+              <li><a href="#/all?q={{hit._source.dest_ip}}">Search in all...</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Destination port/ICMP code... -->
+        <div ng-if="hit._source.proto == 'ICMP'">
+          <b>ICMP Code:</b>
+          {{hit._source.icmp_code}}
+        </div>
+        <div
+          ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
+          <b>Port:</b>
+          {{hit._source.dest_port}}
+        </div>
+
+      </dd>
+
+    </dl>
+
   </div>
+</div>
 
-  <div class="panel panel-default record-detail-panel">
-    <div class="panel-heading">
-      Packet
-    </div>
-    <div class="panel-body">
-
-      <dl class="dl-horizontal">
-
-        <dt>Protocol:</dt>
-        <dd>{{hit._source.proto}}</dd>
-
-        <dt>Source:</dt>
-        <dd>
-          <div class="col-md-3" style="padding: 0px;">
-            <div class="input-group">
-              <a href="#/events?q=+{{hit._source.src_ip}}">{{hit._source.src_ip}}</a>
-              <!--<button type="button"-->
-              <!--class="btn btn-default btn-xs dropdown-toggle"-->
-              <!--data-toggle="dropdown" style="border: 0px;">-->
-              <!--<span class="caret"></span></button>-->
-              <!--<ul class="dropdown-menu pull-right">-->
-              <!--<li><a href="#">Action</a></li>-->
-              <!--<li><a href="#">Another action</a></li>-->
-              <!--<li><a href="#">Something else here</a></li>-->
-              <!--<li class="divider"></li>-->
-              <!--<li><a href="#">Separated link</a></li>-->
-              <!--</ul>-->
-            </div>
-          </div>
-
-          <!-- Source port/ICMP type... -->
-          <div ng-if="hit._source.proto == 'ICMP'">
-            <b>ICMP Type:</b>
-            {{hit._source.icmp_type}}
-          </div>
-          <div
-            ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
-            <b>Port:</b>
-            {{hit._source.src_port}}
-          </div>
-
-        </dd>
-
-        <dt>Destination:</dt>
-        <dd>
-          <div class="col-md-3" style="padding: 0px;">
-            <div class="input-group">
-              <a href="#/events?q=+{{hit._source.dest_ip}}">{{hit._source.dest_ip}}</a>
-              <!--<button type="button"-->
-              <!--class="btn btn-default btn-xs dropdown-toggle"-->
-              <!--data-toggle="dropdown" style="border: 0px;">-->
-              <!--<span class="caret"></span></button>-->
-              <!--<ul class="dropdown-menu pull-right">-->
-              <!--<li><a href="#">Action</a></li>-->
-              <!--<li><a href="#">Another action</a></li>-->
-              <!--<li><a href="#">Something else here</a></li>-->
-              <!--<li class="divider"></li>-->
-              <!--<li><a href="#">Separated link</a></li>-->
-              <!--</ul>-->
-            </div>
-          </div>
-
-          <!-- Destination port/ICMP code... -->
-          <div ng-if="hit._source.proto == 'ICMP'">
-            <b>ICMP Code:</b>
-            {{hit._source.icmp_code}}
-          </div>
-          <div
-            ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
-            <b>Port:</b>
-            {{hit._source.dest_port}}
-          </div>
-
-        </dd>
-
-      </dl>
-
-    </div>
+<div class="panel panel-default record-detail-panel">
+  <div class="panel-heading">
+    JSON
   </div>
-
-  <div class="panel panel-default record-detail-panel">
-    <div class="panel-heading">
-      JSON
-    </div>
-    <div class="panel-body">
-      <pre style="white-space: pre-wrap;">{{ Util.toJson(hit, true) }}</pre>
-    </div>
+  <div class="panel-body">
+    <pre style="white-space: pre-wrap;">{{ Util.toJson(hit, true) }}</pre>
   </div>
-
 </div>

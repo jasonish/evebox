@@ -58,9 +58,9 @@
   </div>
   <table ng-show="aggregations.length > 0"
          class="table table-responsive table-condensed"
-         key-table="{'rows': aggregations, activeRowIndex: activeRowIndex}"
-         rows="aggregations"
-         active-row-index="activeRowIndex">
+         key-table
+         key-table-rows="aggregations"
+         key-table-active-row-index="activeRowIndex">
     <thead>
     <th></th>
     <th></th>
@@ -90,7 +90,7 @@
       </td>
       <td ng-click="openAggregation(row)">{{row.count}}</td>
       <td ng-click="openAggregation(row)">{{row.signature}}</td>
-      <td ng-show="row.src_ip">{{renderIpAddress(row.src_ip)}}</td>
+      <td ng-show="row.src_ip">{{Util.printIpAddress(row.src_ip)}}</td>
       <td ng-click="openAggregation(row)">
         {{moment(row.last_timestamp).format("YYYY-MM-DD HH:mm:ss")}}
       </td>
