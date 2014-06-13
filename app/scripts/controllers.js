@@ -49,9 +49,9 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
         });
     });
 
-    Keyboard.scopeBind($scope, "g e", function (e) {
+    Keyboard.scopeBind($scope, "g a", function (e) {
         $scope.$apply(function () {
-            $location.url("/events");
+            $location.url("/alerts");
         });
     });
 
@@ -270,10 +270,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                 }
             },
             size: 1000,
-            fields: ["_index", "_type", "_id"],
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ]
+            fields: []
         };
 
         if (row.src_ip) {
@@ -318,7 +315,13 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             }
         });
 
-        var doArchiveJob = function (job) {
+        var doArchiveJob = function () {
+
+            if (archiveJobs.length == 0) {
+                return;
+            }
+
+            var job = archiveJobs[0];
 
             ElasticSearch.search(job.query)
                 .success(function (response) {
@@ -330,7 +333,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                         ElasticSearch.bulkRemoveTag(response.hits.hits, "inbox")
                             .success(function (response) {
                                 job.value += response.items.length;
-                                doArchiveJob(job);
+                                doArchiveJob();
                             });
                     }
                     else {
@@ -340,17 +343,21 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                             $scope.activeRowIndex--;
                         }
                         _.remove($scope.aggregations, row);
-                        _.remove(archiveJobs, job);
+                        //_.remove(archiveJobs, job);
+                        archiveJobs.shift();
                         if (archiveJobs.length == 0) {
                             console.log("No archive jobs left; closing modal.");
                             modal.close();
+                        }
+                        else {
+                            doArchiveJob();
                         }
                     }
                 });
 
         };
 
-        _.forEach(archiveJobs, doArchiveJob);
+        doArchiveJob();
 
     };
 
