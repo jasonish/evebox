@@ -4,15 +4,13 @@
   <div ng-repeat="hit in hits.hits">
 
     <div class="row">
-
       <div class="alert" ng-class="hit.__titleClass">
         <h3 style="padding: 0px; margin: 0px;">{{hit.__title}}</h3>
       </div>
-
     </div>
 
     <div class="row">
-      <div event-detail event="hit"></div>
+      <div ng-include="'views/detail.html'"></div>
     </div>
 
   </div>

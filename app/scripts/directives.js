@@ -18,33 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-app.directive("eventDetail", function() {
-
-    directive = {
-        restrict: "A",
-        templateUrl: "views/detail.html",
-        scope: {
-            hit: "=event"
-        }
-    };
-
-    directive.controller = function($scope, Keyboard, Util) {
-
-        $scope.Util = Util;
-
-        $scope.$on("$destroy", function () {
-            Keyboard.resetScope($scope);
-        });
-
-        Keyboard.scopeBind($scope, ".", function () {
-            $("#event-detail-more-button").first().dropdown('toggle');
-        });
-
-    };
-
-    return directive;
-});
-
 app.directive("keyTable", function () {
 
     directive = {

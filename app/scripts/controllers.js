@@ -124,6 +124,20 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
 
 });
 
+app.controller("EventDetailController", function($scope, Keyboard) {
+
+    console.log("EventDetailController");
+
+    $scope.$on("$destroy", function () {
+        Keyboard.resetScope($scope);
+    });
+
+    Keyboard.scopeBind($scope, ".", function() {
+        $("#event-detail-more-button").dropdown('toggle');
+    });
+
+});
+
 app.controller("ModalProgressController", function ($scope, jobs) {
     $scope.jobs = jobs;
 });
@@ -533,6 +547,8 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
     console.log("AllEventsController");
 
     AllEventsController = $scope;
+
+    $scope.Util = Util;
 
     $scope.page = $routeParams.page || 1;
     $scope.querySize = Config.elasticSearch.size;

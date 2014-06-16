@@ -48,15 +48,15 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
     // Debugging.
     scope = $scope;
-    scope.Config = Config;
-    scope.ElasticSearch = ElasticSearch;
-    scope.filter = $filter;
-    scope.$http = $http;
-    scope.$routeParams = $routeParams;
-    scope.Keyboard = Keyboard;
-    scope.$location = $location;
-    scope.$route = $route;
-    scope.moment = moment;
+    $scope.Config = Config;
+    $scope.ElasticSearch = ElasticSearch;
+    $scope.filter = $filter;
+    $scope.$http = $http;
+    $scope.$routeParams = $routeParams;
+    $scope.Keyboard = Keyboard;
+    $scope.$location = $location;
+    $scope.$route = $route;
+    $scope.moment = moment;
 
     // Exports to scope.
     $scope.Util = Util;

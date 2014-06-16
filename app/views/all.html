@@ -84,7 +84,8 @@
       </tr>
       <tr ng-class="row.trClass">
         <td colspan="5">
-          <div ng-if="row.__open" event-detail event="row.source"></div>
+          <div ng-if="row.__open" ng-include="'views/detail.html'"
+               ng-init="hit = row.source" ng-controller="EventDetailController"></div>
         </td>
       </tr>
       </tbody>

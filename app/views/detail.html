@@ -6,7 +6,7 @@
               ng-click="archiveEvent(hit)"
               class="btn btn-default btn-xs">Archive
       </button>
-      <button ng-click="deleteEvent(hit)"
+      <button ng-if="hit._source.alert" ng-click="deleteEvent(hit)"
               class="btn btn-default btn-xs">Delete
       </button>
       <button type="button" class="btn btn-default btn-xs"
@@ -24,8 +24,7 @@
         <ul class="dropdown-menu" role="menu">
           <li><a href="/#/record/{{hit._id}}" target="_blank">Open in New
             Window</a></li>
-          <li><a
-            href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank">Send
+          <li ng-if="Config.dumpy.url"><a href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank">Send
             to Dumpy</a></li>
         </ul>
       </div>

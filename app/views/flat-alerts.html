@@ -122,7 +122,7 @@
           ng-show="hit.__open">
         <td colspan="3"></td>
         <td colspan="5">
-          <div ng-if="hit.__open" event-detail event="hit"></div>
+          <div ng-if="hit.__open" ng-include="'views/detail.html'" ng-controller="EventDetailController"></div>
         </td>
       </tr>
       </tbody>
