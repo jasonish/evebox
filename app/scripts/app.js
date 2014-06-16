@@ -25,17 +25,17 @@ app.config(function ($routeProvider) {
 
     $routeProvider.when("/record/:id", {
         controller: "RecordController",
-        templateUrl: "views/record.html"
+        templateUrl: "templates/record.html"
     });
 
     $routeProvider.when("/all", {
         controller: "AllEventsController",
-        templateUrl: "views/all.html"
+        templateUrl: "templates/all.html"
     });
 
     $routeProvider.when("/:view", {
         controller: "AlertsController",
-        templateUrl: "views/alerts.html"
+        templateUrl: "templates/alerts.html"
     });
 
     $routeProvider.otherwise({redirectTo: "/inbox"});

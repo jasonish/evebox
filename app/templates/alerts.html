@@ -31,10 +31,9 @@
   <br/>
 
   <div class="results" ng-if="response.aggregations"
-       ng-include="'views/aggregate-alerts.html'"></div>
-
+       ng-include="'templates/aggregate-alerts.html'"></div>
   <div class="results" ng-if="response.aggregations == undefined">
-    <section ng-include="'views/flat-alerts.html'"></section>
+    <section ng-include="'templates/flat-alerts.html'"></section>
   </div>
 
 </div>

@@ -25,14 +25,14 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
 
     $scope.openConfig = function () {
         $modal.open({
-            templateUrl: "views/config.html",
+            templateUrl: "templates/config.html",
             controller: "ConfigController"
         });
     };
 
     $scope.openHelp = function () {
         $modal.open({
-            templateUrl: "views/help.html",
+            templateUrl: "templates/help.html",
             size: "lg"
         });
     };
@@ -124,9 +124,11 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
 
 });
 
-app.controller("EventDetailController", function($scope, Keyboard) {
+app.controller("EventDetailController", function($scope, Keyboard, Config) {
 
     console.log("EventDetailController");
+
+    $scope.Config = Config;
 
     $scope.$on("$destroy", function () {
         Keyboard.resetScope($scope);
