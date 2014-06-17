@@ -18,6 +18,118 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+app.directive("eveboxIpAddressServices", function() {
+
+    return {
+
+        restrict: "EA",
+
+        templateUrl: "templates/ip-address-services.html",
+
+        scope: {
+            address: "=address"
+        }
+
+    };
+
+});
+
+app.directive("eveboxSearchForm", function() {
+
+    return {
+
+        restrict: "EA",
+
+        templateUrl: "templates/search-form.html"
+
+    };
+
+});
+
+app.directive("eveboxPager", function () {
+
+    return {
+        restrict: "EA",
+
+        templateUrl: "templates/pager.html",
+
+        scope: {
+            rows: "=eveboxPagerRows",
+            page: "=eveboxPagerPage",
+            change: "&eveboxPagerChangePage",
+            querySize: "=eveboxPagerQuerySize",
+            total: "=eveboxPagerTotal",
+            size: "@eveboxPagerSize"
+        }, // scope.
+
+        controller: function ($scope, Keyboard) {
+
+            $scope.gotoPage = function (what) {
+                var last = Math.floor($scope.total / $scope.querySize) + 1;
+
+                switch (what) {
+                    case "first":
+                        $scope.page = 1;
+                        break;
+                    case "prev":
+                        if ($scope.page > 1) {
+                            $scope.page--;
+                        }
+                        break;
+                    case "next":
+                        if ($scope.page < last) {
+                            $scope.page++;
+                        }
+                        break;
+                    case "last":
+                        $scope.page = last;
+                        break;
+                }
+
+                $scope.change()($scope.page);
+            };
+
+            $scope.$on("$destroy", function () {
+                Keyboard.resetScope($scope);
+            });
+
+            Keyboard.scopeBind($scope, "{", function() {
+                $scope.$apply(function() {
+                    $scope.gotoPage("first");
+                })
+            });
+
+            Keyboard.scopeBind($scope, "<", function () {
+                $scope.$apply(function () {
+                    $scope.gotoPage("prev");
+                });
+            });
+
+            Keyboard.scopeBind($scope, ">", function () {
+                $scope.$apply(function () {
+                    $scope.gotoPage("next");
+                });
+            });
+
+            Keyboard.scopeBind($scope, "}", function() {
+                $scope.$apply(function() {
+                    $scope.gotoPage("last");
+                })
+            });
+
+        }, // controller.
+
+        link: function (scope, element, attributes) {
+            switch (scope.size) {
+                case "sm":
+                    angular.element(element).find(".btn-group").addClass("btn-group-sm");
+                    break;
+            }
+        } //link.
+    };
+
+});
+
 app.directive("keyTable", function () {
 
     directive = {

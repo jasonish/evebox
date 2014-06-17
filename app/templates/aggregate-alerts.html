@@ -65,19 +65,22 @@
     <th></th>
     <th></th>
     <th><a href="" ng-click="changeSortBy('count')">#<span
-      ng-show="sortBy == 'count'" ng-class="{'caret': sortByOrder == 'desc', 'caret-up': sortByOrder == 'asc'}"
+      ng-show="searchForm.sortBy == 'count'"
+      ng-class="{'caret': searchForm.sortByOrder == 'desc', 'caret-up': searchForm.sortByOrder == 'asc'}"
       ></span></a>
     </th>
     <th><a href="" ng-click="changeSortBy('message')">Message<span
-      ng-show="sortBy == 'message'" ng-class="{'caret': sortByOrder == 'desc', 'caret-up': sortByOrder == 'asc'}"
+      ng-show="searchForm.sortBy == 'message'"
+      ng-class="{'caret': searchForm.sortByOrder == 'desc', 'caret-up': searchForm.sortByOrder == 'asc'}"
       ></span></a></th>
     <th ng-show="aggregations[0].src_ip"><a href=""
                                             ng-click="changeSortBy('src_ip')">Source<span
-      ng-show="sortBy == 'src_ip'" ng-class="{'caret': sortByOrder == 'desc', 'caret-up': sortByOrder == 'asc'}"
+      ng-show="searchForm.sortBy == 'src_ip'"
+      ng-class="{'caret': searchForm.sortByOrder == 'desc', 'caret-up': searchForm.sortByOrder == 'asc'}"
       ></span></a></th>
     <th colspan="3"><a href="" ng-click="changeSortBy('last')">Last<span
-      ng-show="sortBy == 'last'"
-      ng-class="{'caret': sortByOrder == 'desc', 'caret-up': sortByOrder == 'asc'}"></span></a>
+      ng-show="searchForm.sortBy == 'last'"
+      ng-class="{'caret': searchForm.sortByOrder == 'desc', 'caret-up': searchForm.sortByOrder == 'asc'}"></span></a>
     </th>
     </thead>
     <tbody>

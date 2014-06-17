@@ -1,0 +1,81 @@
+<div class="container-fluid">
+
+  <evebox-search-form></evebox-search-form>
+
+  <br/>
+
+  <div ng-if="loading == true" class="row" style="height: 30px;">
+    <div class="col-md-12">
+      <div class="progress progress-striped active">
+        <div class="progress-bar progress-bar-info" role="progressbar"
+             aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"
+             style="width: 100%">
+          <span class="sr-only">Searching</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div ng-if="!loading" class="row" style="height: 30px;">
+    <div class="col-md-6">
+
+      <button id="refreshButton" type="button"
+              class="btn btn-default btn-sm"
+              ng-click="refresh()">Refresh
+      </button>
+
+    </div>
+
+    <div class="col-md-6">
+      <div ng-if="rows.length > 0" style="float: right">
+        <evebox-pager evebox-pager-size="sm"
+          evebox-pager-page="page"
+          evebox-pager-rows="rows"
+          evebox-pager-query-size="querySize"
+          evebox-pager-total="response.hits.total"
+          evebox-pager-change-page="gotoPage"></evebox-pager>
+      </div>
+    </div>
+  </div>
+
+  <br/>
+
+  <div ng-if="rows.length == 0">
+    <div class="alert alert-warning text-center">No events found.</div>
+  </div>
+
+  <table class="table table-responsive event-table"
+         key-table
+         key-table-rows="rows"
+         key-table-active-row-index="activeRowIndex">
+    <tbody ng-repeat="row in rows" class="row-index-{{$index}}">
+    <tr class="clickable" ng-class="row.trClass">
+      <td><span ng-show="$index == activeRowIndex"
+                class="glyphicon glyphicon-chevron-right"></span></td>
+      <td ng-click="toggleOpenEvent(row)"
+          ng-style="columnStyles['timestamp']">{{row.timestamp}}
+      </td>
+      <td ng-click="toggleOpenEvent(row)">{{row.event_type}}</td>
+      <td ng-click="toggleOpenEvent(row)">
+        <dl class="dl-horizontal">
+          <dt>Source:</dt>
+          <dd>{{row.src_ip}}</dd>
+          <dt>Dest:</dt>
+          <dd>{{row.dest_ip}}</dd>
+        </dl>
+      </td>
+      <td ng-click="toggleOpenEvent(row)" ng-style="columnStyles['message']">
+        {{row.message}}
+      </td>
+    </tr>
+    <tr ng-class="row.trClass">
+      <td colspan="5">
+        <div ng-if="row.__open" ng-include="'templates/detail.html'"
+             ng-init="hit = row.source"
+             ng-controller="EventDetailController"></div>
+      </td>
+    </tr>
+    </tbody>
+  </table>
+
+</div>

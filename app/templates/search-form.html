@@ -12,14 +12,12 @@
     </div>
   </div>
 
-  <div ng-if="aggregationOptions" class="form-group">
+  <div ng-if="aggregationOptions" class="form-group form-inline">
     <label tooltip="Server Side Aggregation">Aggregate by:</label>
     <select id="aggregate-by-input" class="form-control input-sm"
-            ng-model="aggregateBy"
-            ng-change="onSearchFormSubmit()">
-      <option value="">-</option>
-      <option value="signature">Signature</option>
-      <option value="signature+src">Signature+Source</option>
+            ng-model="searchForm.aggregateBy"
+            ng-change="onSearchFormSubmit()"
+            ng-options="option.value as option.name for option in aggregationOptions">
     </select>
   </div>
 

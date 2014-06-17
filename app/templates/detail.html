@@ -24,7 +24,8 @@
         <ul class="dropdown-menu" role="menu">
           <li><a href="/#/record/{{hit._id}}" target="_blank">Open in New
             Window</a></li>
-          <li ng-if="Config.dumpy.url"><a href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank">Send
+          <li ng-if="Config.dumpy.url"><a
+            href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank">Send
             to Dumpy</a></li>
         </ul>
       </div>
@@ -61,7 +62,9 @@
       <dt>Type:</dt>
       <dd>{{hit._source.dns.type}}</dd>
       <dt>ID:</dt>
-      <dd>{{hit._source.dns.id}}</dd>
+      <dd><a
+        href="#/events?q=+dns.id:{{hit._source.dns.id}} +{{hit._source.src_ip}} +{{hit._source.dest_ip}}">{{hit._source.dns.id}}</a>
+      </dd>
       <dt>TTL:</dt>
       <dd>{{hit._source.dns.ttl}}</dd>
       <dt>RRType:</dt>
@@ -72,6 +75,7 @@
       <dd>{{hit._source.dns.rrdata}}</dd>
     </dl>
 
+    <!-- Event type: TLS. -->
     <dl ng-if="hit._source.event_type == 'tls'" class="dl-horizontal">
       <dt>Subject:</dt>
       <dd>{{hit._source.tls.subject}}</dd>
@@ -81,6 +85,14 @@
       <dd>{{hit._source.tls.fingerprint}}</dd>
       <dt>Version:</dt>
       <dd>{{hit._source.tls.version}}</dd>
+    </dl>
+
+    <!-- Event type: HTTP. -->
+    <dl ng-if="hit._source.event_type == 'http'" class="dl-horizontal">
+      <div ng-repeat="(key, val) in hit._source.http">
+        <dt>{{key}}</dt>
+        <dd>{{val}}</dd>
+      </div>
     </dl>
 
   </div>
@@ -101,13 +113,9 @@
       <dd>
         <div class="col-md-3" style="padding: 0px;">
           <div class="input-group">
-            <a href="#/events?q=+{{hit._source.src_ip}}">{{hit._source.src_ip}}</a>
-            <button type="button" class="btn btn-default btn-xs dropdown-toggle"
-                    data-toggle="dropdown"
-                    style="border: 0px;"><span class="caret"></span></button>
-            <ul class="dropdown-menu" role="menu">
-              <li><a href="#/all?q={{hit._source.src_ip}}">Search in all...</a></li>
-            </ul>
+            <a
+              href="#/events?q=+&quot;{{hit._source.src_ip}}&quot;">{{hit._source.src_ip}}</a>
+            <evebox-ip-address-services address="hit._source.src_ip"></evebox-ip-address-services>
           </div>
         </div>
 
@@ -128,13 +136,8 @@
       <dd>
         <div class="col-md-3" style="padding: 0px;">
           <div class="input-group">
-            <a href="#/events?q=+{{hit._source.dest_ip}}">{{hit._source.dest_ip}}</a>
-            <button type="button" class="btn btn-default btn-xs dropdown-toggle"
-                    data-toggle="dropdown"
-                    style="border: 0px;"><span class="caret"></span></button>
-            <ul class="dropdown-menu" role="menu">
-              <li><a href="#/all?q={{hit._source.dest_ip}}">Search in all...</a></li>
-            </ul>
+            <a href="#/events?q=+&quot;{{hit._source.dest_ip}}&quot;">{{hit._source.dest_ip}}</a>
+            <evebox-ip-address-services address="hit._source.dest_ip"></evebox-ip-address-services>
           </div>
         </div>
 

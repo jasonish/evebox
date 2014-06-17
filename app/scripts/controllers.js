@@ -124,7 +124,7 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
 
 });
 
-app.controller("EventDetailController", function($scope, Keyboard, Config) {
+app.controller("EventDetailController", function ($scope, Keyboard, Config) {
 
     console.log("EventDetailController");
 
@@ -134,7 +134,7 @@ app.controller("EventDetailController", function($scope, Keyboard, Config) {
         Keyboard.resetScope($scope);
     });
 
-    Keyboard.scopeBind($scope, ".", function() {
+    Keyboard.scopeBind($scope, ".", function () {
         $("#event-detail-more-button").dropdown('toggle');
     });
 
@@ -486,9 +486,9 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
     };
 
     $scope.changeSortBy = function (what) {
-        if ($scope.sortBy == what) {
+        if ($scope.searchForm.sortBy == what) {
             $location.search("sortByOrder",
-                    $scope.sortByOrder == "desc" ? "asc" : "desc");
+                    $scope.searchForm.sortByOrder == "desc" ? "asc" : "desc");
         }
         else {
             $location.search("sortBy", what);
@@ -579,6 +579,8 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
         $scope.loading = true;
         ElasticSearch.search(request)
             .success($scope.onSearchResponseSuccess)
+            .error(function(error) {
+            })
             .finally(function () {
                 $scope.loading = false;
             });
@@ -587,11 +589,14 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
     $scope.onSearchResponseSuccess = function (response) {
         $scope.response = response;
 
+        console.log(response);
+
         $scope.rows = response.hits.hits.map(function (hit) {
 
             // If row is an event, set the class based on the severity.
             if (hit._source.alert) {
-                var trClass = Util.severityToBootstrapClass(hit._source.alert.severity);
+                var trClass = Util.severityToBootstrapClass(
+                    hit._source.alert.severity);
             }
             else {
                 var trClass = "info";
@@ -602,13 +607,17 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
 
                 source: hit,
 
-                timestamp: moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss"),
+                timestamp: moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss.SSS"),
                 src_ip: Util.printIpAddress(hit._source.src_ip),
                 dest_ip: Util.printIpAddress(hit._source.dest_ip),
                 message: $scope.eventMessage(hit._source),
                 event_type: hit._source.event_type
             };
         });
+
+        $scope.rows = _.sortBy($scope.rows, function (row) {
+            return Util.timestampToFloat(row.source._source.timestamp);
+        }).reverse();
 
         $scope.columnStyles = {
             "timestamp": {"white-space": "nowrap"},
@@ -625,32 +634,12 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
         event.__open = !event.__open;
     };
 
-    $scope.refresh = function() {
+    $scope.refresh = function () {
         $scope.submitSearchRequest($scope.searchRequest);
     };
 
-    $scope.gotoPage = function (what) {
-
-        var last = Math.floor($scope.response.hits.total / $scope.querySize) + 1;
-
-        switch (what) {
-            case "first":
-                $scope.page = 1;
-                break;
-            case "prev":
-                if ($scope.page > 1) {
-                    $scope.page--;
-                }
-                break;
-            case "next":
-                if ($scope.page < last) {
-                    $scope.page++;
-                }
-                break;
-            case "last":
-                $scope.page = last;
-                break;
-        }
+    $scope.gotoPage = function (page) {
+        $scope.page = page;
         $location.search("page", $scope.page);
     };
 
@@ -664,11 +653,6 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
             $scope.toggleOpenEvent($scope.rows[$scope.activeRowIndex]);
         });
     });
-
-});
-
-app.controller("SearchController", function ($scope, ElasticSearch, Config,
-    Keyboard, $location, $routeParams) {
 
     console.log("SearchController");
 
@@ -695,7 +679,8 @@ app.controller("SearchController", function ($scope, ElasticSearch, Config,
             from: Config.elasticSearch.size * (($scope.page || 1) - 1),
             sort: [
                 {"@timestamp": {order: "desc"}}
-            ]
+            ],
+            timeout: 6000
         };
 
         $scope.submitSearchRequest(query);
@@ -717,4 +702,3 @@ app.controller("SearchController", function ($scope, ElasticSearch, Config,
 
     $scope.doSearch();
 });
-

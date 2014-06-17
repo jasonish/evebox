@@ -1,0 +1,18 @@
+<label>
+  {{ (querySize * (page - 1)) + 1 }} to
+  {{ (querySize * (page - 1)) + rows.length }} of
+  {{ total }} events
+</label>
+
+<div class="btn-group">
+  <button type="button" class="btn btn-default"
+          ng-disabled="page == 1" ng-click="gotoPage('first')">
+    &lt;&lt;</button>
+  <button type="button" class="btn btn-default"
+          ng-disabled="page == 1" ng-click="gotoPage('prev')">
+    &lt;</button>
+  <button type="button" class="btn btn-default"
+          ng-click="gotoPage('next')">&gt;</button>
+  <button type="button" class="btn btn-default"
+          ng-click="gotoPage('last')">&gt;&gt;</button>
+</div>

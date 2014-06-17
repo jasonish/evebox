@@ -15,7 +15,8 @@
   <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
   <!-- build:css styles/vendor.css -->
   <!-- bower:css -->
-  <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css" />
+  <link rel="stylesheet"
+        href="bower_components/bootstrap/dist/css/bootstrap.css"/>
   <!-- endbower -->
   <!-- endbuild -->
   <!-- build:css({.tmp,app}) styles/app.css -->
@@ -62,7 +63,7 @@
           href="#/starred">Starred</a>
         </li>
         <li ng-class="{active: $routeParams.view == 'alerts'}"><a
-          href="#/events">Alerts</a></li>
+          href="#/alerts">Alerts</a></li>
 
         <li>
           <a href="" class="dropdown-toggle"
@@ -70,9 +71,9 @@
              data-toggle="dropdown">Other <span
             class="caret"></span></a>
           <ul id="other-menu-dropdown" class="dropdown-menu" role="menu">
-            <li><a href="#/all">All</a></li>
-            <li><a href="#/all?q=event_type:http">HTTP</a></li>
-            <li><a href="#/all?q=event_type:dns">DNS</a></li>
+            <li><a href="#/events">All</a></li>
+            <li><a href="#/events?q=+event_type:http">HTTP</a></li>
+            <li><a href="#/events?q=+event_type:dns">DNS</a></li>
           </ul>
         </li>
 
@@ -90,7 +91,7 @@
   </div>
 </div>
 
-<div ng-include="'views/about.html'"></div>
+<div ng-include="'templates/about.html'"></div>
 
 <div ng-view=""></div>
 

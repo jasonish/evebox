@@ -25,6 +25,14 @@
  */
 app.factory("Config", function ($http, $location) {
 
+    var defaultConfig = {
+        "elasticSearch": {
+            "url": "http://" + window.location.hostname + ":9200",
+            "size": 100,
+            "timeout": 6000
+        }
+    };
+
     var serverConfig = {};
     var localConfig = {};
 
@@ -32,12 +40,7 @@ app.factory("Config", function ($http, $location) {
         serverConfig = config;
     }
     catch (error) {
-        serverConfig = {
-            elasticSearch: {
-                url: "http://" + window.location.hostname + ":9200",
-                size: 100
-            }
-        }
+        serverConfig = {};
     }
 
     if ("config" in localStorage) {
@@ -45,6 +48,7 @@ app.factory("Config", function ($http, $location) {
     }
 
     service = {};
+    _.merge(service, defaultConfig);
     _.merge(service, serverConfig);
     _.merge(service, localConfig);
 
@@ -165,6 +169,12 @@ app.factory("Util", function () {
         }
         addr = addr.replace(/:::+/g, "::");
         return addr;
+    };
+
+    service.timestampToFloat = function(timestamp) {
+        var usecs = timestamp.match(/\.(\d+)/)[1] / 1000000;
+        var secs = moment(timestamp).unix();
+        return secs + usecs;
     };
 
     return service;

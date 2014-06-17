@@ -28,9 +28,9 @@ app.config(function ($routeProvider) {
         templateUrl: "templates/record.html"
     });
 
-    $routeProvider.when("/all", {
+    $routeProvider.when("/events", {
         controller: "AllEventsController",
-        templateUrl: "templates/all.html"
+        templateUrl: "templates/events.html"
     });
 
     $routeProvider.when("/:view", {
@@ -70,22 +70,25 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     $scope.toJson = Util.toJson;
     $scope.view = $routeParams.view;
 
-    // Use the provided aggregateBy, if none provided use the default as
-    // provided by the user.
-    if ("aggregateBy" in $routeParams) {
-        $scope.aggregateBy = $routeParams.aggregateBy;
-    }
-    else if ($scope.view == "inbox") {
-        $scope.aggregateBy = Config.defaultInboxAggregation || "";
-    }
-    else {
-        $scope.aggregateBy = "";
-    }
-
-    $scope.sortBy = $routeParams.sortBy || "last";
-    $scope.sortByOrder = $routeParams.sortByOrder || "desc";
-    $scope.userQuery = $routeParams.q || "";
-    $scope.page = $routeParams.page || 1;
+    /* Model for search form.  Also includes parameters not available in the
+     * search form, but still used to build the query. */
+    $scope.searchForm = {
+        userQuery: $routeParams.q || "",
+        aggregateBy: (function () {
+            if ("aggregateBy" in $routeParams) {
+                return $routeParams.aggregateBy;
+            }
+            else if ($scope.view == "inbox") {
+                return Config.defaultInboxAggregation || "";
+            }
+            else {
+                return "";
+            }
+        })(),
+        sortBy: $routeParams.sortBy || "last",
+        sortByOrder: $routeParams.sortByOrder || "desc",
+        page: $routeParams.page || 1
+    };
 
     // Setup the search filters.
     $scope.filters = [
@@ -115,6 +118,22 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             }
         });
     }
+
+    // Model for search form aggregation options.
+    $scope.aggregationOptions = [
+        {
+            name: "",
+            value: ""
+        },
+        {
+            name: "Signature",
+            value: "signature"
+        },
+        {
+            name: "Signature+Source",
+            value: "signature+src"
+        }
+    ];
 
     $scope.displayErrorMessage = function (msg) {
         $scope.errorMessage = msg;
@@ -356,13 +375,16 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
      * Update the URL so the back-button works as expected.
      */
     $scope.onSearchFormSubmit = function () {
+
+        console.log("onSearchFormSubmit");
+
         var searchParams = {};
 
-        if ($scope.userQuery) {
-            searchParams.q = $scope.userQuery;
+        if ($scope.searchForm.userQuery) {
+            searchParams.q = $scope.searchForm.userQuery;
         }
 
-        searchParams.aggregateBy = $scope.aggregateBy;
+        searchParams.aggregateBy = $scope.searchForm.aggregateBy;
 
         $location.search(searchParams);
     };
@@ -375,7 +397,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                         bool: {
                             must: {
                                 query_string: {
-                                    query: $scope.userQuery || "*"
+                                    query: $scope.searchForm.userQuery || "*"
                                 }
                             }
                         }
@@ -393,7 +415,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             "and": $scope.filters
         };
 
-        if ($scope.aggregateBy == "signature+src") {
+        if ($scope.searchForm.aggregateBy == "signature+src") {
             delete(request.from);
             request.size = 0;
             request.aggs = {
@@ -418,7 +440,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 }
             }
         }
-        else if ($scope.aggregateBy == "signature") {
+        else if ($scope.searchForm.aggregateBy == "signature") {
             delete(request.from);
             request.size = 0;
             request.aggs = {
@@ -464,7 +486,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
         $scope.aggregations = [];
 
-        if ($scope.aggregateBy == "signature+src") {
+        if ($scope.searchForm.aggregateBy == "signature+src") {
             _.forEach(response.aggregations.signature.buckets, function (signature) {
                 _.forEach(signature.source_addrs.buckets, function (addr) {
                     $scope.aggregations.push({
@@ -476,7 +498,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 });
             });
         }
-        else if ($scope.aggregateBy == "signature") {
+        else if ($scope.searchForm.aggregateBy == "signature") {
             _.forEach(response.aggregations.signature.buckets, function (signature) {
                 $scope.aggregations.push({
                     "signature": signature.key,
@@ -486,7 +508,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             });
         }
 
-        switch ($scope.sortBy) {
+        switch ($scope.searchForm.sortBy) {
             case "last":
                 $scope.aggregations = _.sortBy($scope.aggregations, function (agg) {
                     return agg.last_timestamp;
@@ -508,7 +530,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 });
                 break;
         }
-        if ($scope.sortByOrder == "desc") {
+        if ($scope.searchForm.sortByOrder == "desc") {
             $scope.aggregations = $scope.aggregations.reverse();
         }
 
@@ -585,7 +607,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         delete($scope.buckets);
         $scope.activeRowIndex = 0;
 
-        if ($scope.aggregateBy) {
+        if ($scope.searchForm.aggregateBy) {
             $scope.buckets = $scope.response.aggregations.signature.buckets;
             $scope.handleAggregateResponse(response);
             return;
@@ -676,7 +698,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.userQuery || "*"
+                            query: $scope.searchForm.userQuery || "*"
                         }
                     },
                     filter: {
@@ -718,7 +740,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.userQuery || "*"
+                            query: $scope.searchForm.userQuery || "*"
                         }
                     }
                 }
@@ -752,28 +774,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         event.__selected = !event.__selected;
     };
 
-    $scope.gotoPage = function (what) {
-
-        var last = Math.floor($scope.hits.total / $scope.querySize) + 1;
-
-        switch (what) {
-            case "first":
-                $scope.page = 1;
-                break;
-            case "prev":
-                if ($scope.page > 1) {
-                    $scope.page--;
-                }
-                break;
-            case "next":
-                if ($scope.page < last) {
-                    $scope.page++;
-                }
-                break;
-            case "last":
-                $scope.page = last;
-                break;
-        }
+    $scope.gotoPage = function (page) {
+        $scope.page = page;
         $location.search("page", $scope.page);
     };
 
@@ -805,8 +807,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
     Keyboard.scopeBind($scope, "/", function (e) {
         e.preventDefault();
-        $("#query-input").focus();
-        $("#query-input").select();
+        $("#user-query-input").focus();
+        $("#user-query-input").select();
     });
 
     Keyboard.scopeBind($scope, "^", function () {
@@ -878,18 +880,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     Keyboard.scopeBind($scope, "#", function (e) {
         $scope.$apply(function () {
             $scope.deleteSelected()
-        });
-    });
-
-    Keyboard.scopeBind($scope, ">", function (e) {
-        $scope.$apply(function () {
-            $scope.gotoPage("next");
-        });
-    });
-
-    Keyboard.scopeBind($scope, "<", function (e) {
-        $scope.$apply(function () {
-            $scope.gotoPage("prev");
         });
     });
 
