@@ -44,7 +44,7 @@ app.config(function ($routeProvider) {
 
 app.controller('AlertsController', function (Keyboard, $route, $location,
     $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch, Util,
-    $modal, Cache) {
+    $modal, Cache, EventRepository) {
 
     // Debugging.
     scope = $scope;
@@ -141,20 +141,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         $("#errorMessage").delay(3000).fadeOut("slow");
     };
 
-    $scope.toggleStar = function (item) {
-
-        var tag = "starred";
-
-        if (item._source.tags.indexOf(tag) == -1) {
-            item._source.tags.push(tag);
-            return ElasticSearch.addTag(item, tag);
-        }
-        else {
-            item._source.tags = _.filter(item._source.tags, function (tag) {
-                return tag != "starred";
-            });
-            return ElasticSearch.removeTag(item, tag);
-        }
+    $scope.toggleStar = function (event) {
+        EventRepository.toggleStar(event);
     };
 
     $scope.selectAll = function () {
@@ -207,7 +195,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     $scope.archiveEvent = function (event) {
-        ElasticSearch.removeTag(event, "inbox")
+        EventRepository.removeTag(event, "inbox")
             .success(function () {
                 $scope.removeEvent(event);
                 if ($scope.hits.hits.length == 0) {
@@ -265,14 +253,13 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     $scope.deleteEvent = function (event) {
-        ElasticSearch.delete(event._index, event._type, event._id)
+        EventRepository.deleteEvent(event)
             .success(function () {
                 $scope.removeEvent(event);
 
                 if ($scope.hits.hits.length == 0) {
                     $scope.refresh();
                 }
-
             });
     };
 
@@ -322,19 +309,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         $(id).blur();
     };
 
-    /** Convert an alert severity into a Bootstrap class for colorization. */
-    $scope.severityToBootstrapClass = function (severity) {
-        switch (severity) {
-            case 1:
-                return "danger";
-            case 2:
-                return "warning";
-            default:
-                return "info";
-        }
-    };
-
-    var setActiveAvent = function (event) {
+    var setActiveEvent = function (event) {
         if (_.isNumber(event)) {
             $scope.activeRowIndex = event;
         }
@@ -365,7 +340,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
      * Refreshes the current search request to look for new events.
      */
     $scope.refresh = function () {
-        $(".results").addClass("loading");
         $scope.submitSearchRequest();
     };
 
@@ -886,14 +860,14 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     Keyboard.scopeBind($scope, "H", function (e) {
         $scope.$apply(function () {
             $(window).scrollTop(0);
-            setActiveAvent(0);
+            setActiveEvent(0);
         });
     });
 
     Keyboard.scopeBind($scope, "G", function (e) {
         $scope.$apply(function () {
             $(window).scrollTop($(document).height())
-            setActiveAvent($scope.hits.hits.length - 1);
+            setActiveEvent($scope.hits.hits.length - 1);
         });
     });
 

@@ -8,9 +8,9 @@
 
   <br/>
 
-  <div class="results" ng-if="response.aggregations"
-       ng-include="'templates/aggregate-alerts.html'"></div>
-  <div class="results" ng-if="response.aggregations == undefined"
-       ng-include="'templates/flat-alerts.html'"></div>
+  <div class="results" ng-class="{loading: loading == true}" ng-if="response.aggregations"
+       ng-include="'templates/alerts-aggregated.html'"></div>
+  <div class="results"  ng-class="{loading: loading == true}" ng-if="response.aggregations == undefined"
+       ng-include="'templates/alerts-flat.html'"></div>
 
 </div>

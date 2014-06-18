@@ -171,7 +171,7 @@ app.factory("Util", function () {
         return addr;
     };
 
-    service.timestampToFloat = function(timestamp) {
+    service.timestampToFloat = function (timestamp) {
         var usecs = timestamp.match(/\.(\d+)/)[1] / 1000000;
         var secs = moment(timestamp).unix();
         return secs + usecs;
@@ -311,6 +311,72 @@ app.factory("ElasticSearch", function ($http, Config) {
 });
 
 /**
+ * EventRepository service.
+ *
+ * The idea of this service is provide a level of abstraction over
+ * ElasticSearch.
+ */
+app.factory("EventRepository", function (ElasticSearch, $q) {
+
+    var service = {};
+
+    /**
+     * Delete the provided event.
+     *
+     * @param event The event to delete.
+     * @returns HttpPromise.
+     */
+    service.deleteEvent = function (event) {
+        return ElasticSearch.delete(event._index, event._type, event._id);
+    };
+
+    /**
+     * Remove a tag from an event.
+     *
+     * @param event Event to remove tag from.
+     * @param tag The tag to remove.
+     * @returns HttpPromise.
+     */
+    service.removeTag = function (event, tag) {
+        return ElasticSearch.removeTag(event, tag)
+            .success(function (response) {
+                _.remove(event._source.tags, function (t) {
+                    return t === tag;
+                });
+            });
+    };
+
+    /**
+     * Toggle a tag on event - remove it if it exists, otherwise add it.
+     *
+     * @param event Event to toggle tag on.
+     * @param tag Tag to toggle.
+     * @returns HttpPromise.
+     */
+    service.toggleTag = function (event, tag) {
+        if (_.indexOf(event._source.tags, tag) > -1) {
+            return service.removeTag(event, tag);
+        }
+        else {
+            return ElasticSearch.addTag(event, tag)
+                .success(function (response) {
+                    event._source.tags.push(tag);
+                });
+        }
+    };
+
+    /**
+     * Toggle the "starred" tag on an event.
+     */
+    service.toggleStar = function (event) {
+        return service.toggleTag(event, "starred");
+    };
+
+    return service;
+
+});
+
+/**
  * A service for keyboard bindings (wrapping Mousetrap) that will track
  * the scope a binding was created in for per scope cleanup.
  */
@@ -351,14 +417,14 @@ app.factory("Keyboard", function () {
 
 });
 
-app.factory("Cache", function() {
+app.factory("Cache", function () {
 
     var service = {
         caches: {}
     };
 
     // Return a cache of the given name.
-    service.get = function(name) {
+    service.get = function (name) {
         if (service.caches[name] === undefined) {
             service.caches[name] = {};
         }

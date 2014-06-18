@@ -76,7 +76,7 @@
            ng-class="{loading: state == 'loading'}">
       <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits">
       <tr class="hit-row"
-          ng-class="severityToBootstrapClass(hit._source.alert.severity)">
+          ng-class="Util.severityToBootstrapClass(hit._source.alert.severity)">
         <td>
             <span ng-show="$index == activeRowIndex"
                   class="glyphicon glyphicon-chevron-right"></span>

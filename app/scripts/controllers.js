@@ -19,7 +19,7 @@
  */
 
 app.controller("NavBarController", function ($routeParams, $scope, $modal,
-    $location, Keyboard) {
+    $location, Keyboard, EventRepository, $timeout) {
 
     $scope.$routeParams = $routeParams;
 
@@ -124,11 +124,42 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
 
 });
 
-app.controller("EventDetailController", function ($scope, Keyboard, Config) {
+app.controller("EventDetailController", function ($scope, Keyboard, Config,
+    ElasticSearch, EventRepository) {
 
     console.log("EventDetailController");
 
     $scope.Config = Config;
+
+    $scope.archiveEvent = function (event) {
+        if ($scope.$parent.archiveEvent === undefined) {
+            ElasticSearch.removeTag(event, "inbox")
+                .success(function (response) {
+                    _.remove(event._source.tags, function (tag) {
+                        return tag == "inbox";
+                    })
+                });
+        }
+        else {
+            $scope.$parent.archiveEvent(event);
+        }
+    };
+
+    $scope.deleteEvent = function (event) {
+        if ($scope.$parent.deleteEvent === undefined) {
+            EventRepository.deleteEvent(event)
+                .success(function (response) {
+                    $scope.$emit("eventDeleted", event);
+                });
+        }
+        else {
+            $scope.$parent.deleteEvent(event);
+        }
+    };
+
+    $scope.toggleStar = function (event) {
+        EventRepository.toggleStar(event);
+    };
 
     $scope.$on("$destroy", function () {
         Keyboard.resetScope($scope);
@@ -214,7 +245,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.userQuery || "*"
+                            query: $scope.searchForm.userQuery || "*"
                         }
                     }
                 }
@@ -278,7 +309,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.userQuery || "*"
+                            query: $scope.searchForm.userQuery || "*"
                         }
                     },
                     filter: {
@@ -409,7 +440,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.userQuery || "*"
+                            query: $scope.searchForm.userQuery || "*"
                         }
                     },
                     filter: {
@@ -453,7 +484,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
                 filtered: {
                     query: {
                         query_string: {
-                            query: $scope.userQuery || "*"
+                            query: $scope.searchForm.userQuery || "*"
                         }
                     },
                     filter: {
@@ -556,7 +587,7 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
     $scope.querySize = Config.elasticSearch.size;
 
     $scope.searchForm = {
-        userQuery: ""
+        userQuery: $routeParams.q || ""
     };
 
     $scope.filters = [
@@ -579,7 +610,7 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
         $scope.loading = true;
         ElasticSearch.search(request)
             .success($scope.onSearchResponseSuccess)
-            .error(function(error) {
+            .error(function (error) {
             })
             .finally(function () {
                 $scope.loading = false;
@@ -654,12 +685,6 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
         });
     });
 
-    console.log("SearchController");
-
-    SearchController = $scope;
-
-    $scope.searchForm.userQuery = $routeParams.q || "";
-
     $scope.doSearch = function () {
 
         var query = {
@@ -689,6 +714,12 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
     $scope.onSearchFormSubmit = function () {
         $location.search("q", $scope.searchForm.userQuery);
     };
+
+    $scope.$on("eventDeleted", function (e, event) {
+        _.remove($scope.rows, function (row) {
+            return row.source === event;
+        });
+    });
 
     $scope.$on("$destroy", function () {
         Keyboard.resetScope($scope);
