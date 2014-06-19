@@ -434,3 +434,27 @@ app.factory("Cache", function () {
     return service;
 
 });
+
+app.factory("NotificationMessageService", function ($timeout) {
+
+    var service = {};
+
+    service.queue = [];
+
+    service.add = function (level, message) {
+        var entry = {
+            level: level,
+            message: message
+        };
+
+        service.queue.push(entry);
+
+        $timeout(function () {
+            _.remove(service.queue, function (item) {
+                return item === entry;
+            })
+        }, 1500);
+    };
+
+    return service;
+});

@@ -92,6 +92,15 @@
   </div>
 </div>
 
+<evebox-notification-message id="evebox-notification-message">
+  <div ng-if="NotificationMessageService.queue.length > 0">
+    <div class="label-{{message.level}}"
+         ng-repeat="message in NotificationMessageService.queue track by $index">
+      {{message.message}}
+    </div>
+  </div>
+</evebox-notification-message>
+
 <div ng-include="'templates/about.html'"></div>
 
 <div ng-view=""></div>

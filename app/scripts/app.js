@@ -29,7 +29,7 @@ app.config(function ($routeProvider) {
     });
 
     $routeProvider.when("/events", {
-        controller: "AllEventsController",
+        controller: "EventsController",
         templateUrl: "templates/events.html"
     });
 
@@ -44,7 +44,7 @@ app.config(function ($routeProvider) {
 
 app.controller('AlertsController', function (Keyboard, $route, $location,
     $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch, Util,
-    $modal, Cache, EventRepository) {
+    $modal, Cache, EventRepository, NotificationMessageService) {
 
     // Debugging.
     scope = $scope;
@@ -135,12 +135,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         }
     ];
 
-    $scope.displayErrorMessage = function (msg) {
-        $scope.errorMessage = msg;
-        $("#errorMessage").fadeIn();
-        $("#errorMessage").delay(3000).fadeOut("slow");
-    };
-
     $scope.toggleStar = function (event) {
         EventRepository.toggleStar(event);
     };
@@ -149,14 +143,12 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         _.forEach($scope.hits.hits, function (hit) {
             hit.__selected = true;
         });
-        $("button").blur();
     };
 
     $scope.deselectAll = function () {
         _.forEach($scope.hits.hits, function (hit) {
             hit.__selected = false;
         });
-        $("button").blur();
     };
 
     $scope.toggleOpenEvent = function (event) {
@@ -206,7 +198,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
     $scope.archiveSelected = function () {
         if ($routeParams.view != "inbox") {
-            return $scope.displayErrorMessage("Archive not valid in this context.");
+            return NotificationMessageService.add("warning", "Archive not valid in this context");
         }
 
         var toArchive = _.filter($scope.response.hits.hits, function (hit) {
@@ -214,7 +206,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         });
 
         if (toArchive.length == 0) {
-            return $scope.displayErrorMessage("No events selected.");
+            return NotificationMessageService.add("warning", "No events selected.");
         }
 
         ElasticSearch.bulkRemoveTag(toArchive, "inbox")
@@ -444,11 +436,11 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             $(window).scrollTop(0);
         }).error(function (error) {
             if (error.status == 0) {
-                $scope.displayErrorMessage(
+                NotificationMessageService.add("danger",
                         "No response from Elastic Search at " + Config.elasticSearch.url);
             }
             else {
-                $scope.displayErrorMessage(
+                NotificationMessageService.add("danger",
                         "Error: " + error.status + " " + error.statusText);
             }
         }).finally(function () {
@@ -662,7 +654,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
     $scope.archiveByQuery = function () {
         if ($scope.response.hits.total == 0) {
-            $scope.displayErrorMessage("No events to archive.");
+            NotificationMessageService.add("warning", "No events to archive.");
             return;
         }
 
@@ -703,7 +695,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
     $scope.deleteByQuery = function () {
         if ($scope.response.hits.total == 0) {
-            $scope.displayErrorMessage("No events to delete.");
+            NotificationMessageService.add("warning", "No events to delete.");
             return;
         }
 
@@ -777,12 +769,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         $scope.$apply(function () {
             $scope.refresh();
         })
-    });
-
-    Keyboard.scopeBind($scope, "/", function (e) {
-        e.preventDefault();
-        $("#user-query-input").focus();
-        $("#user-query-input").select();
     });
 
     Keyboard.scopeBind($scope, "^", function () {

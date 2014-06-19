@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-app.directive("eveboxIpAddressServices", function() {
+app.directive("eveboxIpAddressServices", function () {
 
     return {
 
@@ -34,13 +34,44 @@ app.directive("eveboxIpAddressServices", function() {
 
 });
 
-app.directive("eveboxSearchForm", function() {
+app.directive("eveboxNotificationMessage", function() {
 
     return {
 
         restrict: "EA",
 
-        templateUrl: "templates/search-form.html"
+        controller: function($scope, NotificationMessageService) {
+
+            x = NotificationMessageService;
+
+            $scope.NotificationMessageService = NotificationMessageService;
+
+        }
+    };
+
+});
+
+app.directive("eveboxSearchForm", function (Keyboard) {
+
+    return {
+
+        restrict: "EA",
+
+        templateUrl: "templates/search-form.html",
+
+        controller: function ($scope) {
+
+            $scope.$on("$destroy", function () {
+                Keyboard.resetScope($scope);
+            });
+
+            Keyboard.scopeBind($scope, "/", function (e) {
+                e.preventDefault();
+                $("#user-query-input").focus();
+                $("#user-query-input").select();
+            });
+
+        }
 
     };
 
@@ -93,8 +124,8 @@ app.directive("eveboxPager", function () {
                 Keyboard.resetScope($scope);
             });
 
-            Keyboard.scopeBind($scope, "{", function() {
-                $scope.$apply(function() {
+            Keyboard.scopeBind($scope, "{", function () {
+                $scope.$apply(function () {
                     $scope.gotoPage("first");
                 })
             });
@@ -111,8 +142,8 @@ app.directive("eveboxPager", function () {
                 });
             });
 
-            Keyboard.scopeBind($scope, "}", function() {
-                $scope.$apply(function() {
+            Keyboard.scopeBind($scope, "}", function () {
+                $scope.$apply(function () {
                     $scope.gotoPage("last");
                 })
             });

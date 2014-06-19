@@ -176,7 +176,7 @@ app.controller("ModalProgressController", function ($scope, jobs) {
 });
 
 app.controller("AggregatedController", function ($scope, $location, Keyboard,
-    ElasticSearch, $modal, $routeParams) {
+    ElasticSearch, $modal, $routeParams, NotificationMessageService) {
 
     console.log("AggregatedController");
 
@@ -352,7 +352,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
         var selectedRows = _.filter($scope.aggregations, "__selected");
 
         if (selectedRows.length == 0) {
-            return $scope.displayErrorMessage("No events selected.");
+            return NotificationMessageService.add("warning", "No events selected.");
         }
 
         var archiveJobs = selectedRows.map(function (row) {
@@ -427,7 +427,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
 
     $scope.archiveByQuery = function () {
         if ($scope.response.hits.total == 0) {
-            $scope.displayErrorMessage("No events to archive.");
+            NotificationMessageService.add("warning", "No events to archive.");
             return;
         }
 
@@ -471,7 +471,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
 
     $scope.deleteByQuery = function () {
         if ($scope.response.hits.total == 0) {
-            $scope.displayErrorMessage("No events to delete.");
+            NotificationMessageService.add("warning", "No events to delete.");
             return;
         }
 
@@ -574,12 +574,12 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
     });
 });
 
-app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
+app.controller("EventsController", function ($scope, Util, Keyboard, Config,
     ElasticSearch, $routeParams, $location) {
 
-    console.log("AllEventsController");
+    console.log("EventsController");
 
-    AllEventsController = $scope;
+    EventsController = $scope;
 
     $scope.Util = Util;
 
@@ -723,12 +723,6 @@ app.controller("AllEventsController", function ($scope, Util, Keyboard, Config,
 
     $scope.$on("$destroy", function () {
         Keyboard.resetScope($scope);
-    });
-
-    Keyboard.scopeBind($scope, "/", function (e) {
-        e.preventDefault();
-        $("#user-query-input").focus();
-        $("#user-query-input").select();
     });
 
     $scope.doSearch();

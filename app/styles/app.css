@@ -16,7 +16,7 @@ table > tbody > tr.clickable {
     cursor: hand;
 }
 
-#errorMessage {
+#evebox-notification-message {
     position: fixed;
     top: 0px;
     margin-left: auto;
