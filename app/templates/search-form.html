@@ -3,7 +3,7 @@
   <div class="form-group">
     <div class="input-group">
       <input id="user-query-input" type="text" class="form-control"
-             ng-model="searchForm.userQuery"/>
+             ng-model="searchModel.userQuery"/>
       <span class="input-group-btn">
         <button class="btn btn-default" type="submit">
           <span class="glyphicon glyphicon-search"></span>
@@ -15,7 +15,7 @@
   <div ng-if="aggregationOptions" class="form-group form-inline">
     <label tooltip="Server Side Aggregation">Aggregate by:</label>
     <select id="aggregate-by-input" class="form-control input-sm"
-            ng-model="searchForm.aggregateBy"
+            ng-model="searchModel.aggregateBy"
             ng-change="onSearchFormSubmit()"
             ng-options="option.value as option.name for option in aggregationOptions">
     </select>

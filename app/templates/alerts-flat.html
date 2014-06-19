@@ -52,7 +52,7 @@
            style="float: right; overflow: hidden; margin: 0px; vertical-align: middle">
 
         <evebox-pager evebox-pager-size="sm"
-                      evebox-pager-page="searchForm.page"
+                      evebox-pager-page="searchModel.page"
                       evebox-pager-rows="hits.hits"
                       evebox-pager-query-size="Config.elasticSearch.size"
                       evebox-pager-total="hits.total"
@@ -73,12 +73,15 @@
 
   <div class="col-md-12">
     <table class="table table-responsive event-table"
-           ng-class="{loading: state == 'loading'}">
-      <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits">
+           ng-class="{loading: state == 'loading'}"
+      key-table
+      key-table-rows="resultsModel.rows"
+      key-table-active-row-index="resultsModel.activeRowIndex">
+      <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits" class="row-index-{{$index}}">
       <tr class="hit-row"
           ng-class="Util.severityToBootstrapClass(hit._source.alert.severity)">
         <td>
-            <span ng-show="$index == activeRowIndex"
+            <span ng-show="$index == resultsModel.activeRowIndex"
                   class="glyphicon glyphicon-chevron-right"></span>
         </td>
         <td><input tabindex="-1"
