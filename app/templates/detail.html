@@ -95,6 +95,14 @@
       </div>
     </dl>
 
+    <!-- Event type: File info. -->
+    <dl ng-if="hit._source.event_type == 'fileinfo'" class="dl-horizontal">
+      <div ng-repeat="(key, val) in hit._source.fileinfo">
+        <dt>{{key}}</dt>
+        <dd>{{val}}</dd>
+      </div>
+    </dl>
+
   </div>
 </div>
 
@@ -111,45 +119,51 @@
 
       <dt>Source:</dt>
       <dd>
-        <div class="col-md-3" style="padding: 0px;">
+        <div class="col-md-4" style="padding: 0px;">
           <div class="input-group">
             <a
               href="#/events?q=+&quot;{{hit._source.src_ip}}&quot;">{{hit._source.src_ip}}</a>
-            <evebox-ip-address-services address="hit._source.src_ip"></evebox-ip-address-services>
+            <evebox-ip-address-services
+              address="hit._source.src_ip"></evebox-ip-address-services>
           </div>
         </div>
 
         <!-- Source port/ICMP type... -->
-        <div ng-if="hit._source.proto == 'ICMP'">
-          <b>ICMP Type:</b>
-          {{hit._source.icmp_type}}
-        </div>
-        <div
-          ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
-          <b>Port:</b>
-          {{hit._source.src_port}}
+        <div class="col-md-2">
+          <div ng-if="hit._source.proto == 'ICMP'">
+            <b>ICMP Type:</b>
+            {{hit._source.icmp_type}}
+          </div>
+          <div
+            ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
+            <b>Port:</b>
+            {{hit._source.src_port}}
+          </div>
         </div>
 
       </dd>
 
       <dt>Destination:</dt>
       <dd>
-        <div class="col-md-3" style="padding: 0px;">
+        <div class="col-md-4" style="padding: 0px;">
           <div class="input-group">
             <a href="#/events?q=+&quot;{{hit._source.dest_ip}}&quot;">{{hit._source.dest_ip}}</a>
-            <evebox-ip-address-services address="hit._source.dest_ip"></evebox-ip-address-services>
+            <evebox-ip-address-services
+              address="hit._source.dest_ip"></evebox-ip-address-services>
           </div>
         </div>
 
         <!-- Destination port/ICMP code... -->
-        <div ng-if="hit._source.proto == 'ICMP'">
-          <b>ICMP Code:</b>
-          {{hit._source.icmp_code}}
-        </div>
-        <div
-          ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
-          <b>Port:</b>
-          {{hit._source.dest_port}}
+        <div class="col-md-2">
+          <div ng-if="hit._source.proto == 'ICMP'">
+            <b>ICMP Code:</b>
+            {{hit._source.icmp_code}}
+          </div>
+          <div
+            ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
+            <b>Port:</b>
+            {{hit._source.dest_port}}
+          </div>
         </div>
 
       </dd>

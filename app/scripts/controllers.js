@@ -176,7 +176,7 @@ app.controller("ModalProgressController", function ($scope, jobs) {
 });
 
 app.controller("AggregatedController", function ($scope, $location, Keyboard,
-    ElasticSearch, $modal, $routeParams, NotificationMessageService) {
+    ElasticSearch, $modal, $routeParams, NotificationMessageService, Util) {
 
     console.log("AggregatedController");
 
@@ -294,6 +294,7 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
         $scope.deleteRow(row)
             .success(function (response) {
                 _.remove($scope.aggregations, row);
+                NotificationMessageService.add("info", Util.formatString("Deleted: {0}", row.signature));
                 if ($scope.activeRowIndex > 0 && _.indexOf($scope.aggregations, row) < $scope.activeRowIndex) {
                     $scope.activeRowIndex--;
                 }
@@ -502,9 +503,9 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
             }
         };
 
-        if ($routeParams.view == "inbox") {
-            query.query.filtered.filter.and.push({term: {tags: "inbox"}});
-        }
+        _.forEach($scope.filters, function (filter) {
+            query.query.filter.and.push(filter);
+        });
 
         ElasticSearch.deleteByQuery(query)
             .success(function (response) {
@@ -574,6 +575,14 @@ app.controller("AggregatedController", function ($scope, $location, Keyboard,
     });
 });
 
+app.controller("InboxController", function($scope) {
+
+    console.log("InboxController");
+
+    InboxController = $scope;
+
+});
+
 app.controller("EventsController", function ($scope, Util, Keyboard, Config,
     ElasticSearch, $routeParams, $location) {
 
@@ -581,8 +590,8 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
 
     EventsController = $scope;
 
+    $scope.$routeParams = $routeParams;
     $scope.Util = Util;
-
     $scope.page = $routeParams.page || 1;
     $scope.querySize = Config.elasticSearch.size;
 

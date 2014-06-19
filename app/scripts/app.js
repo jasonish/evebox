@@ -28,6 +28,11 @@ app.config(function ($routeProvider) {
         templateUrl: "templates/record.html"
     });
 
+    $routeProvider.when("/events/:view", {
+        controller: "EventsController",
+        templateUrl: "templates/events.html"
+    });
+
     $routeProvider.when("/events", {
         controller: "EventsController",
         templateUrl: "templates/events.html"
