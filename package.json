@@ -20,7 +20,7 @@
     "grunt-jasmine-node": "^0.2.1",
     "grunt-karma": "^0.8.3",
     "grunt-newer": "~0.6.1",
-    "grunt-ngmin": "~0.0.2",
+    "grunt-ngmin": "0.0.3",
     "grunt-rev": "~0.1.0",
     "grunt-svgmin": "~0.2.0",
     "grunt-text-replace": "^0.3.11",

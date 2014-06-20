@@ -582,12 +582,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             });
     };
 
-
-    /** Blur/unfocus an item by ID. */
-    $scope.blurById = function (id) {
-        $(id).blur();
-    };
-
     /**
      * Refreshes the current search request to look for new events.
      */

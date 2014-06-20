@@ -9,6 +9,9 @@ vendor-bower-components:
 
 	git add -f app/bower_components/bootstrap/dist/fonts
 
+package:
+	grunt package
+
 # Basic clean - build artifacts, backup files...
 clean:
 	-grunt clean

@@ -1,16 +1,16 @@
 <div ng-controller="AggregatedAlertsController">
   <div class="row">
     <div class="col-md-5">
-      <div class="btn-group" style="vertical-align: middle;">
+      <div class="btn-group" auto-blur style="vertical-align: middle;">
         <button id="refreshButton" type="button" class="btn btn-default btn-sm"
                 ng-click="refresh()">Refresh
         </button>
-        <button ng-disabled="aggregations == 0" id="selectAllButton"
+        <button ng-disabled="resultsModel.rows.length == 0" id="selectAllButton"
                 type="button"
                 class="btn btn-default btn-sm"
                 ng-click="selectAll()">Select All
         </button>
-        <button ng-disabled="aggregations == 0" id="deselectAllButton"
+        <button ng-disabled="resultsModel.rows.length == 0" id="deselectAllButton"
                 type="button"
                 class="btn btn-default btn-sm"
                 ng-click="deselectAll()">
@@ -89,7 +89,7 @@
       <td><span ng-show="$index == resultsModel.activeRowIndex"
                 class="glyphicon glyphicon-chevron-right"></span></td>
       <td>
-        <input type="checkbox" ng-model="row.__selected"/>
+        <input type="checkbox" ng-model="row.__selected" auto-blur/>
       </td>
       <td ng-click="openAggregation(row)">{{row.count}}</td>
       <td ng-click="openAggregation(row)">{{row.signature}}</td>

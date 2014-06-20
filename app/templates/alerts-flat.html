@@ -1,16 +1,16 @@
 <div class="row">
   <div class="col-md-5">
-    <div class="btn-group btn-group-sm" style="vertical-align: middle;">
+    <div class="btn-group btn-group-sm" auto-blur style="vertical-align: middle;">
       <button id="refreshButton" type="button"
               class="btn btn-default btn-sm"
               ng-click="refresh()">Refresh
       </button>
-      <button ng-disabled="hits.hits.length == 0"
+      <button ng-disabled="resultsModel.rows.length == 0"
               type="button"
               class="btn btn-default"
               ng-click="selectAll()">Select All
       </button>
-      <button ng-disabled="hits.hits.length == 0"
+      <button ng-disabled="resultsModel.rows.length == 0"
               type="button"
               class="btn btn-default"
               ng-click="deselectAll()">
@@ -88,8 +88,7 @@
                    type="checkbox"
                    id="checkbox-{{hit._id}}"
                    ng-model="hit.__selected"
-                   ng-change="blurById('#checkbox-{{hit._id}}')"
-                   ng-checked="hit.__selected"/>
+                   ng-checked="hit.__selected" auto-blur/>
         </td>
         <td>
             <span ng-show="hit._source.tags.indexOf('starred') == -1"

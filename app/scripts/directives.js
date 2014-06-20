@@ -161,6 +161,23 @@ app.directive("eveboxPager", function () {
 
 });
 
+app.directive("autoBlur", function() {
+    return {
+
+        restrict: "A",
+
+        link: function(scope, element, attr) {
+            element.find(":input").bind("click", function() {
+                $(this).blur();
+            });
+            element.bind("click", function() {
+                element.blur();
+            })
+        }
+
+    };
+});
+
 app.directive("keyTable", function () {
 
     directive = {
