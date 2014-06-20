@@ -7,7 +7,7 @@
 // use this if you want to recursively match all subfolders:
 // 'test/spec/**/*.js'
 
-var VERSION = "0.2.0dev"
+var VERSION = "0.2.0"
 
 module.exports = function (grunt) {
 
@@ -234,7 +234,9 @@ module.exports = function (grunt) {
                     {
                         expand: true,
                         cwd: '<%= yeoman.dist %>',
-                        src: ['*.html', 'views/{,*/}*.html'],
+                        src: ['*.html',
+                            'views/{,*/}*.html',
+                            'templates/{,*/}*.html'],
                         dest: '<%= yeoman.dist %>'
                     }
                 ]
@@ -271,6 +273,7 @@ module.exports = function (grunt) {
                             '.htaccess',
                             '*.html',
                             'views/{,*/}*.html',
+                            'templates/{,*/}*.html',
                             'images/{,*/}*.{webp}',
                             'fonts/*',
                             'sample-config.js'
@@ -324,6 +327,13 @@ module.exports = function (grunt) {
             ]
         },
 
+        uglify: {
+            options : {
+                beautify : true,
+                mangle   : false
+            }
+        },
+
         compress: {
             build: {
                 options: {archive: 'build/' + dist + '.zip', mode: 'zip'},
@@ -341,7 +351,7 @@ module.exports = function (grunt) {
 
         replace: {
             another_example: {
-                src: ['app/views/about.html'],
+                src: ['app/templates/about.html'],
                 overwrite: true,
                 replacements: [
                     {
