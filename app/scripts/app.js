@@ -19,7 +19,7 @@
  */
 
 var app = angular.module("app", [
-    "ngRoute", "ngResource", "ui.bootstrap", "ui.bootstrap.modal"]);
+    "ngRoute", "ngResource", "ngSanitize", "ui.bootstrap", "ui.bootstrap.modal"]);
 
 app.config(function ($routeProvider) {
 

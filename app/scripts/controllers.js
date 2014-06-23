@@ -113,8 +113,17 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
                         hit._source.tls.subject;
                     hit.__titleClass = "alert-info";
                 }
+                else if (hit._source.http) {
+                    hit.__title = hit._source.event_type.toUpperCase() + ": " +
+                        hit._source.http.http_method + " " +
+                        hit._source.http.hostname;
+                }
                 else {
                     hit.__title = hit._source.event_type.toUpperCase();
+                    hit.__titleClass = "alert-info";
+                }
+
+                if (!hit.__titleClass) {
                     hit.__titleClass = "alert-info";
                 }
 
@@ -179,7 +188,7 @@ app.controller("ModalProgressController", function ($scope, jobs) {
  * Controller for the all events view.
  */
 app.controller("EventsController", function ($scope, Util, Keyboard, Config,
-    ElasticSearch, $routeParams, $location) {
+    ElasticSearch, $routeParams, $location, $sce) {
 
     console.log("EventsController");
 
@@ -200,12 +209,25 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
         }
     ];
 
-    $scope.activeRowIndex = 0;
+    $scope.resultsModel = {
+        rows: [],
+        activeRowIndex: 0
+    };
 
     $scope.eventMessage = function (event) {
         switch (event.event_type) {
             default:
-                return angular.toJson(event[event.event_type]);
+                var parts = [];
+                _.forIn(event[event.event_type], function (value, key) {
+                    parts.push('<span style="color: #808080;">' +
+                        key +
+                        ':</span> ' +
+                        '<span style="word-break: break-all;">' +
+                        value +
+                        '</span>');
+                });
+                var msg = parts.join("; ");
+                return $sce.trustAsHtml(msg);
         }
     };
 
@@ -224,17 +246,15 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
     $scope.onSearchResponseSuccess = function (response) {
         $scope.response = response;
 
-        console.log(response);
+        $scope.resultsModel.rows = response.hits.hits.map(function (hit) {
 
-        $scope.rows = response.hits.hits.map(function (hit) {
-
-            // If row is an event, set the class based on the severity.
+            // If row is an alert, set the class based on the severity.
             if (hit._source.alert) {
-                var trClass = Util.severityToBootstrapClass(
-                    hit._source.alert.severity);
+                var trClass = [Util.severityToBootstrapClass(
+                    hit._source.alert.severity)];
             }
             else {
-                var trClass = "info";
+                var trClass = ["info"];
             }
 
             return {
@@ -250,18 +270,13 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
             };
         });
 
-        $scope.rows = _.sortBy($scope.rows, function (row) {
+        $scope.resultsModel.rows = _.sortBy($scope.resultsModel.rows, function (row) {
             return Util.timestampToFloat(row.source._source.timestamp);
         }).reverse();
-
-        $scope.columnStyles = {
-            "timestamp": {"white-space": "nowrap"},
-            "message": {"word-break": "break-all"}
-        };
     };
 
     $scope.toggleOpenEvent = function (event) {
-        _.forEach($scope.rows, function (row) {
+        _.forEach($scope.resultsModel.rows, function (row) {
             if (row != event) {
                 row.__open = false;
             }
@@ -309,10 +324,14 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
     };
 
     $scope.$on("eventDeleted", function (e, event) {
-        _.remove($scope.rows, function (row) {
+        _.remove($scope.resultsModel.rows, function (row) {
             return row.source === event;
         });
     });
+
+    $scope.getActiveRow = function () {
+        return $scope.resultsModel.rows[$scope.resultsModel.activeRowIndex];
+    };
 
     $scope.$on("$destroy", function () {
         Keyboard.resetScope($scope);
@@ -320,8 +339,13 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
 
     Keyboard.scopeBind($scope, "o", function () {
         $scope.$apply(function () {
-            console.log($scope.activeRowIndex);
-            $scope.toggleOpenEvent($scope.rows[$scope.activeRowIndex]);
+            $scope.toggleOpenEvent($scope.getActiveRow());
+        });
+    });
+
+    Keyboard.scopeBind($scope, "r", function () {
+        $scope.$apply(function () {
+            $scope.refresh();
         });
     });
 
@@ -488,6 +512,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     $scope.archiveSelected = function () {
+
         if ($routeParams.view != "inbox") {
             return NotificationMessageService.add("warning", "Archive not valid in this context");
         }
@@ -1233,6 +1258,11 @@ app.controller("AggregatedAlertsController", function ($scope, $location,
     };
 
     $scope.archiveSelected = function () {
+
+        if ($scope.$routeParams.view != "inbox") {
+            return NotificationMessageService.add("warning", "Archive not valid in this context.");
+        }
+
         var selectedRows = $scope.getSelectedRows();
 
         if (selectedRows.length == 0) {
@@ -1381,11 +1411,12 @@ app.controller("AggregatedAlertsController", function ($scope, $location,
         };
 
         _.forEach($scope.filters, function (filter) {
-            query.query.filter.and.push(filter);
+            query.query.filtered.filter.and.push(filter);
         });
 
         ElasticSearch.deleteByQuery(query)
             .success(function (response) {
+                NotificationMessageService.add("success", "Events deleted.");
                 $scope.page = 1;
                 $scope.refresh();
             })

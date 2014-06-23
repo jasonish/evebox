@@ -249,3 +249,40 @@ app.directive("keyTable", function () {
 
     return directive;
 });
+
+app.directive("duration", function($interval) {
+
+    return {
+        restrict: "AE",
+
+        scope: {
+            timestamp: "="
+        },
+
+        template: "{{duration}}",
+
+        link: function(scope, element, attrs) {
+
+            // 6 seconds...  One second shows a noticeable increase in CPU.
+            var updateInterval = 6000;
+
+            var intervalId;
+
+            element.on("$destroy", function() {
+                $interval.cancel(intervalId);
+            });
+
+            var updateDuration = function() {
+                var duration = moment(scope.timestamp) - moment();
+                scope.duration = moment.duration(duration).humanize(true);
+            };
+            updateDuration();
+
+            intervalId = $interval(function() {
+                updateDuration();
+            }, updateInterval);
+
+        }
+    }
+
+});

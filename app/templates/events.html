@@ -27,10 +27,10 @@
     </div>
 
     <div class="col-md-6">
-      <div ng-if="rows.length > 0" style="float: right">
+      <div ng-if="resultsModel.rows.length > 0" style="float: right">
         <evebox-pager evebox-pager-size="sm"
           evebox-pager-page="page"
-          evebox-pager-rows="rows"
+          evebox-pager-rows="resultsModel.rows"
           evebox-pager-query-size="querySize"
           evebox-pager-total="response.hits.total"
           evebox-pager-change-page="gotoPage"></evebox-pager>
@@ -40,32 +40,31 @@
 
   <br/>
 
-  <div ng-if="rows.length == 0">
+  <div ng-if="resultsModel.rows.length == 0 && loading == false">
     <div class="alert alert-warning text-center">No events found.</div>
   </div>
 
   <table class="table table-responsive event-table"
          key-table
-         key-table-rows="rows"
-         key-table-active-row-index="activeRowIndex">
-    <tbody ng-repeat="row in rows" class="row-index-{{$index}}">
+         key-table-rows="resultsModel.rows"
+         key-table-active-row-index="resultsModel.activeRowIndex">
+    <tbody ng-repeat="row in resultsModel.rows" class="row-index-{{$index}}">
     <tr class="clickable" ng-class="row.trClass">
-      <td><span ng-show="$index == activeRowIndex"
+      <td><span ng-show="$index == resultsModel.activeRowIndex"
                 class="glyphicon glyphicon-chevron-right"></span></td>
-      <td ng-click="toggleOpenEvent(row)"
-          ng-style="columnStyles['timestamp']">{{row.timestamp}}
+      <td ng-click="toggleOpenEvent(row)" class="nowrap">
+        {{row.timestamp}}
+        <br/>
+        <small><duration timestamp="row.timestamp"></duration></small>
       </td>
-      <td ng-click="toggleOpenEvent(row)">{{row.event_type}}</td>
+      <td ng-click="toggleOpenEvent(row)">{{row.event_type.toUpperCase()}}</td>
+      <td ng-click="toggleOpenEvent(row)" class="nowrap">
+        <label>S:</label> {{row.src_ip}}
+        <br/>
+        <label>D:</label> {{row.dest_ip}}
+      </td>
       <td ng-click="toggleOpenEvent(row)">
-        <dl class="dl-horizontal">
-          <dt>Source:</dt>
-          <dd>{{row.src_ip}}</dd>
-          <dt>Dest:</dt>
-          <dd>{{row.dest_ip}}</dd>
-        </dl>
-      </td>
-      <td ng-click="toggleOpenEvent(row)" ng-style="columnStyles['message']">
-        {{row.message}}
+        <div ng-bind-html="row.message"></div>
       </td>
     </tr>
     <tr ng-class="row.trClass">

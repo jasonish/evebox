@@ -12,7 +12,8 @@
     "moment": "~2.7.0",
     "angular-resource": "~1.2.18",
     "lodash": "~2.4.1",
-    "angular-bootstrap": "~0.11.0"
+    "angular-bootstrap": "~0.11.0",
+    "angular-sanitize": "~1.2.18"
   },
   "devDependencies": {
     "angular-mocks": "1.2.18",

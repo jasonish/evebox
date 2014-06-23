@@ -91,7 +91,7 @@
     <dl ng-if="hit._source.event_type == 'http'" class="dl-horizontal">
       <div ng-repeat="(key, val) in hit._source.http">
         <dt>{{key}}</dt>
-        <dd>{{val}}</dd>
+        <dd style="word-break: break-all;">{{val}}</dd>
       </div>
     </dl>
 

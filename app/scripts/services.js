@@ -168,6 +168,7 @@ app.factory("Util", function () {
             addr = addr.replace(/:0:/g, "::");
         }
         addr = addr.replace(/:::+/g, "::");
+        while (addr != (addr = addr.replace(/:0+/g, ":")));
         return addr;
     };
 
