@@ -59,4 +59,4 @@ quickly.
 
 # License
 
-For now, GPL v3.
+BSD.
