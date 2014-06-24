@@ -142,8 +142,6 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
 app.controller("EventDetailController", function ($scope, Keyboard, Config,
     ElasticSearch, EventRepository) {
 
-    console.log("EventDetailController");
-
     $scope.Config = Config;
 
     $scope.archiveEvent = function (event) {
@@ -195,8 +193,6 @@ app.controller("ModalProgressController", function ($scope, jobs) {
  */
 app.controller("EventsController", function ($scope, Util, Keyboard, Config,
     ElasticSearch, $routeParams, $location, $sce) {
-
-    console.log("EventsController");
 
     EventsController = $scope;
 
@@ -1128,8 +1124,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 app.controller("AggregatedAlertsController", function ($scope, $location,
     Keyboard, ElasticSearch, $modal, $routeParams, NotificationMessageService,
     Util) {
-
-    console.log("AggregatedAlertsController");
 
     AggregatedAlertsController = $scope;
 
