@@ -415,6 +415,7 @@ app.factory("Keyboard", function () {
         // bindings seems to fix it.
         for (var scopeId in service.scopeBindings) {
             _.forEach(service.scopeBindings[scopeId], function (binding) {
+                Mousetrap.unbind(binding.key);
                 Mousetrap.bind(binding.key, binding.callback);
             });
         }
