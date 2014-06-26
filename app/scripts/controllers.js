@@ -144,6 +144,16 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
 
     $scope.Config = Config;
 
+    if ($scope.hit._source.payload) {
+        try {
+            var decoded = atob($scope.hit._source.payload);
+            $scope.hit.__payload = decoded;
+        }
+        catch (error) {
+            $scope.hit.__payload = $scope.hit._source.payload;
+        }
+    }
+
     $scope.archiveEvent = function (event) {
         if ($scope.$parent.archiveEvent === undefined) {
             ElasticSearch.removeTag(event, "inbox")
