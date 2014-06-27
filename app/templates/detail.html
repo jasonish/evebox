@@ -129,7 +129,7 @@
         </div>
 
         <!-- Source port/ICMP type... -->
-        <div class="col-md-2">
+        <div class="col-md-3">
           <div ng-if="hit._source.proto == 'ICMP'">
             <b>ICMP Type:</b>
             {{hit._source.icmp_type}}
@@ -154,7 +154,7 @@
         </div>
 
         <!-- Destination port/ICMP code... -->
-        <div class="col-md-2">
+        <div class="col-md-3">
           <div ng-if="hit._source.proto == 'ICMP'">
             <b>ICMP Code:</b>
             {{hit._source.icmp_code}}
@@ -170,18 +170,77 @@
 
     </dl>
 
-    <br/><br/>
+    <!-- Packets array from idstools-u2json. -->
+    <div ng-if="hit._source.packets">
+      <div class="panel panel-default" evebox-panel-collapsible>
+        <div class="panel-heading">
+          Packets
+        </div>
+        <div class="panel-collapse collapse in">
+          <div class="panel-body">
+            <div class="panel panel-default"
+                 ng-repeat="packet in hit._source.packets">
+              <div class="panel-heading">
+                {{packet.timestamp}}
+              </div>
+              <div class="panel-body">
+                <div class="row">
+                  <div class="col-md-6">
+              <pre
+                style="max-height: 300px; white-space: pre-wrap;">{{b64ToHex(packet.packet)}}</pre>
+                  </div>
+                  <div class="col-md-6">
+              <pre
+                style="max-height: 300px; white-space: pre-wrap;">{{b64ToText(packet.packet)}}</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <div ng-show="hit.__payload" class="panel panel-default">
+    <div ng-if="hit._source.packet" class="panel panel-default"
+         evebox-panel-collapsible>
+      <div class="panel-heading">
+        Packet
+      </div>
+      <div class="panel-collapse collapse in">
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-md-6">
+            <pre
+              style="white-space: pre-wrap">{{b64ToHex(hit._source.packet)}}</pre>
+            </div>
+            <div class="col-md-6">
+            <pre
+              style="white-space: pre-wrap">{{b64ToText(hit._source.packet)}}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div ng-if="hit._source.payload" class="panel panel-default">
       <div class="panel-heading">
         Payload
       </div>
       <div class="panel-body">
-        <pre style="white-space: pre-wrap;">{{hit.__payload}}</pre>
+        <div class="row">
+          <div class="col-md-6">
+            <pre
+              style="white-space: pre-wrap">{{b64ToHex(hit._source.payload)}}</pre>
+          </div>
+          <div class="col-md-6">
+            <pre style="white-space: pre-wrap">{{b64ToText(hit._source.payload)}}</pre>
+          </div>
+        </div>
       </div>
     </div>
-
   </div>
+
+</div>
 </div>
 
 <div class="panel panel-default record-detail-panel">

@@ -184,6 +184,25 @@ app.factory("Util", function () {
         return secs + usecs;
     };
 
+    service.isBase64 = function (str) {
+        try {
+            atob(str);
+            return true;
+        }
+        catch (error) {
+            return false;
+        }
+    };
+
+    service.base64ToHexArray = function (str) {
+        for (var i = 0, bin = atob(str.replace(/[ \r\n]+$/, "")), hex = []; i < bin.length; ++i) {
+            var tmp = bin.charCodeAt(i).toString(16);
+            if (tmp.length === 1) tmp = "0" + tmp;
+            hex[hex.length] = tmp;
+        }
+        return hex;
+    };
+
     return service;
 });
 

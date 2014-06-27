@@ -40,13 +40,13 @@ app.directive("eveboxIpAddressServices", function () {
 
 });
 
-app.directive("eveboxNotificationMessage", function() {
+app.directive("eveboxNotificationMessage", function () {
 
     return {
 
         restrict: "EA",
 
-        controller: function($scope, NotificationMessageService) {
+        controller: function ($scope, NotificationMessageService) {
 
             x = NotificationMessageService;
 
@@ -167,21 +167,67 @@ app.directive("eveboxPager", function () {
 
 });
 
-app.directive("autoBlur", function() {
+app.directive("autoBlur", function () {
     return {
 
         restrict: "A",
 
-        link: function(scope, element, attr) {
-            element.find(":input").bind("click", function() {
+        link: function (scope, element, attr) {
+            element.find(":input").bind("click", function () {
                 $(this).blur();
             });
-            element.bind("click", function() {
+            element.bind("click", function () {
                 element.blur();
             })
         }
 
     };
+});
+
+app.directive("eveboxPanelCollapsible", function ($compile) {
+
+    return {
+
+        restrict: "A",
+
+        controller: function ($scope, $element) {
+
+            $scope.getElement = function() {
+                return angular.element($element).find(".panel-collapse");
+            };
+
+            $scope.isCollapsed = function () {
+                return !$scope.getElement().hasClass("in");
+            };
+
+            $scope.toggleCollapse = function () {
+                if ($scope.isCollapsed()) {
+                    $scope.getElement().addClass("in");
+                }
+                else {
+                    $scope.getElement().removeClass("in");
+                }
+            };
+
+        },
+
+        link: function (scope, element) {
+
+            var fixupHeader = function() {
+                var toggles = '<span style="float: right">' +
+                    '<span ng-hide="isCollapsed();" ng-click="toggleCollapse();" class="glyphicon glyphicon-chevron-up"></span>' +
+                    '<span ng-show="isCollapsed();" ng-click="toggleCollapse();" class="glyphicon glyphicon-chevron-down"></span>' +
+                    '</span>';
+                var header = angular.element(element).find(".panel-heading").first();
+                header.attr("ng-click", "toggleCollapse();");
+                header.append(toggles);
+                header.replaceWith($compile(header)(scope));
+            };
+            fixupHeader();
+        }
+
+    };
+
 });
 
 app.directive("keyTable", function () {
@@ -254,7 +300,7 @@ app.directive("keyTable", function () {
     return directive;
 });
 
-app.directive("duration", function($interval) {
+app.directive("duration", function ($interval) {
 
     return {
         restrict: "AE",
@@ -265,24 +311,24 @@ app.directive("duration", function($interval) {
 
         template: "{{duration}}",
 
-        link: function(scope, element, attrs) {
+        link: function (scope, element, attrs) {
 
             // 6 seconds...  One second shows a noticeable increase in CPU.
             var updateInterval = 6000;
 
             var intervalId;
 
-            element.on("$destroy", function() {
+            element.on("$destroy", function () {
                 $interval.cancel(intervalId);
             });
 
-            var updateDuration = function() {
+            var updateDuration = function () {
                 var duration = moment(scope.timestamp) - moment();
                 scope.duration = moment.duration(duration).humanize(true);
             };
             updateDuration();
 
-            intervalId = $interval(function() {
+            intervalId = $interval(function () {
                 updateDuration();
             }, updateInterval);
 

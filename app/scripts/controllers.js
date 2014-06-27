@@ -140,19 +140,42 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
 });
 
 app.controller("EventDetailController", function ($scope, Keyboard, Config,
-    ElasticSearch, EventRepository) {
+    ElasticSearch, EventRepository, Util) {
 
     $scope.Config = Config;
 
-    if ($scope.hit._source.payload) {
-        try {
-            var decoded = atob($scope.hit._source.payload);
-            $scope.hit.__payload = decoded;
+    /* Suricata can store the payload as base64 or printable.  Attempt to
+     * guess which it is here. */
+    $scope.payloadIsBase64 = Util.isBase64($scope.hit._source.payload);
+
+    $scope.b64ToText = function (data) {
+        return atob(data);
+    };
+
+//    $scope.toggleCollapse = function (elementId) {
+//        if ($scope.isCollapsed(elementId)) {
+//            $(elementId).addClass("in");
+//        }
+//        else {
+//            $(elementId).removeClass("in");
+//        }
+//    };
+//
+//    $scope.isCollapsed = function (elementId) {
+//        return !$(elementId).hasClass("in");
+//    };
+//
+    $scope.b64ToHex = function (data) {
+        var hex = Util.base64ToHexArray(data);
+        var buf = "";
+        for (var i = 0; i < hex.length; i++) {
+            if (i > 0 && i % 16 == 0) {
+                buf += "\n";
+            }
+            buf += hex[i] + " ";
         }
-        catch (error) {
-            $scope.hit.__payload = $scope.hit._source.payload;
-        }
-    }
+        return buf;
+    };
 
     $scope.archiveEvent = function (event) {
         if ($scope.$parent.archiveEvent === undefined) {
