@@ -696,44 +696,12 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         if ($scope.searchModel.aggregateBy == "signature+src") {
             delete(request.from);
             request.size = 0;
-            request.aggs = {
-                "signature": {
-                    "terms": {
-                        "field": "alert.signature.raw",
-                        "size": 0
-                    },
-                    "aggs": {
-                        "source_addrs": {
-                            "terms": {
-                                "field": "src_ip.raw",
-                                "size": 0
-                            },
-                            "aggs": {
-                                "last_timestamp": {
-                                    "max": { "field": "@timestamp"}
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            request.aggs = EventRepository.aggregateBySignatureSrc;
         }
         else if ($scope.searchModel.aggregateBy == "signature") {
             delete(request.from);
             request.size = 0;
-            request.aggs = {
-                "signature": {
-                    "terms": {
-                        "field": "alert.signature.raw",
-                        "size": 0
-                    },
-                    "aggs": {
-                        "last_timestamp": {
-                            "max": { "field": "@timestamp"}
-                        }
-                    }
-                }
-            }
+            request.aggs = EventRepository.aggregateBySignature;
         }
         return request;
     };
@@ -769,7 +737,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 _.forEach(signature.source_addrs.buckets, function (addr) {
                     $scope.aggregations.push({
                         "signature": signature.key,
-                        "last_timestamp": addr.last_timestamp.value,
+                        "last_timestamp": addr.latest_event.hits.hits[0]._source.timestamp,
+                        "severity": addr.latest_event.hits.hits[0]._source.alert.severity,
                         "count": addr.doc_count,
                         "src_ip": addr.key
                     });
@@ -780,7 +749,8 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             _.forEach(response.aggregations.signature.buckets, function (signature) {
                 $scope.aggregations.push({
                     "signature": signature.key,
-                    "last_timestamp": signature.last_timestamp.value,
+                    "last_timestamp": signature.latest_event.hits.hits[0]._source.timestamp,
+                    "severity": signature.latest_event.hits.hits[0]._source.alert.severity,
                     "count": signature.doc_count,
                 });
             });
@@ -813,70 +783,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         }
 
         $scope.resultsModel.rows = $scope.aggregations;
-
-        var severityCache = Cache.get("severityCache");
-
-        // Resolve severity.
-        _.forEach($scope.aggregations, function (agg) {
-
-            if (agg.signature in severityCache) {
-                agg.severity = severityCache[agg.signature];
-            }
-            else {
-
-                var query = {
-                    "query": {
-                        "filtered": {
-                            "filter": {
-                                "and": [
-                                    {
-                                        "term": {
-                                            "alert.signature.raw": agg.signature
-                                        }
-                                    },
-                                    {
-                                        "range": {
-                                            "@timestamp": {
-                                                "lte": agg.last_timestamp
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "size": 1,
-                    "sort": [
-                        {
-                            "@timestamp": {
-                                "order": "desc"
-                            }
-                        }
-                    ],
-                    "fields": [
-                        "alert.severity"
-                    ]
-                };
-
-                if (agg.src_ip) {
-                    query.query.filtered.filter.and.push({
-                        "term": {
-                            "src_ip.raw": agg.src_ip
-                        }
-                    });
-                }
-
-                !function (agg) {
-                    ElasticSearch.search(query)
-                        .success(function (response) {
-                            if (response.hits.hits.length > 0) {
-                                agg.severity = response.hits.hits[0].fields["alert.severity"][0];
-                                severityCache[agg.signature] = agg.severity;
-                            }
-                        });
-                }(agg);
-            }
-        });
 
         $(".results").removeClass("loading");
     };

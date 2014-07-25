@@ -302,6 +302,7 @@ app.factory("ElasticSearch", function ($http, Config) {
                     }
                 }),
                 angular.toJson({
+                    lang: "groovy",
                     script: "ctx._source.tags.remove(tag)",
                     params: {
                         "tag": tag
@@ -314,7 +315,8 @@ app.factory("ElasticSearch", function ($http, Config) {
 
     service.addTag = function (doc, tag) {
         var request = {
-            script: "ctx._source.tags.contains(tag) ? (ctx.op = \"none\") : ctx._source.tags += tag",
+            "lang": "groovy",
+            script: "ctx._source.tags.contains(tag) || ctx._source.tags.add(tag)",
             params: {
                 "tag": tag
             }
@@ -324,6 +326,7 @@ app.factory("ElasticSearch", function ($http, Config) {
 
     service.removeTag = function (doc, tag) {
         var request = {
+            lang: "groovy",
             script: "ctx._source.tags.remove(tag)",
             params: {
                 "tag": tag
@@ -345,6 +348,58 @@ app.factory("ElasticSearch", function ($http, Config) {
 app.factory("EventRepository", function (ElasticSearch, $q) {
 
     var service = {};
+
+    /**
+     * ES top hits aggregation to extract the most recent alert in the
+     * aggregation.
+     */
+    service.latestEventAgg = {
+        "latest_event": {
+            "top_hits": {
+                "sort": [
+                    {
+                        "@timestamp": {
+                            "order": "desc"
+                        }
+                    }
+                ],
+                "_source": {
+                    "include": [
+                        "@timestamp",
+                        "alert.severity"
+                    ]
+                },
+                "size": 1
+            }
+        }
+    };
+
+    /**
+     * Aggregate by signature.
+     */
+    service.aggregateBySignature = {
+        "signature": {
+            "terms": {
+                "field": "alert.signature.raw",
+                "size": 0
+            },
+            "aggs": service.latestEventAgg
+        }
+    };
+
+    /**
+     * Aggregate by query.
+     */
+    service.aggregateBySignatureSrc = _.cloneDeep(service.aggregateBySignature);
+    service.aggregateBySignatureSrc.signature.aggs = {
+        "source_addrs": {
+            "terms": {
+                "field": "src_ip.raw",
+                "size": 0
+            },
+            "aggs": service.latestEventAgg
+        }
+    };
 
     /**
      * Delete the provided event.
