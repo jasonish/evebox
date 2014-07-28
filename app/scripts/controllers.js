@@ -712,7 +712,16 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 
         $scope.loading = true;
         ElasticSearch.search(request).success(function (response) {
-            $scope.handleSearchResponse(response);
+            $scope.response = response;
+            delete($scope.hits);
+            delete($scope.buckets);
+            $scope.resultsModel.activeRowIndex = 0;
+            if (request.aggs) {
+                $scope.handleAggregateResponse(response);
+            }
+            else {
+                $scope.handleSearchResponse(response);
+            }
             $(window).scrollTop(0);
         }).error(function (error) {
             if (error.status == 0) {
@@ -737,7 +746,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 _.forEach(signature.source_addrs.buckets, function (addr) {
                     $scope.aggregations.push({
                         "signature": signature.key,
-                        "last_timestamp": addr.latest_event.hits.hits[0]._source.timestamp,
+                        "last_timestamp": addr.latest_event.hits.hits[0]._source["@timestamp"],
                         "severity": addr.latest_event.hits.hits[0]._source.alert.severity,
                         "count": addr.doc_count,
                         "src_ip": addr.key
@@ -749,7 +758,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
             _.forEach(response.aggregations.signature.buckets, function (signature) {
                 $scope.aggregations.push({
                     "signature": signature.key,
-                    "last_timestamp": signature.latest_event.hits.hits[0]._source.timestamp,
+                    "last_timestamp": signature.latest_event.hits.hits[0]._source["@timestamp"],
                     "severity": signature.latest_event.hits.hits[0]._source.alert.severity,
                     "count": signature.doc_count,
                 });
@@ -788,17 +797,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     };
 
     $scope.handleSearchResponse = function (response) {
-        $scope.response = response;
-        delete($scope.hits);
-        delete($scope.buckets);
-        $scope.resultsModel.activeRowIndex = 0;
-
-        if ($scope.searchModel.aggregateBy) {
-            $scope.buckets = $scope.response.aggregations.signature.buckets;
-            $scope.handleAggregateResponse(response);
-            return;
-        }
-
         $scope.resultsModel.rows = response.hits.hits;
 
         $scope.hits = response.hits;
@@ -812,9 +810,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         }
 
         _.forEach($scope.hits.hits, function (hit) {
-            hit._source["@timestamp"] =
-                moment(hit._source["@timestamp"]).format();
-
             // Add a tags list if it doesn't exist.
             if (hit._source.tags == undefined) {
                 hit._source.tags = [];
