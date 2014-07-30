@@ -102,7 +102,7 @@
           {{moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
         </td>
         <td ng-click="toggleOpenEvent(hit)">
-          {{hit._source.alert.signature}}
+          {{hit._source.alert.signature}} [{{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}]
         </td>
         <td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>
         <td ng-click="toggleOpenEvent(hit)">
