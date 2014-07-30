@@ -146,25 +146,19 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
 
     /* Suricata can store the payload as base64 or printable.  Attempt to
      * guess which it is here. */
-    $scope.payloadIsBase64 = Util.isBase64($scope.hit._source.payload);
+    try {
+        $scope.payloadIsBase64 = Util.isBase64($scope.hit._source.payload);
+        $scope.hasPayload = true;
+    }
+    catch (err) {
+        $scope.payloadIsBase64 = false;
+        $scope.hasPayload = false;
+    }
 
     $scope.b64ToText = function (data) {
         return atob(data);
     };
 
-//    $scope.toggleCollapse = function (elementId) {
-//        if ($scope.isCollapsed(elementId)) {
-//            $(elementId).addClass("in");
-//        }
-//        else {
-//            $(elementId).removeClass("in");
-//        }
-//    };
-//
-//    $scope.isCollapsed = function (elementId) {
-//        return !$(elementId).hasClass("in");
-//    };
-//
     $scope.b64ToHex = function (data) {
         var hex = Util.base64ToHexArray(data);
         var buf = "";
@@ -239,6 +233,7 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
     };
 
     $scope.filters = [
+        /* Limit the result set to documents with an event_type field. */
         {
             "exists": { "field": "event_type" }
         }
