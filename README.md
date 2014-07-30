@@ -4,7 +4,7 @@ EveBox is a Suricata "eve" event viewer for Elastic Search.
 
 # Requirements
 
-- Suricata, Logstash and Elastic Search.
+- Suricata, Logstash and Elastic Search (Elastic Search v1.3.0 or newer).
 - A webserver.  EveBox consists of static files only.  Apache, Nginx
   or any other static file webserver will do.
 - A modern browser.
@@ -50,12 +50,9 @@ familiar with GMail keyboard shortcuts it should feel familiar very
 quickly.
 
 # TODOs
-- Support for any "eve" record type.
-- A better event "detail" view.
 - A darker theme.
 - Arbitrary tagging.
 - A backend might be needed to do such things as large bulk tagging.
-- Be more "angular".
 
 # License
 
