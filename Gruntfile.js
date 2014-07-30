@@ -7,7 +7,7 @@
 // use this if you want to recursively match all subfolders:
 // 'test/spec/**/*.js'
 
-var VERSION = "0.3.0dev"
+var VERSION = "0.3.0"
 
 module.exports = function (grunt) {
 
