@@ -94,6 +94,8 @@ app.controller("ConfigController", function ($scope, $modalInstance, Config) {
 app.controller("RecordController", function ($scope, $routeParams, Util,
     ElasticSearch, Config) {
 
+    scope = $scope;
+
     // Export some functions to $scope.
     $scope.Util = Util;
     $scope.Config = Config;

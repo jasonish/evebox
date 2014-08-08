@@ -222,25 +222,44 @@
       </div>
     </div>
 
-    <div ng-if="hit._source.payload" class="panel panel-default">
+    <div ng-if="hit._source.payload" class="panel panel-default"
+         evebox-panel-collapsible>
       <div class="panel-heading">
         Payload
       </div>
-      <div class="panel-body">
-        <div class="row">
-          <div class="col-md-6">
+      <div class="panel-collapse collapse in">
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-md-6">
             <pre
               style="white-space: pre-wrap">{{b64ToHex(hit._source.payload)}}</pre>
-          </div>
-          <div class="col-md-6">
-            <pre style="white-space: pre-wrap">{{b64ToText(hit._source.payload)}}</pre>
+            </div>
+            <div class="col-md-6">
+              <pre style="white-space: pre-wrap">{{b64ToText(hit._source.payload)}}</pre>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <div ng-if="hit._source.http">
+      <div class="panel panel-default" evebox-panel-collapsible>
+        <div class="panel-heading">
+          HTTP
+        </div>
+        <div class="panel-collapse collapse in">
+          <div class="panel-body dl-horizontal">
+            <div ng-repeat="(key, val) in hit._source.http">
+              <dt>{{key}}</dt>
+              <dd style="word-break: break-all;">{{val}}</dd>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-</div>
 </div>
 
 <div class="panel panel-default record-detail-panel">
