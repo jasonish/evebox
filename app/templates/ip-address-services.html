@@ -2,10 +2,13 @@
         data-toggle="dropdown"
         style="border: 0px;"><span class="caret"></span></button>
 <ul class="dropdown-menu pull-right" role="menu">
-  <li><a href="#/events?q=+&quot;{{address}}&quot;">Search in all...</a>
+  <li><a href="#/events?q=%2b&quot;{{address}}&quot;">Search in all...</a>
   </li>
-  <li><a href="#/alerts?q=+&quot;{{address}}&quot;">Search in Alerts</a></li>
-  <li><a href="#/events?q=+&quot;{{address}}&quot; +event_type:dns">Search in
+  <li><a href="#/alerts?q=%2b&quot;{{address}}&quot;">Search in Alerts</a></li>
+  <li><a href="#/events?q=%2b&quot;{{address}}&quot; %2bevent_type:dns">Search in
     DNS</a>
+  </li>
+  <li><a href="#/events?q=%2b&quot;{{address}}&quot; %2bevent_type:flow">Search in
+    Flows</a>
   </li>
 </ul>
