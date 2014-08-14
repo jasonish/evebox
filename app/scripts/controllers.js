@@ -680,7 +680,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 }
             },
             size: $scope.querySize,
-            from: Config.elasticSearch.size * ($scope.page - 1),
+            from: Config.elasticSearch.size * ($scope.searchModel.page - 1),
             sort: [
                 {"@timestamp": {order: "desc"}}
             ]
