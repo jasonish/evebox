@@ -1,6 +1,6 @@
 <div ng-controller="AggregatedAlertsController">
   <div class="row">
-    <div class="col-md-5">
+    <div class="col-md-12">
       <div class="btn-group" auto-blur style="vertical-align: middle;">
         <button id="refreshButton" type="button" class="btn btn-default btn-sm"
                 ng-click="refresh()">Refresh
@@ -28,6 +28,7 @@
         </button>
       </div>
 
+      <!-- More dropdown button. -->
       <div class="btn-group">
         <button type="button"
                 class="btn btn-default btn-sm dropdown-toggle keyboard"
@@ -42,20 +43,21 @@
           </li>
         </ul>
       </div>
-    </div>
-    <div class="col-md-7">
+
       <div style="float: right">
         <div ng-show="resultsModel.rows.length == 0">
           <label class="label label-warning">No events found.</label>
         </div>
-        <div ng-show="buckets.length > 0">
+        <div ng-show="resultsModel.rows.length > 0">
           <label>Found {{totalEventCount()}} event{{totalEventCount() > 1 ? "s"
             : ""}} in {{aggregations.length}}
             group{{aggregations.length > 1 ? "s" : ""}}.</label>
         </div>
       </div>
+
     </div>
   </div>
+
   <table ng-show="aggregations.length > 0"
          class="table table-responsive table-condensed"
          key-table

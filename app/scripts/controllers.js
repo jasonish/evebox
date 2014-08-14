@@ -227,11 +227,11 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
 
     $scope.$routeParams = $routeParams;
     $scope.Util = Util;
-    $scope.page = $routeParams.page || 1;
     $scope.querySize = Config.elasticSearch.size;
 
     $scope.searchModel = {
-        userQuery: $routeParams.q || ""
+        userQuery: $routeParams.q || "",
+        page: $routeParams.page || 1
     };
 
     $scope.filters = [
@@ -341,7 +341,7 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
                 }
             },
             size: $scope.querySize || 100,
-            from: Config.elasticSearch.size * (($scope.page || 1) - 1),
+            from: Config.elasticSearch.size * (($scope.searchModel.page || 1) - 1),
             sort: [
                 {"@timestamp": {order: "desc"}}
             ],

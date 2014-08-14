@@ -1,6 +1,7 @@
 <div class="row">
-  <div class="col-md-5">
-    <div class="btn-group btn-group-sm" auto-blur style="vertical-align: middle;">
+  <div class="col-md-12">
+    <div class="btn-group btn-group-sm" auto-blur
+         style="vertical-align: middle;">
       <button id="refreshButton" type="button"
               class="btn btn-default btn-sm"
               ng-click="refresh()">Refresh
@@ -42,28 +43,23 @@
         </li>
       </ul>
     </div>
-  </div>
-  <div class="col-md-7">
-    <div style="float: right; overflow: hidden;" ng-show="loading == true">
-      Loading...
-    </div>
-    <div ng-show="loading == false">
-      <div ng-show="hits.total > 0"
-           style="float: right; overflow: hidden; margin: 0px; vertical-align: middle">
 
-        <evebox-pager evebox-pager-size="sm"
-                      evebox-pager-page="searchModel.page"
-                      evebox-pager-rows="hits.hits"
-                      evebox-pager-query-size="Config.elasticSearch.size"
-                      evebox-pager-total="hits.total"
-                      evebox-pager-change-page="gotoPage"></evebox-pager>
-
+    <div style="float: right;">
+      <evebox-pager ng-if="loading == false && hits.total > 0"
+                    evebox-pager-size="sm"
+                    evebox-pager-page="searchModel.page"
+                    evebox-pager-rows="hits.hits"
+                    evebox-pager-query-size="Config.elasticSearch.size"
+                    evebox-pager-total="hits.total"
+                    evebox-pager-change-page="gotoPage"></evebox-pager>
+      <div ng-if="loading == false && hits.total == 0">
+        <label class="label label-warning">No events found.</label>
+      </div>
+      <div ng-if="loading == true">
+        Loading...
       </div>
     </div>
-    <div style="float: right; overflow: hidden;"
-         ng-show="loading == false && hits.total == 0">
-      <label class="label label-warning">No events found.</label>
-    </div>
+
   </div>
 </div>
 
@@ -74,10 +70,11 @@
   <div class="col-md-12">
     <table class="table table-responsive event-table"
            ng-class="{loading: state == 'loading'}"
-      key-table
-      key-table-rows="resultsModel.rows"
-      key-table-active-row-index="resultsModel.activeRowIndex">
-      <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits" class="row-index-{{$index}}">
+           key-table
+           key-table-rows="resultsModel.rows"
+           key-table-active-row-index="resultsModel.activeRowIndex">
+      <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits"
+             class="row-index-{{$index}}">
       <tr class="hit-row"
           ng-class="Util.severityToBootstrapClass(hit._source.alert.severity)">
         <td>
@@ -102,7 +99,8 @@
           {{moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
         </td>
         <td ng-click="toggleOpenEvent(hit)">
-          {{hit._source.alert.signature}} [{{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}]
+          {{hit._source.alert.signature}}
+          [{{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}]
         </td>
         <td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>
         <td ng-click="toggleOpenEvent(hit)">
@@ -110,6 +108,10 @@
         </td>
         <td ng-click="toggleOpenEvent(hit)">
           {{Util.printIpAddress(hit._source.dest_ip)}}
+        </td>
+        <td>
+            <span ng-show="$index == resultsModel.activeRowIndex"
+                  class="glyphicon glyphicon-chevron-left"></span>
         </td>
       </tr>
       <tr ng-class="severityToBootstrapClass(hit._source.alert.severity)"

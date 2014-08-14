@@ -29,7 +29,7 @@
     <div class="col-md-6">
       <div ng-if="resultsModel.rows.length > 0" style="float: right">
         <evebox-pager evebox-pager-size="sm"
-          evebox-pager-page="page"
+          evebox-pager-page="searchModel.page"
           evebox-pager-rows="resultsModel.rows"
           evebox-pager-query-size="querySize"
           evebox-pager-total="response.hits.total"
