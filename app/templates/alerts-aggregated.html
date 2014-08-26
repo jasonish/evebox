@@ -59,7 +59,7 @@
   </div>
 
   <table ng-show="aggregations.length > 0"
-         class="table table-responsive table-condensed"
+         class="table table-responsive table-condensed event-table"
          key-table
          key-table-rows="resultsModel.rows"
          key-table-active-row-index="resultsModel.activeRowIndex">
@@ -93,7 +93,7 @@
       <td>
         <input type="checkbox" ng-model="row.__selected" auto-blur/>
       </td>
-      <td ng-click="openAggregation(row)"><span class="badge">{{row.count}}</span></td>
+      <td ng-click="openAggregation(row)"><strong>{{row.count}}</strong></td>
       <td ng-click="openAggregation(row)">{{row.signature}}</td>
       <td ng-show="row.src_ip">{{Util.printIpAddress(row.src_ip)}}</td>
       <td ng-click="openAggregation(row)">
