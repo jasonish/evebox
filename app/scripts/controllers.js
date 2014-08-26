@@ -203,6 +203,21 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
         EventRepository.toggleStar(event);
     };
 
+    $scope.sendToDumpy = function (event) {
+        var form = document.createElement("form");
+        form.setAttribute("method", "post");
+        form.setAttribute("action", Config.dumpy.url);
+        form.setAttribute("target", "_blank");
+
+        var eventInput = document.createElement("input");
+        eventInput.setAttribute("type", "hidden");
+        eventInput.setAttribute("name", "event");
+        eventInput.setAttribute("value", angular.toJson(event._source));
+        form.appendChild(eventInput);
+
+        form.submit();
+    };
+
     $scope.$on("$destroy", function () {
         Keyboard.resetScope($scope);
     });

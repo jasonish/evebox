@@ -24,9 +24,9 @@
         <ul class="dropdown-menu pull-right" role="menu">
           <li><a href="/#/record/{{hit._id}}" target="_blank">Open in New
             Window</a></li>
-          <li ng-if="Config.dumpy.url"><a
-            href="{{Config.dumpy.url}}?event={{hit._source}}" target="_blank">Send
-            to Dumpy</a></li>
+          <li ng-if="Config.dumpy.url">
+            <a href="" ng-click="sendToDumpy(hit)">Send to Dumpy</a>
+          </li>
         </ul>
       </div>
 
