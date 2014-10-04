@@ -65,65 +65,58 @@
 
 <br/>
 
-<div class="row" id="result-container">
-
-  <div class="col-md-12">
-    <table class="table table-responsive event-table"
-           ng-class="{loading: state == 'loading'}"
-           key-table
-           key-table-rows="resultsModel.rows"
-           key-table-active-row-index="resultsModel.activeRowIndex">
-      <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits"
-             class="row-index-{{$index}}">
-      <tr class="hit-row"
-          ng-class="Util.severityToBootstrapClass(hit._source.alert.severity)">
-        <td>
+<div class="col-md-12">
+  <table class="table table-responsive event-table"
+         ng-class="{loading: state == 'loading'}"
+         key-table
+         key-table-rows="resultsModel.rows"
+         key-table-active-row-index="resultsModel.activeRowIndex">
+    <tbody id="{{hit._id}}" ng-repeat="hit in hits.hits"
+           class="row-index-{{$index}}">
+    <tr class="hit-row"
+        ng-class="Util.severityToBootstrapClass(hit._source.alert.severity)">
+      <td>
             <span ng-show="$index == resultsModel.activeRowIndex"
                   class="glyphicon glyphicon-chevron-right"></span>
-        </td>
-        <td><input tabindex="-1"
-                   type="checkbox"
-                   id="checkbox-{{hit._id}}"
-                   ng-model="hit.__selected"
-                   ng-checked="hit.__selected" auto-blur/>
-        </td>
-        <td>
+      </td>
+      <td><input tabindex="-1"
+                 type="checkbox"
+                 id="checkbox-{{hit._id}}"
+                 ng-model="hit.__selected"
+                 ng-checked="hit.__selected" auto-blur/>
+      </td>
+      <td>
             <span ng-show="hit._source.tags.indexOf('starred') == -1"
                   ng-click="toggleStar(hit)"
                   class="glyphicon glyphicon-star-empty"></span>
             <span ng-show="hit._source.tags.indexOf('starred') > -1"
                   ng-click="toggleStar(hit)"
                   class="glyphicon glyphicon-star"></span>
-        </td>
-        <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
-          {{moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
-        </td>
-        <td ng-click="toggleOpenEvent(hit)">
-          {{hit._source.alert.signature}}
-          [{{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}]
-        </td>
-        <td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>
-        <td ng-click="toggleOpenEvent(hit)">
-          {{Util.printIpAddress(hit._source.src_ip)}}
-        </td>
-        <td ng-click="toggleOpenEvent(hit)">
-          {{Util.printIpAddress(hit._source.dest_ip)}}
-        </td>
-        <td>
-            <span ng-show="$index == resultsModel.activeRowIndex"
-                  class="glyphicon glyphicon-chevron-left"></span>
-        </td>
-      </tr>
-      <tr ng-class="severityToBootstrapClass(hit._source.alert.severity)"
-          class="hit-detail"
-          ng-show="hit.__open">
-        <td colspan="3"></td>
-        <td colspan="5">
-          <div ng-if="hit.__open" ng-include="'templates/detail.html'"
-               ng-controller="EventDetailController"></div>
-        </td>
-      </tr>
-      </tbody>
-    </table>
-  </div>
+      </td>
+      <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
+        {{moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
+      </td>
+      <td ng-click="toggleOpenEvent(hit)">
+        {{hit._source.alert.signature}}
+        [{{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}]
+      </td>
+      <td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>
+      <td ng-click="toggleOpenEvent(hit)">
+        {{Util.printIpAddress(hit._source.src_ip)}}
+      </td>
+      <td ng-click="toggleOpenEvent(hit)">
+        {{Util.printIpAddress(hit._source.dest_ip)}}
+      </td>
+    </tr>
+    <tr ng-class="severityToBootstrapClass(hit._source.alert.severity)"
+        class="hit-detail"
+        ng-show="hit.__open">
+      <td colspan="3"></td>
+      <td colspan="5">
+        <div ng-if="hit.__open" ng-include="'templates/detail.html'"
+             ng-controller="EventDetailController"></div>
+      </td>
+    </tr>
+    </tbody>
+  </table>
 </div>
