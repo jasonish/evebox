@@ -101,7 +101,10 @@
         <br/>
         <small style="color: #808080;"><duration timestamp="hit._source['@timestamp']"></duration></small>
       </td>
-      <td ng-click="openAggregation(row)">{{row.signature}}</td>
+      <td ng-click="openAggregation(row)">
+        {{row.signature}}
+        <small style="color: #808080;">[{{row.category}}]</small>
+      </td>
       <td ng-show="row.src_ip">{{Util.printIpAddress(row.src_ip)}}</td>
     </tr>
     </tbody>

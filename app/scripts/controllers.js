@@ -760,6 +760,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                         "signature": signature.key,
                         "last_timestamp": addr.latest_event.hits.hits[0]._source["@timestamp"],
                         "severity": addr.latest_event.hits.hits[0]._source.alert.severity,
+                        "category": addr.latest_event.hits.hits[0]._source.alert.category,
                         "count": addr.doc_count,
                         "src_ip": addr.key
                     });
@@ -771,6 +772,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                 $scope.aggregations.push({
                     "signature": signature.key,
                     "last_timestamp": signature.latest_event.hits.hits[0]._source["@timestamp"],
+                    "category": signature.latest_event.hits.hits[0]._source.alert.category,
                     "severity": signature.latest_event.hits.hits[0]._source.alert.severity,
                     "count": signature.doc_count,
                 });

@@ -367,7 +367,8 @@ app.factory("EventRepository", function (ElasticSearch, $q) {
                     "include": [
                         "timestamp",
                         "@timestamp",
-                        "alert.severity"
+                        "alert.severity",
+                        "alert.category"
                     ]
                 },
                 "size": 1
