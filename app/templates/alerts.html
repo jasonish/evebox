@@ -1,12 +1,14 @@
-<div class="container-fluid" style="padding-left: 5%; padding-right: 5%;">
+<div class="container-fluid">
 
   <evebox-search-form></evebox-search-form>
 
   <br/>
 
-  <div class="results" ng-class="{loading: loading == true}" ng-if="response.aggregations"
+  <div class="results" ng-class="{loading: loading == true}"
+       ng-if="response.aggregations"
        ng-include="'templates/alerts-aggregated.html'"></div>
-  <div class="results"  ng-class="{loading: loading == true}" ng-if="response.aggregations == undefined"
+  <div class="results" ng-class="{loading: loading == true}"
+       ng-if="response.aggregations == undefined"
        ng-include="'templates/alerts-flat.html'"></div>
 
 </div>

@@ -59,50 +59,48 @@
     </div>
   </div>
 
-  <div class="col-md-12">
-    <table ng-show="aggregations.length > 0"
-           class="table table-responsive event-table"
-           key-table
-           key-table-rows="resultsModel.rows"
-           key-table-active-row-index="resultsModel.activeRowIndex">
-      <thead>
-      <th></th>
-      <th></th>
-      <th><a href="" ng-click="changeSortBy('count')">#<span
+  <table ng-show="aggregations.length > 0"
+         class="table table-responsive event-table"
+         key-table
+         key-table-rows="resultsModel.rows"
+         key-table-active-row-index="resultsModel.activeRowIndex">
+    <thead>
+    <th></th>
+    <th></th>
+    <th><a href="" ng-click="changeSortBy('count')">#<span
         ng-show="searchModel.sortBy == 'count'"
         ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
         ></span></a>
-      </th>
-      <th><a href="" ng-click="changeSortBy('message')">Message<span
+    </th>
+    <th><a href="" ng-click="changeSortBy('message')">Message<span
         ng-show="searchModel.sortBy == 'message'"
         ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
         ></span></a></th>
-      <th ng-show="aggregations[0].src_ip"><a href=""
-                                              ng-click="changeSortBy('src_ip')">Source<span
+    <th ng-show="aggregations[0].src_ip"><a href=""
+                                            ng-click="changeSortBy('src_ip')">Source<span
         ng-show="searchModel.sortBy == 'src_ip'"
         ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
         ></span></a></th>
-      <th colspan="3"><a href="" ng-click="changeSortBy('last')">Last<span
+    <th colspan="3"><a href="" ng-click="changeSortBy('last')">Last<span
         ng-show="searchModel.sortBy == 'last'"
         ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"></span></a>
-      </th>
-      </thead>
-      <tbody ng-repeat="row in aggregations">
-      <tr class="clickable hit-row"
-          ng-class="Util.severityToBootstrapClass(row.severity)">
-        <td><span ng-show="$index == resultsModel.activeRowIndex"
-                  class="glyphicon glyphicon-chevron-right"></span></td>
-        <td>
-          <input type="checkbox" ng-model="row.__selected" auto-blur/>
-        </td>
-        <td ng-click="openAggregation(row)"><strong>{{row.count}}</strong></td>
-        <td ng-click="openAggregation(row)">{{row.signature}}</td>
-        <td ng-show="row.src_ip">{{Util.printIpAddress(row.src_ip)}}</td>
-        <td ng-click="openAggregation(row)">
-          {{moment(row.last_timestamp).format("YYYY-MM-DD HH:mm:ss")}}
-        </td>
-      </tr>
-      </tbody>
-    </table>
-  </div>
+    </th>
+    </thead>
+    <tbody ng-repeat="row in aggregations">
+    <tr class="clickable hit-row"
+        ng-class="Util.severityToBootstrapClass(row.severity)">
+      <td><span ng-show="$index == resultsModel.activeRowIndex"
+                class="glyphicon glyphicon-chevron-right"></span></td>
+      <td>
+        <input type="checkbox" ng-model="row.__selected" auto-blur/>
+      </td>
+      <td ng-click="openAggregation(row)"><strong>{{row.count}}</strong></td>
+      <td ng-click="openAggregation(row)">{{row.signature}}</td>
+      <td ng-show="row.src_ip">{{Util.printIpAddress(row.src_ip)}}</td>
+      <td ng-click="openAggregation(row)">
+        {{moment(row.last_timestamp).format("YYYY-MM-DD HH:mm:ss")}}
+      </td>
+    </tr>
+    </tbody>
+  </table>
 </div>
