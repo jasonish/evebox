@@ -93,7 +93,7 @@
                   class="glyphicon glyphicon-star"></span>
       </td>
       <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
-        {{moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
+        {{::moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
       </td>
       <td ng-click="toggleOpenEvent(hit)">
         {{hit._source.alert.signature}}
@@ -101,10 +101,10 @@
       </td>
       <td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>
       <td ng-click="toggleOpenEvent(hit)">
-        {{Util.printIpAddress(hit._source.src_ip)}}
+        {{::Util.printIpAddress(hit._source.src_ip)}}
       </td>
       <td ng-click="toggleOpenEvent(hit)">
-        {{Util.printIpAddress(hit._source.dest_ip)}}
+        {{::Util.printIpAddress(hit._source.dest_ip)}}
       </td>
     </tr>
     <tr ng-class="severityToBootstrapClass(hit._source.alert.severity)"
