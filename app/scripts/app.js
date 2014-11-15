@@ -24,9 +24,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+'use strict';
+
 var app = angular.module("app", [
-    "ngRoute", "ngResource", "ngSanitize", "ui.bootstrap", "ui.bootstrap.modal",
-    "ui.bootstrap.accordion"]);
+    "ngRoute",
+    "ngResource",
+    "ngSanitize",
+    "ui.bootstrap",
+    "ui.bootstrap.modal",
+    "ui.bootstrap.accordion"
+]);
 
 app.config(function ($routeProvider) {
 
