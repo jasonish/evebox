@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+'use strict';
+
 /**
  * Centralized configuration.
  *
@@ -53,7 +55,7 @@ app.factory("Config", function ($http, $location) {
         localConfig = angular.fromJson(localStorage.config);
     }
 
-    service = {};
+    var service = {};
     _.merge(service, defaultConfig);
     _.merge(service, serverConfig);
     _.merge(service, localConfig);

@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+'use strict';
+
 app.directive("eveboxIpAddressServices", function () {
 
     return {
@@ -47,8 +49,6 @@ app.directive("eveboxNotificationMessage", function () {
         restrict: "EA",
 
         controller: function ($scope, NotificationMessageService) {
-
-            x = NotificationMessageService;
 
             $scope.NotificationMessageService = NotificationMessageService;
 
@@ -232,7 +232,7 @@ app.directive("eveboxPanelCollapsible", function ($compile) {
 
 app.directive("keyTable", function () {
 
-    directive = {
+    var directive = {
         restrict: "A"
     };
 
@@ -243,7 +243,7 @@ app.directive("keyTable", function () {
 
     directive.controller = function ($scope, Keyboard, Util, $element) {
 
-        keyTableScope = $scope;
+        var keyTableScope = $scope;
 
         $scope.$element = $element;
         $scope.Keyboard = Keyboard;

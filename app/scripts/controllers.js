@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+'use strict';
+
 app.controller("NavBarController", function ($routeParams, $scope, $modal,
     $location, Keyboard, EventRepository, $timeout) {
 
@@ -93,8 +95,6 @@ app.controller("ConfigController", function ($scope, $modalInstance, Config) {
 
 app.controller("RecordController", function ($scope, $routeParams, Util,
     ElasticSearch, Config) {
-
-    scope = $scope;
 
     // Export some functions to $scope.
     $scope.Util = Util;
@@ -237,8 +237,6 @@ app.controller("ModalProgressController", function ($scope, jobs) {
  */
 app.controller("EventsController", function ($scope, Util, Keyboard, Config,
     ElasticSearch, $routeParams, $location, $sce) {
-
-    EventsController = $scope;
 
     $scope.$routeParams = $routeParams;
     $scope.Util = Util;
@@ -407,7 +405,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
     $modal, Cache, EventRepository, NotificationMessageService) {
 
     // Debugging.
-    scope = $scope;
     $scope.Config = Config;
     $scope.ElasticSearch = ElasticSearch;
     $scope.filter = $filter;
@@ -1072,8 +1069,6 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
 app.controller("AggregatedAlertsController", function ($scope, $location,
     Keyboard, ElasticSearch, $modal, $routeParams, NotificationMessageService,
     Util) {
-
-    AggregatedAlertsController = $scope;
 
     /**
      * Opens an aggregation in "flat" view by explicitly setting no aggregation
