@@ -11,6 +11,7 @@ config = {
     // in local storage.
     elasticSearch: {
         url: "http://" + window.location.hostname + ":9200",
+        index: "logstash-*",
         size: 100
     },
 
