@@ -27,70 +27,6 @@
 'use strict';
 
 /**
- * Centralized configuration.
- *
- * Merges server provided configuration with local storage configuration.
- */
-app.factory("Config", function ($http, $location) {
-
-    var defaultConfig = {
-        "elasticSearch": {
-            "url": "http://" + window.location.hostname + ":9200",
-            "size": 100,
-            "timeout": 6000
-        }
-    };
-
-    var serverConfig = {};
-    var localConfig = {};
-
-    try {
-        serverConfig = config;
-    }
-    catch (error) {
-        serverConfig = {};
-    }
-
-    if ("config" in localStorage) {
-        localConfig = angular.fromJson(localStorage.config);
-    }
-
-    var service = {};
-    _.merge(service, defaultConfig);
-    _.merge(service, serverConfig);
-    _.merge(service, localConfig);
-
-    var pruneConfig = function (config, serverConfig) {
-        _.forIn(config, function (value, key) {
-            if (!_.isFunction(value)) {
-                if (serverConfig[key] != undefined) {
-                    if (_.isObject(value)) {
-                        pruneConfig(value, serverConfig[key]);
-                    }
-                    else if (serverConfig[key] == config[key]) {
-                        delete(config[key]);
-                    }
-                }
-
-                if (_.size(value) == 0) {
-                    delete(config[key]);
-                }
-            }
-        });
-    };
-
-    service.save = function () {
-        pruneConfig(service, serverConfig);
-        localStorage.config = angular.toJson(service);
-
-        // Force full refresh.
-        window.location.reload();
-    };
-
-    return service;
-});
-
-/**
  * Service containing utility functions.
  */
 app.factory("Util", function () {
@@ -223,7 +159,10 @@ app.factory("ElasticSearch", function ($http, Config) {
      * Search.
      */
     service.search = function (query) {
-        var url = Config.elasticSearch.url + "/_all/_search?refresh=true";
+        var url = Config.elasticSearch.url +
+            "/" +
+            Config.elasticSearch.index +
+            "/_search?refresh=true";
         return $http.post(url, query);
     };
 
@@ -246,12 +185,22 @@ app.factory("ElasticSearch", function ($http, Config) {
     };
 
     service.delete = function (index, type, id) {
-        var url = Config.elasticSearch.url + "/" + index + "/" + type + "/" + id + "?refresh=true";
+        var url = Config.elasticSearch.url +
+            "/" +
+            index +
+            "/" +
+            type +
+            "/" +
+            id +
+            "?refresh=true";
         return $http.delete(url);
     };
 
     service.deleteByQuery = function (request) {
-        var url = Config.elasticSearch.url + "/_all/_query?refresh=true";
+        var url = Config.elasticSearch.url +
+            "/" +
+            Config.elasticSearch.index +
+            "/_query?refresh=true";
         return $http.delete(url, {data: request});
     }
 
@@ -282,14 +231,14 @@ app.factory("ElasticSearch", function ($http, Config) {
      */
     service.deleteEvents = function (events) {
         var request = events.map(function (event) {
-            return angular.toJson({
-                delete: {
-                    _index: event._index,
-                    _type: event._type,
-                    _id: event._id
-                }
-            });
-        }).join("\n") + "\n";
+                return angular.toJson({
+                    delete: {
+                        _index: event._index,
+                        _type: event._type,
+                        _id: event._id
+                    }
+                });
+            }).join("\n") + "\n";
         return service.bulk(request);
     };
 
