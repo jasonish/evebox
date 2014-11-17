@@ -34,7 +34,7 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
     $scope.openConfig = function () {
         $modal.open({
             templateUrl: "templates/config.html",
-            controller: "ConfigController"
+            controller: "ConfigController as vm"
         });
     };
 
@@ -78,21 +78,6 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
     });
 });
 
-app.controller("ConfigController", function ($scope, $modalInstance, Config) {
-
-    $scope.config = Config;
-
-    $scope.ok = function () {
-        Config.save();
-        $modalInstance.close();
-    };
-
-    $scope.cancel = function () {
-        $modalInstance.dismiss();
-    };
-
-});
-
 app.controller("RecordController", function ($scope, $routeParams, Util,
     ElasticSearch, Config) {
 
@@ -113,18 +98,18 @@ app.controller("RecordController", function ($scope, $routeParams, Util,
                 }
                 else if (hit._source.dns) {
                     hit.__title = hit._source.event_type.toUpperCase() + ": " +
-                        hit._source.dns.rrname;
+                    hit._source.dns.rrname;
                     hit.__titleClass = "alert-info";
                 }
                 else if (hit._source.tls) {
                     hit.__title = hit._source.event_type.toUpperCase() + ": " +
-                        hit._source.tls.subject;
+                    hit._source.tls.subject;
                     hit.__titleClass = "alert-info";
                 }
                 else if (hit._source.http) {
                     hit.__title = hit._source.event_type.toUpperCase() + ": " +
-                        hit._source.http.http_method + " " +
-                        hit._source.http.hostname;
+                    hit._source.http.http_method + " " +
+                    hit._source.http.hostname;
                 }
                 else {
                     hit.__title = hit._source.event_type.toUpperCase();
@@ -250,7 +235,7 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
     $scope.filters = [
         /* Limit the result set to documents with an event_type field. */
         {
-            "exists": { "field": "event_type" }
+            "exists": {"field": "event_type"}
         }
     ];
 
@@ -265,11 +250,11 @@ app.controller("EventsController", function ($scope, Util, Keyboard, Config,
                 var parts = [];
                 _.forIn(event[event.event_type], function (value, key) {
                     parts.push('<span style="color: #808080;">' +
-                        key +
-                        ':</span> ' +
-                        '<span style="word-break: break-all;">' +
-                        value +
-                        '</span>');
+                    key +
+                    ':</span> ' +
+                    '<span style="word-break: break-all;">' +
+                    value +
+                    '</span>');
                 });
                 var msg = parts.join("; ");
                 return $sce.trustAsHtml(msg);
@@ -735,11 +720,11 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
         }).error(function (error) {
             if (error.status == 0) {
                 NotificationMessageService.add("danger",
-                        "No response from Elastic Search at " + Config.elasticSearch.url);
+                    "No response from Elastic Search at " + Config.elasticSearch.url);
             }
             else {
                 NotificationMessageService.add("danger",
-                        "Error: " + error.status + " " + error.statusText);
+                    "Error: " + error.status + " " + error.statusText);
             }
         }).finally(function () {
             $scope.loading = false;
@@ -898,7 +883,7 @@ app.controller('AlertsController', function (Keyboard, $route, $location,
                     filter: {
                         and: [
                             {
-                                term: { tags: "inbox" }
+                                term: {tags: "inbox"}
                             },
                             {
                                 range: {
@@ -1167,7 +1152,7 @@ app.controller("AggregatedAlertsController", function ($scope, $location,
                     filter: {
                         and: [
                             {
-                                term: { tags: "inbox"}
+                                term: {tags: "inbox"}
                             },
                             {
                                 range: {
@@ -1297,7 +1282,7 @@ app.controller("AggregatedAlertsController", function ($scope, $location,
                     filter: {
                         and: [
                             {
-                                term: { tags: "inbox" }
+                                term: {tags: "inbox"}
                             },
                             {
                                 range: {
@@ -1371,7 +1356,7 @@ app.controller("AggregatedAlertsController", function ($scope, $location,
     $scope.changeSortBy = function (what) {
         if ($scope.searchModel.sortBy == what) {
             $location.search("sortByOrder",
-                    $scope.searchModel.sortByOrder == "desc" ? "asc" : "desc");
+                $scope.searchModel.sortByOrder == "desc" ? "asc" : "desc");
         }
         else {
             $location.search("sortBy", what);

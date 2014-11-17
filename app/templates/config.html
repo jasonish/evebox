@@ -6,23 +6,23 @@
     <div class="form-group">
       <label>Elastic Search URL:</label>
       <input type="text" class="form-control"
-             ng-model="config.elasticSearch.url"/>
+             ng-model="vm.config.elasticSearch.url"/>
     </div>
 
     <div class="form-group">
       <label>Timeout:</label>
-      <input type="text" class="form-control" ng-model="config.elasticSearch.timeout"/>
+      <input type="text" class="form-control" ng-model="vm.config.elasticSearch.timeout"/>
     </div>
 
     <div class="form-group">
       <label>Events/Page:</label>
       <input type="text" class="form-control"
-             ng-model="config.elasticSearch.size"/>
+             ng-model="vm.config.elasticSearch.size"/>
     </div>
 
     <div class="form-group">
       <label>Default Inbox Aggregation:</label>
-      <select class="form-control" ng-model="config.defaultInboxAggregation">
+      <select class="form-control" ng-model="vm.config.defaultInboxAggregation">
         <option value="">None</option>
         <option value="signature">Signature</option>
         <option value="signature+src">Signature+Source</option>
@@ -32,6 +32,6 @@
   </form>
 </div>
 <div class="modal-footer">
-  <button class="btn btn-primary" ng-click="ok()">OK</button>
-  <button class="btn btn-default" ng-click="cancel()">Cancel</button>
+  <button class="btn btn-primary" ng-click="vm.ok()">OK</button>
+  <button class="btn btn-default" ng-click="vm.cancel()">Cancel</button>
 </div>
