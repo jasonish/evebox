@@ -12,15 +12,10 @@
   <title></title>
   <meta name="description" content="">
   <meta name="viewport" content="width=device-width">
-  <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
-  <!-- build:css styles/vendor.css -->
-  <!-- bower:css -->
-  <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css" />
-  <!-- endbower -->
-  <!-- endbuild -->
-  <!-- build:css({.tmp,app}) styles/app.css -->
+  <!-- inject:css -->
+  <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
+  <!-- endinject -->
   <link rel="stylesheet" href="styles/app.css">
-  <!-- endbuild -->
 </head>
 
 <body ng-app="app">
@@ -109,8 +104,7 @@
 <script src="bower_components/json3/lib/json3.min.js"></script>
 <![endif]-->
 
-<!-- build:js scripts/vendor.js -->
-<!-- bower:js -->
+<!-- inject:js -->
 <script src="bower_components/jquery/dist/jquery.js"></script>
 <script src="bower_components/angular/angular.js"></script>
 <script src="bower_components/angular-route/angular-route.js"></script>
@@ -120,10 +114,8 @@
 <script src="bower_components/lodash/dist/lodash.compat.js"></script>
 <script src="bower_components/moment/moment.js"></script>
 <script src="bower_components/mousetrap/mousetrap.js"></script>
-<script src="bower_components/json3/lib/json3.js"></script>
 <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
-<!-- endbower -->
-<!-- endbuild -->
+<!-- endinject -->
 
 <script src="config.js"></script>
 

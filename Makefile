@@ -10,21 +10,19 @@ vendor-bower-components:
 	git add -f app/bower_components/bootstrap/dist/fonts
 
 package:
-	grunt package
+	gulp package
 
 # Basic clean - build artifacts, backup files...
 clean:
-	-grunt clean
+	-gulp clean
 	find . -name \*~ -exec rm -f {} \;
-	rm -rf dist
-	rm -rf build
 
 # Basic clean plus anything pulled down by build tools.
-clean-all:
-	-$(MAKE) clean
+dist-clean: clean
 	rm -rf node_modules
 	rm -rf app/bower_components
+	git checkout app/bower_components
 
-dev-setup:
+setup:
 	npm install
 	bower install
