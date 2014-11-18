@@ -26,67 +26,72 @@
 
 'use strict';
 
-/**
- * Centralized configuration.
- *
- * Merges server provided configuration with local storage configuration.
- */
-angular.module("app").factory("Config", function ($http, $location) {
+(function () {
 
-    var defaultConfig = {
-        elasticSearch: {
-            url: "http://" + window.location.hostname + ":9200",
-            size: 100,
-            timeout: 6000,
-            index: "logstash-*"
+    /**
+     * Centralized configuration.
+     *
+     * Merges server provided configuration with local storage configuration.
+     */
+    angular.module("app").factory("Config", function ($http, $location) {
+
+        var defaultConfig = {
+            elasticSearch: {
+                url: "http://" + window.location.hostname + ":9200",
+                size: 100,
+                timeout: 6000,
+                index: "logstash-*"
+            }
+        };
+
+        var serverConfig = {};
+        var localConfig = {};
+
+        try {
+            serverConfig = config;
         }
-    };
+        catch (error) {
+            serverConfig = {};
+        }
 
-    var serverConfig = {};
-    var localConfig = {};
+        if ("config" in localStorage) {
+            localConfig = angular.fromJson(localStorage.config);
+        }
 
-    try {
-        serverConfig = config;
-    }
-    catch (error) {
-        serverConfig = {};
-    }
+        var service = {};
+        _.merge(service, defaultConfig);
+        _.merge(service, serverConfig);
+        _.merge(service, localConfig);
 
-    if ("config" in localStorage) {
-        localConfig = angular.fromJson(localStorage.config);
-    }
-
-    var service = {};
-    _.merge(service, defaultConfig);
-    _.merge(service, serverConfig);
-    _.merge(service, localConfig);
-
-    var pruneConfig = function (config, serverConfig) {
-        _.forIn(config, function (value, key) {
-            if (!_.isFunction(value)) {
-                if (serverConfig[key] != undefined) {
-                    if (_.isObject(value)) {
-                        pruneConfig(value, serverConfig[key]);
+        var pruneConfig = function (config, serverConfig) {
+            _.forIn(config, function (value, key) {
+                if (!_.isFunction(value)) {
+                    if (serverConfig[key] != undefined) {
+                        if (_.isObject(value)) {
+                            pruneConfig(value, serverConfig[key]);
+                        }
+                        else if (serverConfig[key] == config[key]) {
+                            delete(config[key]);
+                        }
                     }
-                    else if (serverConfig[key] == config[key]) {
+
+                    if (_.size(value) == 0) {
                         delete(config[key]);
                     }
                 }
+            });
+        };
 
-                if (_.size(value) == 0) {
-                    delete(config[key]);
-                }
-            }
-        });
-    };
+        service.save = function () {
+            pruneConfig(service, serverConfig);
+            localStorage.config = angular.toJson(service);
 
-    service.save = function () {
-        pruneConfig(service, serverConfig);
-        localStorage.config = angular.toJson(service);
+            // Force full refresh.
+            window.location.reload();
+        };
 
-        // Force full refresh.
-        window.location.reload();
-    };
+        return service;
+    });
 
-    return service;
-});
+})();
+

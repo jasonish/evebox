@@ -26,21 +26,27 @@
 
 'use strict';
 
-angular.module("app")
-    .controller("ConfigController",
-    ["$modalInstance", "Config", ConfigController]);
+(function () {
 
-function ConfigController($modalInstance, Config) {
-    var mv = this;
-    mv.$modalInstance = $modalInstance;
-    mv.config = Config;
-}
+    angular.module("app")
+        .controller("ConfigController",
+        ["$modalInstance", "Config", ConfigController]);
 
-ConfigController.prototype.ok = function() {
-    this.config.save();
-    this.$modalInstance.close();
-};
+    function ConfigController($modalInstance, Config) {
+        var mv = this;
+        mv.$modalInstance = $modalInstance;
+        mv.config = Config;
+    }
 
-ConfigController.prototype.cancel = function() {
-    this.$modalInstance.dismiss();
-};
+    ConfigController.prototype.ok = function () {
+        this.config.save();
+        this.$modalInstance.close();
+    };
+
+    ConfigController.prototype.cancel = function () {
+        this.$modalInstance.dismiss();
+    };
+
+
+})();
+
