@@ -97,9 +97,9 @@
       </td>
       <td ng-click="openAggregation(row)"><strong>{{row.count}}</strong></td>
       <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
-        {{::moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
+        {{::moment(row.last_timestamp).format("YYYY-MM-DD HH:mm:ss")}}
         <br/>
-        <small style="color: #808080;"><duration timestamp="hit._source['@timestamp']"></duration></small>
+        <small style="color: #808080;"><duration timestamp="row.last_timestamp"></duration></small>
       </td>
       <td ng-click="openAggregation(row)">
         {{row.signature}}
