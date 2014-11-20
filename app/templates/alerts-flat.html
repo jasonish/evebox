@@ -95,18 +95,24 @@
     <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
       {{::moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss")}}
       <br/>
-      <small style="color: #808080;"><duration timestamp="hit._source['@timestamp']"></duration></small>
+      <small style="color: #808080;">
+        <duration timestamp="hit._source['@timestamp']"></duration>
+      </small>
     </td>
     <td ng-click="toggleOpenEvent(hit)">
       {{hit._source.alert.signature}}
-      <small style="color: #808080;">[{{hit._source.alert.category}}]</small>
+      <small style="color: #808080;" ng-if="hit._source.alert.category">
+        [{{hit._source.alert.category}}]
+      </small>
     </td>
     <td ng-click="toggleOpenEvent(hit)" class="nowrap">
       <label>S:</label>
-      {{::Util.printIpAddress(hit._source.src_ip)}}<span ng-if="hit._source.src_port > 0" style="color: #808080;">:{{hit._source.src_port}}</span>
+      {{::Util.printIpAddress(hit._source.src_ip)}}<span
+      ng-if="hit._source.src_port > 0" style="color: #808080;">:{{hit._source.src_port}}</span>
       <br/>
       <label>D:</label>
-      {{::Util.printIpAddress(hit._source.dest_ip)}}<span ng-if="hit._source.src_port > 0" style="color: #808080;">:{{hit._source.dest_port}}</span>
+      {{::Util.printIpAddress(hit._source.dest_ip)}}<span
+      ng-if="hit._source.src_port > 0" style="color: #808080;">:{{hit._source.dest_port}}</span>
     </td>
     <!--<td ng-click="toggleOpenEvent(hit)">{{hit._source.proto}}</td>-->
     <!--<td ng-click="toggleOpenEvent(hit)">-->

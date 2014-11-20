@@ -68,24 +68,24 @@
     <th></th>
     <th></th>
     <th><a href="" ng-click="changeSortBy('count')">#<span
-        ng-show="searchModel.sortBy == 'count'"
-        ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
-        ></span></a>
+      ng-show="searchModel.sortBy == 'count'"
+      ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
+      ></span></a>
     </th>
     <th colspan="1"><a href="" ng-click="changeSortBy('last')">Last<span
-        ng-show="searchModel.sortBy == 'last'"
-        ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"></span></a>
+      ng-show="searchModel.sortBy == 'last'"
+      ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"></span></a>
     </th>
     <th><a href="" ng-click="changeSortBy('message')">Message<span
-        ng-show="searchModel.sortBy == 'message'"
-        ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
-        ></span></a>
+      ng-show="searchModel.sortBy == 'message'"
+      ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
+      ></span></a>
     </th>
     <th ng-show="aggregations[0].src_ip"><a href=""
                                             ng-click="changeSortBy('src_ip')">Source<span
-        ng-show="searchModel.sortBy == 'src_ip'"
-        ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
-        ></span></a></th>
+      ng-show="searchModel.sortBy == 'src_ip'"
+      ng-class="{'caret': searchModel.sortByOrder == 'desc', 'caret-up': searchModel.sortByOrder == 'asc'}"
+      ></span></a></th>
     </thead>
     <tbody ng-repeat="row in aggregations">
     <tr class="clickable hit-row"
@@ -99,11 +99,14 @@
       <td ng-click="toggleOpenEvent(hit)" style="white-space: nowrap;">
         {{::moment(row.last_timestamp).format("YYYY-MM-DD HH:mm:ss")}}
         <br/>
-        <small style="color: #808080;"><duration timestamp="row.last_timestamp"></duration></small>
+        <small style="color: #808080;">
+          <duration timestamp="row.last_timestamp"></duration>
+        </small>
       </td>
       <td ng-click="openAggregation(row)">
         {{row.signature}}
-        <small style="color: #808080;">[{{row.category}}]</small>
+        <small style="color: #808080;" ng-if="row.category">[{{row.category}}]
+        </small>
       </td>
       <td ng-show="row.src_ip">{{Util.printIpAddress(row.src_ip)}}</td>
     </tr>
