@@ -202,7 +202,7 @@ app.factory("ElasticSearch", function ($http, Config) {
             Config.elasticSearch.index +
             "/_query?refresh=true";
         return $http.delete(url, {data: request});
-    }
+    };
 
     /**
      * Get/search for a record by ID.
