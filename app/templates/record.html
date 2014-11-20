@@ -5,7 +5,12 @@
 
     <div class="row">
       <div class="alert" ng-class="hit.__titleClass">
-        <h3 style="padding: 0px; margin: 0px;">{{hit.__title}}</h3>
+        <h3 style="padding: 0px; margin: 0px;">
+          {{hit.__title}}
+          <span style="float: right;"
+                ng-show="hit._source.tags.indexOf('starred') >= 0"
+                class="glyphicon glyphicon-star"></span>
+        </h3>
       </div>
     </div>
 

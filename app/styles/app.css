@@ -80,7 +80,7 @@ table > tbody > tr.clickable {
 /* When viewing a single record, hide the buttons embedded int he panel
  * heading. */
 #record-view-container .panel-heading .record-action-buttons {
-    visibility: hidden;
+    /*visibility: hidden;*/
 }
 
 .dropdown-menu a:hover,

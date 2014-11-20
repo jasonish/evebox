@@ -79,11 +79,20 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
 });
 
 app.controller("RecordController", function ($scope, $routeParams, Util,
-    ElasticSearch, Config) {
+    ElasticSearch, Config, Cache) {
 
     // Export some functions to $scope.
     $scope.Util = Util;
     $scope.Config = Config;
+
+    var eventId = $routeParams.id;
+    var eventCache = Cache.get("events");
+    if (eventId in eventCache) {
+        console.log("Found event in cache.");
+    }
+    else {
+        console.log("Event not found in cache.");
+    }
 
     ElasticSearch.searchEventById($routeParams.id)
         .success(function (response) {

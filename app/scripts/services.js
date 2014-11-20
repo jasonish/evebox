@@ -296,7 +296,7 @@ app.factory("ElasticSearch", function ($http, Config) {
  * The idea of this service is provide a level of abstraction over
  * ElasticSearch.
  */
-app.factory("EventRepository", function (ElasticSearch, $q) {
+app.factory("EventRepository", function (ElasticSearch) {
 
     var service = {};
 
@@ -328,7 +328,7 @@ app.factory("EventRepository", function (ElasticSearch, $q) {
     };
 
     /**
-     * Aggregate by signature.
+     * Aggregate by signature query.
      */
     service.aggregateBySignature = {
         "signature": {
@@ -341,16 +341,23 @@ app.factory("EventRepository", function (ElasticSearch, $q) {
     };
 
     /**
-     * Aggregate by query.
+     * Aggregate by signature then source address query.
      */
-    service.aggregateBySignatureSrc = _.cloneDeep(service.aggregateBySignature);
-    service.aggregateBySignatureSrc.signature.aggs = {
-        "source_addrs": {
+    service.aggregateBySignatureSrc = {
+        "signature": {
             "terms": {
-                "field": "src_ip.raw",
+                "field": "alert.signature.raw",
                 "size": 0
             },
-            "aggs": service.latestEventAgg
+            "aggs": {
+                "source_addrs": {
+                    "terms": {
+                        "field": "src_ip.raw",
+                        "size": 0
+                    },
+                    "aggs": service.latestEventAgg
+                }
+            }
         }
     };
 

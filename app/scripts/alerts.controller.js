@@ -34,6 +34,8 @@
         $timeout, $routeParams, $scope, $http, $filter, Config, ElasticSearch,
         Util, $modal, Cache, EventRepository, NotificationMessageService) {
 
+        var mv = this;
+
         // Debugging.
         $scope.Config = Config;
         $scope.ElasticSearch = ElasticSearch;
@@ -458,6 +460,12 @@
 
             });
 
+            // Cache events.
+            var eventCache = Cache.get("events");
+            _.forEach($scope.hits.hits, function (hit) {
+                eventCache[hit._id] = hit;
+            });
+
             $(".results").removeClass("loading");
         };
 
@@ -674,6 +682,13 @@
         Keyboard.scopeBind($scope, "o", function (e) {
             $scope.$apply(function () {
                 $scope.toggleOpenEvent($scope.hits.hits[$scope.resultsModel.activeRowIndex]);
+            });
+        });
+
+        Keyboard.scopeBind($scope, "O", function (e) {
+            $scope.$apply(function () {
+                window.location = "#/record/" +
+                $scope.hits.hits[$scope.resultsModel.activeRowIndex]._id;
             });
         });
 
