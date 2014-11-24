@@ -89,7 +89,8 @@
 
     <!-- Event type: HTTP. -->
     <dl ng-if="hit._source.event_type == 'http'" class="dl-horizontal">
-      <div ng-repeat="(key, val) in hit._source.http">
+      {{eventModel}}
+      <div ng-repeat="(key, val) in _.omit(hit._source.http, 'length')">
         <dt>{{key}}</dt>
         <dd style="word-break: break-all;">{{val}}</dd>
       </div>
@@ -249,7 +250,7 @@
         </div>
         <div class="panel-collapse collapse in">
           <div class="panel-body dl-horizontal">
-            <div ng-repeat="(key, val) in hit._source.http">
+            <div ng-repeat="(key, val) in _.omit(hit._source.http, 'length')">
               <dt>{{key}}</dt>
               <dd style="word-break: break-all;">{{val}}</dd>
             </div>

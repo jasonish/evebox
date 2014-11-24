@@ -139,6 +139,7 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
     ElasticSearch, EventRepository, Util) {
 
     $scope.Config = Config;
+    $scope._ = _;
 
     /* Suricata can store the payload as base64 or printable.  Attempt to
      * guess which it is here. */
