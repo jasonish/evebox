@@ -687,7 +687,7 @@
 
         Keyboard.scopeBind($scope, "O", function (e) {
             $scope.$apply(function () {
-                window.location = "#/record/" +
+                window.location = "#/event/" +
                 $scope.hits.hits[$scope.resultsModel.activeRowIndex]._id;
             });
         });

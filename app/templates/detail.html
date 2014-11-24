@@ -1,7 +1,7 @@
-<div class="panel panel-default record-detail-panel">
+<div class="panel panel-default event-detail-panel">
   <div class="panel-heading">
     Event
-    <div class="record-action-buttons" style="float: right;">
+    <div class="event-action-buttons" style="float: right;">
       <button ng-if="hit._source.tags.indexOf('inbox') > -1"
               ng-click="archiveEvent(hit)"
               class="btn btn-default btn-xs">Archive
@@ -22,7 +22,7 @@
           More <span class="caret"></span>
         </button>
         <ul class="dropdown-menu pull-right" role="menu">
-          <li><a href="/#/record/{{hit._id}}" target="_blank">Open in New
+          <li><a href="/#/event/{{hit._id}}" target="_blank">Open in New
             Window</a></li>
           <li ng-if="Config.dumpy.url">
             <a href="" ng-click="sendToDumpy(hit)">Send to Dumpy</a>
@@ -107,7 +107,7 @@
   </div>
 </div>
 
-<div class="panel panel-default record-detail-panel">
+<div class="panel panel-default event-detail-panel">
   <div class="panel-heading">
     Packet
   </div>
@@ -263,11 +263,11 @@
 
 </div>
 
-<div class="panel panel-default record-detail-panel">
+<div class="panel panel-default event-detail-panel">
   <div class="panel-heading">
     JSON
   </div>
   <div class="panel-body">
-    <pre style="white-space: pre-wrap;">{{ Util.toJson(hit, true) }}</pre>
+    <pre style="white-space: pre-wrap;">{{vm.Util.toJson(hit, true)}}</pre>
   </div>
 </div>

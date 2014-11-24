@@ -67,11 +67,11 @@ table > tbody > tr.clickable {
     margin-left: 120px;
 }
 
-.record-detail-panel {
+.event-detail-panel {
     margin-top: 15px;
 }
 
-.record-detail-panel .panel-heading {
+.event-detail-panel .panel-heading {
     margin: 0px;
     padding-left: 15px;
     padding-top: 2px;
@@ -88,7 +88,7 @@ table > tbody > tr.clickable {
 
 /* When viewing a single record, hide the buttons embedded int he panel
  * heading. */
-#record-view-container .panel-heading .record-action-buttons {
+#event-view-container .panel-heading .event-action-buttons {
     /*visibility: hidden;*/
 }
 

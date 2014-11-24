@@ -78,63 +78,6 @@ app.controller("NavBarController", function ($routeParams, $scope, $modal,
     });
 });
 
-app.controller("RecordController", function ($scope, $routeParams, Util,
-    ElasticSearch, Config, Cache) {
-
-    // Export some functions to $scope.
-    $scope.Util = Util;
-    $scope.Config = Config;
-
-    var eventId = $routeParams.id;
-    var eventCache = Cache.get("events");
-    if (eventId in eventCache) {
-        console.log("Found event in cache.");
-    }
-    else {
-        console.log("Event not found in cache.");
-    }
-
-    ElasticSearch.searchEventById($routeParams.id)
-        .success(function (response) {
-            $scope.response = response;
-            $scope.hits = response.hits;
-
-            _.forEach($scope.hits.hits, function (hit) {
-
-                if (hit._source.alert) {
-                    hit.__title = hit._source.alert.signature;
-                    hit.__titleClass = Util.severityToBootstrapClass(hit._source.alert.severity, "alert-");
-                }
-                else if (hit._source.dns) {
-                    hit.__title = hit._source.event_type.toUpperCase() + ": " +
-                    hit._source.dns.rrname;
-                    hit.__titleClass = "alert-info";
-                }
-                else if (hit._source.tls) {
-                    hit.__title = hit._source.event_type.toUpperCase() + ": " +
-                    hit._source.tls.subject;
-                    hit.__titleClass = "alert-info";
-                }
-                else if (hit._source.http) {
-                    hit.__title = hit._source.event_type.toUpperCase() + ": " +
-                    hit._source.http.http_method + " " +
-                    hit._source.http.hostname;
-                }
-                else {
-                    hit.__title = hit._source.event_type.toUpperCase();
-                    hit.__titleClass = "alert-info";
-                }
-
-                if (!hit.__titleClass) {
-                    hit.__titleClass = "alert-info";
-                }
-
-            });
-
-        });
-
-});
-
 app.controller("EventDetailController", function ($scope, Keyboard, Config,
     ElasticSearch, EventRepository, Util) {
 

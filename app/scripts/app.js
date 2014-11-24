@@ -37,9 +37,10 @@ var app = angular.module("app", [
 
 app.config(function ($routeProvider) {
 
-    $routeProvider.when("/record/:id", {
-        controller: "RecordController",
-        templateUrl: "templates/record.html"
+    $routeProvider.when("/event/:id", {
+        controller: "EventController",
+        controllerAs: "vm",
+        templateUrl: "templates/event.html"
     });
 
     $routeProvider.when("/events", {
