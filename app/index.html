@@ -89,7 +89,7 @@
 
 <evebox-notification-message id="evebox-notification-message">
   <div ng-if="NotificationMessageService.queue.length > 0">
-    <div class="label-{{message.level}}"
+    <div ng-cloak class="label-{{message.level}}"
          ng-repeat="message in NotificationMessageService.queue track by $index">
       {{message.message}}
     </div>
