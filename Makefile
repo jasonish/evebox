@@ -17,12 +17,16 @@ clean:
 	-gulp clean
 	find . -name \*~ -exec rm -f {} \;
 
+refresh-bower-components:
+	rm -rf app/bower_components
+	bower install
+
 # Basic clean plus anything pulled down by build tools.
 dist-clean: clean
 	rm -rf node_modules
 	rm -rf app/bower_components
 	git checkout app/bower_components
 
-setup:
+prep:
 	npm install
 	bower install

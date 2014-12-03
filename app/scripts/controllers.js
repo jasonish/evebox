@@ -26,62 +26,56 @@
 
 'use strict';
 
-app.controller("NavBarController", function ($routeParams, $scope, $modal,
-    $location, Keyboard, EventRepository, $timeout) {
+app.controller("NavBarController", function($routeParams, $scope, $modal,
+    $location, EventRepository, $timeout, Mousetrap) {
 
     $scope.$routeParams = $routeParams;
+    $scope.$location = $location;
 
-    $scope.openConfig = function () {
+    $scope.openConfig = function() {
         $modal.open({
             templateUrl: "templates/config.html",
             controller: "ConfigController as vm"
         });
     };
 
-    $scope.openHelp = function () {
+    $scope.openHelp = function() {
         $modal.open({
             templateUrl: "templates/help.html",
             size: "lg"
         });
     };
 
-    Keyboard.scopeBind($scope, "g i", function (e) {
-        $scope.$apply(function () {
-            $location.url("/inbox");
-        });
+    Mousetrap.bind($scope, "g i", function(e) {
+        $location.url("/inbox");
     });
 
-    Keyboard.scopeBind($scope, "g s", function (e) {
-        $scope.$apply(function () {
-            $location.url("/starred")
-        });
+    Mousetrap.bind($scope, "g s", function(e) {
+        $location.url("/starred")
     });
 
-    Keyboard.scopeBind($scope, "g a", function (e) {
-        $scope.$apply(function () {
-            $location.url("/alerts");
-        });
+    Mousetrap.bind($scope, "g a", function(e) {
+        $location.url("/alerts");
     });
 
-    Keyboard.scopeBind($scope, "g o", function () {
-        $scope.$apply(function () {
-            $("#other-menu-dropdown-toggle").dropdown('toggle');
-        });
+    Mousetrap.bind($scope, "g o", function() {
+        $("#other-menu-dropdown-toggle").dropdown('toggle');
     });
 
-    Keyboard.scopeBind($scope, "g c", function (e) {
+    Mousetrap.bind($scope, "g c", function(e) {
         $scope.openConfig();
     });
 
-    Keyboard.scopeBind($scope, "?", function (e) {
+    Mousetrap.bind($scope, "?", function(e) {
         $scope.openHelp();
     });
 });
 
-app.controller("EventDetailController", function ($scope, Keyboard, Config,
+app.controller("EventDetailController", function($scope, Mousetrap, Config,
     ElasticSearch, EventRepository, Util) {
 
     $scope.Config = Config;
+    $scope.Util = Util;
     $scope._ = _;
 
     /* Suricata can store the payload as base64 or printable.  Attempt to
@@ -95,11 +89,11 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
         $scope.hasPayload = false;
     }
 
-    $scope.b64ToText = function (data) {
+    $scope.b64ToText = function(data) {
         return atob(data);
     };
 
-    $scope.b64ToHex = function (data) {
+    $scope.b64ToHex = function(data) {
         var hex = Util.base64ToHexArray(data);
         var buf = "";
         for (var i = 0; i < hex.length; i++) {
@@ -111,11 +105,11 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
         return buf;
     };
 
-    $scope.archiveEvent = function (event) {
+    $scope.archiveEvent = function(event) {
         if ($scope.$parent.archiveEvent === undefined) {
             ElasticSearch.removeTag(event, "inbox")
-                .success(function (response) {
-                    _.remove(event._source.tags, function (tag) {
+                .success(function(response) {
+                    _.remove(event._source.tags, function(tag) {
                         return tag == "inbox";
                     })
                 });
@@ -125,10 +119,10 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
         }
     };
 
-    $scope.deleteEvent = function (event) {
+    $scope.deleteEvent = function(event) {
         if ($scope.$parent.deleteEvent === undefined) {
             EventRepository.deleteEvent(event)
-                .success(function (response) {
+                .success(function(response) {
                     $scope.$emit("eventDeleted", event);
                 });
         }
@@ -137,11 +131,11 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
         }
     };
 
-    $scope.toggleStar = function (event) {
+    $scope.toggleStar = function(event) {
         EventRepository.toggleStar(event);
     };
 
-    $scope.sendToDumpy = function (event) {
+    $scope.sendToDumpy = function(event) {
         var form = document.createElement("form");
         form.setAttribute("method", "post");
         form.setAttribute("action", Config.dumpy.url);
@@ -156,182 +150,8 @@ app.controller("EventDetailController", function ($scope, Keyboard, Config,
         form.submit();
     };
 
-    $scope.$on("$destroy", function () {
-        Keyboard.resetScope($scope);
-    });
-
-    Keyboard.scopeBind($scope, ".", function () {
+    Mousetrap.bind($scope, ".", function() {
         $("#event-detail-more-button").dropdown('toggle');
     });
 
 });
-
-app.controller("ModalProgressController", function ($scope, jobs) {
-    $scope.jobs = jobs;
-});
-
-/**
- * Controller for the all events view.
- */
-app.controller("EventsController", function ($scope, Util, Keyboard, Config,
-    ElasticSearch, $routeParams, $location, $sce) {
-
-    $scope.$routeParams = $routeParams;
-    $scope.Util = Util;
-    $scope.querySize = Config.elasticSearch.size;
-
-    $scope.searchModel = {
-        userQuery: $routeParams.q || "",
-        page: $routeParams.page || 1
-    };
-
-    $scope.filters = [
-        /* Limit the result set to documents with an event_type field. */
-        {
-            "exists": {"field": "event_type"}
-        }
-    ];
-
-    $scope.resultsModel = {
-        rows: [],
-        activeRowIndex: 0
-    };
-
-    $scope.eventMessage = function (event) {
-        switch (event.event_type) {
-            default:
-                var parts = [];
-                _.forIn(event[event.event_type], function (value, key) {
-                    parts.push('<span style="color: #808080;">' +
-                    key +
-                    ':</span> ' +
-                    '<span style="word-break: break-all;">' +
-                    value +
-                    '</span>');
-                });
-                var msg = parts.join("; ");
-                return $sce.trustAsHtml(msg);
-        }
-    };
-
-    $scope.submitSearchRequest = function (request) {
-        $scope.searchRequest = request;
-        $scope.loading = true;
-        ElasticSearch.search(request)
-            .success($scope.onSearchResponseSuccess)
-            .error(function (error) {
-            })
-            .finally(function () {
-                $scope.loading = false;
-            });
-    };
-
-    $scope.onSearchResponseSuccess = function (response) {
-        $scope.response = response;
-
-        $scope.resultsModel.rows = response.hits.hits.map(function (hit) {
-
-            // If row is an alert, set the class based on the severity.
-            if (hit._source.alert) {
-                var trClass = [Util.severityToBootstrapClass(
-                    hit._source.alert.severity)];
-            }
-            else {
-                var trClass = ["info"];
-            }
-
-            return {
-                trClass: trClass,
-
-                source: hit,
-
-                timestamp: moment(hit._source["@timestamp"]).format("YYYY-MM-DD HH:mm:ss.SSS"),
-                src_ip: Util.printIpAddress(hit._source.src_ip),
-                dest_ip: Util.printIpAddress(hit._source.dest_ip),
-                message: $scope.eventMessage(hit._source),
-                event_type: hit._source.event_type
-            };
-        });
-
-        $scope.resultsModel.rows = _.sortBy($scope.resultsModel.rows, function (row) {
-            return Util.timestampToFloat(row.source._source.timestamp);
-        }).reverse();
-    };
-
-    $scope.toggleOpenEvent = function (event) {
-        _.forEach($scope.resultsModel.rows, function (row) {
-            if (row != event) {
-                row.__open = false;
-            }
-        });
-        event.__open = !event.__open;
-    };
-
-    $scope.refresh = function () {
-        $scope.submitSearchRequest($scope.searchRequest);
-    };
-
-    $scope.gotoPage = function (page) {
-        $scope.page = page;
-        $location.search("page", $scope.page);
-    };
-
-    $scope.doSearch = function () {
-
-        var query = {
-            query: {
-                filtered: {
-                    query: {
-                        query_string: {
-                            query: $scope.searchModel.userQuery || "*"
-                        }
-                    },
-                    filter: {
-                        and: _.cloneDeep($scope.filters)
-                    }
-                }
-            },
-            size: $scope.querySize || 100,
-            from: Config.elasticSearch.size * (($scope.searchModel.page || 1) - 1),
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
-            timeout: 6000
-        };
-
-        $scope.submitSearchRequest(query);
-    };
-
-    $scope.onSearchFormSubmit = function () {
-        $location.search("q", $scope.searchModel.userQuery);
-    };
-
-    $scope.$on("eventDeleted", function (e, event) {
-        _.remove($scope.resultsModel.rows, function (row) {
-            return row.source === event;
-        });
-    });
-
-    $scope.getActiveRow = function () {
-        return $scope.resultsModel.rows[$scope.resultsModel.activeRowIndex];
-    };
-
-    $scope.$on("$destroy", function () {
-        Keyboard.resetScope($scope);
-    });
-
-    Keyboard.scopeBind($scope, "o", function () {
-        $scope.$apply(function () {
-            $scope.toggleOpenEvent($scope.getActiveRow());
-        });
-    });
-
-    Keyboard.scopeBind($scope, "r", function () {
-        $scope.$apply(function () {
-            $scope.refresh();
-        });
-    });
-
-    $scope.doSearch();
-});
-

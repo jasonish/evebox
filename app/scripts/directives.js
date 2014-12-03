@@ -24,315 +24,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * Small directives.  Large ones should get their own file.
+ */
+
 'use strict';
 
-app.directive("eveboxIpAddressServices", function () {
+(function() {
 
-    return {
+    app.directive("eveboxIpAddressServices", function() {
 
-        restrict: "EA",
-
-        templateUrl: "templates/ip-address-services.html",
-
-        scope: {
-            address: "=address"
-        }
-
-    };
-
-});
-
-app.directive("eveboxNotificationMessage", function () {
-
-    return {
-
-        restrict: "EA",
-
-        controller: function ($scope, NotificationMessageService) {
-
-            $scope.NotificationMessageService = NotificationMessageService;
-
-        }
-    };
-
-});
-
-app.directive("eveboxSearchForm", function (Keyboard) {
-
-    return {
-
-        restrict: "EA",
-
-        templateUrl: "templates/search-form.html",
-
-        controller: function ($scope) {
-
-            $scope.$on("$destroy", function () {
-                Keyboard.resetScope($scope);
-            });
-
-            Keyboard.scopeBind($scope, "/", function (e) {
-                e.preventDefault();
-                $("#user-query-input").focus();
-                $("#user-query-input").select();
-            });
-
-        }
-
-    };
-
-});
-
-app.directive("eveboxPager", function () {
-
-    return {
-        restrict: "EA",
-
-        templateUrl: "templates/pager.html",
-
-        scope: {
-            rows: "=eveboxPagerRows",
-            page: "=eveboxPagerPage",
-            change: "&eveboxPagerChangePage",
-            querySize: "=eveboxPagerQuerySize",
-            total: "=eveboxPagerTotal",
-            size: "@eveboxPagerSize"
-        }, // scope.
-
-        controller: function ($scope, Keyboard) {
-
-            $scope.gotoPage = function (what) {
-                var last = Math.floor($scope.total / $scope.querySize) + 1;
-
-                switch (what) {
-                    case "first":
-                        $scope.page = 1;
-                        break;
-                    case "prev":
-                        if ($scope.page > 1) {
-                            $scope.page--;
-                        }
-                        break;
-                    case "next":
-                        if ($scope.page < last) {
-                            $scope.page++;
-                        }
-                        break;
-                    case "last":
-                        $scope.page = last;
-                        break;
-                }
-
-                $scope.change()($scope.page);
-            };
-
-            $scope.$on("$destroy", function () {
-                Keyboard.resetScope($scope);
-            });
-
-            Keyboard.scopeBind($scope, "{", function () {
-                $scope.$apply(function () {
-                    $scope.gotoPage("first");
-                })
-            });
-
-            Keyboard.scopeBind($scope, "<", function () {
-                $scope.$apply(function () {
-                    $scope.gotoPage("prev");
-                });
-            });
-
-            Keyboard.scopeBind($scope, ">", function () {
-                $scope.$apply(function () {
-                    $scope.gotoPage("next");
-                });
-            });
-
-            Keyboard.scopeBind($scope, "}", function () {
-                $scope.$apply(function () {
-                    $scope.gotoPage("last");
-                })
-            });
-
-        }, // controller.
-
-        link: function (scope, element, attributes) {
-            switch (scope.size) {
-                case "sm":
-                    angular.element(element).find(".btn-group").addClass("btn-group-sm");
-                    break;
-            }
-        } //link.
-    };
-
-});
-
-app.directive("autoBlur", function () {
-    return {
-
-        restrict: "A",
-
-        link: function (scope, element, attr) {
-            element.find(":input").bind("click", function () {
-                $(this).blur();
-            });
-            element.bind("click", function () {
-                element.blur();
-            })
-        }
-
-    };
-});
-
-app.directive("eveboxPanelCollapsible", function ($compile) {
-
-    return {
-
-        restrict: "A",
-
-        controller: function ($scope, $element) {
-
-            $scope.getElement = function() {
-                return angular.element($element).find(".panel-collapse");
-            };
-
-            $scope.isCollapsed = function () {
-                return !$scope.getElement().hasClass("in");
-            };
-
-            $scope.toggleCollapse = function () {
-                if ($scope.isCollapsed()) {
-                    $scope.getElement().addClass("in");
-                }
-                else {
-                    $scope.getElement().removeClass("in");
-                }
-            };
-
-        },
-
-        link: function (scope, element) {
-
-            var fixupHeader = function() {
-                var toggles = '<span style="float: right">' +
-                    '<span ng-hide="isCollapsed();" ng-click="toggleCollapse();" class="glyphicon glyphicon-chevron-up"></span>' +
-                    '<span ng-show="isCollapsed();" ng-click="toggleCollapse();" class="glyphicon glyphicon-chevron-down"></span>' +
-                    '</span>';
-                var header = angular.element(element).find(".panel-heading").first();
-                header.attr("ng-click", "toggleCollapse();");
-                header.append(toggles);
-                header.replaceWith($compile(header)(scope));
-            };
-            fixupHeader();
-        }
-
-    };
-
-});
-
-app.directive("keyTable", function () {
-
-    var directive = {
-        restrict: "A"
-    };
-
-    directive.scope = {
-        rows: "=keyTableRows",
-        activeRowIndex: "=keyTableActiveRowIndex"
-    };
-
-    directive.controller = function ($scope, Keyboard, Util, $element) {
-
-        var keyTableScope = $scope;
-
-        $scope.$element = $element;
-        $scope.Keyboard = Keyboard;
-        $scope.activeRowIndex = 0;
-
-        var scrollToView = function () {
-
-            var rowIndexClass = "row-index-" + $scope.activeRowIndex;
-            var row = angular.element($element).find("." + rowIndexClass);
-            if (row.hasClass(rowIndexClass)) {
-                Util.scrollElementIntoView(row);
-            }
-            else {
-                Util.scrollElementIntoView(
-                    angular.element(
-                        $element).find("tr").eq($scope.activeRowIndex));
+        return {
+            restrict: "EA",
+            templateUrl: "templates/ip-address-services.html",
+            scope: {
+                address: "=address"
             }
         };
 
-        Keyboard.scopeBind($scope, "j", function () {
-            $scope.$apply(function () {
-                if ($scope.activeRowIndex < $scope.rows.length - 1) {
-                    $scope.activeRowIndex++;
-                }
-                scrollToView();
-            });
-        });
+    });
 
-        Keyboard.scopeBind($scope, "k", function () {
-            $scope.$apply(function () {
-                if ($scope.activeRowIndex > 0) {
-                    $scope.activeRowIndex--;
-                }
-                scrollToView();
-            });
-        });
+    app.directive("eveboxNotificationMessage", function() {
 
-        Keyboard.scopeBind($scope, "H", function (e) {
-            $scope.$apply(function () {
-                $(window).scrollTop(0);
-                $scope.activeRowIndex = 0;
-            });
-        });
+        return {
+            restrict: "EA",
+            controller: function($scope, NotificationService) {
+                $scope.NotificationService = NotificationService;
+            }
+        };
 
-        Keyboard.scopeBind($scope, "G", function (e) {
-            $scope.$apply(function () {
-                $(window).scrollTop($(document).height())
-                $scope.activeRowIndex = $scope.rows.length - 1;
-            });
-        });
+    });
 
-    };
+})();
 
-    return directive;
-});
-
-app.directive("duration", function ($interval) {
-
-    return {
-        restrict: "AE",
-
-        scope: {
-            timestamp: "="
-        },
-
-        template: "{{duration}}",
-
-        link: function (scope, element, attrs) {
-
-            // 6 seconds...  One second shows a noticeable increase in CPU.
-            var updateInterval = 6000;
-
-            var intervalId;
-
-            element.on("$destroy", function () {
-                $interval.cancel(intervalId);
-            });
-
-            var updateDuration = function () {
-                var duration = moment(scope.timestamp) - moment();
-                scope.duration = moment.duration(duration).humanize(true);
-            };
-            updateDuration();
-
-            intervalId = $interval(function () {
-                updateDuration();
-            }, updateInterval);
-
-        }
-    }
-
-});

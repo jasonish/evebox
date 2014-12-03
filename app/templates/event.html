@@ -1,22 +1,19 @@
 <!-- Template/view for an individual record. -->
-<div id="event-view-container" class="container">
+<div class="container-fluid">
 
   <div ng-repeat="hit in hits.hits">
 
-    <div class="row">
-      <div class="alert" ng-class="hit.__titleClass">
-        <h3 style="padding: 0px; margin: 0px;">
-          {{hit.__title}}
+    <div class="alert" ng-class="hit.__titleClass">
+      <h3 style="padding: 0px; margin: 0px;">
+        {{hit.__title}}
           <span style="float: right;"
                 ng-show="hit._source.tags.indexOf('starred') >= 0"
                 class="glyphicon glyphicon-star"></span>
-        </h3>
-      </div>
+      </h3>
     </div>
 
-    <div class="row">
-      <div ng-include="'templates/detail.html'" ng-controller="EventDetailController"></div>
-    </div>
+    <div ng-include="'templates/detail.html'"
+         ng-controller="EventDetailController"></div>
 
   </div>
 

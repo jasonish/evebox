@@ -1,10 +1,8 @@
 *~
 *.iml
 /.idea
-node_modules
-dist
-.tmp
-.sass-cache
-app/bower_components
+/node_modules
+/app/bower_components
 /nbproject
 /app/config.js
+/build

@@ -28,24 +28,52 @@
 
 (function () {
 
-    angular.module("app")
-        .controller("ConfigController",
-        ["$modalInstance", "Config", ConfigController]);
+    angular.module("app").factory("Mousetrap", function (printf) {
 
-    function ConfigController($modalInstance, Config) {
-        var mv = this;
-        mv.$modalInstance = $modalInstance;
-        mv.config = Config;
-    }
+        var debug = false;
 
-    ConfigController.prototype.ok = function () {
-        this.config.save();
-        this.$modalInstance.close();
-    };
+        var service = {};
+        var bindings = {};
 
-    ConfigController.prototype.cancel = function () {
-        this.$modalInstance.dismiss();
-    };
+        var log = function(msg) {
+            if (debug) {
+                console.log(msg);
+            }
+        };
+
+        service.bind = function (scope, key, callback) {
+            log(printf("Mousetrap: binding key: {}", key));
+            Mousetrap.unbind(key);
+
+            var binding = function() {
+                Mousetrap.bind(key, function(e) {
+                    scope.$apply(function() {
+                        callback(e);
+                    })
+                })
+            };
+
+            bindings[key] = binding;
+
+            binding();
+
+            // Rebinding existing bindings - something is up with Mousetrap.
+            for (binding in bindings) {
+                if (binding != key) {
+                    bindings[binding]();
+                }
+            }
+
+            scope.$on('$destroy', function () {
+                log(printf("Mousetrap: unbinding key: {}", key));
+                delete(bindings[key]);
+                Mousetrap.unbind(key);
+            });
+        };
+
+        return service;
+
+    });
 
 })();
 

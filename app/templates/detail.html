@@ -45,7 +45,7 @@
     <dl ng-if="hit._source.event_type == 'alert'" class="dl-horizontal">
       <dt>Signature:</dt>
       <dd><a
-        href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
+          href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
       </dd>
       <dt>Category:</dt>
       <dd>{{hit._source.alert.category}}</dd>
@@ -63,7 +63,7 @@
       <dd>{{hit._source.dns.type}}</dd>
       <dt>ID:</dt>
       <dd><a
-        href="#/events?q=+dns.id:{{hit._source.dns.id}} +{{hit._source.src_ip}} +{{hit._source.dest_ip}}">{{hit._source.dns.id}}</a>
+          href="#/events?q=+dns.id:{{hit._source.dns.id}} +{{hit._source.src_ip}} +{{hit._source.dest_ip}}">{{hit._source.dns.id}}</a>
       </dd>
       <dt>TTL:</dt>
       <dd>{{hit._source.dns.ttl}}</dd>
@@ -123,9 +123,9 @@
         <div class="col-md-4" style="padding: 0px;">
           <div class="input-group">
             <a
-              href="#/events?q=+&quot;{{hit._source.src_ip}}&quot;">{{hit._source.src_ip}}</a>
+                href="#/events?q=+&quot;{{hit._source.src_ip}}&quot;">{{hit._source.src_ip}}</a>
             <evebox-ip-address-services
-              address="hit._source.src_ip"></evebox-ip-address-services>
+                address="hit._source.src_ip"></evebox-ip-address-services>
           </div>
         </div>
 
@@ -136,7 +136,7 @@
             {{hit._source.icmp_type}}
           </div>
           <div
-            ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
+              ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
             <b>Port:</b>
             {{hit._source.src_port}}
           </div>
@@ -150,7 +150,7 @@
           <div class="input-group">
             <a href="#/events?q=%2b&quot;{{hit._source.dest_ip}}&quot;">{{hit._source.dest_ip}}</a>
             <evebox-ip-address-services
-              address="hit._source.dest_ip"></evebox-ip-address-services>
+                address="hit._source.dest_ip"></evebox-ip-address-services>
           </div>
         </div>
 
@@ -161,7 +161,7 @@
             {{hit._source.icmp_code}}
           </div>
           <div
-            ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
+              ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
             <b>Port:</b>
             {{hit._source.dest_port}}
           </div>
@@ -173,7 +173,7 @@
 
     <!-- Packets array from idstools-u2json. -->
     <div ng-if="hit._source.packets">
-      <div class="panel panel-default" evebox-panel-collapsible>
+      <div class="panel panel-default">
         <div class="panel-heading">
           Packets
         </div>
@@ -188,11 +188,11 @@
                 <div class="row">
                   <div class="col-md-6">
               <pre
-                style="max-height: 300px; white-space: pre-wrap;">{{b64ToHex(packet.packet)}}</pre>
+                  style="max-height: 300px; white-space: pre-wrap;">{{b64ToHex(packet.packet)}}</pre>
                   </div>
                   <div class="col-md-6">
               <pre
-                style="max-height: 300px; white-space: pre-wrap;">{{b64ToText(packet.packet)}}</pre>
+                  style="max-height: 300px; white-space: pre-wrap;">{{b64ToText(packet.packet)}}</pre>
                   </div>
                 </div>
               </div>
@@ -202,8 +202,7 @@
       </div>
     </div>
 
-    <div ng-if="hit._source.packet" class="panel panel-default"
-         evebox-panel-collapsible>
+    <div ng-if="hit._source.packet" class="panel panel-default">
       <div class="panel-heading">
         Packet
       </div>
@@ -212,19 +211,18 @@
           <div class="row">
             <div class="col-md-6">
             <pre
-              style="white-space: pre-wrap">{{b64ToHex(hit._source.packet)}}</pre>
+                style="white-space: pre-wrap">{{b64ToHex(hit._source.packet)}}</pre>
             </div>
             <div class="col-md-6">
             <pre
-              style="white-space: pre-wrap">{{b64ToText(hit._source.packet)}}</pre>
+                style="white-space: pre-wrap">{{b64ToText(hit._source.packet)}}</pre>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div ng-if="hit._source.payload" class="panel panel-default"
-         evebox-panel-collapsible>
+    <div ng-if="hit._source.payload" class="panel panel-default">
       <div class="panel-heading">
         Payload
       </div>
@@ -233,7 +231,7 @@
           <div class="row">
             <div class="col-md-6">
             <pre
-              style="white-space: pre-wrap">{{b64ToHex(hit._source.payload)}}</pre>
+                style="white-space: pre-wrap">{{b64ToHex(hit._source.payload)}}</pre>
             </div>
             <div class="col-md-6">
               <pre style="white-space: pre-wrap">{{b64ToText(hit._source.payload)}}</pre>
@@ -244,7 +242,7 @@
     </div>
 
     <div ng-if="hit._source.http">
-      <div class="panel panel-default" evebox-panel-collapsible>
+      <div class="panel panel-default">
         <div class="panel-heading">
           HTTP
         </div>
@@ -268,6 +266,6 @@
     JSON
   </div>
   <div class="panel-body">
-    <pre style="white-space: pre-wrap;">{{vm.Util.toJson(hit, true)}}</pre>
+    <pre style="white-space: pre-wrap;">{{Util.toJson(hit, true)}}</pre>
   </div>
 </div>

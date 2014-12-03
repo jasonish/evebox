@@ -48,18 +48,19 @@ app.factory("Util", function () {
     };
 
     /**
-     * String formatter.
+     * Format a string.
      *
-     * Example: formatString("Numbers {0}, {1}, {2}.", "one", "two", "three");
-     *
-     * Based on:
-     * http://stackoverflow.com/questions/610406/javascript-equivalent-to-printf-string-format/4673436#4673436
+     * Example: formatString("This is a {} {}.", "format", "string");
      */
-    service.formatString = function (format) {
+    service.printf = function (format) {
+        var buf = arguments[0];
         var args = Array.prototype.slice.call(arguments, 1);
-        return format.replace(/{(\d+)}/g, function (match, number) {
-            return typeof args[number] != 'undefined' ? args[number] : match;
-        });
+
+        for (var i = 0; i < args.length; i ++) {
+            buf = buf.replace("{}", args[i]);
+        }
+
+        return buf;
     };
 
     /**
@@ -81,41 +82,6 @@ app.factory("Util", function () {
         }
     };
 
-    /**
-     * Check if an element is currently within the visible area of the window.
-     *
-     * From http://stackoverflow.com/questions/487073/check-if-element-is-visible-after-scrolling.
-     */
-    service.isScrolledIntoView = function (element) {
-        var docViewTop = $(window).scrollTop();
-        var docViewBottom = docViewTop + $(window).height();
-        var elemTop = $(element).offset().top;
-        var elemBottom = elemTop + $(element).height();
-        return ((elemBottom < docViewBottom) && (elemTop >= docViewTop));
-    };
-
-    service.scrollElementIntoView = function (element) {
-        if (!service.isScrolledIntoView(element)) {
-            $(window).scrollTop(element.position().top - ($(window).height() / 2));
-        }
-    };
-
-    /**
-     * Print an IP address.  Really only used to shorten up IPv6 addresses.
-     */
-    service.printIpAddress = function (addr) {
-        if (addr === undefined) {
-            return "";
-        }
-        addr = addr.replace(/0000/g, "");
-        while (addr.indexOf(":0:") > -1) {
-            addr = addr.replace(/:0:/g, "::");
-        }
-        addr = addr.replace(/:::+/g, "::");
-        while (addr != (addr = addr.replace(/:0+/g, ":")));
-        return addr;
-    };
-
     service.timestampToFloat = function (timestamp) {
         var usecs = timestamp.match(/\.(\d+)/)[1] / 1000000;
         var secs = moment(timestamp).unix();
@@ -133,9 +99,11 @@ app.factory("Util", function () {
     };
 
     service.base64ToHexArray = function (str) {
-        for (var i = 0, bin = atob(str.replace(/[ \r\n]+$/, "")), hex = []; i < bin.length; ++i) {
+        for (var i = 0, bin = atob(str.replace(/[ \r\n]+$/, "")), hex = []; i
+        < bin.length; ++ i) {
             var tmp = bin.charCodeAt(i).toString(16);
-            if (tmp.length === 1) tmp = "0" + tmp;
+            if (tmp.length === 1)
+                tmp = "0" + tmp;
             hex[hex.length] = tmp;
         }
         return hex;
@@ -144,12 +112,29 @@ app.factory("Util", function () {
     return service;
 });
 
+angular.module("app").factory("printf", function () {
+
+    return function (format) {
+        var buf = arguments[0];
+        var args = Array.prototype.slice.call(arguments, 1);
+
+        for (var i = 0; i < args.length; i ++) {
+            buf = buf.replace("{}", args[i]);
+        }
+
+        return buf;
+    };
+
+});
+
 /**
  * Elastic Search operations.
  */
-app.factory("ElasticSearch", function ($http, Config) {
+app.factory("ElasticSearch", function ($http, Config, printf) {
 
     var service = {};
+
+    var esUrl = Config.elasticSearch.url;
 
     service.logFailure = function (failure) {
         console.log("elastic search server failure: " + failure);
@@ -159,10 +144,8 @@ app.factory("ElasticSearch", function ($http, Config) {
      * Search.
      */
     service.search = function (query) {
-        var url = Config.elasticSearch.url +
-            "/" +
-            Config.elasticSearch.index +
-            "/_search?refresh=true";
+        var url = printf("{}/{}/_search?refresh=true",
+            esUrl, Config.elasticSearch.index);
         return $http.post(url, query);
     };
 
@@ -171,36 +154,21 @@ app.factory("ElasticSearch", function ($http, Config) {
         return $http.post(url, request);
     };
 
-    service.msearch = function (request) {
-        var url = Config.elasticSearch.url + "/_msearch?refresh=true";
-        return $http.post(url, request);
-    };
-
     service.update = function (index, type, id, request) {
-        var url = Config.elasticSearch.url + "/" + index +
-            "/" + type +
-            "/" + id +
-            "/_update?refresh=true";
+        var url = printf("{}/{}/{}/{}/_update?refresh=true",
+            esUrl, index, type, id);
         return $http.post(url, request);
     };
 
     service.delete = function (index, type, id) {
-        var url = Config.elasticSearch.url +
-            "/" +
-            index +
-            "/" +
-            type +
-            "/" +
-            id +
-            "?refresh=true";
+        var url = printf("{}/{}/{}/{}?refresh=true",
+            esUrl, index, type, id);
         return $http.delete(url);
     };
 
     service.deleteByQuery = function (request) {
-        var url = Config.elasticSearch.url +
-            "/" +
-            Config.elasticSearch.index +
-            "/_query?refresh=true";
+        var url = printf("{}/{}/_query?refresh=true",
+            esUrl, Config.elasticSearch.index);
         return $http.delete(url, {data: request});
     };
 
@@ -265,9 +233,16 @@ app.factory("ElasticSearch", function ($http, Config) {
     };
 
     service.addTag = function (doc, tag) {
+        var script = 'if (ctx._source.tags) {' +
+            'ctx._source.tags.contains(tag) || ctx._source.tags.add(tag);' +
+            '}' +
+            'else {' +
+            'ctx._source.tags = [tag]' +
+            '}';
         var request = {
             "lang": "groovy",
-            script: "ctx._source.tags.contains(tag) || ctx._source.tags.add(tag)",
+            //script: "ctx._source.tags.contains(tag) || ctx._source.tags.add(tag)",
+            script: script,
             params: {
                 "tag": tag
             }
@@ -290,194 +265,7 @@ app.factory("ElasticSearch", function ($http, Config) {
 
 });
 
-/**
- * EventRepository service.
- *
- * The idea of this service is provide a level of abstraction over
- * ElasticSearch.
- */
-app.factory("EventRepository", function (ElasticSearch) {
-
-    var service = {};
-
-    /**
-     * ES top hits aggregation to extract the most recent alert in the
-     * aggregation.
-     */
-    service.latestEventAgg = {
-        "latest_event": {
-            "top_hits": {
-                "sort": [
-                    {
-                        "@timestamp": {
-                            "order": "desc"
-                        }
-                    }
-                ],
-                "_source": {
-                    "include": [
-                        "timestamp",
-                        "@timestamp",
-                        "alert.severity",
-                        "alert.category"
-                    ]
-                },
-                "size": 1
-            }
-        }
-    };
-
-    /**
-     * Aggregate by signature query.
-     */
-    service.aggregateBySignature = {
-        "signature": {
-            "terms": {
-                "field": "alert.signature.raw",
-                "size": 0
-            },
-            "aggs": service.latestEventAgg
-        }
-    };
-
-    /**
-     * Aggregate by signature then source address query.
-     */
-    service.aggregateBySignatureSrc = {
-        "signature": {
-            "terms": {
-                "field": "alert.signature.raw",
-                "size": 0
-            },
-            "aggs": {
-                "source_addrs": {
-                    "terms": {
-                        "field": "src_ip.raw",
-                        "size": 0
-                    },
-                    "aggs": service.latestEventAgg
-                }
-            }
-        }
-    };
-
-    /**
-     * Delete the provided event.
-     *
-     * @param event The event to delete.
-     * @returns HttpPromise.
-     */
-    service.deleteEvent = function (event) {
-        return ElasticSearch.delete(event._index, event._type, event._id);
-    };
-
-    /**
-     * Remove a tag from an event.
-     *
-     * @param event Event to remove tag from.
-     * @param tag The tag to remove.
-     * @returns HttpPromise.
-     */
-    service.removeTag = function (event, tag) {
-        return ElasticSearch.removeTag(event, tag)
-            .success(function (response) {
-                _.remove(event._source.tags, function (t) {
-                    return t === tag;
-                });
-            });
-    };
-
-    /**
-     * Toggle a tag on event - remove it if it exists, otherwise add it.
-     *
-     * @param event Event to toggle tag on.
-     * @param tag Tag to toggle.
-     * @returns HttpPromise.
-     */
-    service.toggleTag = function (event, tag) {
-        if (_.indexOf(event._source.tags, tag) > -1) {
-            return service.removeTag(event, tag);
-        }
-        else {
-            return ElasticSearch.addTag(event, tag)
-                .success(function (response) {
-                    event._source.tags.push(tag);
-                });
-        }
-    };
-
-    /**
-     * Toggle the "starred" tag on an event.
-     */
-    service.toggleStar = function (event) {
-        return service.toggleTag(event, "starred");
-    };
-
-    return service;
-
-});
-
-/**
- * A service for keyboard bindings (wrapping Mousetrap) that will track
- * the scope a binding was created in for per scope cleanup.
- */
-app.factory("Keyboard", function () {
-
-    var service = {};
-    service.scopeBindings = {};
-
-    service.scopeBind = function (scope, key, callback) {
-        Mousetrap.unbind(key);
-        Mousetrap.bind(key, function (e) {
-            callback(e);
-        });
-        if (!(scope.$id in service.scopeBindings)) {
-            service.scopeBindings[scope.$id] = [];
-        }
-        service.scopeBindings[scope.$id].push({key: key, callback: callback});
-    };
-
-    service.resetScope = function (scope) {
-        if (scope.$id in service.scopeBindings) {
-            _.forEach(service.scopeBindings[scope.$id], function (binding) {
-                Mousetrap.unbind(binding.key);
-            });
-            delete(service.scopeBindings[scope.$id]);
-        }
-
-        // Something is up with Mousetrap bindings, rebinding existing
-        // bindings seems to fix it.
-        for (var scopeId in service.scopeBindings) {
-            _.forEach(service.scopeBindings[scopeId], function (binding) {
-                Mousetrap.unbind(binding.key);
-                Mousetrap.bind(binding.key, binding.callback);
-            });
-        }
-    };
-
-    return service;
-
-});
-
-app.factory("Cache", function () {
-
-    var service = {
-        caches: {}
-    };
-
-    // Return a cache of the given name.
-    service.get = function (name) {
-        if (service.caches[name] === undefined) {
-            service.caches[name] = {};
-        }
-        return service.caches[name];
-    };
-
-    return service;
-
-});
-
-app.factory("NotificationMessageService", function ($timeout) {
+angular.module("app").factory("NotificationService", function ($timeout) {
 
     var service = {};
 

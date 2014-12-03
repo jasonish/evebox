@@ -1,29 +1,38 @@
-.evebox-event-table thead {
-  border-top: 0px !important;
-  border-bottom: 1px solid lightgray !important;
-  border-left: 1px solid lightgray !important;
-  border-right: 1px solid lightgray !important;
+.evebox-event-table {
+
+  thead {
+    border-top: 0px !important;
+    border-bottom: 1px solid lightgray !important;
+    border-left: 1px solid lightgray !important;
+    border-right: 1px solid lightgray !important;
+  }
+
+  th {
+    border: 1px !important;
+    padding-left: 3px !important;
+  }
+
+  tbody {
+    border-top: 0px !important;
+    border-bottom: 1px solid lightgray !important;
+    border-left: 1px solid lightgray !important;
+    border-right: 1px solid lightgray !important;
+
+    tr {
+      cursor: pointer;
+    }
+  }
+
+  td {
+    padding: 0px !important;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    margin: 0px !important;
+    border: 0px !important;
+  }
+
 }
-.evebox-event-table th {
-  border: 1px !important;
-  padding-left: 3px !important;
-}
-.evebox-event-table tbody {
-  border-top: 0px !important;
-  border-bottom: 1px solid lightgray !important;
-  border-left: 1px solid lightgray !important;
-  border-right: 1px solid lightgray !important;
-}
-.evebox-event-table tbody tr {
-  cursor: pointer;
-}
-.evebox-event-table td {
-  padding: 0px !important;
-  padding-left: 3px !important;
-  padding-right: 3px !important;
-  margin: 0px !important;
-  border: 0px !important;
-}
+
 /**
  * Place a border at the top of all the events table as it doesn't have
  * a tab bar.
@@ -31,46 +40,56 @@
 .all-event-table > .table > thead > tr > th {
   border-top: 1px solid lightgray !important;
 }
-.help-table td:nth-child(1) {
-  text-align: right;
+
+.help-table {
+  td:nth-child(1) {
+    text-align: right;
+  }
 }
+
 /* For dimming during loading or something... */
 .dim {
   opacity: 0.3;
 }
+
 /* Angular animation for fading in/out. */
 .fade-inout {
   -webkit-transition: all linear 0.5s;
   transition: all linear 0.5s;
 }
+
 .fade-inout.ng-hide {
   opacity: 0;
 }
+
 /*
   Allow angular.js to be loaded in body, hiding cloaked elements until
   templates compile.  The !important is important given that there may be
   other selectors that are more specific or come later and might alter display.
  */
-[ng\:cloak],
-[ng-cloak],
-.ng-cloak {
+[ng\:cloak], [ng-cloak], .ng-cloak {
   display: none !important;
 }
+
 /* Old app.css. ***************************************************************/
 .loading {
   opacity: 0.3;
 }
+
 body {
   padding-bottom: 50px;
 }
+
 .hit-row {
   cursor: pointer;
   cursor: hand;
 }
+
 table > tbody > tr.clickable {
   cursor: pointer;
   cursor: hand;
 }
+
 #evebox-notification-message {
   position: fixed;
   top: 0px;
@@ -83,12 +102,15 @@ table > tbody > tr.clickable {
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
 }
+
 .event-table th {
   border: 0px !important;
 }
+
 .event-table tbody {
   border: 1px solid #dcdcdc !important;
 }
+
 .event-table td {
   padding: 0px !important;
   padding-left: 3px !important;
@@ -96,20 +118,25 @@ table > tbody > tr.clickable {
   margin: 0px !important;
   border: 0px !important;
 }
+
 .event-table > tbody > tr > td > dl {
   margin-bottom: 0px;
   padding-bottom: 0px;
 }
+
 .event-table > tbody > tr > td > dl > dt {
   width: 100px;
   margin: 0px;
 }
+
 .event-table > tbody > tr > td > dl > dd {
   margin-left: 120px;
 }
+
 .event-detail-panel {
   margin-top: 15px;
 }
+
 .event-detail-panel .panel-heading {
   margin: 0px;
   padding-left: 15px;
@@ -118,22 +145,31 @@ table > tbody > tr.clickable {
   font-size: 1.1em;
   font-weight: bold;
 }
+
 /* Set the width of the buttons in the panel headings, as using col-* classes
  * doesn't seem to work well here. */
 .panel-heading .btn {
   width: 100px;
 }
+
 .dropdown-menu a:hover,
 .dropdown-menu a:focus {
   background-color: darkgrey !important;
 }
+
+.evebox-grouped-table {
+}
+
 .evebox-grouped-table > tbody > tr {
   cursor: pointer;
   cursor: hand;
 }
+
 .evebox-grouped-table > thead > tr > td {
   border: 0px !important;
+
 }
+
 .evebox-grouped-table > tbody > tr > td {
   padding: 0px !important;
   padding-left: 3px !important;
@@ -141,16 +177,21 @@ table > tbody > tr.clickable {
   margin: 0px !important;
   border: 0px !important;
   border-top: 1px solid #dcdcdc !important;
+
 }
+
 #search-form .form-group {
   margin-bottom: 7px !important;
 }
+
 #search-form .form-group:last-of-type {
   margin-bottom: 0px !important;
 }
+
 .event-force-wrap {
   word-break: break-all;
 }
+
 .nowrap {
   white-space: nowrap;
 }

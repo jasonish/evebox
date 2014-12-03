@@ -30,29 +30,103 @@ var app = angular.module("app", [
     "ngRoute",
     "ngResource",
     "ngSanitize",
+    "ngAnimate",
     "ui.bootstrap",
     "ui.bootstrap.modal",
     "ui.bootstrap.accordion"
 ]);
 
-app.config(function ($routeProvider) {
+(function () {
 
-    $routeProvider.when("/event/:id", {
-        controller: "EventController",
-        controllerAs: "vm",
-        templateUrl: "templates/event.html"
+    angular.module("app").config(function ($routeProvider, $locationProvider) {
+
+        /* Individual event. */
+        $routeProvider.when("/event/:id", {
+            controller: "EventController",
+            controllerAs: "vm",
+            templateUrl: "templates/event.html"
+        });
+
+        /* All events view. */
+        $routeProvider.when("/events", {
+            controller: "EventsController",
+            controllerAs: "vm",
+            templateUrl: "templates/events.html"
+        });
+
+        /* Inbox. */
+        $routeProvider.when("/inbox/:view", {
+            controller: "NewAlertsController",
+            controllerAs: "vm",
+            templateUrl: "templates/alerts.html",
+            resolve: {
+                baseUrl: function () {
+                    return "/inbox";
+                }
+            }
+        });
+        $routeProvider.when("/inbox", {
+            controller: "RedirectController",
+            template: ""
+        });
+
+        /* Starred. */
+        $routeProvider.when("/starred/:view", {
+            controller: "NewAlertsController",
+            controllerAs: "vm",
+            templateUrl: "templates/alerts.html",
+            resolve: {
+                baseUrl: function () {
+                    return "/starred";
+                }
+            }
+        });
+        $routeProvider.when("/starred", {
+            redirectTo: "/starred/flat"
+        });
+
+        /* Alerts. */
+        $routeProvider.when("/alerts/:view", {
+            controller: "NewAlertsController",
+            controllerAs: "vm",
+            templateUrl: "templates/alerts.html",
+            resolve: {
+                baseUrl: function () {
+                    return "/alerts";
+                }
+            }
+        });
+        $routeProvider.when("/alerts", {
+            redirectTo: "/alerts/flat"
+        });
+
+        $routeProvider.when("/help", {
+            templateUrl: "templates/help.html"
+        });
+
+        /* Default to inbox. */
+        $routeProvider.otherwise({redirectTo: "/inbox"});
     });
 
-    $routeProvider.when("/events", {
-        controller: "EventsController",
-        templateUrl: "templates/events.html"
-    });
+    angular.module("app").controller("RedirectController",
+        function ($location, Config) {
 
-    $routeProvider.when("/:view", {
-        controller: "AlertsController",
-        templateUrl: "templates/alerts.html"
-    });
+            if ($location.path() == "/inbox") {
+                $location.path(
+                    "/inbox/" + (Config.defaultInboxAggregation || "flat"));
+            }
 
-    $routeProvider.otherwise({redirectTo: "/inbox"});
+        });
 
-});
+    /**
+     * Add .startsWith to the string type.
+     */
+    if (typeof String.prototype.startsWith != 'function') {
+        // see below for better implementation!
+        String.prototype.startsWith = function (str) {
+            return this.indexOf(str) == 0;
+        };
+    }
+
+})();
+

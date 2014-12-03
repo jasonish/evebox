@@ -39,7 +39,6 @@
             elasticSearch: {
                 url: "http://" + window.location.hostname + ":9200",
                 size: 100,
-                timeout: 6000,
                 index: "logstash-*"
             }
         };
@@ -87,6 +86,8 @@
             localStorage.config = angular.toJson(service);
 
             // Force full refresh.
+            //window.location.reload();
+            $location.path("/");
             window.location.reload();
         };
 

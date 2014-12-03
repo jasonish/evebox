@@ -1,3 +1,4 @@
+
 /* Copyright (c) 2014 Jason Ish
  * All rights reserved.
  *
@@ -28,24 +29,41 @@
 
 (function () {
 
-    angular.module("app")
-        .controller("ConfigController",
-        ["$modalInstance", "Config", ConfigController]);
+    angular.module("app").directive("duration", ["$interval", function ($interval) {
 
-    function ConfigController($modalInstance, Config) {
-        var mv = this;
-        mv.$modalInstance = $modalInstance;
-        mv.config = Config;
-    }
+        return {
+            restrict: "AE",
 
-    ConfigController.prototype.ok = function () {
-        this.config.save();
-        this.$modalInstance.close();
-    };
+            scope: {
+                timestamp: "="
+            },
 
-    ConfigController.prototype.cancel = function () {
-        this.$modalInstance.dismiss();
-    };
+            template: "{{duration}}",
+
+            link: function (scope, element, attrs) {
+
+                // 6 seconds...  One second shows a noticeable increase in CPU.
+                var updateInterval = 6000;
+
+                var intervalId;
+
+                element.on("$destroy", function () {
+                    $interval.cancel(intervalId);
+                });
+
+                var updateDuration = function () {
+                    var duration = moment(scope.timestamp) - moment();
+                    scope.duration = moment.duration(duration).humanize(true);
+                };
+                updateDuration();
+
+                intervalId = $interval(function () {
+                    updateDuration();
+                }, updateInterval);
+
+            }
+        }
+
+    }]);
 
 })();
-

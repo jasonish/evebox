@@ -1,54 +1,55 @@
-var gulp = require('gulp')
-    , connect = require('gulp-connect')
-    , bowerFiles = require('main-bower-files')
-    , del = require('del')
-    , merge = require('merge-stream')
-    , inject = require('gulp-inject')
-    , filter = require('gulp-filter')
-    , open = require('gulp-open')
-    , zip = require('gulp-zip')
+var gulp          = require('gulp')
+    , connect     = require('gulp-connect')
+    , bowerFiles  = require('main-bower-files')
+    , del         = require('del')
+    , merge       = require('merge-stream')
+    , inject      = require('gulp-inject')
+    , filter      = require('gulp-filter')
+    , open        = require('gulp-open')
+    , zip         = require('gulp-zip')
+    , ngAnnotate  = require('gulp-ng-annotate')
+    , runSequence = require('run-sequence')
+    , less        = require('gulp-less')
     ;
 
 var bowerPkg = require("./bower.json");
 var packageName = bowerPkg.name + "-" + bowerPkg.version;
 
-/**
- * Server and watch the development files.
- */
+var port = 9090;
 
-gulp.task("connect", function () {
-    return connect.server({
-        root: ["app"],
-        port: 9090,
+gulp.task("watch", ["inject", "build:less"], function () {
+
+    connect.server({
+        root: "app",
+        port: port,
         livereload: true
-    })
-});
-
-gulp.task("watch", ["connect"], function () {
-    gulp.watch(["app/**/*"], function () {
-        gulp.src("app/**/*").pipe(connect.reload());
     });
+
+    var appSources = "app/**/*";
+
+    gulp.watch(appSources, ["inject"]);
+    gulp.watch("app/styles/*.less", ["build:less"]);
+    gulp.watch(appSources, function () {
+        gulp.src(appSources).pipe(connect.reload());
+    });
+
+    // Open a browser.
     gulp.src("app/index.html")
         .pipe(open("", {url: "http://localhost:9090"}));
-});
-
-/**
- * Serve and watch the build directory.
- */
-
-gulp.task("connect:build", function () {
-    return connect.server({
-        root: ["build"],
-        port: 9090,
-        livereload: true
-    })
 });
 
 /**
  * Building.
  */
 
-gulp.task("watch:build", ["connect:build"], function () {
+gulp.task("watch:build", ["build"], function () {
+
+    connect.server({
+        root: "build",
+        port: port,
+        livereload: true
+    });
+
     gulp.watch(["app/**/*"], ["build", function () {
         gulp.src("app/**/*").pipe(connect.reload());
     }]);
@@ -56,31 +57,72 @@ gulp.task("watch:build", ["connect:build"], function () {
         .pipe(open("", {url: "http://localhost:9090"}));
 });
 
-var copyApp = function () {
-    return gulp.src(["app/**/*", "!app/bower_components/**/*"])
-        .pipe(gulp.dest("./build/"));
-};
-
-var copyBowerComponents = function () {
+/**
+ * Simply copies over all required bower components.
+ */
+gulp.task("build:bower_components", function () {
     return gulp.src(bowerFiles(), {base: "./app/"})
         .pipe(gulp.dest("./build/"));
-};
-
-gulp.task("build", ["clean"], function () {
-    return merge(copyApp(), copyBowerComponents());
 });
 
 /**
- * Injects Bower components into the index.html.
- * - Run after adding or removing Bower dependencies.
+ * Build and copy the application Javascript.
  */
-gulp.task("inject", function () {
+gulp.task("build:app:js", function () {
+    return gulp.src(["app/scripts/**/*.js"], {base: "./app/"})
+        .pipe(ngAnnotate())
+        .pipe(gulp.dest("./build/"));
+});
+
+/**
+ * Build and copy the application html, styles and other files.
+ */
+gulp.task("build:app", ["build:less"], function () {
+    var sources = [
+        "app/*",
+        "app/styles/*",
+        "app/templates/*"
+    ];
+    return gulp.src(sources, {base: "./app/"})
+        .pipe(gulp.dest("./build/"));
+});
+
+gulp.task("build:less", function() {
+   gulp.src("app/styles/app.less")
+       .pipe(less())
+       .pipe(gulp.dest("app/styles"));
+});
+
+gulp.task("build", function (cb) {
+    runSequence("clean", "inject",
+        ["build:bower_components", "build:app:js", "build:app"], cb);
+});
+
+/**
+ * Inject Bower components.
+ */
+gulp.task("inject:bower", function () {
     var bowerComponents = bowerFiles();
     var sources = gulp.src(bowerComponents, {read: false})
         .pipe(filter(['*', '!**/json3.js', '!**/es5-shim.js']));
-    gulp.src("./app/index.html")
+    return gulp.src("./app/index.html")
         .pipe(inject(sources, {relative: true}))
         .pipe(gulp.dest("./app/"));
+});
+
+/**
+ * Inject application sources.
+ */
+gulp.task("inject:app", function () {
+    var sources = gulp.src(["app/scripts/app.js", "app/scripts/*.js"],
+        {read: false});
+    return gulp.src("./app/index.html")
+        .pipe(inject(sources, {relative: true, name: "app"}))
+        .pipe(gulp.dest("./app/"));
+});
+
+gulp.task("inject", function (cb) {
+    runSequence("inject:bower", "inject:app", cb);
 });
 
 /**
