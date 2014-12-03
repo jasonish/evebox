@@ -72,6 +72,14 @@
             });
         };
 
+        var selectBySeverity = function(severity) {
+            _.forEach(vm.events, function(event) {
+                if (event._source.alert.severity == severity) {
+                    event.selected = true;
+                }
+            })
+        };
+
         vm.gotoView = function (view) {
             $location.path(baseUrl + "/" + view);
         };
@@ -276,6 +284,15 @@
             Mousetrap.bind($scope, "r", vm.refresh);
             Mousetrap.bind($scope, "* a", vm.selectAll);
             Mousetrap.bind($scope, "* n", vm.deselectAll);
+            Mousetrap.bind($scope, "* 1", function() {
+                selectBySeverity(1);
+            });
+            Mousetrap.bind($scope, "* 2", function() {
+                selectBySeverity(2);
+            });
+            Mousetrap.bind($scope, "* 3", function() {
+                selectBySeverity(3);
+            });
             Mousetrap.bind($scope, "e", vm.archiveSelected);
             Mousetrap.bind($scope, "#", vm.deleteSelected);
             Mousetrap.bind($scope, "x", function () {
