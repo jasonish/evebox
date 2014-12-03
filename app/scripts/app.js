@@ -101,7 +101,9 @@ var app = angular.module("app", [
         });
 
         $routeProvider.when("/help", {
-            templateUrl: "templates/help.html"
+            templateUrl: "templates/help.html",
+            controller: "HelpController",
+            controllerAs: "vm"
         });
 
         /* Default to inbox. */

@@ -72,8 +72,8 @@
             });
         };
 
-        var selectBySeverity = function(severity) {
-            _.forEach(vm.events, function(event) {
+        var selectBySeverity = function (severity) {
+            _.forEach(vm.events, function (event) {
                 if (event._source.alert.severity == severity) {
                     event.selected = true;
                 }
@@ -281,43 +281,45 @@
         // Init.
         (function () {
 
-            Mousetrap.bind($scope, "r", vm.refresh);
-            Mousetrap.bind($scope, "* a", vm.selectAll);
-            Mousetrap.bind($scope, "* n", vm.deselectAll);
-            Mousetrap.bind($scope, "* 1", function() {
+            Mousetrap.bind($scope, "r", vm.refresh, "Refresh");
+            Mousetrap.bind($scope, "* a", vm.selectAll, "Select All");
+            Mousetrap.bind($scope, "* n", vm.deselectAll, "Deselect All");
+            Mousetrap.bind($scope, "* 1", function () {
                 selectBySeverity(1);
-            });
-            Mousetrap.bind($scope, "* 2", function() {
+            }, "Select All Severity 1 Events");
+            Mousetrap.bind($scope, "* 2", function () {
                 selectBySeverity(2);
-            });
-            Mousetrap.bind($scope, "* 3", function() {
+            }, "Select All Severity 2 Events");
+            Mousetrap.bind($scope, "* 3", function () {
                 selectBySeverity(3);
-            });
-            Mousetrap.bind($scope, "e", vm.archiveSelected);
-            Mousetrap.bind($scope, "#", vm.deleteSelected);
+            }, "Select All Severity 3 Events");
+            Mousetrap.bind($scope, "e", vm.archiveSelected,
+                "Archive Selected Events");
+            Mousetrap.bind($scope, "#", vm.deleteSelected,
+                "Delete Selected Events");
             Mousetrap.bind($scope, "x", function () {
                 toggleSelect();
-            });
+            }, "Select Event");
             Mousetrap.bind($scope, "s", function () {
                 vm.toggleStar(getActiveEvent());
-            });
+            }, "Toggle 'Star'");
             Mousetrap.bind($scope, "/", function (e) {
                 e.preventDefault();
                 $("#search-form-input").focus();
                 $("#search-form-input").select();
-            });
+            }, "Search");
             Mousetrap.bind($scope, "g 1", function () {
                 vm.gotoView("flat");
-            });
+            }, "Go to Flat View");
             Mousetrap.bind($scope, "g 2", function () {
                 vm.gotoView("signature");
-            });
+            }, "Go to Grouped by Signature View");
             Mousetrap.bind($scope, "g 3", function () {
                 vm.gotoView("signature+src");
-            });
+            }, "Go to Grouped by Signature/Source View");
             Mousetrap.bind($scope, "o", function () {
                 vm.open(getActiveEvent());
-            });
+            }, "Open Event");
 
             vm.filters = [{term: {event_type: "alert"}}];
             if (baseUrl == "/inbox") {

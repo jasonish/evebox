@@ -11,118 +11,14 @@
     <h4>Keyboard Shortcuts</h4>
 
     <div class="row">
-      <div class="col-md-6">
-        <table class="table table-bordered help-table">
-          <tr>
-            <td>?</td>
-            <td>Help</td>
-          </tr>
-          <tr>
-            <td>g then i</td>
-            <td>Go to Inbox</td>
-          </tr>
-          <tr>
-            <td>g then s</td>
-            <td>Go to Starred</td>
-          </tr>
-          <tr>
-            <td>g then a</td>
-            <td>Go to Alerts</td>
-          </tr>
-          <tr>
-            <td>g then o</td>
-            <td>Go to Other</td>
-          </tr>
-          <tr>
-            <td>g then c</td>
-            <td>Go to Config</td>
-          </tr>
-          <tr>
-            <td>g then 1</td>
-            <td>Go to flat view</td>
-          </tr>
-          <tr>
-            <td>g then 2</td>
-            <td>Go to signature view</td>
-          </tr>
-          <tr>
-            <td>g then 3</td>
-            <td>Go to signature/source view</td>
-          </tr>
-          <tr>
-            <td>G</td>
-            <td>Go to Last Event on Page</td>
-          </tr>
-          <tr>
-            <td>H</td>
-            <td>Go to First Event on Page</td>
-          </tr>
-          <tr>
-            <td>* then 1</td>
-            <td>Select all severity 1 events</td>
-          </tr>
-          <tr>
-            <td>* then 2</td>
-            <td>Select all severity 2 events</td>
-          </tr>
-          <tr>
-            <td>* then 3</td>
-            <td>Select all severity 3 events</td>
-          </tr>
-        </table>
-      </div>
-      <div class="col-md-6">
-        <table class="table table-bordered help-table">
-          <tr>
-            <td>r</td>
-            <td>Refresh</td>
-          </tr>
-          <tr>
-            <td>/</td>
-            <td>Search</td>
-          </tr>
-          <tr>
-            <td>j</td>
-            <td>Next Event</td>
-          </tr>
-          <tr>
-            <td>k</td>
-            <td>Previous Event</td>
-          </tr>
-          <tr>
-            <td>x</td>
-            <td>Select Event</td>
-          </tr>
-          <tr>
-            <td>e</td>
-            <td>Archive Selected Events</td>
-          </tr>
-          <tr>
-            <td>#</td>
-            <td>Delete Selected Events</td>
-          </tr>
-          <tr>
-            <td>s</td>
-            <td>Star Event</td>
-          </tr>
-          <tr>
-            <td>o</td>
-            <td>Open Event</td>
-          </tr>
-          <tr>
-            <td>* then a</td>
-            <td>Select All Items</td>
-          </tr>
-          <tr>
-            <td>* then n</td>
-            <td>Deselect All Items</td>
-          </tr>
-          <tr>
-            <td>.</td>
-            <td>Open "More" Menu</td>
-          </tr>
-        </table>
-      </div>
+
+      <table class="table table-bordered help-table">
+        <tr ng-repeat="key in vm.sortedKeys">
+          <td>{{key}}</td>
+          <td>{{vm.bindings[key].help}}</td>
+        </tr>
+      </table>
+
     </div>
 
   </div>

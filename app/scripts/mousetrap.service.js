@@ -35,32 +35,39 @@
         var service = {};
         var bindings = {};
 
-        var log = function(msg) {
+        var log = function (msg) {
             if (debug) {
                 console.log(msg);
             }
         };
 
-        service.bind = function (scope, key, callback) {
+        service.bind = function (scope, key, callback, help) {
             log(printf("Mousetrap: binding key: {}", key));
+            if (help === undefined) {
+                console.log(printf("Warning: key {} has no help.", key));
+            }
+
             Mousetrap.unbind(key);
 
-            var binding = function() {
-                Mousetrap.bind(key, function(e) {
-                    scope.$apply(function() {
+            var bindFunction = function () {
+                Mousetrap.bind(key, function (e) {
+                    scope.$apply(function () {
                         callback(e);
                     })
                 })
             };
 
-            bindings[key] = binding;
+            bindings[key] = {
+                fn: bindFunction,
+                help: help || "document-me"
+            };
 
-            binding();
+            bindFunction();
 
             // Rebinding existing bindings - something is up with Mousetrap.
-            for (binding in bindings) {
+            for (var binding in bindings) {
                 if (binding != key) {
-                    bindings[binding]();
+                    bindings[binding].fn();
                 }
             }
 
@@ -70,6 +77,8 @@
                 Mousetrap.unbind(key);
             });
         };
+
+        service.bindings = bindings;
 
         return service;
 

@@ -68,24 +68,24 @@
                     scope.activeRowIndex++;
                     scrollIntoView();
                 }
-            });
+            }, "Next Event");
 
             Mousetrap.bind(scope, "k", function () {
                 if (scope.activeRowIndex > 0) {
                     scope.activeRowIndex--;
                     scrollIntoView();
                 }
-            });
+            }, "Previous Event");
 
             Mousetrap.bind(scope, "G", function () {
                 scope.activeRowIndex = scope.rows.length - 1;
                 scrollIntoView();
-            });
+            }, "Go to Last Event");
 
             Mousetrap.bind(scope, "H", function () {
                 scope.activeRowIndex = 0;
                 scrollIntoView();
-            });
+            }, "Go to First Event");
 
         };
 

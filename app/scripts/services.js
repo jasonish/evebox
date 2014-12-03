@@ -241,7 +241,6 @@ app.factory("ElasticSearch", function ($http, Config, printf) {
             '}';
         var request = {
             "lang": "groovy",
-            //script: "ctx._source.tags.contains(tag) || ctx._source.tags.add(tag)",
             script: script,
             params: {
                 "tag": tag

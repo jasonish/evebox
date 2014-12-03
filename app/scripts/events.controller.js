@@ -115,16 +115,16 @@
                 e.preventDefault();
                 $("#user-query-input").focus();
                 $("#user-query-input").select();
-            });
+            }, "Search");
             Mousetrap.bind($scope, "o", function () {
                 vm.open(getActiveEvent());
-            });
+            }, "Open Event");
             Mousetrap.bind($scope, "r", function () {
                 vm.refresh();
-            });
+            }, "Refresh");
             Mousetrap.bind($scope, "s", function() {
                 vm.toggleStarr(getActiveEvent());
-            });
+            }, "Toggle Star");
 
         };
 

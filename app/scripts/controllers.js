@@ -24,134 +24,147 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-'use strict';
+(function() {
 
-app.controller("NavBarController", function($routeParams, $scope, $modal,
-    $location, EventRepository, $timeout, Mousetrap) {
+    'use strict';
 
-    $scope.$routeParams = $routeParams;
-    $scope.$location = $location;
+    app.controller("NavBarController", function($routeParams, $scope, $modal,
+        $location, EventRepository, $timeout, Mousetrap) {
 
-    $scope.openConfig = function() {
-        $modal.open({
-            templateUrl: "templates/config.html",
-            controller: "ConfigController as vm"
-        });
-    };
+        $scope.$routeParams = $routeParams;
+        $scope.$location = $location;
 
-    $scope.openHelp = function() {
-        $modal.open({
-            templateUrl: "templates/help.html",
-            size: "lg"
-        });
-    };
+        $scope.openConfig = function() {
+            $modal.open({
+                templateUrl: "templates/config.html",
+                controller: "ConfigController as vm"
+            });
+        };
 
-    Mousetrap.bind($scope, "g i", function(e) {
-        $location.url("/inbox");
+        $scope.openHelp = function() {
+            $modal.open({
+                templateUrl: "templates/help.html",
+                controller: "HelpController as vm",
+                size: "lg"
+            });
+        };
+
+        Mousetrap.bind($scope, "g i", function(e) {
+            $location.url("/inbox");
+        }, "Go to Inbox");
+
+        Mousetrap.bind($scope, "g s", function(e) {
+            $location.url("/starred")
+        }, "Go to Starred");
+
+        Mousetrap.bind($scope, "g a", function(e) {
+            $location.url("/alerts");
+        }, "Go to Alerts");
+
+        Mousetrap.bind($scope, "g o", function() {
+            $("#other-menu-dropdown-toggle").dropdown('toggle');
+        }, "Go to Other");
+
+        Mousetrap.bind($scope, "g c", function(e) {
+            $scope.openConfig();
+        }, "Go to Configuration");
+
+        Mousetrap.bind($scope, "?", function(e) {
+            $scope.openHelp();
+        }, "Show Help");
     });
 
-    Mousetrap.bind($scope, "g s", function(e) {
-        $location.url("/starred")
-    });
+    app.controller("EventDetailController", function($scope, Mousetrap, Config,
+        ElasticSearch, EventRepository, Util) {
 
-    Mousetrap.bind($scope, "g a", function(e) {
-        $location.url("/alerts");
-    });
+        $scope.Config = Config;
+        $scope.Util = Util;
+        $scope._ = _;
 
-    Mousetrap.bind($scope, "g o", function() {
-        $("#other-menu-dropdown-toggle").dropdown('toggle');
-    });
+        /* Suricata can store the payload as base64 or printable.  Attempt to
+         * guess which it is here. */
+        try {
+            $scope.payloadIsBase64 = Util.isBase64($scope.hit._source.payload);
+            $scope.hasPayload = true;
+        }
+        catch (err) {
+            $scope.payloadIsBase64 = false;
+            $scope.hasPayload = false;
+        }
 
-    Mousetrap.bind($scope, "g c", function(e) {
-        $scope.openConfig();
-    });
+        $scope.b64ToText = function(data) {
+            return atob(data);
+        };
 
-    Mousetrap.bind($scope, "?", function(e) {
-        $scope.openHelp();
-    });
-});
-
-app.controller("EventDetailController", function($scope, Mousetrap, Config,
-    ElasticSearch, EventRepository, Util) {
-
-    $scope.Config = Config;
-    $scope.Util = Util;
-    $scope._ = _;
-
-    /* Suricata can store the payload as base64 or printable.  Attempt to
-     * guess which it is here. */
-    try {
-        $scope.payloadIsBase64 = Util.isBase64($scope.hit._source.payload);
-        $scope.hasPayload = true;
-    }
-    catch (err) {
-        $scope.payloadIsBase64 = false;
-        $scope.hasPayload = false;
-    }
-
-    $scope.b64ToText = function(data) {
-        return atob(data);
-    };
-
-    $scope.b64ToHex = function(data) {
-        var hex = Util.base64ToHexArray(data);
-        var buf = "";
-        for (var i = 0; i < hex.length; i++) {
-            if (i > 0 && i % 16 == 0) {
-                buf += "\n";
+        $scope.b64ToHex = function(data) {
+            var hex = Util.base64ToHexArray(data);
+            var buf = "";
+            for (var i = 0; i < hex.length; i++) {
+                if (i > 0 && i % 16 == 0) {
+                    buf += "\n";
+                }
+                buf += hex[i] + " ";
             }
-            buf += hex[i] + " ";
-        }
-        return buf;
-    };
+            return buf;
+        };
 
-    $scope.archiveEvent = function(event) {
-        if ($scope.$parent.archiveEvent === undefined) {
-            ElasticSearch.removeTag(event, "inbox")
-                .success(function(response) {
-                    _.remove(event._source.tags, function(tag) {
-                        return tag == "inbox";
-                    })
-                });
-        }
-        else {
-            $scope.$parent.archiveEvent(event);
-        }
-    };
+        $scope.archiveEvent = function(event) {
+            if ($scope.$parent.archiveEvent === undefined) {
+                ElasticSearch.removeTag(event, "inbox")
+                    .success(function(response) {
+                        _.remove(event._source.tags, function(tag) {
+                            return tag == "inbox";
+                        })
+                    });
+            }
+            else {
+                $scope.$parent.archiveEvent(event);
+            }
+        };
 
-    $scope.deleteEvent = function(event) {
-        if ($scope.$parent.deleteEvent === undefined) {
-            EventRepository.deleteEvent(event)
-                .success(function(response) {
-                    $scope.$emit("eventDeleted", event);
-                });
-        }
-        else {
-            $scope.$parent.deleteEvent(event);
-        }
-    };
+        $scope.deleteEvent = function(event) {
+            if ($scope.$parent.deleteEvent === undefined) {
+                EventRepository.deleteEvent(event)
+                    .success(function(response) {
+                        $scope.$emit("eventDeleted", event);
+                    });
+            }
+            else {
+                $scope.$parent.deleteEvent(event);
+            }
+        };
 
-    $scope.toggleStar = function(event) {
-        EventRepository.toggleStar(event);
-    };
+        $scope.toggleStar = function(event) {
+            EventRepository.toggleStar(event);
+        };
 
-    $scope.sendToDumpy = function(event) {
-        var form = document.createElement("form");
-        form.setAttribute("method", "post");
-        form.setAttribute("action", Config.dumpy.url);
-        form.setAttribute("target", "_blank");
+        $scope.sendToDumpy = function(event) {
+            var form = document.createElement("form");
+            form.setAttribute("method", "post");
+            form.setAttribute("action", Config.dumpy.url);
+            form.setAttribute("target", "_blank");
 
-        var eventInput = document.createElement("input");
-        eventInput.setAttribute("type", "hidden");
-        eventInput.setAttribute("name", "event");
-        eventInput.setAttribute("value", angular.toJson(event._source));
-        form.appendChild(eventInput);
+            var eventInput = document.createElement("input");
+            eventInput.setAttribute("type", "hidden");
+            eventInput.setAttribute("name", "event");
+            eventInput.setAttribute("value", angular.toJson(event._source));
+            form.appendChild(eventInput);
 
-        form.submit();
-    };
+            form.submit();
+        };
 
-    Mousetrap.bind($scope, ".", function() {
-        $("#event-detail-more-button").dropdown('toggle');
+        Mousetrap.bind($scope, ".", function() {
+            $("#event-detail-more-button").dropdown('toggle');
+        }, "Open More Menu");
+
     });
 
-});
+    angular.module("app").controller("HelpController", HelpController);
+
+    function HelpController(Mousetrap) {
+        var vm = this;
+        vm.bindings = Mousetrap.bindings;
+        vm.sortedKeys = _.sortBy(_.keys(Mousetrap.bindings));
+    };
+
+})();
