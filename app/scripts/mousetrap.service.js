@@ -26,32 +26,30 @@
 
 'use strict';
 
-(function () {
+(function() {
 
-    angular.module("app").factory("Mousetrap", function (printf) {
+    angular.module("app").factory("Mousetrap", function(printf) {
 
         var debug = false;
 
         var service = {};
         var bindings = {};
 
-        var log = function (msg) {
+        var log = function(msg) {
             if (debug) {
                 console.log(msg);
             }
         };
 
-        service.bind = function (scope, key, callback, help) {
+        service.bind = function(scope, key, callback, help) {
             log(printf("Mousetrap: binding key: {}", key));
             if (help === undefined) {
                 console.log(printf("Warning: key {} has no help.", key));
             }
 
-            Mousetrap.unbind(key);
-
-            var bindFunction = function () {
-                Mousetrap.bind(key, function (e) {
-                    scope.$apply(function () {
+            var bindFunction = function() {
+                Mousetrap.bind(key, function(e) {
+                    scope.$apply(function() {
                         callback(e);
                     })
                 })
@@ -62,16 +60,13 @@
                 help: help || "document-me"
             };
 
-            bindFunction();
-
             // Rebinding existing bindings - something is up with Mousetrap.
             for (var binding in bindings) {
-                if (binding != key) {
-                    bindings[binding].fn();
-                }
+                Mousetrap.unbind(binding);
+                bindings[binding].fn();
             }
 
-            scope.$on('$destroy', function () {
+            scope.$on('$destroy', function() {
                 log(printf("Mousetrap: unbinding key: {}", key));
                 delete(bindings[key]);
                 Mousetrap.unbind(key);

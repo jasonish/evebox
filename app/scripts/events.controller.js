@@ -123,7 +123,7 @@
                 vm.refresh();
             }, "Refresh");
             Mousetrap.bind($scope, "s", function() {
-                vm.toggleStarr(getActiveEvent());
+                vm.toggleStar(getActiveEvent());
             }, "Toggle Star");
 
         };

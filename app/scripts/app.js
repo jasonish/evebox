@@ -56,7 +56,7 @@ var app = angular.module("app", [
 
         /* Inbox. */
         $routeProvider.when("/inbox/:view", {
-            controller: "NewAlertsController",
+            controller: "AlertsController",
             controllerAs: "vm",
             templateUrl: "templates/alerts.html",
             resolve: {
@@ -72,7 +72,7 @@ var app = angular.module("app", [
 
         /* Starred. */
         $routeProvider.when("/starred/:view", {
-            controller: "NewAlertsController",
+            controller: "AlertsController",
             controllerAs: "vm",
             templateUrl: "templates/alerts.html",
             resolve: {
@@ -87,7 +87,7 @@ var app = angular.module("app", [
 
         /* Alerts. */
         $routeProvider.when("/alerts/:view", {
-            controller: "NewAlertsController",
+            controller: "AlertsController",
             controllerAs: "vm",
             templateUrl: "templates/alerts.html",
             resolve: {

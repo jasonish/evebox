@@ -28,14 +28,13 @@
 
 (function () {
 
-    angular.module("app").controller("NewAlertsController",
-        NewAlertsController);
+    angular.module("app").controller("AlertsController",
+        AlertsController);
 
-    function NewAlertsController($scope, EventRepository, $routeParams,
+    function AlertsController($scope, EventRepository, $routeParams,
         $location, baseUrl, Mousetrap, Util, $timeout) {
 
         var vm = this;
-        window.vm = this;
         vm.$routeParams = $routeParams;
         vm.activeRowIndex = 0;
         vm.openEventIndex = - 1;
@@ -89,6 +88,8 @@
         };
 
         vm.open = function (event) {
+            console.log("Opening event:");
+            console.log(event);
             if (event.count === undefined) {
                 var index = _.indexOf(vm.events, event);
                 if (vm.openEventIndex == index) {
@@ -322,6 +323,7 @@
             }, "Open Event");
 
             vm.filters = [{term: {event_type: "alert"}}];
+
             if (baseUrl == "/inbox") {
                 vm.filters.push({term: {tags: "inbox"}});
             }

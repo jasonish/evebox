@@ -36,7 +36,7 @@
                 class="glyphicon glyphicon-chevron-right"></span>
     </td>
 
-    <td ng-if="vm.isSelectable" ng-click="$event.stopPropagation()">
+    <td ng-if="::vm.isSelectable" ng-click="$event.stopPropagation()">
       <input type="checkbox" ng-model="event.selected"/>
     </td>
 
@@ -45,16 +45,20 @@
     </td>
 
     <td ng-click="$event.stopPropagation()" ng-if="!event.count">
-          <span ng-click="vm.toggleStar(event)"
-                ng-show="!event._source.tags || event._source.tags.indexOf('starred') == -1"
-                class="glyphicon glyphicon-star-empty"></span>
-          <span ng-click="vm.toggleStar(event)"
-                ng-show="event._source.tags.indexOf('starred') > -1"
-                class="glyphicon glyphicon-star"></span>
+      <span ng-if="::event._source.event_type == 'alert'">
+          <span
+            ng-show="!event._source.tags || event._source.tags.indexOf('starred') == -1"
+            ng-click="vm.toggleStar(event)"
+            class="glyphicon glyphicon-star-empty"></span>
+          <span
+            ng-click="vm.toggleStar(event)"
+            ng-show="event._source.tags.indexOf('starred') > -1"
+            class="glyphicon glyphicon-star"></span>
+        </span>
     </td>
 
     <td class="nowrap">
-      {{event.timestamp | formatTimestamp}}
+      {{::event.timestamp | formatTimestamp}}
       <br/>
       <small class="text-muted">
         <duration timestamp="event.timestamp"/>
@@ -62,17 +66,17 @@
     </td>
 
     <td ng-if="vm.showEventType">
-      {{event._source.event_type.toUpperCase()}}
+      {{::event._source.event_type.toUpperCase()}}
     </td>
 
     <td class="nowrap">
       <label>S:</label>
       {{::event._source.src_ip | formatIpAddress}}<span
-        ng-if="event._source.src_port > 0" style="color: #808080;">:{{::event._source.src_port}}</span>
+      ng-if="event._source.src_port > 0" style="color: #808080;">:{{::event._source.src_port}}</span>
       <br/>
       <label>D:</label>
       {{::event._source.dest_ip | formatIpAddress}}<span
-        ng-if="event._source.dest_port > 0" style="color: #808080;">:{{::event._source.dest_port}}</span>
+      ng-if="event._source.dest_port > 0" style="color: #808080;">:{{::event._source.dest_port}}</span>
     </td>
 
     <td><span ng-bind-html="::event | formatEventDescription"></span></td>
