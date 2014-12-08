@@ -18,21 +18,8 @@
 
   <br/>
 
-  <div ng-show="vm.loading == true" class="row" style="height: 34px;">
-    <div class="col-md-12">
-      <div class="progress">
-        <div
-            class="progress-bar progress-bar-info progress-bar-striped active"
-            role="progressbar" aria-valuenow="100" aria-valuemin="0"
-            aria-valuemax="100" style="width: 100%;">
-          <span class="sr-only">Loading...</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="row">
-    <div class="col-md-12" ng-hide="vm.loading == true">
+    <div class="col-md-12" ng-class="{dim: vm.loading == true}">
       <div class="btn-group" role="group">
         <button type="button" class="btn btn-default"
                 ng-click="vm.refresh()">
