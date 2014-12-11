@@ -26,7 +26,7 @@
 
 'use strict';
 
-(function () {
+(function() {
 
     angular.module("app").controller("AlertsController",
         AlertsController);
@@ -37,9 +37,9 @@
         var vm = this;
         vm.$routeParams = $routeParams;
         vm.activeRowIndex = 0;
-        vm.openEventIndex = - 1;
+        vm.openEventIndex = -1;
         vm.baseUrl = baseUrl;
-        if (! $routeParams.page) {
+        if (!$routeParams.page) {
             $routeParams.page = 1;
         }
         else {
@@ -50,8 +50,8 @@
          * Used to update the UI when loading. */
         vm.loading = true;
 
-        var sortByTimestamp = function (desc) {
-            vm.events = _.sortBy(vm.events, function (event) {
+        var sortByTimestamp = function(desc) {
+            vm.events = _.sortBy(vm.events, function(event) {
                 return event.timestamp;
             });
             if (desc) {
@@ -59,108 +59,118 @@
             }
         };
 
-        vm.selectAll = function () {
-            _.forEach(vm.events, function (event) {
+        vm.selectAll = function() {
+            _.forEach(vm.events, function(event) {
                 event.selected = true;
             });
         };
 
-        vm.deselectAll = function () {
-            _.forEach(vm.events, function (event) {
+        vm.deselectAll = function() {
+            _.forEach(vm.events, function(event) {
                 event.selected = false;
             });
         };
 
-        var selectBySeverity = function (severity) {
-            _.forEach(vm.events, function (event) {
+        var selectBySeverity = function(severity) {
+            _.forEach(vm.events, function(event) {
                 if (event._source.alert.severity == severity) {
                     event.selected = true;
                 }
             })
         };
 
-        vm.gotoView = function (view) {
+        vm.gotoView = function(view) {
             $location.path(baseUrl + "/" + view);
         };
 
-        vm.gotoPage = function (page) {
+        vm.gotoPage = function(page) {
             $location.search({page: page});
         };
 
-        vm.open = function (event) {
-            console.log("Opening event:");
-            console.log(event);
-            if (event.count === undefined) {
-                var index = _.indexOf(vm.events, event);
-                if (vm.openEventIndex == index) {
-                    vm.openEventIndex = - 1;
-                }
-                else {
-                    vm.openEventIndex = index;
-                    vm.activeRowIndex = index;
-
-                    /* XXX Scrolls the open event to the top. */
-                    $timeout(function () {
-                        var element = $("table[event-table] tbody")
-                            .eq(vm.openEventIndex);
-                        $("html, body").animate(
-                            {scrollTop: element.offset().top}, 100);
-
-                    });
-                }
+        vm.openEvent = function(event) {
+            var index = _.indexOf(vm.events, event);
+            if (vm.openEventIndex == index) {
+                vm.openEventIndex = -1;
             }
             else {
-                var query = Util.printf(
-                    '{} +alert.signature.raw:"{}"',
-                    ($location.search().q || ""),
-                    event._source.alert.signature);
-                $location.path(baseUrl + "/flat");
-                $location.search({q: query.trim()});
+                vm.openEventIndex = index;
+                vm.activeRowIndex = index;
+
+                /* XXX Scrolls the open event to the top. */
+                $timeout(function() {
+                    var element = $("table[event-table] tbody")
+                        .eq(vm.openEventIndex);
+                    $("html, body").animate(
+                        {scrollTop: element.offset().top}, 100);
+
+                });
             }
         };
 
-        vm.submitSearchForm = function () {
+        vm.openGroup = function(event) {
+            var query = Util.printf(
+                '{} +alert.signature.raw:"{}"',
+                ($location.search().q || ""),
+                event._source.alert.signature);
+            $location.path(baseUrl + "/flat");
+            $location.search({q: query.trim()});
+        };
+
+        vm.open = function(event) {
+            console.log("Opening event:");
+            if (event.count === undefined) {
+                vm.openEvent(event);
+            }
+            else {
+                vm.openGroup(event);
+            }
+        };
+
+        vm.submitSearchForm = function() {
             $location.search({q: $routeParams.q});
         };
 
-        vm.refresh = function () {
+        vm.refresh = function() {
             load();
         };
 
         /**
          * Toggle the selected state of an event.
          */
-        var toggleSelect = function (event) {
+        var toggleSelect = function(event) {
             if (event === undefined) {
                 event = vm.events[vm.activeRowIndex];
             }
-            event.selected = ! event.selected;
+            event.selected = !event.selected;
         };
 
         /**
          * Remove an event from the event list, updating the activeRowIndex
          * if required.
          */
-        var removeEvent = function (event) {
+        var removeEvent = function(event) {
             var index = _.indexOf(vm.events, event);
             if (index == vm.openEventIndex) {
-                vm.openEventIndex = - 1;
+                vm.openEventIndex = -1;
             }
             if (vm.activeRowIndex > index) {
-                vm.activeRowIndex --;
+                vm.activeRowIndex--;
             }
             else if (vm.activeRowIndex == vm.events.length - 1) {
-                vm.activeRowIndex --;
+                vm.activeRowIndex--;
             }
             _.remove(vm.events, event);
+
+            // Update the total event count in the result object.
+            vm.result.total -= event.count || 1;
 
             if (vm.events.length == 0) {
                 vm.refresh();
             }
         };
 
-        var archiveGroup = function (selected) {
-            _.forEach(selected, function (group) {
+        var archiveGroup = function(selected) {
+            _.forEach(selected, function(group) {
                 group.archiving = true;
 
                 var filters = _.cloneDeep(vm.filters);
@@ -175,17 +185,17 @@
                     query: $routeParams.q,
                     filters: filters,
                     lteTimestamp: group.timestamp
-                }).then(function () {
+                }).then(function() {
                     removeEvent(group);
                 });
             });
         };
 
-        vm.getSelected = function () {
+        vm.getSelected = function() {
             return _.filter(vm.events, "selected");
         };
 
-        vm.archiveSelected = function () {
+        vm.archiveSelected = function() {
             var selected = vm.getSelected();
             if (selected.length == 0) {
                 return;
@@ -194,29 +204,29 @@
                 archiveGroup(selected);
             }
             else {
-                _.forEach(selected, function (event) {
+                _.forEach(selected, function(event) {
                     event.archiving = true;
                     EventRepository.archiveEvent(event)
                         .then(
-                        function (result) {
+                        function(result) {
                             removeEvent(event);
                         });
                 });
             }
         };
 
-        vm.deleteSelected = function () {
+        vm.deleteSelected = function() {
             var selected = vm.getSelected();
-            _.forEach(selected, function (event) {
+            _.forEach(selected, function(event) {
                 EventRepository.deleteEvent(event).then(
-                    function (result) {
+                    function(result) {
                         removeEvent(event);
                     }
                 );
             });
         };
 
-        var load = function () {
+        var load = function() {
 
             vm.loading = true;
             vm.activeRowIndex = 0;
@@ -227,7 +237,7 @@
                     query: $routeParams.q,
                     page: vm.currentPage
                 }).then(
-                    function (result) {
+                    function(result) {
                         vm.result = result;
                         vm.events = result.events;
                         vm.loading = false;
@@ -242,13 +252,13 @@
                     filters: vm.filters,
                     query: $routeParams.q
                 }).then(
-                    function (result) {
+                    function(result) {
                         vm.result = result;
                         vm.events = result.events;
                         sortByTimestamp(true);
                         vm.loading = false;
                     },
-                    function (result) {
+                    function(result) {
                         console.log("error: " + result);
                     }
                 );
@@ -258,7 +268,7 @@
                     filters: vm.filters,
                     query: $routeParams.q
                 }).then(
-                    function (result) {
+                    function(result) {
                         vm.result = result;
                         vm.events = result.events;
                         sortByTimestamp(true);
@@ -269,56 +279,56 @@
 
         };
 
-        var getActiveEvent = function () {
+        var getActiveEvent = function() {
             return vm.events[vm.activeRowIndex];
         };
 
-        vm.toggleStar = function (event) {
-            if (! event.count) {
+        vm.toggleStar = function(event) {
+            if (!event.count) {
                 EventRepository.toggleStar(event);
             }
         };
 
         // Init.
-        (function () {
+        (function() {
 
             Mousetrap.bind($scope, "r", vm.refresh, "Refresh");
             Mousetrap.bind($scope, "* a", vm.selectAll, "Select All");
             Mousetrap.bind($scope, "* n", vm.deselectAll, "Deselect All");
-            Mousetrap.bind($scope, "* 1", function () {
+            Mousetrap.bind($scope, "* 1", function() {
                 selectBySeverity(1);
             }, "Select All Severity 1 Events");
-            Mousetrap.bind($scope, "* 2", function () {
+            Mousetrap.bind($scope, "* 2", function() {
                 selectBySeverity(2);
             }, "Select All Severity 2 Events");
-            Mousetrap.bind($scope, "* 3", function () {
+            Mousetrap.bind($scope, "* 3", function() {
                 selectBySeverity(3);
             }, "Select All Severity 3 Events");
             Mousetrap.bind($scope, "e", vm.archiveSelected,
                 "Archive Selected Events");
             Mousetrap.bind($scope, "#", vm.deleteSelected,
                 "Delete Selected Events");
-            Mousetrap.bind($scope, "x", function () {
+            Mousetrap.bind($scope, "x", function() {
                 toggleSelect();
             }, "Select Event");
-            Mousetrap.bind($scope, "s", function () {
+            Mousetrap.bind($scope, "s", function() {
                 vm.toggleStar(getActiveEvent());
             }, "Toggle 'Star'");
-            Mousetrap.bind($scope, "/", function (e) {
+            Mousetrap.bind($scope, "/", function(e) {
                 e.preventDefault();
                 $("#search-form-input").focus();
                 $("#search-form-input").select();
             }, "Search");
-            Mousetrap.bind($scope, "g 1", function () {
+            Mousetrap.bind($scope, "g 1", function() {
                 vm.gotoView("flat");
             }, "Go to Flat View");
-            Mousetrap.bind($scope, "g 2", function () {
+            Mousetrap.bind($scope, "g 2", function() {
                 vm.gotoView("signature");
             }, "Go to Grouped by Signature View");
-            Mousetrap.bind($scope, "g 3", function () {
+            Mousetrap.bind($scope, "g 3", function() {
                 vm.gotoView("signature+src");
             }, "Go to Grouped by Signature/Source View");
-            Mousetrap.bind($scope, "o", function () {
+            Mousetrap.bind($scope, "o", function() {
                 vm.open(getActiveEvent());
             }, "Open Event");
 
