@@ -32,7 +32,7 @@
         AlertsController);
 
     function AlertsController($scope, EventRepository, $routeParams,
-        $location, baseUrl, Mousetrap, Util, $timeout) {
+        $location, baseUrl, Mousetrap, Util, $timeout, NotificationService) {
 
         var vm = this;
         vm.$routeParams = $routeParams;
@@ -78,6 +78,7 @@
                 }
             })
         };
+        vm.selectBySeverity = selectBySeverity;
 
         vm.gotoView = function(view) {
             $location.path(baseUrl + "/" + view);
@@ -117,7 +118,6 @@
         };
 
         vm.open = function(event) {
-            console.log("Opening event:");
             if (event.count === undefined) {
                 vm.openEvent(event);
             }
@@ -241,11 +241,15 @@
                         vm.result = result;
                         vm.events = result.events;
                         vm.loading = false;
-
-                        console.log(Util.printf("Loaded {} events.",
-                            vm.events.length));
+                    },
+                    function(result) {
+                        NotificationService.add("danger",
+                            Util.printf("Error: {}",
+                                result.statusText));
+                        console.log("error:");
+                        console.log(result);
                     }
-                )
+                );
             }
             else if ($routeParams.view == "signature") {
                 EventRepository.getAlertsGroupedBySignature({
@@ -259,7 +263,11 @@
                         vm.loading = false;
                     },
                     function(result) {
-                        console.log("error: " + result);
+                        NotificationService.add("danger",
+                            Util.printf("Error: {}",
+                                result.statusText));
+                        console.log("error:");
+                        console.log(result);
                     }
                 );
             }
@@ -273,6 +281,13 @@
                         vm.events = result.events;
                         sortByTimestamp(true);
                         vm.loading = false;
+                    },
+                    function(result) {
+                        NotificationService.add("danger",
+                            Util.printf("Error: {}",
+                                result.statusText));
+                        console.log("error:");
+                        console.log(result);
                     }
                 );
             }

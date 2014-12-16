@@ -20,34 +20,50 @@
 
   <div class="row">
     <div class="col-md-12" ng-class="{dim: vm.loading == true}">
-      <div class="btn-group" role="group">
-        <button type="button" class="btn btn-default"
-                ng-click="vm.refresh()">
-          Refresh
-        </button>
-        <button ng-if="vm.events && vm.events.length > 0"
-                type="button" class="btn btn-default"
-                ng-click="vm.selectAll()">
-          Select All
-        </button>
-        <button ng-if="vm.events && vm.events.length > 0"
-                type="button" class="btn btn-default"
-                ng-click="vm.deselectAll()">
+
+      <button type="button" class="btn btn-default"
+              ng-click="vm.refresh()">
+        Refresh
+      </button>
+
+      <div style="display: inline" ng-show="vm.events && vm.events.length > 0">
+
+        <div class="btn-group">
+          <button type="button" class="btn btn-default"
+                  ng-click="vm.selectAll()">Select All
+          </button>
+          <button type="button" class="btn btn-default dropdown-toggle"
+                  data-toggle="dropdown" aria-expanded="false">
+            <span class="caret"></span>
+            <span class="sr-only">Toggle Dropdown</span>
+          </button>
+          <ul class="dropdown-menu" role="menu">
+            <li><a ng-click="vm.selectBySeverity(1)">Severity 1</a></li>
+            <li><a ng-click="vm.selectBySeverity(2)">Severity 2</a></li>
+            <li><a ng-click="vm.selectBySeverity(3)">Severity 3</a></li>
+          </ul>
+        </div>
+
+        <button
+          type="button" class="btn btn-default"
+          ng-click="vm.deselectAll()">
           Deselect All
         </button>
-        <button ng-if="vm.events && vm.events.length > 0"
-                type="button" class="btn btn-default"
-                ng-click="vm.archiveSelected()">
+        <button
+          type="button" class="btn btn-default"
+          ng-click="vm.archiveSelected()">
           Archive
         </button>
-        <button ng-if="vm.events && vm.events.length > 0"
-                type="button" class="btn btn-default"
-                ng-click="vm.deleteSelected()">
+        <button
+          type="button" class="btn btn-default"
+          ng-click="vm.deleteSelected()">
           Delete
         </button>
+
       </div>
 
-      <div ng-if="vm.$routeParams.view == 'flat' && vm.events.length > 0" evebox-pager
+      <div ng-if="vm.$routeParams.view == 'flat' && vm.events.length > 0"
+           evebox-pager
            style="float: right;"
            current-page="vm.$routeParams.page"
            page-size="100"
@@ -85,7 +101,7 @@
     </ul>
 
     <ng-include src="'templates/event-table.html'"
-        ng-init="vm.showEventType=false; vm.isSelectable=true;"></ng-include>
+                ng-init="vm.showEventType=false; vm.isSelectable=true;"></ng-include>
 
   </div>
 </div>
