@@ -21,6 +21,17 @@ Or...
    Elastic Search settings can also be set from the user interface,
    but will need to be done from each browser.
 
+# Elastic Search Setup
+
+As of Elastic Search 1.4, CORS is disabled by default.  It can be
+enabled by setting the following in your elasticsearch.yml:
+
+```
+http.cors.enabled: true
+```
+
+See the Elastic Search manual for further restrictions on CORS.
+
 # Suricata / Logstash Setup
 
 EveBox currently works around the concept of an inbox.  That is, events
