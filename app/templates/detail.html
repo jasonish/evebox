@@ -266,6 +266,7 @@
     JSON
   </div>
   <div class="panel-body">
-    <pre style="white-space: pre-wrap;">{{Util.toJson(hit, true)}}</pre>
+    <pre class="colourized-json"
+         ng-bind-html="Util.toJson(hit, true) | colourizeJson"></pre
   </div>
 </div>

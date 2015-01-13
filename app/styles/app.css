@@ -154,3 +154,18 @@ table > tbody > tr.clickable {
 .nowrap {
   white-space: nowrap;
 }
+.colourized-json .string {
+  color: black;
+}
+.colourized-json .number {
+  color: #0000ff;
+}
+.colourized-json .boolean {
+  color: green;
+}
+.colourized-json .null {
+  color: magenta;
+}
+.colourized-json .key {
+  color: darkred;
+}
