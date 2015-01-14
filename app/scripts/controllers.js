@@ -77,6 +77,8 @@
     app.controller("EventDetailController", function($scope, Mousetrap, Config,
         ElasticSearch, EventRepository, Util) {
 
+        var vm = this;
+
         $scope.Config = Config;
         $scope.Util = Util;
         $scope._ = _;
@@ -106,6 +108,20 @@
                 buf += hex[i] + " ";
             }
             return buf;
+        };
+
+        vm.buildSearchByFlowUrl = function(hit) {
+            console.log(hit);
+            var query = Util.printf('+flow_id:"{}"' +
+                ' +(src_ip:"{}" OR dest_ip:"{}")' +
+                ' +(src_ip:"{}" OR dest_ip:"{}")',
+                hit._source.flow_id,
+                hit._source.src_ip,
+                hit._source.src_ip,
+                hit._source.dest_ip,
+                hit._source.dest_ip);
+            console.log(query);
+            return encodeURIComponent(query);
         };
 
         $scope.archiveEvent = function(event) {

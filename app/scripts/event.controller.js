@@ -26,7 +26,7 @@
 
 'use strict';
 
-(function () {
+(function() {
 
     angular.module("app").controller("EventController", EventController);
 
@@ -69,18 +69,18 @@
                 hit.__titleClass = "alert-info";
             }
 
-            if (! hit.__titleClass) {
+            if (!hit.__titleClass) {
                 hit.__titleClass = "alert-info";
             }
         }
 
         // Init.
-        (function () {
+        (function() {
 
             $anchorScroll();
 
             ElasticSearch.searchEventById(eventId)
-                .success(function (response) {
+                .success(function(response) {
                     $scope.hits = response.hits;
                     _.forEach($scope.hits.hits, formatEvent);
                 });
