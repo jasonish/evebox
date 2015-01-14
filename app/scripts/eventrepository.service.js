@@ -205,7 +205,10 @@
                 return query;
             };
 
-            service.archiveByQuery = function(options) {
+            /**
+             * Build the query for archive and delete by query operations.
+             */
+            service.buildQueryForGroup = function(options) {
                 var options = options || {};
                 var query = {
                     query: {
@@ -220,15 +223,11 @@
                                 // on events of type alert that are in the
                                 // inbox.
                                 and: [
-                                    {exists: {field: "event_type"}},
-                                    {term: {event_type: "alert"}},
-                                    {term: {tags: "inbox"}}
+                                    {exists: {field: "event_type"}}
                                 ]
                             }
                         }
-                    },
-                    size: 1000,
-                    fields: ["_index", "_type", "_id"]
+                    }
                 };
 
                 // Add filters supplied in options.filters.
@@ -246,6 +245,15 @@
                     });
                 }
 
+                return query;
+            };
+
+            service.archiveByQuery = function(options) {
+
+                var query = service.buildQueryForGroup(options);
+                query.size = 1000;
+                query.fields = ["_index", "_type", "_id"];
+
                 return $q(function(resolve, reject) {
 
                     (function execute() {
@@ -254,6 +262,7 @@
                                 resolve();
                                 return;
                             }
+
                             ElasticSearch.bulkRemoveTag(result.data.hits.hits,
                                 "inbox")
                                 .finally(function() {
@@ -266,6 +275,11 @@
 
                 });
 
+            };
+
+            service.deleteByQuery = function(options) {
+                var query = service.buildQueryForGroup(options);
+                return ElasticSearch.deleteByQuery(query);
             };
 
             service.getEvents = function(options) {

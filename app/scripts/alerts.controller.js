@@ -191,6 +191,24 @@
             });
         };
 
+        var deleteGroup = function(selected) {
+            var group = selected.pop();
+            var filters = _.cloneDeep(vm.filters);
+            for (var key in group.keys) {
+                var filter = {term: {}};
+                filter.term[key] = group.keys[key];
+                filters.push(filter);
+            }
+            EventRepository.deleteByQuery({
+                query: $routeParams.q,
+                filters: filters,
+                lteTimestamp: group.timestamp
+            }).then(function() {
+                removeEvent(group);
+                deleteGroup(selected);
+            })
+        };
+
         vm.getSelected = function() {
             return _.filter(vm.events, "selected");
         };
@@ -217,13 +235,21 @@
 
         vm.deleteSelected = function() {
             var selected = vm.getSelected();
-            _.forEach(selected, function(event) {
-                EventRepository.deleteEvent(event).then(
-                    function(result) {
-                        removeEvent(event);
-                    }
-                );
-            });
+            if (selected.length == 0) {
+                return;
+            }
+            if (selected[0].count) {
+                deleteGroup(selected);
+            }
+            else {
+                _.forEach(selected, function(event) {
+                    EventRepository.deleteEvent(event).then(
+                        function(result) {
+                            removeEvent(event);
+                        }
+                    );
+                });
+            }
         };
 
         var load = function() {
