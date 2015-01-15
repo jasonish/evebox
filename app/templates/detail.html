@@ -24,6 +24,7 @@
         <ul class="dropdown-menu pull-right" role="menu">
           <li><a href="#/event/{{hit._id}}" target="_blank">Open in New
             Window</a></li>
+          <li><a href="#/events?q={{vm.buildSearchByFlowUrl(hit)}}">Query Flow</a></li>
           <li ng-if="Config.dumpy.url">
             <a href="" ng-click="sendToDumpy(hit)">Send to Dumpy</a>
           </li>
