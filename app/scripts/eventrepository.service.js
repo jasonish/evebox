@@ -40,64 +40,41 @@
             var service = {};
 
             /**
-             * ES top hits aggregation to extract the most recent alert in the
-             * aggregation.
+             * Build event query.
+             *
+             * @param args Object containing optional arguments:
+             *      - query - query string.
+             *      - filters - array of filters.
              */
-            service.latestEventAgg = {
-                "latest_event": {
-                    "top_hits": {
-                        "sort": [
-                            {
-                                "@timestamp": {
-                                    "order": "desc"
+            var buildQuery = function(args) {
+                var args = args || {};
+                var query = {
+                    query: {
+                        filtered: {
+                            query: {
+                                query_string: {
+                                    query: args.query || "*",
+                                    default_operator: "AND"
                                 }
-                            }
-                        ],
-                        "_source": {
-                            "include": [
-                                "timestamp",
-                                "@timestamp",
-                                "alert.severity",
-                                "alert.category"
-                            ]
-                        },
-                        "size": 1
-                    }
-                }
-            };
-
-            /**
-             * Aggregate by signature query.
-             */
-            service.aggregateBySignature = {
-                "signature": {
-                    "terms": {
-                        "field": "alert.signature.raw",
-                        "size": 0
-                    },
-                    "aggs": service.latestEventAgg
-                }
-            };
-
-            /**
-             * Aggregate by signature then source address query.
-             */
-            service.aggregateBySignatureSrc = {
-                "signature": {
-                    "terms": {
-                        "field": "alert.signature.raw",
-                        "size": 0
-                    },
-                    "aggs": {
-                        "source_addrs": {
-                            "terms": {
-                                "field": "src_ip.raw",
-                                "size": 0
                             },
-                            "aggs": service.latestEventAgg
+                            filter: {
+                                and: [
+                                    {
+                                        "exists": {"field": "event_type"}
+                                    }
+                                ]
+                            }
                         }
                     }
+                };
+
+                if ("filters" in args) {
+                    _.forEach(args.filters, function(filter) {
+                        query.query.filtered.filter.and.push(filter);
+                    });
                 }
+
+                return query;
             };
 
             var latestEventAggregationTemplate = {
@@ -115,54 +92,12 @@
                 }
             };
 
-            var buildEventQuery = function(options) {
-
-                var size = options.size || Config.elasticSearch.size;
-
-                var query = {
-                    query: {
-                        filtered: {
-                            query: {
-                                query_string: {
-                                    query: options.query || "*"
-                                }
-                            },
-                            filter: {
-                                and: [
-                                    {
-                                        "exists": {"field": "event_type"}
-                                    }
-                                ]
-
-                            }
-                        }
-                    },
-                    size: size,
-                    sort: [
-                        {"@timestamp": {order: "desc"}}
-                    ]
-                };
-
-                if (options.page != undefined && options.page > 1) {
-                    query.from = size * (options.page - 1);
-                }
-
-                if ("filters" in options) {
-                    _.forEach(options.filters, function(filter) {
-                        query.query.filtered.filter.and.push(filter);
-                    });
-                }
-
-                return query;
-            };
-
             /**
              * Build an alert query grouped by signature.
              */
             var buildAlertQueryGroupedBySignature = function(options) {
-                var query = buildEventQuery(options);
-                query.size = 0
-                delete(query.sort);
+                var query = buildQuery(options);
+                query.size = 0;
                 query.query.filtered.filter.and.push({
                     term: {event_type: "alert"}
                 });
@@ -179,8 +114,7 @@
             };
 
             var buildAlertQueryGroupedBySignatureAndSource = function(options) {
-                var query = buildEventQuery(options);
-                delete(query.sort);
+                var query = buildQuery(options);
                 query.size = 0;
                 query.query.filtered.filter.and.push({
                     term: {event_type: "alert"}
@@ -210,33 +144,8 @@
              */
             service.buildQueryForGroup = function(options) {
                 var options = options || {};
-                var query = {
-                    query: {
-                        filtered: {
-                            query: {
-                                query_string: {
-                                    query: options.query || "*"
-                                }
-                            },
-                            filter: {
-                                // As we are archiving, we are only working
-                                // on events of type alert that are in the
-                                // inbox.
-                                and: [
-                                    {exists: {field: "event_type"}}
-                                ]
-                            }
-                        }
-                    }
-                };
 
-                // Add filters supplied in options.filters.
-                if ("filters" in options) {
-                    for (var i = 0; i < options.filters.length; i++) {
-                        var filter = options.filters[i];
-                        query.query.filtered.filter.and.push(filter);
-                    }
-                }
+                var query = buildQuery(options);
 
                 // Add less than equals timestamp if options.lteTimestamp.
                 if (options.lteTimestamp) {
@@ -288,7 +197,17 @@
                     options = {};
                 }
 
-                var query = buildEventQuery(options);
+                var query = buildQuery(options);
+
+                query.size = options.size || Config.elasticSearch.size;
+
+                query.sort = [
+                    {"@timestamp": {order: "desc"}}
+                ];
+
+                if (options.page != undefined && options.page > 1) {
+                    query.from = query.size * (options.page - 1);
+                }
 
                 return ElasticSearch.search(query).then(function(response) {
 

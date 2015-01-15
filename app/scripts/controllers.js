@@ -111,16 +111,21 @@
         };
 
         vm.buildSearchByFlowUrl = function(hit) {
-            console.log(hit);
-            var query = Util.printf('+flow_id:"{}"' +
-                ' +(src_ip:"{}" OR dest_ip:"{}")' +
-                ' +(src_ip:"{}" OR dest_ip:"{}")',
-                hit._source.flow_id,
-                hit._source.src_ip,
-                hit._source.src_ip,
-                hit._source.dest_ip,
-                hit._source.dest_ip);
-            console.log(query);
+            var query = Util.printf('flow_id:{}' +
+                    ' src_ip.raw:("{}" OR "{}")' +
+                    ' dest_ip.raw:("{}" OR "{}")' +
+                    ' src_port:({} OR {})' +
+                    ' dest_port:({} OR {})',
+                    hit._source.flow_id,
+                    hit._source.src_ip,
+                    hit._source.dest_ip,
+                    hit._source.src_ip,
+                    hit._source.dest_ip,
+                    hit._source.src_port,
+                    hit._source.dest_port,
+                    hit._source.src_port,
+                    hit._source.dest_port);
+
             return encodeURIComponent(query);
         };
 
