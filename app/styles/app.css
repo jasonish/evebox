@@ -151,6 +151,9 @@ table > tbody > tr.clickable {
 .event-force-wrap {
   word-break: break-all;
 }
+.force-wrap {
+  word-break: break-all;
+}
 .nowrap {
   white-space: nowrap;
 }

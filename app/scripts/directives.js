@@ -32,13 +32,14 @@
 
 (function() {
 
-    app.directive("eveboxIpAddressServices", function() {
+    angular.module("app").directive("eveboxIpAddress", function() {
 
         return {
-            restrict: "EA",
-            templateUrl: "templates/ip-address-services.html",
+            restrict: "E",
+            templateUrl: "templates/evebox-ip-address.html",
             scope: {
-                address: "=address"
+                address: "=",
+                port: "="
             }
         };
 

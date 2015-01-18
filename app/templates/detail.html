@@ -1,6 +1,8 @@
 <div class="panel panel-default event-detail-panel">
+
   <div class="panel-heading">
     Event
+
     <div class="event-action-buttons" style="float: right;">
       <button ng-if="hit._source.tags.indexOf('inbox') > -1"
               ng-click="archiveEvent(hit)"
@@ -24,262 +26,180 @@
         <ul class="dropdown-menu pull-right" role="menu">
           <li><a href="#/event/{{hit._id}}" target="_blank">Open in New
             Window</a></li>
-          <li><a href="#/events?q={{vm.buildSearchByFlowUrl(hit)}}">Query Flow</a></li>
+          <li><a href="#/events?q={{vm.buildSearchByFlowUrl(hit)}}">Query
+            Events in Flow</a></li>
           <li ng-if="Config.dumpy.url">
             <a href="" ng-click="sendToDumpy(hit)">Send to Dumpy</a>
           </li>
         </ul>
       </div>
-
     </div>
+
   </div>
+
   <div class="panel-body">
 
-    <dl class="dl-horizontal">
-      <dt>Timestamp:</dt>
-      <dd>
-        {{hit._source.timestamp}}
-      </dd>
-    </dl>
+    <div class="row">
 
-    <!-- Event type: alert. -->
-    <dl ng-if="hit._source.event_type == 'alert'" class="dl-horizontal">
-      <dt>Signature:</dt>
-      <dd><a
-        href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
-      </dd>
-      <dt>Category:</dt>
-      <dd>{{hit._source.alert.category}}</dd>
-      <dt>Singature ID:</dt>
-      <dd>
-        {{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}:{{hit._source.alert.rev}}
-      </dd>
-      <dt>Severity:</dt>
-      <dd>{{hit._source.alert.severity}}</dd>
-    </dl>
+      <div class="col-md-6">
 
-    <!-- Event type: DNS. -->
-    <dl ng-if="hit._source.event_type == 'dns'" class="dl-horizontal">
-      <dt>Type:</dt>
-      <dd>{{hit._source.dns.type}}</dd>
-      <dt>ID:</dt>
-      <dd><a
-        href="#/events?q=+dns.id:{{hit._source.dns.id}} +{{hit._source.src_ip}} +{{hit._source.dest_ip}}">{{hit._source.dns.id}}</a>
-      </dd>
-      <dt>TTL:</dt>
-      <dd>{{hit._source.dns.ttl}}</dd>
-      <dt>RRType:</dt>
-      <dd>{{hit._source.dns.rrtype}}</dd>
-      <dt>RRName:</dt>
-      <dd>{{hit._source.dns.rrname}}</dd>
-      <dt>RRData:</dt>
-      <dd>{{hit._source.dns.rrdata}}</dd>
-    </dl>
+        <dl class="dl-horizontal">
+          <dt>Timestamp</dt>
+          <dd>{{hit._source["@timestamp"] | formatTimestamp}}</dd>
 
-    <!-- Event type: TLS. -->
-    <dl ng-if="hit._source.event_type == 'tls'" class="dl-horizontal">
-      <dt>Subject:</dt>
-      <dd>{{hit._source.tls.subject}}</dd>
-      <dt>Issuer DN:</dt>
-      <dd>{{hit._source.tls.issuerdn}}</dd>
-      <dt>Fingerprint:</dt>
-      <dd>{{hit._source.tls.fingerprint}}</dd>
-      <dt>Version:</dt>
-      <dd>{{hit._source.tls.version}}</dd>
-    </dl>
+          <div ng-switch="hit._source.event_type">
 
-    <!-- Event type: HTTP. -->
-    <dl ng-if="hit._source.event_type == 'http'" class="dl-horizontal">
-      {{eventModel}}
-      <div ng-repeat="(key, val) in _.omit(hit._source.http, 'length')">
-        <dt>{{key}}</dt>
-        <dd style="word-break: break-all;">{{val}}</dd>
+            <!-- Alert. -->
+            <div ng-switch-when="alert">
+              <dt>Signature:</dt>
+              <dd><a
+                href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
+              </dd>
+              <dt>Category:</dt>
+              <dd>{{hit._source.alert.category}}</dd>
+              <dt>Singature ID:</dt>
+              <dd>
+                {{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}:{{hit._source.alert.rev}}
+              </dd>
+              <dt>Severity:</dt>
+              <dd>{{hit._source.alert.severity}}</dd>
+            </div>
+
+            <!-- DNS. -->
+            <div ng-switch-when="dns">
+              <dt>Type:</dt>
+              <dd>{{hit._source.dns.type}}</dd>
+              <dt>ID:</dt>
+              <dd><a
+                href="#/events?q=+dns.id:{{hit._source.dns.id}} +{{hit._source.src_ip}} +{{hit._source.dest_ip}}">{{hit._source.dns.id}}</a>
+              </dd>
+              <dt>TTL:</dt>
+              <dd>{{hit._source.dns.ttl}}</dd>
+              <dt>RRType:</dt>
+              <dd>{{hit._source.dns.rrtype}}</dd>
+              <dt>RRName:</dt>
+              <dd>{{hit._source.dns.rrname}}</dd>
+              <dt>RData:</dt>
+              <dd>{{hit._source.dns.rdata}}</dd>
+            </div>
+
+            <!-- TLS. -->
+            <div ng-switch-when="tls">
+              <dl ng-if="hit._source.event_type == 'tls'" class="dl-horizontal">
+                <dt>Subject:</dt>
+                <dd>{{hit._source.tls.subject}}</dd>
+                <dt>Issuer DN:</dt>
+                <dd>{{hit._source.tls.issuerdn}}</dd>
+                <dt>Fingerprint:</dt>
+                <dd>{{hit._source.tls.fingerprint}}</dd>
+                <dt>Version:</dt>
+                <dd>{{hit._source.tls.version}}</dd>
+              </dl>
+            </div>
+
+            <div ng-switch-default>
+              <div
+                ng-repeat="(key, val) in _.omit(hit._source[hit._source.event_type], 'length')">
+                <dt>{{key}}</dt>
+                <dd class="force-wrap">{{val}}</dd>
+              </div>
+            </div>
+
+          </div>
+          <!-- div ng-switch -->
+
+        </dl>
+
       </div>
-    </dl>
 
-    <!-- Event type: File info. -->
-    <dl ng-if="hit._source.event_type == 'fileinfo'" class="dl-horizontal">
-      <div ng-repeat="(key, val) in hit._source.fileinfo">
-        <dt>{{key}}</dt>
-        <dd>{{val}}</dd>
+      <div class="col-md-6">
+
+        <dl class="dl-horizontal">
+
+          <dt>Protocol</dt>
+          <dd>{{hit._source.proto}}</dd>
+
+          <dt>Source</dt>
+          <dd>
+            <evebox-ip-address address="hit._source.src_ip"
+                               port="hit._source.src_port"/>
+          </dd>
+
+          <dt>Destination</dt>
+          <dd>
+            <evebox-ip-address address="hit._source.dest_ip"
+                               port="hit._source.dest_port"/>
+          </dd>
+
+          <div ng-if="hit._source.flow_id">
+            <dt>Flow ID</dt>
+            <dd><a href="#/events?q={{vm.buildSearchByFlowUrl(hit)}}">{{hit._source.flow_id}}</a>
+            </dd>
+          </div>
+
+          <div ng-if="hit._source.in_iface">
+            <dt>Interface</dt>
+            <dd>{{hit._source.in_iface}}</dd>
+          </div>
+
+          <div ng-if="hit._source.icmp_type">
+            <dt>ICMP Type</dt>
+            <dd>{{hit._source.icmp_type}}</dd>
+          </div>
+
+          <div ng-if="hit._source.icmp_code">
+            <dt>ICMP Code</dt>
+            <dd>{{hit._source.icmp_code}}</dd>
+          </div>
+
+        </dl>
+
       </div>
-    </dl>
 
-    <!-- Event type: flow. -->
-    <dl ng-if="hit._source.event_type == 'flow'" class="dl-horizontal">
-      <div ng-repeat="(key, val) in hit._source.flow">
-        <dt>{{key}}</dt>
-        <dd>{{val}}</dd>
+    </div>
+
+  </div>
+
+</div>
+
+<div ng-if="hit._source.payload" class="panel panel-default event-detail-panel">
+  <div class="panel-heading">
+    Payload
+  </div>
+  <div class="panel-collapse collapse in">
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-6">
+            <pre
+              style="white-space: pre-wrap">{{b64ToHex(hit._source.payload)}}</pre>
+        </div>
+        <div class="col-md-6">
+          <pre
+            style="white-space: pre-wrap">{{b64ToText(hit._source.payload)}}</pre>
+        </div>
       </div>
-    </dl>
-
-    <!-- Event type: netflow. -->
-    <dl ng-if="hit._source.event_type == 'netflow'" class="dl-horizontal">
-      <div ng-repeat="(key, val) in hit._source.netflow">
-        <dt>{{key}}</dt>
-        <dd>{{val}}</dd>
-      </div>
-    </dl>
-
+    </div>
   </div>
 </div>
 
-<div class="panel panel-default event-detail-panel">
+<div ng-if="hit._source.packet" class="panel panel-default event-detail-panel">
   <div class="panel-heading">
     Packet
   </div>
-  <div class="panel-body">
-
-    <dl class="dl-horizontal">
-
-      <dt>Protocol:</dt>
-      <dd>{{hit._source.proto}}</dd>
-
-      <dt>Source:</dt>
-      <dd>
-        <div class="col-md-4" style="padding: 0px;">
-          <div class="input-group">
-            <a
-              href="#/events?q=+&quot;{{hit._source.src_ip}}&quot;">{{hit._source.src_ip}}</a>
-            <evebox-ip-address-services
-              address="hit._source.src_ip"></evebox-ip-address-services>
-          </div>
-        </div>
-
-        <!-- Source port/ICMP type... -->
-        <div class="col-md-3">
-          <div ng-if="hit._source.proto == 'ICMP'">
-            <b>ICMP Type:</b>
-            {{hit._source.icmp_type}}
-          </div>
-          <div
-            ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
-            <b>Port:</b>
-            {{hit._source.src_port}}
-          </div>
-        </div>
-
-      </dd>
-
-      <dt>Destination:</dt>
-      <dd>
-        <div class="col-md-4" style="padding: 0px;">
-          <div class="input-group">
-            <a href="#/events?q=%2b&quot;{{hit._source.dest_ip}}&quot;">{{hit._source.dest_ip}}</a>
-            <evebox-ip-address-services
-              address="hit._source.dest_ip"></evebox-ip-address-services>
-          </div>
-        </div>
-
-        <!-- Destination port/ICMP code... -->
-        <div class="col-md-3">
-          <div ng-if="hit._source.proto == 'ICMP'">
-            <b>ICMP Code:</b>
-            {{hit._source.icmp_code}}
-          </div>
-          <div
-            ng-if="hit._source.proto == 'TCP' || hit._source.proto == 'UDP'">
-            <b>Port:</b>
-            {{hit._source.dest_port}}
-          </div>
-        </div>
-
-      </dd>
-
-      <dt>Flow ID:</dt>
-      <dd><a href="#/events?q={{vm.buildSearchByFlowUrl(hit)}}">{{hit._source.flow_id}}</a>
-      </dd>
-
-    </dl>
-
-    <!-- Packets array from idstools-u2json. -->
-    <div ng-if="hit._source.packets">
-      <div class="panel panel-default">
-        <div class="panel-heading">
-          Packets
-        </div>
-        <div class="panel-collapse collapse in">
-          <div class="panel-body">
-            <div class="panel panel-default"
-                 ng-repeat="packet in hit._source.packets">
-              <div class="panel-heading">
-                {{packet.timestamp}}
-              </div>
-              <div class="panel-body">
-                <div class="row">
-                  <div class="col-md-6">
-              <pre
-                style="max-height: 300px; white-space: pre-wrap;">{{b64ToHex(packet.packet)}}</pre>
-                  </div>
-                  <div class="col-md-6">
-              <pre
-                style="max-height: 300px; white-space: pre-wrap;">{{b64ToText(packet.packet)}}</pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div ng-if="hit._source.packet" class="panel panel-default">
-      <div class="panel-heading">
-        Packet
-      </div>
-      <div class="panel-collapse collapse in">
-        <div class="panel-body">
-          <div class="row">
-            <div class="col-md-6">
+  <div class="panel-collapse collapse in">
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-6">
             <pre
               style="white-space: pre-wrap">{{b64ToHex(hit._source.packet)}}</pre>
-            </div>
-            <div class="col-md-6">
+        </div>
+        <div class="col-md-6">
             <pre
               style="white-space: pre-wrap">{{b64ToText(hit._source.packet)}}</pre>
-            </div>
-          </div>
         </div>
       </div>
     </div>
-
-    <div ng-if="hit._source.payload" class="panel panel-default">
-      <div class="panel-heading">
-        Payload
-      </div>
-      <div class="panel-collapse collapse in">
-        <div class="panel-body">
-          <div class="row">
-            <div class="col-md-6">
-            <pre
-              style="white-space: pre-wrap">{{b64ToHex(hit._source.payload)}}</pre>
-            </div>
-            <div class="col-md-6">
-              <pre style="white-space: pre-wrap">{{b64ToText(hit._source.payload)}}</pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div ng-if="hit._source.http">
-      <div class="panel panel-default">
-        <div class="panel-heading">
-          HTTP
-        </div>
-        <div class="panel-collapse collapse in">
-          <div class="panel-body dl-horizontal">
-            <div ng-repeat="(key, val) in _.omit(hit._source.http, 'length')">
-              <dt>{{key}}</dt>
-              <dd style="word-break: break-all;">{{val}}</dd>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
-
 </div>
 
 <div class="panel panel-default event-detail-panel">

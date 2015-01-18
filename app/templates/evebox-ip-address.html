@@ -1,0 +1,23 @@
+<!-- Template for evebox-ip-address. -->
+<div class="dropdown">
+  <a href="javascript:void(0);" data-toggle="dropdown">{{address | formatIpAddress}}</a><span
+  ng-show="port" style="color: #808080;">:{{port}}</span>
+  <ul class="dropdown-menu" role="menu">
+    <li><a href="#/events?q=&quot;{{address}}&quot;">Search in
+      all...</a>
+    </li>
+    <li><a href="#/alerts?q=&quot;{{address}}&quot;">Search in
+      Alerts</a></li>
+    <li><a
+      href="#/events?q=&quot;{{address}}&quot; event_type:dns">Search
+      in
+      DNS</a>
+    </li>
+    <li><a
+      href="#/events?q=&quot;{{address}}&quot; event_type:flow">Search
+      in
+      Flows</a>
+    </li>
+  </ul>
+</div>
+

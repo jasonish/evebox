@@ -111,20 +111,28 @@
         };
 
         vm.buildSearchByFlowUrl = function(hit) {
+
             var query = Util.printf('flow_id:{}' +
-                    ' src_ip.raw:("{}" OR "{}")' +
-                    ' dest_ip.raw:("{}" OR "{}")' +
-                    ' src_port:({} OR {})' +
+                ' src_ip.raw:("{}" OR "{}")' +
+                ' dest_ip.raw:("{}" OR "{}")',
+                hit._source.flow_id,
+                hit._source.src_ip,
+                hit._source.dest_ip,
+                hit._source.src_ip,
+                hit._source.dest_ip);
+
+            if (hit._source.src_port && hit._source.dest_port) {
+                query += Util.printf(' src_port:({} OR {})' +
                     ' dest_port:({} OR {})',
-                    hit._source.flow_id,
-                    hit._source.src_ip,
-                    hit._source.dest_ip,
-                    hit._source.src_ip,
-                    hit._source.dest_ip,
                     hit._source.src_port,
                     hit._source.dest_port,
                     hit._source.src_port,
                     hit._source.dest_port);
+            }
+            else {
+                query += Util.printf(' proto:{}',
+                    hit._source.proto);
+            }
 
             return encodeURIComponent(query);
         };
