@@ -162,6 +162,22 @@
 
 </div>
 
+<div ng-if="hit._source.http && (hit._source.event_type != 'http')"
+     class="panel panel-default event-detail-panel">
+  <div class="panel-heading">
+    HTTP
+  </div>
+  <div class="panel-body">
+    <dl class="dl-horizontal">
+      <div
+        ng-repeat="(key, val) in _.omit(hit._source.http, 'length')">
+        <dt>{{key}}</dt>
+        <dd class="force-wrap">{{val}}</dd>
+      </div>
+    </dl>
+  </div>
+</div>
+
 <div ng-if="hit._source.payload" class="panel panel-default event-detail-panel">
   <div class="panel-heading">
     Payload
