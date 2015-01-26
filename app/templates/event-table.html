@@ -47,13 +47,13 @@
     <td ng-click="$event.stopPropagation()" ng-if="!event.count">
       <span ng-if="::event._source.event_type == 'alert'">
           <span
-            ng-show="!event._source.tags || event._source.tags.indexOf('starred') == -1"
-            ng-click="vm.toggleStar(event)"
-            class="glyphicon glyphicon-star-empty"></span>
+              ng-show="!event._source.tags || event._source.tags.indexOf('starred') == -1"
+              ng-click="vm.toggleStar(event)"
+              class="glyphicon glyphicon-star-empty"></span>
           <span
-            ng-click="vm.toggleStar(event)"
-            ng-show="event._source.tags.indexOf('starred') > -1"
-            class="glyphicon glyphicon-star"></span>
+              ng-click="vm.toggleStar(event)"
+              ng-show="event._source.tags.indexOf('starred') > -1"
+              class="glyphicon glyphicon-star"></span>
         </span>
     </td>
 
@@ -72,14 +72,20 @@
     <td class="nowrap">
       <label>S:</label>
       {{::event._source.src_ip | formatIpAddress}}<span
-      ng-if="event._source.src_port > 0" style="color: #808080;">:{{::event._source.src_port}}</span>
+        ng-if="event._source.src_port > 0" style="color: #808080;">:{{::event._source.src_port}}</span>
       <br/>
       <label>D:</label>
       {{::event._source.dest_ip | formatIpAddress}}<span
-      ng-if="event._source.dest_port > 0" style="color: #808080;">:{{::event._source.dest_port}}</span>
+        ng-if="event._source.dest_port > 0" style="color: #808080;">:{{::event._source.dest_port}}</span>
     </td>
 
-    <td><span ng-bind-html="::event | formatEventDescription"></span></td>
+    <td style="position: relative;">
+      <div ng-show="event.archiving" style="position: absolute; right: 5px; top: 5px;">
+        <span class="label label-info">Archiving</span>
+      </div>
+      <span class="colourized-json" style="word-break: break-all;"
+            ng-bind-html="::event | formatEventDescription"></span>
+    </td>
 
   </tr>
   <tr ng-class="event._source.alert.severity | severityClass"
