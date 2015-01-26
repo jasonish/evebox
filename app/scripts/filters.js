@@ -68,32 +68,12 @@
      * Based on code snippet from:
      * http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript
      */
-    angular.module("app").filter("colourizeJson", ["$sce", function($sce) {
-
-        return function(json) {
-
-            json = json.replace(/&/g, '&').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            var colourized = json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-                var cls = 'number';
-                if (/^"/.test(match)) {
-                    if (/:$/.test(match)) {
-                        cls = 'key';
-                    } else {
-                        cls = 'string';
-                    }
-                } else if (/true|false/.test(match)) {
-                    cls = 'boolean';
-                } else if (/null/.test(match)) {
-                    cls = 'null';
-                }
-                return '<span class="' + cls + '">' + match + '</span>';
-            });
-
-            return $sce.trustAsHtml(colourized);
-
-        };
-
-    }]);
+    angular.module("app").filter("colourizeJson",
+        ["$sce", "Util", function ($sce, Util) {
+            return function (json) {
+                return $sce.trustAsHtml(Util.colourizeJson(json));
+            };
+        }]);
 
     angular.module("app").filter("formatEventDescription",
         ["$sce", "Util", function ($sce, Util) {
@@ -114,20 +94,10 @@
                         }
                         default:
                         {
-                            var parts = [];
-                            _.forIn(event._source[event._source.event_type],
-                                function (value, key) {
-                                    parts.push('<span style="color: #808080;">'
-                                    +
-                                    key +
-                                    ':</span> ' +
-                                    '<span style="word-break: break-all;">' +
-                                    value +
-                                    '</span>');
-                                });
-                            var msg = parts.join("; ");
-                            return $sce.trustAsHtml(msg);
-
+                            return Util.colourizeJson(
+                                angular.toJson(
+                                    event._source[event._source.event_type],
+                                    true));
                         }
                     }
                 }
