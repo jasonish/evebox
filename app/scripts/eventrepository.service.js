@@ -191,6 +191,12 @@
                 return ElasticSearch.deleteByQuery(query);
             };
 
+            service.queryEvents = function(options) {
+                var query = buildQuery(options);
+                query.size = options.size || Config.elasticSearch.size;
+                return ElasticSearch.search(query);
+            };
+
             service.getEvents = function(options) {
 
                 if (options === undefined) {

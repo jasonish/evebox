@@ -154,6 +154,20 @@
 
         </dl>
 
+        <dl class="dl-horizontal">
+
+          <div ng-if="vm.sourceHostname">
+            <dt>Source Hostname</dt>
+            <dd>{{vm.sourceHostname}}</dd>
+          </div>
+
+          <div ng-if="vm.destinationHostname">
+            <dt>Destination Hostname</dt>
+            <dd>{{vm.destinationHostname}}</dd>
+          </div>
+
+        </dl>
+
       </div>
 
     </div>
