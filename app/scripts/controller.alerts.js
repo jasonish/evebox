@@ -191,7 +191,17 @@
             });
         };
 
+        /**
+         * Recursively delete each event group, use selected as a stack as too
+         * many simultaneous delete requests can result in ES returning an
+         * error.
+         */
         var deleteGroup = function(selected) {
+
+            if (selected.length == 0) {
+                return;
+            }
+
             var group = selected.pop();
             var filters = _.cloneDeep(vm.filters);
             for (var key in group.keys) {
@@ -199,6 +209,7 @@
                 filter.term[key] = group.keys[key];
                 filters.push(filter);
             }
+
             EventRepository.deleteByQuery({
                 query: $routeParams.q,
                 filters: filters,
@@ -238,6 +249,11 @@
             if (selected.length == 0) {
                 return;
             }
+
+            _.forEach(selected, function(event) {
+                event.deleting = true;
+            });
+
             if (selected[0].count) {
                 deleteGroup(selected);
             }

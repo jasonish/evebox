@@ -162,7 +162,7 @@
           <div>
             <dt>Source Hostname</dt>
             <div ng-switch="vm.srcHostname">
-              <dd ng-switch-when="undefined" class="dim">Loading</dd>
+              <dd ng-switch-when="undefined" class="dim">Loading...</dd>
               <dd ng-switch-when="null" class="dim">not found</dd>
               <dd ng-switch-default><a
                 href="#/events?q=&quot;{{vm.srcHostname}}&quot;">{{vm.srcHostname}}</a>
@@ -173,7 +173,7 @@
           <div>
             <dt>Destination Hostname</dt>
             <div ng-switch="vm.destHostname">
-              <dd ng-switch-when="undefined" class="dim">Loading</dd>
+              <dd ng-switch-when="undefined" class="dim">Loading...</dd>
               <dd ng-switch-when="null" class="dim">not found</dd>
               <dd ng-switch-default><a
                 href="#/events?q=&quot;{{vm.destHostname}}&quot;">{{vm.destHostname}}</a>
