@@ -56,7 +56,10 @@
                 href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
               </dd>
               <dt>Category:</dt>
-              <dd>{{hit._source.alert.category}}</dd>
+              <dd>
+                <a
+                  href="#/events?q=alert.category.raw:&quot;{{hit._source.alert.category}}&quot;">{{hit._source.alert.category}}</a>
+              </dd>
               <dt>Singature ID:</dt>
               <dd>
                 {{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}:{{hit._source.alert.rev}}
@@ -173,7 +176,8 @@
               <dd ng-switch-when="undefined" class="dim">Loading</dd>
               <dd ng-switch-when="null" class="dim">not found</dd>
               <dd ng-switch-default><a
-                href="#/events?q=&quot;{{vm.destHostname}}&quot;">{{vm.destHostname}}</a></dd>
+                href="#/events?q=&quot;{{vm.destHostname}}&quot;">{{vm.destHostname}}</a>
+              </dd>
             </div>
           </div>
 
