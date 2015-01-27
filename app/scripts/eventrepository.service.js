@@ -379,6 +379,43 @@
                     });
             };
 
+            /**
+             * Lookup a DNS rrname for an IP address.
+             *
+             * @param addr the IP address to resolve to a hostname
+             * @param lteTimestamp a timestamp to be applied as a less than
+             *   or equal to filter.
+             *
+             * @returns A hostname if found, otherwise null.
+             */
+            service.lookupRrname = function(addr, lteTimestamp) {
+                var query = {
+                    filters: [
+                        {term: {event_type: "dns"}},
+                        {term: {"dns.rdata.raw": addr}}
+                    ],
+                    size: 1,
+                    sort: [
+                        {"@timestamp": {order: "desc"}}
+                    ]
+                };
+
+                // Add the optional timestamp filter.
+                if (lteTimestamp) {
+                    query.filters.push({
+                        range: {"@timestamp": {lte: lteTimestamp}}
+                    });
+                }
+
+                return service.queryEvents(query).then(function(result) {
+                    if (result.data.hits.hits.length > 0) {
+                        return result.data.hits.hits[0]._source.dns.rrname;
+                    }
+                    return null;
+                });
+
+            };
+
             return service;
 
         });

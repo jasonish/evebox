@@ -24,24 +24,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-(function () {
+(function() {
 
     'use strict';
 
-    app.controller("NavBarController", function ($routeParams, $scope, $modal,
+    app.controller("NavBarController", function($routeParams, $scope, $modal,
         $location, EventRepository, $timeout, Mousetrap) {
 
         $scope.$routeParams = $routeParams;
         $scope.$location = $location;
 
-        $scope.openConfig = function () {
+        $scope.openConfig = function() {
             $modal.open({
                 templateUrl: "templates/config.html",
                 controller: "ConfigController as vm"
             });
         };
 
-        $scope.openHelp = function () {
+        $scope.openHelp = function() {
             $modal.open({
                 templateUrl: "templates/help.html",
                 controller: "HelpController as vm",
@@ -49,37 +49,35 @@
             });
         };
 
-        Mousetrap.bind($scope, "g i", function (e) {
+        Mousetrap.bind($scope, "g i", function(e) {
             $location.url("/inbox");
         }, "Go to Inbox");
 
-        Mousetrap.bind($scope, "g s", function (e) {
+        Mousetrap.bind($scope, "g s", function(e) {
             $location.url("/starred")
         }, "Go to Starred");
 
-        Mousetrap.bind($scope, "g a", function (e) {
+        Mousetrap.bind($scope, "g a", function(e) {
             $location.url("/alerts");
         }, "Go to Alerts");
 
-        Mousetrap.bind($scope, "g o", function () {
+        Mousetrap.bind($scope, "g o", function() {
             $("#other-menu-dropdown-toggle").dropdown('toggle');
         }, "Go to Other");
 
-        Mousetrap.bind($scope, "g c", function (e) {
+        Mousetrap.bind($scope, "g c", function(e) {
             $scope.openConfig();
         }, "Go to Configuration");
 
-        Mousetrap.bind($scope, "?", function (e) {
+        Mousetrap.bind($scope, "?", function(e) {
             $scope.openHelp();
         }, "Show Help");
     });
 
-    app.controller("EventDetailController", function ($scope, Mousetrap, Config,
+    app.controller("EventDetailController", function($scope, Mousetrap, Config,
         ElasticSearch, EventRepository, Util) {
 
         var vm = this;
-
-        console.log("EventDetailController");
 
         if ($scope.event) {
             $scope.hit = $scope.event;
@@ -100,14 +98,14 @@
             $scope.hasPayload = false;
         }
 
-        $scope.b64ToText = function (data) {
+        $scope.b64ToText = function(data) {
             return atob(data);
         };
 
-        $scope.b64ToHex = function (data) {
+        $scope.b64ToHex = function(data) {
             var hex = Util.base64ToHexArray(data);
             var buf = "";
-            for (var i = 0; i < hex.length; i ++) {
+            for (var i = 0; i < hex.length; i++) {
                 if (i > 0 && i % 16 == 0) {
                     buf += "\n";
                 }
@@ -116,7 +114,7 @@
             return buf;
         };
 
-        vm.buildSearchByFlowUrl = function (hit) {
+        vm.buildSearchByFlowUrl = function(hit) {
 
             var query = Util.printf('flow_id:{}' +
                 ' src_ip.raw:("{}" OR "{}")' +
@@ -143,11 +141,11 @@
             return encodeURIComponent(query);
         };
 
-        $scope.archiveEvent = function (event) {
+        $scope.archiveEvent = function(event) {
             if ($scope.$parent.archiveEvent === undefined) {
                 ElasticSearch.removeTag(event, "inbox")
-                    .success(function (response) {
-                        _.remove(event._source.tags, function (tag) {
+                    .success(function(response) {
+                        _.remove(event._source.tags, function(tag) {
                             return tag == "inbox";
                         })
                     });
@@ -157,10 +155,10 @@
             }
         };
 
-        $scope.deleteEvent = function (event) {
+        $scope.deleteEvent = function(event) {
             if ($scope.$parent.deleteEvent === undefined) {
                 EventRepository.deleteEvent(event)
-                    .success(function (response) {
+                    .success(function(response) {
                         $scope.$emit("eventDeleted", event);
                     });
             }
@@ -169,11 +167,11 @@
             }
         };
 
-        $scope.toggleStar = function (event) {
+        $scope.toggleStar = function(event) {
             EventRepository.toggleStar(event);
         };
 
-        $scope.sendToDumpy = function (event) {
+        $scope.sendToDumpy = function(event) {
             var form = document.createElement("form");
             form.setAttribute("method", "post");
             form.setAttribute("action", Config.dumpy.url);
@@ -188,37 +186,19 @@
             form.submit();
         };
 
-        var lookupRrname = function (addr, lteTimestamp) {
-            return EventRepository.queryEvents({
-                filters: [
-                    {term: {event_type: "dns"}},
-                    {term: {"dns.rdata.raw": addr}},
-                    {range: {"@timestamp": {lte: lteTimestamp}}}
-                ],
-                size: 1,
-                sort: [
-                    {"@timestamp": {order: "desc"}}
-                ]
-            }).then(function (result) {
-                if (result.data.hits.hits.length > 0) {
-                    return result.data.hits.hits[0]._source.dns.rrname;
-                }
-            });
-        };
-
-        lookupRrname($scope.hit._source.dest_ip,
+        EventRepository.lookupRrname($scope.hit._source.dest_ip,
             $scope.hit._source["@timestamp"])
-            .then(function (rrname) {
-                vm.destinationHostname = rrname;
+            .then(function(rrname) {
+                vm.destHostname = rrname || null;
             });
 
-        lookupRrname($scope.hit._source.src_ip,
+        EventRepository.lookupRrname($scope.hit._source.src_ip,
             $scope.hit._source["@timestamp"])
-            .then(function (rrname) {
-                vm.sourceHostname = rrname;
+            .then(function(rrname) {
+                vm.srcHostname = rrname || null;
             });
 
-        Mousetrap.bind($scope, ".", function () {
+        Mousetrap.bind($scope, ".", function() {
             $("#event-detail-more-button").dropdown('toggle');
         }, "Open More Menu");
 
