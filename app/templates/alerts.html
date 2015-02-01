@@ -83,6 +83,10 @@
 
   <br/>
 
+  <div class="progress" ng-show="vm.loading">
+    <div class="progress-bar progress-bar-striped active" style="width: 100%;"></div>
+  </div>
+
   <div ng-if="vm.events && vm.events.length > 0"
        ng-class="{dim: vm.loading}">
 
