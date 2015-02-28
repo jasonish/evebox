@@ -277,7 +277,7 @@
                 EventRepository.getEvents({
                     filters: vm.filters,
                     query: $routeParams.q,
-                    page: vm.currentPage
+                    page: $routeParams.page
                 }).then(
                     function(result) {
                         vm.result = result;
