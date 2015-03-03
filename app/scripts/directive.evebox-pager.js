@@ -35,7 +35,6 @@
                 restrict: "A",
                 templateUrl: "templates/evebox-pager.html",
                 scope: {
-                    pageSize: "=",
                     currentPage: '=',
                     onPageChange: '=',
                     totalItems: '=',
@@ -49,9 +48,9 @@
 
                     if (scope.items) {
                         scope.lastPage =
-                            Math.floor(scope.totalItems / scope.pageSize) + 1;
+                            Math.floor(scope.totalItems / Config.elasticSearch.size) + 1;
                         scope.pageFirstItem =
-                            (scope.pageSize * (scope.currentPage - 1)) + 1;
+                            (Config.elasticSearch.size * (scope.currentPage - 1)) + 1;
                         scope.pageLastItem =
                             scope.pageFirstItem + scope.items.length - 1;
                     }

@@ -55,6 +55,9 @@
 
         if ("config" in localStorage) {
             localConfig = angular.fromJson(localStorage.config);
+
+            // Delete fields that are no longer valid in localStorage.
+            delete(localConfig.elasticSearch.size);
         }
 
         var service = {};
