@@ -32,7 +32,7 @@
         AlertsController);
 
     function AlertsController($scope, EventRepository, $routeParams,
-        $location, baseUrl, Mousetrap, Util, $timeout, NotificationService) {
+                              $location, baseUrl, Mousetrap, Util, $timeout, NotificationService) {
 
         var vm = this;
         vm.$routeParams = $routeParams;
@@ -187,6 +187,8 @@
                     lteTimestamp: group.timestamp
                 }).then(function() {
                     removeEvent(group);
+                }, function(error) {
+                    NotificationService.add("danger", error);
                 });
             });
         };

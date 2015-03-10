@@ -83,6 +83,14 @@ app.factory("Util", function () {
     };
 
     /**
+     * Format and log a message.
+     */
+    service.log = function(format) {
+        var msg = service.printf.apply(this, arguments);
+        console.log(msg);
+    };
+
+    /**
      * Convert an alert severity into a Bootstrap class for colorization.
      */
     service.severityToBootstrapClass = function (severity, prefix) {

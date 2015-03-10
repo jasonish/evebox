@@ -35,7 +35,7 @@
      * ElasticSearch.
      */
     app.factory("EventRepository",
-        function($q, ElasticSearch, Config, NotificationService, printf) {
+        function($q, ElasticSearch, Config, NotificationService, Util, printf) {
 
             var service = {};
 
@@ -167,6 +167,10 @@
 
                     (function execute() {
                         ElasticSearch.search(query).then(function(result) {
+
+                            Util.log("Found {} events to archive.",
+                                result.data.hits.hits.length);
+
                             if (result.data.hits.hits.length == 0) {
                                 resolve();
                                 return;
@@ -174,9 +178,20 @@
 
                             ElasticSearch.bulkRemoveTag(result.data.hits.hits,
                                 "inbox")
-                                .finally(function() {
-                                    execute();
-                                })
+                                .then(function(response) {
+                                    console.log("success");
+                                    console.log(response);
+
+                                    if (response.data.errors == true) {
+                                        // Extract the first error.
+                                        reject(response.data.items[0].update.error);
+                                    }
+                                    else {
+                                        execute();
+                                    }
+                                }, function(response) {
+                                    reject(response);
+                                });
                         }, function(result) {
                             reject(result);
                         });
