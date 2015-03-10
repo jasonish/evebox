@@ -23,6 +23,8 @@ Or...
 
 # Elastic Search Setup
 
+## CORS
+
 As of Elastic Search 1.4, CORS is disabled by default.  It can be
 enabled by setting the following in your elasticsearch.yml:
 
@@ -31,6 +33,20 @@ http.cors.enabled: true
 ```
 
 See the Elastic Search manual for further restrictions on CORS.
+
+## Dynamic Scriptiing
+
+Dynamic scripting is also required for EveBox to function, this can be
+enabled in a quick and dirty fashion by adding the following to your
+elasticsearch.yml:
+
+```
+script.disable_dynamic: false
+```
+
+Note that this can expose your Elastic Search to some security issues,
+so it is recommended that you have taken proper steps to secure your
+Elastic Search behind a proxy.
 
 # Suricata / Logstash Setup
 
