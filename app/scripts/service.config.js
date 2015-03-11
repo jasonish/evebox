@@ -53,11 +53,13 @@
             serverConfig = {};
         }
 
+        // Remove deprecated values from local config.
         if ("config" in localStorage) {
             localConfig = angular.fromJson(localStorage.config);
 
-            // Delete fields that are no longer valid in localStorage.
-            delete(localConfig.elasticSearch.size);
+            if (localConfig && localConfig.elasticSearch) {
+                delete(localConfig.elasticSearch.size);
+            }
         }
 
         var service = {};
