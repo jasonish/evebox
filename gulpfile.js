@@ -17,7 +17,7 @@ var packageName = bowerPkg.name + "-" + bowerPkg.version;
 
 var port = 9090;
 
-gulp.task("watch", ["inject", "build:less"], function () {
+gulp.task("serve", ["inject", "build:less"], function () {
 
     connect.server({
         root: "app",
