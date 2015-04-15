@@ -170,26 +170,27 @@
         };
 
         var archiveGroup = function(selected) {
-            _.forEach(selected, function(group) {
-                group.archiving = true;
+            if (selected.length == 0) {
+                return;
+            }
 
-                var filters = _.cloneDeep(vm.filters);
+            var group = selected.pop();
+            var filters = _.cloneDeep(vm.filters);
+            for (var key in group.keys) {
+                var filter = {term: {}};
+                filter.term[key] = group.keys[key];
+                filters.push(filter);
+            }
 
-                for (var key in group.keys) {
-                    var filter = {term: {}};
-                    filter.term[key] = group.keys[key];
-                    filters.push(filter);
-                }
-
-                EventRepository.archiveByQuery({
-                    query: $routeParams.q,
-                    filters: filters,
-                    lteTimestamp: group.timestamp
-                }).then(function() {
-                    removeEvent(group);
-                }, function(error) {
-                    NotificationService.add("danger", error);
-                });
+            EventRepository.archiveByQuery({
+                query: $routeParams.q,
+                filters: filters,
+                lteTimestamp: group.timestamp
+            }).then(function() {
+                removeEvent(group);
+                archiveGroup(selected);
+            }, function(error) {
+                NotificationService.add("danger", error);
             });
         };
 
@@ -199,7 +200,6 @@
          * error.
          */
         var deleteGroup = function(selected) {
-
             if (selected.length == 0) {
                 return;
             }
