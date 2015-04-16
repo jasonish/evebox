@@ -174,6 +174,10 @@
                 return;
             }
 
+            _.forEach(selected, function(group) {
+                group.archiving = true;
+            });
+
             var group = selected.pop();
             var filters = _.cloneDeep(vm.filters);
             for (var key in group.keys) {
