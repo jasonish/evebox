@@ -36,9 +36,9 @@ var app = angular.module("app", [
     "ui.bootstrap.accordion"
 ]);
 
-(function () {
+(function() {
 
-    angular.module("app").config(function ($routeProvider, $locationProvider) {
+    angular.module("app").config(function($routeProvider) {
 
         /* Individual event. */
         $routeProvider.when("/event/:id", {
@@ -60,11 +60,14 @@ var app = angular.module("app", [
             controllerAs: "vm",
             templateUrl: "templates/alerts.html",
             resolve: {
-                baseUrl: function () {
+                baseUrl: function() {
                     return "/inbox";
                 }
             }
         });
+
+        /* A request to just /inbox will go to the RedirectController which
+         * will redirect the user to their default inbox view - flat, grouped. */
         $routeProvider.when("/inbox", {
             controller: "RedirectController",
             template: ""
@@ -76,11 +79,12 @@ var app = angular.module("app", [
             controllerAs: "vm",
             templateUrl: "templates/alerts.html",
             resolve: {
-                baseUrl: function () {
+                baseUrl: function() {
                     return "/starred";
                 }
             }
         });
+
         $routeProvider.when("/starred", {
             redirectTo: "/starred/flat"
         });
@@ -91,19 +95,14 @@ var app = angular.module("app", [
             controllerAs: "vm",
             templateUrl: "templates/alerts.html",
             resolve: {
-                baseUrl: function () {
+                baseUrl: function() {
                     return "/alerts";
                 }
             }
         });
+
         $routeProvider.when("/alerts", {
             redirectTo: "/alerts/flat"
-        });
-
-        $routeProvider.when("/help", {
-            templateUrl: "templates/help.html",
-            controller: "HelpController",
-            controllerAs: "vm"
         });
 
         /* Default to inbox. */
@@ -111,7 +110,7 @@ var app = angular.module("app", [
     });
 
     angular.module("app").controller("RedirectController",
-        function ($location, Config) {
+        function($location, Config) {
 
             if ($location.path() == "/inbox") {
                 $location.path(
@@ -124,8 +123,7 @@ var app = angular.module("app", [
      * Add .startsWith to the string type.
      */
     if (typeof String.prototype.startsWith != 'function') {
-        // see below for better implementation!
-        String.prototype.startsWith = function (str) {
+        String.prototype.startsWith = function(str) {
             return this.indexOf(str) == 0;
         };
     }

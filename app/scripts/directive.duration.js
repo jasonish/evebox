@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2014 Jason Ish
  * All rights reserved.
  *
@@ -27,43 +26,48 @@
 
 'use strict';
 
-(function () {
+(function() {
 
-    angular.module("app").directive("duration", ["$interval", function ($interval) {
+    /**
+     * This directive presents a timestamp as a duration (how long ago) and
+     * periodically updates that duration.
+     */
+    angular.module("app").directive("duration",
+        ["$interval", function($interval) {
 
-        return {
-            restrict: "AE",
+            return {
+                restrict: "AE",
 
-            scope: {
-                timestamp: "="
-            },
+                scope: {
+                    timestamp: "="
+                },
 
-            template: "{{duration}}",
+                template: "{{duration}}",
 
-            link: function (scope, element, attrs) {
+                link: function(scope, element, attrs) {
 
-                // 6 seconds...  One second shows a noticeable increase in CPU.
-                var updateInterval = 6000;
+                    // 6 seconds...  One second shows a noticeable increase in CPU.
+                    var updateInterval = 6000;
 
-                var intervalId;
+                    var intervalId;
 
-                element.on("$destroy", function () {
-                    $interval.cancel(intervalId);
-                });
+                    element.on("$destroy", function() {
+                        $interval.cancel(intervalId);
+                    });
 
-                var updateDuration = function () {
-                    var duration = moment(scope.timestamp) - moment();
-                    scope.duration = moment.duration(duration).humanize(true);
-                };
-                updateDuration();
-
-                intervalId = $interval(function () {
+                    var updateDuration = function() {
+                        var duration = moment(scope.timestamp) - moment();
+                        scope.duration = moment.duration(duration).humanize(true);
+                    };
                     updateDuration();
-                }, updateInterval);
 
+                    intervalId = $interval(function() {
+                        updateDuration();
+                    }, updateInterval);
+
+                }
             }
-        }
 
-    }]);
+        }]);
 
 })();
