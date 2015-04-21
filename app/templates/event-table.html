@@ -79,14 +79,16 @@
         ng-if="event._source.dest_port > 0" style="color: #808080;">:{{::event._source.dest_port}}</span>
     </td>
 
-    <td style="position: relative;">
-      <div ng-show="event.archiving"
-           style="position: absolute; right: 5px; top: 5px;">
-        <span class="label label-info">Archiving</span>
-      </div>
-      <div ng-show="event.deleting"
-           style="position: absolute; right: 5px; top: 5px;">
-        <span class="label label-info">Deleting</span>
+    <td>
+      <div style="position: relative;">
+        <div ng-show="event.archiving"
+             style="position: absolute; right: 5px; top: 5px;">
+          <span class="label label-info">Archiving</span>
+        </div>
+        <div ng-show="event.deleting"
+             style="position: absolute; right: 5px; top: 5px;">
+          <span class="label label-info">Deleting</span>
+        </div>
       </div>
       <span class="colourized-json" style="word-break: break-all;"
             ng-bind-html="::event | formatEventDescription"></span>
