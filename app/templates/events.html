@@ -42,15 +42,14 @@
 
   <br/>
 
-  <div class="progress" ng-show="vm.loading">
-    <div class="progress-bar progress-bar-striped active" style="width: 100%;"></div>
+  <div ng-if="vm.loading">
+    <div class="progress">
+      <div class="progress-bar progress-bar-striped active"
+           style="width: 100%;"></div>
+    </div>
   </div>
 
-  <div ng-if="vm.result.total == 0 && vm.loading == false">
-    <div class="alert alert-warning text-center">No events found.</div>
-  </div>
-
-  <div ng-class="{dim: vm.loading}" ng-if="vm.events">
+  <div ng-class="{dim: vm.loading}" ng-if="!vm.loading && vm.events && vm.events.length > 0">
     <ng-include src="'templates/event-table.html'"
                 ng-init="vm.showEventType=true; vm.isSelectable=false;"
                 class="all-event-table"></ng-include>

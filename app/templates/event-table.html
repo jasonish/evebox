@@ -25,8 +25,8 @@
   <th>Description</th>
   </thead>
 
-  <tbody ng-repeat="event in vm.events"
-         ng-class="{dim: event.archiving || event.deleting}">
+  <tbody ng-repeat="event in vm.events" class="event-archiving-fade"
+         ng-class="{'event-archiving': event.archiving || event.deleting}">
 
   <tr ng-click="vm.open(event);"
       ng-class="event._source.alert.severity | severityClass">
@@ -80,10 +80,12 @@
     </td>
 
     <td style="position: relative;">
-      <div ng-show="event.archiving" style="position: absolute; right: 5px; top: 5px;">
+      <div ng-show="event.archiving"
+           style="position: absolute; right: 5px; top: 5px;">
         <span class="label label-info">Archiving</span>
       </div>
-      <div ng-show="event.deleting" style="position: absolute; right: 5px; top: 5px;">
+      <div ng-show="event.deleting"
+           style="position: absolute; right: 5px; top: 5px;">
         <span class="label label-info">Deleting</span>
       </div>
       <span class="colourized-json" style="word-break: break-all;"

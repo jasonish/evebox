@@ -45,18 +45,18 @@
         </div>
 
         <button
-          type="button" class="btn btn-default"
-          ng-click="vm.deselectAll()">
+            type="button" class="btn btn-default"
+            ng-click="vm.deselectAll()">
           Deselect All
         </button>
         <button
-          type="button" class="btn btn-default"
-          ng-click="vm.archiveSelected()">
+            type="button" class="btn btn-default"
+            ng-click="vm.archiveSelected()">
           Archive
         </button>
         <button
-          type="button" class="btn btn-default"
-          ng-click="vm.deleteSelected()">
+            type="button" class="btn btn-default"
+            ng-click="vm.deleteSelected()">
           Delete
         </button>
 
@@ -82,11 +82,14 @@
 
   <br/>
 
-  <div class="progress" ng-show="vm.loading">
-    <div class="progress-bar progress-bar-striped active" style="width: 100%;"></div>
+  <div ng-if="vm.loading">
+    <div class="progress">
+      <div class="progress-bar progress-bar-striped active"
+           style="width: 100%;"></div>
+    </div>
   </div>
 
-  <div ng-if="vm.events && vm.events.length > 0"
+  <div ng-if="vm.events && vm.events.length > 0 && !vm.loading"
        ng-class="{dim: vm.loading}">
 
     <ul class="nav nav-tabs">

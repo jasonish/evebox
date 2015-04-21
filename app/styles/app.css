@@ -36,18 +36,26 @@
 }
 /* For dimming during loading or something... */
 .dim {
-  opacity: 0.3;
+  opacity: 0.5;
 }
-/* Angular animation for fading in/out. */
-.fade-inout {
-  -webkit-transition: all linear 0.5s;
-  transition: all linear 0.5s;
+/**
+ * Dim events while they are being archived/deleted.
+ */
+.event-archiving {
+  opacity: 0.5;
 }
-.fade-inout.ng-hide {
+/**
+ * The following to classes are to animate the removal of an event from the
+ * list.
+ */
+.event-archiving-fade.ng-leave {
+  transition: 0.5s linear all;
+  opacity: 0.5;
+}
+.event-archiving-fade.ng-leave.ng-leave-active {
   opacity: 0;
 }
-/*
-  Allow angular.js to be loaded in body, hiding cloaked elements until
+/* Allow angular.js to be loaded in body, hiding cloaked elements until
   templates compile.  The !important is important given that there may be
   other selectors that are more specific or come later and might alter display.
  */
