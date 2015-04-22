@@ -2,6 +2,10 @@
 
 EveBox is a Suricata "eve" event viewer for Elastic Search.
 
+# Demo
+
+I try to keep an active demo running at http://logger.codemonkey.net/.
+
 # Requirements
 
 - Suricata, Logstash and Elastic Search (Elastic Search v1.3.0 or newer).
@@ -75,11 +79,6 @@ EveBox is built around keyboard shorcuts.  Hit the "Help" link or
 simply type "?" to get a list of keyboard shortcuts.  If you are
 familiar with GMail keyboard shortcuts it should feel familiar very
 quickly.
-
-# TODOs
-- A darker theme.
-- Arbitrary tagging.
-- A backend might be needed to do such things as large bulk tagging.
 
 # License
 
