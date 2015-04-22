@@ -2,18 +2,18 @@
 
 EveBox is a Suricata "eve" event viewer for Elastic Search.
 
-# Demo
+## Demo
 
 I try to keep an active demo running at http://logger.codemonkey.net/.
 
-# Requirements
+## Requirements
 
 - Suricata, Logstash and Elastic Search (Elastic Search v1.3.0 or newer).
 - A webserver.  EveBox consists of static files only.  Apache, Nginx
   or any other static file webserver will do.
 - A modern browser.
 
-# Installation.
+## Installation.
 
 Clone this repo and serve up the app directory.
 
@@ -25,9 +25,9 @@ Or...
    Elastic Search settings can also be set from the user interface,
    but will need to be done from each browser.
 
-# Elastic Search Setup
+## Elastic Search Setup
 
-## CORS
+### CORS
 
 As of Elastic Search 1.4, CORS is disabled by default.  It can be
 enabled by setting the following in your elasticsearch.yml:
@@ -38,7 +38,7 @@ http.cors.enabled: true
 
 See the Elastic Search manual for further restrictions on CORS.
 
-## Dynamic Scriptiing
+### Dynamic Scriptiing
 
 Dynamic scripting is also required for EveBox to function, this can be
 enabled in a quick and dirty fashion by adding the following to your
@@ -52,7 +52,7 @@ Note that this can expose your Elastic Search to some security issues,
 so it is recommended that you have taken proper steps to secure your
 Elastic Search behind a proxy.
 
-# Suricata / Logstash Setup
+## Suricata / Logstash Setup
 
 EveBox currently works around the concept of an inbox.  That is, events
 go into the inbox until they are archive (acknowledged) or deleted.
@@ -73,13 +73,13 @@ following can be added:
 
     }
 
-# Usage
+## Usage
 
 EveBox is built around keyboard shorcuts.  Hit the "Help" link or
 simply type "?" to get a list of keyboard shortcuts.  If you are
 familiar with GMail keyboard shortcuts it should feel familiar very
 quickly.
 
-# License
+## License
 
 BSD.
