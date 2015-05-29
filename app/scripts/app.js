@@ -105,6 +105,12 @@ var app = angular.module("app", [
             redirectTo: "/alerts/flat"
         });
 
+        $routeProvider.when("/stats", {
+            controller: "StatsController",
+            controllerAs: "vm",
+            templateUrl: "templates/stats.html"
+        }),
+
         /* Default to inbox. */
         $routeProvider.otherwise({redirectTo: "/inbox"});
     });

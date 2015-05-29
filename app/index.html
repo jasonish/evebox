@@ -14,6 +14,7 @@
   <meta name="viewport" content="width=device-width">
   <!-- inject:css -->
   <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
+  <link rel="stylesheet" href="bower_components/metrics-graphics/dist/metricsgraphics.css">
   <!-- endinject -->
   <link rel="stylesheet" href="styles/app.css">
 </head>
@@ -72,6 +73,10 @@
           </ul>
         </li>
 
+        <li ng-class="{active: $location.path().startsWith('/stats')}">
+          <a href="#/stats">Stats</a>
+        </li>
+
       </ul>
 
       <ul class="nav navbar-nav navbar-right">
@@ -116,6 +121,8 @@
 <script src="bower_components/moment/moment.js"></script>
 <script src="bower_components/mousetrap/mousetrap.js"></script>
 <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
+<script src="bower_components/d3/d3.js"></script>
+<script src="bower_components/metrics-graphics/dist/metricsgraphics.js"></script>
 <!-- endinject -->
 
 <script src="config.js"></script>
@@ -126,6 +133,7 @@
 <script src="scripts/controller.config.js"></script>
 <script src="scripts/controller.event.js"></script>
 <script src="scripts/controller.events.js"></script>
+<script src="scripts/controller.stats.js"></script>
 <script src="scripts/controllers.js"></script>
 <script src="scripts/directive.duration.js"></script>
 <script src="scripts/directive.evebox-pager.js"></script>
