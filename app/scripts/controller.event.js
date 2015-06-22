@@ -30,49 +30,11 @@
 
     angular.module("app").controller("EventController", EventController);
 
-    function EventController($scope, $routeParams, ElasticSearch, Util,
-        $anchorScroll, Mousetrap) {
+    function EventController($routeParams, ElasticSearch, $anchorScroll) {
 
         var vm = this;
-        this.Util = Util;
+
         var eventId = $routeParams.id;
-
-        function formatEvent(hit) {
-            hit.__titleClass = "alert-info";
-
-            if (hit._source.alert) {
-                hit.__title = hit._source.alert.signature;
-                hit.__titleClass =
-                    Util.severityToBootstrapClass(hit._source.alert.severity,
-                        "alert-");
-            }
-            else if (hit._source.dns) {
-                hit.__title = Util.printf("{}: {}",
-                    hit._source.event_type.toUpperCase(),
-                    hit._source.dns.rrname);
-                hit.__titleClass = "alert-info";
-            }
-            else if (hit._source.tls) {
-                hit.__title = Util.printf("{}: {}",
-                    hit._source.event_type.toUpperCase(),
-                    hit._source.tls.subject);
-                hit.__titleClass = "alert-info";
-            }
-            else if (hit._source.http) {
-                hit.__title = Util.printf("{}: {} {}",
-                    hit._source.event_type.toUpperCase(),
-                    hit._source.http.http_method,
-                    hit._source.http.hostname);
-            }
-            else {
-                hit.__title = hit._source.event_type.toUpperCase();
-                hit.__titleClass = "alert-info";
-            }
-
-            if (!hit.__titleClass) {
-                hit.__titleClass = "alert-info";
-            }
-        }
 
         // Init.
         (function() {
@@ -80,9 +42,8 @@
             $anchorScroll();
 
             ElasticSearch.searchEventById(eventId)
-                .success(function(response) {
-                    $scope.hits = response.hits;
-                    _.forEach($scope.hits.hits, formatEvent);
+                .then(function(response) {
+                    vm.hits = response.data.hits;
                 });
 
         })();

@@ -4,18 +4,18 @@
     Event
 
     <div class="event-action-buttons" style="float: right;">
-      <button ng-if="hit._source.tags.indexOf('inbox') > -1"
-              ng-click="archiveEvent(hit)"
+      <button ng-if="vm.event._source.tags.indexOf('inbox') > -1"
+              ng-click="archiveEvent(vm.event)"
               class="btn btn-default btn-xs">Archive
       </button>
-      <button ng-if="hit._source.alert" ng-click="deleteEvent(hit)"
+      <button ng-if="vm.event._source.alert" ng-click="deleteEvent(vm.event)"
               class="btn btn-default btn-xs">Delete
       </button>
       <button type="button" class="btn btn-default btn-xs"
-              ng-if="hit._source.alert"
-              ng-click="toggleStar(hit)">
-        <span ng-show="hit._source.tags.indexOf('starred') == -1">Star</span>
-        <span ng-show="hit._source.tags.indexOf('starred') >= 0">Unstar</span>
+              ng-if="vm.event._source.alert"
+              ng-click="toggleStar(vm.event)">
+        <span ng-show="vm.event._source.tags.indexOf('starred') == -1">Star</span>
+        <span ng-show="vm.event._source.tags.indexOf('starred') >= 0">Unstar</span>
       </button>
 
       <div class="btn-group">
@@ -24,12 +24,12 @@
           More <span class="caret"></span>
         </button>
         <ul class="dropdown-menu pull-right" role="menu">
-          <li><a href="#/event/{{hit._id}}" target="_blank">Open in New
+          <li><a href="#/event/{{vm.event._id}}" target="_blank">Open in New
             Window</a></li>
-          <li><a href="#/events?q={{vm.buildSearchByFlowUrl(hit)}}">Query
+          <li><a href="#/events?q={{vm.buildSearchByFlowUrl(vm.event)}}">Query
             Events in Flow</a></li>
           <li ng-if="Config.dumpy.url">
-            <a href="" ng-click="sendToDumpy(hit)">Send to Dumpy</a>
+            <a href="" ng-click="sendToDumpy(vm.event)">Send to Dumpy</a>
           </li>
         </ul>
       </div>
@@ -45,64 +45,64 @@
 
         <dl class="dl-horizontal">
           <dt>Timestamp</dt>
-          <dd>{{hit._source["@timestamp"] | formatTimestamp}}</dd>
+          <dd>{{event._source["@timestamp"] | formatTimestamp}}</dd>
 
-          <div ng-switch="hit._source.event_type">
+          <div ng-switch="vm.event._source.event_type">
 
             <!-- Alert. -->
             <div ng-switch-when="alert">
               <dt>Signature:</dt>
               <dd><a
-                href="#/events?q=+alert.signature.raw:&quot;{{hit._source.alert.signature}}&quot;">{{hit._source.alert.signature}}</a>
+                href="#/events?q=+alert.signature.raw:&quot;{{vm.event._source.alert.signature}}&quot;">{{vm.event._source.alert.signature}}</a>
               </dd>
               <dt>Category:</dt>
               <dd>
                 <a
-                  href="#/events?q=alert.category.raw:&quot;{{hit._source.alert.category}}&quot;">{{hit._source.alert.category}}</a>
+                  href="#/events?q=alert.category.raw:&quot;{{vm.event._source.alert.category}}&quot;">{{vm.event._source.alert.category}}</a>
               </dd>
               <dt>Singature ID:</dt>
               <dd>
-                {{hit._source.alert.gid}}:{{hit._source.alert.signature_id}}:{{hit._source.alert.rev}}
+                {{vm.event._source.alert.gid}}:{{vm.event._source.alert.signature_id}}:{{vm.event._source.alert.rev}}
               </dd>
               <dt>Severity:</dt>
-              <dd>{{hit._source.alert.severity}}</dd>
+              <dd>{{vm.event._source.alert.severity}}</dd>
             </div>
 
             <!-- DNS. -->
             <div ng-switch-when="dns">
               <dt>Type:</dt>
-              <dd>{{hit._source.dns.type}}</dd>
+              <dd>{{vm.event._source.dns.type}}</dd>
               <dt>ID:</dt>
               <dd><a
-                href="#/events?q=+dns.id:{{hit._source.dns.id}} +{{hit._source.src_ip}} +{{hit._source.dest_ip}}">{{hit._source.dns.id}}</a>
+                href="#/events?q=+dns.id:{{vm.event._source.dns.id}} +{{vm.event._source.src_ip}} +{{vm.event._source.dest_ip}}">{{vm.event._source.dns.id}}</a>
               </dd>
               <dt>TTL:</dt>
-              <dd>{{hit._source.dns.ttl}}</dd>
+              <dd>{{vm.event._source.dns.ttl}}</dd>
               <dt>RRType:</dt>
-              <dd>{{hit._source.dns.rrtype}}</dd>
+              <dd>{{vm.event._source.dns.rrtype}}</dd>
               <dt>RRName:</dt>
-              <dd>{{hit._source.dns.rrname}}</dd>
+              <dd>{{vm.event._source.dns.rrname}}</dd>
               <dt>RData:</dt>
-              <dd>{{hit._source.dns.rdata}}</dd>
+              <dd>{{vm.event._source.dns.rdata}}</dd>
             </div>
 
             <!-- TLS. -->
             <div ng-switch-when="tls">
-              <dl ng-if="hit._source.event_type == 'tls'" class="dl-horizontal">
+              <dl ng-if="vm.event._source.event_type == 'tls'" class="dl-horizontal">
                 <dt>Subject:</dt>
-                <dd>{{hit._source.tls.subject}}</dd>
+                <dd>{{vm.event._source.tls.subject}}</dd>
                 <dt>Issuer DN:</dt>
-                <dd>{{hit._source.tls.issuerdn}}</dd>
+                <dd>{{vm.event._source.tls.issuerdn}}</dd>
                 <dt>Fingerprint:</dt>
-                <dd>{{hit._source.tls.fingerprint}}</dd>
+                <dd>{{vm.event._source.tls.fingerprint}}</dd>
                 <dt>Version:</dt>
-                <dd>{{hit._source.tls.version}}</dd>
+                <dd>{{vm.event._source.tls.version}}</dd>
               </dl>
             </div>
 
             <div ng-switch-default>
               <div
-                ng-repeat="(key, val) in _.omit(hit._source[hit._source.event_type], 'length')">
+                ng-repeat="(key, val) in _.omit(vm.event._source[vm.event._source.event_type], 'length')">
                 <dt>{{key}}</dt>
                 <dd class="force-wrap">{{val}}</dd>
               </div>
@@ -120,39 +120,39 @@
         <dl class="dl-horizontal">
 
           <dt>Protocol</dt>
-          <dd>{{hit._source.proto}}</dd>
+          <dd>{{vm.event._source.proto}}</dd>
 
           <dt>Source</dt>
           <dd>
-            <evebox-ip-address address="hit._source.src_ip"
-                               port="hit._source.src_port"/>
+            <evebox-ip-address address="vm.event._source.src_ip"
+                               port="vm.event._source.src_port"/>
           </dd>
 
           <dt>Destination</dt>
           <dd>
-            <evebox-ip-address address="hit._source.dest_ip"
-                               port="hit._source.dest_port"/>
+            <evebox-ip-address address="vm.event._source.dest_ip"
+                               port="vm.event._source.dest_port"/>
           </dd>
 
-          <div ng-if="hit._source.flow_id">
+          <div ng-if="vm.event._source.flow_id">
             <dt>Flow ID</dt>
-            <dd><a href="#/events?q={{vm.buildSearchByFlowUrl(hit)}}">{{hit._source.flow_id}}</a>
+            <dd><a href="#/events?q={{vm.buildSearchByFlowUrl(vm.event)}}">{{vm.event._source.flow_id}}</a>
             </dd>
           </div>
 
-          <div ng-if="hit._source.in_iface">
+          <div ng-if="vm.event._source.in_iface">
             <dt>Interface</dt>
-            <dd>{{hit._source.in_iface}}</dd>
+            <dd>{{vm.event._source.in_iface}}</dd>
           </div>
 
-          <div ng-if="hit._source.icmp_type">
+          <div ng-if="vm.event._source.icmp_type">
             <dt>ICMP Type</dt>
-            <dd>{{hit._source.icmp_type}}</dd>
+            <dd>{{vm.event._source.icmp_type}}</dd>
           </div>
 
-          <div ng-if="hit._source.icmp_code">
+          <div ng-if="vm.event._source.icmp_code">
             <dt>ICMP Code</dt>
-            <dd>{{hit._source.icmp_code}}</dd>
+            <dd>{{vm.event._source.icmp_code}}</dd>
           </div>
 
         </dl>
@@ -191,7 +191,7 @@
 
 </div>
 
-<div ng-if="hit._source.http && (hit._source.event_type != 'http')"
+<div ng-if="vm.event._source.http && (vm.event._source.event_type != 'http')"
      class="panel panel-default event-detail-panel">
   <div class="panel-heading">
     HTTP
@@ -199,7 +199,7 @@
   <div class="panel-body">
     <dl class="dl-horizontal">
       <div
-        ng-repeat="(key, val) in _.omit(hit._source.http, 'length')">
+        ng-repeat="(key, val) in _.omit(vm.event._source.http, 'length')">
         <dt>{{key}}</dt>
         <dd class="force-wrap">{{val}}</dd>
       </div>
@@ -207,7 +207,7 @@
   </div>
 </div>
 
-<div ng-if="hit._source.payload" class="panel panel-default event-detail-panel">
+<div ng-if="vm.event._source.payload" class="panel panel-default event-detail-panel">
   <div class="panel-heading">
     Payload
   </div>
@@ -216,18 +216,18 @@
       <div class="row">
         <div class="col-md-6">
             <pre
-              style="white-space: pre-wrap">{{b64ToHex(hit._source.payload)}}</pre>
+              style="white-space: pre-wrap">{{b64ToHex(vm.event._source.payload)}}</pre>
         </div>
         <div class="col-md-6">
           <pre
-            style="white-space: pre-wrap">{{b64ToText(hit._source.payload)}}</pre>
+            style="white-space: pre-wrap">{{b64ToText(vm.event._source.payload)}}</pre>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<div ng-if="hit._source.packet" class="panel panel-default event-detail-panel">
+<div ng-if="vm.event._source.packet" class="panel panel-default event-detail-panel">
   <div class="panel-heading">
     Packet
   </div>
@@ -236,11 +236,11 @@
       <div class="row">
         <div class="col-md-6">
             <pre
-              style="white-space: pre-wrap">{{b64ToHex(hit._source.packet)}}</pre>
+              style="white-space: pre-wrap">{{b64ToHex(vm.event._source.packet)}}</pre>
         </div>
         <div class="col-md-6">
             <pre
-              style="white-space: pre-wrap">{{b64ToText(hit._source.packet)}}</pre>
+              style="white-space: pre-wrap">{{b64ToText(vm.event._source.packet)}}</pre>
         </div>
       </div>
     </div>
@@ -253,6 +253,6 @@
   </div>
   <div class="panel-body">
     <pre class="colourized-json" style="white-space: pre-wrap;"
-         ng-bind-html="Util.toJson(hit, true) | colourizeJson"></pre
+         ng-bind-html="Util.toJson(vm.event, true) | colourizeJson"></pre
   </div>
 </div>

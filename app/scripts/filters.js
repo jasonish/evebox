@@ -26,16 +26,16 @@
 
 'use strict';
 
-(function () {
+(function() {
 
-    angular.module("app").filter("formatIpAddress", [function () {
+    angular.module("app").filter("formatIpAddress", [function() {
 
-        return function (addr) {
+        return function(addr) {
             if (addr === undefined) {
                 return "";
             }
             addr = addr.replace(/0000/g, "");
-            while (addr.indexOf(":0:") > - 1) {
+            while (addr.indexOf(":0:") > -1) {
                 addr = addr.replace(/:0:/g, "::");
             }
             addr = addr.replace(/:::+/g, "::");
@@ -46,17 +46,72 @@
 
     }]);
 
-    angular.module("app").filter("formatTimestamp", [function () {
+    /**
+     * Based on the event type, return a suitable event title.
+     */
+    angular.module("app").filter("eventTitle", [function(Util) {
 
-        return function (timestamp) {
+        return function(event) {
+            if (event._source.alert) {
+                return event._source.alert.signature;
+            }
+            else if (event._source.dns) {
+                return Util.printf("{}: {}",
+                    event._source.event_type.toUpperCase(),
+                    event._source.dns.rrname);
+            }
+            else if (event._source.tls) {
+                return Util.printf("{}: {}",
+                    event._source.event_type.toUpperCase(),
+                    event._source.tls.subject);
+            }
+            else if (event._source.http) {
+                return Util.printf("{}: {} {}",
+                    event._source.event_type.toUpperCase(),
+                    event._source.http.http_method,
+                    event._source.http.hostname);
+            }
+            else {
+                return event._source.event_type.toUpperCase();
+            }
+
+        };
+
+    }]);
+
+    angular.module("app").filter("eventTitleClass", [function() {
+
+        return function(event) {
+            if (event._source.alert) {
+                switch (event._source.alert.severity) {
+                    case 1:
+                        return "alert-danger";
+                        break;
+                    case 2:
+                        return "alert-warning";
+                        break;
+                    default:
+                        return "alert-info";
+                }
+            }
+            else {
+                return "alert-info";
+            }
+        };
+
+    }]);
+
+    angular.module("app").filter("formatTimestamp", [function() {
+
+        return function(timestamp) {
             return moment(timestamp).format();
         }
 
     }]);
 
-    angular.module("app").filter("severityClass", ["Util", function (Util) {
+    angular.module("app").filter("severityClass", ["Util", function(Util) {
 
-        return function (input) {
+        return function(input) {
             return Util.severityToBootstrapClass(input);
         }
 
@@ -69,16 +124,16 @@
      * http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript
      */
     angular.module("app").filter("colourizeJson",
-        ["$sce", "Util", function ($sce, Util) {
-            return function (json) {
+        ["$sce", "Util", function($sce, Util) {
+            return function(json) {
                 return $sce.trustAsHtml(Util.colourizeJson(json));
             };
         }]);
 
     angular.module("app").filter("formatEventDescription",
-        ["$sce", "Util", function ($sce, Util) {
+        ["$sce", "Util", function($sce, Util) {
 
-            return function (event) {
+            return function(event) {
 
                 if (event._source) {
                     switch (event._source.event_type) {

@@ -1,13 +1,13 @@
 <!-- Template/view for an individual record. -->
 <div class="container-fluid">
 
-  <div ng-repeat="hit in hits.hits">
+  <div ng-repeat="event in vm.hits.hits">
 
-    <div class="alert" ng-class="hit.__titleClass">
+    <div class="alert" ng-class="event | eventTitleClass">
       <h3 style="padding: 0px; margin: 0px;">
-        {{hit.__title}}
+        {{event | eventTitle}}
           <span style="float: right;"
-                ng-show="hit._source.tags.indexOf('starred') >= 0"
+                ng-show="event._source.tags.indexOf('starred') >= 0"
                 class="glyphicon glyphicon-star"></span>
       </h3>
     </div>
