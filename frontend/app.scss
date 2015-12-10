@@ -1,0 +1,81 @@
+@import "~font-awesome/css/font-awesome.css";
+
+//$icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
+//@import "~bootstrap-sass/assets/stylesheets/bootstrap-sprockets";
+//@import "~bootstrap-sass/assets/stylesheets/bootstrap";
+
+/* Colour and border style for event tables. */
+$event-table-border-color: #ddd;
+$event-table-border: 1px solid $event-table-border-color;
+
+html {
+
+  // Always show the scrollbar. Prevents jumpy visuals when altering table
+  // sizes that would make the scrollbar show or hide.
+  overflow-y: scroll !important;
+}
+
+// Prevent the page shift when a modal is open.
+.modal-open {
+  padding-right: 0 !important;
+}
+
+/* Event table styling, mostly borders. */
+.app-event-table {
+
+  cursor: pointer;
+
+  th {
+    border-top: $event-table-border !important;
+  }
+
+  td:first-child, th:first-child {
+    border-left: $event-table-border !important;
+  }
+
+  td:last-child, th:last-child {
+    border-right: $event-table-border !important;
+  }
+
+  tr:last-child {
+    td {
+      border-bottom: $event-table-border !important;
+    }
+  }
+
+  td {
+    padding-bottom: 0px !important;
+  }
+
+  label {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+li {
+  cursor: pointer;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.break-word {
+  word-break: break-all
+}
+
+.wrap {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.evebox-help-table {
+  td:nth-child(1) {
+    text-align: right;
+  }
+}
+
+.evebox-help-table-shortcut {
+  font-family: monospace;
+}

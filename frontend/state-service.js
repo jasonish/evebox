@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2015 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,3 +23,34 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import angular from "angular";
+
+(function() {
+
+    angular.module("app").factory("StateService", StateService);
+
+    function StateService() {
+
+        let stateStore = {};
+
+        return {
+            put: put,
+            get: get,
+            clear: clear
+        };
+
+        function put(key, state) {
+            stateStore[key] = state;
+        }
+
+        function get(key) {
+            return stateStore[key];
+        }
+
+        function clear() {
+            stateStore = {};
+        }
+    }
+
+})();

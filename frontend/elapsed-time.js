@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2014 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,3 +23,50 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import moment from "moment";
+
+/**
+ * This directive presents a timestamp as a duration (how long ago) and
+ * periodically updates that duration.
+ */
+
+angular.module("app").directive("elapsedTime", elapsedTime);
+
+elapsedTime.$inject = ["$interval"];
+
+function elapsedTime($interval) {
+
+    return {
+        restrict: "AE",
+
+        scope: {
+            timestamp: "="
+        },
+
+        template: "{{duration}}",
+
+        link: function(scope, element) {
+
+            var updateInterval = 60000;
+
+            var intervalId;
+
+            element.on("$destroy", function() {
+                $interval.cancel(intervalId);
+            });
+
+            var updateDuration = function() {
+                var duration = moment(scope.timestamp) - moment();
+                scope.duration = moment.duration(duration).humanize(true);
+            };
+            updateDuration();
+
+            intervalId = $interval(function() {
+                updateDuration();
+            }, updateInterval);
+
+        }
+    }
+
+}

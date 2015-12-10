@@ -1,32 +1,53 @@
-all:
+WEBPACK :=	./node_modules/.bin/webpack
 
-# Commit the actual bower components used into version control so the
-# project can be used as-is after being checked out from version
-# control.
-vendor-bower-components:
-	sed -n 's/.*"\(bower_components.*\)\".*/\1/p' app/index.html | \
-		(cd app && xargs git add -f)
+all: public
+	cd backend && make
 
-	git add -f app/bower_components/bootstrap/dist/fonts
+install-deps:
+	npm install
+	$(MAKE) -C backend install-deps
 
-package:
-	gulp package
-
-# Basic clean - build artifacts, backup files...
 clean:
-	-gulp clean
+	rm -rf dist
+	cd backend && make clean
 	find . -name \*~ -exec rm -f {} \;
 
-refresh-bower-components:
-	rm -rf app/bower_components
-	bower install
-
-# Basic clean plus anything pulled down by build tools.
-dist-clean: clean
+distclean: clean
 	rm -rf node_modules
-	rm -rf app/bower_components
-	git checkout app/bower_components
+	cd backend && make distclean
 
-prep:
-	npm install
-	bower install
+.PHONY: public public-nominimize
+
+public:
+	$(WEBPACK) --optimize-minimize
+
+regen-public: public
+	git add public/bundle.js
+	git commit public/bundle.js -m 'regen public'
+
+public-nominimize:
+	$(WEBPACK)
+
+with-docker:
+	docker build --rm -t evebox-builder .
+	docker run --rm -it -v `pwd`:/gopath/src/github.com/jasonish/evebox \
+		evebox-builder bash -c \
+		'cd /gopath/src/github.com/jasonish/evebox && make dep all'
+
+dev-server:
+	@if [ "${EVEBOX_ELASTICSEARCH_URL}" = "" ]; then \
+		echo "error: EVEBOX_ELASTICSEARCH_URL not set."; \
+		exit 1; \
+	fi
+	./node_modules/.bin/concurrent -k "npm run server" \
+		"./backend/evebox --dev http://localhost:8080 \
+		 -e ${EVEBOX_ELASTICSEARCH_URL}"
+
+deb:
+	fpm -s dir \
+		-C backend \
+		-t deb \
+		-n evebox \
+		-v 0.5.1-1 \
+		--prefix /usr/bin \
+		evebox

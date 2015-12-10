@@ -2,7 +2,4 @@
 *.iml
 /.idea
 /node_modules
-/app/bower_components
-/nbproject
-/app/config.js
-/build
+/backend/vendor

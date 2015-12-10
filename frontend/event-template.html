@@ -1,0 +1,190 @@
+<div ng-if="!vm.event">
+  <div class="alert alert-warning">Event not found.</div>
+</div>
+<div ng-if="vm.event">
+  <div class="row">
+    <div class="col-md-12">
+      <button ng-show="vm.showBackButton" type="button"
+              class="btn btn-default"
+              ng-click="vm.goBack();">Back
+      </button>
+      <button type="button" ng-show="vm.showArchiveButton()"
+              class="btn btn-default" ng-click="vm.archiveEvent()">Archive
+      </button>
+      <button ng-show="vm.showEscalateButton()" type="button"
+              class="btn btn-default" ng-click="vm.escalateEvent()">Escalate
+      </button>
+    </div>
+  </div>
+
+  <br/>
+
+  <div class="panel"
+       ng-class="vm.event.newest | eventSeverityToBootstrapClass: 'panel-'">
+    <div class="panel-heading">
+            <span ng-if="vm.event.newest._source.event_type == 'alert'">
+                <a href="{{vm.getSessionSearchUrl()}}">  <span
+                    class="badge pull-right">
+                {{vm.event.count}}
+            </span></a>
+                </span>
+      <b>{{vm.event.newest._source.event_type | uppercase}}:
+        {{vm.event.newest |
+        formatEventDescription}}</b>
+
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-5">
+          <dl class="dl-horizontal">
+            <dt>Timestamp</dt>
+            <dd>{{::vm.event.newest._source.timestamp}}</dd>
+            <dt>Protocol</dt>
+            <dd>{{::vm.event.newest._source.proto}}</dd>
+            <dt>Source</dt>
+            <dd>
+              <search-link
+                  value="{{::vm.event.newest._source.src_ip}}"></search-link><span
+                ng-if="vm.event.newest._source.src_port"
+                style="color: dimgrey;">:{{::vm.event.newest._source.src_port}}</span>
+            </dd>
+            <dt>Destination</dt>
+            <dd>
+              <span search-link
+                    value="{{::vm.event.newest._source.dest_ip}}">
+              </span><span
+                ng-if="vm.source.dest_port"
+                style="color: dimgrey;">:{{vm.source.dest_port}}</span>
+            </dd>
+            <span ng-if="vm.event.newest._source.in_iface">
+              <dt>In Interface</dt>
+              <dd>{{::vm.event.newest._source.in_iface}}</dd>
+            </span>
+            <span ng-if="vm.event.newest._source.flow_id">
+              <dt>Flow ID
+              <dd>
+                <span search-link field="flow_id"
+                      value="{{::vm.event.newest._source.flow_id}}"></span>
+              </dd>
+            </span>
+          </dl>
+        </div>
+        <div class="col-md-7">
+          <dl class="dl-horizontal">
+            <div ng-switch="vm.event.newest._source.event_type">
+
+              <!-- Alert. -->
+              <div ng-switch-when="alert">
+                <dt>Signature</dt>
+                <dd>
+                  <span search-link field="alert.signature.raw"
+                        state="alerts"
+                        value="{{::vm.event.newest._source.alert.signature}}"></span>
+                </dd>
+                <dt>Category</dt>
+                <dd>{{vm.event.newest._source.alert.category}}
+                </dd>
+                <dt>Signature ID</dt>
+                <dd>
+                  {{::vm.event.newest._source.alert.gid}}:{{::vm.event.newest._source.alert.signature_id}}:{{::vm.event.newest._source.alert.rev}}
+                </dd>
+                <dt>Severity</dt>
+                <dd>{{vm.event.newest._source.alert.severity}}
+                </dd>
+              </div>
+
+              <!-- DNS. -->
+              <div ng-switch-when="dns">
+                <dt>Type</dt>
+                <dd>{{::vm.source.dns.type}}</dd>
+                <dt>ID</dt>
+                <dd>{{::vm.source.dns.id}}</dd>
+                <dt>RCode</dt>
+                <dd>{{::vm.source.dns.rcode}}</dd>
+                <dt>RRName</dt>
+                <dd>
+                  <search-link
+                      value="{{::vm.source.dns.rrname}}"></search-link>
+                </dd>
+                <dt>RRType</dt>
+                <dd>{{::vm.source.dns.rrtype}}</dd>
+                <dt>RData</dt>
+                <dd>{{::vm.source.dns.rdata}}</dd>
+              </div>
+
+              <!-- Default. -->
+              <div ng-switch-default>
+                <div ng-repeat="(key, val) in vm.source[vm.source.event_type]">
+                  <dt>{{key}}</dt>
+                  <dd>{{val}}</dd>
+                </div>
+              </div>
+
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HTTP. -->
+  <div ng-if="vm.source.http" class="panel panel-default">
+    <div class="panel-heading">
+      HTTP
+    </div>
+    <div class="panel-body">
+      <dl class="dl-horizontal">
+        <div ng-repeat="(key, val) in vm.source.http">
+          <dt>{{key}}</dt>
+          <dd class="break-word">{{val}}</dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  <!-- Payload. -->
+  <div ng-if="vm.event.newest._source.payload" class="panel panel-default">
+    <div class="panel-heading">
+      Payload
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-6">
+          <pre
+              class="wrap">{{vm.event.newest._source.payload | base64Decode}}</pre>
+        </div>
+        <div class="col-md-6">
+          <pre>{{vm.event.newest._source.payload | base64ToFormattedHex}}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div ng-if="vm.event.newest._source.packet" class="panel panel-default">
+    <div class="panel-heading">
+      Packet
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-6">
+          <pre>{{vm.event.newest._source.packet | base64Decode}}</pre>
+        </div>
+        <div class="col-md-6">
+          <pre>{{vm.event.newest._source.packet | base64ToFormattedHex}}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      JSON
+    </div>
+    <div class="panel-body" style="padding: 0px;">
+      <div ace-editor content="vm.event.newest | json" read-only="true"
+           mode="json"
+           show-print-margin="false"></div>
+    </div>
+  </div>
+
+</div>

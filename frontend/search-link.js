@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2015 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,3 +23,48 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import angular from "angular";
+
+(function() {
+
+    /**
+     * Directive to create links to the search page.
+     */
+    angular.module("app").directive("searchLink", searchLink);
+
+    function searchLink() {
+
+        let template = `<a ui-sref="{{vm.state}}({q: vm.queryString})">{{vm.value}}</a>`;
+
+        return {
+            restrict: "AE",
+            template: template,
+            scope: {
+                value: "@",
+                field: "@",
+                state: "@?"
+            },
+            controller: controller,
+            controllerAs: "vm",
+            bindToController: true
+        };
+
+        function controller() {
+
+            let vm = this;
+
+            if (!vm.state) {
+                vm.state = "events";
+            }
+
+            if (!vm.field) {
+                vm.queryString = `+"${vm.value}"`;
+            }
+            else {
+                vm.queryString = `+${vm.field}:"${vm.value}"`;
+            }
+        }
+    }
+
+})();

@@ -23,3 +23,34 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+// Some global EveBox functions.
+
+export var EVEBOX_VERSION = "0.5.0-dev";
+
+/**
+ * Get the tags for an event.
+ */
+export function getTags(event) {
+    if (event.newest._source.tags) {
+        return event.newest._source.tags;
+    }
+    return [];
+}
+
+export function hasTag(event, tag) {
+    return getTags(event).indexOf(tag) > -1;
+}
+
+export function addTag(event, tag) {
+    if (event.newest._source.tags.indexOf(tag) < 0) {
+        event.newest._source.tags.push(tag);
+    }
+}
+
+/**
+ * Get the event type.
+ */
+export function eventType(event) {
+    return event.newest._source.event_type;
+}

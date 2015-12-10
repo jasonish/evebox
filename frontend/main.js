@@ -23,3 +23,30 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import "bootstrap/dist/css/bootstrap.css";
+import "./app.scss";
+
+import "angular/angular.js";
+import "bootstrap";
+
+import "./app.js";
+import "./event";
+import "./filters";
+import "./elapsed-time";
+import "./state-service";
+import "./config";
+import "./settings";
+import "./topnav";
+import "./event-repository";
+import "./keyboard";
+import "./keyboard-table";
+import "./ace-editor";
+import "./events";
+
+// Views - even if implemented as a directive.
+import "./alerts";
+import "./help-modal";
+
+// Directive.
+import "./search-link";

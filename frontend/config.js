@@ -23,3 +23,55 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import angular from "angular";
+import lodash from "lodash";
+import * as appEvents from "./app-events";
+
+(function () {
+
+    angular.module("app").factory("Config", Config);
+
+    Config.$inject = [];
+
+    function Config() {
+
+        let defaultConfig = {
+            elasticSearch: {
+                url: `${window.location.protocol}//${window.location.hostname}:${window.location.port}${window.location.pathname}elasticsearch`
+            }
+        };
+
+        let service = {
+            save: save,
+            getConfig: getConfig,
+            resetToDefaults: resetToDefaults,
+            config: lodash.cloneDeep(defaultConfig)
+        };
+
+        if (window.localStorage.config) {
+            service.config = Object.assign(service.config,
+                JSON.parse(window.localStorage.config));
+        }
+
+        return service;
+
+        function getConfig() {
+            return service.config;
+        }
+
+        function save() {
+            console.log("Config: Saving.");
+            console.log(service.config);
+            window.localStorage.config = JSON.stringify(service.config);
+        }
+
+        function resetToDefaults() {
+            delete window.localStorage.config;
+            service.config = lodash.cloneDeep(defaultConfig);
+        }
+
+    }
+
+})();
+

@@ -1,0 +1,31 @@
+{
+    "package": {
+	"name": "evebox",
+	"repo": "deb-evebox-latest",
+	"subject": "jasonish",
+	"licenses": ["BSD 2-Clause"],
+	"vcs_url": "http://github.com/jasonish/evebox.git",
+	"website_url": "http://github.com/jasonish/evebox"
+    },
+
+    "version": {
+	"name": "latest",
+	"desc": "Automatic build of the latest code."
+    },
+
+    "files": [
+	{
+	    "includePattern": "backend/(evebox.*\.deb)",
+	    "uploadPattern": "$1",
+	    "matrixParams": {
+		"override": 1,
+		"deb_distribution": "jessie",
+		"deb_component": "main",
+		"deb_architecture": "amd64"
+	    }
+	}
+    ],
+
+    "publish": true
+}
+

@@ -1,0 +1,6 @@
+package: main
+import:
+  - package: github.com/GeertJohan/go.rice/rice
+  - package: github.com/GeertJohan/go.rice
+  - package: github.com/jessevdk/go-flags
+  - package: github.com/kardianos/osext
