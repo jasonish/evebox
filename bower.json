@@ -1,6 +1,6 @@
 {
   "name": "evebox",
-  "version": "0.4.0dev",
+  "version": "0.4.0",
   "license": "BSD",
   "private": true,
   "ignore": [
