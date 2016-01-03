@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2014-2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,54 +24,42 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import angular from "angular";
 import lodash from "lodash";
-import * as appEvents from "./app-events";
 
-(function () {
+class Config {
 
-    angular.module("app").factory("Config", Config);
+    constructor() {
 
-    Config.$inject = [];
-
-    function Config() {
-
-        let defaultConfig = {
+        this.defaultConfig = {
             elasticSearch: {
                 url: `${window.location.protocol}//${window.location.hostname}:${window.location.port}${window.location.pathname}elasticsearch`
             }
         };
 
-        let service = {
-            save: save,
-            getConfig: getConfig,
-            resetToDefaults: resetToDefaults,
-            config: lodash.cloneDeep(defaultConfig)
-        };
+        this.config = lodash.cloneDeep(this.defaultConfig)
 
         if (window.localStorage.config) {
-            service.config = Object.assign(service.config,
+            this.config = Object.assign(this.config,
                 JSON.parse(window.localStorage.config));
-        }
-
-        return service;
-
-        function getConfig() {
-            return service.config;
-        }
-
-        function save() {
-            console.log("Config: Saving.");
-            console.log(service.config);
-            window.localStorage.config = JSON.stringify(service.config);
-        }
-
-        function resetToDefaults() {
-            delete window.localStorage.config;
-            service.config = lodash.cloneDeep(defaultConfig);
         }
 
     }
 
-})();
+    getConfig() {
+        return this.config;
+    }
 
+    save() {
+        console.log("Config: Saving.");
+        console.log(this.config);
+        window.localStorage.config = JSON.stringify(this.config);
+    }
+
+    resetToDefaults() {
+        delete window.localStorage.config;
+        this.config = lodash.cloneDeep(this.defaultConfig);
+    }
+
+}
+
+angular.module("app").service("Config", Config);

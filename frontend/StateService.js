@@ -24,33 +24,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import angular from "angular";
+class StateService {
 
-(function() {
-
-    angular.module("app").factory("StateService", StateService);
-
-    function StateService() {
-
-        let stateStore = {};
-
-        return {
-            put: put,
-            get: get,
-            clear: clear
-        };
-
-        function put(key, state) {
-            stateStore[key] = state;
-        }
-
-        function get(key) {
-            return stateStore[key];
-        }
-
-        function clear() {
-            stateStore = {};
-        }
+    constructor() {
+        this.stateStore = {};
     }
 
-})();
+    put(key, state) {
+        this.stateStore[key] = state;
+    }
+
+    get(key) {
+        return this.stateStore[key];
+    }
+
+    clear() {
+        this.stateStore = {};
+    }
+}
+
+angular.module("app").service("StateService", StateService);
