@@ -275,9 +275,10 @@ import * as appEvents from "./app-events";
 
                     return EventRepository.submit(() => {
                         console.log("Removing star.");
-                        return EventRepository.removeEscalated(event).then(() => {
-                            return EventRepository.archiveEvent(event);
-                        })
+                        return EventRepository.removeEscalated(event)
+                            .then(() => {
+                                return EventRepository.archiveEvent(event);
+                            })
                     })
 
                 }
@@ -466,6 +467,7 @@ import * as appEvents from "./app-events";
   </div>
 </div>
 
+
 <div class="table-responsive" ng-if="vm.hasEvents()">
   <br/>
   <table class="table table-condensed table-hover app-event-table"
@@ -513,11 +515,11 @@ import * as appEvents from "./app-events";
         {{::event.newest._source.dest_ip | formatIpAddress}}
       </td>
       <td>
-        <span class="pull-right" style="float: right;"
-              ng-if="!vm.isArchived(event)"><button
-            class="btn btn-default"
-            ng-click="$event.stopPropagation(); vm.archiveEvent(event);">Archive
-        </button></span>
+        <button ng-if="!vm.isArchived(event)"
+                class="btn btn-default pull-right"
+                ng-click="$event.stopPropagation(); vm.archiveEvent(event);">
+          Archive
+        </button>
         {{::event.newest._source.alert.signature}}
       </td>
     </tr>
