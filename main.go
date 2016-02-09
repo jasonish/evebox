@@ -89,12 +89,7 @@ func main() {
 
 	elasticSearchProxy :=
 		httputil.NewSingleHostReverseProxy(elasticSearchUrl)
-	var public http.Handler
-	if len(opts.Public) > 0 {
-		public = http.FileServer(http.Dir("../public"))
-	} else {
-		public = http.FileServer(rice.MustFindBox("../public").HTTPBox())
-	}
+	public := http.FileServer(rice.MustFindBox("./public").HTTPBox())
 
 	if len(opts.DevServerUri) > 0 {
 		log.Printf("Proxying static files to development server %v.",

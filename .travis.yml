@@ -16,10 +16,8 @@ install:
 script:
 - make install-deps
 - make
-- cd backend
 - make release
 - make deb
-- cd ..
 deploy:
   - provider: bintray
     user: jasonish

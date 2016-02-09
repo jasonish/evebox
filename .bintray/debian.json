@@ -15,7 +15,7 @@
 
     "files": [
 	{
-	    "includePattern": "backend/(evebox.*\.deb)",
+	    "includePattern": "dist/(evebox.*\.deb)",
 	    "uploadPattern": "$1",
 	    "matrixParams": {
 		"override": 1,

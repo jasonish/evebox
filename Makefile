@@ -1,38 +1,50 @@
+GOHOSTARCH :=	$(shell go env GOHOSTARCH)
+GOHOSTOS :=	$(shell go env GOHOSTOS)
+
+export GO15VENDOREXPERIMENT=1
+export CGO_ENABLED=0
+
+VERSION :=	$(shell date +%Y%m%d%H%M)
+BUILD_DATE :=	$(shell TZ=UTC date)
+LDFLAGS :=	-X \"main.buildDate=$(BUILD_DATE)\"
+
+APP :=		evebox
+
 WEBPACK :=	./node_modules/.bin/webpack
 
-all: public
-	cd backend && make
+all: public evebox
 
 install-deps:
+# NPM
 	npm install
-	$(MAKE) -C backend install-deps
+# Go
+	go get github.com/Masterminds/glide
+	go get github.com/GeertJohan/go.rice/rice
+	glide install
 
 clean:
 	rm -rf dist
-	cd backend && make clean
+	rm -f evebox
 	find . -name \*~ -exec rm -f {} \;
 
 distclean: clean
-	rm -rf node_modules
-	cd backend && make distclean
+	rm -rf node_modules vendor
 
-.PHONY: public public-nominimize
+.PHONY: public evebox dist
 
+# Build the webapp bundle.
 public:
 	$(WEBPACK) --optimize-minimize
 
-regen-public: public
-	git add public/bundle.js
-	git commit public/bundle.js -m 'regen public'
-
-public-nominimize:
-	$(WEBPACK)
+evebox:
+	go build -ldflags "$(LDFLAGS)"
 
 with-docker:
 	docker build --rm -t evebox-builder .
-	docker run --rm -it -v `pwd`:/gopath/src/github.com/jasonish/evebox \
-		evebox-builder bash -c \
-		'cd /gopath/src/github.com/jasonish/evebox && make dep all'
+	docker run --rm -it \
+		-v `pwd`:/gopath/src/github.com/jasonish/evebox \
+		-w /gopath/src/github.com/jasonish/evebox \
+		evebox-builder make install-deps all
 
 dev-server:
 	@if [ "${EVEBOX_ELASTICSEARCH_URL}" = "" ]; then \
@@ -40,14 +52,38 @@ dev-server:
 		exit 1; \
 	fi
 	./node_modules/.bin/concurrent -k "npm run server" \
-		"./backend/evebox --dev http://localhost:8080 \
+		"./evebox --dev http://localhost:8080 \
 		 -e ${EVEBOX_ELASTICSEARCH_URL}"
+
+dist: GOARCH ?= $(shell go env GOARCH)
+dist: GOOS ?= $(shell go env GOOS)
+dist:
+	go build -ldflags "$(LDFLAGS)" -o dist/${APP}-${GOOS}-${GOARCH}/${APP}
+	rice -v append --exec dist/${APP}-${GOOS}-${GOARCH}/${APP}
+	cd dist && zip -r ${APP}-${GOOS}-${GOARCH}.zip ${APP}-${GOOS}-${GOARCH}
+
+release:
+	GOOS=linux GOARCH=amd64 $(MAKE) dist
+	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
+	GOOS=darwin GOARCH=amd64 $(MAKE) dist
+	GOOS=windows GOARCH=amd64 $(MAKE) dist
 
 deb:
 	fpm -s dir \
-		-C backend \
+		-C dist/evebox-linux-amd64 \
 		-t deb \
+		-p dist \
 		-n evebox \
-		-v 0.5.1-1 \
+		-v $(VERSION) \
+		--prefix /usr/bin \
+		evebox
+
+rpm:
+	fpm -s dir \
+		-C dist/evebox-linux-amd64 \
+		-t rpm \
+		-p dist \
+		-n evebox \
+		-v $(VERSION) \
 		--prefix /usr/bin \
 		evebox

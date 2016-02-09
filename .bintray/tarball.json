@@ -15,7 +15,7 @@
 
     "files": [
 	{
-	    "includePattern": "backend/(evebox-.*\.zip)",
+	    "includePattern": "dist/(evebox-.*\.zip)",
 	    "uploadPattern": "$1",
 	    "matrixParams": {
 		"override": 1

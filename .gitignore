@@ -2,4 +2,4 @@
 *.iml
 /.idea
 /node_modules
-/backend/vendor
+/vendor

@@ -3,7 +3,7 @@ var path = require("path");
 
 module.exports = {
     entry: [
-        "./frontend/main.js"
+        "./webapp/main.js"
     ]
     ,
     output: {
@@ -16,7 +16,7 @@ module.exports = {
             {
                 test: /\.js$/,
                 include: [
-                    path.resolve(__dirname, "frontend")
+                    path.resolve(__dirname, "webapp")
                 ],
                 loaders: [
                     "babel?plugins=babel-plugin-object-assign"

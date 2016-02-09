@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/jasonish/evebox.svg?branch=develop)](https://travis-ci.org/jasonish/evebox)
+[![Build Status](https://travis-ci.org/jasonish/evebox.svg?branch=master)](https://travis-ci.org/jasonish/evebox)
 [![Download](https://api.bintray.com/packages/jasonish/evebox/latest/images/download.svg) ](https://bintray.com/jasonish/evebox/latest/latest/view/files)
 
 # EveBox
@@ -55,15 +55,6 @@ Then visit http://localhost:5636 with your browser.
 This should not require any modification to your Elastic Search
 configuration. Unlike previous versions of Evebox, you do not need to
 enable dynamic scripting and CORS.
-
-### Option 3 - Server Static Files
-
-This option is not recommended as the backend server may become
-mandatory in the future.
-
-Clone this repo and serve up the public directory. As with older
-versions of Evebox this will require enabling CORS in your Elastic
-Search configuration.
 
 ## Building EveBox
 
