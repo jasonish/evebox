@@ -36,7 +36,7 @@ public:
 	$(WEBPACK) --optimize-minimize
 
 evebox:
-	go build -ldflags "$(LDFLAGS)"
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)"
 
 with-docker:
 	docker build --rm -t evebox-builder .
@@ -57,7 +57,7 @@ dev-server:
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
 dist:
-	go build -ldflags "$(LDFLAGS)" -o dist/${APP}-${GOOS}-${GOARCH}/${APP}
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o dist/${APP}-${GOOS}-${GOARCH}/${APP}
 	rice -v append --exec dist/${APP}-${GOOS}-${GOARCH}/${APP}
 	cd dist && zip -r ${APP}-${GOOS}-${GOARCH}.zip ${APP}-${GOOS}-${GOARCH}
 
