@@ -146,6 +146,7 @@
   <div ng-if="vm.event.newest._source.payload" class="panel panel-default">
     <div class="panel-heading">
       Payload
+      <span class="pull-right"><a href="javascript:void(0);" ng-click="vm.downloadPcap('payload');">pcap</a></span>
     </div>
     <div class="panel-body">
       <div class="row">
@@ -163,6 +164,7 @@
   <div ng-if="vm.event.newest._source.packet" class="panel panel-default">
     <div class="panel-heading">
       Packet
+      <span class="pull-right"><a href="javascript:void(0);" ng-click="vm.downloadPcap('packet');">pcap</a></span>
     </div>
     <div class="panel-body">
       <div class="row">

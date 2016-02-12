@@ -1,5 +1,5 @@
-hash: 715d1850ddb99d6b957dc9cf46a9e7fb37a424bc0c10c60b9bf56f6e0117bfd0
-updated: 2016-02-08T22:08:23.988290521-06:00
+hash: d32dd9209df847230efe7c305300f6df5e99c5fc668acc8b373724be8b26f7d9
+updated: 2016-02-09T14:06:21.351764094-06:00
 imports:
 - name: github.com/akavel/rsrc
   version: ba14da1f827188454a4591717fff29999010887f
@@ -13,6 +13,10 @@ imports:
   version: 0f3f5fde32fd1f755632a3d31ba2ec6d449e387b
   subpackages:
   - rice
+- name: github.com/google/gopacket
+  version: cdd21628caecd1489c9204a8596414467fd6d629
+  subpackages:
+  - /pcapgo
 - name: github.com/jessevdk/go-flags
   version: 97448c91aac742cbca3d020b3e769013a420a06f
 - name: github.com/kardianos/osext

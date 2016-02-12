@@ -33,7 +33,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"strings"
 
 	"github.com/GeertJohan/go.rice"
 	"github.com/jessevdk/go-flags"
@@ -51,7 +50,6 @@ var opts struct {
 	Host             string `long:"host" default:"0.0.0.0" description:"Host to bind to"`
 	DevServerUri     string `long:"dev" description:"Frontend development server URI"`
 	Version          bool   `long:"version" description:"Show version"`
-	Public           string `long:"public" description:"Path to static files"`
 }
 
 func getBuildDate() string {
@@ -87,10 +85,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	elasticSearchProxy :=
-		httputil.NewSingleHostReverseProxy(elasticSearchUrl)
-	public := http.FileServer(rice.MustFindBox("./public").HTTPBox())
-
 	if len(opts.DevServerUri) > 0 {
 		log.Printf("Proxying static files to development server %v.",
 			opts.DevServerUri)
@@ -100,22 +94,24 @@ func main() {
 		}
 		devServerProxy =
 			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-	} else if len(opts.Public) > 0 {
 	}
 
-	http.HandleFunc("/",
+	elasticSearchProxy :=
+		httputil.NewSingleHostReverseProxy(elasticSearchUrl)
+	http.HandleFunc("/elasticsearch/",
 		func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.RequestURI, "/elasticsearch") {
-				r.URL.Path = r.URL.Path[len("/elasticsearch"):]
-				elasticSearchProxy.ServeHTTP(w, r)
-			} else {
-				if devServerProxy != nil {
-					devServerProxy.ServeHTTP(w, r)
-				} else {
-					public.ServeHTTP(w, r)
-				}
-			}
+			r.URL.Path = r.URL.Path[len("/elasticsearch"):]
+			elasticSearchProxy.ServeHTTP(w, r)
 		})
+
+	http.HandleFunc("/eve2pcap", Eve2PcapHandler)
+
+	public := http.FileServer(rice.MustFindBox("./public").HTTPBox())
+	if devServerProxy != nil {
+		http.Handle("/", devServerProxy)
+	} else {
+		http.Handle("/", public)
+	}
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
 	err = http.ListenAndServe(opts.Host+":"+opts.Port, nil)

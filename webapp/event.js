@@ -34,10 +34,10 @@ import template from "./event-template.html";
     angular.module("app").directive("event", event);
 
     event.$inject = ["$anchorScroll", "$state", "EventRepository", "Keyboard",
-        "StateService"];
+        "StateService", "EveBoxApi"];
 
     function event($anchorScroll, $state, EventRepository, Keyboard,
-                   StateService) {
+                   StateService, EveBoxApi) {
 
         return {
             restrict: "AE",
@@ -105,6 +105,11 @@ import template from "./event-template.html";
                 });
             };
 
+            vm.downloadPcap = function(what) {
+                console.log(what);
+                EveBoxApi.downloadPcap(what, vm.event.newest._source);
+            };
+
             vm.getSessionSearchUrl = function () {
                 let event = vm.event.newest._source;
                 let queryString = `%2balert.signature.raw:"${event.alert.signature}"` +
@@ -127,8 +132,6 @@ import template from "./event-template.html";
             });
 
             function setup(event) {
-//                vm.showArchiveButton = getTags(event).indexOf("archived") == -1;
-
                 // As the actual contents of the vent is buried down a little,
                 // pull it up into the model for easier access from the template.
                 vm.source = vm.event.newest._source;
@@ -138,7 +141,6 @@ import template from "./event-template.html";
         function link() {
             $anchorScroll();
         }
-
 
     }
 

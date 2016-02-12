@@ -2,7 +2,6 @@ GOHOSTARCH :=	$(shell go env GOHOSTARCH)
 GOHOSTOS :=	$(shell go env GOHOSTOS)
 
 export GO15VENDOREXPERIMENT=1
-export CGO_ENABLED=0
 
 VERSION :=	$(shell date +%Y%m%d%H%M)
 BUILD_DATE :=	$(shell TZ=UTC date)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,32 +24,41 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import "bootstrap/dist/css/bootstrap.css";
-import "./app.scss";
+package main
 
-import "angular/angular.js";
-import "bootstrap";
+import (
+	"bytes"
+	"time"
 
-import "./app.js";
-import "./event";
-import "./filters";
-import "./elapsed-time";
-import "./StateService";
-import "./Config";
-import "./settings";
-import "./topnav";
-import "./event-repository";
-import "./keyboard";
-import "./keyboard-table";
-import "./ace-editor";
-import "./events";
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcapgo"
+)
 
-// Services.
-import "./EveBoxApi";
+// Create a 1 packet PCAP buffer.
+//
+// Give a timestamp, a packet and a linktype return a []byte buffer
+// containing a complete PCAP file.
+func CreatePcap(timestamp time.Time, packet []byte, linktype layers.LinkType) ([]byte, error) {
+	var output bytes.Buffer
+	var err error
 
-// Views - even if implemented as a directive.
-import "./alerts";
-import "./help-modal";
+	pcapWriter := pcapgo.NewWriter(&output)
+	err = pcapWriter.WriteFileHeader(0xffff, linktype)
+	if err != nil {
+		return nil, err
+	}
 
-// Directive.
-import "./search-link";
+	captureInfo := gopacket.CaptureInfo{
+		Timestamp:     timestamp,
+		CaptureLength: len(packet),
+		Length:        len(packet),
+	}
+
+	err = pcapWriter.WritePacket(captureInfo, packet)
+	if err != nil {
+		return nil, err
+	}
+
+	return output.Bytes(), nil
+}

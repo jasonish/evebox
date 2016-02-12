@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,32 +24,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import "bootstrap/dist/css/bootstrap.css";
-import "./app.scss";
+class EveBoxApi {
 
-import "angular/angular.js";
-import "bootstrap";
+    constructor($window) {
+        this.$window = $window;
+    }
 
-import "./app.js";
-import "./event";
-import "./filters";
-import "./elapsed-time";
-import "./StateService";
-import "./Config";
-import "./settings";
-import "./topnav";
-import "./event-repository";
-import "./keyboard";
-import "./keyboard-table";
-import "./ace-editor";
-import "./events";
+    downloadPcap(what, event) {
+        let url = "/eve2pcap?what=" + what + "&event=" +
+            encodeURIComponent(JSON.stringify(event));
+        this.$window.location = url;
+    }
 
-// Services.
-import "./EveBoxApi";
+}
 
-// Views - even if implemented as a directive.
-import "./alerts";
-import "./help-modal";
+EveBoxApi.$inject = ["$window"];
 
-// Directive.
-import "./search-link";
+angular.module("app").service("EveBoxApi", EveBoxApi);
