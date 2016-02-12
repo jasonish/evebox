@@ -211,7 +211,12 @@ func EvePayloadToPcap(event *EveEvent) ([]byte, error) {
 		}
 		ipLayer.SerializeTo(buffer, options)
 	} else {
-		return nil, fmt.Errorf("IPv6 not yet supported.")
+		ip6Layer := layers.IPv6{
+			Version: 6,
+			SrcIP:   srcIp,
+			DstIP:   dstIp,
+		}
+		ip6Layer.SerializeTo(buffer, options)
 	}
 
 	return CreatePcap(event.Timestamp.Time,
