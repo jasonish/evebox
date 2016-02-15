@@ -93,10 +93,13 @@ import template from "./event-template.html";
             };
 
             vm.archiveEvent = function () {
-                EventRepository.archiveEvent(vm.event).then(() => {
-                    evebox.addTag(vm.event, "archived");
-                    vm.goBack();
-                });
+
+                // Optimistically archive the event (don't wait for success).
+                EventRepository.submitArchiveEvent(vm.event);
+
+                // Mark as archived and return.
+                evebox.addTag(vm.event, "archived");
+                vm.goBack();
             };
 
             vm.escalateEvent = () => {

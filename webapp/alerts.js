@@ -170,9 +170,6 @@ import * as appEvents from "./app-events";
             function removeEvent(event) {
                 let idx = vm.events.indexOf(event);
 
-                console.log("removeEvent:");
-                console.log(idx);
-
                 if (idx < 0) {
                     return;
                 }
