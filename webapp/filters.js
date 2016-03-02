@@ -143,3 +143,22 @@ function base64ToFormattedHex(input) {
     return output;
 
 }
+
+angular.module("app").filter("genericEvePrettyPrinter", function() {
+
+    let map = {
+        "hostname": "Hostname",
+        "url": "URL",
+        "http_user_agent": "User Agent",
+        "http_content_type": "ContentType",
+        "http_method": "Method",
+        "protocol": "Protocol",
+        "status": "Status",
+        "length": "Content Length",
+    };
+
+    return function(value) {
+        let pretty = map[value];
+        return pretty ? pretty : value;
+    }
+});

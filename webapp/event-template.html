@@ -135,7 +135,7 @@
     <div class="panel-body">
       <dl class="dl-horizontal">
         <div ng-repeat="(key, val) in vm.source.http">
-          <dt>{{key}}</dt>
+          <dt>{{key | genericEvePrettyPrinter}}</dt>
           <dd class="break-word">
             <span search-link field="http.{{key}}" value="{{val}}">{{val}}</span>
           </dd>
