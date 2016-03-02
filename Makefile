@@ -1,11 +1,16 @@
+VERSION :=	0.5.0dev
+
 GOHOSTARCH :=	$(shell go env GOHOSTARCH)
 GOHOSTOS :=	$(shell go env GOHOSTOS)
 
 export GO15VENDOREXPERIMENT=1
 
-VERSION :=	$(shell date +%Y%m%d%H%M)
 BUILD_DATE :=	$(shell TZ=UTC date)
-LDFLAGS :=	-X \"main.buildDate=$(BUILD_DATE)\"
+BUILD_REV :=	$(shell git rev-parse --short HEAD)
+
+LDFLAGS :=	-X \"main.buildDate=$(BUILD_DATE)\" \
+		-X \"main.buildRev=$(BUILD_REV)\" \
+		-X \"main.buildVersion=$(VERSION)\"
 
 APP :=		evebox
 

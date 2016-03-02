@@ -39,6 +39,8 @@ import (
 )
 
 var buildDate string
+var buildVersion string
+var buildRev string
 
 const DEFAULT_ELASTICSEARCH_URI string = "http://localhost:9200"
 
@@ -52,10 +54,6 @@ var opts struct {
 	Version          bool   `long:"version" description:"Show version"`
 }
 
-func getBuildDate() string {
-	return buildDate
-}
-
 func main() {
 
 	var devServerProxy *httputil.ReverseProxy
@@ -67,7 +65,8 @@ func main() {
 	}
 
 	if opts.Version {
-		fmt.Printf("Build date: %s\n", getBuildDate())
+		fmt.Printf("EveBox Version %s (rev %s) [%s]\n",
+			buildVersion, buildRev, buildDate)
 		os.Exit(0)
 	}
 
