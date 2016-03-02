@@ -136,7 +136,9 @@
       <dl class="dl-horizontal">
         <div ng-repeat="(key, val) in vm.source.http">
           <dt>{{key}}</dt>
-          <dd class="break-word">{{val}}</dd>
+          <dd class="break-word">
+            <span search-link field="http.{{key}}" value="{{val}}">{{val}}</span>
+          </dd>
         </div>
       </dl>
     </div>

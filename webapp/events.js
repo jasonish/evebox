@@ -58,7 +58,7 @@ import * as appEvents from "./app-events";
             // Initial state.
             ctrl.loading = false;
             ctrl.activeRow = 0;
-            ctrl.queryString = $location.search().q || "";
+            ctrl.queryString = decodeURIComponent($location.search().q || "");
             ctrl.size = 100;
             ctrl.timeStart = $location.search().timeStart;
             ctrl.timeEnd = $location.search().timeEnd;

@@ -62,7 +62,8 @@ import angular from "angular";
                 vm.queryString = `+"${vm.value}"`;
             }
             else {
-                vm.queryString = `+${vm.field}:"${vm.value}"`;
+                let encodedValue = encodeURIComponent(vm.value);
+                vm.queryString = `+${vm.field}:"${encodedValue}"`;
             }
         }
     }
