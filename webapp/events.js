@@ -144,91 +144,102 @@ import * as appEvents from "./app-events";
 
     }
 
-    let template = `<form ng-submit="ctrl.refresh()">
-  <fieldset ng-disabled="ctrl.loading">
-    <div class="form-group">
-      <div class="input-group">
-        <input id="query-string-input" type="text" class="form-control"
-               ng-model="ctrl.queryString"/>
+    let template = `<div class="row">
+  <div class="col-md-12">
+    <form ng-submit="ctrl.refresh()">
+      <fieldset ng-disabled="ctrl.loading">
+        <div class="form-group" style="margin-bottom: 0px;">
+          <div class="input-group">
+            <input id="query-string-input" type="text" class="form-control"
+                   ng-model="ctrl.queryString"/>
       <span class="input-group-btn">
         <button type="submit" class="btn btn-default">Search</button>
       </span>
-      </div>
-    </div>
-  </fieldset>
-</form>
+          </div>
+        </div>
+      </fieldset>
+    </form>
+  </div>
+</div>
+
+<br/>
 
 <div class="row">
-  <div class="col-md-6">
+  <div class="col-md-12">
+
     <button type="button" class="btn btn-default" ng-click="ctrl.refresh()">
       Refresh
     </button>
-  </div>
-  <div class="col-md-6">
-    <span class="pull-right">
-      <div class="btn btn-group">
-        <button type="button" class="btn btn-default"
-                ng-click="ctrl.gotoPrevPage()">
-          Newer
-        </button>
-        <button type="button" class="btn btn-default"
-                ng-click="ctrl.gotoNextPage()">
-          Older
-        </button>
-      </div>
-    </span>
+
+    <div class="pull-right">
+      <button type="button" class="btn btn-default"
+              ng-click="ctrl.gotoPrevPage()">
+        Newer
+      </button>
+      <button type="button" class="btn btn-default"
+              ng-click="ctrl.gotoNextPage()">
+        Older
+      </button>
+    </div>
 
   </div>
 </div>
 
 <br/>
 
-<div ng-if="ctrl.events && ctrl.events.length > 0">
+<div class="row">
+  <div class="col-md-12">
 
-  <div class="table-responsive">
-    <table class="table table-condensed app-event-table"
-           keyboard-table
-           active-row="ctrl.activeRow"
-           rows="ctrl.events"
-           on-row-open="ctrl.openEvent">
-      <thead>
-      <tr>
-        <th></th>
-        <th>Timestamp</th>
-        <th>Type</th>
-        <th>Source/Dest</th>
-        <th>Description</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr ng-repeat="event in ctrl.events" ng-click="ctrl.openEvent(event)"
-          ng-class="event | eventSeverityToBootstrapClass">
-        <td><span ng-hide="$index != ctrl.activeRow"
-                  class="glyphicon glyphicon-chevron-right"></span></td>
+    <div ng-if="ctrl.events && ctrl.events.length > 0">
 
-        <td class="text-nowrap">
-          {{::event._source.timestamp | formatTimestamp}}
-          <br/>
-          <elapsed-time timestamp="event._source.timestamp"
-                        style="color: grey"></elapsed-time>
-        </td>
-        <td>{{::event._source.event_type | uppercase}}</td>
+      <div class="table-responsive">
+        <table class="table table-condensed app-event-table"
+               keyboard-table
+               active-row="ctrl.activeRow"
+               rows="ctrl.events"
+               on-row-open="ctrl.openEvent">
+          <thead>
+          <tr>
+            <th></th>
+            <th>Timestamp</th>
+            <th>Type</th>
+            <th>Source/Dest</th>
+            <th>Description</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr ng-repeat="event in ctrl.events" ng-click="ctrl.openEvent(event)"
+              ng-class="event | eventSeverityToBootstrapClass">
+            <td><span ng-hide="$index != ctrl.activeRow"
+                      class="glyphicon glyphicon-chevron-right"></span></td>
 
-        <td class="text-nowrap">
-          <label>S:</label> {{::event._source.src_ip | formatIpAddress}}
-          <br/>
-          <label>D:</label> {{::event._source.dest_ip | formatIpAddress}}
-        </td>
+            <td class="text-nowrap">
+              {{::event._source.timestamp | formatTimestamp}}
+              <br/>
+              <elapsed-time timestamp="event._source.timestamp"
+                            style="color: grey"></elapsed-time>
+            </td>
+            <td>{{::event._source.event_type | uppercase}}</td>
 
-        <td style="word-break: break-all;">{{::event |
-          formatEventDescription}}
-        </td>
-      </tr>
-      </tbody>
-    </table>
+            <td class="text-nowrap">
+              <label>S:</label> {{::event._source.src_ip | formatIpAddress}}
+              <br/>
+              <label>D:</label> {{::event._source.dest_ip | formatIpAddress}}
+            </td>
+
+            <td style="word-break: break-all;">{{::event |
+              formatEventDescription}}
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
   </div>
-
-</div>`;
+</div>
+`;
 
 
 })();

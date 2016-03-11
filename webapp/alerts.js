@@ -436,6 +436,9 @@ import * as appEvents from "./app-events";
 
   </div>
   <div class="col-md-6">
+
+    <br class="hidden-lg hidden-md"/>
+
     <form id="evebox-inbox-filter-form" ng-show="vm.events"
           ng-submit="vm.onFilterSubmit()">
       <div class="input-group">
