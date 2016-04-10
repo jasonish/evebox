@@ -99,7 +99,15 @@ func main() {
 		httputil.NewSingleHostReverseProxy(elasticSearchUrl)
 	http.HandleFunc("/elasticsearch/",
 		func(w http.ResponseWriter, r *http.Request) {
+
+			// Strip "elasticsearch" from the URL.
 			r.URL.Path = r.URL.Path[len("/elasticsearch"):]
+
+			// Strip headers that will get in the way of CORS.
+			r.Header.Del("X-Forwarded-For")
+			r.Header.Del("Origin")
+			r.Header.Del("Referer")
+
 			elasticSearchProxy.ServeHTTP(w, r)
 		})
 
