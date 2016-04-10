@@ -75,7 +75,7 @@ release:
 
 deb: EPOCH := 1
 ifneq ($(VERSION_SUFFIX),)
-deb: TILDE := $(VERSION_SUFFIX)$(shell date +%Y%m%d%H%M%S)
+deb: TILDE := ~$(VERSION_SUFFIX)$(shell date +%Y%m%d%H%M%S)
 endif
 deb:
 	fpm -s dir \
@@ -83,7 +83,8 @@ deb:
 		-t deb \
 		-p dist \
 		-n evebox \
-		-v $(VERSION)~$(TILDE) \
+		--epoch $(EPOCH) \
+		-v $(VERSION)$(TILDE) \
 		--prefix /usr/bin \
 		evebox
 
