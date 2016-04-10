@@ -1,4 +1,5 @@
-VERSION :=	0.5.0dev
+VERSION :=		0.5.0
+VERSION_SUFFIX :=	dev
 
 GOHOSTARCH :=	$(shell go env GOHOSTARCH)
 GOHOSTOS :=	$(shell go env GOHOSTOS)
@@ -10,7 +11,7 @@ BUILD_REV :=	$(shell git rev-parse --short HEAD)
 
 LDFLAGS :=	-X \"main.buildDate=$(BUILD_DATE)\" \
 		-X \"main.buildRev=$(BUILD_REV)\" \
-		-X \"main.buildVersion=$(VERSION)\"
+		-X \"main.buildVersion=$(VERSION)$(VERSION_SUFFIX)\"
 
 APP :=		evebox
 
@@ -72,13 +73,17 @@ release:
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
 	GOOS=windows GOARCH=amd64 $(MAKE) dist
 
+deb: EPOCH := 1
+ifneq ($(VERSION_SUFFIX),)
+deb: TILDE := $(VERSION_SUFFIX)$(shell date +%Y%m%d%H%M%S)
+endif
 deb:
 	fpm -s dir \
 		-C dist/evebox-linux-amd64 \
 		-t deb \
 		-p dist \
 		-n evebox \
-		-v $(VERSION) \
+		-v $(VERSION)~$(TILDE) \
 		--prefix /usr/bin \
 		evebox
 
