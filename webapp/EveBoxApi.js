@@ -26,8 +26,13 @@
 
 class EveBoxApi {
 
-    constructor($window) {
+    constructor($http, $window) {
+        this.$http = $http;
         this.$window = $window;
+    }
+
+    getVersion() {
+        return this.$http.get("/api/version");
     }
 
     downloadPcap(what, event) {
@@ -41,6 +46,6 @@ class EveBoxApi {
 
 }
 
-EveBoxApi.$inject = ["$window"];
+EveBoxApi.$inject = ["$http", "$window"];
 
 angular.module("app").service("EveBoxApi", EveBoxApi);

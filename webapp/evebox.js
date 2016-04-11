@@ -26,8 +26,6 @@
 
 // Some global EveBox functions.
 
-export var EVEBOX_VERSION = "0.5.0-dev";
-
 /**
  * Get the tags for an event.
  */

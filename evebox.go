@@ -27,6 +27,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -52,6 +53,22 @@ var opts struct {
 	Host             string `long:"host" default:"0.0.0.0" description:"Host to bind to"`
 	DevServerUri     string `long:"dev" description:"Frontend development server URI"`
 	Version          bool   `long:"version" description:"Show version"`
+}
+
+type VersionResponse struct {
+	Version  string
+	Revision string
+	Date     string
+}
+
+func VersionHandler(w http.ResponseWriter, r *http.Request) {
+	response := VersionResponse{
+		buildVersion,
+		buildRev,
+		buildDate,
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	json.NewEncoder(w).Encode(response)
 }
 
 func main() {
@@ -112,6 +129,8 @@ func main() {
 		})
 
 	http.HandleFunc("/eve2pcap", Eve2PcapHandler)
+
+	http.HandleFunc("/api/version", VersionHandler)
 
 	public := http.FileServer(rice.MustFindBox("./public").HTTPBox())
 	if devServerProxy != nil {

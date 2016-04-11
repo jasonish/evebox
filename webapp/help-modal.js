@@ -69,7 +69,10 @@ import * as evebox from "./evebox";
 
             <div style="padding: 12px;">
 
-              <p>This is EveBox {{vm.EVEBOX_VERSION}}.</p>
+              <p>This is EveBox version {{vm.versionInfo.Version}} (Rev: {{vm.versionInfo.Revision}}).
+              <br/>
+              Build date: {{vm.versionInfo.Date}}.
+              </p>
 
               <p>Github:
                 <a href="http://github.com/jasonish/evebox">http://github.com/jasonish/evebox</a>
@@ -164,17 +167,20 @@ import * as evebox from "./evebox";
         return {
             restrict: "AE",
             template: template,
-            controller: ["$scope", controller],
+            controller: ["$scope", "EveBoxApi", controller],
             controllerAs: "vm",
             bindToController: true
         };
 
-        function controller($scope) {
+        function controller($scope, EveBoxApi) {
 
             let vm = this;
 
             vm.help = help;
-            vm.EVEBOX_VERSION = evebox.EVEBOX_VERSION;
+
+            EveBoxApi.getVersion().then(response => {
+                vm.versionInfo = response.data;
+            });
 
             $scope.$on("evebox.showHelp", () => {
                 $("#help-modal").modal();
