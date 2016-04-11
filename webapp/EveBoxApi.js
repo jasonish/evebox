@@ -31,8 +31,11 @@ class EveBoxApi {
     }
 
     downloadPcap(what, event) {
-        let url = "/eve2pcap?what=" + what + "&event=" +
-            encodeURIComponent(JSON.stringify(event));
+        let url = this.$window.location.pathname
+            + "eve2pcap?what="
+            + what
+            + "&event="
+            + encodeURIComponent(JSON.stringify(event));
         this.$window.location = url;
     }
 
