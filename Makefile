@@ -25,6 +25,8 @@ install-deps:
 # Go
 	go get github.com/Masterminds/glide
 	go get github.com/GeertJohan/go.rice/rice
+	go get github.com/kardianos/osext
+	go get github.com/google/gopacket
 	glide install
 
 clean:
