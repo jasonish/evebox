@@ -42,12 +42,12 @@ function formatIpAddress(addr) {
     return addr;
 }
 
-angular.module("app").filter("formatIpAddress", function() {
+angular.module("app").filter("formatIpAddress", function () {
     return formatIpAddress;
 });
 
-angular.module("app").filter("formatTimestamp", function() {
-    return function(timestamp, format) {
+angular.module("app").filter("formatTimestamp", function () {
+    return function (timestamp, format) {
         return moment(timestamp).format("YYYY-MM-DD HH:mm:ss");
     }
 });
@@ -86,16 +86,18 @@ function eventSeverityToBootstrapClass(event, prefix) {
 
 }
 
-angular.module("app").filter("eventSeverityToBootstrapClass", function() {
+angular.module("app").filter("eventSeverityToBootstrapClass", function () {
     return eventSeverityToBootstrapClass;
 });
 
 function formatEventDescription() {
-    return function(event) {
+    return function (event) {
 
         if (!event._source.event_type) {
             return "<Error: This does not look like an event.>";
         }
+
+        let eve = event._source;
 
         switch (event._source.event_type) {
             case "alert":
@@ -105,6 +107,72 @@ function formatEventDescription() {
                 let http = event._source.http;
                 return `${http.http_method} - ${http.hostname} - ${http.url}`;
             }
+            case "ssh": {
+                let ssh = eve.ssh;
+                return `${ssh.client.software_version} -> ${ssh.server.software_version}`;
+            }
+            case "tls": {
+                let tls = eve.tls;
+                let cn = /CN=(.*)/.exec(tls.subject)[1];
+                let issuer = /CN=(.*)/.exec(tls.issuerdn)[1];
+                return `${tls.version}: ${cn} (Issuer: ${issuer})`;
+            }
+            case "flow":
+            {
+                let flow = eve.flow;
+                let sport = "";
+                let dport = "";
+                switch (eve.proto.toLowerCase()) {
+                    case "udp":
+                    case "tcp":
+                        sport = `:${eve.src_port}`;
+                        dport = `:${eve.dest_port}`;
+                        break;
+                }
+                return `${eve.proto} ${eve.src_ip}${sport} -> ${eve.dest_ip}${dport}`
+                    + `; Age: ${flow.age}`
+                    + `; Bytes: ${flow.bytes_toserver + flow.bytes_toclient}`
+                    + `; Packets: ${flow.pkts_toserver + flow.pkts_toclient}`;
+            }
+            case "netflow":
+            {
+                let netflow = eve.netflow;
+                let sport = "";
+                let dport = "";
+                switch (eve.proto.toLowerCase()) {
+                    case "udp":
+                    case "tcp":
+                        sport = `:${eve.src_port}`;
+                        dport = `:${eve.dest_port}`;
+                        break;
+                }
+                return `${eve.proto} ${eve.src_ip}${sport} -> ${eve.dest_ip}${dport}`
+                    + `; Age: ${netflow.age}`
+                    + `; Bytes: ${netflow.bytes}`
+                    + `; Packets: ${netflow.pkts}`;
+                break;
+            }
+            case "dns":
+            {
+                let dns = eve.dns;
+                let desc = "";
+                switch (dns.type) {
+                    case "query":
+                        desc += `QUERY ${dns.rrtype} ${dns.rrname}`;
+                        break;
+                    case "answer":
+                        switch (dns.rcode) {
+                            case "NXDOMAIN":
+                                desc += `ANSWER: NXDOMAIN for ${dns.rrname}`;
+                                break;
+                            default:
+                                desc += `ANSWER for ${dns.rrname}: ${dns.rrtype} ${dns.rdata || ""}`;
+                                break;
+                        }
+                        break;
+                }
+                return `${desc}`
+            }
             default:
                 return JSON.stringify(event._source[event._source.event_type]);
         }
@@ -113,7 +181,7 @@ function formatEventDescription() {
 
 angular.module("app").filter("formatEventDescription", formatEventDescription);
 
-angular.module("app").filter("base64Decode", function() {
+angular.module("app").filter("base64Decode", function () {
     return base64Decode
 });
 
@@ -121,7 +189,7 @@ function base64Decode(input) {
     return atob(input);
 }
 
-angular.module("app").filter("base64ToFormattedHex", function() {
+angular.module("app").filter("base64ToFormattedHex", function () {
     return base64ToFormattedHex;
 });
 
@@ -144,7 +212,7 @@ function base64ToFormattedHex(input) {
 
 }
 
-angular.module("app").filter("genericEvePrettyPrinter", function() {
+angular.module("app").filter("genericEvePrettyPrinter", function () {
 
     let map = {
         "hostname": "Hostname",
@@ -157,7 +225,7 @@ angular.module("app").filter("genericEvePrettyPrinter", function() {
         "length": "Content Length",
     };
 
-    return function(value) {
+    return function (value) {
         let pretty = map[value];
         return pretty ? pretty : value;
     }
