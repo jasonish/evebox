@@ -50,7 +50,7 @@ import * as evebox from "./evebox";
 
 angular.module("app").factory("EventRepository", EventRepository);
 
-EventRepository.$inject = ["$http", "$q", "$timeout", "Config"];
+EventRepository.$inject = ["$http", "$q", "$timeout"];
 
 class ResultSet {
 }
@@ -75,7 +75,7 @@ class ElasticSearchResultSet extends ResultSet {
 
 function EventRepository($http, $q, $timeout, Config) {
 
-    let esUrl = Config.getConfig().elasticSearch.url;
+    let esUrl = "/elasticsearch";
     let defaultIndex = "logstash-*";
 
     let q = queue({concurrency: 8});

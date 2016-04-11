@@ -73,11 +73,6 @@ function config($stateProvider, $urlRouterProvider) {
         template: "<event></event>"
     });
 
-    $stateProvider.state("settings", {
-        url: "/settings",
-        template: "<settings></settings>"
-    });
-
 }
 
 angular.module("app").run(run);

@@ -35,8 +35,6 @@ import "./event";
 import "./filters";
 import "./elapsed-time";
 import "./StateService";
-import "./Config";
-import "./settings";
 import "./topnav";
 import "./event-repository";
 import "./keyboard";
