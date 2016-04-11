@@ -71,6 +71,12 @@ Backend requirements:
 
 ## Run in Development Mode
 
+First you need to install dependencies and build the software:
+
+make install-deps all
+
+Then you can run
+
 EVEBOX_ELASTICSEARCH_URL=http://localhost:9200 make dev-server
 
 Where the EVEBOX_ELASTICSEARCH_URL is pointing to your Elastic Search
