@@ -29,10 +29,11 @@ class EveBoxApi {
     constructor($http, $window) {
         this.$http = $http;
         this.$window = $window;
+        this.baseUrl = window.location.pathname;
     }
 
     getVersion() {
-        return this.$http.get("/api/version");
+        return this.$http.get(this.baseUrl + "api/version");
     }
 
     downloadPcap(what, event) {

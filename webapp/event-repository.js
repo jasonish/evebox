@@ -75,7 +75,7 @@ class ElasticSearchResultSet extends ResultSet {
 
 function EventRepository($http, $q, $timeout, Config) {
 
-    let esUrl = "/elasticsearch";
+    let esUrl = window.location.pathname + "elasticsearch";
     let defaultIndex = "logstash-*";
 
     let q = queue({concurrency: 8});
