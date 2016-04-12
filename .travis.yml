@@ -21,13 +21,17 @@ script:
 deploy:
   - provider: bintray
     user: jasonish
-    on: master
+    on:
+      branch: master
+      repo: jasonish/evebox
     file: ".bintray/tarball.json"
     key:
       secure: a9F7D8r4bo51tCZqK9anQk6dLZRzLHv10AV8PHLPxMwHtVdpO01j5r2Yesa/h91ax2RGJn+HQDxMnxfB0gYv+cFzuL/+y5CtH8WyeHFWbiLrKfgsmRHmpueu5PswAfxnv5N/v40WbyxbgVxaWMCf3NuR66rmk+vYmKkh0PwZB14=
   - provider: bintray
     user: jasonish
-    on: master
+    on:
+      branch: master
+      repo: jasonish/evebox
     file: ".bintray/debian.json"
     key:
       secure: a9F7D8r4bo51tCZqK9anQk6dLZRzLHv10AV8PHLPxMwHtVdpO01j5r2Yesa/h91ax2RGJn+HQDxMnxfB0gYv+cFzuL/+y5CtH8WyeHFWbiLrKfgsmRHmpueu5PswAfxnv5N/v40WbyxbgVxaWMCf3NuR66rmk+vYmKkh0PwZB14=
