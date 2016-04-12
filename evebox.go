@@ -71,9 +71,43 @@ func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func main() {
+func setupElasticSearchProxy() {
+	if opts.ElasticSearchUri == "" {
+		if os.Getenv("ELASTICSEARCH_URL") != "" {
+			opts.ElasticSearchUri = os.Getenv("ELASTICSEARCH_URL")
+		} else {
+			opts.ElasticSearchUri = DEFAULT_ELASTICSEARCH_URI
+		}
+	}
+	log.Printf("Elastic Search URI: %v", opts.ElasticSearchUri)
+	esProxy, err := NewElasticSearchProxy(opts.ElasticSearchUri,
+		"/elasticsearch")
+	if err != nil {
+		log.Fatal(err)
+	}
+	http.Handle("/elasticsearch/", esProxy)
+}
 
-	var devServerProxy *httputil.ReverseProxy
+// Setup the handler for static files.
+func setupStatic() {
+	if len(opts.DevServerUri) > 0 {
+		log.Printf("Proxying static files to development server %v.",
+			opts.DevServerUri)
+		devServerProxyUrl, err := url.Parse(opts.DevServerUri)
+		if err != nil {
+			log.Fatal(err)
+		}
+		devServerProxy :=
+			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
+		http.Handle("/", devServerProxy)
+	} else {
+		public := http.FileServer(
+			rice.MustFindBox("./public").HTTPBox())
+		http.Handle("/", public)
+	}
+}
+
+func main() {
 
 	_, err := flags.Parse(&opts)
 	if err != nil {
@@ -87,57 +121,10 @@ func main() {
 		os.Exit(0)
 	}
 
-	if opts.ElasticSearchUri == "" {
-		if os.Getenv("ELASTICSEARCH_URL") != "" {
-			opts.ElasticSearchUri = os.Getenv("ELASTICSEARCH_URL")
-		} else {
-			opts.ElasticSearchUri = DEFAULT_ELASTICSEARCH_URI
-		}
-	}
-
-	log.Printf("Elastic Search URI: %v", opts.ElasticSearchUri)
-	elasticSearchUrl, err := url.Parse(opts.ElasticSearchUri)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if len(opts.DevServerUri) > 0 {
-		log.Printf("Proxying static files to development server %v.",
-			opts.DevServerUri)
-		devServerProxyUrl, err := url.Parse(opts.DevServerUri)
-		if err != nil {
-			log.Fatal(err)
-		}
-		devServerProxy =
-			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-	}
-
-	elasticSearchProxy :=
-		httputil.NewSingleHostReverseProxy(elasticSearchUrl)
-	http.HandleFunc("/elasticsearch/",
-		func(w http.ResponseWriter, r *http.Request) {
-
-			// Strip "elasticsearch" from the URL.
-			r.URL.Path = r.URL.Path[len("/elasticsearch"):]
-
-			// Strip headers that will get in the way of CORS.
-			r.Header.Del("X-Forwarded-For")
-			r.Header.Del("Origin")
-			r.Header.Del("Referer")
-
-			elasticSearchProxy.ServeHTTP(w, r)
-		})
-
 	http.HandleFunc("/eve2pcap", Eve2PcapHandler)
-
 	http.HandleFunc("/api/version", VersionHandler)
-
-	public := http.FileServer(rice.MustFindBox("./public").HTTPBox())
-	if devServerProxy != nil {
-		http.Handle("/", devServerProxy)
-	} else {
-		http.Handle("/", public)
-	}
+	setupElasticSearchProxy()
+	setupStatic()
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
 	err = http.ListenAndServe(opts.Host+":"+opts.Port, nil)
