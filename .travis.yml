@@ -27,6 +27,8 @@ deploy:
     file: ".bintray/tarball.json"
     key:
       secure: a9F7D8r4bo51tCZqK9anQk6dLZRzLHv10AV8PHLPxMwHtVdpO01j5r2Yesa/h91ax2RGJn+HQDxMnxfB0gYv+cFzuL/+y5CtH8WyeHFWbiLrKfgsmRHmpueu5PswAfxnv5N/v40WbyxbgVxaWMCf3NuR66rmk+vYmKkh0PwZB14=
+    after_deploy:
+      - ./.travis/docker.sh
   - provider: bintray
     user: jasonish
     on:
@@ -35,5 +37,3 @@ deploy:
     file: ".bintray/debian.json"
     key:
       secure: a9F7D8r4bo51tCZqK9anQk6dLZRzLHv10AV8PHLPxMwHtVdpO01j5r2Yesa/h91ax2RGJn+HQDxMnxfB0gYv+cFzuL/+y5CtH8WyeHFWbiLrKfgsmRHmpueu5PswAfxnv5N/v40WbyxbgVxaWMCf3NuR66rmk+vYmKkh0PwZB14=
-after_deploy:
-- ./.travis/docker.sh
