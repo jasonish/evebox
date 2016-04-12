@@ -1,17 +1,13 @@
-FROM fedora:23
+FROM fedora:rawhide
 
 RUN dnf -y install \
     golang \
+    nodejs \
     git \
     make \
     zip \
-    tar
+    tar \
+    findutils
 
-RUN dnf -y install tar && \
-    curl -O https://nodejs.org/dist/v4.2.1/node-v4.2.1-linux-x64.tar.gz && \
-    cd /usr/local && \
-    tar zxvf /node-v4.2.1-linux-x64.tar.gz --strip-components=1
-
-ENV GOPATH /gopath
+ENV GOPATH /go
 ENV PATH=$GOPATH/bin:$PATH
-
