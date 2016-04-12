@@ -3,3 +3,5 @@
 /.idea
 /node_modules
 /vendor
+/public/bundle.js
+/evebox
