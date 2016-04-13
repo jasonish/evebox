@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/jasonish/evebox.svg?branch=master)](https://travis-ci.org/jasonish/evebox)
-[![Download](https://api.bintray.com/packages/jasonish/evebox/latest/images/download.svg) ](https://bintray.com/jasonish/evebox/latest/latest/view/files)
+[![Download](https://api.bintray.com/packages/jasonish/evebox-zip-dev/evebox/images/download.svg) ](https://bintray.com/jasonish/evebox-zip-dev/evebox/_latestVersion)
 
 # EveBox
 
@@ -26,7 +26,7 @@ Example:
 Then visit http://localhost:5636 with your browser.
 
 Up to date builds can be found here:
-https://bintray.com/jasonish/evebox/latest/latest/view/files
+https://bintray.com/jasonish/evebox-zip-dev/evebox/dev/view#files
 
 This should not require any modification to your Elastic Search
 configuration. Unlike previous versions of Evebox, you do not need to

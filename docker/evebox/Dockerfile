@@ -8,7 +8,7 @@ MAINTAINER Jason Ish <ish@unx.ca>
 # around this we attempt the download multiple times.
 RUN cd /tmp && \
     for i in `seq 1 10`; do \
-    	if wget http://dl.bintray.com/jasonish/evebox/evebox-linux-amd64.zip; \
+    	if wget http://dl.bintray.com/jasonish/evebox-zip-dev/evebox-linux-amd64.zip; \
 	then \
 	     break; \
 	else \
