@@ -1,8 +1,9 @@
 # Version info.
-VERSION :=		0.5.0
-VERSION_SUFFIX :=	dev
-BUILD_DATE :=	$(shell TZ=UTC date)
-BUILD_REV :=	$(shell git rev-parse --short HEAD)
+VERSION		:=	0.5.0
+VERSION_SUFFIX	:=	dev
+BUILD_DATE	:=	$(shell TZ=UTC date)
+BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
+BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 
 GOHOSTARCH :=	$(shell go env GOHOSTARCH)
 GOHOSTOS :=	$(shell go env GOHOSTOS)
@@ -39,7 +40,7 @@ clean:
 distclean: clean
 	rm -rf node_modules vendor
 
-.PHONY: public dist
+.PHONY: public dist rpm
 
 # Build the webapp bundle.
 public/bundle.js: $(WEBAPP_SRCS)
@@ -81,7 +82,7 @@ release:
 # Debian packaging.
 deb: EPOCH := 1
 ifneq ($(VERSION_SUFFIX),)
-deb: TILDE := ~$(VERSION_SUFFIX)$(shell date +%Y%m%d%H%M%S)
+deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
 endif
 deb:
 	fpm -s dir \
@@ -95,12 +96,19 @@ deb:
 		evebox
 
 # RPM packaging.
+ifneq ($(VERSION_SUFFIX),)
+rpm: RPM_ITERATION := 0.$(BUILD_DATE_ISO)
+else
+rpm: RPM_ITERATION := 1
+endif
 rpm:
 	fpm -s dir \
-		-C dist/evebox-linux-amd64 \
 		-t rpm \
 		-p dist \
 		-n evebox \
 		-v $(VERSION) \
-		--prefix /usr/bin \
-		evebox
+		--iteration $(RPM_ITERATION) \
+		--config-files /etc/sysconfig/evebox \
+		dist/evebox-linux-amd64/evebox=/usr/bin/evebox \
+		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
+		rpm/evebox.service=/lib/systemd/system/evebox.service

@@ -1,0 +1,2 @@
+# The URL to Elastic Search
+ELASTICSEARCH_URL=http://localhost:9200
