@@ -24,6 +24,6 @@ fi
 touch _docker_done
 
 echo "Triggering build on Docker hub."
-curl -v -H "Content-Type: application/json" \
+curl -H "Content-Type: application/json" \
      --data '{"build": true}' \
      -X POST ${DOCKER_TRIGGER_URL}/${DOCKER_TRIGGER_TOKEN}/
