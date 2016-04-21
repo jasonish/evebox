@@ -34,7 +34,7 @@
         [
       <span ng-repeat="service in vm.EventServices.getServicesForEvent(vm.event.newest)">
         <a href="{{service.getUrl(vm.event.newest)}}" target="{{service.getTarget()}}">{{service.name}}</a>
-        <span ng-if="!$last">| </span>
+        <span ng-if="!$last"> | </span>
       </span>
         ]
         &nbsp;
