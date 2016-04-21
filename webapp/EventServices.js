@@ -32,7 +32,7 @@
 
         for (var i = 0; i < parts.length; i++) {
             if (!node[parts[i]]) {
-                return null;
+                return "";
             }
             node = node[parts[i]];
         }
@@ -47,7 +47,16 @@
                 break;
             }
 
-            var replacement = getField(match[1], event);
+            var replacement = "";
+
+            switch (match[1]) {
+                case "raw":
+                    replacement = encodeURIComponent(JSON.stringify(event._source));
+                    break;
+                default:
+                    replacement = getField(match[1], event);
+                    break;
+            }
 
             url = url.replace(match[0], replacement);
         }
@@ -64,6 +73,7 @@
             }
             this.name = args.name;
             this.url = args.url;
+            this.target = args.target;
 
             if (args["event-types"]) {
                 this.eventTypes = args["event-types"];
@@ -81,6 +91,19 @@
             return resolveUrl(this.url, event);
         }
 
+        getTarget(event) {
+            if (this.target) {
+                switch (this.target) {
+                    case "new":
+                        return "_blank";
+                    default:
+                        break;
+                }
+            }
+
+            // Default to current window.
+            return "_top";
+        }
     }
 
     class EventServices {
