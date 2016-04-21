@@ -7,4 +7,5 @@ import:
 - package: github.com/kardianos/osext
 - package: github.com/google/gopacket
   subpackages:
-  - /pcapgo
+  - pcapgo
+- package: gopkg.in/yaml.v2

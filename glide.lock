@@ -1,24 +1,22 @@
-hash: d32dd9209df847230efe7c305300f6df5e99c5fc668acc8b373724be8b26f7d9
-updated: 2016-02-09T14:06:21.351764094-06:00
+hash: 257da1c0d4429a55e7a54f174aa36daddf67577774ccdb92aaae6e53320f20d1
+updated: 2016-04-21T09:17:53.444875526-06:00
 imports:
-- name: github.com/akavel/rsrc
-  version: ba14da1f827188454a4591717fff29999010887f
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
-- name: github.com/davecgh/go-spew
-  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
-- name: github.com/GeertJohan/go.incremental
-  version: 92fd0ce4a694213e8b3dfd2d39b16e51d26d0fbf
 - name: github.com/GeertJohan/go.rice
   version: 0f3f5fde32fd1f755632a3d31ba2ec6d449e387b
   subpackages:
   - rice
+  - embedded
 - name: github.com/google/gopacket
   version: cdd21628caecd1489c9204a8596414467fd6d629
   subpackages:
-  - /pcapgo
+  - pcapgo
+  - layers
 - name: github.com/jessevdk/go-flags
   version: 97448c91aac742cbca3d020b3e769013a420a06f
 - name: github.com/kardianos/osext
   version: 29ae4ffbc9a6fe9fb2bc5029050ce6996ea1d3bc
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
 devImports: []

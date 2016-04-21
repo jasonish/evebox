@@ -53,7 +53,10 @@ var opts struct {
 	Host             string `long:"host" default:"0.0.0.0" description:"Host to bind to"`
 	DevServerUri     string `long:"dev" description:"Frontend development server URI"`
 	Version          bool   `long:"version" description:"Show version"`
+	Config           string `long:"config" short:"c" description:"Configuration filename"`
 }
+
+var config = &Config{}
 
 type VersionResponse struct {
 	Version  string
@@ -69,6 +72,17 @@ func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	json.NewEncoder(w).Encode(response)
+}
+
+func ConfigHandler(w http.ResponseWriter, r *http.Request) {
+	configJson, err := config.toJSON()
+	if err != nil {
+		// Return failure.
+		log.Println("error: ", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(configJson)
 }
 
 func setupElasticSearchProxy() {
@@ -121,8 +135,25 @@ func main() {
 		os.Exit(0)
 	}
 
+	// If no configuration was provided, see if evebox.yaml exists
+	// in the current directory.
+	if opts.Config == "" {
+		_, err := os.Stat("./evebox.yaml")
+		if err == nil {
+			opts.Config = "./evebox.yaml"
+		}
+	}
+	if opts.Config != "" {
+		log.Printf("Loading configuration file %s.\n", opts.Config)
+		config, err = LoadConfig(opts.Config)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	http.HandleFunc("/eve2pcap", Eve2PcapHandler)
 	http.HandleFunc("/api/version", VersionHandler)
+	http.HandleFunc("/api/config", ConfigHandler)
 	setupElasticSearchProxy()
 	setupStatic()
 
