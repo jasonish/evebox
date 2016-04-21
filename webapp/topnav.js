@@ -33,9 +33,11 @@ import template from "./topnav-template.html";
 
     angular.module("app").factory("TopNavService", TopNavService);
 
-    TopNavService.$inject = ["$rootScope", "$location"];
+    // Config is specified here as a bit of a hack, to force it to be
+    // intitialized before its needed.
+    TopNavService.$inject = ["$rootScope", "$location", "Config"];
 
-    function TopNavService($rootScope, $location) {
+    function TopNavService($rootScope, $location, Config) {
 
         let DEFAULT_TIME_RANGE = "24h";
 

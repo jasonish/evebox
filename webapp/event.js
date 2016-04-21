@@ -34,10 +34,10 @@ import template from "./event-template.html";
     angular.module("app").directive("event", event);
 
     event.$inject = ["$anchorScroll", "$state", "EventRepository", "Keyboard",
-        "StateService", "EveBoxApi"];
+        "StateService", "EveBoxApi", "EventServices"];
 
     function event($anchorScroll, $state, EventRepository, Keyboard,
-                   StateService, EveBoxApi) {
+                   StateService, EveBoxApi, EventServices) {
 
         return {
             restrict: "AE",
@@ -55,6 +55,7 @@ import template from "./event-template.html";
 
             vm.event = StateService.get($state.params.id);
             vm.showBackButton = true;
+            vm.EventServices = EventServices;
 
             if (vm.event != undefined) {
                 console.log("Found event in state.");

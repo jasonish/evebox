@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,34 +24,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import "bootstrap/dist/css/bootstrap.css";
-import "./app.scss";
+class Config {
 
-import "angular/angular.js";
-import "bootstrap";
+    constructor(rawConfig) {
+        this.config = rawConfig;
+    }
 
-import "./app.js";
-import "./event";
-import "./filters";
-import "./elapsed-time";
-import "./StateService";
-import "./topnav";
-import "./event-repository";
-import "./keyboard";
-import "./keyboard-table";
-import "./ace-editor";
-import "./events";
+    getEventServices() {
+        if (this.config) {
+            if (this.config["event-services"]) {
+                return this.config["event-services"];
+            }
+        }
+        return null;
+    }
+}
 
-// Services.
-import "./EveBoxApi";
-import "./ConfigService";
+Config.$inject = ["rawConfig"];
 
-// Event services.
-import "./EventServices";
-
-// Views - even if implemented as a directive.
-import "./alerts";
-import "./help-modal";
-
-// Directive.
-import "./search-link";
+angular.module("app").service("Config", Config);

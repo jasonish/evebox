@@ -29,7 +29,7 @@ import "angular-touch";
 
 import * as appEvents from "./app-events";
 
-angular.module("app", ["ngTouch", "ui.router"]);
+var app = angular.module("app", ["ngTouch", "ui.router"]);
 
 angular.module("app").config(config);
 
@@ -80,7 +80,16 @@ angular.module("app").run(run);
 run.$inject = ["$rootScope"];
 
 function run($rootScope) {
-    $(window).resize(function() {
+    $(window).resize(function () {
         $rootScope.$broadcast(appEvents.WINDOW_RESIZE);
     });
 }
+
+angular.element(document).ready(function () {
+    var initInjector = angular.injector(["ng"]);
+    var $http = initInjector.get("$http");
+    $http.get("/api/config").then(response => {
+        app.constant("rawConfig", response.data);
+        angular.bootstrap(document, ["app"]);
+    });
+});

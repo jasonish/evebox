@@ -22,12 +22,25 @@
   <div class="panel"
        ng-class="vm.event.newest | eventSeverityToBootstrapClass: 'panel-'">
     <div class="panel-heading">
+
             <span ng-if="vm.event.newest._source.event_type == 'alert'">
                 <a href="{{vm.getSessionSearchUrl()}}">  <span
                     class="badge pull-right">
                 {{vm.event.count}}
             </span></a>
                 </span>
+
+
+      <span class="pull-right" ng-if="vm.EventServices.getServicesForEvent(vm.event.newest).length > 0">
+        [
+      <span ng-repeat="service in vm.EventServices.getServicesForEvent(vm.event.newest)">
+        <a href="{{service.getUrl(vm.event.newest)}}">{{service.name}}</a>
+        <span ng-if="!$last">, </span>
+      </span>
+        ]
+        &nbsp;
+      </span>
+
       <b>{{vm.event.newest._source.event_type | uppercase}}:
         {{vm.event.newest |
         formatEventDescription}}</b>
@@ -137,7 +150,8 @@
         <div ng-repeat="(key, val) in vm.source.http">
           <dt>{{key | genericEvePrettyPrinter}}</dt>
           <dd class="break-word">
-            <span search-link field="http.{{key}}" value="{{val}}">{{val}}</span>
+            <span search-link field="http.{{key}}"
+                  value="{{val}}">{{val}}</span>
           </dd>
         </div>
       </dl>
@@ -148,7 +162,8 @@
   <div ng-if="vm.event.newest._source.payload" class="panel panel-default">
     <div class="panel-heading">
       Payload
-      <span class="pull-right"><a href="javascript:void(0);" ng-click="vm.downloadPcap('payload');">pcap</a></span>
+      <span class="pull-right"><a href="javascript:void(0);"
+                                  ng-click="vm.downloadPcap('payload');">pcap</a></span>
     </div>
     <div class="panel-body">
       <div class="row">
@@ -166,7 +181,8 @@
   <div ng-if="vm.event.newest._source.packet" class="panel panel-default">
     <div class="panel-heading">
       Packet
-      <span class="pull-right"><a href="javascript:void(0);" ng-click="vm.downloadPcap('packet');">pcap</a></span>
+      <span class="pull-right"><a href="javascript:void(0);"
+                                  ng-click="vm.downloadPcap('packet');">pcap</a></span>
     </div>
     <div class="panel-body">
       <div class="row">
