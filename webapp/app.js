@@ -88,7 +88,7 @@ function run($rootScope) {
 angular.element(document).ready(function () {
     var initInjector = angular.injector(["ng"]);
     var $http = initInjector.get("$http");
-    $http.get("/api/config").then(response => {
+    $http.get(document.location + "api/config").then(response => {
         app.constant("rawConfig", response.data);
         angular.bootstrap(document, ["app"]);
     });
