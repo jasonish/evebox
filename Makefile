@@ -1,6 +1,6 @@
 # Version info.
 VERSION		:=	0.5.0
-VERSION_SUFFIX	:=	dev
+VERSION_SUFFIX	:=
 BUILD_DATE	:=	$(shell TZ=UTC date)
 BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
@@ -68,10 +68,11 @@ dev-server:
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
+dist: DISTNAME ?= ${APP}-${VERSION}${VERSION_SUFFIX}-${GOOS}-${GOARCH}
 dist:
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o dist/${APP}-${GOOS}-${GOARCH}/${APP}
-	rice -v append --exec dist/${APP}-${GOOS}-${GOARCH}/${APP}
-	cd dist && zip -r ${APP}-${GOOS}-${GOARCH}.zip ${APP}-${GOOS}-${GOARCH}
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o dist/$(DISTNAME)/${APP}
+	rice -v append --exec dist/${DISTNAME}/${APP}
+	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 
 release:
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
@@ -86,7 +87,7 @@ deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
 endif
 deb:
 	fpm -s dir \
-		-C dist/evebox-linux-amd64 \
+		-C dist/evebox-${VERSION}${VERSION_SUFFIX}-linux-amd64 \
 		-t deb \
 		-p dist \
 		-n evebox \
@@ -109,6 +110,6 @@ rpm:
 		-v $(VERSION) \
 		--iteration $(RPM_ITERATION) \
 		--config-files /etc/sysconfig/evebox \
-		dist/evebox-linux-amd64/evebox=/usr/bin/evebox \
+		dist/${APP}-${VERSION}${VERSION_SUFFIX}-linux-amd64/evebox=/usr/bin/evebox \
 		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 		rpm/evebox.service=/lib/systemd/system/evebox.service
