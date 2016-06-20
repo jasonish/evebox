@@ -1,6 +1,6 @@
 # Version info.
-VERSION		:=	0.5.0
-VERSION_SUFFIX	:=
+VERSION		:=	0.5.1
+VERSION_SUFFIX	:=	dev
 BUILD_DATE	:=	$(shell TZ=UTC date)
 BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
