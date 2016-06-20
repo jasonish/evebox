@@ -37,12 +37,25 @@ class EveBoxApi {
     }
 
     downloadPcap(what, event) {
-        let url = this.$window.location.pathname
-            + "eve2pcap?what="
-            + what
-            + "&event="
-            + encodeURIComponent(JSON.stringify(event));
-        this.$window.location = url;
+
+        let form = document.createElement("form");
+        form.setAttribute("method", "post");
+        form.setAttribute("action", "eve2pcap");
+
+        let whatField = document.createElement("input");
+        whatField.setAttribute("type", "hidden");
+        whatField.setAttribute("name", "what");
+        whatField.setAttribute("value", what);
+        form.appendChild(whatField);
+
+        let eventField = document.createElement("input");
+        eventField.setAttribute("type", "hidden");
+        eventField.setAttribute("name", "event");
+        eventField.setAttribute("value", JSON.stringify(event));
+        form.appendChild(eventField);
+
+        document.body.appendChild(form);
+        form.submit();
     }
 
 }

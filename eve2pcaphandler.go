@@ -27,7 +27,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -45,7 +44,9 @@ func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var pcap []byte
 
-	jsonEvent := r.URL.Query().Get("event")
+	r.ParseForm();
+
+	jsonEvent := r.Form["event"][0]
 	if jsonEvent != "" {
 		event, err = NewEveEventFromJson(jsonEvent)
 		if err != nil {
@@ -54,15 +55,12 @@ func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		decoder := json.NewDecoder(r.Body)
-		if err = decoder.Decode(event); err != nil {
-			HttpErrorAndLog(w, r, http.StatusBadRequest,
-				"Failed to decode JSON:", err)
-			return
-		}
+		HttpErrorAndLog(w, r, http.StatusBadRequest,
+		        "Form field \"event\" not provided.");
+		return;
 	}
 
-	what := r.URL.Query().Get("what")
+	what := r.Form["what"][0] // r.URL.Query().Get("what")
 	if what == "" {
 		if len(event.Payload) > 0 {
 			what = "payload"
