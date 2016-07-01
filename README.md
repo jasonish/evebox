@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/jasonish/evebox.svg?branch=master)](https://travis-ci.org/jasonish/evebox)
-[![Download](https://api.bintray.com/packages/jasonish/evebox-zip-dev/evebox/images/download.svg) ](https://bintray.com/jasonish/evebox-zip-dev/evebox/_latestVersion)
+[![Download](https://api.bintray.com/packages/jasonish/evebox-development/evebox/images/download.svg) ](https://bintray.com/jasonish/evebox-development/evebox/_latestVersion#files)
 
 # EveBox
 
@@ -12,7 +12,7 @@ EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
 ## Installation.
 
-### Option 1 - Built In Backend (Recommended)
+### Option 1
 
 Download a package and run the evebox application. This allows you to
 run with a default Elastic Search install without having to enable
@@ -26,7 +26,7 @@ Example:
 Then visit http://localhost:5636 with your browser.
 
 Up to date builds can be found here:
-https://bintray.com/jasonish/evebox-zip-dev/evebox/dev/view#files
+https://bintray.com/jasonish/evebox-development/evebox/_latestVersion#files
 
 This should not require any modification to your Elastic Search
 configuration. Unlike previous versions of Evebox, you do not need to
