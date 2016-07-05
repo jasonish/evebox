@@ -8,16 +8,16 @@ MAINTAINER Jason Ish <ish@unx.ca>
 # around this we attempt the download multiple times.
 RUN cd /tmp && \
     for i in `seq 1 10`; do \
-    	if wget http://dl.bintray.com/jasonish/evebox-development/evebox-linux-amd64.zip; \
+    	if wget http://dl.bintray.com/jasonish/evebox-development/evebox-latest-linux-amd64.zip; \
 	then \
 	     break; \
 	else \
 	     sleep 10; \
 	fi \
     done && \
-    unzip evebox-linux-amd64.zip && \
+    unzip evebox-latest-linux-amd64.zip && \
     mkdir -p /usr/local/bin && \
-    cp -a evebox-linux-amd64/evebox /usr/local/bin/ && \
+    cp -a evebox-*-linux-amd64/evebox /usr/local/bin/ && \
     rm -rf evebox* && \
     /usr/local/bin/evebox --version
 

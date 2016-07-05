@@ -1,0 +1,61 @@
+@import "~font-awesome/css/font-awesome.css";
+
+/* Colour and border style for event tables. */
+$event-table-border-color: #ddd;
+$event-table-border: 1px solid $event-table-border-color;
+
+.evebox-event-table {
+
+  cursor: pointer;
+
+  th {
+    border-top: $event-table-border !important;
+  }
+
+  td:first-child, th:first-child {
+    border-left: $event-table-border !important;
+  }
+
+  td:last-child, th:last-child {
+    border-right: $event-table-border !important;
+  }
+
+  tr:last-child {
+    td {
+      border-bottom: $event-table-border !important;
+    }
+  }
+
+  td {
+    padding-bottom: 0px !important;
+  }
+
+  label {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+}
+
+.evebox-opacity-50 {
+  opacity: 0.5;
+}
+
+.evebox-loading-spinner {
+  z-index: 100;
+  font-size: 300px;
+  position: absolute;
+  left: 50%;
+  margin-left: -150px;
+  opacity: 0.8;
+}
+
+.evebox-help-table-shortcut {
+  font-family: monospace;
+}
+
+.evebox-help-table {
+  td:nth-child(1) {
+    text-align: right;
+  }
+}

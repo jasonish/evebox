@@ -23,3 +23,38 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {Pipe, PipeTransform} from "@angular/core";
+
+@Pipe({
+    name: "eventSeverityToBootstrapClass"
+})
+export class EventSeverityToBootstrapClass implements PipeTransform {
+
+    transform(event:any, prefix?:string, defaultClass?:string) {
+
+        prefix = prefix || "";
+        let className = "default";
+
+        if (defaultClass) {
+            className = defaultClass;
+        }
+
+        if (event._source.event_type == "alert") {
+            switch (event._source.alert.severity) {
+                case 1:
+                    className = "danger";
+                    break;
+                case 2:
+                    className = "warning";
+                    break;
+                case 3:
+                    className = "info";
+                    break;
+            }
+        }
+
+        return `${prefix}${className}`;
+    }
+
+}

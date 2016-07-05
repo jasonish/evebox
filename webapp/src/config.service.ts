@@ -23,3 +23,39 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {Injectable, EventEmitter} from "@angular/core";
+import {Http, Response} from "@angular/http";
+
+@Injectable()
+export class ConfigService {
+
+    private config:any;
+
+    private eventEmitter:EventEmitter<any> = new EventEmitter<any>();
+
+    constructor(private http:Http) {
+        let url = window.location.pathname + "api/config";
+
+        this.http.get(url)
+            .map((response:Response) => response.json())
+            .toPromise()
+            .then(response => {
+                this.config = response;
+                this.eventEmitter.emit(this.config);
+            });
+    }
+
+    subscribe(handler:any) {
+        return this.eventEmitter.subscribe(handler);
+    }
+
+    getEventServices() {
+        if (this.config) {
+            if (this.config["event-services"]) {
+                return this.config["event-services"];
+            }
+        }
+    }
+
+}

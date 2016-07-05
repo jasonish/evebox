@@ -1,18 +1,15 @@
 # Version info.
-VERSION		:=	0.5.1
+VERSION		:=	0.6.0
 VERSION_SUFFIX	:=	dev
 BUILD_DATE	:=	$(shell TZ=UTC date)
 BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 
-GOHOSTARCH :=	$(shell go env GOHOSTARCH)
-GOHOSTOS :=	$(shell go env GOHOSTOS)
-
 export GO15VENDOREXPERIMENT=1
 
 LDFLAGS :=	-X \"main.buildDate=$(BUILD_DATE)\" \
 		-X \"main.buildRev=$(BUILD_REV)\" \
-		-X \"main.buildVersion=$(VERSION)$(VERSION_SUFFIX)\"
+		-X \"main.buildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
 
 APP :=		evebox
 
@@ -25,7 +22,7 @@ all: public evebox
 
 install-deps:
 # NPM
-	npm install
+	$(MAKE) -C webapp $@
 # Go
 	go get github.com/Masterminds/glide
 	go get github.com/GeertJohan/go.rice/rice
@@ -35,20 +32,23 @@ install-deps:
 clean:
 	rm -rf dist
 	rm -f evebox
+	rm -f public/*.js
 	find . -name \*~ -exec rm -f {} \;
 
 distclean: clean
 	rm -rf node_modules vendor
 
-.PHONY: public dist rpm
+.PHONY: public dist rpm deb
 
 # Build the webapp bundle.
 public/bundle.js: $(WEBAPP_SRCS)
-	$(WEBPACK) --optimize-minimize
+# Don't optimize for now, breaks some templates.
+	cd webapp && $(WEBPACK) # --optimize-minimize
 public: public/bundle.js
 
+# Build's EveBox for the host platform.
 evebox: $(GO_SRCS)
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)"
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o ${APP}
 
 with-docker:
 	docker build --rm -t evebox/builder - < Dockerfile
@@ -57,25 +57,28 @@ with-docker:
 		-w /go/src/evebox \
 		evebox/builder make install-deps all
 
-dev-server:
+dev-server: evebox
 	@if [ "${EVEBOX_ELASTICSEARCH_URL}" = "" ]; then \
 		echo "error: EVEBOX_ELASTICSEARCH_URL not set."; \
 		exit 1; \
 	fi
-	./node_modules/.bin/concurrent -k \
-		"npm run server" \
-		"gin --appPort 5636 -i -b evebox ./evebox -e ${EVEBOX_ELASTICSEARCH_URL} --dev http://localhost:8080"
+	./webapp/node_modules/.bin/concurrently -k \
+		"make -C webapp start" \
+		"./evebox -e ${EVEBOX_ELASTICSEARCH_URL} --dev http://localhost:8080"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
 dist: DISTNAME ?= ${APP}-${VERSION}${VERSION_SUFFIX}-${GOOS}-${GOARCH}
-dist:
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o dist/$(DISTNAME)/${APP}
+dist: LDFLAGS += -s -w
+dist: public/bundle.js
+	GOARCH=$(GOARCH) GOOS=$(GOOS) CGO_ENABLED=0 \
+		go build -ldflags "$(LDFLAGS)" -o dist/$(DISTNAME)/${APP}
 	rice -v append --exec dist/${DISTNAME}/${APP}
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 
 release:
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
+	GOOS=linux GOARCH=386 $(MAKE) dist
 	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
 	GOOS=windows GOARCH=amd64 $(MAKE) dist
@@ -87,14 +90,28 @@ deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
 endif
 deb:
 	fpm -s dir \
-		-C dist/evebox-${VERSION}${VERSION_SUFFIX}-linux-amd64 \
 		-t deb \
 		-p dist \
 		-n evebox \
 		--epoch $(EPOCH) \
 		-v $(VERSION)$(TILDE) \
-		--prefix /usr/bin \
-		evebox
+		--after-upgrade=deb/after-upgrade.sh \
+		dist/${APP}-${VERSION}${VERSION_SUFFIX}-linux-amd64/evebox=/usr/bin/evebox \
+		deb/evebox.default=/etc/default/evebox \
+		deb/evebox.service=/lib/systemd/system/evebox.service
+
+	fpm -s dir \
+		-t deb \
+		-p dist \
+		-n evebox \
+		--epoch $(EPOCH) \
+		-v $(VERSION)$(TILDE) \
+		--after-upgrade=deb/after-upgrade.sh \
+		-a i386 \
+		dist/${APP}-${VERSION}${VERSION_SUFFIX}-linux-386/evebox=/usr/bin/evebox \
+		deb/evebox.default=/etc/default/evebox \
+		deb/evebox.service=/lib/systemd/system/evebox.service
+
 
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
@@ -108,6 +125,7 @@ rpm:
 		-p dist \
 		-n evebox \
 		-v $(VERSION) \
+		--after-upgrade=rpm/after-upgrade.sh \
 		--iteration $(RPM_ITERATION) \
 		--config-files /etc/sysconfig/evebox \
 		dist/${APP}-${VERSION}${VERSION_SUFFIX}-linux-amd64/evebox=/usr/bin/evebox \

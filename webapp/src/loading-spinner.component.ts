@@ -23,3 +23,19 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {Component, Input} from "@angular/core";
+
+@Component({
+    selector: "loading-spinner",
+    template: `<div *ngIf="loading" class="row">
+  <div class="col-md-12">
+    <i class="fa fa-spinner fa-pulse evebox-loading-spinner"></i>
+  </div>
+</div>`
+})
+export class EveboxLoadingSpinnerComponent {
+
+    @Input("loading") private loading:boolean = false;
+
+}

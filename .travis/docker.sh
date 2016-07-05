@@ -16,14 +16,18 @@ if [ "${TRAVIS_REPO_SLUG}" != "${DEPLOY_REPO}" ]; then
     exit 0
 fi
 
-if [ "${TRAVIS_BRANCH}" != "${DEPLOY_BRANCH}" ]; then
-    echo "docker: not deploying for branch ${TRAVIS_BRANCH}."
-    exit 0
+if [ "${TRAVIS_BRANCH}" = "master" ]; then
+    echo "Trigger Docker build for latest."
+    curl -H "Content-Type: application/json" \
+	 --data '{"build": true, "docker_tag": "latest"}' \
+	 -X POST ${DOCKER_TRIGGER_URL}/${DOCKER_TRIGGER_TOKEN}/
+fi
+
+if [ "${TRAVIS_BRANCH}" = "develop" ]; then
+    echo "Trigger Docker build for develop."
+    curl -H "Content-Type: application/json" \
+	 --data '{"build": true, "docker_tag": "develop"}' \
+	 -X POST ${DOCKER_TRIGGER_URL}/${DOCKER_TRIGGER_TOKEN}/
 fi
 
 touch _docker_done
-
-echo "Triggering build on Docker hub."
-curl -H "Content-Type: application/json" \
-     --data '{"build": true}' \
-     -X POST ${DOCKER_TRIGGER_URL}/${DOCKER_TRIGGER_TOKEN}/

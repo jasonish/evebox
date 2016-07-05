@@ -1,0 +1,29 @@
+# Event services: links that will be provided on events to link to additonal
+# services.
+event-services:
+
+  # Custom service to link the rule in Scirius.
+  - type: custom
+    enabled: true
+    name: Scirius
+
+    # Only make available for alert types.
+    event-types:
+      - alert
+
+    # URL template. All eve values can be used.
+    url: https://10.16.1.179/rules/rule/{{alert.signature_id}}
+
+  # Custom service to link to Dumpy for full packet capture.
+  #
+  # This one has no event-types meaning its available for all event types.
+  - type: custom
+    enabled: true
+    name: Dumpy
+
+    # The URL template, {{raw}} expands to the raw eve event as a JSON
+    # string which is then url encoded.
+    url: http://10.16.1.1:7000/?event={{raw}}
+
+    # Open in new window. The default is the same window.
+    target: new

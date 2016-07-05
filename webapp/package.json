@@ -1,0 +1,51 @@
+{
+  "name": "evebox-frontend",
+  "version": "0.0.1",
+  "description": "",
+  "author": "Jason Ish",
+  "license": "BSD",
+  "private": true,
+  "scripts": {
+    "start": "RUN_MODE=development ./node_modules/.bin/webpack-dev-server --inline --progress --port 8080 --content-base ../public"
+  },
+  "dependencies": {
+    "@angular/common": "2.0.0-rc.4",
+    "@angular/compiler": "2.0.0-rc.4",
+    "@angular/core": "2.0.0-rc.4",
+    "@angular/forms": "0.2.0",
+    "@angular/http": "2.0.0-rc.4",
+    "@angular/platform-browser": "2.0.0-rc.4",
+    "@angular/platform-browser-dynamic": "2.0.0-rc.4",
+    "@angular/router": "3.0.0-beta.2",
+    "@angular/upgrade": "2.0.0-rc.4",
+    "bootstrap": "^3.3.6",
+    "bootstrap-sass": "^3.3.6",
+    "brace": "^0.8.0",
+    "codemirror": "^5.15.2",
+    "core-js": "^2.4.0",
+    "font-awesome": "^4.6.3",
+    "jquery": "^2.2.4",
+    "moment": "^2.13.0",
+    "mousetrap": "^1.6.0",
+    "queue": "^4.0.0",
+    "reflect-metadata": "^0.1.3",
+    "rxjs": "5.0.0-beta.6",
+    "zone.js": "^0.6.12"
+  },
+  "devDependencies": {
+    "concurrently": "^2.1.0",
+    "css-loader": "^0.23.1",
+    "file-loader": "^0.8.5",
+    "html-loader": "^0.4.3",
+    "node-sass": "^3.7.0",
+    "raw-loader": "^0.5.1",
+    "sass-loader": "^3.2.0",
+    "style-loader": "^0.13.1",
+    "ts-loader": "^0.8.2",
+    "typescript": "^1.8.10",
+    "typings": "^1.0.4",
+    "url-loader": "^0.5.7",
+    "webpack": "^1.13.1",
+    "webpack-dev-server": "^1.14.1"
+  }
+}

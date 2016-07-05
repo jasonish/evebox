@@ -1,7 +1,7 @@
 *~
 *.iml
 /.idea
-/node_modules
 /vendor
 /public/bundle.js
+/public/bundle.js.map
 /evebox

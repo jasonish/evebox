@@ -23,3 +23,24 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {Injectable} from "@angular/core";
+import {AlertGroup} from "./elasticsearch.service";
+
+/**
+ * Service to support EventComponent.
+ */
+@Injectable()
+export class EventService {
+
+    private alertGroup:AlertGroup[] = [];
+
+    pushAlertGroup(alertGroup:AlertGroup) {
+        this.alertGroup.unshift(alertGroup);
+    }
+
+    popAlertGroup():AlertGroup {
+        return this.alertGroup.shift();
+    }
+
+}

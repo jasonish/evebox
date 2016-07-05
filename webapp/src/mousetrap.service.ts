@@ -23,3 +23,54 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {Injectable, NgZone} from "@angular/core";
+
+var mousetrap = require("mousetrap/mousetrap");
+
+@Injectable()
+export class MousetrapService {
+
+    private bindings:any[] = [];
+
+    constructor(private ngZone:NgZone) {
+    }
+
+    bind(component:any, key:string, handler:any) {
+        mousetrap.bind(key, (e:any) => {
+            this.ngZone.run(() => {
+                e.preventDefault();
+                handler();
+            });
+        });
+        this.bindings.push({
+            component: component,
+            key: key,
+            handler: handler
+        });
+
+        this.rebind();
+    }
+
+    rebind() {
+        this.bindings.forEach((binding) => {
+            mousetrap.bind(binding.key, (e:any) => {
+                this.ngZone.run(() => {
+                    e.preventDefault();
+                    binding.handler();
+                })
+            })
+        })
+    }
+
+    unbind(component:any) {
+        this.bindings.forEach(binding => {
+            if (binding.component == component) {
+                mousetrap.unbind(binding.key);
+            }
+        });
+        this.bindings = this.bindings.filter(binding => {
+            return binding.component != component;
+        })
+    }
+}

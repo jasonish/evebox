@@ -23,3 +23,36 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {Component, OnInit} from "@angular/core";
+import {ROUTER_DIRECTIVES, Router} from "@angular/router";
+import {TopNavComponent} from "./topnav.component";
+import {EveboxHelpComponent} from "./help.component";
+import {AppService} from "./app.service";
+
+@Component({
+    selector: "evebox-app",
+    template: `
+<evebox-help></evebox-help>
+<evebox-top-nav></evebox-top-nav>
+<div class="container-fluid">
+<router-outlet></router-outlet>
+</div>
+`,
+    directives: [
+        TopNavComponent,
+        EveboxHelpComponent,
+        ROUTER_DIRECTIVES
+    ]
+})
+export class AppComponent implements OnInit {
+
+    constructor(private router:Router,
+                private appService:AppService) {
+    }
+
+    ngOnInit() {
+
+    }
+
+}

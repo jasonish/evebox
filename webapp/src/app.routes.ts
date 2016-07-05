@@ -23,3 +23,39 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {RouterConfig, provideRouter} from "@angular/router";
+import {EventsComponent} from "./events.component";
+import {EventComponent} from "./event.component";
+import {AlertsComponent} from "./alerts.component";
+
+export const routes:RouterConfig = [
+    {
+        path: "inbox", component: AlertsComponent, pathMatch: "prefix",
+    }
+    ,
+    {
+        path: "escalated", component: AlertsComponent, pathMatch: "prefix",
+    }
+    ,
+    {
+        path: "alerts", component: AlertsComponent, pathMatch: "prefix",
+    }
+    ,
+    {
+        path: "event/:id", component: EventComponent, pathMatch: "prefix",
+    }
+    ,
+    {
+        path: "events", component: EventsComponent, pathMatch: "prefix",
+    }
+    ,
+    // Let the inbox by the default route.
+    {
+        path: "", redirectTo: "inbox", pathMatch: "prefix"
+    }
+];
+
+export const APP_ROUTER_PROVIDERS = [
+    provideRouter(routes)
+];

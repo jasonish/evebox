@@ -1,0 +1,9 @@
+[Unit]
+Description=EveBox
+
+[Service]
+ExecStart=/usr/bin/evebox $ELASTICSEARCH_URL $CONFIG
+EnvironmentFile=-/etc/default/evebox
+
+[Install]
+WantedBy=multi-user.target

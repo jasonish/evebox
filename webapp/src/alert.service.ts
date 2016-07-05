@@ -23,3 +23,46 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {Injectable} from "@angular/core";
+import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
+
+import moment = require("moment");
+
+/**
+ * A service to support the the alert views: inbox, escalated and alerts.
+ *
+ * Primary to hold common code among those components.
+ */
+@Injectable()
+export class AlertService {
+
+    private state:any;
+
+    constructor(private elasticSearchService:ElasticSearchService) {
+    }
+
+    pushState(state:any) {
+        this.state = state;
+    }
+
+    popState() {
+        let state = this.state;
+        this.state = undefined;
+        return state;
+    }
+
+    fetchAlerts(options?:any) {
+        return this.elasticSearchService.getAlerts(options)
+            .then((response:AlertGroup[]) => {
+                return response.map((alert:AlertGroup) => {
+                    return {
+                        event: alert,
+                        selected: false,
+                        date: moment(alert.newestTs).toDate()
+                    }
+                })
+            })
+    }
+
+}

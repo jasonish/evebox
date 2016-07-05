@@ -23,3 +23,18 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+import {Pipe, PipeTransform} from "@angular/core";
+
+@Pipe({
+    name: "json"
+})
+export class JsonPipe implements PipeTransform {
+
+    transform(object:any) {
+
+        return JSON.stringify(object);
+
+    }
+
+}

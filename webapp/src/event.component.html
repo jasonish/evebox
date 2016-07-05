@@ -1,0 +1,218 @@
+<div *ngIf="event._source">
+
+  <div class="row">
+    <div class="col-md-12">
+      <button type="button" class="btn btn-default" (click)="goBack()">Back
+      </button>
+      <button type="button" class="btn btn-default"
+              *ngIf="showArchiveButton()"
+              (click)="archiveEvent()">Archive
+      </button>
+      <button type="button" class="btn btn-default">Escalate</button>
+    </div>
+  </div>
+
+  <br/>
+
+  <div
+      class="panel {{event | eventSeverityToBootstrapClass:'panel-':'success'}}">
+    <div class="panel-heading">
+      <b>{{event._source.event_type | uppercase}}: <span [innerHTML]="event |
+        eveboxEventDescriptionPrinter"></span></b>
+      <span class="pull-right" *ngIf="alertGroup">
+        &nbsp;<a href="javascript:void(0)" (click)="sessionSearch()"><span
+          class="badge">{{alertGroup.count}}</span></a>
+      </span>
+      <span class="pull-right"
+            *ngIf="eventServices.getServicesForEvent(event).length > 0">
+        [
+        <span
+            *ngFor="let service of eventServices.getServicesForEvent(event); let last = last">
+          <a href="{{service.getUrl(event)}}" target="{{service.getTarget()}}">{{service.name}}</a>
+          <span *ngIf="!last"> | </span>
+        </span>
+        ]
+      </span>
+    </div>
+    <div class="panel-body">
+
+      <div class="row">
+        <div class="col-md-5">
+          <dl class="dl-horizontal">
+            <dt>Timestamp</dt>
+            <dd>
+              <search-link field="timestamp"
+                           value="{{event._source.timestamp}}">
+                {{event._source.timestamp}}
+              </search-link>
+            </dd>
+            <dt>Protocol</dt>
+            <dd>{{event._source.proto}}</dd>
+            <dt>Source</dt>
+            <dd>
+              <search-link field="src_ip"
+                           value="{{event._source.src_ip}}"></search-link><span
+                *ngIf="event._source.src_port"
+                style="color: dimgray">:{{event._source.src_port}}
+            </span>
+            </dd>
+            <dt>Destination</dt>
+            <dd>
+              <search-link field="dest_ip" value="{{event._source.dest_ip}}">
+                {{event._source.dest_ip}}
+              </search-link><span
+                *ngIf="event._source.dest_port"
+                style="color: dimgray">:{{event._source.dest_port}}
+            </span>
+            </dd>
+
+            <div *ngIf="event._source.in_iface">
+              <dt>In Interface</dt>
+              <dd>{{event._source.in_iface}}</dd>
+            </div>
+            <div *ngIf="event._source.flow_id">
+              <dt>Flow ID</dt>
+              <dd>
+                <search-link field="flow_id" value="{{event._source.flow_id}}">
+                  {{event._source.flow_id}}
+                </search-link>
+              </dd>
+            </div>
+
+          </dl>
+        </div>
+
+        <div class="col-md-7">
+
+          <div [ngSwitch]="event._source.event_type">
+
+            <!-- Alert. -->
+            <div *ngSwitchCase="'alert'">
+              <dl class="dl-horizontal">
+                <dt>Signature</dt>
+                <dd>
+                  <search-link field="alert.signature"
+                               value="{{event._source.alert.signature}}"></search-link>
+                </dd>
+                <dt>Category</dt>
+                <dd>
+                  <search-link field="alert.category"
+                               value="{{event._source.alert.category}}"></search-link>
+                </dd>
+                <dt>Signature ID</dt>
+                <dd>
+                  {{event._source.alert.gid}}:<search-link
+                      field="alert.signature_id"
+                      value="{{event._source.alert.signature_id}}"></search-link>:{{event._source.alert.rev}}
+                </dd>
+                <dt>Severity</dt>
+                <dd>{{event._source.alert.severity}}
+                </dd>
+              </dl>
+            </div>
+
+            <!-- DNS. -->
+            <div *ngSwitchCase="'dns'">
+              <dl class="dl-horizontal">
+                <dt>Type</dt>
+                <dd>{{event._source.dns.type}}</dd>
+                <dt>ID</dt>
+                <dd>{{event._source.dns.id}}</dd>
+                <dt>RCode</dt>
+                <dd>{{event._source.dns.rcode}}</dd>
+                <dt>RRName</dt>
+                <dd>{{event._source.dns.rrname}}</dd>
+                <dt>RRType</dt>
+                <dd>{{event._source.dns.rrtype}}</dd>
+                <dt>RData</dt>
+                <dd>{{event._source.dns.rdata}}</dd>
+              </dl>
+            </div>
+
+            <div *ngSwitchDefault>
+              <dl class="dl-horizontal">
+                <div
+                    *ngFor="let item of event._source[event._source.event_type] | mapToItems">
+                  <dt>{{item.key}}</dt>
+                  <dd>{{item.val}}</dd>
+                </div>
+              </dl>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+  <!-- HTTP. -->
+  <div *ngIf="event._source.http" class="panel panel-default">
+    <div class="panel-heading">
+      HTTP
+    </div>
+    <div class="panel-body">
+      <dl class="dl-horizontal">
+        <div *ngFor="let item of event._source.http | mapToItems">
+          <dt>{{item.key | genericPrettyPrinter}}</dt>
+          <dd>
+            <search-link value="{{item.val}}"></search-link>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  <!-- Payload -->
+  <div *ngIf="event._source.payload" class="panel panel-default">
+    <div class="panel-heading">
+      Payload
+      <span class="pull-right"><a href="javascript:void(0);"
+                                  (click)="eventToPcap('payload');">pcap</a></span>
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-6">
+          <pre>{{event._source.payload | eveboxBase64Decode}}</pre>
+        </div>
+        <div class="col-md-6">
+          <pre>{{event._source.payload | eveboxBase64Decode | hex}}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Packet -->
+  <div *ngIf="event._source.packet" class="panel panel-default">
+    <div class="panel-heading">
+      Packet
+      <span class="pull-right"><a href="javascript:void(0);"
+                                  (click)="eventToPcap('packet');">pcap</a></span>
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-6">
+          <pre>{{event._source.packet | eveboxBase64Decode}}</pre>
+        </div>
+        <div class="col-md-6">
+          <pre>{{event._source.packet| eveboxBase64Decode | hex}}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JSON -->
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      JSON
+    </div>
+    <div class="panel-body" style="padding: 0px;">
+      <ace-editor value="{{event | json }}" mode="json"></ace-editor>
+    </div>
+  </div>
+
+</div>
