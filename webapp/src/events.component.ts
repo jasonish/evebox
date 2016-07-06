@@ -34,6 +34,8 @@ import {
 import {MousetrapService} from "./mousetrap.service";
 import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
 import {AppService} from "./app.service";
+import {ToastrService} from "./toastr.service";
+import {Subscription} from "rxjs/Rx";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading}">
@@ -46,6 +48,9 @@ import {AppService} from "./app.service";
                    placeholder="Filter..." [(ngModel)]="queryString"/>
             <div class="input-group-btn">
               <button type="submit" class="btn btn-default">Search</button>
+              <button type="button" class="btn btn-default"
+                      (click)="clearFilter()">Clear
+              </button>
             </div>
           </div>
         </form>
@@ -58,25 +63,33 @@ import {AppService} from "./app.service";
       <button type="button" class="btn btn-default" (click)="refresh()">Refresh
       </button>
 
-      <div class="pull-right">
-        <button type="button" class="btn btn-default" (click)="gotoNewest()">Newest</button>
-        <button type="button" class="btn btn-default" (click)="gotoNewer()">Newer</button>
-        <button type="button" class="btn btn-default" (click)="gotoOlder()">Older</button>
+      <div *ngIf="hasEvents()" class="pull-right">
+        <button type="button" class="btn btn-default" (click)="gotoNewest()">
+          Newest
+        </button>
+        <button type="button" class="btn btn-default" (click)="gotoNewer()">
+          Newer
+        </button>
+        <button type="button" class="btn btn-default" (click)="gotoOlder()">
+          Older
+        </button>
       </div>
 
     </div>
   </div>
 
-  <br/>
-
   <loading-spinner [loading]="loading"></loading-spinner>
 
-  <div class="row">
-    <div class="col-md-12">
-      <eveboxEventTable
-          [config]="eveboxEventTableConfig"></eveboxEventTable>
-    </div>
+  <div *ngIf="!loading && !hasEvents()" style="text-align: center;">
+    <hr/>
+    No events found.
+    <hr/>
   </div>
+
+  <br/>
+
+  <eveboxEventTable
+      [config]="eveboxEventTableConfig"></eveboxEventTable>
 </div>
 `,
     directives: [
@@ -97,12 +110,13 @@ export class EventsComponent implements OnInit, OnDestroy {
         rows: []
     };
 
-    private routerSub:any;
+    private routerSub:Subscription;
 
     constructor(private router:Router,
                 private elasticsearch:ElasticSearchService,
                 private mousetrap:MousetrapService,
-                private appService:AppService) {
+                private appService:AppService,
+                private toastr:ToastrService) {
     }
 
     ngOnInit():any {
@@ -125,6 +139,7 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         this.mousetrap.unbind(this);
+        console.log("Unsubscribing from router events.");
         this.routerSub.unsubscribe();
     }
 
@@ -133,8 +148,14 @@ export class EventsComponent implements OnInit, OnDestroy {
     }
 
     submitFilter() {
+        document.getElementById("filter-input").blur();
         this.appService.updateQueryParameters({q: this.queryString});
         this.refresh();
+    }
+
+    clearFilter() {
+        this.queryString = "";
+        this.submitFilter();
     }
 
     gotoNewest() {
@@ -161,12 +182,19 @@ export class EventsComponent implements OnInit, OnDestroy {
         this.refresh();
     }
 
+    hasEvents() {
+        return this.resultSet && this.resultSet.events.length > 0;
+    }
+
     refresh() {
 
-        // May be triggered from the filter input, blur the focus.
-        document.getElementById("filter-input").blur();
+        // Prevent double loading.
+        if (this.loading) {
+            return;
+        }
 
         this.loading = true;
+
         this.elasticsearch.findEvents({
             queryString: this.queryString,
             timeEnd: this.router.routerState.snapshot.queryParams["timeEnd"],
@@ -176,8 +204,26 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.eveboxEventTableConfig.rows = resultSet.events.map((event:any) => {
                 return event;
             });
+        }, (error:any) => {
+
+            console.log("Error fetching alerts:");
+            console.log(error);
+
+            // Check for a reason.
+            try {
+                this.toastr.error(error.error.root_cause[0].reason);
+            }
+            catch (err) {
+                this.toastr.error("An error occurred while executing query.");
+            }
+
+            this.resultSet = undefined;
+            this.eveboxEventTableConfig.rows = [];
+
+        }).then(() => {
             this.loading = false;
-        })
+        });
+
     }
 
 }

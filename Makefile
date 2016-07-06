@@ -15,7 +15,7 @@ APP :=		evebox
 
 WEBPACK :=	./node_modules/.bin/webpack
 
-WEBAPP_SRCS :=	$(shell find webapp -type f)
+WEBAPP_SRCS :=	$(shell find webapp/src -type f)
 GO_SRCS :=	$(shell find . -name \*.go)
 
 all: public evebox

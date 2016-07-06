@@ -33,6 +33,7 @@ import {Router} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {AppService, AppEvent, AppEventCode} from "./app.service";
 import {EventService} from "./event.service";
+import {ToastrService} from "./toastr.service";
 
 const TEMPLATE:string = `<div [ngClass]="{'evebox-opacity-50': loading}">
 
@@ -74,6 +75,7 @@ const TEMPLATE:string = `<div [ngClass]="{'evebox-opacity-50': loading}">
           <div class="input-group-btn">
             <button class="btn btn-default" type="submit">Apply
             </button>
+            <button type="button" class="btn btn-default" (click)="clearFilter()">Clear</button>
           </div>
         </div>
       </form>
@@ -115,13 +117,15 @@ export class AlertsComponent implements OnInit, OnDestroy {
     private loading:boolean = false;
     private filters:any[] = [];
     private dispatcherSubscription:any;
+    private routerSubscription:any;
 
     constructor(private alertService:AlertService,
                 private elasticSearchService:ElasticSearchService,
                 private router:Router,
                 private mousetrap:MousetrapService,
                 private appService:AppService,
-                private eventService:EventService) {
+                private eventService:EventService,
+                private toastr:ToastrService) {
     }
 
     buildState():any {
@@ -147,13 +151,14 @@ export class AlertsComponent implements OnInit, OnDestroy {
         }
 
         // Listen for changes in the route.
-        this.router.routerState.queryParams.subscribe((params:any) => {
+        this.routerSubscription = this.router.routerState.queryParams.subscribe((params:any) => {
 
             this.queryString = params.q || "";
 
             if (!this.restoreState()) {
                 this.refresh();
             }
+
         });
 
         this.mousetrap.bind(this, "/", () => this.focusFilterInput());
@@ -175,6 +180,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     ngOnDestroy():any {
         this.mousetrap.unbind(this);
+        this.routerSubscription.unsubscribe();
     }
 
     toggleSelectedState(row:any) {
@@ -182,6 +188,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     restoreState():boolean {
+
         let state = this.alertService.popState();
         if (!state) {
             return false;
@@ -344,6 +351,11 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.openEvent(row.event);
     }
 
+    clearFilter() {
+        this.queryString = "";
+        this.submitFilter();
+    }
+
     toggleEscalatedState(row:any, event?:any) {
 
         if (event) {
@@ -354,8 +366,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         if (alertGroup.escalatedCount < alertGroup.count) {
 
-            console.log("Escalating alert group.");
-
             // Optimistically mark as all escalated.
             alertGroup.escalatedCount = alertGroup.count;
 
@@ -364,34 +374,45 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         else if (alertGroup.escalatedCount == alertGroup.count) {
 
-            console.log("De-escalating alert group.");
-
             // Optimistically mark all as de-escalated.
             alertGroup.escalatedCount = 0;
 
-            this.elasticSearchService.removeEscalatedStateFromAlertGroup(alertGroup)
-                .then((response:any) => {
-                    console.log("Done.");
-                    console.log(response);
-                })
+            this.elasticSearchService.removeEscalatedStateFromAlertGroup(alertGroup);
         }
     }
 
     refresh() {
+
         // Prevent double loading.
         if (this.loading) {
             return;
         }
 
         this.loading = true;
+
         this.alertService.fetchAlerts({
             queryString: this.queryString,
             filters: this.filters
         }).then((rows:any) => {
             this.rows = rows;
+        }, (error:any) => {
+
+            console.log("Error fetching alerts:");
+            console.log(error);
+
+            // Check for a reason.
+            try {
+                this.toastr.error(error.error.root_cause[0].reason);
+            }
+            catch (err) {
+                this.toastr.error("An error occurred while executing query.");
+            }
+
+            this.rows = [];
+
         }).then(() => {
             this.loading = false;
-        })
+        });
     }
 
 }

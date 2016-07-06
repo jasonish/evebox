@@ -72,8 +72,13 @@ export class ElasticSearchService {
     search(query:any):Promise<any> {
         return this.http.post(`${this.url}/${this.index}/_search`, JSON.stringify(query))
             .toPromise()
-            .then(response => response.json());
+            .then(
+                (response:any) => response.json(),
+                (error:any) => {
+                    throw error.json()
+                });
     }
+
 
     bulk(commands:any[]):Promise<any> {
         let request = commands.map(command => {
@@ -103,7 +108,7 @@ export class ElasticSearchService {
         return p;
     }
 
-    getAlertsInAlertGroup(alertGroup:AlertGroup, options?:any) {
+    getAlertsInAlertGroup(alertGroup:AlertGroup, options ?:any) {
 
         // Make sure options is at least an empty object.
         options = options || {};
@@ -201,7 +206,7 @@ export class ElasticSearchService {
         return this.bulk(bulkUpdates);
     }
 
-    escalateAlertGroup(alertGroup:AlertGroup):Promise<string> {
+    escalateAlertGroup(alertGroup:AlertGroup):Promise < string > {
 
         return this.submit(() => {
             return this._escalateAlertGroup(alertGroup);
@@ -234,7 +239,7 @@ export class ElasticSearchService {
 
     }
 
-    removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise<string> {
+    removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise < string > {
 
         return this.submit(() => {
             return this._removeEscalatedStateFromAlertGroup(alertGroup);
@@ -242,7 +247,7 @@ export class ElasticSearchService {
 
     }
 
-    _removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise<string> {
+    _removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise < string > {
 
         return new Promise<string>((resolve, reject) => {
 
@@ -363,7 +368,7 @@ export class ElasticSearchService {
     /**
      * Find events - all events, not just alerts.
      */
-    findEvents(options:any = {}):Promise<ResultSet> {
+    findEvents(options:any = {}):Promise < ResultSet > {
 
         let query:any = {
             query: {
@@ -438,7 +443,7 @@ export class ElasticSearchService {
         });
     }
 
-    getAlerts(options?:any):Promise<AlertGroup[]> {
+    getAlerts(options ?:any):Promise < AlertGroup[] > {
 
         options = options || {};
 
@@ -575,6 +580,6 @@ export class ElasticSearchService {
 
         }
 
-        return this.search(query).then(response => unwrapResponse(response));
+        return this.search(query).then((response:any) => unwrapResponse(response));
     }
 }

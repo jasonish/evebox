@@ -69,6 +69,7 @@ import {AppService} from "./app.service";
 import {ApiService} from "./api.service";
 import {EventServices} from "./eventservices.service";
 import {EventService} from "./event.service";
+import {ToastrService} from "./toastr.service";
 
 let EVEBOX_SERVICES = [
     ConfigService,
@@ -79,7 +80,8 @@ let EVEBOX_SERVICES = [
     AppService,
     ApiService,
     EventServices,
-    EventService
+    EventService,
+    ToastrService
 ];
 
 // Routes.

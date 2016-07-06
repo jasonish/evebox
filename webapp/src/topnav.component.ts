@@ -50,13 +50,13 @@ import {AppService, AppEventCode} from "./app.service";
     <div class="collapse navbar-collapse">
       <ul class="nav navbar-nav">
         <li [ngClass]="{active: isActive('/inbox')}"><a
-            [routerLink]="['/inbox']">Inbox</a></li>
+            href="#/inbox">Inbox</a></li>
         <li [ngClass]="{active: isActive('/escalated')}"><a
-            [routerLink]="['/escalated']">Escalated</a></li>
+            href="#/escalated">Escalated</a></li>
         <li [ngClass]="{active: isActive('/alerts')}"><a
-            [routerLink]="['/alerts']">Alerts</a></li>
+            href="#/alerts">Alerts</a></li>
         <li [ngClass]="{active: isActive('/events')}"><a
-            [routerLink]="['/events']">Events</a></li>
+            href="#/events">Events</a></li>
       </ul>
 
 
