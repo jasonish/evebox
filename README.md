@@ -12,12 +12,7 @@ EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
 ## Installation.
 
-### Option 1
-
-Download a package and run the evebox application. This allows you to
-run with a default Elastic Search install without having to enable
-CORS. It also doesn't require setting up a web server to server Evebox
-like previously required.
+Download a package and run the evebox application.
 
 Example:
 
@@ -32,11 +27,15 @@ This should not require any modification to your Elastic Search
 configuration. Unlike previous versions of Evebox, you do not need to
 enable dynamic scripting and CORS.
 
-### Option 2 - Docker (Also recommended)
+## Docker
+
+If you wish to install EveBox with Docker an up to date image is
+hosted on Docker hub.
 
 Example:
 
 ```
+docker pull jasonish/evebox
 docker run -it -p 5636:5636 jasonish/evebox -e http://elasticsearch:9200
 ```
 
@@ -67,7 +66,7 @@ Frontend requirements:
 
 Backend requirements:
 
-* A working Go 1.5 installation and GOPATH.
+* A working Go 1.6 installation and GOPATH.
 
 ## Run in Development Mode
 
