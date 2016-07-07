@@ -90,8 +90,7 @@ import {Subscription} from "rxjs/Rx";
 
   <eveboxEventTable
       [config]="eveboxEventTableConfig"></eveboxEventTable>
-</div>
-`,
+</div>`,
     directives: [
         EveboxEventTableComponent,
         EveboxLoadingSpinnerComponent
@@ -123,23 +122,18 @@ export class EventsComponent implements OnInit, OnDestroy {
 
         this.routerSub = this.router.routerState.queryParams.subscribe(
             (params:any) => {
-                if (params.q) {
-                    this.queryString = params.q;
-                }
-                else {
-                    this.queryString = "";
-                }
+                this.queryString = params.q || "";
                 this.refresh();
             });
 
         this.appService.disableTimeRange();
 
         this.mousetrap.bind(this, "/", () => this.focusFilterInput());
+        this.mousetrap.bind(this, "r", () => this.refresh());
     }
 
     ngOnDestroy() {
         this.mousetrap.unbind(this);
-        console.log("Unsubscribing from router events.");
         this.routerSub.unsubscribe();
     }
 
