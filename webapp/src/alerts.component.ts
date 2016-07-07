@@ -239,7 +239,9 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     archiveActiveEvent() {
-        this.archiveAlertGroup(this.getActiveRow());
+        if (this.getActiveRowIndex() >= 0) {
+            this.archiveAlertGroup(this.getActiveRow());
+        }
     }
 
     getActiveRow() {
