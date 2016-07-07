@@ -30,6 +30,7 @@ import {ROUTER_DIRECTIVES, Router, ActivatedRoute} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {TopNavService} from "./topnav.service";
 import {AppService, AppEventCode} from "./app.service";
+import {Subscription} from "rxjs/Rx";
 
 @Component({
     selector: "evebox-top-nav",
@@ -88,6 +89,8 @@ import {AppService, AppEventCode} from "./app.service";
 })
 export class TopNavComponent implements OnInit, OnDestroy {
 
+    private routerSub:Subscription;
+
     constructor(private router:Router,
                 private elasticSearchService:ElasticSearchService,
                 private mousetrap:MousetrapService,
@@ -96,7 +99,6 @@ export class TopNavComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
-
         this.mousetrap.bind(this, "g i", () => {
             this.gotoRoute("/inbox");
         });
@@ -114,14 +116,24 @@ export class TopNavComponent implements OnInit, OnDestroy {
         });
 
         // Re-enable the time picker after each route change.
-        this.router.events.subscribe((event) => {
-            this.appService.enableTimeRange();
-        });
+        this.routerSub = this.router.events.subscribe((event) => {
 
+            switch (this.appService.getRoute()) {
+                case "/escalated":
+                case "/event":
+                    this.appService.disableTimeRange();
+                    break;
+                default:
+                    this.appService.enableTimeRange();
+                    break;
+            }
+
+        });
     }
 
     ngOnDestroy():any {
         this.mousetrap.unbind(this);
+        this.routerSub.unsubscribe();
     }
 
     gotoRoute(route:string) {

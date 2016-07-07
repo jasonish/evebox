@@ -146,8 +146,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
             this.filters.push({not: {term: {tags: "archived"}}})
         }
         if (this.appService.getRoute() == "/escalated") {
-            this.filters.push({term: {tags: "escalated"}})
-            this.appService.disableTimeRange();
+            this.filters.push({term: {tags: "escalated"}});
         }
 
         // Listen for changes in the route.

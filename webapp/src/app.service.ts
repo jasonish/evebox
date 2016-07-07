@@ -68,7 +68,13 @@ export class AppService {
     }
 
     getRoute() {
-        return this.router.url.split("?")[0];
+        // First get the name of the first part of the path without query
+        // parameters, but after the first /.
+        let route = this.router.url.substring(1).split(/[\?\/]/)[0];
+
+        // Return the route with a leading / as that is what is expected right
+        // now.
+        return "/" + route;
     }
 
     updateQueryParameters(params:any) {
