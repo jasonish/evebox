@@ -54,6 +54,7 @@ export class MousetrapService {
 
     rebind() {
         this.bindings.forEach((binding) => {
+            mousetrap.unbind(binding.key);
             mousetrap.bind(binding.key, (e:any) => {
                 this.ngZone.run(() => {
                     e.preventDefault();

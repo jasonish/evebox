@@ -220,7 +220,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
         if (this.getSelectedCount() > 0) {
             this.archiveSelected();
         }
-        else {
+        else if (this.getActiveRowIndex() > -1) {
             this.archiveAlertGroup(this.getActiveRow());
         }
     }
@@ -275,6 +275,11 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     archiveAlertGroup(row:any) {
+
+        if (!row) {
+            return;
+        }
+
         // Optimistically mark the event as archived.
         row.event.event._source.tags.push("archived");
 

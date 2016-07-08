@@ -318,11 +318,9 @@ export class ElasticSearchService {
                     ]
                 }).then((response:any) => {
                     if (response.hits.hits.length == 0) {
-                        console.log("Done archiving events.");
                         resolve();
                     }
                     else {
-                        console.log("Archiving events.");
                         self.addTagsToEventSet(response.hits.hits,
                             ["archived", "evebox.archived"])
                             .then((response:any) => {
