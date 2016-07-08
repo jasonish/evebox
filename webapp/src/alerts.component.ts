@@ -417,6 +417,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
             this.rows = [];
 
         }).then(() => {
+            this.activeRow = 0;
             this.loading = false;
         });
     }
