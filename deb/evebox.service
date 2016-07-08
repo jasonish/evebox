@@ -2,7 +2,7 @@
 Description=EveBox
 
 [Service]
-ExecStart=/usr/bin/evebox $ELASTICSEARCH_URL $CONFIG
+ExecStart=/usr/bin/evebox $ELASTICSEARCH_URL $CONFIG $EVEBOX_OPTS
 EnvironmentFile=-/etc/default/evebox
 
 [Install]

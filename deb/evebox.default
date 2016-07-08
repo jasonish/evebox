@@ -3,3 +3,6 @@ ELASTICSEARCH_URL=-e http://localhost:9200
 
 # Config file.
 # CONFIG=-c /etc/evebox.yaml
+
+# Other options.
+EVEBOX_OPTS=
