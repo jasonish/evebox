@@ -28,6 +28,7 @@ import {RouterConfig, provideRouter} from "@angular/router";
 import {EventsComponent} from "./events.component";
 import {EventComponent} from "./event.component";
 import {AlertsComponent} from "./alerts.component";
+import {ReportsComponent} from "./reports.component";
 
 export const routes:RouterConfig = [
     {
@@ -48,6 +49,10 @@ export const routes:RouterConfig = [
     ,
     {
         path: "events", component: EventsComponent, pathMatch: "prefix",
+    }
+    ,
+    {
+        path: "reports", component: ReportsComponent,
     }
     ,
     // Let the inbox by the default route.

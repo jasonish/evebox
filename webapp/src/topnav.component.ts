@@ -58,6 +58,8 @@ import {Subscription} from "rxjs/Rx";
             href="#/alerts">Alerts</a></li>
         <li [ngClass]="{active: isActive('/events')}"><a
             href="#/events">Events</a></li>
+        <li [ngClass]="{active: isActive('/reports')}"><a
+            href="#/reports">Reports</a></li>
       </ul>
 
 

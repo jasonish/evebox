@@ -38,7 +38,7 @@ import {EveboxBase64DecodePipe} from "./pipes/base64decode.pipe";
 import {EveboxHexPipe} from "./pipes/hex.pipe";
 import {AceEditor} from "./ace-editor.component";
 import {ApiService} from "./api.service";
-import {SearchLinkComponent} from "./search-link.component";
+import {EveboxSearchLinkComponent} from "./search-link.component";
 import {EventServices} from "./eventservices.service";
 import {EventService} from "./event.service";
 import {MousetrapService} from "./mousetrap.service";
@@ -56,7 +56,7 @@ import {MousetrapService} from "./mousetrap.service";
     directives: [
         CodemirrorComponent,
         AceEditor,
-        SearchLinkComponent
+        EveboxSearchLinkComponent
     ]
 })
 export class EventComponent implements OnInit, OnDestroy {

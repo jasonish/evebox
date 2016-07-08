@@ -26,10 +26,10 @@
 
 import {Injectable} from "@angular/core";
 import {Http} from "@angular/http";
-
-import moment = require("moment");
 import {TopNavService} from "./topnav.service";
 import {AppService} from "./app.service";
+
+import moment = require("moment");
 var queue = require("queue");
 
 export interface ResultSet {

@@ -5,10 +5,12 @@ import {Router} from "@angular/router";
     selector: "search-link",
     template: `<a href="javascript:void(0)" (click)="onClick()">{{value}}</a>`
 })
-export class SearchLinkComponent implements OnInit {
+export class EveboxSearchLinkComponent implements OnInit {
 
     @Input() private field:string;
     @Input() private value:string;
+    @Input() private searchParams:any;
+    @Input() private route:string = "/events";
 
     private content:string = "";
 
@@ -20,15 +22,25 @@ export class SearchLinkComponent implements OnInit {
 
     onClick() {
         let queryParams:any = this.router.routerState.snapshot.queryParams;
+        let queryString = "";
 
-        if (this.field) {
-            queryParams["q"] = `${this.field}:"${this.value}"`;
+        if (this.searchParams) {
+            Object.keys(this.searchParams).map((key:any) => {
+                queryString += `+${key}:"${this.searchParams[key]}" `;
+            });
         }
         else {
-            queryParams["q"] = `"${this.value}"`;
+            if (this.field) {
+                queryString = `${this.field}:"${this.value}"`;
+            }
+            else {
+                queryString = `"${this.value}"`;
+            }
         }
 
-        this.router.navigate(["/events"], {queryParams: queryParams});
+        queryParams["q"] = queryString;
+
+        this.router.navigate([this.route], {queryParams: queryParams});
     }
 
 }

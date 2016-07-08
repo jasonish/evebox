@@ -180,6 +180,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     ngOnDestroy():any {
         this.mousetrap.unbind(this);
         this.routerSubscription.unsubscribe();
+        this.dispatcherSubscription.unsubscribe();
     }
 
     toggleSelectedState(row:any) {
