@@ -17,16 +17,16 @@ before_install:
 - nvm install 4.2.3
 - nvm use 4.2.3
 - npm -g install webpack
-- rvm install 2.1.1
-- rvm use 2.1.1
-- gem install fpm
-- sudo apt-get -y install rpm
 script:
 - make install-deps
 - make
 - make release
+after_success:
+- rvm install 2.1.1
+- rvm use 2.1.1
+- gem install fpm
+- sudo apt-get -y install rpm
 - make deb
 - make rpm
-after_success:
-  - .travis/deploy-packages.sh
-  - .travis/docker.sh
+- .travis/deploy-packages.sh
+- .travis/docker.sh
