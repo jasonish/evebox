@@ -64,7 +64,7 @@ dev-server: evebox
 	fi
 	./webapp/node_modules/.bin/concurrently -k \
 		"make -C webapp start" \
-		"./evebox -e ${EVEBOX_ELASTICSEARCH_URL} --dev http://localhost:8080"
+		"gin --appPort 5636 -i -b evebox ./evebox -e ${EVEBOX_ELASTICSEARCH_URL} --dev http://localhost:8080"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)

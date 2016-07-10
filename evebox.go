@@ -35,6 +35,9 @@ import (
 	"net/url"
 	"os"
 
+	"goji.io"
+	"goji.io/pat"
+
 	"github.com/GeertJohan/go.rice"
 	"github.com/jessevdk/go-flags"
 )
@@ -85,7 +88,7 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(configJson)
 }
 
-func setupElasticSearchProxy() {
+func setupElasticSearchProxy(mux *goji.Mux) {
 	if opts.ElasticSearchUri == "" {
 		if os.Getenv("ELASTICSEARCH_URL") != "" {
 			opts.ElasticSearchUri = os.Getenv("ELASTICSEARCH_URL")
@@ -99,11 +102,11 @@ func setupElasticSearchProxy() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	http.Handle("/elasticsearch/", esProxy)
+	mux.Handle(pat.New("/elasticsearch/*"), esProxy)
 }
 
 // Setup the handler for static files.
-func setupStatic() {
+func setupStatic(mux *goji.Mux) {
 	if len(opts.DevServerUri) > 0 {
 		log.Printf("Proxying static files to development server %v.",
 			opts.DevServerUri)
@@ -113,11 +116,11 @@ func setupStatic() {
 		}
 		devServerProxy :=
 			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-		http.Handle("/", devServerProxy)
+		mux.Handle(pat.Get("/*"), devServerProxy)
 	} else {
 		public := http.FileServer(
 			rice.MustFindBox("./public").HTTPBox())
-		http.Handle("/", public)
+		mux.Handle(pat.Get("/*"), public)
 	}
 }
 
@@ -138,7 +141,7 @@ func main() {
 	// If no configuration was provided, see if evebox.yaml exists
 	// in the current directory.
 	if opts.Config == "" {
-		_, err := os.Stat("./evebox.yaml")
+		_, err = os.Stat("./evebox.yaml")
 		if err == nil {
 			opts.Config = "./evebox.yaml"
 		}
@@ -151,14 +154,17 @@ func main() {
 		}
 	}
 
-	http.HandleFunc("/eve2pcap", Eve2PcapHandler)
-	http.HandleFunc("/api/version", VersionHandler)
-	http.HandleFunc("/api/config", ConfigHandler)
-	setupElasticSearchProxy()
-	setupStatic()
+	mux := goji.NewMux()
+
+	mux.HandleFunc(pat.New("/eve2pcap"), Eve2PcapHandler)
+	mux.HandleFunc(pat.Get("/api/version"), VersionHandler)
+	mux.HandleFunc(pat.Get("/api/config"), ConfigHandler)
+
+	setupElasticSearchProxy(mux)
+	setupStatic(mux)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host+":"+opts.Port, nil)
+	err = http.ListenAndServe(opts.Host+":"+opts.Port, mux)
 	if err != nil {
 		log.Fatal(err)
 	}
