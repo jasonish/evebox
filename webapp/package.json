@@ -25,6 +25,7 @@
     "core-js": "^2.4.0",
     "font-awesome": "^4.6.3",
     "jquery": "^2.2.4",
+    "metrics-graphics": "^2.9.0",
     "moment": "^2.13.0",
     "mousetrap": "^1.6.0",
     "queue": "^4.0.0",
