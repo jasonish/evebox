@@ -58,10 +58,23 @@ import {Subscription} from "rxjs/Rx";
             href="#/alerts">Alerts</a></li>
         <li [ngClass]="{active: isActive('/events')}"><a
             href="#/events">Events</a></li>
-        <li [ngClass]="{active: isActive('/reports')}"><a
-            href="#/reports">Reports</a></li>
-      </ul>
 
+        <li [ngClass]="{active: isActive('/reports')}" class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown"
+             role="button" aria-haspopup="true" aria-expanded="false">Reports
+            <span class="caret"></span></a>
+          <ul class="dropdown-menu">
+            <li><a href="#/reports/alerts">Alerts</a></li>
+            <li><a href="#/reports/dns">DNS</a></li>
+            <!--<li><a href="#">Something else here</a></li>-->
+            <!--<li role="separator" class="divider"></li>-->
+            <!--<li><a href="#">Separated link</a></li>-->
+            <!--<li role="separator" class="divider"></li>-->
+            <!--<li><a href="#">One more separated link</a></li>-->
+          </ul>
+        </li>
+
+      </ul>
 
       <ul class="nav navbar-nav navbar-right">
         <li><a href="javascript:void(0);" (click)="showHelp()">Help</a></li>
@@ -71,7 +84,9 @@ import {Subscription} from "rxjs/Rx";
       </ul>
 
       <form class="navbar-form navbar-right">
-        <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control" [ngModel]="topNavService.timeRange" (change)="timeRangeChanged($event)">
+        <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control"
+                [ngModel]="topNavService.timeRange"
+                (change)="timeRangeChanged($event)">
           <option value="1h">Last hour</option>
           <option value="3h">Last 3 hours</option>
           <option value="6h">Last 6 hours</option>

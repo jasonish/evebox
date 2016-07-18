@@ -36,7 +36,7 @@ import {Pipe, PipeTransform} from "@angular/core";
 @Pipe({
     name: "mapToItems"
 })
-export class MapToItemsPipe implements PipeTransform {
+export class EveboxMapToItemsPipe implements PipeTransform {
 
     transform(value:any, args:any):any {
         return Object.keys(value).map(key => {

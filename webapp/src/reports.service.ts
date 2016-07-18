@@ -70,6 +70,170 @@ export class ReportsService {
 
     }
 
+    getLastStat():any {
+
+        let query:any = {
+            query: {
+                filtered: {
+                    filter: {
+                        and: [
+                            {exists: {field: "event_type"}},
+                            {term: {event_type: "stats"}}
+                        ]
+                    }
+                }
+            },
+            size: 1,
+            sort: [
+                {"@timestamp": {order: "desc"}}
+            ],
+        };
+
+        return this.elasticsearch.search(query);
+    }
+
+    guessBestHistogramInterval():any {
+
+        let interval = "minute";
+
+        if (this.topNavService.timeRange) {
+            let timerange = this.topNavService.timeRange.match(/(\d+)(\w+)/)[1];
+            let timeunit = this.topNavService.timeRange.match(/(\d+)(\w+)/)[2];
+
+            if (timeunit == "h" && parseInt(timerange) >= 6) {
+                interval = "hour";
+            }
+            else if (timeunit != "h") {
+                interval = "hour";
+            }
+        }
+        else {
+            interval = "hour";
+        }
+
+        return interval;
+    }
+
+    dnsResponseReport():any {
+
+        let size:number = 20;
+
+        let query:any = {
+            query: {
+                filtered: {
+                    filter: {
+                        and: [
+                            {exists: {field: "event_type"}},
+                            {term: {event_type: "dns"}},
+                            {term: {"dns.type": "answer"}}
+                        ]
+                    }
+                }
+            },
+            size: 0,
+            sort: [
+                {"@timestamp": {order: "dest"}}
+            ],
+            aggs: {
+                rcodes: {
+                    terms: {
+                        field: "dns.rcode.raw",
+                        size: size,
+                    }
+                },
+                top_rdata: {
+                    terms: {
+                        field: "dns.rdata.raw",
+                        size: size
+                    }
+                },
+                top_rcode: {
+                    terms: {
+                        field: "dns.rcode.raw",
+                        size: size
+                    }
+                },
+            }
+        };
+
+        // Set time range.
+        if (this.topNavService.timeRange) {
+            query.query.filtered.filter.and.push({
+                range: {
+                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
+                }
+            });
+        }
+
+        return this.elasticsearch.search(query);
+    }
+
+    dnsRequestReport():any {
+
+        let size:number = 20;
+
+        let query:any = {
+            query: {
+                filtered: {
+                    filter: {
+                        and: [
+                            {exists: {field: "event_type"}},
+                            {term: {event_type: "dns"}},
+                            {term: {"dns.type": "query"}}
+                        ]
+                    }
+                }
+            },
+            size: 0,
+            sort: [
+                {"@timestamp": {order: "dest"}}
+            ],
+            aggs: {
+                events_over_time: {
+                    date_histogram: {
+                        field: "@timestamp",
+                        interval: this.guessBestHistogramInterval()
+                    }
+                },
+                top_rrnames: {
+                    terms: {
+                        field: "dns.rrname.raw",
+                        size: size
+                    }
+                },
+                top_servers: {
+                    terms: {
+                        field: "dest_ip.raw",
+                        size: size
+                    }
+                },
+                top_clients: {
+                    terms: {
+                        field: "src_ip.raw",
+                        size: size
+                    }
+                },
+                top_rrtype: {
+                    terms: {
+                        field: "dns.rrtype.raw",
+                        size: size
+                    }
+                }
+            }
+        };
+
+        // Set time range.
+        if (this.topNavService.timeRange) {
+            query.query.filtered.filter.and.push({
+                range: {
+                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
+                }
+            });
+        }
+
+        return this.elasticsearch.search(query);
+    }
+
     alertsReport(options:any = {}):any {
 
         let size:number = options.size || 20;

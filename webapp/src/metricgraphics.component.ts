@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016 Jason Ish
+/* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,28 +24,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from "@angular/core";
+import {Component, Input, OnChanges} from "@angular/core";
+import "metrics-graphics/dist/metricsgraphics.css";
 
-let toastr = require("toastr");
-import "toastr/build/toastr.css";
+let MG = require("metrics-graphics");
 
-export interface ToastrOptions {
-    title?:string;
-    closeButton:boolean;
-}
+@Component({
+    selector: "metrics-graphic",
+    template: `<div [id]="graphId"></div>`
+})
+export class EveboxMetricsGraphicComponent implements OnChanges {
 
-@Injectable()
-export class ToastrService {
+    private elementId:string = Math.random().toString(36).substring(7);
 
-    constructor() {
+    @Input() private graphId:string;
+
+    @Input() private title:string;
+    @Input() private data:any[] = [];
+
+    ngOnChanges() {
+        this.doGraphic();
     }
 
-    warning(msg?:any, options?:ToastrOptions) {
-        toastr.warning(msg, options.title, options);
-    }
+    doGraphic() {
+        console.log("Drawing graphic.");
+        if (this.data && this.data.length > 0) {
 
-    error(msg?:any, options?:ToastrOptions) {
-        toastr.error(msg, options.title, options);
+            try {
+                MG.data_graphic({
+                    target: "#" + this.graphId,
+                    title: this.title,
+                    data: this.data,
+                    full_width: true,
+                    left: 30,
+                });
+            }
+            catch (err) {
+                console.log("Failed to draw metrics graphic: " + err);
+            }
+        }
+        else {
+            console.log("No data to graph.");
+            console.log(this.data);
+        }
     }
-
 }

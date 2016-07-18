@@ -31,7 +31,7 @@ import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
 import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
 import {CodemirrorComponent} from "./codemirror.component";
 import {JsonPipe} from "@angular/common";
-import {MapToItemsPipe} from "./pipes/maptoitems.pipe";
+import {EveboxMapToItemsPipe} from "./pipes/maptoitems.pipe";
 import {EveBoxGenericPrettyPrinter} from "./pipes/generic-pretty-printer.pipe";
 import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
 import {EveboxBase64DecodePipe} from "./pipes/base64decode.pipe";
@@ -49,7 +49,7 @@ import {MousetrapService} from "./mousetrap.service";
 @Component({
     template: require("./event.component.html"),
     pipes: [
-        EventSeverityToBootstrapClass, JsonPipe, MapToItemsPipe,
+        EventSeverityToBootstrapClass, JsonPipe, EveboxMapToItemsPipe,
         EveBoxGenericPrettyPrinter, EveBoxEventDescriptionPrinterPipe,
         EveboxBase64DecodePipe, EveboxHexPipe
     ],
