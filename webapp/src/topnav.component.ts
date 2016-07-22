@@ -87,6 +87,7 @@ import {Subscription} from "rxjs/Rx";
         <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control"
                 [ngModel]="topNavService.timeRange"
                 (change)="timeRangeChanged($event)">
+          <option value="1m">Last minute</option>
           <option value="1h">Last hour</option>
           <option value="3h">Last 3 hours</option>
           <option value="6h">Last 6 hours</option>

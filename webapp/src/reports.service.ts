@@ -27,12 +27,29 @@
 import {Injectable} from "@angular/core";
 import {ElasticSearchService} from "./elasticsearch.service";
 import {TopNavService} from "./topnav.service";
+import {ToastrService} from "./toastr.service";
 
 @Injectable()
 export class ReportsService {
 
+    private warningShown:boolean = false;
+
     constructor(private elasticsearch:ElasticSearchService,
-                private topNavService:TopNavService) {
+                private topNavService:TopNavService,
+                private toastr:ToastrService) {
+    }
+
+    showWarning() {
+        if (this.warningShown) {
+            return;
+        }
+        this.warningShown = true;
+        this.toastr.warning("Reports are experimental are are subject to change.", {
+            title: "Warning",
+            closeButton: true,
+            timeOut: 3000,
+            preventDuplicates: true,
+        });
     }
 
     findStats(options:any = {}):any {
@@ -102,6 +119,9 @@ export class ReportsService {
 
             if (timeunit == "h" && parseInt(timerange) >= 6) {
                 interval = "hour";
+            }
+            else if (timeunit == "m") {
+                interval = "second";
             }
             else if (timeunit != "h") {
                 interval = "hour";

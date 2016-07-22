@@ -31,7 +31,9 @@ import "toastr/build/toastr.css";
 
 export interface ToastrOptions {
     title?:string;
-    closeButton:boolean;
+    closeButton?:boolean;
+    timeOut?:number;
+    preventDuplicates?:boolean;
 }
 
 @Injectable()

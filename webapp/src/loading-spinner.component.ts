@@ -28,14 +28,14 @@ import {Component, Input} from "@angular/core";
 
 @Component({
     selector: "loading-spinner",
-    template: `<div *ngIf="loading" class="row">
-  <div class="col-md-12">
-    <i class="fa fa-spinner fa-pulse evebox-loading-spinner"></i>
-  </div>
+    template: `<div *ngIf="loading">
+    <i class="fa fa-spinner fa-pulse evebox-loading-spinner"
+    [ngStyle]="{'font-size': fontSize + 'px'}"></i>
 </div>`
 })
 export class EveboxLoadingSpinnerComponent {
 
     @Input("loading") private loading:boolean = false;
+    @Input("fontSize") private fontSize:number = 300;
 
 }

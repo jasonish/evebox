@@ -25,30 +25,31 @@
  */
 
 import {Component, OnDestroy, OnInit, Input} from "@angular/core";
-import {Router} from "@angular/router";
-
 import {ReportsService} from "../reports.service";
 import {EveboxMetricsGraphicComponent} from "../metricgraphics.component";
 import {AppService, AppEventCode} from "../app.service";
 import {EveboxSearchLinkComponent} from "../search-link.component";
-import {ToastrService} from "../toastr.service";
+import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
 
 import moment = require("moment");
 
 @Component({
     selector: "report-data-table",
-    template: `<div class="panel panel-default">
+    template: `<div class="panel panel-default" [ngClass]="{'evebox-opacity-50': loading > 0}">
   <div class="panel-heading">
     <b>{{title}}</b>
   </div>
-  <div *ngIf="!rows">
-    <div class="panel-body" style="text-align: center;">
-      <i class="fa fa-spinner fa-pulse"
-         style="font-size: 200px; opacity: 0.5;"></i>
-    </div>
+  <div *ngIf="loading > 0 || !rows">
+    <i class="fa fa-spinner fa-pulse"
+       style="position: absolute; left: 50%; margin-left: -100px; font-size: 200px; opacity: 0.5;"></i>
   </div>
 
-  <table class="table table-striped table-condensed">
+  <div *ngIf="!rows || rows.length == 0" class="panel-body">
+    No data.
+  </div>
+  
+  <table *ngIf="rows && rows.length > 0"
+         class="table table-striped table-condensed">
     <thead>
     <tr>
       <th *ngFor="let header of headers">{{header}}</th>
@@ -70,27 +71,31 @@ export class EveboxReportDataTable {
 
     @Input() private title:string;
     @Input() private headers:string[] = [];
-
     @Input() private rows:any[];
-    @Input() private searchField:string;
+    @Input() private loading:number = 0;
 
 }
 
 @Component({
-    template: `<div>
+    template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
 
-  <metrics-graphic graphId="dnsRequestsOverTime"
+  <loading-spinner [loading]="loading > 0"></loading-spinner>
+
+  <metrics-graphic *ngIf="eventsOverTime"
+                   graphId="dnsRequestsOverTime"
                    title="DNS Requests Over Time"
                    [data]="eventsOverTime"></metrics-graphic>
-  
+
   <div class="row">
     <div class="col-md-6">
-      <report-data-table title="Top Request RRNames"
+      <report-data-table *ngIf="topRrnames"
+                         title="Top Request RRNames"
                          [rows]="topRrnames"
                          [headers]="['#', 'RRName']"></report-data-table>
     </div>
     <div class="col-md-6">
-      <report-data-table title="Top Response Rdata"
+      <report-data-table *ngIf="topRdata"
+                         title="Top Response Rdata"
                          [rows]="topRdata"
                          [headers]="['#', 'Rdata']"></report-data-table>
     </div>
@@ -99,15 +104,15 @@ export class EveboxReportDataTable {
   <div class="row">
 
     <div class="col-md-6">
-
-      <report-data-table title="Top DNS Servers"
+      <report-data-table *ngIf="topServers"
+                         title="Top DNS Servers"
                          [rows]="topServers"
                          [headers]="['#', 'Server']"></report-data-table>
-
     </div>
 
     <div class="col-md-6">
-      <report-data-table title="Top DNS Clients"
+      <report-data-table *ngIf="topClients"
+                         title="Top DNS Clients"
                          [rows]="topClients"
                          [headers]="['#', 'Client']"></report-data-table>
     </div>
@@ -116,12 +121,14 @@ export class EveboxReportDataTable {
 
   <div class="row">
     <div class="col-md-6">
-      <report-data-table title="Top Requests Types"
+      <report-data-table *ngIf="topRrtypes"
+                         title="Top Requests Types"
                          [rows]="topRrtypes"
                          [headers]="['#', 'RRType']"></report-data-table>
     </div>
     <div class="col-md-6">
-      <report-data-table title="Top Response Codes"
+      <report-data-table *ngIf="topRcodes"
+                         title="Top Response Codes"
                          [rows]="topRcodes"
                          [headers]="['#', 'RCode']"></report-data-table>
     </div>
@@ -130,34 +137,33 @@ export class EveboxReportDataTable {
 </div>`,
     directives: [
         EveboxMetricsGraphicComponent,
-        EveboxReportDataTable
+        EveboxReportDataTable,
+        EveboxLoadingSpinnerComponent
     ]
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
 
-    private eventsOverTime:any[] = [];
+    private eventsOverTime:any[];
 
-    private topRrnames:any[] = [];
-    private topRdata:any[] = [];
-    private topRrtypes:any[] = [];
-    private topRcodes:any[] = [];
-    private topServers:any[] = [];
-    private topClients:any[] = [];
+    private topRrnames:any[];
+    private topRdata:any[];
+    private topRrtypes:any[];
+    private topRcodes:any[];
+    private topServers:any[];
+    private topClients:any[];
 
     private dispatcherSubscription:any;
     private destroyed:boolean = false;
 
+    private loading:number = 0;
+
     constructor(private reports:ReportsService,
-                private appService:AppService,
-                private toastr:ToastrService) {
+                private appService:AppService) {
     }
 
     ngOnInit() {
 
-        this.toastr.warning("Reports are experimental are are subject to change.", {
-            title: "Warning",
-            closeButton: true
-        });
+        this.reports.showWarning();
 
         this.refresh();
 
@@ -179,6 +185,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
     refresh() {
 
+        this.loading++;
+
         this.reports.dnsResponseReport().then((response:any) => {
 
             this.topRdata = response.aggregations.top_rdata.buckets.map((item:any) => {
@@ -195,7 +203,11 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 };
             });
 
+            this.loading--;
+
         });
+
+        this.loading++;
 
         this.reports.dnsRequestReport().then((response:any) => {
 
@@ -233,6 +245,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                     count: item.doc_count
                 };
             });
+
+            this.loading--;
 
         });
 

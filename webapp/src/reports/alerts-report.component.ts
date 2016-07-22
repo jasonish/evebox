@@ -35,48 +35,59 @@ import {EveboxMetricsGraphicComponent} from "../metricgraphics.component";
 
 import moment = require("moment");
 import {ToastrService} from "../toastr.service";
+import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
 
 @Component({
-    template: `
-<div class="row">
-  <div class="col-md-12">
-    <button type="button" class="btn btn-default" (click)="refresh()">Refresh
-    </button>
+    template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
+
+  <loading-spinner [loading]="loading > 0"></loading-spinner>
+
+  <div class="row">
+    <div class="col-md-12">
+      <button type="button" class="btn btn-default" (click)="refresh()">Refresh
+      </button>
+    </div>
   </div>
-</div>
 
-<br/>
+  <br/>
 
-<metrics-graphic graphId="alertsOverTimeGraph"
-                 title="Alerts Over Time"
-                 [data]="alertsOverTime"></metrics-graphic>
+  <metrics-graphic *ngIf="alertsOverTime"
+                   graphId="alertsOverTimeGraph"
+                   title="Alerts Over Time"
+                   [data]="alertsOverTime"></metrics-graphic>
 
-<div class="row">
-  <div class="col-md-12">
+  <div class="row">
+    <div class="col-md-12">
 
-    <report-data-table title="Top Alert Signatures"
-                       [rows]="signatureRows"
-                       [headers]="['#', 'Signature']"></report-data-table>
+      <report-data-table *ngIf="signatureRows"
+                         title="Top Alert Signatures"
+                         [rows]="signatureRows"
+                         [headers]="['#', 'Signature']"></report-data-table>
 
+    </div>
   </div>
-</div>
 
-<div class="row">
-  <div class="col-md-6">
-    <report-data-table title="Top Alerting Source IPs"
-                       [rows]="sourceRows"
-                       [headers]="['#', 'Source']"></report-data-table>
+  <div class="row">
+    <div class="col-md-6">
+      <report-data-table *ngIf="sourceRows"
+                         title="Top Alerting Source IPs"
+                         [rows]="sourceRows"
+                         [headers]="['#', 'Source']"></report-data-table>
+    </div>
+    <div class="col-md-6">
+      <report-data-table *ngIf="destinationRows"
+                         title="Top Alerting Destination IPs"
+                         [rows]="destinationRows"
+                         [headers]="['#', 'Destination']"></report-data-table>
+    </div>
   </div>
-  <div class="col-md-6">
-    <report-data-table title="Top Alerting Destination IPs"
-                       [rows]="destinationRows"
-                       [headers]="['#', 'Destination']"></report-data-table>
-  </div>
+
 </div>`,
     directives: [
         EveboxSearchLinkComponent,
         EveboxReportDataTable,
         EveboxMetricsGraphicComponent,
+        EveboxLoadingSpinnerComponent,
         ROUTER_DIRECTIVES
     ],
     pipes: [
@@ -93,17 +104,15 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     private dispatcherSubscription:any;
 
+    private loading:number = 0;
+
     constructor(private appService:AppService,
-                private reports:ReportsService,
-                private toastr:ToastrService) {
+                private reports:ReportsService) {
     }
 
     ngOnInit() {
 
-        this.toastr.warning("Reports are experimental are are subject to change.", {
-            title: "Warning",
-            closeButton: true
-        });
+        this.reports.showWarning();
 
         this.refresh();
 
@@ -130,6 +139,8 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     refresh() {
 
+        this.loading++;
+
         this.sourceRows = undefined;
         this.destinationRows = undefined;
         this.signatureRows = undefined;
@@ -146,6 +157,8 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                         value: x.doc_count
                     }
                 });
+
+                this.loading--;
 
             });
 

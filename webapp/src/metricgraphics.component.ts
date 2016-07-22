@@ -26,46 +26,61 @@
 
 import {Component, Input, OnChanges} from "@angular/core";
 import "metrics-graphics/dist/metricsgraphics.css";
+import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
 
 let MG = require("metrics-graphics");
 
 @Component({
     selector: "metrics-graphic",
-    template: `<div [id]="graphId"></div>`
+    template: `<div *ngIf="hasData()" [id]="graphId"></div>
+<div *ngIf="!hasData()" style="text-align: center;">
+  <hr/>
+  Sorry, there is no data to graph.
+  <hr/>
+</div>
+`,
+    directives: [
+        EveboxLoadingSpinnerComponent
+    ]
 })
 export class EveboxMetricsGraphicComponent implements OnChanges {
 
-    private elementId:string = Math.random().toString(36).substring(7);
-
     @Input() private graphId:string;
-
     @Input() private title:string;
     @Input() private data:any[] = [];
 
+    private redraw:boolean = false;
+
     ngOnChanges() {
-        this.doGraphic();
+        this.redraw = true;
+    }
+
+    ngAfterViewChecked() {
+        if (this.redraw) {
+            this.redraw = false;
+            this.doGraphic();
+        }
+    }
+
+    hasData() {
+        return this.data && this.data.length > 0;
     }
 
     doGraphic() {
-        console.log("Drawing graphic.");
         if (this.data && this.data.length > 0) {
-
             try {
                 MG.data_graphic({
                     target: "#" + this.graphId,
                     title: this.title,
                     data: this.data,
                     full_width: true,
+                    height: 200,
                     left: 30,
                 });
             }
             catch (err) {
                 console.log("Failed to draw metrics graphic: " + err);
             }
-        }
-        else {
-            console.log("No data to graph.");
-            console.log(this.data);
         }
     }
 }
