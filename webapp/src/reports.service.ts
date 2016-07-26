@@ -134,9 +134,9 @@ export class ReportsService {
         return interval;
     }
 
-    dnsResponseReport():any {
+    dnsResponseReport(options:any = {}):any {
 
-        let size:number = 20;
+        let size:number = options.size || 20;
 
         let query:any = {
             query: {
@@ -188,9 +188,9 @@ export class ReportsService {
         return this.elasticsearch.search(query);
     }
 
-    dnsRequestReport():any {
+    dnsRequestReport(options:any = {}):any {
 
-        let size:number = 20;
+        let size:number = options.size || 20;
 
         let query:any = {
             query: {

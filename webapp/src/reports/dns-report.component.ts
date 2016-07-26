@@ -32,6 +32,7 @@ import {EveboxSearchLinkComponent} from "../search-link.component";
 import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
 
 import moment = require("moment");
+import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
 @Component({
     selector: "report-data-table",
@@ -139,6 +140,9 @@ export class EveboxReportDataTable {
         EveboxMetricsGraphicComponent,
         EveboxReportDataTable,
         EveboxLoadingSpinnerComponent
+    ],
+    pipes: [
+        EveboxFormatIpAddressPipe
     ]
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
@@ -158,7 +162,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
     private loading:number = 0;
 
     constructor(private reports:ReportsService,
-                private appService:AppService) {
+                private appService:AppService,
+                private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
     }
 
     ngOnInit() {
@@ -183,25 +188,43 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         this.dispatcherSubscription.unsubscribe();
     }
 
+    mapAddressAggregation(items:any[]) {
+        return items.map((item:any) => {
+
+            let key = item.key;
+
+            // If key looks like an IP address, format it.
+            if (key.match(/\d*\.\d*\.\d*\.\d*/)) {
+                key = this.formatIpAddressPipe.transform(key);
+            }
+
+            return {
+                key: key,
+                count: item.doc_count,
+            }
+
+        });
+    }
+
+    mapAggregation(items:any[]) {
+        return items.map((item:any) => {
+            return {
+                key: item.key,
+                count: item.doc_count,
+            };
+        });
+    }
+
     refresh() {
+
+        let size = 20;
 
         this.loading++;
 
-        this.reports.dnsResponseReport().then((response:any) => {
+        this.reports.dnsResponseReport({size: size}).then((response:any) => {
 
-            this.topRdata = response.aggregations.top_rdata.buckets.map((item:any) => {
-                return {
-                    key: item.key,
-                    count: item.doc_count
-                };
-            });
-
-            this.topRcodes = response.aggregations.top_rcode.buckets.map((item:any) => {
-                return {
-                    key: item.key,
-                    count: item.doc_count
-                };
-            });
+            this.topRdata = this.mapAddressAggregation(response.aggregations.top_rdata.buckets);
+            this.topRcodes = this.mapAggregation(response.aggregations.top_rcode.buckets);
 
             this.loading--;
 
@@ -209,7 +232,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         this.loading++;
 
-        this.reports.dnsRequestReport().then((response:any) => {
+        this.reports.dnsRequestReport({size: size}).then((response:any) => {
 
             this.eventsOverTime = response.aggregations.events_over_time.buckets.map((item:any) => {
                 return {
@@ -218,33 +241,10 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 }
             });
 
-            this.topRrnames = response.aggregations.top_rrnames.buckets.map((item:any) => {
-                return {
-                    key: item.key,
-                    count: item.doc_count
-                };
-            });
-
-            this.topServers = response.aggregations.top_servers.buckets.map((item:any) => {
-                return {
-                    key: item.key,
-                    count: item.doc_count
-                };
-            });
-
-            this.topClients = response.aggregations.top_clients.buckets.map((item:any) => {
-                return {
-                    key: item.key,
-                    count: item.doc_count
-                };
-            });
-
-            this.topRrtypes = response.aggregations.top_rrtype.buckets.map((item:any) => {
-                return {
-                    key: item.key,
-                    count: item.doc_count
-                };
-            });
+            this.topRrnames = this.mapAggregation(response.aggregations.top_rrnames.buckets);
+            this.topServers = this.mapAddressAggregation(response.aggregations.top_servers.buckets);
+            this.topClients = this.mapAddressAggregation(response.aggregations.top_clients.buckets);
+            this.topRrtypes = this.mapAggregation(response.aggregations.top_rrtype.buckets);
 
             this.loading--;
 

@@ -42,6 +42,7 @@ import {EveboxSearchLinkComponent} from "./search-link.component";
 import {EventServices} from "./eventservices.service";
 import {EventService} from "./event.service";
 import {MousetrapService} from "./mousetrap.service";
+import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 
 /**
  * Component to show a single event.
@@ -51,7 +52,7 @@ import {MousetrapService} from "./mousetrap.service";
     pipes: [
         EventSeverityToBootstrapClass, JsonPipe, EveboxMapToItemsPipe,
         EveBoxGenericPrettyPrinter, EveBoxEventDescriptionPrinterPipe,
-        EveboxBase64DecodePipe, EveboxHexPipe
+        EveboxBase64DecodePipe, EveboxHexPipe, EveboxFormatIpAddressPipe
     ],
     directives: [
         CodemirrorComponent,

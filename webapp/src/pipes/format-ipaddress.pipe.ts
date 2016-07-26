@@ -25,16 +25,30 @@
  */
 
 import {Pipe, PipeTransform} from "@angular/core";
+import {Router} from "@angular/router";
+
+let randomMap = {};
 
 @Pipe({
     name: "eveboxFormatIpAddress"
 })
 export class EveboxFormatIpAddressPipe implements PipeTransform {
 
+    private randomize:boolean = false;
+
+    constructor(private router:Router) {
+    }
+
     transform(addr:string) {
+
         if (addr === undefined) {
             return "";
         }
+
+        if (this.randomize) {
+            return this.getRandomIp(addr);
+        }
+
         addr = addr.replace(/0000/g, "");
         while (addr.indexOf(":0:") > -1) {
             addr = addr.replace(/:0:/g, "::");
@@ -45,4 +59,18 @@ export class EveboxFormatIpAddressPipe implements PipeTransform {
         return addr;
     }
 
+    getRandomIp(addr:string) {
+        if (randomMap[addr]) {
+            return randomMap[addr];
+        }
+
+        let randomAddr = Math.round(Math.random() * 256) + "." +
+                Math.round(Math.random() * 256) + "." +
+                Math.round(Math.random() * 256) + "." +
+                Math.round(Math.random() * 256);
+
+        randomMap[addr] = randomAddr;
+
+        return randomAddr;
+    }
 }

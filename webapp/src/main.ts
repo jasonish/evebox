@@ -72,6 +72,8 @@ import {EventService} from "./event.service";
 import {ToastrService} from "./toastr.service";
 import {ReportsService} from "./reports.service";
 
+import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
+
 let EVEBOX_SERVICES = [
     ConfigService,
     ElasticSearchService,
@@ -83,7 +85,9 @@ let EVEBOX_SERVICES = [
     EventServices,
     EventService,
     ToastrService,
-    ReportsService
+    ReportsService,
+
+    EveboxFormatIpAddressPipe
 ];
 
 // Routes.

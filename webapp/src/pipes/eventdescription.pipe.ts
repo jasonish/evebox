@@ -6,8 +6,8 @@ import {EveboxFormatIpAddressPipe} from "./format-ipaddress.pipe";
 })
 export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
 
-    private ipFormatter:any = new EveboxFormatIpAddressPipe()
-        .transform;
+    constructor(private ipFormatter:EveboxFormatIpAddressPipe) {
+    }
 
     transform(value:any, args:any):any {
 
@@ -19,8 +19,8 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
 
         let eve = event._source;
 
-        let srcAddr = this.ipFormatter(eve.src_ip);
-        let destAddr = this.ipFormatter(eve.dest_ip);
+        let srcAddr = this.ipFormatter.transform(eve.src_ip);
+        let destAddr = this.ipFormatter.transform(eve.dest_ip);
 
         switch (event._source.event_type) {
             case "alert":

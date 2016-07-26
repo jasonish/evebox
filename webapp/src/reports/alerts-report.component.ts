@@ -36,6 +36,7 @@ import {EveboxMetricsGraphicComponent} from "../metricgraphics.component";
 import moment = require("moment");
 import {ToastrService} from "../toastr.service";
 import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
+import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -107,7 +108,8 @@ export class AlertReportComponent implements OnInit, OnDestroy {
     private loading:number = 0;
 
     constructor(private appService:AppService,
-                private reports:ReportsService) {
+                private reports:ReportsService,
+                private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
     }
 
     ngOnInit() {
@@ -139,16 +141,33 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     refresh() {
 
+        let size:number = 20;
+
         this.loading++;
 
         this.sourceRows = undefined;
         this.destinationRows = undefined;
         this.signatureRows = undefined;
 
-        this.reports.alertsReport().then(
+        this.reports.alertsReport({size: size}).then(
             (response:any) => {
-                this.sourceRows = this.mapAggregation(response, "sources");
-                this.destinationRows = this.mapAggregation(response, "destinations");
+
+                this.sourceRows = this.mapAggregation(response, "sources")
+                    .map((row:any) => {
+                        return {
+                            count: row.count,
+                            key: this.formatIpAddressPipe.transform(row.key)
+                        }
+                    });
+
+                this.destinationRows = this.mapAggregation(response, "destinations")/**/
+                    .map((row:any) => {
+                        return {
+                            count: row.count,
+                            key: this.formatIpAddressPipe.transform(row.key)
+                        }
+                    });
+
                 this.signatureRows = this.mapAggregation(response, "signatures");
 
                 this.alertsOverTime = response.aggregations.alerts_per_minute.buckets.map((x:any) => {
