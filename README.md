@@ -5,6 +5,8 @@
 
 EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
+![EveBox](https://codemonkey.net/evebox/screens/escalated.png)
+
 ## Requirements
 
 - Suricata, Logstash and Elastic Search (Elastic Search 2.0 or newer).
