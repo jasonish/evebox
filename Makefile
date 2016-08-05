@@ -13,8 +13,6 @@ LDFLAGS :=	-X \"main.buildDate=$(BUILD_DATE)\" \
 
 APP :=		evebox
 
-WEBPACK :=	./node_modules/.bin/webpack
-
 WEBAPP_SRCS :=	$(shell find webapp/src -type f)
 GO_SRCS :=	$(shell find . -name \*.go)
 
@@ -36,14 +34,14 @@ clean:
 	find . -name \*~ -exec rm -f {} \;
 
 distclean: clean
-	rm -rf node_modules vendor
+	rm -rf vendor
+	$(MAKE) -C webapp $@
 
 .PHONY: public dist rpm deb
 
 # Build the webapp bundle.
 public/bundle.js: $(WEBAPP_SRCS)
-# Don't optimize for now, breaks some templates.
-	cd webapp && $(WEBPACK) # --optimize-minimize
+	cd webapp && $(MAKE)
 public: public/bundle.js
 
 # Build's EveBox for the host platform.
