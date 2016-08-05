@@ -1,3 +1,4 @@
+import {ConfigService} from "./config.service";
 /* Copyright (c) 2014-2016 Jason Ish
  * All rights reserved.
  *
@@ -30,6 +31,7 @@ import {TopNavService} from "./topnav.service";
 import {AppService} from "./app.service";
 
 import moment = require("moment");
+import {ToastrService} from "./toastr.service";
 var queue = require("queue");
 
 export interface ResultSet {
@@ -59,7 +61,15 @@ export class ElasticSearchService {
 
     constructor(private http:Http,
                 private topNavService:TopNavService,
-                private appService:AppService) {
+                private appService:AppService,
+                private config:ConfigService,
+                private toastr:ToastrService) {
+        config.subscribe((config:any) => {
+            if (config.ElasticSearchIndex && config.ElasticSearchIndex != "") {
+                console.log("Using Elastic Search index: " + config.ElasticSearchIndex);
+                this.index = config.ElasticSearchIndex;
+            }
+        })
     }
 
     /**
@@ -532,6 +542,10 @@ export class ElasticSearchService {
 
             let events:AlertGroup[] = [];
 
+            if (!response.aggregations) {
+                return events;
+            }
+
             // Unwrap from the buckets.
             response.aggregations.signatures.buckets.forEach((sig:any) => {
                 sig.sources.buckets.forEach((source:any) => {
@@ -578,6 +592,16 @@ export class ElasticSearchService {
 
         }
 
-        return this.search(query).then((response:any) => unwrapResponse(response));
+        return this.search(query).then((response:any) => {
+
+            if (response._shards.total == 0) {
+                console.log(`No shards found for index ${this.index}.`);
+                this.toastr.error(`No shards found for index ${this.index}`, {
+                    title: "Error"
+                });
+            }
+
+            return unwrapResponse(response)
+        });
     }
 }

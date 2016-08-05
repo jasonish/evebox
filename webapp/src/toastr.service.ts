@@ -42,11 +42,11 @@ export class ToastrService {
     constructor() {
     }
 
-    warning(msg?:any, options?:ToastrOptions) {
+    warning(msg:any, options:ToastrOptions = {}) {
         toastr.warning(msg, options.title, options);
     }
 
-    error(msg?:any, options?:ToastrOptions) {
+    error(msg:any, options:ToastrOptions = {}) {
         toastr.error(msg, options.title, options);
     }
 

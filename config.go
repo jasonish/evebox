@@ -35,9 +35,8 @@ import (
 )
 
 type Config struct {
-	//EventServices map[string]map[string]interface{} `yaml:"event-services" json:"event-services"`
-	// EventServices []map[string]map[string]interface{} `yaml:"event-services" json:"event-services"`
-	EventServices []map[string]interface{} `yaml:"event-services" json:"event-services"`
+	ElasticSearchIndex string
+	EventServices      []map[string]interface{} `yaml:"event-services" json:"event-services"`
 }
 
 func (c *Config) toJSON() ([]byte, error) {

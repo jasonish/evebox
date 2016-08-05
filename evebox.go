@@ -51,12 +51,13 @@ const DEFAULT_ELASTICSEARCH_URI string = "http://localhost:9200"
 var opts struct {
 	// We don't provide a default for this one so we can easily
 	// detect if its been set or not.
-	ElasticSearchUri string `long:"elasticsearch" short:"e" description:"Elastic Search URI (default: http://localhost:9200)"`
-	Port             string `long:"port" short:"p" default:"5636" description:"Port to bind to"`
-	Host             string `long:"host" default:"0.0.0.0" description:"Host to bind to"`
-	DevServerUri     string `long:"dev" description:"Frontend development server URI"`
-	Version          bool   `long:"version" description:"Show version"`
-	Config           string `long:"config" short:"c" description:"Configuration filename"`
+	ElasticSearchUri   string `long:"elasticsearch" short:"e" description:"Elastic Search URI (default: http://localhost:9200)"`
+	ElasticSearchIndex string `long:"index" short:"i" description:"Elastic Search Index (default: logstash-*)"`
+	Port               string `long:"port" short:"p" default:"5636" description:"Port to bind to"`
+	Host               string `long:"host" default:"0.0.0.0" description:"Host to bind to"`
+	DevServerUri       string `long:"dev" description:"Frontend development server URI"`
+	Version            bool   `long:"version" description:"Show version"`
+	Config             string `long:"config" short:"c" description:"Configuration filename"`
 }
 
 var config = &Config{}
@@ -152,6 +153,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	if opts.ElasticSearchIndex != "" {
+		log.Printf("Using ElasticSearch Index %s.", opts.ElasticSearchIndex)
+		config.ElasticSearchIndex = opts.ElasticSearchIndex
 	}
 
 	mux := goji.NewMux()

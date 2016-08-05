@@ -41,6 +41,8 @@ export class ConfigService {
             .map((response:Response) => response.json())
             .toPromise()
             .then(response => {
+                console.log("Got config from server:");
+                console.log(response);
                 this.config = response;
                 this.eventEmitter.emit(this.config);
             });
