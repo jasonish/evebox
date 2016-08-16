@@ -131,8 +131,8 @@
               <dl class="dl-horizontal">
                 <div
                     *ngFor="let item of event._source[event._source.event_type] | mapToItems">
-                  <dt>{{item.key}}</dt>
-                  <dd>{{item.val}}</dd>
+                  <dt>{{item.key | genericPrettyPrinter}}</dt>
+                  <dd><search-link [value]="item.val"></search-link></dd>
                 </div>
               </dl>
             </div>
@@ -158,7 +158,7 @@
         <div *ngFor="let item of event._source.http | mapToItems">
           <dt>{{item.key | genericPrettyPrinter}}</dt>
           <dd>
-            <search-link value="{{item.val}}"></search-link>
+            <search-link [value]="item.val"></search-link>
           </dd>
         </div>
       </dl>

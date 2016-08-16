@@ -38,7 +38,34 @@ import {Pipe, PipeTransform} from "@angular/core";
 })
 export class EveboxMapToItemsPipe implements PipeTransform {
 
+    flatten(object:any) {
+
+        let result = {};
+
+        for (let x in object) {
+            if (!object.hasOwnProperty(x)) continue;
+
+            if ((typeof object[x]) == 'object') {
+                let flattened = this.flatten(object[x]);
+                for (let y in flattened) {
+                    if (!flattened.hasOwnProperty(y)) {
+                        continue;
+                    }
+                    result[x + '.' + y] = flattened[y];
+                }
+            } else {
+                result[x] = object[x];
+            }
+        }
+
+        return result;
+    }
+
     transform(value:any, args:any):any {
+
+        // Should make optional.
+        value = this.flatten(value);
+
         return Object.keys(value).map(key => {
             return {
                 key: key,
