@@ -29,6 +29,9 @@ import "core-js/es6";
 import "reflect-metadata";
 require("zone.js/dist/zone");
 
+require("!!script!jquery/dist/jquery.min.js");
+require("!!script!bootstrap/dist/js/bootstrap.min.js");
+
 // Vendor.
 
 // Angular 2
@@ -41,6 +44,7 @@ import '@angular/router';
 
 // RxJS
 import 'rxjs';
+
 // Other vendors for example jQuery, Lodash or Bootstrap
 // You can import js, ts, css, sass, ...
 import "bootstrap/dist/css/bootstrap.css";
@@ -50,8 +54,6 @@ import {HTTP_PROVIDERS} from "@angular/http";
 import {ROUTER_DIRECTIVES} from "@angular/router";
 import {LocationStrategy, HashLocationStrategy} from "@angular/common";
 import {provide, enableProdMode} from "@angular/core";
-
-import "bootstrap";
 
 require("codemirror/lib/codemirror.css");
 

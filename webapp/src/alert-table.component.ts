@@ -24,17 +24,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, Output, EventEmitter} from "@angular/core";
+import {
+    Component, Input, Output, EventEmitter, OnInit,
+    AfterViewInit, OnChanges, AfterContentInit, AfterContentChecked,
+    AfterViewChecked
+} from "@angular/core";
 import {EveboxDurationComponent} from "./duration.component";
 import {EveboxFormatTimestampPipe} from "./pipes/format-timestamp.pipe";
 import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
 import {KeyTableDirective} from "./keytable.directive";
 import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
+import {AppService} from "./app.service";
+import {MousetrapService} from "./mousetrap.service";
+
+declare var $:any;
 
 @Component({
     selector: "alert-table",
-    template: `<div class="table-responsive">
+    template: `<div class="table-responsive" style="overflow: inherit !important;">
 
   <table class="table table-condensed table-hover evebox-event-table"
          eveboxKeyTable [rows]="rows" [(activeRow)]="activeRow"
@@ -61,7 +69,8 @@ import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
             class="glyphicon glyphicon-chevron-right"></span>
       </td>
       <td>
-        <input type="checkbox" [(ngModel)]="row.selected" (click)="$event.stopPropagation()">
+        <input type="checkbox" [(ngModel)]="row.selected"
+               (click)="$event.stopPropagation()">
       </td>
       <td (click)="$event.stopPropagation(); toggleEscalation.emit(row)">
         <i *ngIf="row.event.escalatedCount == 0"
@@ -86,11 +95,30 @@ import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
         {{row.event.event._source.dest_ip | eveboxFormatIpAddress}}
       </td>
       <td>
-        <button *ngIf="!isArchived(row)" type="button"
-                class="btn btn-default pull-right"
-                (click)="$event.stopPropagation(); archiveEvent.emit(row)">Archive
-        </button>
-        <span [innerHTML]="row.event.event | eveboxEventDescriptionPrinter"></span>
+
+        <div *ngIf="!isArchived(row)" class="btn-group pull-right"
+             (click)="$event.stopPropagation()">
+          <button type="button"
+                  class="btn btn-default"
+                  (click)="archiveEvent.emit(row)">
+            Archive
+          </button>
+          <button type="button" id="dropdown-{{i}}"
+                  class="btn btn-default dropdown-toggle"
+                  data-toggle="dropdown" aria-haspopup="true"
+                  aria-expanded="false"><span
+              class="caret"></span></button>
+          <ul class="dropdown-menu">
+            <li><a href="javascript:void(0);"
+                   (click)="selectBySignatureId(row)">Select
+              all with SID: {{row.event.event._source.alert.signature_id}}</a>
+            </li>
+            <li><a href="javascript:void(0)" (click)="filterBySignatureId(row)">Filter
+              on SID: {{row.event.event._source.alert.signature_id}}</a></li>
+          </ul>
+        </div>
+        <span
+            [innerHTML]="row.event.event | eveboxEventDescriptionPrinter"></span>
       </td>
     </tr>
     </tbody>
@@ -109,7 +137,7 @@ import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
         KeyTableDirective
     ]
 })
-export class AlertTableComponent {
+export class AlertTableComponent implements OnInit, AfterViewChecked {
 
     @Input() private rows:any[] = [];
     @Output() private rowClicked:EventEmitter<any> = new EventEmitter<any>();
@@ -117,6 +145,29 @@ export class AlertTableComponent {
     @Output() activeRowChange:EventEmitter<number> = new EventEmitter<number>();
     @Output() toggleEscalation:EventEmitter<any> = new EventEmitter<any>();
     @Output() archiveEvent:EventEmitter<any> = new EventEmitter<any>();
+
+    constructor(private appService:AppService,
+                private mousetrap:MousetrapService) {
+    }
+
+    ngOnInit() {
+        this.mousetrap.bind(this, ".", () => {
+            this.openDropdownMenu();
+        })
+    }
+
+    ngAfterViewChecked() {
+        $(".dropdown-toggle").dropdown();
+    }
+
+    openDropdownMenu() {
+        // Toggle.
+        let element = $("#dropdown-" + this.activeRow);
+        element.dropdown('toggle');
+
+        // Focus.
+        element.find("li:first-child a").focus();
+    }
 
     isArchived(row:any) {
         if (row.event.event._source.tags) {
@@ -127,4 +178,28 @@ export class AlertTableComponent {
         return false;
     }
 
+    selectBySignatureId(row:any) {
+
+        let signatureId = row.event.event._source.alert.signature_id;
+
+        this.rows.forEach((row:any) => {
+            if (row.event.event._source.alert.signature_id === signatureId)
+                row.selected = true;
+        });
+
+        // Probably a little broad but gets the job done.
+        $("table .open").dropdown('toggle');
+    }
+
+    filterBySignatureId(row:any) {
+
+        // Probably a little broad but gets the job done.
+        $(".open").dropdown('toggle');
+
+        let signatureId = row.event.event._source.alert.signature_id;
+        this.appService.updateQueryParameters({
+            q: `alert.signature_id:${signatureId}`
+        });
+
+    }
 }
