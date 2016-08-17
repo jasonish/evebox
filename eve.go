@@ -220,5 +220,5 @@ func EvePayloadToPcap(event *EveEvent) ([]byte, error) {
 	}
 
 	return CreatePcap(event.Timestamp.Time,
-		buffer.Bytes(), layers.LinkTypeIPv4)
+		buffer.Bytes(), layers.LinkTypeRaw)
 }
