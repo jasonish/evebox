@@ -89,18 +89,18 @@
               <dl class="dl-horizontal">
                 <dt>Signature</dt>
                 <dd>
-                  <search-link field="alert.signature"
+                  <search-link field="alert.signature" route="/alerts"
                                value="{{event._source.alert.signature}}"></search-link>
                 </dd>
                 <dt>Category</dt>
                 <dd>
-                  <search-link field="alert.category"
+                  <search-link field="alert.category" route="/alerts"
                                value="{{event._source.alert.category}}"></search-link>
                 </dd>
                 <dt>Signature ID</dt>
                 <dd>
                   {{event._source.alert.gid}}:<search-link
-                      field="alert.signature_id"
+                      field="alert.signature_id" router="/alerts"
                       value="{{event._source.alert.signature_id}}"></search-link>:{{event._source.alert.rev}}
                 </dd>
                 <dt>Severity</dt>

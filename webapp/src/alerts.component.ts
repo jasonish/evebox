@@ -105,6 +105,12 @@ const DIRECTIVES:any[] = [
     EveboxLoadingSpinnerComponent
 ];
 
+export interface AlertsState {
+    rows:any[];
+    activeRow:number;
+    queryString:string;
+}
+
 @Component({
     template: TEMPLATE,
     directives: DIRECTIVES
@@ -129,9 +135,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     buildState():any {
-        let state = {
+        let state:AlertsState = {
             rows: this.rows,
             activeRow: this.activeRow,
+            queryString: this.queryString
         };
         return state;
     }
@@ -189,7 +196,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     restoreState():boolean {
 
-        let state = this.alertService.popState();
+        let state:AlertsState = this.alertService.popState();
         if (!state) {
             return false;
         }
@@ -198,6 +205,11 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         let rows = state.rows;
         let activeRow = state.activeRow;
+
+        if (state.queryString != this.queryString) {
+            console.log("Query strings differ, previous state not being restored.");
+            return false;
+        }
 
         // If in inbox, remove any archived events.
         if (this.isInbox()) {
