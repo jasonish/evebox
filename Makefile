@@ -5,8 +5,6 @@ BUILD_DATE	:=	$(shell TZ=UTC date)
 BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 
-export GO15VENDOREXPERIMENT=1
-
 LDFLAGS :=	-X \"main.buildDate=$(BUILD_DATE)\" \
 		-X \"main.buildRev=$(BUILD_REV)\" \
 		-X \"main.buildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
@@ -22,9 +20,9 @@ install-deps:
 # NPM
 	$(MAKE) -C webapp $@
 # Go
-	go get github.com/Masterminds/glide
-	go get github.com/GeertJohan/go.rice/rice
-	go get github.com/codegangsta/gin
+	which glide > /dev/null 2>&1 || go get github.com/Masterminds/glide
+	which rice > /dev/null 2>&1 || go get github.com/GeertJohan/go.rice/rice
+	which gin > /dev/null 2>&1 || go get github.com/codegangsta/gin
 	glide install
 
 clean:
@@ -48,12 +46,19 @@ public: public/bundle.js
 evebox: $(GO_SRCS)
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o ${APP}
 
-with-docker:
+build-with-docker:
 	docker build --rm -t evebox/builder - < Dockerfile
 	docker run --rm -it \
 		-v `pwd`:/go/src/evebox \
 		-w /go/src/evebox \
 		evebox/builder make install-deps all
+
+release-with-docker:
+	docker build --rm -t evebox/builder - < Dockerfile
+	docker run --rm -it \
+		-v `pwd`:/go/src/evebox \
+		-w /go/src/evebox \
+		evebox/builder make install-deps release deb rpm
 
 dev-server: evebox
 	@if [ "${EVEBOX_ELASTICSEARCH_URL}" = "" ]; then \

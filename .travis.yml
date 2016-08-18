@@ -1,8 +1,9 @@
 sudo: true
 language: go
-go: 1.6
+go: 1.7
 env:
   global:
+    - PATH:$PATH:~/gopath/bin
     - NODE_VERSION=4.4.7
     - RUBY_VERSION=2.1.1
     # Docker trigger token.
@@ -17,6 +18,8 @@ before_install:
 - nvm install $NODE_VERSION
 - nvm use $NODE_VERSION
 script:
+- mkdir /home/travis/gopath/bin
+- curl https://glide.sh/get | sh
 - make install-deps
 - make
 - make release
