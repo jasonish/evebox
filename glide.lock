@@ -1,18 +1,18 @@
-hash: b945c345a6d813823c003ae09b993295d28ffaac02709abf1965d9125563e7d1
-updated: 2016-07-10T09:14:16.165755816-06:00
+hash: 1ab94503e0969c2883197289aef7886dbbfb49d7c824a2c4e0b4e178d62a2de4
+updated: 2016-08-18T16:15:11.859269611-06:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
 - name: github.com/GeertJohan/go.rice
   version: 0f3f5fde32fd1f755632a3d31ba2ec6d449e387b
   subpackages:
-  - rice
   - embedded
+  - rice
 - name: github.com/google/gopacket
-  version: cdd21628caecd1489c9204a8596414467fd6d629
+  version: c4d647984d4671d9dd91770dae77923a0b48b389
   subpackages:
-  - pcapgo
   - layers
+  - pcapgo
 - name: github.com/jessevdk/go-flags
   version: 97448c91aac742cbca3d020b3e769013a420a06f
 - name: github.com/kardianos/osext
@@ -21,10 +21,12 @@ imports:
   version: e355964ac565b94cf0fc7f218346626529125086
   subpackages:
   - internal
+  - pat
+  - pattern
 - name: golang.org/x/net
   version: f841c39de738b1d0df95b5a7187744f0e03d8112
   subpackages:
   - context
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
-devImports: []
+testImports: []

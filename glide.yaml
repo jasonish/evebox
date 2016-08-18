@@ -5,11 +5,9 @@ import:
   - rice
 - package: github.com/jessevdk/go-flags
 - package: github.com/kardianos/osext
-- package: github.com/google/gopacket
-  subpackages:
-  - pcapgo
 - package: gopkg.in/yaml.v2
 - package: goji.io
 - package: golang.org/x/net
   subpackages:
   - context
+- package: github.com/google/gopacket
