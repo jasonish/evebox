@@ -227,17 +227,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
         return true;
     }
 
-    archiveEvents() {
-        // If rows are selected, archive the selected rows, otherwise archive
-        // the current active event.
-        if (this.getSelectedCount() > 0) {
-            this.archiveSelected();
-        }
-        else if (this.getActiveRowIndex() > -1) {
-            this.archiveAlertGroup(this.getActiveRow());
-        }
-    }
-
     appEventHandler(event:AppEvent) {
 
         if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
@@ -304,6 +293,17 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.elasticSearchService.archiveAlertGroup(row.event);
     }
 
+    archiveEvents() {
+        // If rows are selected, archive the selected rows, otherwise archive
+        // the current active event.
+        if (this.getSelectedCount() > 0) {
+            this.archiveSelected();
+        }
+        else if (this.getActiveRowIndex() > -1) {
+            this.archiveAlertGroup(this.getActiveRow());
+        }
+    }
+
     removeRow(row:any) {
         this.rows = this.rows.filter((_row:any) => {
             if (_row == row) {
@@ -363,7 +363,9 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.alertService.pushState(this.buildState());
 
         this.eventService.pushAlertGroup(event);
-        this.router.navigate(['/event', event.event._id]);
+        this.router.navigate(['/event', event.event._id, {
+            referer: this.appService.getRoute()
+        }]);
     }
 
     rowClicked(row:any) {

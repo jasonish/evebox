@@ -65,6 +65,7 @@ export class EventComponent implements OnInit, OnDestroy {
     private eventId:string;
     private alertGroup:AlertGroup;
     private event:any = {};
+    private params:any = {};
 
     constructor(private route:ActivatedRoute,
                 private router:Router,
@@ -82,6 +83,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
         this.route.params.subscribe((params:any) => {
 
+            this.params = params;
             this.eventId = params.id;
 
             if (alertGroup && this.eventId == alertGroup.event._id) {
@@ -121,6 +123,10 @@ export class EventComponent implements OnInit, OnDestroy {
         let q = `+alert.signature_id:${this.event._source.alert.signature_id}`;
         q += ` +src_ip.raw:"${this.event._source.src_ip}"`;
         q += ` +dest_ip.raw:"${this.event._source.dest_ip}"`;
+
+        if (this.params && this.params.referer == "/inbox") {
+            q += ` -tags:archived`;
+        }
 
         console.log(q);
 

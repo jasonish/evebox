@@ -301,7 +301,7 @@ export class ElasticSearchService {
 
     _archiveEvent(event:any):Promise<any> {
 
-        return this.addTagsToEventSet([event], ["archived"]);
+        return this.addTagsToEventSet([event], ["evebox.archived", "archived"]);
 
     }
 

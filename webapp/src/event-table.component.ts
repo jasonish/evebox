@@ -33,6 +33,7 @@ import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
 import {EveboxDurationComponent} from "./duration.component";
 import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
 import {MousetrapService} from "./mousetrap.service";
+import {ElasticSearchService} from "./elasticsearch.service";
 
 export interface EveboxEventTableConfig {
     showCount:boolean,
@@ -82,6 +83,13 @@ export interface EveboxEventTableConfig {
       </td>
       <td style="word-break: break-all;">{{row |
         eveboxEventDescriptionPrinter}}
+        <div *ngIf="getEventType(row) == 'alert' && ! isArchived(row)"
+             class="pull-right"
+             (click)="$event.stopPropagation()">
+          <button type="button" class="btn btn-default"
+                  (click)="archive(row, $event)">Archive
+          </button>
+        </div>
       </td>
     </tr>
     </tbody>
@@ -102,7 +110,9 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
     @Input() private config:EveboxEventTableConfig;
     private activeRow:number = 0;
 
-    constructor(private router:Router, private mousetrap:MousetrapService) {
+    constructor(private router:Router,
+                private mousetrap:MousetrapService,
+                private elasticSearchService:ElasticSearchService) {
     }
 
     ngOnInit() {
@@ -126,5 +136,25 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
 
     openRow(row:any) {
         this.router.navigate(['/event', row._id]);
+    }
+
+    getEventType(row:any) {
+        return row._source.event_type;
+    }
+
+    isArchived(row:any) {
+        try {
+            return row._source.tags.indexOf("archived") > -1;
+        }
+        catch (e) {
+            return false;
+        }
+    }
+
+    archive(row:any, $event?:any) {
+        if ($event) {
+            $event.stopPropagation();
+        }
+        this.elasticSearchService.archiveEvent(row);
     }
 }
