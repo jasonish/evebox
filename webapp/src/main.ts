@@ -74,6 +74,7 @@ import {EventService} from "./event.service";
 import {ToastrService} from "./toastr.service";
 import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
+import {EveboxHumanizeService} from "./humanize.service";
 
 import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 
@@ -90,6 +91,7 @@ let EVEBOX_SERVICES = [
     ToastrService,
     ReportsService,
     EveboxSubscriptionService,
+    EveboxHumanizeService,
 
     EveboxFormatIpAddressPipe
 ];

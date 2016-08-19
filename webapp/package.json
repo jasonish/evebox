@@ -25,6 +25,7 @@
     "codemirror": "^5.15.2",
     "core-js": "^2.4.0",
     "font-awesome": "^4.6.3",
+    "humanize-plus": "^1.8.2",
     "jquery": "^2.2.4",
     "metrics-graphics": "2.8.0",
     "moment": "^2.13.0",

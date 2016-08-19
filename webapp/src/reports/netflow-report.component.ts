@@ -28,12 +28,14 @@ import {Component, OnInit, OnDestroy} from "@angular/core";
 import {EveboxMetricsGraphicComponent} from "../metricgraphics.component";
 import {EveboxReportDataTable} from "./dns-report.component";
 import {ReportsService} from "./reports.service";
-
-import moment = require("moment");
 import {EveboxSubscriptionService} from "../subscription.service";
 import {AppService, AppEvent, AppEventCode} from "../app.service";
 import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
 import {ToastrService} from "../toastr.service";
+import {EveboxHumanizePipe} from "../pipes/humanize.pipe";
+import {EveboxHumanizeService} from "../humanize.service";
+
+import moment = require("moment");
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -85,7 +87,7 @@ import {ToastrService} from "../toastr.service";
       <tr *ngFor="let event of topByBytes">
         <td>{{event._source.src_ip}}</td>
         <td>{{event._source.dest_ip}}</td>
-        <td>{{event._source.netflow.bytes}}</td>
+        <td>{{event._source.netflow.bytes | eveboxHumanize:"fileSize"}}</td>
         <td>{{event._source.netflow.pkts}}</td>
       </tr>
     </table>
@@ -96,7 +98,11 @@ import {ToastrService} from "../toastr.service";
         EveboxMetricsGraphicComponent,
         EveboxReportDataTable,
         EveboxLoadingSpinnerComponent,
+    ],
+    pipes: [
+        EveboxHumanizePipe,
     ]
+
 })
 export class NetflowReportComponent implements OnInit, OnDestroy {
 
@@ -115,7 +121,8 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
     constructor(private ss:EveboxSubscriptionService,
                 private reportsService:ReportsService,
                 private appService:AppService,
-                private toastr:ToastrService) {
+                private toastr:ToastrService,
+                private humanize:EveboxHumanizeService) {
     }
 
     ngOnInit() {
@@ -251,7 +258,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             this.topBytesBySources = response.aggregations.sourcesByBytes.buckets.map((bucket:any) => {
                 return {
                     key: bucket.key,
-                    count: bucket.bytes.value,
+                    count: this.humanize.fileSize(bucket.bytes.value),
                 };
             });
 
