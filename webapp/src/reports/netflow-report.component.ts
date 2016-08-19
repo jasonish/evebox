@@ -33,11 +33,18 @@ import moment = require("moment");
 import {EveboxSubscriptionService} from "../subscription.service";
 import {AppService, AppEvent, AppEventCode} from "../app.service";
 import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
+import {ToastrService} from "../toastr.service";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
 
   <loading-spinner [loading]="loading > 0"></loading-spinner>
+
+  <div *ngIf="noEvents" style="text-align: center;">
+    <hr/>
+    No netflow events found.
+    <hr/>
+  </div>
 
   <metrics-graphic *ngIf="eventsOverTime"
                    graphId="eventsOverTime"
@@ -45,7 +52,7 @@ import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
                    [data]="eventsOverTime"></metrics-graphic>
 
   <div class="row">
-  
+
     <div class="col-md-6">
       <report-data-table *ngIf="topBytesBySources"
                          title="Top Sources by Bytes"
@@ -63,27 +70,27 @@ import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
   </div>
 
   <div *ngIf="topByBytes" class="panel panel-default">
-  <div class="panel-heading">
-  <b>Top Flows by Bytes</b>
-</div>
-<table class="table">
-<thead>
-<tr>
-<th>Source</th>
-<th>Destination</th>
-<th>Bytes</th>
-<th>Packets</th>
-</tr>
-</thead>
-<tr *ngFor="let event of topByBytes">
-<td>{{event._source.src_ip}}</td>
-<td>{{event._source.dest_ip}}</td>
-<td>{{event._source.netflow.bytes}}</td>
-<td>{{event._source.netflow.pkts}}</td>
-</tr>
-</table>
-</div>
-  
+    <div class="panel-heading">
+      <b>Top Flows by Bytes</b>
+    </div>
+    <table class="table">
+      <thead>
+      <tr>
+        <th>Source</th>
+        <th>Destination</th>
+        <th>Bytes</th>
+        <th>Packets</th>
+      </tr>
+      </thead>
+      <tr *ngFor="let event of topByBytes">
+        <td>{{event._source.src_ip}}</td>
+        <td>{{event._source.dest_ip}}</td>
+        <td>{{event._source.netflow.bytes}}</td>
+        <td>{{event._source.netflow.pkts}}</td>
+      </tr>
+    </table>
+  </div>
+
 </div>`,
     directives: [
         EveboxMetricsGraphicComponent,
@@ -102,9 +109,13 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     private loading:number = 0;
 
+    // A flag that will be set to true if not events to report on were found.
+    private noEvents:boolean = false;
+
     constructor(private ss:EveboxSubscriptionService,
                 private reportsService:ReportsService,
-                private appService:AppService) {
+                private appService:AppService,
+                private toastr:ToastrService) {
     }
 
     ngOnInit() {
@@ -124,6 +135,43 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
     }
 
     refresh() {
+
+        this.checkForEvents().then((hasEvents:boolean) => {
+            if (hasEvents) {
+                this.load();
+            }
+            else {
+                this.noEvents = true;
+                this.toastr.warning("No netflow events found.");
+            }
+        });
+
+    }
+
+    checkForEvents() {
+
+        let query:any = {
+            query: {
+                filtered: {
+                    filter: {
+                        and: [
+                            // Somewhat limit to eve events of netflow only.
+                            {exists: {field: "event_type"}},
+                            {term: {event_type: "netflow"}}
+                        ]
+                    }
+                }
+            },
+            size: 0,
+        };
+
+        return this.reportsService.submitQuery(query).then((response:any) => {
+            return response.hits.total > 0;
+        });
+
+    }
+
+    load() {
 
         this.loading++;
 
@@ -220,4 +268,5 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
         });
     }
+
 }
