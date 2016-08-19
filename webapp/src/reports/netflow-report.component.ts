@@ -36,6 +36,7 @@ import {EveboxHumanizePipe} from "../pipes/humanize.pipe";
 import {EveboxHumanizeService} from "../humanize.service";
 
 import moment = require("moment");
+import {EveboxEventTable2Component} from "../eventtable2.component";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -75,22 +76,18 @@ import moment = require("moment");
     <div class="panel-heading">
       <b>Top Flows by Bytes</b>
     </div>
-    <table class="table">
-      <thead>
-      <tr>
-        <th>Source</th>
-        <th>Destination</th>
-        <th>Bytes</th>
-        <th>Packets</th>
-      </tr>
-      </thead>
-      <tr *ngFor="let event of topByBytes">
-        <td>{{event._source.src_ip}}</td>
-        <td>{{event._source.dest_ip}}</td>
-        <td>{{event._source.netflow.bytes | eveboxHumanize:"fileSize"}}</td>
-        <td>{{event._source.netflow.pkts}}</td>
-      </tr>
-    </table>
+    <eveboxEventTable2 [rows]="topByBytes"
+                       [showEventType]="false"
+                       [showActiveEvent]="false"></eveboxEventTable2>
+  </div>
+
+  <div *ngIf="topFlowsByPackets" class="panel panel-default">
+    <div class="panel-heading">
+      <b>Top Flows by Packets</b>
+    </div>
+    <eveboxEventTable2 [rows]="topFlowsByPackets"
+                       [showEventType]="false"
+                       [showActiveEvent]="false"></eveboxEventTable2>
   </div>
 
 </div>`,
@@ -98,6 +95,7 @@ import moment = require("moment");
         EveboxMetricsGraphicComponent,
         EveboxReportDataTable,
         EveboxLoadingSpinnerComponent,
+        EveboxEventTable2Component,
     ],
     pipes: [
         EveboxHumanizePipe,
@@ -112,6 +110,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
     private topPacketsBySources:any[];
 
     private topByBytes:any[];
+    private topFlowsByPackets:any[];
 
     private loading:number = 0;
 
@@ -210,7 +209,15 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                         sort: [
                             {"netflow.bytes": {order: "desc"}}
                         ],
-                        size: 20,
+                        size: 10,
+                    }
+                },
+                topByPackets: {
+                    top_hits: {
+                        sort: [
+                            {"netflow.pkts": {order: "desc"}}
+                        ],
+                        size: 10,
                     }
                 },
                 sourcesByBytes: {
@@ -269,9 +276,10 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 };
             });
 
-            this.loading--;
-
             this.topByBytes = response.aggregations.topByBytes.hits.hits;
+            this.topFlowsByPackets = response.aggregations.topByPackets.hits.hits;
+
+            this.loading--;
 
         });
     }
