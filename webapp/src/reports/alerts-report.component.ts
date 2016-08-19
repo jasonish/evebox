@@ -26,7 +26,7 @@
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ROUTER_DIRECTIVES} from "@angular/router";
-import {ReportsService} from "../reports.service";
+import {ReportsService} from "./reports.service";
 import {EveboxSearchLinkComponent} from "../search-link.component";
 import {AppService, AppEventCode} from "../app.service";
 import {EveboxMapToItemsPipe} from "../pipes/maptoitems.pipe";

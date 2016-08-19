@@ -25,9 +25,9 @@
  */
 
 import {Injectable} from "@angular/core";
-import {ElasticSearchService} from "./elasticsearch.service";
-import {TopNavService} from "./topnav.service";
-import {ToastrService} from "./toastr.service";
+import {ElasticSearchService} from "../elasticsearch.service";
+import {TopNavService} from "../topnav.service";
+import {ToastrService} from "../toastr.service";
 
 @Injectable()
 export class ReportsService {
@@ -332,6 +332,21 @@ export class ReportsService {
         }
 
         return this.elasticsearch.search(query);
+    }
+
+    submitQuery(query:any) {
+
+        // Set time range.
+        if (this.topNavService.timeRange) {
+            query.query.filtered.filter.and.push({
+                range: {
+                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
+                }
+            });
+        }
+
+        return this.elasticsearch.search(query);
+
     }
 
 }

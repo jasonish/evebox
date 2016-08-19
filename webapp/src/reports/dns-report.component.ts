@@ -25,14 +25,14 @@
  */
 
 import {Component, OnDestroy, OnInit, Input} from "@angular/core";
-import {ReportsService} from "../reports.service";
+import {ReportsService} from "./reports.service";
 import {EveboxMetricsGraphicComponent} from "../metricgraphics.component";
 import {AppService, AppEventCode} from "../app.service";
 import {EveboxSearchLinkComponent} from "../search-link.component";
 import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
+import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
 import moment = require("moment");
-import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
 @Component({
     selector: "report-data-table",

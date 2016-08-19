@@ -24,13 +24,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy, OnChanges} from "@angular/core";
+import {
+    Component, OnInit, OnDestroy, OnChanges,
+    AfterViewChecked
+} from "@angular/core";
 import {ElasticSearchService} from "./elasticsearch.service";
 import {ROUTER_DIRECTIVES, Router, ActivatedRoute} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {TopNavService} from "./topnav.service";
 import {AppService, AppEventCode} from "./app.service";
 import {Subscription} from "rxjs/Rx";
+
+declare var $:any;
 
 @Component({
     selector: "evebox-top-nav",
@@ -66,6 +71,8 @@ import {Subscription} from "rxjs/Rx";
           <ul class="dropdown-menu">
             <li><a href="#/reports/alerts">Alerts</a></li>
             <li><a href="#/reports/dns">DNS</a></li>
+            <li><a href="#/reports/netflow">Netflow</a></li>
+            <li><a href="#/reports/flow">Flow</a></li>
             <!--<li><a href="#">Something else here</a></li>-->
             <!--<li role="separator" class="divider"></li>-->
             <!--<li><a href="#">Separated link</a></li>-->
@@ -105,7 +112,7 @@ import {Subscription} from "rxjs/Rx";
 </nav>`,
     directives: [ROUTER_DIRECTIVES]
 })
-export class TopNavComponent implements OnInit, OnDestroy {
+export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     private routerSub:Subscription;
 
@@ -154,6 +161,9 @@ export class TopNavComponent implements OnInit, OnDestroy {
         this.routerSub.unsubscribe();
     }
 
+    ngAfterViewChecked() {
+        $(".dropdown-toggle").dropdown();
+    }
     gotoRoute(route:string) {
         this.router.navigate([route], {queryParams: {}});
     }
