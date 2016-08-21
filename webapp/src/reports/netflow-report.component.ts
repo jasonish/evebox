@@ -57,17 +57,33 @@ import {EveboxEventTable2Component} from "../eventtable2.component";
   <div class="row">
 
     <div class="col-md-6">
-      <report-data-table *ngIf="topBytesBySources"
+
+      <report-data-table *ngIf="topSourcesByBytes"
                          title="Top Sources by Bytes"
-                         [rows]="topBytesBySources"
+                         [rows]="topSourcesByBytes"
                          [headers]="['#', 'Source']"></report-data-table>
-    </div>
+
+      <report-data-table *ngIf="topSourcesByPackets"
+                         title="Top Sources by Packets"
+                         [rows]="topSourcesByPackets"
+                         [headers]="['#', 'Source']">
+      </report-data-table>
+
+     </div>
 
     <div class="col-md-6">
-      <report-data-table *ngIf="topPacketsBySources"
-                         title="Top Sources by Packets"
-                         [rows]="topPacketsBySources"
-                         [headers]="['#', 'Source']"></report-data-table>
+
+      <report-data-table *ngIf="topDestinationsByBytes"
+                         title="Top Destinations By Bytes"
+                         [rows]="topDestinationsByBytes"
+                         [headers]="['#', 'Destination']"></report-data-table>
+
+      <report-data-table *ngIf="topDestinationsByPackets"
+                         title="Top Destinations by Packets"
+                         [rows]="topDestinationsByPackets"
+                         [headers]="['#', 'Destination']">
+      </report-data-table>
+
     </div>
 
   </div>
@@ -106,8 +122,11 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     private eventsOverTime:any[];
 
-    private topBytesBySources:any[];
-    private topPacketsBySources:any[];
+    private topSourcesByBytes:any[];
+    private topSourcesByPackets:any[];
+
+    private topDestinationsByBytes:any[];
+    private topDestinationsByPackets:any[];
 
     private topByBytes:any[];
     private topFlowsByPackets:any[];
@@ -235,12 +254,42 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                         }
                     }
                 },
+                topDestinationsByBytes: {
+                    terms: {
+                        field: "dest_ip.raw",
+                        order: {
+                            "bytes": "desc"
+                        },
+                    },
+                    aggs: {
+                        bytes: {
+                            sum: {
+                                field: "netflow.bytes"
+                            }
+                        }
+                    }
+                },
                 sourcesByPackets: {
                     terms: {
                         field: "src_ip.raw",
                         order: {
                             "packets": "desc"
                         }
+                    },
+                    aggs: {
+                        packets: {
+                            sum: {
+                                field: "netflow.pkts"
+                            }
+                        }
+                    }
+                },
+                topDestinationsByPackets: {
+                    terms: {
+                        field: "dest_ip.raw",
+                        order: {
+                            "packets": "desc"
+                        },
                     },
                     aggs: {
                         packets: {
@@ -262,14 +311,28 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 }
             });
 
-            this.topBytesBySources = response.aggregations.sourcesByBytes.buckets.map((bucket:any) => {
+            this.topSourcesByBytes = response.aggregations.sourcesByBytes.buckets.map((bucket:any) => {
                 return {
                     key: bucket.key,
                     count: this.humanize.fileSize(bucket.bytes.value),
                 };
             });
 
-            this.topPacketsBySources = response.aggregations.sourcesByPackets.buckets.map((bucket:any) => {
+            this.topDestinationsByBytes = response.aggregations.topDestinationsByBytes.buckets.map((bucket:any) => {
+                return {
+                    key: bucket.key,
+                    count: this.humanize.fileSize(bucket.bytes.value),
+                };
+            });
+
+            this.topSourcesByPackets = response.aggregations.sourcesByPackets.buckets.map((bucket:any) => {
+                return {
+                    key: bucket.key,
+                    count: bucket.packets.value,
+                };
+            });
+
+            this.topDestinationsByPackets = response.aggregations.topDestinationsByPackets.buckets.map((bucket:any) => {
                 return {
                     key: bucket.key,
                     count: bucket.packets.value,
