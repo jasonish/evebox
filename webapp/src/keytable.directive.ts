@@ -25,8 +25,15 @@
  */
 
 import {
-    Directive, Input, ElementRef, OnInit, OnDestroy,
-    OnChanges, Output, EventEmitter
+    Directive,
+    Input,
+    ElementRef,
+    OnInit,
+    OnDestroy,
+    OnChanges,
+    Output,
+    EventEmitter,
+    AfterViewChecked
 } from "@angular/core";
 import {MousetrapService} from "./mousetrap.service";
 
@@ -36,45 +43,29 @@ declare var window:any;
 @Directive({
     selector: "[eveboxKeyTable]"
 })
-export class KeyTableDirective implements OnInit, OnDestroy, OnChanges {
+export class KeyTableDirective implements OnInit, OnDestroy, OnChanges, AfterViewChecked {
 
     @Input() private rows:any[] = [];
     @Input() activeRow:number = 0;
     @Output() activeRowChange:EventEmitter<number> = new EventEmitter<number>();
 
+    private doScrollToActive:boolean = false;
+
     constructor(private el:ElementRef, private mousetrap:MousetrapService) {
     }
 
-    scrollToActive() {
-        if (this.activeRow == 0) {
-            window.scrollTo(0, 0);
+    ngAfterViewChecked() {
+        if (this.doScrollToActive) {
+            console.log("KeyTableDirective.ngAfterViewChecked: scrolling to active row.");
+            this.scrollToActive();
+            this.doScrollToActive = false;
         }
-        else {
-            let activeElement = jQuery(this.el.nativeElement)
-                .find("tbody")
-                .children()[this.activeRow];
-            if (activeElement) {
-                jQuery(window).scrollTop(activeElement.offsetTop - 50);
-            }
-        }
-    }
-
-    getActiveRow():number {
-        return this.activeRow;
-    }
-
-    setActiveRow(activeRow:number) {
-        this.activeRow = activeRow;
-        this.activeRowChange.emit(this.activeRow);
-        this.scrollToActive();
-    }
-
-    getRowCount():number {
-        return this.rows.length;
     }
 
     ngOnInit():any {
-        
+
+        console.log(`KeyTableDirective.ngOnInit`);
+
         this.mousetrap.bind(this, "j", () => {
             if (this.getActiveRow() < this.getRowCount() - 1) {
                 this.setActiveRow(this.getActiveRow() + 1);
@@ -103,6 +94,10 @@ export class KeyTableDirective implements OnInit, OnDestroy, OnChanges {
 
     ngOnChanges(changes:{}):any {
 
+        console.log(`KeyTableDirective.ngOnChanges: activeRow: ${this.activeRow}.`);
+
+        this.doScrollToActive = true;
+
         // Check that the active row is still within range of the rows,
         // decrementing it if necessary.
         if (this.getActiveRow() > 0) {
@@ -110,6 +105,45 @@ export class KeyTableDirective implements OnInit, OnDestroy, OnChanges {
                 this.setActiveRow(this.getRowCount() - 1);
             }
         }
+    }
+
+    scrollToActive() {
+
+        console.log(`Scrolling to row ${this.activeRow}.`);
+
+        if (this.activeRow == 0) {
+            window.scrollTo(0, 0);
+        }
+        else {
+            let activeElement = jQuery(this.el.nativeElement)
+                .find("tbody")
+                .children()[this.activeRow];
+            if (activeElement) {
+                console.log(`KeyTableDirective.scrollToActive: offsetTop=${activeElement.offsetTop}.`)
+
+                // Do this in a delay, otherwise it doesn't always happen.
+                setTimeout(() => {
+                    jQuery(window).scrollTop(activeElement.offsetTop)
+                }, 0);
+            }
+            else {
+                console.log("KeyTableDirective.scrollToActive: element is null.");
+            }
+        }
+    }
+
+    getActiveRow():number {
+        return this.activeRow;
+    }
+
+    setActiveRow(activeRow:number) {
+        this.activeRow = activeRow;
+        this.activeRowChange.emit(this.activeRow);
+        this.scrollToActive();
+    }
+
+    getRowCount():number {
+        return this.rows.length;
     }
 
 }
