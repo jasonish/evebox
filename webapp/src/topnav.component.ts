@@ -39,7 +39,7 @@ declare var $:any;
 
 @Component({
     selector: "evebox-top-nav",
-    template: `<nav class="navbar navbar-default">
+    template: `<nav class="navbar navbar-default navbar-fixed-top">
   <div class="container-fluid">
     <div class="navbar-header">
       <button type="button" class="navbar-toggle collapsed"

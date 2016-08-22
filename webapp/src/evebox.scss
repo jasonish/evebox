@@ -4,6 +4,13 @@
 $event-table-border-color: #ddd;
 $event-table-border: 1px solid $event-table-border-color;
 
+body {
+
+  // Top padding required for the fixed navbar.
+  padding-top: 70px;
+
+}
+
 .evebox-event-table {
 
   cursor: pointer;
@@ -47,6 +54,7 @@ $event-table-border: 1px solid $event-table-border-color;
   position: absolute;
   left: 50%;
   margin-left: -150px;
+  margin-top: 150px;
   opacity: 0.8;
 }
 
