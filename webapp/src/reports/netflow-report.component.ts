@@ -220,7 +220,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 events_over_time: {
                     date_histogram: {
                         field: "@timestamp",
-                        interval: "minute"
+                        interval: this.reportsService.guessBestHistogramInterval()
                     }
                 },
                 topByBytes: {

@@ -114,21 +114,21 @@ export class ReportsService {
         let interval = "minute";
 
         if (this.topNavService.timeRange) {
-            let timerange = this.topNavService.timeRange.match(/(\d+)(\w+)/)[1];
+
             let timeunit = this.topNavService.timeRange.match(/(\d+)(\w+)/)[2];
 
-            if (timeunit == "h" && parseInt(timerange) >= 6) {
-                interval = "hour";
+            switch (timeunit) {
+                case "m":
+                    interval = "second";
+                    break;
+                case "h":
+                    interval = "minute";
+                    break;
+                default:
+                    interval = "hour";
+                    break;
             }
-            else if (timeunit == "m") {
-                interval = "second";
-            }
-            else if (timeunit != "h") {
-                interval = "hour";
-            }
-        }
-        else {
-            interval = "hour";
+
         }
 
         return interval;
