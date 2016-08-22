@@ -29,10 +29,9 @@ import "core-js/es6";
 import "reflect-metadata";
 require("zone.js/dist/zone");
 
+// Raw imports.
 require("!!script!jquery/dist/jquery.min.js");
 require("!!script!bootstrap/dist/js/bootstrap.min.js");
-
-// Vendor.
 
 // Angular 2
 import '@angular/platform-browser';
@@ -45,24 +44,19 @@ import '@angular/router';
 // RxJS
 import 'rxjs';
 
-// Other vendors for example jQuery, Lodash or Bootstrap
-// You can import js, ts, css, sass, ...
+// CSS imports.
 import "bootstrap/dist/css/bootstrap.css";
-
-import {
-    bootstrap,
-    platformBrowserDynamic
-} from "@angular/platform-browser-dynamic";
-import {HTTP_PROVIDERS, HttpModule} from "@angular/http";
-import {ROUTER_DIRECTIVES, RouterModule} from "@angular/router";
-import {LocationStrategy, HashLocationStrategy} from "@angular/common";
-import {provide, enableProdMode, NgModule} from "@angular/core";
-
 require("codemirror/lib/codemirror.css");
-
 import "./evebox.scss";
 
-import {AppComponent} from "./app.component";
+// More Angular 2.
+import {platformBrowserDynamic} from "@angular/platform-browser-dynamic";
+import {HttpModule} from "@angular/http";
+import {RouterModule} from "@angular/router";
+import {LocationStrategy, HashLocationStrategy} from "@angular/common";
+import {provide, enableProdMode, NgModule} from "@angular/core";
+import {BrowserModule} from "@angular/platform-browser";
+import {FormsModule} from "@angular/forms";
 
 // Evebox services.
 import {ConfigService} from "./config.service";
@@ -79,36 +73,11 @@ import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {EveboxHumanizeService} from "./humanize.service";
 
+// EveBox pipes.
 import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 
-let EVEBOX_SERVICES = [
-    ConfigService,
-    ElasticSearchService,
-    MousetrapService,
-    TopNavService,
-    AlertService,
-    AppService,
-    ApiService,
-    EventServices,
-    EventService,
-    ToastrService,
-    ReportsService,
-    EveboxSubscriptionService,
-    EveboxHumanizeService,
-
-    EveboxFormatIpAddressPipe
-];
-
-// Routes.
-import {APP_ROUTER_PROVIDERS, routing, appRoutingProviders} from "./app.routes";
-
-if (process.env.ENV == "production") {
-    console.log("Enabling production mode.");
-    enableProdMode();
-}
-
-import {BrowserModule} from "@angular/platform-browser";
-import {FormsModule} from "@angular/forms";
+// EveBox components.
+import {AppComponent} from "./app.component";
 import {AlertsComponent} from "./alerts.component";
 import {EventsComponent} from "./events.component";
 import {EventComponent} from "./event.component";
@@ -116,6 +85,14 @@ import {DNSReportComponent} from "./reports/dns-report.component";
 import {AlertReportComponent} from "./reports/alerts-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
 import {FlowReportComponent} from "./reports/flow-report.component";
+
+// Routes.
+import {routing, appRoutingProviders} from "./app.routes";
+
+if (process.env.ENV == "production") {
+    console.log("Enabling production mode.");
+    enableProdMode();
+}
 
 @NgModule({
     imports: [
@@ -137,12 +114,31 @@ import {FlowReportComponent} from "./reports/flow-report.component";
         FlowReportComponent,
     ],
     providers: [
+        // Use hash URLs.
         provide(LocationStrategy, {
             useClass: HashLocationStrategy
         }),
 
-        EVEBOX_SERVICES,
+        // Routing.
         appRoutingProviders,
+
+        // Evebox services.
+        ConfigService,
+        ElasticSearchService,
+        MousetrapService,
+        TopNavService,
+        AlertService,
+        AppService,
+        ApiService,
+        EventServices,
+        EventService,
+        ToastrService,
+        ReportsService,
+        EveboxSubscriptionService,
+        EveboxHumanizeService,
+
+        // EveBox pipes.
+        EveboxFormatIpAddressPipe
     ],
     bootstrap: [
         AppComponent,
