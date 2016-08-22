@@ -38,7 +38,8 @@ import {ElasticSearchService} from "./elasticsearch.service";
 @Component({
     selector: "eveboxEventTable2",
     template: `<div *ngIf="rows && rows.length > 0" class="table-responsive">
-  <table class="table table-condensed table-hover evebox-event-table">
+  <table class="table table-condensed table-hover evebox-event-table"
+         style="padding-bottom: 0px !important; margin-bottom: 0px !important;">
     <thead>
     <tr>
       <!-- Chevron column. -->

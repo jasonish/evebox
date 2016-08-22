@@ -34,6 +34,7 @@ import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
 import moment = require("moment");
 import {EveboxHumanizeService} from "../humanize.service";
 import {EveboxReportDataTable} from "./dns-report.component";
+import {EveboxEventTable2Component} from "../eventtable2.component";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -45,29 +46,49 @@ import {EveboxReportDataTable} from "./dns-report.component";
                    title="Netflow Events Over Time"
                    [data]="eventsOverTime"></metrics-graphic>
 
-  <metrics-graphic *ngIf="averageAgeOverTime"
-                   graphId="averageAgeOverTime"
-                   title="Average Flow Age Over Time"
-                   [data]="averageAgeOverTime"></metrics-graphic>
+  <div class="row">
 
-  <metrics-graphic *ngIf="maxAgeOverTime"
-                   graphId="maxAgeOverTime"
-                   title="Max Flow Age Over Time"
-                   [data]="maxAgeOverTime"></metrics-graphic>
+    <div class="col-md-6">
+      <report-data-table *ngIf="topClientsByFlows"
+                         title="Top Clients By Flow Count"
+                         [rows]="topClientsByFlows"
+                         [headers]="['Flows', 'Client IP']"></report-data-table>
+    </div>
 
-  </div>`,
+    <div class="col-md-6">
+      <report-data-table *ngIf="topServersByFlows"
+                         title="Top Servers By Flow Count"
+                         [rows]="topServersByFlows"
+                         [headers]="['Flows', 'Server IP']"></report-data-table>
+    </div>
+
+  </div>
+
+  <div *ngIf="topFlowsByAge" class="panel panel-default">
+    <div class="panel-heading">
+      <b>Top Flows by Age</b>
+    </div>
+    <eveboxEventTable2 [rows]="topFlowsByAge"
+                       [showEventType]="false"
+                       [showActiveEvent]="false"></eveboxEventTable2>
+  </div>
+
+</div>`,
     directives: [
         EveboxMetricsGraphicComponent,
         EveboxLoadingSpinnerComponent,
         EveboxReportDataTable,
+        EveboxEventTable2Component,
     ]
 })
 export class FlowReportComponent implements OnInit, OnDestroy {
 
     private eventsOverTime:any[];
 
-    private averageAgeOverTime:any[];
-    private maxAgeOverTime:any[];
+    private topClientsByFlows:any[];
+    private topServersByFlows:any[];
+
+    private topFlowsByAge:any[];
 
     private loading:number = 0;
 
@@ -120,16 +141,20 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                         field: "@timestamp",
                         interval: this.reportsService.guessBestHistogramInterval(),
                     },
-                    aggs: {
-                        averageAge: {
-                            avg: {
-                                field: "flow.age",
-                            }
-                        },
-                        maxAge: {
-                            max: {
-                                field: "flow.age",
-                            }
+                },
+                topClientsByFlows: {
+                    terms: {
+                        field: "src_ip.raw",
+                        order: {
+                            "_count": "desc",
+                        }
+                    }
+                },
+                topServersByFlows: {
+                    terms: {
+                        field: "dest_ip.raw",
+                        order: {
+                            "_count": "desc",
                         }
                     }
                 },
@@ -140,34 +165,39 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                         ],
                         size: 10,
                     }
-                },
+                }
             }
         };
 
         this.reportsService.submitQuery(query).then((response:any) => {
 
-            this.averageAgeOverTime = [];
-            this.maxAgeOverTime = [];
+            console.log(response);
+
+            this.topClientsByFlows = response.aggregations.topClientsByFlows.buckets.map((bucket:any) => {
+                return {
+                    key: bucket.key,
+                    count: bucket.doc_count,
+                };
+            });
+
+            this.topServersByFlows = response.aggregations.topServersByFlows.buckets.map((bucket:any) => {
+                return {
+                    key: bucket.key,
+                    count: bucket.doc_count,
+                };
+            });
 
             this.eventsOverTime = response.aggregations.events_over_time.buckets.map((item:any) => {
 
                 let date = moment(item.key).toDate();
-
-                this.averageAgeOverTime.push({
-                    date: date,
-                    value: item.averageAge.value,
-                });
-
-                this.maxAgeOverTime.push({
-                    date: date,
-                    value: item.maxAge.value,
-                });
 
                 return {
                     date: date,
                     value: item.doc_count
                 }
             });
+
+            this.topFlowsByAge = response.aggregations.topFlowsByAge.hits.hits;
 
             this.loading--;
 
