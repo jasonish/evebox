@@ -12,8 +12,6 @@ export class EveboxSearchLinkComponent implements OnInit {
     @Input() private searchParams:any;
     @Input() private route:string = "/events";
 
-    private content:string = "";
-
     constructor(private router:Router) {
     }
 
@@ -21,7 +19,7 @@ export class EveboxSearchLinkComponent implements OnInit {
     }
 
     onClick() {
-        let queryParams:any = this.router.routerState.snapshot.queryParams;
+        let queryParams:any = {};
         let queryString = "";
 
         if (this.searchParams) {

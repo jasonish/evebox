@@ -27,7 +27,7 @@
 import {
     Component, Input, Output, EventEmitter, OnInit,
     AfterViewInit, OnChanges, AfterContentInit, AfterContentChecked,
-    AfterViewChecked
+    AfterViewChecked, OnDestroy
 } from "@angular/core";
 import {EveboxDurationComponent} from "./duration.component";
 import {EveboxFormatTimestampPipe} from "./pipes/format-timestamp.pipe";
@@ -110,10 +110,10 @@ declare var $:any;
               class="caret"></span></button>
           <ul class="dropdown-menu">
             <li><a href="javascript:void(0);"
-                   (click)="selectBySignatureId(row)">Select
+                   (click)="selectBySignatureId(row)">1. Select
               all with SID: {{row.event.event._source.alert.signature_id}}</a>
             </li>
-            <li><a href="javascript:void(0)" (click)="filterBySignatureId(row)">Filter
+            <li><a href="javascript:void(0)" (click)="filterBySignatureId(row)">2. Filter
               on SID: {{row.event.event._source.alert.signature_id}}</a></li>
           </ul>
         </div>
@@ -137,7 +137,7 @@ declare var $:any;
         KeyTableDirective
     ]
 })
-export class AlertTableComponent implements OnInit, AfterViewChecked {
+export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     @Input() private rows:any[] = [];
     @Output() private rowClicked:EventEmitter<any> = new EventEmitter<any>();
@@ -153,7 +153,18 @@ export class AlertTableComponent implements OnInit, AfterViewChecked {
     ngOnInit() {
         this.mousetrap.bind(this, ".", () => {
             this.openDropdownMenu();
-        })
+        });
+
+        this.mousetrap.bind(this, "1", () => {
+            this.selectBySignatureId(this.rows[this.activeRow]);
+        });
+        this.mousetrap.bind(this, "2", () => {
+            this.filterBySignatureId(this.rows[this.activeRow]);
+        });
+    }
+
+    ngOnDestroy() {
+        this.mousetrap.unbind(this);
     }
 
     ngAfterViewChecked() {

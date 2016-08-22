@@ -78,16 +78,19 @@ export class AppService {
     }
 
     updateQueryParameters(params:any) {
-        let queryParams:Params = this.router.routerState.snapshot.queryParams;
-        Object.keys(params).forEach((key:any) => {
-            let value = params[key];
-            if (value) {
-                queryParams[key] = params[key];
-            }
-            else {
-                delete queryParams[key];
-            }
+
+        let oldParams:Params = this.router.routerState.snapshot.queryParams;
+
+        let newParams:Params = {};
+
+        Object.keys(oldParams).forEach((key:any) => {
+            newParams[key] = oldParams[key];
         });
-        this.router.navigate([this.getRoute()], {queryParams: queryParams});
+
+        Object.keys(params).forEach((key:any) => {
+            newParams[key] = params[key];
+        });
+
+        this.router.navigate([this.getRoute()], {queryParams: newParams});
     }
 }
