@@ -25,7 +25,7 @@
  */
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
-import {Router} from "@angular/router";
+import {Router, ActivatedRoute} from "@angular/router";
 import {ElasticSearchService, ResultSet} from "./elasticsearch.service";
 import {
     EveboxEventTableComponent,
@@ -36,6 +36,7 @@ import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
 import {AppService} from "./app.service";
 import {ToastrService} from "./toastr.service";
 import {Subscription} from "rxjs/Rx";
+import {EveboxSubscriptionService} from "./subscription.service";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading}">
@@ -110,22 +111,32 @@ export class EventsComponent implements OnInit, OnDestroy {
         rows: []
     };
 
-    private routerSub:Subscription;
-
-    constructor(private router:Router,
+    constructor(private route:ActivatedRoute,
+                private router:Router,
                 private elasticsearch:ElasticSearchService,
                 private mousetrap:MousetrapService,
                 private appService:AppService,
-                private toastr:ToastrService) {
+                private toastr:ToastrService,
+                private ss:EveboxSubscriptionService) {
     }
 
     ngOnInit():any {
 
-        this.routerSub = this.router.routerState.queryParams.subscribe(
-            (params:any) => {
-                this.queryString = params.q || "";
+        this.ss.subscribe(this, this.route.params, (params:any) => {
+           if (params.q) {
+               console.log("Using query string from route.params.");
+               this.queryString = params.q;
+               this.refresh();
+           }
+        });
+
+        this.ss.subscribe(this, this.route.queryParams, (params:any) => {
+            if (params.q) {
+                console.log("Using query string from route.queryParams.");
+                this.queryString = params.q;
                 this.refresh();
-            });
+            }
+        });
 
         this.appService.disableTimeRange();
 
@@ -135,7 +146,7 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         this.mousetrap.unbind(this);
-        this.routerSub.unsubscribe();
+        this.ss.unsubscribe(this);
     }
 
     focusFilterInput() {
