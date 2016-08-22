@@ -286,6 +286,12 @@ export class ElasticSearchService {
 
     }
 
+    escalateEvent(event:any):Promise<any> {
+
+        return this.addTagsToEventSet([event], ["evebox.escalated", "escalated"]);
+
+    }
+
     /**
      * Archive an event.
      *

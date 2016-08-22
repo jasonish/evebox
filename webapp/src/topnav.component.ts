@@ -90,9 +90,9 @@ declare var $:any;
         </li>
       </ul>
 
-      <form class="navbar-form navbar-right">
+      <form name="dateSelectorForm" class="navbar-form navbar-right">
         <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control"
-                [ngModel]="topNavService.timeRange"
+                [ngModel]="topNavService.timeRange" name="timeRange"
                 (change)="timeRangeChanged($event)">
           <option value="1m">Last minute</option>
           <option value="1h">Last hour</option>

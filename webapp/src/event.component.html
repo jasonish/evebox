@@ -8,7 +8,8 @@
               *ngIf="showArchiveButton()"
               (click)="archiveEvent()">Archive
       </button>
-      <button type="button" class="btn btn-default">Escalate</button>
+      <button *ngIf="!isEscalated()" type="button" class="btn btn-default" (click)="escalateEvent()">Escalate</button>
+      <button *ngIf="isEscalated()" type="button" class="btn btn-default" (click)="deEscalateEvent()">De-escalate</button>
     </div>
   </div>
 

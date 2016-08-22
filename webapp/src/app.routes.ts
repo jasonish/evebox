@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {RouterConfig, provideRouter} from "@angular/router";
+import {RouterConfig, provideRouter, RouterModule} from "@angular/router";
 import {EventsComponent} from "./events.component";
 import {EventComponent} from "./event.component";
 import {AlertsComponent} from "./alerts.component";
@@ -67,3 +67,8 @@ export const routes:RouterConfig = [
 export const APP_ROUTER_PROVIDERS = [
     provideRouter(routes)
 ];
+
+export const appRoutingProviders:any[] = [
+];
+
+export const routing = RouterModule.forRoot(routes);

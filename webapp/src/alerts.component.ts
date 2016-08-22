@@ -71,7 +71,7 @@ const TEMPLATE:string = `<div [ngClass]="{'evebox-opacity-50': loading}">
       <form (submit)="submitFilter()">
         <div class="input-group">
           <input id="filter-input" type="text" class="form-control"
-                 placeholder="Filter..." [(ngModel)]="queryString"/>
+                 placeholder="Filter..." [(ngModel)]="queryString" name="queryString"/>
           <div class="input-group-btn">
             <button class="btn btn-default" type="submit">Apply
             </button>
@@ -108,6 +108,7 @@ const DIRECTIVES:any[] = [
 export interface AlertsState {
     rows:any[];
     activeRow:number;
+    route:string,
     queryString:string;
 }
 
@@ -138,7 +139,8 @@ export class AlertsComponent implements OnInit, OnDestroy {
         let state:AlertsState = {
             rows: this.rows,
             activeRow: this.activeRow,
-            queryString: this.queryString
+            queryString: this.queryString,
+            route: this.appService.getRoute(),
         };
         return state;
     }
@@ -190,10 +192,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.dispatcherSubscription.unsubscribe();
     }
 
-    toggleSelectedState(row:any) {
-        row.selected = !row.selected;
-    }
-
     restoreState():boolean {
 
         let state:AlertsState = this.alertService.popState();
@@ -206,6 +204,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
         let rows = state.rows;
         let activeRow = state.activeRow;
 
+        if (state.route != this.appService.getRoute()) {
+            console.log("Saved state route differs.");
+            return false;
+        }
         if (state.queryString != this.queryString) {
             console.log("Query strings differ, previous state not being restored.");
             return false;
@@ -251,6 +253,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     getActiveRowIndex() {
         return this.activeRow;
+    }
+
+    toggleSelectedState(row:any) {
+        row.selected = !row.selected;
     }
 
     escalateSelected() {
@@ -365,7 +371,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.eventService.pushAlertGroup(event);
         this.router.navigate(['/event', event.event._id, {
             referer: this.appService.getRoute()
-        }]);
+        }])
     }
 
     rowClicked(row:any) {

@@ -49,11 +49,14 @@ import 'rxjs';
 // You can import js, ts, css, sass, ...
 import "bootstrap/dist/css/bootstrap.css";
 
-import {bootstrap} from "@angular/platform-browser-dynamic";
-import {HTTP_PROVIDERS} from "@angular/http";
-import {ROUTER_DIRECTIVES} from "@angular/router";
+import {
+    bootstrap,
+    platformBrowserDynamic
+} from "@angular/platform-browser-dynamic";
+import {HTTP_PROVIDERS, HttpModule} from "@angular/http";
+import {ROUTER_DIRECTIVES, RouterModule} from "@angular/router";
 import {LocationStrategy, HashLocationStrategy} from "@angular/common";
-import {provide, enableProdMode} from "@angular/core";
+import {provide, enableProdMode, NgModule} from "@angular/core";
 
 require("codemirror/lib/codemirror.css");
 
@@ -97,20 +100,55 @@ let EVEBOX_SERVICES = [
 ];
 
 // Routes.
-import {APP_ROUTER_PROVIDERS} from "./app.routes";
+import {APP_ROUTER_PROVIDERS, routing, appRoutingProviders} from "./app.routes";
 
 if (process.env.ENV == "production") {
     console.log("Enabling production mode.");
     enableProdMode();
 }
 
-//noinspection TypeScriptValidateTypes
-bootstrap(AppComponent, [
-    APP_ROUTER_PROVIDERS,
-    HTTP_PROVIDERS,
-    ROUTER_DIRECTIVES,
-    provide(LocationStrategy, {
-        useClass: HashLocationStrategy
-    }),
-    EVEBOX_SERVICES
-]);
+import {BrowserModule} from "@angular/platform-browser";
+import {FormsModule} from "@angular/forms";
+import {AlertsComponent} from "./alerts.component";
+import {EventsComponent} from "./events.component";
+import {EventComponent} from "./event.component";
+import {DNSReportComponent} from "./reports/dns-report.component";
+import {AlertReportComponent} from "./reports/alerts-report.component";
+import {NetflowReportComponent} from "./reports/netflow-report.component";
+import {FlowReportComponent} from "./reports/flow-report.component";
+
+@NgModule({
+    imports: [
+        BrowserModule,
+        FormsModule,
+        RouterModule,
+        HttpModule,
+        routing,
+    ],
+    declarations: [
+        AppComponent,
+        AlertsComponent,
+        EventsComponent,
+        EventComponent,
+
+        DNSReportComponent,
+        AlertReportComponent,
+        NetflowReportComponent,
+        FlowReportComponent,
+    ],
+    providers: [
+        provide(LocationStrategy, {
+            useClass: HashLocationStrategy
+        }),
+
+        EVEBOX_SERVICES,
+        appRoutingProviders,
+    ],
+    bootstrap: [
+        AppComponent,
+    ]
+})
+export class AppModule {
+}
+
+platformBrowserDynamic().bootstrapModule(AppModule);

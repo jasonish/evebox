@@ -43,6 +43,7 @@ import {EventServices} from "./eventservices.service";
 import {EventService} from "./event.service";
 import {MousetrapService} from "./mousetrap.service";
 import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
+import {EveboxSubscriptionService} from "./subscription.service";
 
 /**
  * Component to show a single event.
@@ -74,14 +75,17 @@ export class EventComponent implements OnInit, OnDestroy {
                 private eventServices:EventServices,
                 private location:Location,
                 private eventService:EventService,
-                private mousetrap:MousetrapService) {
+                private mousetrap:MousetrapService,
+                private ss:EveboxSubscriptionService) {
     }
 
     ngOnInit() {
 
         let alertGroup = this.eventService.popAlertGroup();
 
-        this.route.params.subscribe((params:any) => {
+        this.ss.subscribe(this, this.route.params, (params:any) => {
+
+            console.log("got route event");
 
             this.params = params;
             this.eventId = params.id;
@@ -103,6 +107,7 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy() {
+        this.ss.unsubscribe(this);
         this.mousetrap.unbind(this);
     }
 
@@ -130,11 +135,13 @@ export class EventComponent implements OnInit, OnDestroy {
 
         console.log(q);
 
-        this.router.navigate(["/events"], { queryParams: {
-            q: q
-        }});
+        this.router.navigate(["/events"], {
+            queryParams: {
+                q: q
+            }
+        });
     }
-    
+
     archiveEvent() {
         if (this.alertGroup) {
             this.elasticSearchService.archiveAlertGroup(this.alertGroup);
@@ -144,6 +151,50 @@ export class EventComponent implements OnInit, OnDestroy {
             this.elasticSearchService.archiveEvent(this.event);
         }
         this.location.back();
+    }
+
+    escalateEvent() {
+        if (this.alertGroup) {
+            this.elasticSearchService.escalateAlertGroup(this.alertGroup);
+            this.alertGroup.escalatedCount = this.alertGroup.count;
+        }
+        else {
+            console.log("Escalating single event.");
+            this.elasticSearchService.escalateEvent(this.event);
+        }
+    }
+
+    deEscalateEvent() {
+        if (this.alertGroup) {
+            this.elasticSearchService._removeEscalatedStateFromAlertGroup(this.alertGroup);
+            this.alertGroup.escalatedCount = 0;
+        }
+        else {
+            this.elasticSearchService.removeTagsFromEventSet([this.event], ["escalated", "evebox.escalated"]);
+        }
+    }
+
+    isEscalated() {
+
+        if (this.alertGroup) {
+            if (this.alertGroup.escalatedCount == this.alertGroup.count) {
+                return true;
+            }
+        }
+
+        if (!this.event._source.tags) {
+            return false;
+        }
+
+        if (this.event._source.tags.indexOf("escalated") > -1) {
+            return true;
+        }
+
+        if (this.event._source.tags.indexOf("evebox.escalated") > -1) {
+            return true;
+        }
+
+        return false;
     }
 
     refresh() {

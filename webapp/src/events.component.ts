@@ -42,10 +42,11 @@ import {Subscription} from "rxjs/Rx";
   <div class="row">
     <div class="col-md-12">
       <div class="form-group">
-        <form (submit)="submitFilter()">
+        <form name="filterInputForm" (submit)="submitFilter()">
           <div class="input-group">
             <input id="filter-input" type="text" class="form-control"
-                   placeholder="Filter..." [(ngModel)]="queryString"/>
+                   placeholder="Filter..." [(ngModel)]="queryString"
+                   name="queryString"/>
             <div class="input-group-btn">
               <button type="submit" class="btn btn-default">Search</button>
               <button type="button" class="btn btn-default"
