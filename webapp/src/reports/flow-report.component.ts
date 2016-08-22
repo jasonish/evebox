@@ -32,6 +32,8 @@ import {AppService, AppEvent, AppEventCode} from "../app.service";
 import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
 
 import moment = require("moment");
+import {EveboxHumanizeService} from "../humanize.service";
+import {EveboxReportDataTable} from "./dns-report.component";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -41,21 +43,38 @@ import moment = require("moment");
   <metrics-graphic *ngIf="eventsOverTime"
                    graphId="eventsOverTime"
                    title="Netflow Events Over Time"
-                   [data]="eventsOverTime"></metrics-graphic>`,
+                   [data]="eventsOverTime"></metrics-graphic>
+
+  <metrics-graphic *ngIf="averageAgeOverTime"
+                   graphId="averageAgeOverTime"
+                   title="Average Flow Age Over Time"
+                   [data]="averageAgeOverTime"></metrics-graphic>
+
+  <metrics-graphic *ngIf="maxAgeOverTime"
+                   graphId="maxAgeOverTime"
+                   title="Max Flow Age Over Time"
+                   [data]="maxAgeOverTime"></metrics-graphic>
+
+  </div>`,
     directives: [
         EveboxMetricsGraphicComponent,
         EveboxLoadingSpinnerComponent,
+        EveboxReportDataTable,
     ]
 })
 export class FlowReportComponent implements OnInit, OnDestroy {
 
     private eventsOverTime:any[];
 
+    private averageAgeOverTime:any[];
+    private maxAgeOverTime:any[];
+
     private loading:number = 0;
 
     constructor(private appService:AppService,
                 private ss:EveboxSubscriptionService,
-                private reportsService:ReportsService) {
+                private reportsService:ReportsService,
+                private humanize:EveboxHumanizeService) {
     }
 
     ngOnInit() {
@@ -99,39 +118,53 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 events_over_time: {
                     date_histogram: {
                         field: "@timestamp",
-                        interval: "minute"
+                        interval: this.reportsService.guessBestHistogramInterval(),
                     },
                     aggs: {
-                        bytes_toserver: {
-                            sum: {
-                                field: "flow.bytes_toserver"
+                        averageAge: {
+                            avg: {
+                                field: "flow.age",
                             }
                         },
-                        bytes_toclient: {
-                            sum: {
-                                field: "flow.bytes_toclient"
-                            }
-                        },
-                        pkts_toserver: {
-                            sum: {
-                                field: "flow.pkts_toserver"
-                            }
-                        },
-                        pkts_toclient: {
-                            sum: {
-                                field: "flow.pkts_toclient"
+                        maxAge: {
+                            max: {
+                                field: "flow.age",
                             }
                         }
                     }
-                }
+                },
+                topFlowsByAge: {
+                    top_hits: {
+                        sort: [
+                            {"flow.age": {order: "desc"}}
+                        ],
+                        size: 10,
+                    }
+                },
             }
         };
 
         this.reportsService.submitQuery(query).then((response:any) => {
 
+            this.averageAgeOverTime = [];
+            this.maxAgeOverTime = [];
+
             this.eventsOverTime = response.aggregations.events_over_time.buckets.map((item:any) => {
+
+                let date = moment(item.key).toDate();
+
+                this.averageAgeOverTime.push({
+                    date: date,
+                    value: item.averageAge.value,
+                });
+
+                this.maxAgeOverTime.push({
+                    date: date,
+                    value: item.maxAge.value,
+                });
+
                 return {
-                    date: moment(item.key).toDate(),
+                    date: date,
                     value: item.doc_count
                 }
             });
