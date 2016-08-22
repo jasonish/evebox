@@ -25,7 +25,7 @@
  */
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
-import {Router, ActivatedRoute} from "@angular/router";
+import {ActivatedRoute} from "@angular/router";
 import {ElasticSearchService, ResultSet} from "./elasticsearch.service";
 import {
     EveboxEventTableComponent,
@@ -35,7 +35,6 @@ import {MousetrapService} from "./mousetrap.service";
 import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
 import {AppService} from "./app.service";
 import {ToastrService} from "./toastr.service";
-import {Subscription} from "rxjs/Rx";
 import {EveboxSubscriptionService} from "./subscription.service";
 
 @Component({
@@ -68,9 +67,6 @@ import {EveboxSubscriptionService} from "./subscription.service";
       <div *ngIf="hasEvents()" class="pull-right">
         <button type="button" class="btn btn-default" (click)="gotoNewest()">
           Newest
-        </button>
-        <button type="button" class="btn btn-default" (click)="gotoNewer()">
-          Newer
         </button>
         <button type="button" class="btn btn-default" (click)="gotoOlder()">
           Older
@@ -106,13 +102,15 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     private queryString:string = "";
 
+    private timeStart:string;
+    private timeEnd:string;
+
     private eveboxEventTableConfig:EveboxEventTableConfig = {
         showCount: false,
         rows: []
     };
 
     constructor(private route:ActivatedRoute,
-                private router:Router,
                 private elasticsearch:ElasticSearchService,
                 private mousetrap:MousetrapService,
                 private appService:AppService,
@@ -123,19 +121,10 @@ export class EventsComponent implements OnInit, OnDestroy {
     ngOnInit():any {
 
         this.ss.subscribe(this, this.route.params, (params:any) => {
-           if (params.q) {
-               console.log("Using query string from route.params.");
-               this.queryString = params.q;
-               this.refresh();
-           }
-        });
-
-        this.ss.subscribe(this, this.route.queryParams, (params:any) => {
-            if (params.q) {
-                console.log("Using query string from route.queryParams.");
-                this.queryString = params.q;
-                this.refresh();
-            }
+            this.queryString = params.q || "";
+            this.timeStart = params.timeStart;
+            this.timeEnd = params.timeEnd;
+            this.refresh();
         });
 
         this.appService.disableTimeRange();
@@ -155,8 +144,10 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     submitFilter() {
         document.getElementById("filter-input").blur();
-        this.appService.updateQueryParameters({q: this.queryString});
-        this.refresh();
+        this.appService.updateParams(this.route, {
+            q: this.queryString
+        });
+        //this.router.navigate([this.appService.getRoute(), {q: this.queryString}]);
     }
 
     clearFilter() {
@@ -165,27 +156,17 @@ export class EventsComponent implements OnInit, OnDestroy {
     }
 
     gotoNewest() {
-        this.appService.updateQueryParameters({
+        this.appService.updateParams(this.route, {
             timeStart: undefined,
-            timeEnd: undefined
+            timeEnd: undefined,
         });
-        this.refresh();
-    }
-
-    gotoNewer() {
-        this.appService.updateQueryParameters({
-            timeStart: this.resultSet.newestTimestamp,
-            timeEnd: undefined
-        });
-        this.refresh();
     }
 
     gotoOlder() {
-        this.appService.updateQueryParameters({
+        this.appService.updateParams(this.route, {
             timeEnd: this.resultSet.oldestTimestamp,
-            timeStart: undefined
+            timeStart: undefined,
         });
-        this.refresh();
     }
 
     hasEvents() {
@@ -203,8 +184,8 @@ export class EventsComponent implements OnInit, OnDestroy {
 
         this.elasticsearch.findEvents({
             queryString: this.queryString,
-            timeEnd: this.router.routerState.snapshot.queryParams["timeEnd"],
-            timeStart: this.router.routerState.snapshot.queryParams["timeStart"]
+            timeEnd: this.timeEnd,
+            timeStart: this.timeStart,
         }).then((resultSet:ResultSet) => {
             this.resultSet = resultSet;
             this.eveboxEventTableConfig.rows = resultSet.events.map((event:any) => {

@@ -25,7 +25,7 @@
  */
 
 import {Injectable, EventEmitter} from "@angular/core";
-import {Router, Params} from "@angular/router";
+import {Router, Params, ActivatedRoute} from "@angular/router";
 
 export enum AppEventCode {
     SHOW_HELP = 0,
@@ -70,7 +70,7 @@ export class AppService {
     getRoute() {
         // First get the name of the first part of the path without query
         // parameters, but after the first /.
-        let route = this.router.url.substring(1).split(/[\?\/]/)[0];
+        let route = this.router.url.substring(1).split(/[;\?\/]/)[0];
 
         // Return the route with a leading / as that is what is expected right
         // now.
@@ -93,4 +93,35 @@ export class AppService {
 
         this.router.navigate([this.getRoute()], {queryParams: newParams});
     }
+
+    updateParams(activatedRoute:ActivatedRoute, params:any = {}, queryParams:any = {}) {
+
+        let newParams = JSON.parse(JSON.stringify(activatedRoute.snapshot.params));
+        let newQueryParams = JSON.parse(JSON.stringify(activatedRoute.snapshot.queryParams));
+
+        Object.keys(params).forEach((key:any) => {
+            let value = params[key];
+            if (value == undefined || value == null) {
+                delete(newParams[key]);
+            }
+            else {
+                newParams[key] = value;
+            }
+        });
+
+        Object.keys(queryParams).forEach((key:any) => {
+            let value = queryParams[key];
+            if (value == undefined || value == null) {
+                delete(newQueryParams[key]);
+            }
+            else {
+                newQueryParams[key] = value;
+            }
+        });
+
+        this.router.navigate([this.getRoute(), newParams], {
+            queryParams: newQueryParams
+        });
+    }
+
 }
