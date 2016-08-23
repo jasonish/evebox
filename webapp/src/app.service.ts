@@ -52,10 +52,12 @@ export class AppService {
     }
 
     enableTimeRange() {
+        console.log("Enabling time range.");
         this.timeRangeDisabled = false;
     }
 
     disableTimeRange() {
+        console.log("Disabling time range.");
         this.timeRangeDisabled = true;
     }
 

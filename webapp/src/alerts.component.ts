@@ -34,6 +34,7 @@ import {MousetrapService} from "./mousetrap.service";
 import {AppService, AppEvent, AppEventCode} from "./app.service";
 import {EventService} from "./event.service";
 import {ToastrService} from "./toastr.service";
+import {TopNavService} from "./topnav.service";
 
 const TEMPLATE:string = `<div [ngClass]="{'evebox-opacity-50': loading}">
 
@@ -122,7 +123,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
     private activeRow:number = 0;
     private queryString:string = "";
     private loading:boolean = false;
-    private filters:any[] = [];
     private dispatcherSubscription:any;
     private routerSubscription:any;
 
@@ -132,7 +132,8 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 private mousetrap:MousetrapService,
                 private appService:AppService,
                 private eventService:EventService,
-                private toastr:ToastrService) {
+                private toastr:ToastrService,
+                private topNavService:TopNavService) {
     }
 
     buildState():any {
@@ -150,13 +151,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit():any {
-
-        if (this.appService.getRoute() == "/inbox") {
-            this.filters.push({not: {term: {tags: "archived"}}})
-        }
-        if (this.appService.getRoute() == "/escalated") {
-            this.filters.push({term: {tags: "escalated"}});
-        }
 
         // Listen for changes in the route.
         this.routerSubscription = this.router.routerState.queryParams.subscribe((params:any) => {
@@ -417,9 +411,41 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         this.loading = true;
 
+        let filters:any[] = [];
+
+        if (this.appService.getRoute() == "/inbox") {
+
+            // Limit to non-archived events.
+            filters.push({not: {term: {tags: "archived"}}});
+
+            // Apply timerange.
+            if (this.topNavService.timeRange) {
+                filters.push({
+                    range: {
+                        timestamp: {gte: `now-${this.topNavService.timeRange}`}
+                    }
+                });
+            }
+        }
+        else if (this.appService.getRoute() == "/alerts") {
+            // Just apply time range.
+            if (this.topNavService.timeRange) {
+                filters.push({
+                    range: {
+                        timestamp: {gte: `now-${this.topNavService.timeRange}`}
+                    }
+                });
+            }
+        }
+        else if (this.appService.getRoute() == "/escalated") {
+            // Limit to escalated events only, no time range applied.
+            filters.push({term: {tags: "escalated"}});
+        }
+
+
         this.alertService.fetchAlerts({
             queryString: this.queryString,
-            filters: this.filters
+            filters: filters
         }).then((rows:any) => {
             this.rows = rows;
         }, (error:any) => {

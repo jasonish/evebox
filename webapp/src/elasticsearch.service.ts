@@ -457,6 +457,19 @@ export class ElasticSearchService {
         });
     }
 
+    applyTimeRange(query:any):any {
+
+        if (this.topNavService.timeRange) {
+            query.query.filtered.filter.and.push({
+                range: {
+                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
+                }
+            });
+        }
+
+        return query;
+    }
+
     getAlerts(options ?:any):Promise < AlertGroup[] > {
 
         options = options || {};
@@ -533,14 +546,6 @@ export class ElasticSearchService {
         if (options.filters) {
             options.filters.forEach((filter:any) => {
                 query.query.filtered.filter.and.push(filter);
-            });
-        }
-
-        if (!this.appService.isTimeRangeDisabled() && this.topNavService.timeRange) {
-            query.query.filtered.filter.and.push({
-                range: {
-                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
-                }
             });
         }
 

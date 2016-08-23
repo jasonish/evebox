@@ -100,7 +100,7 @@ declare var $:any;
              (click)="$event.stopPropagation()">
           <button type="button"
                   class="btn btn-default"
-                  (click)="archiveEvent.emit(row)">
+                  (click)="archiveEvent.emit(row); $event.stopPropagation()">
             Archive
           </button>
           <button type="button" id="dropdown-{{i}}"
