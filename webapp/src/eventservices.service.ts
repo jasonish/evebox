@@ -127,8 +127,10 @@ export class EventServices {
         }
 
         config["event-services"].forEach((serviceConfig:any) => {
-            let service = new CustomEventService(serviceConfig);
-            this.services.push(service);
+            if (serviceConfig.enabled) {
+                let service = new CustomEventService(serviceConfig);
+                this.services.push(service);
+            }
         })
     }
 
