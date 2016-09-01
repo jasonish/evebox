@@ -8,8 +8,12 @@
               *ngIf="showArchiveButton()"
               (click)="archiveEvent()">Archive
       </button>
-      <button *ngIf="!isEscalated()" type="button" class="btn btn-default" (click)="escalateEvent()">Escalate</button>
-      <button *ngIf="isEscalated()" type="button" class="btn btn-default" (click)="deEscalateEvent()">De-escalate</button>
+      <button *ngIf="!isEscalated()" type="button" class="btn btn-default"
+              (click)="escalateEvent()">Escalate
+      </button>
+      <button *ngIf="isEscalated()" type="button" class="btn btn-default"
+              (click)="deEscalateEvent()">De-escalate
+      </button>
     </div>
   </div>
 
@@ -52,16 +56,19 @@
             <dt>Source</dt>
             <dd>
               <search-link field="src_ip"
-                           value="{{event._source.src_ip | eveboxFormatIpAddress}}"></search-link><span
-                *ngIf="event._source.src_port"
-                style="color: dimgray">:{{event._source.src_port}}
+                           value="{{event._source.src_ip | eveboxFormatIpAddress}}"></search-link>
+              <span
+                  *ngIf="event._source.src_port"
+                  style="color: dimgray">:{{event._source.src_port}}
             </span>
             </dd>
             <dt>Destination</dt>
             <dd>
-              <search-link field="dest_ip" value="{{event._source.dest_ip | eveboxFormatIpAddress}}"></search-link><span
-                *ngIf="event._source.dest_port"
-                style="color: dimgray">:{{event._source.dest_port}}
+              <search-link field="dest_ip"
+                           value="{{event._source.dest_ip | eveboxFormatIpAddress}}"></search-link>
+              <span
+                  *ngIf="event._source.dest_port"
+                  style="color: dimgray">:{{event._source.dest_port}}
             </span>
             </dd>
 
@@ -100,9 +107,11 @@
                 </dd>
                 <dt>Signature ID</dt>
                 <dd>
-                  {{event._source.alert.gid}}:<search-link
+                  {{event._source.alert.gid}}:
+                  <search-link
                       field="alert.signature_id" router="/alerts"
-                      value="{{event._source.alert.signature_id}}"></search-link>:{{event._source.alert.rev}}
+                      value="{{event._source.alert.signature_id}}"></search-link>
+                  :{{event._source.alert.rev}}
                 </dd>
                 <dt>Severity</dt>
                 <dd>{{event._source.alert.severity}}
@@ -133,7 +142,9 @@
                 <div
                     *ngFor="let item of event._source[event._source.event_type] | mapToItems">
                   <dt>{{item.key | genericPrettyPrinter}}</dt>
-                  <dd><search-link [value]="item.val"></search-link></dd>
+                  <dd>
+                    <search-link [value]="item.val"></search-link>
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -152,26 +163,65 @@
   <!-- HTTP. -->
   <div *ngIf="event._source.http" class="panel panel-default">
     <div class="panel-heading">
-      HTTP
+      <b>HTTP</b>
     </div>
     <div class="panel-body">
-      <dl class="dl-horizontal">
-        <div *ngFor="let item of event._source.http | mapToItems">
-          <dt>{{item.key | genericPrettyPrinter}}</dt>
-          <dd>
-            <search-link [value]="item.val"></search-link>
-          </dd>
+      <div *ngFor="let item of event._source.http | mapToItems">
+        <div class="col-md-4 col-sm-6">
+          <em>{{item.key | genericPrettyPrinter}}:</em>
+          <search-link [value]="item.val"></search-link>
         </div>
-      </dl>
+      </div>
+    </div>
+  </div>
+
+  <!-- GeoIP. -->
+  <div *ngIf="event._source.geoip" class="panel panel-default">
+    <div class="panel-heading">
+      <b>GeoIP</b>
+    </div>
+    <div class="panel-body">
+      <div *ngFor="let item of event._source.geoip | mapToItems">
+        <div class="col-md-4 col-sm-6">
+          <em>{{item.key | genericPrettyPrinter}}:</em>
+          <search-link [value]="item.val"></search-link>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flows, if any. -->
+  <div *ngFor="let flow of flows">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <span class="pull-right">
+          [
+          <a [routerLink]="['/event', flow._id]">Open</a>
+          ]
+        </span>
+        <b>Flow - {{flow._source.proto}} {{flow._source.src_ip}} ->
+          {{flow._source.dest_ip}}</b>
+      </div>
+      <div class="panel-body">
+        <div *ngFor="let item of flow._source.flow | mapToItems">
+          <div class="col-md-4">
+            <em>{{item.key | genericPrettyPrinter}}:</em>
+            <search-link [value]="item.val"></search-link>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Payload -->
   <div *ngIf="event._source.payload" class="panel panel-default">
     <div class="panel-heading">
-      Payload
-      <span class="pull-right"><a href="javascript:void(0);"
-                                  (click)="eventToPcap('payload');">pcap</a></span>
+      <b>Payload</b>
+      <span class="pull-right">
+        [
+        <a href="javascript:void(0);" (click)="eventToPcap('payload');">PCAP</a>
+        ]
+      </span>
     </div>
     <div class="panel-body">
       <div class="row">
@@ -188,9 +238,12 @@
   <!-- Packet -->
   <div *ngIf="event._source.packet" class="panel panel-default">
     <div class="panel-heading">
-      Packet
-      <span class="pull-right"><a href="javascript:void(0);"
-                                  (click)="eventToPcap('packet');">pcap</a></span>
+      <b>Packet</b>
+      <span class="pull-right">
+        [
+        <a href="javascript:void(0);" (click)="eventToPcap('packet');">PCAP</a>
+        ]
+      </span>
     </div>
     <div class="panel-body">
       <div class="row">
@@ -207,7 +260,7 @@
   <!-- JSON -->
   <div class="panel panel-default">
     <div class="panel-heading">
-      JSON
+      <b>JSON</b>
     </div>
     <div class="panel-body" style="padding: 0px;">
       <ace-editor value="{{event | json }}" mode="json"></ace-editor>

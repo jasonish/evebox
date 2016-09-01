@@ -25,12 +25,17 @@
  */
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
-import {Location} from "@angular/common";
+import {
+    Location,
+    NgSwitch,
+    NgSwitchCase,
+    NgSwitchDefault,
+    JsonPipe
+} from "@angular/common";
 import {ActivatedRoute, Router} from "@angular/router";
 import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
 import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
 import {CodemirrorComponent} from "./codemirror.component";
-import {JsonPipe} from "@angular/common";
 import {EveboxMapToItemsPipe} from "./pipes/maptoitems.pipe";
 import {EveBoxGenericPrettyPrinter} from "./pipes/generic-pretty-printer.pipe";
 import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
@@ -56,6 +61,9 @@ import {EveboxSubscriptionService} from "./subscription.service";
         EveboxBase64DecodePipe, EveboxHexPipe, EveboxFormatIpAddressPipe
     ],
     directives: [
+        NgSwitch,
+        NgSwitchCase,
+        NgSwitchDefault,
         CodemirrorComponent,
         AceEditor,
         EveboxSearchLinkComponent
@@ -67,6 +75,7 @@ export class EventComponent implements OnInit, OnDestroy {
     private alertGroup:AlertGroup;
     private event:any = {};
     private params:any = {};
+    private flows:any[] = [];
 
     constructor(private route:ActivatedRoute,
                 private router:Router,
@@ -79,13 +88,21 @@ export class EventComponent implements OnInit, OnDestroy {
                 private ss:EveboxSubscriptionService) {
     }
 
+    reset() {
+        this.eventId = undefined;
+        this.alertGroup = undefined;
+        this.event = {};
+        this.params = {};
+        this.flows = [];
+    }
+
     ngOnInit() {
 
         let alertGroup = this.eventService.popAlertGroup();
 
         this.ss.subscribe(this, this.route.params, (params:any) => {
 
-            console.log("got route event");
+            this.reset();
 
             this.params = params;
             this.eventId = params.id;
@@ -93,6 +110,9 @@ export class EventComponent implements OnInit, OnDestroy {
             if (alertGroup && this.eventId == alertGroup.event._id) {
                 this.alertGroup = alertGroup;
                 this.event = this.alertGroup.event;
+                if (this.event._source.event_type != "flow") {
+                    this.findFlow(this.event);
+                }
             }
             else {
                 this.refresh();
@@ -193,11 +213,61 @@ export class EventComponent implements OnInit, OnDestroy {
         return false;
     }
 
+    findFlow(event:any) {
+        console.log("Attempting to find flow...");
+        let query = {
+            query: {
+                filtered: {
+                    filter: {
+                        and: [
+                            {exists: {field: "event_type"}},
+                            {term: {event_type: "flow"}},
+                            {term: {flow_id: event._source.flow_id}},
+                            {term: {"proto.raw": event._source.proto}},
+                            {
+                                or: [
+                                    {term: {"src_ip.raw": event._source.src_ip}},
+                                    {term: {"src_ip.raw": event._source.dest_ip}},
+                                ]
+                            },
+                            {
+                                or: [
+                                    {term: {"dest_ip.raw": event._source.src_ip}},
+                                    {term: {"dest_ip.raw": event._source.dest_ip}},
+                                ]
+                            },
+                            {
+                                range: {
+                                    "flow.end": {
+                                        gte: event._source.timestamp,
+                                    },
+                                    "flow.start": {
+                                        lte: event._source.timestamp,
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        };
+        this.elasticSearchService.search(query).then((response:any) => {
+            if (response.hits.hits.length > 0) {
+                this.flows = response.hits.hits;
+            }
+            else {
+                console.log("No flows found for event.");
+            }
+        })
+    }
+
     refresh() {
         this.elasticSearchService.getEventById(this.eventId)
-            .then(
-                (response) => {
-                    this.event = response;
-                });
+            .then((response:any) => {
+                this.event = response;
+                if (this.event._source.event_type != "flow") {
+                    this.findFlow(response);
+                }
+            });
     }
 }
