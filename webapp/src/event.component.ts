@@ -135,11 +135,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
         console.log(q);
 
-        this.router.navigate(["/events"], {
-            queryParams: {
-                q: q
-            }
-        });
+        this.router.navigate(["/events", {q: q}]);
     }
 
     archiveEvent() {
