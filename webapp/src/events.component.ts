@@ -149,9 +149,12 @@ export class EventsComponent implements OnInit, OnDestroy {
     ngOnInit():any {
 
         this.ss.subscribe(this, this.route.params, (params:any) => {
-            this.queryString = params.q || "";
-            this.timeStart = params.timeStart;
-            this.timeEnd = params.timeEnd;
+
+            let qp:any = this.route.snapshot.queryParams;
+
+            this.queryString = params.q || qp.q || "";
+            this.timeStart = params.timeStart || qp.timeStart;
+            this.timeEnd = params.timeEnd || qp.timeEnd;
             this.eventTypeFilter = params.eventType || this.eventTypeFilterValues[0];
             this.refresh();
         });
@@ -209,11 +212,6 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     refresh() {
 
-        // Prevent double loading.
-        if (this.loading) {
-            return;
-        }
-
         this.loading = true;
 
         // Additional filters.
@@ -228,8 +226,6 @@ export class EventsComponent implements OnInit, OnDestroy {
                 });
                 break;
         }
-
-        console.log(filters);
 
         this.elasticsearch.findEvents({
             queryString: this.queryString,
