@@ -124,7 +124,8 @@ export class EventsComponent implements OnInit, OnDestroy {
         "DNS",
         "TLS",
         "Drop",
-        "FileInfo"
+        "FileInfo",
+        "SSH",
     ];
 
     private eventTypeFilter:string = this.eventTypeFilterValues[0];
