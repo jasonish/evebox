@@ -96,12 +96,12 @@ export class EveboxHelpComponent implements OnInit, OnDestroy {
 
         {
             shortcut: "F8",
-            help: "In inbox, archives alerts."
+            help: "In inbox, archives active alert."
         },
 
         {
             shortcut: "F9",
-            help: "Escalate and archive alerts."
+            help: "In inbox, escalate and archive active alert."
         },
 
         {
