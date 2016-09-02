@@ -56,9 +56,14 @@ import {EveboxSubscriptionService} from "./subscription.service";
 @Component({
     template: require("./event.component.html"),
     pipes: [
-        EventSeverityToBootstrapClass, JsonPipe, EveboxMapToItemsPipe,
-        EveBoxGenericPrettyPrinter, EveBoxEventDescriptionPrinterPipe,
-        EveboxBase64DecodePipe, EveboxHexPipe, EveboxFormatIpAddressPipe
+        EventSeverityToBootstrapClass,
+        JsonPipe,
+        EveboxMapToItemsPipe,
+        EveBoxGenericPrettyPrinter,
+        EveBoxEventDescriptionPrinterPipe,
+        EveboxBase64DecodePipe,
+        EveboxHexPipe,
+        EveboxFormatIpAddressPipe
     ],
     directives: [
         NgSwitch,
@@ -238,9 +243,13 @@ export class EventComponent implements OnInit, OnDestroy {
                             },
                             {
                                 range: {
-                                    "flow.end": {
-                                        gte: event._source.timestamp,
-                                    },
+                                    "flow.start": {
+                                        lte: event._source.timestamp,
+                                    }
+                                }
+                            },
+                            {
+                                range: {
                                     "flow.start": {
                                         lte: event._source.timestamp,
                                     }
