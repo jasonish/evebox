@@ -64,15 +64,16 @@ declare var $:any;
     <tr *ngFor="let row of rows; let i = index"
         [ngClass]="row.event.event | eventSeverityToBootstrapClass"
         (click)="rowClicked.emit(row)">
-      <td>
+      <td style="width: 1% !important;">
       <span *ngIf="i == activeRow"
             class="glyphicon glyphicon-chevron-right"></span>
       </td>
-      <td>
+      <td style="width: 1% !important;">
         <input type="checkbox" [(ngModel)]="row.selected"
                (click)="$event.stopPropagation()">
       </td>
-      <td (click)="$event.stopPropagation(); toggleEscalation.emit(row)">
+      <td (click)="$event.stopPropagation(); toggleEscalation.emit(row)"
+          style="width: 1% !important;">
         <i *ngIf="row.event.escalatedCount == 0"
            class="fa fa-star-o"></i>
         <i *ngIf="row.event.escalatedCount == row.event.count"
@@ -80,14 +81,14 @@ declare var $:any;
         <i *ngIf="row.event.escalatedCount > 0 &&  row.event.escalatedCount != row.event.count"
            class="fa fa-star-half-o"></i>
       </td>
-      <td>{{row.event.count}}</td>
-      <td class="text-nowrap">
+      <td style="width: 1% !important;">{{row.event.count}}</td>
+      <td class="text-nowrap" style="width: 1%;">
         {{row.date | eveboxFormatTimestamp}}
         <br/>
         <evebox-duration style="color:gray"
                          [timestamp]="row.event.newestTs"></evebox-duration>
       </td>
-      <td class="text-nowrap">
+      <td class="text-nowrap" style="width: 1% !important">
         <label>S:</label>
         {{row.event.event._source.src_ip | eveboxFormatIpAddress}}
         <br/>
@@ -95,7 +96,6 @@ declare var $:any;
         {{row.event.event._source.dest_ip | eveboxFormatIpAddress}}
       </td>
       <td>
-
         <div *ngIf="!isArchived(row)" class="btn-group pull-right"
              (click)="$event.stopPropagation()">
           <button type="button"
@@ -113,10 +113,13 @@ declare var $:any;
                    (click)="selectBySignatureId(row)">1. Select
               all with SID: {{row.event.event._source.alert.signature_id}}</a>
             </li>
-            <li><a href="javascript:void(0)" (click)="filterBySignatureId(row)">2. Filter
+            <li><a href="javascript:void(0)" (click)="filterBySignatureId(row)">2.
+              Filter
               on SID: {{row.event.event._source.alert.signature_id}}</a></li>
           </ul>
         </div>
+        <span *ngIf="row.event.event._source.alert.action != 'allowed'"
+              class="label label-warning">{{row.event.event._source.alert.action | uppercase}}</span>
         <span
             [innerHTML]="row.event.event | eveboxEventDescriptionPrinter"></span>
       </td>
