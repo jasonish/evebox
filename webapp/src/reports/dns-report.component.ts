@@ -59,7 +59,7 @@ import moment = require("moment");
     <tbody>
     <tr *ngFor="let row of rows; let i = index">
       <td>{{row.count}}</td>
-      <td><a href='#/events?q="{{row.key}}"'>{{row.key}}</a></td>
+      <td><a [routerLink]="['/events', {q: q(row)}]">{{row.key}}</a></td>
     </tr>
     </tbody>
   </table>
@@ -75,6 +75,9 @@ export class EveboxReportDataTable {
     @Input() private rows:any[];
     @Input() private loading:number = 0;
 
+    q(row:any) {
+        return `+"${row.key}"`;
+    }
 }
 
 @Component({
