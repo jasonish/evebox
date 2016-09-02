@@ -118,10 +118,13 @@ export class EventsComponent implements OnInit, OnDestroy {
     private eventTypeFilterValues:string[] = [
         "All",
         "Alert",
+        "HTTP",
         "Flow",
-        "Netflow",
+        "NetFlow",
         "DNS",
         "TLS",
+        "Drop",
+        "FileInfo"
     ];
 
     private eventTypeFilter:string = this.eventTypeFilterValues[0];
