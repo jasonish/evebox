@@ -122,6 +122,52 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 }
                 return `${desc}`
             }
+            case "drop":
+                let drop:any = eve.drop;
+                let srcPort:string = "";
+                let dstPort:string = "";
+                if (eve.src_port) {
+                    srcPort = `:${eve.src_port}`;
+                }
+                if (eve.dest_port) {
+                    dstPort = `:${eve.dest_port}`;
+                }
+
+                let flags:string[] = [];
+                if (drop.syn) {
+                    flags.push("SYN");
+                }
+                if (drop.ack) {
+                    flags.push("ACK");
+                }
+                if (drop.psh) {
+                    flags.push("PSH");
+                }
+                if (drop.rst) {
+                    flags.push("RST");
+                }
+                if (drop.urg) {
+                    flags.push("URG");
+                }
+                if (drop.fin) {
+                    flags.push("FIN");
+                }
+                let flagInfo = flags.join(",");
+
+                return `${eve.proto} - ${eve.src_ip}${srcPort} -> ${eve.dest_ip}${dstPort} [${flagInfo}]`;
+            case "fileinfo":
+                let extra:string[] = [];
+
+                if (eve.http && eve.http.hostname) {
+                    extra.push(`Hostname: ${eve.http.hostname}`);
+                }
+                if (eve.http && eve.http.http_content_type) {
+                    extra.push(`Content-Type: ${eve.http.http_content_type}`);
+                }
+
+                let extraInfo = "- " + extra.join("; ");
+
+                return `${eve.fileinfo.filename} ${extraInfo}`;
             default:
                 return JSON.stringify(event._source[event._source.event_type]);
         }
