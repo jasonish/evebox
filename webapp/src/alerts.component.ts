@@ -171,6 +171,13 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.mousetrap.bind(this, "f8", () => this.archiveActiveEvent());
         this.mousetrap.bind(this, "s", () =>
             this.toggleEscalatedState(this.getActiveRow()));
+
+        // Escalate then archive event.
+        this.mousetrap.bind(this, "f9", () => {
+            this.toggleEscalatedState(this.getActiveRow());
+            this.archiveActiveEvent();
+        });
+
         this.mousetrap.bind(this, "x", () =>
             this.toggleSelectedState(this.getActiveRow()));
         this.mousetrap.bind(this, "e", () => this.archiveEvents());
