@@ -1,4 +1,3 @@
-import {ConfigService} from "./config.service";
 /* Copyright (c) 2014-2016 Jason Ish
  * All rights reserved.
  *
@@ -29,6 +28,7 @@ import {Injectable} from "@angular/core";
 import {Http} from "@angular/http";
 import {TopNavService} from "./topnav.service";
 import {AppService} from "./app.service";
+import {ConfigService} from "./config.service";
 
 import moment = require("moment");
 import {ToastrService} from "./toastr.service";
@@ -423,6 +423,12 @@ export class ElasticSearchService {
                 range: {
                     timestamp: {gte: options.timeStart}
                 }
+            })
+        }
+
+        if (options.filters) {
+            options.filters.forEach((filter:any) => {
+                query.query.filtered.filter.and.push(filter);
             })
         }
 

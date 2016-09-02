@@ -61,8 +61,21 @@ import {EveboxSubscriptionService} from "./subscription.service";
 
   <div class="row">
     <div class="col-md-12">
+
       <button type="button" class="btn btn-default" (click)="refresh()">Refresh
       </button>
+
+      <div class="btn-group">
+        <button type="button" class="btn btn-default dropdown-toggle"
+                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Event Type: {{eventTypeFilter}} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li *ngFor="let type of eventTypeFilterValues">
+          <a (click)="setEventTypeFilter(type)">{{type}}</a>
+</li>
+        </ul>
+      </div>
 
       <div *ngIf="hasEvents()" class="pull-right">
         <button type="button" class="btn btn-default" (click)="gotoNewest()">
@@ -102,6 +115,17 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     private queryString:string = "";
 
+    private eventTypeFilterValues:string[] = [
+        "All",
+        "Alert",
+        "Flow",
+        "Netflow",
+        "DNS",
+        "TLS",
+    ];
+
+    private eventTypeFilter:string = this.eventTypeFilterValues[0];
+
     private timeStart:string;
     private timeEnd:string;
 
@@ -124,6 +148,7 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.queryString = params.q || "";
             this.timeStart = params.timeStart;
             this.timeEnd = params.timeEnd;
+            this.eventTypeFilter = params.eventType || this.eventTypeFilterValues[0];
             this.refresh();
         });
 
@@ -147,12 +172,17 @@ export class EventsComponent implements OnInit, OnDestroy {
         this.appService.updateParams(this.route, {
             q: this.queryString
         });
-        //this.router.navigate([this.appService.getRoute(), {q: this.queryString}]);
     }
 
     clearFilter() {
         this.queryString = "";
         this.submitFilter();
+    }
+
+    setEventTypeFilter(type:string) {
+        this.eventTypeFilter = type;
+        this.appService.updateParams(this.route, {eventType: this.eventTypeFilter});
+        //this.refresh();
     }
 
     gotoNewest() {
@@ -182,10 +212,26 @@ export class EventsComponent implements OnInit, OnDestroy {
 
         this.loading = true;
 
+        // Additional filters.
+        let filters:any = [];
+
+        switch (this.eventTypeFilter.toLowerCase()) {
+            case "all":
+                break;
+            default:
+                filters.push({
+                    term: {event_type: this.eventTypeFilter.toLocaleLowerCase()}
+                });
+                break;
+        }
+
+        console.log(filters);
+
         this.elasticsearch.findEvents({
             queryString: this.queryString,
             timeEnd: this.timeEnd,
             timeStart: this.timeStart,
+            filters: filters,
         }).then((resultSet:ResultSet) => {
             this.resultSet = resultSet;
             this.eveboxEventTableConfig.rows = resultSet.events.map((event:any) => {

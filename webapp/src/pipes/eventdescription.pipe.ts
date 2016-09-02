@@ -1,3 +1,29 @@
+/* Copyright (c) 2014-2016 Jason Ish
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 import {Pipe, PipeTransform} from "@angular/core";
 import {EveboxFormatIpAddressPipe} from "./format-ipaddress.pipe";
 
@@ -23,8 +49,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
         let destAddr = this.ipFormatter.transform(eve.dest_ip);
 
         switch (event._source.event_type) {
-            case "alert":
-            {
+            case "alert": {
                 let alert = event._source.alert;
                 if (alert.signature) {
                     return alert.signature;
@@ -34,25 +59,18 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                         + ` (${alert.category})`;
                 }
             }
-            case "http":
-            {
+            case "http": {
                 let http = event._source.http;
                 return `${http.http_method} - ${http.hostname} - ${http.url}`;
             }
-            case "ssh":
-            {
+            case "ssh": {
                 let ssh = eve.ssh;
                 return `${ssh.client.software_version} -> ${ssh.server.software_version}`;
             }
-            case "tls":
-            {
-                let tls = eve.tls;
-                let cn = /CN=(.*)/.exec(tls.subject)[1];
-                let issuer = /CN=(.*)/.exec(tls.issuerdn)[1];
-                return `${tls.version}: ${cn} (Issuer: ${issuer})`;
+            case "tls": {
+                return `${eve.tls.version} - ${eve.tls.subject}`;
             }
-            case "flow":
-            {
+            case "flow": {
                 let flow = eve.flow;
                 let sport = "";
                 let dport = "";
@@ -68,8 +86,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                     + `; Bytes: ${flow.bytes_toserver + flow.bytes_toclient}`
                     + `; Packets: ${flow.pkts_toserver + flow.pkts_toclient}`;
             }
-            case "netflow":
-            {
+            case "netflow": {
                 let netflow = eve.netflow;
                 let sport = "";
                 let dport = "";
@@ -85,8 +102,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                     + `; Bytes: ${netflow.bytes}`
                     + `; Packets: ${netflow.pkts}`;
             }
-            case "dns":
-            {
+            case "dns": {
                 let dns = eve.dns;
                 let desc = "";
                 switch (dns.type) {
