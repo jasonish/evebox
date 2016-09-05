@@ -35,11 +35,9 @@ import (
 	"net/url"
 	"os"
 
-	"goji.io"
-	"goji.io/pat"
-
 	"github.com/GeertJohan/go.rice"
 	"github.com/jessevdk/go-flags"
+	"github.com/gorilla/mux"
 )
 
 var buildDate string
@@ -89,7 +87,7 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(configJson)
 }
 
-func setupElasticSearchProxy(mux *goji.Mux) {
+func setupElasticSearchProxy(router *mux.Router) {
 	if opts.ElasticSearchUri == "" {
 		if os.Getenv("ELASTICSEARCH_URL") != "" {
 			opts.ElasticSearchUri = os.Getenv("ELASTICSEARCH_URL")
@@ -103,11 +101,12 @@ func setupElasticSearchProxy(mux *goji.Mux) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	mux.Handle(pat.New("/elasticsearch/*"), esProxy)
+	router.PathPrefix("/elasticsearch").Handler(esProxy)
+	//router.Handle("/elasticsearch/*", esProxy)
 }
 
 // Setup the handler for static files.
-func setupStatic(mux *goji.Mux) {
+func setupStatic(router *mux.Router) {
 	if len(opts.DevServerUri) > 0 {
 		log.Printf("Proxying static files to development server %v.",
 			opts.DevServerUri)
@@ -117,11 +116,15 @@ func setupStatic(mux *goji.Mux) {
 		}
 		devServerProxy :=
 			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-		mux.Handle(pat.Get("/*"), devServerProxy)
+		router.PathPrefix("/").Handler(devServerProxy)
+
+
+
 	} else {
 		public := http.FileServer(
 			rice.MustFindBox("./public").HTTPBox())
-		mux.Handle(pat.Get("/*"), public)
+		router.PathPrefix("/").Handler(public)
+
 	}
 }
 
@@ -160,17 +163,19 @@ func main() {
 		config.ElasticSearchIndex = opts.ElasticSearchIndex
 	}
 
-	mux := goji.NewMux()
+	router := mux.NewRouter()
 
-	mux.HandleFunc(pat.New("/eve2pcap"), Eve2PcapHandler)
-	mux.HandleFunc(pat.Get("/api/version"), VersionHandler)
-	mux.HandleFunc(pat.Get("/api/config"), ConfigHandler)
+	//mux := goji.NewMux()
 
-	setupElasticSearchProxy(mux)
-	setupStatic(mux)
+	router.HandleFunc("/eve2pcap", Eve2PcapHandler)
+	router.HandleFunc("/api/version", VersionHandler)
+	router.HandleFunc("/api/config", ConfigHandler)
+
+	setupElasticSearchProxy(router)
+	setupStatic(router)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host+":"+opts.Port, mux)
+	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}
