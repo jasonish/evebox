@@ -29,12 +29,13 @@ import {Component, OnInit, OnDestroy} from "@angular/core";
 import {AlertTableComponent} from "./alert-table.component";
 import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
 import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
-import {Router} from "@angular/router";
+import {Router, ActivatedRoute} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {AppService, AppEvent, AppEventCode} from "./app.service";
 import {EventService} from "./event.service";
 import {ToastrService} from "./toastr.service";
 import {TopNavService} from "./topnav.service";
+import {EveboxSubscriptionService} from "./subscription.service";
 
 const TEMPLATE:string = `<div [ngClass]="{'evebox-opacity-50': loading}">
 
@@ -124,15 +125,16 @@ export class AlertsComponent implements OnInit, OnDestroy {
     private queryString:string = "";
     private loading:boolean = false;
     private dispatcherSubscription:any;
-    private routerSubscription:any;
 
     constructor(private alertService:AlertService,
                 private elasticSearchService:ElasticSearchService,
                 private router:Router,
+                private route:ActivatedRoute,
                 private mousetrap:MousetrapService,
                 private appService:AppService,
                 private eventService:EventService,
                 private toastr:ToastrService,
+                private ss:EveboxSubscriptionService,
                 private topNavService:TopNavService) {
     }
 
@@ -152,15 +154,11 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     ngOnInit():any {
 
-        // Listen for changes in the route.
-        this.routerSubscription = this.router.routerState.queryParams.subscribe((params:any) => {
-
+        this.ss.subscribe(this, this.route.params, (params:any) => {
             this.queryString = params.q || "";
-
             if (!this.restoreState()) {
                 this.refresh();
             }
-
         });
 
         this.mousetrap.bind(this, "/", () => this.focusFilterInput());
@@ -189,7 +187,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     ngOnDestroy():any {
         this.mousetrap.unbind(this);
-        this.routerSubscription.unsubscribe();
+        this.ss.unsubscribe(this);
         this.dispatcherSubscription.unsubscribe();
     }
 
