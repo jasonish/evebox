@@ -24,7 +24,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// Polyfills.
 import "core-js/es6";
 import "reflect-metadata";
 import "@angular/platform-browser";
@@ -39,13 +38,6 @@ import "./evebox.scss";
 import {platformBrowserDynamic} from "@angular/platform-browser-dynamic";
 import {HttpModule} from "@angular/http";
 import {RouterModule} from "@angular/router";
-import {
-    LocationStrategy,
-    HashLocationStrategy,
-    NgSwitch,
-    NgSwitchCase,
-    NgSwitchDefault
-} from "@angular/common";
 import {enableProdMode, NgModule} from "@angular/core";
 import {BrowserModule} from "@angular/platform-browser";
 import {FormsModule} from "@angular/forms";
@@ -89,7 +81,6 @@ import {JsonPipe} from "./pipes/json.pipe";
 import {EveboxMapToItemsPipe} from "./pipes/maptoitems.pipe";
 import {EveboxBase64DecodePipe} from "./pipes/base64decode.pipe";
 import {EveboxFormatTimestampPipe} from "./pipes/format-timestamp.pipe";
-import {CodemirrorComponent} from "./codemirror.component";
 import {AceEditor} from "./ace-editor.component";
 import {EveboxSearchLinkComponent} from "./search-link.component";
 import {KeyTableDirective} from "./keytable.directive";
@@ -101,23 +92,6 @@ require("zone.js/dist/zone");
 // Raw imports.
 require("!!script!jquery/dist/jquery.min.js");
 require("!!script!bootstrap/dist/js/bootstrap.min.js");
-
-// Angular 2
-
-// RxJS
-
-// CSS imports.
-require("codemirror/lib/codemirror.css");
-
-// More Angular 2.
-
-// Evebox services.
-
-// EveBox pipes.
-
-// EveBox components.
-
-// Routes.
 
 if (process.env.ENV == "production") {
     console.log("Enabling production mode.");
@@ -133,7 +107,6 @@ if (process.env.ENV == "production") {
         routing,
     ],
     declarations: [
-        // Components.
         AppComponent,
         AlertsComponent,
         EventsComponent,
@@ -142,19 +115,12 @@ if (process.env.ENV == "production") {
         AlertReportComponent,
         NetflowReportComponent,
         FlowReportComponent,
-
-        // Directives.
         EveboxMetricsGraphicComponent,
         EveboxReportDataTable,
         EveboxLoadingSpinnerComponent,
         EveboxEventTable2Component,
         TopNavComponent,
         EveboxHelpComponent,
-        //ROUTER_DIRECTIVES,
-        //NgSwitch,
-        //NgSwitchCase,
-        //NgSwitchDefault,
-        CodemirrorComponent,
         AceEditor,
         EveboxSearchLinkComponent,
         EveboxDurationComponent,
@@ -180,8 +146,6 @@ if (process.env.ENV == "production") {
         EveboxMetricsGraphicComponent,
         EveboxReportDataTable,
         EveboxLoadingSpinnerComponent,
-
-        // Pipes.
         EveboxFormatIpAddressPipe,
         EveboxMapToItemsPipe,
         EveboxFormatIpAddressPipe,
@@ -209,11 +173,6 @@ if (process.env.ENV == "production") {
 
     ],
     providers: [
-        // Use hash URLs.
-
-        // Routing.
-
-        // Evebox services.
         ConfigService,
         ElasticSearchService,
         MousetrapService,
@@ -227,8 +186,6 @@ if (process.env.ENV == "production") {
         ReportsService,
         EveboxSubscriptionService,
         EveboxHumanizeService,
-
-        // Pipes.
         EveboxFormatIpAddressPipe,
     ],
     bootstrap: [

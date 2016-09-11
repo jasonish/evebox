@@ -21,8 +21,6 @@
     "bootstrap": "^3.3.6",
     "bootstrap-sass": "^3.3.6",
     "brace": "^0.8.0",
-    "c3": "^0.4.11",
-    "codemirror": "^5.15.2",
     "core-js": "^2.4.1",
     "font-awesome": "^4.6.3",
     "humanize-plus": "^1.8.2",
