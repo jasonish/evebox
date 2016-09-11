@@ -28,7 +28,6 @@ import {Component, OnDestroy, OnInit, Input} from "@angular/core";
 import {ReportsService} from "./reports.service";
 import {EveboxMetricsGraphicComponent} from "../metricgraphics.component";
 import {AppService, AppEventCode} from "../app.service";
-import {EveboxSearchLinkComponent} from "../search-link.component";
 import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
@@ -64,9 +63,6 @@ import moment = require("moment");
     </tbody>
   </table>
 </div>`,
-    directives: [
-        EveboxSearchLinkComponent
-    ]
 })
 export class EveboxReportDataTable {
 
@@ -139,14 +135,6 @@ export class EveboxReportDataTable {
   </div>
 
 </div>`,
-    directives: [
-        EveboxMetricsGraphicComponent,
-        EveboxReportDataTable,
-        EveboxLoadingSpinnerComponent
-    ],
-    pipes: [
-        EveboxFormatIpAddressPipe
-    ]
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
 

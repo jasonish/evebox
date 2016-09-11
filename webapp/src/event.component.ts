@@ -25,29 +25,13 @@
  */
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
-import {
-    Location,
-    NgSwitch,
-    NgSwitchCase,
-    NgSwitchDefault,
-    JsonPipe
-} from "@angular/common";
+import {Location} from "@angular/common";
 import {ActivatedRoute, Router} from "@angular/router";
 import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
-import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
-import {CodemirrorComponent} from "./codemirror.component";
-import {EveboxMapToItemsPipe} from "./pipes/maptoitems.pipe";
-import {EveBoxGenericPrettyPrinter} from "./pipes/generic-pretty-printer.pipe";
-import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
-import {EveboxBase64DecodePipe} from "./pipes/base64decode.pipe";
-import {EveboxHexPipe} from "./pipes/hex.pipe";
-import {AceEditor} from "./ace-editor.component";
 import {ApiService} from "./api.service";
-import {EveboxSearchLinkComponent} from "./search-link.component";
 import {EventServices} from "./eventservices.service";
 import {EventService} from "./event.service";
 import {MousetrapService} from "./mousetrap.service";
-import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 import {EveboxSubscriptionService} from "./subscription.service";
 
 /**
@@ -55,24 +39,6 @@ import {EveboxSubscriptionService} from "./subscription.service";
  */
 @Component({
     template: require("./event.component.html"),
-    pipes: [
-        EventSeverityToBootstrapClass,
-        JsonPipe,
-        EveboxMapToItemsPipe,
-        EveBoxGenericPrettyPrinter,
-        EveBoxEventDescriptionPrinterPipe,
-        EveboxBase64DecodePipe,
-        EveboxHexPipe,
-        EveboxFormatIpAddressPipe
-    ],
-    directives: [
-        NgSwitch,
-        NgSwitchCase,
-        NgSwitchDefault,
-        CodemirrorComponent,
-        AceEditor,
-        EveboxSearchLinkComponent
-    ]
 })
 export class EventComponent implements OnInit, OnDestroy {
 

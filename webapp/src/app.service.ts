@@ -44,7 +44,8 @@ export class AppService {
 
     private timeRangeDisabled:boolean = false;
 
-    constructor(private router:Router) {
+    constructor(private router:Router,
+                private route:ActivatedRoute) {
     }
 
     isTimeRangeDisabled() {
@@ -81,7 +82,8 @@ export class AppService {
 
     updateQueryParameters(params:any) {
 
-        let oldParams:Params = this.router.routerState.snapshot.queryParams;
+        //let oldParams:Params = this.router.routerState.snapshot.queryParams;
+        let oldParams:Params = this.route.snapshot.queryParams;
 
         let newParams:Params = {};
 

@@ -25,18 +25,11 @@
  */
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
-import {ROUTER_DIRECTIVES} from "@angular/router";
 import {ReportsService} from "./reports.service";
-import {EveboxSearchLinkComponent} from "../search-link.component";
 import {AppService, AppEventCode} from "../app.service";
-import {EveboxMapToItemsPipe} from "../pipes/maptoitems.pipe";
-import {EveboxReportDataTable} from "./dns-report.component";
-import {EveboxMetricsGraphicComponent} from "../metricgraphics.component";
+import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
 import moment = require("moment");
-import {ToastrService} from "../toastr.service";
-import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
-import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -84,16 +77,6 @@ import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
   </div>
 
 </div>`,
-    directives: [
-        EveboxSearchLinkComponent,
-        EveboxReportDataTable,
-        EveboxMetricsGraphicComponent,
-        EveboxLoadingSpinnerComponent,
-        ROUTER_DIRECTIVES
-    ],
-    pipes: [
-        EveboxMapToItemsPipe
-    ]
 })
 export class AlertReportComponent implements OnInit, OnDestroy {
 

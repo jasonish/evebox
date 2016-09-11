@@ -74,12 +74,6 @@ import {EveboxEventTable2Component} from "../eventtable2.component";
   </div>
 
 </div>`,
-    directives: [
-        EveboxMetricsGraphicComponent,
-        EveboxLoadingSpinnerComponent,
-        EveboxReportDataTable,
-        EveboxEventTable2Component,
-    ]
 })
 export class FlowReportComponent implements OnInit, OnDestroy {
 

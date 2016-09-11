@@ -103,8 +103,6 @@ const TEMPLATE:string = `<div [ngClass]="{'evebox-opacity-50': loading}">
 </div>`;
 
 const DIRECTIVES:any[] = [
-    AlertTableComponent,
-    EveboxLoadingSpinnerComponent
 ];
 
 export interface AlertsState {
@@ -116,7 +114,6 @@ export interface AlertsState {
 
 @Component({
     template: TEMPLATE,
-    directives: DIRECTIVES
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 

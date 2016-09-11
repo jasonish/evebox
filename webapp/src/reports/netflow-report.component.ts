@@ -107,16 +107,6 @@ import {EveboxEventTable2Component} from "../eventtable2.component";
   </div>
 
 </div>`,
-    directives: [
-        EveboxMetricsGraphicComponent,
-        EveboxReportDataTable,
-        EveboxLoadingSpinnerComponent,
-        EveboxEventTable2Component,
-    ],
-    pipes: [
-        EveboxHumanizePipe,
-    ]
-
 })
 export class NetflowReportComponent implements OnInit, OnDestroy {
 

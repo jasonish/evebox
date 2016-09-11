@@ -39,9 +39,6 @@ let MG = require("metrics-graphics");
   <hr/>
 </div>
 `,
-    directives: [
-        EveboxLoadingSpinnerComponent
-    ]
 })
 export class EveboxMetricsGraphicComponent implements OnChanges {
 

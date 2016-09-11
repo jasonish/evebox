@@ -29,7 +29,7 @@ import {
     AfterViewChecked
 } from "@angular/core";
 import {ElasticSearchService} from "./elasticsearch.service";
-import {ROUTER_DIRECTIVES, Router, ActivatedRoute} from "@angular/router";
+import {Router, ActivatedRoute} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {TopNavService} from "./topnav.service";
 import {AppService, AppEventCode} from "./app.service";
@@ -110,7 +110,6 @@ declare var $:any;
 
   </div>
 </nav>`,
-    directives: [ROUTER_DIRECTIVES]
 })
 export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
 

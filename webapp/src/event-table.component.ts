@@ -95,15 +95,6 @@ export interface EveboxEventTableConfig {
     </tbody>
   </table>
 </div>`,
-    pipes: [EveboxFormatTimestampPipe,
-        EveboxFormatIpAddressPipe,
-        EveBoxEventDescriptionPrinterPipe,
-        EventSeverityToBootstrapClass
-    ],
-    directives: [
-        KeyTableDirective,
-        EveboxDurationComponent
-    ]
 })
 export class EveboxEventTableComponent implements OnInit, OnDestroy {
 

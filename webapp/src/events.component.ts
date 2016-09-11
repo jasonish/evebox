@@ -102,10 +102,6 @@ import {EveboxSubscriptionService} from "./subscription.service";
   <eveboxEventTable
       [config]="eveboxEventTableConfig"></eveboxEventTable>
 </div>`,
-    directives: [
-        EveboxEventTableComponent,
-        EveboxLoadingSpinnerComponent
-    ]
 })
 export class EventsComponent implements OnInit, OnDestroy {
 

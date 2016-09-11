@@ -24,11 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit} from "@angular/core";
-import {ROUTER_DIRECTIVES, Router} from "@angular/router";
-import {TopNavComponent} from "./topnav.component";
-import {EveboxHelpComponent} from "./help.component";
-import {AppService} from "./app.service";
+import {Component} from "@angular/core";
 
 @Component({
     selector: "evebox-app",
@@ -39,20 +35,6 @@ import {AppService} from "./app.service";
 <router-outlet></router-outlet>
 </div>
 `,
-    directives: [
-        TopNavComponent,
-        EveboxHelpComponent,
-        ROUTER_DIRECTIVES
-    ]
 })
-export class AppComponent implements OnInit {
-
-    constructor(private router:Router,
-                private appService:AppService) {
-    }
-
-    ngOnInit() {
-
-    }
-
+export class AppComponent {
 }

@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {RouterConfig, provideRouter, RouterModule} from "@angular/router";
+import {RouterModule, Routes} from "@angular/router";
 import {EventsComponent} from "./events.component";
 import {EventComponent} from "./event.component";
 import {AlertsComponent} from "./alerts.component";
@@ -32,8 +32,9 @@ import {AlertReportComponent} from "./reports/alerts-report.component";
 import {DNSReportComponent} from "./reports/dns-report.component";
 import {FlowReportComponent} from "./reports/flow-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
+import {ModuleWithProviders} from "@angular/core";
 
-export const routes:RouterConfig = [
+const routes:Routes = [
     {
         path: "inbox", component: AlertsComponent, pathMatch: "prefix",
     }
@@ -64,11 +65,4 @@ export const routes:RouterConfig = [
     }
 ];
 
-export const APP_ROUTER_PROVIDERS = [
-    provideRouter(routes)
-];
-
-export const appRoutingProviders:any[] = [
-];
-
-export const routing = RouterModule.forRoot(routes);
+export const routing:ModuleWithProviders = RouterModule.forRoot(routes, {useHash: true});

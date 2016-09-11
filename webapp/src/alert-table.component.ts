@@ -129,16 +129,6 @@ declare var $:any;
   </table>
 
 </div>`,
-    pipes: [
-        EveboxFormatTimestampPipe,
-        EveboxFormatIpAddressPipe,
-        EventSeverityToBootstrapClass,
-        EveBoxEventDescriptionPrinterPipe
-    ],
-    directives: [
-        EveboxDurationComponent,
-        KeyTableDirective
-    ]
 })
 export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked {
 
