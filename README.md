@@ -60,15 +60,27 @@ enable dynamic scripting and CORS.
 ## Building EveBox
 
 EveBox consists of a JavaScript frontend, and a very minimal backend
-written in Go.
+written in Go. To build Evebox the following requirements must first
+be satisfied:
 
-Frontend requirements:
+* Node.js v4.5.0 or newer installed.
+* A working Go 1.7 installation and GOPATH.
 
-* Node.js v4.2.1 or newer.
+If this is the first build the npm and Go dependencies must be
+installed, this can be done with:
+```
+make install-deps
+```
 
-Backend requirements:
+Then to build the binary:
+```
+make
+```
 
-* A working Go 1.6 installation and GOPATH.
+Or to build a release:
+```
+make release
+```
 
 ## Run in Development Mode
 
