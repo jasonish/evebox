@@ -77,7 +77,7 @@ import {EveboxHexPipe} from "./pipes/hex.pipe";
 import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
 import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
 import {EveBoxGenericPrettyPrinter} from "./pipes/generic-pretty-printer.pipe";
-import {JsonPipe} from "./pipes/json.pipe";
+import {EveboxJsonPrettyPipe} from "./pipes/json.pipe";
 import {EveboxMapToItemsPipe} from "./pipes/maptoitems.pipe";
 import {EveboxBase64DecodePipe} from "./pipes/base64decode.pipe";
 import {EveboxFormatTimestampPipe} from "./pipes/format-timestamp.pipe";
@@ -151,7 +151,7 @@ if (process.env.ENV == "production") {
         EveboxFormatIpAddressPipe,
         EveboxHumanizePipe,
         EventSeverityToBootstrapClass,
-        JsonPipe,
+        EveboxJsonPrettyPipe,
         EveboxMapToItemsPipe,
         EveBoxGenericPrettyPrinter,
         EveBoxEventDescriptionPrinterPipe,

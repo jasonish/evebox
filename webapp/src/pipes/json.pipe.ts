@@ -27,13 +27,13 @@
 import {Pipe, PipeTransform} from "@angular/core";
 
 @Pipe({
-    name: "json"
+    name: "eveboxJsonPretty"
 })
-export class JsonPipe implements PipeTransform {
+export class EveboxJsonPrettyPipe implements PipeTransform {
 
     transform(object:any) {
 
-        return JSON.stringify(object);
+        return JSON.stringify(object, null, 2);
 
     }
 
