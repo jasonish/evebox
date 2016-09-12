@@ -98,7 +98,7 @@ export class ReportsService {
             }
         };
 
-        this.addTimeRangeFilter(query, now, range);
+        this.elasticsearch.addTimeRangeFilter(query, now, range);
 
         return this.elasticsearch.search(query);
     }
@@ -153,7 +153,7 @@ export class ReportsService {
             }
         };
 
-        this.addTimeRangeFilter(query, now, range);
+        this.elasticsearch.addTimeRangeFilter(query, now, range);
         this.addEventsOverTimeAggregation(query, now, range);
 
         return this.elasticsearch.search(query);
@@ -213,33 +213,10 @@ export class ReportsService {
             }
         }
 
-        this.addTimeRangeFilter(query, now, range);
+        this.elasticsearch.addTimeRangeFilter(query, now, range);
         this.addEventsOverTimeAggregation(query, now, range);
 
         return this.elasticsearch.search(query);
-    }
-
-    /**
-     * Add a time range filter to a query.
-     *
-     * @param query The query.
-     * @param now The time to use as now (a moment object).
-     * @param range The time range of the report in seconds.
-     */
-    addTimeRangeFilter(query:any, now:any, range:number) {
-        if (!range) {
-            return;
-        }
-
-        let then = now.clone().subtract(moment.duration(range, "seconds"));
-
-        query.query.filtered.filter.and.push({
-            range: {
-                "@timestamp": {
-                    gte: `${then.format()}`,
-                }
-            }
-        })
     }
 
     addEventsOverTimeAggregation(query:any, now:any, range:number) {

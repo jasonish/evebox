@@ -32,6 +32,7 @@ import {EveboxHumanizeService} from "../humanize.service";
 import {TopNavService} from "../topnav.service";
 
 import moment = require("moment");
+import {ElasticSearchService} from "../elasticsearch.service";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -87,6 +88,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 private ss:EveboxSubscriptionService,
                 private reportsService:ReportsService,
                 private topNavService:TopNavService,
+                private elasticsearch:ElasticSearchService,
                 private humanize:EveboxHumanizeService) {
     }
 
@@ -157,7 +159,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             }
         };
 
-        this.reportsService.addTimeRangeFilter(query, now, range);
+        this.elasticsearch.addTimeRangeFilter(query, now, range);
         this.reportsService.addEventsOverTimeAggregation(query, now, range);
 
         this.reportsService.submitQuery(query).then((response:any) => {

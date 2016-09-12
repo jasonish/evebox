@@ -29,9 +29,9 @@ import {Http} from "@angular/http";
 import {TopNavService} from "./topnav.service";
 import {AppService} from "./app.service";
 import {ConfigService} from "./config.service";
+import {ToastrService} from "./toastr.service";
 
 import moment = require("moment");
-import {ToastrService} from "./toastr.service";
 var queue = require("queue");
 
 export interface ResultSet {
@@ -463,19 +463,6 @@ export class ElasticSearchService {
         });
     }
 
-    applyTimeRange(query:any):any {
-
-        if (this.topNavService.timeRange) {
-            query.query.filtered.filter.and.push({
-                range: {
-                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
-                }
-            });
-        }
-
-        return query;
-    }
-
     getAlerts(options ?:any):Promise < AlertGroup[] > {
 
         options = options || {};
@@ -555,6 +542,11 @@ export class ElasticSearchService {
             });
         }
 
+        if (options.range) {
+            let now = moment();
+            this.addTimeRangeFilter(query, now, options.range);
+        }
+
         function unwrapResponse(response:any):AlertGroup[] {
 
             let events:AlertGroup[] = [];
@@ -621,4 +613,28 @@ export class ElasticSearchService {
             return unwrapResponse(response)
         });
     }
+
+    /**
+     * Add a time range filter to a query.
+     *
+     * @param query The query.
+     * @param now The time to use as now (a moment object).
+     * @param range The time range of the report in seconds.
+     */
+    addTimeRangeFilter(query:any, now:any, range:number) {
+        if (!range) {
+            return;
+        }
+
+        let then = now.clone().subtract(moment.duration(range, "seconds"));
+
+        query.query.filtered.filter.and.push({
+            range: {
+                "@timestamp": {
+                    gte: `${then.format()}`,
+                }
+            }
+        })
+    }
+
 }

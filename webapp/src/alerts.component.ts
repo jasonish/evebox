@@ -26,9 +26,7 @@
 
 import {AlertService} from "./alert.service";
 import {Component, OnInit, OnDestroy} from "@angular/core";
-import {AlertTableComponent} from "./alert-table.component";
 import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
-import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
 import {Router, ActivatedRoute} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {AppService, AppEvent, AppEventCode} from "./app.service";
@@ -37,7 +35,15 @@ import {ToastrService} from "./toastr.service";
 import {TopNavService} from "./topnav.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 
-const TEMPLATE:string = `<div [ngClass]="{'evebox-opacity-50': loading}">
+export interface AlertsState {
+    rows:any[];
+    activeRow:number;
+    route:string,
+    queryString:string;
+}
+
+@Component({
+    template: `<div [ngClass]="{'evebox-opacity-50': loading}">
 
   <loading-spinner [loading]="loading"></loading-spinner>
 
@@ -100,20 +106,7 @@ const TEMPLATE:string = `<div [ngClass]="{'evebox-opacity-50': loading}">
       (archiveEvent)="archiveAlertGroup($event)"
       [(activeRow)]="activeRow"
       [rows]="rows"></alert-table>
-</div>`;
-
-const DIRECTIVES:any[] = [
-];
-
-export interface AlertsState {
-    rows:any[];
-    activeRow:number;
-    route:string,
-    queryString:string;
-}
-
-@Component({
-    template: TEMPLATE,
+</div>`,
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 
@@ -415,38 +408,34 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         let filters:any[] = [];
 
-        if (this.appService.getRoute() == "/inbox") {
-
-            // Limit to non-archived events.
-            filters.push({not: {term: {tags: "archived"}}});
-
-            // Apply timerange.
-            if (this.topNavService.timeRange) {
-                filters.push({
-                    range: {
-                        timestamp: {gte: `now-${this.topNavService.timeRange}`}
-                    }
-                });
-            }
-        }
-        else if (this.appService.getRoute() == "/alerts") {
-            // Just apply time range.
-            if (this.topNavService.timeRange) {
-                filters.push({
-                    range: {
-                        timestamp: {gte: `now-${this.topNavService.timeRange}`}
-                    }
-                });
-            }
-        }
-        else if (this.appService.getRoute() == "/escalated") {
-            // Limit to escalated events only, no time range applied.
-            filters.push({term: {tags: "escalated"}});
+        // Add filters depending on view.
+        switch (this.appService.getRoute()) {
+            case "/inbox":
+                // Limit to non-archived events.
+                filters.push({not: {term: {tags: "archived"}}});
+                break;
+            case "/escalated":
+                // Limit to escalated events only, no time range applied.
+                filters.push({term: {tags: "escalated"}});
+                break;
+            default:
+                break;
         }
 
+        let range:number = 0;
+
+        // Set a time range on all but escalated.
+        switch (this.appService.getRoute()) {
+            case "/escalated":
+                break;
+            default:
+                range = this.topNavService.getTimeRangeAsSeconds();
+                break;
+        }
 
         this.alertService.fetchAlerts({
             queryString: this.queryString,
+            range: range,
             filters: filters
         }).then((rows:any) => {
             this.rows = rows;
