@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+declare var localStorage:any;
+
 import "core-js/es6";
 import "reflect-metadata";
 import "@angular/platform-browser";
@@ -33,8 +35,6 @@ import "@angular/common";
 import "@angular/http";
 import "@angular/router";
 import "rxjs";
-import "bootstrap/dist/css/bootstrap.css";
-import "./evebox.scss";
 import {platformBrowserDynamic} from "@angular/platform-browser-dynamic";
 import {HttpModule} from "@angular/http";
 import {RouterModule} from "@angular/router";
@@ -97,6 +97,16 @@ require("!!script!moment/moment.js");
 if (process.env.ENV == "production") {
     console.log("Enabling production mode.");
     enableProdMode();
+}
+
+// Set theme.
+switch (localStorage.theme) {
+    case "slate":
+        require("./styles/evebox-slate.scss");
+        break;
+    default:
+        require("./styles/evebox-default.scss");
+        break;
 }
 
 @NgModule({

@@ -85,6 +85,16 @@ declare var $:any;
 
       <ul class="nav navbar-nav navbar-right">
         <li><a href="javascript:void(0);" (click)="showHelp()">Help</a></li>
+
+        <li>
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span
+              class="glyphicon glyphicon-cog"></span></a>
+          <ul class="dropdown-menu">
+            <li><a href="javascript:void(0)" (click)="setTheme('default')">Light (Default)</a></li>
+            <li><a href="javascript:void(0)" (click)="setTheme('slate')">Slate</a></li>
+          </ul>
+        </li>
+
         <li>
           <a><span class="badge">{{elasticSearchService.jobSize()}}</span></a>
         </li>
@@ -163,6 +173,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     ngAfterViewChecked() {
         $(".dropdown-toggle").dropdown();
     }
+
     gotoRoute(route:string) {
         this.router.navigate([route], {queryParams: {}});
     }
@@ -183,5 +194,10 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.appService.dispatch({
             event: AppEventCode.SHOW_HELP
         });
+    }
+
+    setTheme(name:string) {
+        // Pass off to appService.
+        this.appService.setTheme(name);
     }
 }

@@ -27,6 +27,8 @@
 import {Injectable, EventEmitter} from "@angular/core";
 import {Router, Params, ActivatedRoute} from "@angular/router";
 
+declare var localStorage:any;
+
 export enum AppEventCode {
     SHOW_HELP = 0,
     TIME_RANGE_CHANGED,
@@ -46,6 +48,15 @@ export class AppService {
 
     constructor(private router:Router,
                 private route:ActivatedRoute) {
+    }
+
+    setTheme(name:string) {
+        let current = localStorage.theme || 'default';
+        if (name == current) {
+            return;
+        }
+        localStorage.theme = name;
+        window.location.reload();
     }
 
     isTimeRangeDisabled() {

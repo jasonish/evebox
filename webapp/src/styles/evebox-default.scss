@@ -1,0 +1,24 @@
+@import "~bootstrap/dist/css/bootstrap.css";
+@import "./common.scss";
+
+.evebox-event-table {
+
+  th {
+    border-top: $event-table-border !important;
+  }
+
+  td:first-child, th:first-child {
+    border-left: $event-table-border !important;
+  }
+
+  td:last-child, th:last-child {
+    border-right: $event-table-border !important;
+  }
+
+  tr:last-child {
+    td {
+      border-bottom: $event-table-border !important;
+    }
+  }
+
+}

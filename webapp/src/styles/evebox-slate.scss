@@ -1,0 +1,52 @@
+@import "~bootswatch/slate/bootstrap.css";
+@import "~bootswatch/slate/variables";
+@import "./common.scss";
+
+// Darken up form-control backgrounds a little.
+.form-control {
+  background-color: lightgray;
+}
+
+// Darken up the text on default buttons.
+.btn-default {
+  color: lightgray;
+}
+
+.evebox-metrics-graphic {
+
+  // Lighten up the font used in the metrics graphics.
+  text {
+    fill: white;
+  }
+
+  // Lighten up the color of the actual graph lines and area.
+  .mg-line1-color {
+    stroke: lightblue;
+  }
+  .mg-area1-color {
+    fill: lightblue;
+  }
+
+}
+
+// Darken up the default colors a little.
+$danger-color: darken($brand-danger, 25%);
+$success-color: darken($brand-success, 35%);
+$info-color: darken($brand-info, 25%);
+$warning-color: darken($brand-warning, 25%);
+
+.table > tbody > tr.warning > td {
+  background-color: $warning-color;
+}
+
+.table > tbody > tr.info > td {
+  background-color: $info-color;
+}
+
+.table > tbody > tr.danger > td {
+  background-color: $danger-color;
+}
+
+.table > tbody > tr.success > td {
+  background-color: $success-color;
+}

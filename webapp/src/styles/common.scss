@@ -11,39 +11,6 @@ body {
 
 }
 
-.evebox-event-table {
-
-  cursor: pointer;
-
-  th {
-    border-top: $event-table-border !important;
-  }
-
-  td:first-child, th:first-child {
-    border-left: $event-table-border !important;
-  }
-
-  td:last-child, th:last-child {
-    border-right: $event-table-border !important;
-  }
-
-  tr:last-child {
-    td {
-      border-bottom: $event-table-border !important;
-    }
-  }
-
-  td {
-    padding-bottom: 0px !important;
-  }
-
-  label {
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-}
-
 .evebox-opacity-50 {
   opacity: 0.5;
 }
@@ -66,4 +33,21 @@ body {
   td:nth-child(1) {
     text-align: right;
   }
+}
+
+.evebox-event-table {
+
+  cursor: pointer;
+
+  // Compact the row height a little.
+  td {
+    padding-bottom: 0px !important;
+  }
+
+  // Also required to shrink the height of a row a little.
+  label {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
 }

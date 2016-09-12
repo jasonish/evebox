@@ -32,7 +32,7 @@ let MG = require("metrics-graphics");
 
 @Component({
     selector: "metrics-graphic",
-    template: `<div *ngIf="hasData()" [id]="graphId"></div>
+    template: `<div *ngIf="hasData()" class="evebox-metrics-graphic" [id]="graphId"></div>
 <div *ngIf="!hasData()" style="text-align: center;">
   <hr/>
   Sorry, there is no data to graph.
