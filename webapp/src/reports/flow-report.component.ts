@@ -25,16 +25,13 @@
  */
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
-import {EveboxMetricsGraphicComponent} from "../metricgraphics.component";
 import {ReportsService} from "./reports.service";
 import {EveboxSubscriptionService} from "../subscription.service";
 import {AppService, AppEvent, AppEventCode} from "../app.service";
-import {EveboxLoadingSpinnerComponent} from "../loading-spinner.component";
+import {EveboxHumanizeService} from "../humanize.service";
+import {TopNavService} from "../topnav.service";
 
 import moment = require("moment");
-import {EveboxHumanizeService} from "../humanize.service";
-import {EveboxReportDataTable} from "./dns-report.component";
-import {EveboxEventTable2Component} from "../eventtable2.component";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -89,6 +86,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
     constructor(private appService:AppService,
                 private ss:EveboxSubscriptionService,
                 private reportsService:ReportsService,
+                private topNavService:TopNavService,
                 private humanize:EveboxHumanizeService) {
     }
 
@@ -112,6 +110,9 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         this.loading++;
 
+        let range = this.topNavService.getTimeRangeAsSeconds();
+        let now = moment();
+
         let query:any = {
             query: {
                 filtered: {
@@ -119,7 +120,6 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                         and: [
                             // Somewhat limit to eve events only.
                             {exists: {field: "event_type"}},
-
                             {term: {event_type: "flow"}}
                         ]
                     }
@@ -130,12 +130,6 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 {"@timestamp": {order: "desc"}}
             ],
             aggs: {
-                events_over_time: {
-                    date_histogram: {
-                        field: "@timestamp",
-                        interval: this.reportsService.guessBestHistogramInterval(),
-                    },
-                },
                 topClientsByFlows: {
                     terms: {
                         field: "src_ip.raw",
@@ -162,6 +156,9 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 }
             }
         };
+
+        this.reportsService.addTimeRangeFilter(query, now, range);
+        this.reportsService.addEventsOverTimeAggregation(query, now, range);
 
         this.reportsService.submitQuery(query).then((response:any) => {
 

@@ -92,6 +92,7 @@ require("zone.js/dist/zone");
 // Raw imports.
 require("!!script!jquery/dist/jquery.min.js");
 require("!!script!bootstrap/dist/js/bootstrap.min.js");
+require("!!script!moment/moment.js");
 
 if (process.env.ENV == "production") {
     console.log("Enabling production mode.");

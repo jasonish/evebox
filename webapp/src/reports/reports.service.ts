@@ -28,6 +28,8 @@ import {Injectable} from "@angular/core";
 import {ElasticSearchService} from "../elasticsearch.service";
 import {TopNavService} from "../topnav.service";
 import {ToastrService} from "../toastr.service";
+import moment = require("moment");
+import UnitOfTime = moment.UnitOfTime;
 
 @Injectable()
 export class ReportsService {
@@ -52,90 +54,10 @@ export class ReportsService {
         });
     }
 
-    findStats(options:any = {}):any {
-
-        let query:any = {
-            query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "stats"}}
-                        ]
-                    }
-                }
-            },
-            size: 1000,
-            aggs: {
-                per_minute: {
-                    date_histogram: {
-                        field: "@timestamp",
-                        interval: "minute"
-                    },
-                    aggs: {
-                        packets: {
-                            max: {
-                                field: "stats.capture.kernel_drops"
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-        return this.elasticsearch.search(query);
-
-    }
-
-    getLastStat():any {
-
-        let query:any = {
-            query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "stats"}}
-                        ]
-                    }
-                }
-            },
-            size: 1,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
-        };
-
-        return this.elasticsearch.search(query);
-    }
-
-    guessBestHistogramInterval():any {
-
-        let interval = "minute";
-
-        if (this.topNavService.timeRange) {
-
-            let timeunit = this.topNavService.timeRange.match(/(\d+)(\w+)/)[2];
-
-            switch (timeunit) {
-                case "m":
-                    interval = "second";
-                    break;
-                case "h":
-                    interval = "minute";
-                    break;
-                default:
-                    interval = "hour";
-                    break;
-            }
-
-        }
-
-        return interval;
-    }
-
     dnsResponseReport(options:any = {}):any {
 
+        let now = moment();
+        let range = this.topNavService.getTimeRangeAsSeconds();
         let size:number = options.size || 20;
 
         let query:any = {
@@ -176,20 +98,15 @@ export class ReportsService {
             }
         };
 
-        // Set time range.
-        if (this.topNavService.timeRange) {
-            query.query.filtered.filter.and.push({
-                range: {
-                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
-                }
-            });
-        }
+        this.addTimeRangeFilter(query, now, range);
 
         return this.elasticsearch.search(query);
     }
 
     dnsRequestReport(options:any = {}):any {
 
+        let now:any = moment();
+        let range:number = this.topNavService.getTimeRangeAsSeconds();
         let size:number = options.size || 20;
 
         let query:any = {
@@ -209,12 +126,6 @@ export class ReportsService {
                 {"@timestamp": {order: "dest"}}
             ],
             aggs: {
-                events_over_time: {
-                    date_histogram: {
-                        field: "@timestamp",
-                        interval: this.guessBestHistogramInterval()
-                    }
-                },
                 top_rrnames: {
                     terms: {
                         field: "dns.rrname.raw",
@@ -242,39 +153,17 @@ export class ReportsService {
             }
         };
 
-        // Set time range.
-        if (this.topNavService.timeRange) {
-            query.query.filtered.filter.and.push({
-                range: {
-                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
-                }
-            });
-        }
+        this.addTimeRangeFilter(query, now, range);
+        this.addEventsOverTimeAggregation(query, now, range);
 
         return this.elasticsearch.search(query);
     }
 
     alertsReport(options:any = {}):any {
 
+        let range:number = this.topNavService.getTimeRangeAsSeconds();
+        let now:any = moment();
         let size:number = options.size || 20;
-
-        // Determine what time interval to run the alerts over time histogram
-        // with.
-        let alerts_over_time_interval = "minute";
-        if (this.topNavService.timeRange) {
-            let timerange = this.topNavService.timeRange.match(/(\d+)(\w+)/)[1];
-            let timeunit = this.topNavService.timeRange.match(/(\d+)(\w+)/)[2];
-
-            if (timeunit == "h" && parseInt(timerange) >= 6) {
-                alerts_over_time_interval = "hour";
-            }
-            else if (timeunit != "h") {
-                alerts_over_time_interval = "hour";
-            }
-        }
-        else {
-            alerts_over_time_interval = "hour";
-        }
 
         let query:any = {
             query: {
@@ -295,12 +184,6 @@ export class ReportsService {
                 {"@timestamp": {order: "desc"}}
             ],
             aggs: {
-                alerts_per_minute: {
-                    date_histogram: {
-                        field: "@timestamp",
-                        interval: alerts_over_time_interval
-                    }
-                },
                 sources: {
                     terms: {
                         field: "src_ip.raw",
@@ -322,31 +205,88 @@ export class ReportsService {
             }
         };
 
-        // Set time range.
-        if (this.topNavService.timeRange) {
-            query.query.filtered.filter.and.push({
-                range: {
-                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
+        if (options.queryString) {
+            query.query.filtered.query = {
+                query_string: {
+                    query: options.queryString
                 }
-            });
+            }
         }
+
+        this.addTimeRangeFilter(query, now, range);
+        this.addEventsOverTimeAggregation(query, now, range);
 
         return this.elasticsearch.search(query);
     }
 
-    submitQuery(query:any) {
-
-        // Set time range.
-        if (this.topNavService.timeRange) {
-            query.query.filtered.filter.and.push({
-                range: {
-                    timestamp: {gte: `now-${this.topNavService.timeRange}`}
-                }
-            });
+    /**
+     * Add a time range filter to a query.
+     *
+     * @param query The query.
+     * @param now The time to use as now (a moment object).
+     * @param range The time range of the report in seconds.
+     */
+    addTimeRangeFilter(query:any, now:any, range:number) {
+        if (!range) {
+            return;
         }
 
-        return this.elasticsearch.search(query);
+        let then = now.clone().subtract(moment.duration(range, "seconds"));
 
+        query.query.filtered.filter.and.push({
+            range: {
+                "@timestamp": {
+                    gte: `${then.format()}`,
+                }
+            }
+        })
+    }
+
+    addEventsOverTimeAggregation(query:any, now:any, range:number) {
+
+        query.aggs.events_over_time = {
+            date_histogram: {
+                field: "@timestamp",
+                interval: this.histogramTimeInterval(range),
+                min_doc_count: 0,
+            }
+        };
+
+        if (range) {
+            let then = now.clone().subtract(moment.duration(range, "seconds"));
+            query.aggs.events_over_time.date_histogram.extended_bounds = {
+                min: then.format(),
+                max: now.format(),
+            }
+        }
+    }
+
+    histogramTimeInterval(range:number):string {
+        let interval:string = "day";
+
+        if (range == 0) {
+            return "day";
+        }
+        else if (range <= 60) {
+            // Minute or less.
+            interval = "second";
+        }
+        else if (range <= 3600 * 6) {
+            // 6 hours or or less.
+            interval = "minute";
+        }
+        else if (range <= 86400) {
+            // Day or less.
+            interval = "hour";
+        }
+
+        console.log(`Returning interval: ${interval}.`);
+
+        return interval;
+    }
+
+    submitQuery(query:any) {
+        return this.elasticsearch.search(query);
     }
 
 }

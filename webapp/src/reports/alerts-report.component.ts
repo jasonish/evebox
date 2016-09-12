@@ -30,6 +30,8 @@ import {AppService, AppEventCode} from "../app.service";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
 import moment = require("moment");
+import {ActivatedRoute, Params} from "@angular/router";
+import {EveboxSubscriptionService} from "../subscription.service";
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -45,10 +47,10 @@ import moment = require("moment");
 
   <br/>
 
-  <metrics-graphic *ngIf="alertsOverTime"
+  <metrics-graphic *ngIf="eventsOverTime"
                    graphId="alertsOverTimeGraph"
                    title="Alerts Over Time"
-                   [data]="alertsOverTime"></metrics-graphic>
+                   [data]="eventsOverTime"></metrics-graphic>
 
   <div class="row">
     <div class="col-md-12">
@@ -80,7 +82,7 @@ import moment = require("moment");
 })
 export class AlertReportComponent implements OnInit, OnDestroy {
 
-    private alertsOverTime:any[] = [];
+    private eventsOverTime:any[] = [];
 
     private sourceRows:any[];
     private destinationRows:any[];
@@ -90,7 +92,11 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     private loading:number = 0;
 
+    private queryString:string = "";
+
     constructor(private appService:AppService,
+                private ss:EveboxSubscriptionService,
+                private route:ActivatedRoute,
                 private reports:ReportsService,
                 private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
     }
@@ -99,7 +105,15 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
         this.reports.showWarning();
 
-        this.refresh();
+        if (this.route.snapshot.queryParams["q"]) {
+            this.queryString = this.route.snapshot.queryParams["q"];
+        }
+
+        this.ss.subscribe(this, this.route.params, (params:Params) => {
+            this.queryString = params["q"]|| "";
+            this.refresh();
+        });
+
 
         this.dispatcherSubscription = this.appService.subscribe((event:any) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
@@ -132,8 +146,13 @@ export class AlertReportComponent implements OnInit, OnDestroy {
         this.destinationRows = undefined;
         this.signatureRows = undefined;
 
-        this.reports.alertsReport({size: size}).then(
+        this.reports.alertsReport({
+            size: size,
+            queryString: this.queryString
+        }).then(
             (response:any) => {
+
+                console.log(response);
 
                 this.sourceRows = this.mapAggregation(response, "sources")
                     .map((row:any) => {
@@ -153,7 +172,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
                 this.signatureRows = this.mapAggregation(response, "signatures");
 
-                this.alertsOverTime = response.aggregations.alerts_per_minute.buckets.map((x:any) => {
+                this.eventsOverTime = response.aggregations.events_over_time.buckets.map((x:any) => {
                     return {
                         date: moment(x.key).toDate(),
                         value: x.doc_count
