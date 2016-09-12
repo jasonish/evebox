@@ -25,18 +25,17 @@
  */
 
 import {
-    Component, Input, Output, EventEmitter, OnInit,
-    AfterViewInit, OnChanges, AfterContentInit, AfterContentChecked,
-    AfterViewChecked, OnDestroy
+    Component,
+    Input,
+    Output,
+    EventEmitter,
+    OnInit,
+    AfterViewChecked,
+    OnDestroy
 } from "@angular/core";
-import {EveboxDurationComponent} from "./duration.component";
-import {EveboxFormatTimestampPipe} from "./pipes/format-timestamp.pipe";
-import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
-import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
-import {KeyTableDirective} from "./keytable.directive";
-import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
 import {AppService} from "./app.service";
 import {MousetrapService} from "./mousetrap.service";
+import {ActivatedRoute} from "@angular/router";
 
 declare var $:any;
 
@@ -140,7 +139,8 @@ export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked 
     @Output() archiveEvent:EventEmitter<any> = new EventEmitter<any>();
 
     constructor(private appService:AppService,
-                private mousetrap:MousetrapService) {
+                private mousetrap:MousetrapService,
+                private route:ActivatedRoute) {
     }
 
     ngOnInit() {
@@ -201,7 +201,7 @@ export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked 
         $(".open").dropdown('toggle');
 
         let signatureId = row.event.event._source.alert.signature_id;
-        this.appService.updateQueryParameters({
+        this.appService.updateParams(this.route, {
             q: `alert.signature_id:${signatureId}`
         });
 
