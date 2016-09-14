@@ -61,7 +61,7 @@ export interface EveboxEventTableConfig {
     </thead>
     <tbody *ngIf="config.rows.length > 0">
     <tr *ngFor="let row of config.rows; let i = index"
-        [ngClass]="row | eventSeverityToBootstrapClass:'':'success'"
+        [ngClass]="row | eventSeverityToBootstrapClass:'evebox-':'success'"
         (click)="openRow(row)">
       <td>
         <div *ngIf="i == activeRow"

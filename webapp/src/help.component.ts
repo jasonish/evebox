@@ -39,7 +39,6 @@ declare var $:any;
             </table>
           </div>
           <div
-              style="border: 1px solid lightgray !important; border-top: 0 !important;"
               role="tabpanel"
               class="tab-pane fade" id="help-tab-about">
 

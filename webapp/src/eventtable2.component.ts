@@ -43,7 +43,7 @@ import {ElasticSearchService} from "./elasticsearch.service";
     <thead>
     <tr>
       <!-- Chevron column. -->
-      <th *ngIf="showActiveEvent"></th>
+      <th></th>
       <!-- Timestamp. -->
       <th>Timestamp</th>
       <!-- Event type. -->
@@ -56,10 +56,10 @@ import {ElasticSearchService} from "./elasticsearch.service";
     </thead>
     <tbody *ngIf="rows.length > 0">
     <tr *ngFor="let row of rows; let i = index"
-        [ngClass]="row | eventSeverityToBootstrapClass:'':'success'"
+        [ngClass]="row | eventSeverityToBootstrapClass:'evebox-':'success'"
         (click)="openRow(row)">
-      <td *ngIf="showActiveEvent">
-        <div *ngIf="i == activeRow"
+      <td>
+        <div *ngIf="showActiveEvent && i == activeRow"
              class="glyphicon glyphicon-chevron-right"></div>
       </td>
       <td class="text-nowrap">

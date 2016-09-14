@@ -61,13 +61,13 @@ declare var $:any;
 
     <tbody>
     <tr *ngFor="let row of rows; let i = index"
-        [ngClass]="row.event.event | eventSeverityToBootstrapClass"
+        [ngClass]="row.event.event | eventSeverityToBootstrapClass:'evebox-'"
         (click)="rowClicked.emit(row)">
       <td style="width: 1% !important;">
       <span *ngIf="i == activeRow"
             class="glyphicon glyphicon-chevron-right"></span>
       </td>
-      <td style="width: 1% !important;">
+      <td class="clearfix" style="width: 1% !important;">
         <input type="checkbox" [(ngModel)]="row.selected"
                (click)="$event.stopPropagation()">
       </td>

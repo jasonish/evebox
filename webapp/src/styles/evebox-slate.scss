@@ -1,15 +1,26 @@
-@import "~bootswatch/slate/bootstrap.css";
+//@import "~bootswatch/slate/bootstrap.css";
+$icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
 @import "~bootswatch/slate/variables";
+@import "~bootstrap-sass/assets/stylesheets/bootstrap";
+@import "~bootswatch/slate/bootswatch";
+
 @import "./common.scss";
 
 // Darken up form-control backgrounds a little.
 .form-control {
   background-color: lightgray;
+
+  // Fix height to match default theme.
+  height: 34px;
 }
 
 // Darken up the text on default buttons.
 .btn-default {
   color: lightgray;
+}
+
+hr {
+  border-color: dimgray;
 }
 
 .evebox-metrics-graphic {
@@ -29,24 +40,41 @@
 
 }
 
-// Darken up the default colors a little.
-$danger-color: darken($brand-danger, 25%);
-$success-color: darken($brand-success, 35%);
-$info-color: darken($brand-info, 25%);
-$warning-color: darken($brand-warning, 25%);
-
-.table > tbody > tr.warning > td {
-  background-color: $warning-color;
+// Apply Bootstrap colouring to event tables.
+// Unlike the default theme, we only color the first column.
+.evebox-event-table > tbody > tr.evebox-danger > td:first-child {
+  @extend .danger;
 }
 
-.table > tbody > tr.info > td {
-  background-color: $info-color;
+.evebox-event-table > tbody > tr.evebox-warning > td:first-child {
+  @extend .warning;
 }
 
-.table > tbody > tr.danger > td {
-  background-color: $danger-color;
+.evebox-event-table > tbody > tr.evebox-info > td:first-child {
+  @extend .info;
 }
 
-.table > tbody > tr.success > td {
-  background-color: $success-color;
+.evebox-event-table > tbody > tr.evebox-success > td:first-child {
+  @extend .success;
+}
+
+.evebox-event-table > tbody > tr > td:not(:first-child) {
+  @extend .active;
+}
+
+.evebox-event-table > tbody > tr > td:first-child {
+  color: black;
+}
+
+// Shrink up the default button sizes a little to match the default Bootstrap
+// theme.
+.btn {
+  padding-top: 6px;
+  padding-right: 12px;
+  padding-bottom: 7px;
+  padding-left: 12px;
+}
+
+.fa-star {
+  color: yellow;
 }

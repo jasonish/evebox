@@ -1,7 +1,9 @@
-@import "~bootstrap/dist/css/bootstrap.css";
+$icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
+@import "~bootstrap-sass/assets/stylesheets/_bootstrap.scss";
+
 @import "./common.scss";
 
-.evebox-event-table {
+table.table.evebox-event-table {
 
   th {
     border-top: $event-table-border !important;
@@ -21,4 +23,34 @@
     }
   }
 
+}
+
+// Apply Bootstrap colouring to event tables.
+.evebox-event-table > tbody > tr.evebox-danger > td {
+  @extend .danger;
+}
+
+.evebox-event-table > tbody > tr.evebox-warning > td {
+  @extend .warning;
+}
+
+.evebox-event-table > tbody > tr.evebox-info > td {
+  @extend .info;
+}
+
+.evebox-event-table > tbody > tr.evebox-success > td {
+  @extend .success;
+}
+
+// When using bootstrap-sass, the size of buttons isn't quite right. Fix.
+.btn {
+  padding-top: 6px;
+  padding-right: 12px;
+  padding-bottom: 7px;
+  padding-left: 13px;
+}
+
+.tab-content .tab-pane {
+  border: 1px solid lightgray;
+  border-top: 0;
 }
