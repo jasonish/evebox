@@ -36,6 +36,7 @@ hr {
   }
   .mg-area1-color {
     fill: lightblue;
+    opacity: 1;
   }
 
 }
@@ -44,14 +45,17 @@ hr {
 // Unlike the default theme, we only color the first column.
 .evebox-event-table > tbody > tr.evebox-danger > td:first-child {
   @extend .danger;
+  opacity: 0.6;
 }
 
 .evebox-event-table > tbody > tr.evebox-warning > td:first-child {
   @extend .warning;
+  opacity: 0.6;
 }
 
 .evebox-event-table > tbody > tr.evebox-info > td:first-child {
   @extend .info;
+  opacity: 0.6;
 }
 
 .evebox-event-table > tbody > tr.evebox-success > td:first-child {
