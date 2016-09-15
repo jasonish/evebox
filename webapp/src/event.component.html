@@ -225,10 +225,10 @@
     </div>
     <div class="panel-body">
       <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-6 col-sm-6">
           <pre>{{event._source.payload | eveboxBase64Decode}}</pre>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 col-sm-6">
           <pre>{{event._source.payload | eveboxBase64Decode | hex}}</pre>
         </div>
       </div>
