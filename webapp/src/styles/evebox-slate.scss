@@ -41,6 +41,8 @@ hr {
 
 }
 
+// Lighten the background of pre tags in dark mode. Stuff like the packet
+// and payload displays have to bright of a background without it.
 pre {
   background-color: lightgray;
 }
