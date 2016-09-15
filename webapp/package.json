@@ -9,15 +9,14 @@
     "start": "RUN_MODE=development ./node_modules/.bin/webpack-dev-server --inline --progress --port 8080 --content-base ../public"
   },
   "dependencies": {
-    "@angular/common": "2.0.0-rc.6",
-    "@angular/compiler": "2.0.0-rc.6",
-    "@angular/core": "2.0.0-rc.6",
-    "@angular/forms": "2.0.0-rc.6",
-    "@angular/http": "2.0.0-rc.6",
-    "@angular/platform-browser": "2.0.0-rc.6",
-    "@angular/platform-browser-dynamic": "2.0.0-rc.6",
-    "@angular/router": "3.0.0-rc.2",
-    "@angular/upgrade": "2.0.0-rc.6",
+    "@angular/common": "2.0.0",
+    "@angular/compiler": "2.0.0",
+    "@angular/core": "2.0.0",
+    "@angular/forms": "2.0.0",
+    "@angular/http": "2.0.0",
+    "@angular/platform-browser": "2.0.0",
+    "@angular/platform-browser-dynamic": "2.0.0",
+    "@angular/router": "3.0.0",
     "bootstrap": "^3.3.7",
     "bootstrap-sass": "^3.3.7",
     "bootswatch": "^3.3.7",
@@ -30,10 +29,10 @@
     "moment": "^2.13.0",
     "mousetrap": "^1.6.0",
     "queue": "^4.0.0",
-    "reflect-metadata": "0.1.3",
-    "rxjs": "5.0.0-beta.11",
+    "reflect-metadata": "^0.1.3",
+    "rxjs": "5.0.0-beta.12",
     "toastr": "^2.1.2",
-    "zone.js": "^0.6.17"
+    "zone.js": "^0.6.23"
   },
   "devDependencies": {
     "concurrently": "^2.1.0",
