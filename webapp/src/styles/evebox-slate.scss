@@ -6,8 +6,9 @@ $icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
 
 @import "./common.scss";
 
-// Darken up form-control backgrounds a little.
 .form-control {
+
+  // Darken up form-control backgrounds a little.
   background-color: lightgray;
 
   // Fix height to match default theme.
@@ -20,7 +21,10 @@ $icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
 }
 
 hr {
+
+  // By default its too dark in slate.
   border-color: dimgray;
+
 }
 
 .evebox-metrics-graphic {
@@ -41,9 +45,9 @@ hr {
 
 }
 
-// Lighten the background of pre tags in dark mode. Stuff like the packet
-// and payload displays have to bright of a background without it.
 pre {
+  // Lighten the background of pre tags in dark mode. Stuff like the packet
+  // and payload displays have to bright of a background without it.
   background-color: lightgray;
 }
 
@@ -51,17 +55,14 @@ pre {
 // Unlike the default theme, we only color the first column.
 .evebox-event-table > tbody > tr.evebox-danger > td:first-child {
   @extend .danger;
-  opacity: 0.6;
 }
 
 .evebox-event-table > tbody > tr.evebox-warning > td:first-child {
   @extend .warning;
-  opacity: 0.6;
 }
 
 .evebox-event-table > tbody > tr.evebox-info > td:first-child {
   @extend .info;
-  opacity: 0.6;
 }
 
 .evebox-event-table > tbody > tr.evebox-success > td:first-child {
@@ -70,6 +71,11 @@ pre {
 
 .evebox-event-table > tbody > tr > td:not(:first-child) {
   @extend .active;
+}
+
+// Dims the colouring a bit.
+.evebox-event-table tr td:first-child {
+  opacity: 0.6;
 }
 
 .evebox-event-table > tbody > tr > td:first-child {
