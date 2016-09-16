@@ -162,8 +162,6 @@ export class EveboxHelpComponent implements OnInit, OnDestroy {
     }
 
     eventHandler(appEvent:AppEvent) {
-        console.log("EveboxHelpComponent.eventHandler:");
-        console.log(appEvent);
         if (appEvent.event === AppEventCode.SHOW_HELP) {
             this.showHelp();
         }

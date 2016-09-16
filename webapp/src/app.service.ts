@@ -32,6 +32,7 @@ declare var localStorage:any;
 export enum AppEventCode {
     SHOW_HELP = 0,
     TIME_RANGE_CHANGED,
+    IDLE,
 }
 
 export interface AppEvent {
@@ -46,8 +47,24 @@ export class AppService {
 
     private timeRangeDisabled:boolean = false;
 
+    private lastRouteEvent:number = new Date().getTime() / 1000;
+
     constructor(private router:Router,
                 private route:ActivatedRoute) {
+
+        // Setup idle check interval.
+        setInterval(() => this.dispatchIdleEvent(), 1000);
+    }
+
+    dispatchIdleEvent() {
+        let now = new Date().getTime() / 1000;
+        let idleTime = now - this.lastRouteEvent;
+        this.dispatch({event: AppEventCode.IDLE, data: idleTime})
+    }
+
+    resetIdleTime() {
+        console.log("Resetting idle time.");
+        this.lastRouteEvent = new Date().getTime() / 1000;
     }
 
     setTheme(name:string) {

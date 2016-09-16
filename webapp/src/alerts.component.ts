@@ -25,7 +25,16 @@
  */
 
 import {AlertService} from "./alert.service";
-import {Component, OnInit, OnDestroy} from "@angular/core";
+import {
+    Component,
+    OnInit,
+    OnDestroy,
+    style,
+    state,
+    animate,
+    transition,
+    trigger
+} from "@angular/core";
 import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
 import {Router, ActivatedRoute} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
@@ -43,9 +52,11 @@ export interface AlertsState {
 }
 
 @Component({
-    template: `<div [ngClass]="{'evebox-opacity-50': loading}">
+    template: `
+<!--<div [@loadingState]="!silentFresh && loading ? 'true' : 'false'">-->
+<div [@loadingState]="(!silentRefresh && loading) ? 'true' : 'false'">
 
-  <loading-spinner [loading]="loading"></loading-spinner>
+  <loading-spinner [loading]="!silentRefresh && loading"></loading-spinner>
 
   <!-- Button and filter bar. -->
   <div class="row">
@@ -90,7 +101,7 @@ export interface AlertsState {
     </div>
   </div>
 
-  <div *ngIf="!loading && rows.length == 0" style="text-align: center;">
+  <div *ngIf="rows.length == 0" style="text-align: center;">
     <hr/>
     No events found.
     <hr/>
@@ -108,6 +119,19 @@ export interface AlertsState {
       [(activeRow)]="activeRow"
       [rows]="rows"></alert-table>
 </div>`,
+    animations: [
+        trigger('loadingState', [
+                state("false", style({
+                    opacity: '1.0',
+                })),
+                state("true", style({
+                    opacity: '0.1',
+                })),
+                transition('false => true', animate('1000ms ease-out')),
+                transition('true => false', animate('1000ms ease-out'))
+            ]
+        )
+    ]
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 
@@ -116,6 +140,8 @@ export class AlertsComponent implements OnInit, OnDestroy {
     private queryString:string = "";
     private loading:boolean = false;
     private dispatcherSubscription:any;
+
+    private silentRefresh:boolean = false;
 
     constructor(private alertService:AlertService,
                 private elasticSearchService:ElasticSearchService,
@@ -225,8 +251,29 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     appEventHandler(event:AppEvent) {
 
-        if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
-            this.refresh();
+        switch (event.event) {
+            case AppEventCode.TIME_RANGE_CHANGED:
+                this.refresh();
+                break;
+            case AppEventCode.IDLE:
+                if (this.loading) {
+                    return;
+                }
+                if (event.data > 5 && this.rows.length == 0) {
+                    console.log("Starting automatic refresh.");
+                    this.silentRefresh = true;
+                    this.refresh().then(() => {
+                        console.log("Refresh done.");
+                        this.silentRefresh = false;
+                    })
+                }
+                else if (this.rows.length > 0 &&
+                    this.getSelectedRows().length == 0 &&
+                    event.data > 60) {
+                    console.log("Starting automatic refresh.");
+                    this.refresh();
+                }
+                break;
         }
 
     }
@@ -404,11 +451,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     refresh() {
 
-        // Prevent double loading.
-        if (this.loading) {
-            return;
-        }
-
         this.loading = true;
 
         let filters:any[] = [];
@@ -438,7 +480,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 break;
         }
 
-        this.alertService.fetchAlerts({
+        return this.alertService.fetchAlerts({
             queryString: this.queryString,
             range: range,
             filters: filters
@@ -462,6 +504,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
         }).then(() => {
             this.activeRow = 0;
             this.loading = false;
+            this.appService.resetIdleTime();
         });
     }
 

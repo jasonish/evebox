@@ -24,7 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component} from "@angular/core";
+import {Component, OnInit} from "@angular/core";
+import {AppService} from "./app.service";
+
+declare var document:any;
+declare var window:any;
 
 @Component({
     selector: "evebox-app",
@@ -36,5 +40,18 @@ import {Component} from "@angular/core";
 </div>
 `,
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
+
+    constructor(private appService:AppService) {
+    }
+
+    ngOnInit() {
+        window.addEventListener('keypress', () => {
+            this.appService.resetIdleTime();
+        });
+        window.addEventListener("click", () => {
+            this.appService.resetIdleTime();
+        });
+    }
+
 }

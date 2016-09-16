@@ -24,14 +24,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input} from "@angular/core";
+import {
+    Component, Input, style, state, animate,
+    transition, trigger
+} from "@angular/core";
 
 @Component({
     selector: "loading-spinner",
-    template: `<div *ngIf="loading">
+    template: `<div [@visibleState]="loading ? 'true' : 'false'">
     <i class="fa fa-spinner fa-pulse evebox-loading-spinner"
     [ngStyle]="{'font-size': fontSize + 'px'}"></i>
-</div>`
+</div>`,
+    animations: [
+        trigger('visibleState', [
+                state("false", style({
+                    opacity: '0',
+                })),
+                state("true", style({
+                    opacity: '1.0',
+                })),
+                transition('false => true', animate('500ms ease-out')),
+                transition('true => false', animate('500ms ease-out'))
+            ]
+        )
+    ]
 })
 export class EveboxLoadingSpinnerComponent {
 
