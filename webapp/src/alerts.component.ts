@@ -104,6 +104,7 @@ export interface AlertsState {
       (rowClicked)="rowClicked($event)"
       (toggleEscalation)="toggleEscalatedState($event)"
       (archiveEvent)="archiveAlertGroup($event)"
+      (escalateAndArchiveEvent)="escalateAndArchiveEvent($event)"
       [(activeRow)]="activeRow"
       [rows]="rows"></alert-table>
 </div>`,
@@ -162,8 +163,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         // Escalate then archive event.
         this.mousetrap.bind(this, "f9", () => {
-            this.toggleEscalatedState(this.getActiveRow());
-            this.archiveActiveEvent();
+            this.escalateAndArchiveEvent(this.getActiveRow());
         });
 
         this.mousetrap.bind(this, "x", () =>
@@ -173,6 +173,11 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.dispatcherSubscription = this.appService.subscribe((event:any) => {
             this.appEventHandler(event);
         });
+    }
+
+    escalateAndArchiveEvent(row:any) {
+        this.toggleEscalatedState(row);
+        this.archiveAlertGroup(row);
     }
 
     ngOnDestroy():any {

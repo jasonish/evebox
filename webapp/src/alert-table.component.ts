@@ -102,6 +102,15 @@ declare var $:any;
                   (click)="archiveEvent.emit(row); $event.stopPropagation()">
             Archive
           </button>
+          <button type="button" class="btn btn-default"
+                  data-toggle="tooltip" data-placement="top"
+                  title="Escalate and Archive"
+                  (click)="$event.stopPropagation(); escalateAndArchiveEvent.emit(row);">
+              <!-- This is supposed to be a star with an archive box overlaid,
+                 the idea behing to escalate and archive the event. -->
+              <i class="fa fa-star-o fa-lg"></i>
+              <i class="fa fa-archive" style="position: absolute; left: 50%; top: 40%"></i>
+          </button>
           <button type="button" id="dropdown-{{i}}"
                   class="btn btn-default dropdown-toggle"
                   data-toggle="dropdown" aria-haspopup="true"
@@ -138,6 +147,8 @@ export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked 
     @Output() toggleEscalation:EventEmitter<any> = new EventEmitter<any>();
     @Output() archiveEvent:EventEmitter<any> = new EventEmitter<any>();
 
+    @Output() escalateAndArchiveEvent:EventEmitter<any> = new EventEmitter<any>();
+
     constructor(private appService:AppService,
                 private mousetrap:MousetrapService,
                 private route:ActivatedRoute) {
@@ -162,6 +173,10 @@ export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked 
 
     ngAfterViewChecked() {
         $(".dropdown-toggle").dropdown();
+        $('[data-toggle="tooltip"]').tooltip({
+            container: 'body',
+            delay: {show: 500},
+        });
     }
 
     openDropdownMenu() {
