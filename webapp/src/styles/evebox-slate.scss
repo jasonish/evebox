@@ -27,6 +27,15 @@ hr {
 
 }
 
+.ace_content {
+
+  // This is the same colour as the gutter.
+  //background-color: #f0f0f0;
+
+  // Match the background color of form controls.
+  background-color: lightgray;
+}
+
 .evebox-metrics-graphic {
 
   // Lighten up the font used in the metrics graphics.
