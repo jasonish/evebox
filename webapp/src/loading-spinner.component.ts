@@ -26,25 +26,28 @@
 
 import {
     Component, Input, style, state, animate,
-    transition, trigger
+    transition, trigger, ElementRef, OnInit
 } from "@angular/core";
 
 @Component({
     selector: "loading-spinner",
     template: `<div [@visibleState]="loading ? 'true' : 'false'">
     <i class="fa fa-spinner fa-pulse evebox-loading-spinner"
+    [hidden]="!isVisible()"
     [ngStyle]="{'font-size': fontSize + 'px'}"></i>
 </div>`,
     animations: [
         trigger('visibleState', [
                 state("false", style({
                     opacity: '0',
+                    //visibility: "hidden",
                 })),
                 state("true", style({
                     opacity: '1.0',
+                    visibility: "visible",
                 })),
                 transition('false => true', animate('500ms ease-out')),
-                transition('true => false', animate('500ms ease-out'))
+                transition('true => false', animate('1000ms ease-out'))
             ]
         )
     ]
@@ -53,5 +56,16 @@ export class EveboxLoadingSpinnerComponent {
 
     @Input("loading") private loading:boolean = false;
     @Input("fontSize") private fontSize:number = 300;
+
+    constructor(private element:ElementRef) {
+    }
+
+    isVisible() {
+        let opacity = this.element.nativeElement.children[0].style.opacity;
+        if (opacity == "0") {
+            return false;
+        }
+        return true;
+    }
 
 }

@@ -125,7 +125,7 @@ export interface AlertsState {
                     opacity: '1.0',
                 })),
                 state("true", style({
-                    opacity: '0.1',
+                    opacity: '0.5',
                 })),
                 transition('false => true', animate('1000ms ease-out')),
                 transition('true => false', animate('1000ms ease-out'))
