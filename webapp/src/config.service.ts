@@ -48,16 +48,12 @@ export class ConfigService {
             });
     }
 
+    getConfig() {
+        return this.config;
+    }
+
     subscribe(handler:any) {
         return this.eventEmitter.subscribe(handler);
     }
-
-    getEventServices() {
-        if (this.config) {
-            if (this.config["event-services"]) {
-                return this.config["event-services"];
-            }
-        }
-    }
-
+    
 }

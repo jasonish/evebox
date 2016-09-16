@@ -29,10 +29,10 @@
           class="badge">{{alertGroup.count}}</span></a>
       </span>
       <span class="pull-right"
-            *ngIf="eventServices.getServicesForEvent(event).length > 0">
+            *ngIf="servicesForEvent.length > 0">
         [
         <span
-            *ngFor="let service of eventServices.getServicesForEvent(event); let last = last">
+            *ngFor="let service of servicesForEvent; let last = last">
           <a href="{{service.getUrl(event)}}" target="{{service.getTarget()}}">{{service.name}}</a>
           <span *ngIf="!last"> | </span>
         </span>

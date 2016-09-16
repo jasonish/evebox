@@ -48,6 +48,8 @@ export class EventComponent implements OnInit, OnDestroy {
     private params:any = {};
     private flows:any[] = [];
 
+    private servicesForEvent:any[] = []
+
     constructor(private route:ActivatedRoute,
                 private router:Router,
                 private elasticSearchService:ElasticSearchService,
@@ -67,6 +69,11 @@ export class EventComponent implements OnInit, OnDestroy {
         this.flows = [];
     }
 
+    setup() {
+        console.log("setup");
+        this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
+    }
+
     ngOnInit() {
 
         let alertGroup = this.eventService.popAlertGroup();
@@ -84,6 +91,7 @@ export class EventComponent implements OnInit, OnDestroy {
                 if (this.event._source.event_type != "flow") {
                     this.findFlow(this.event);
                 }
+                this.setup();
             }
             else {
                 this.refresh();
@@ -243,6 +251,7 @@ export class EventComponent implements OnInit, OnDestroy {
                 if (this.event._source.event_type != "flow") {
                     this.findFlow(response);
                 }
+                this.setup();
             });
     }
 }
