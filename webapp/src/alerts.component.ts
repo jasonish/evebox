@@ -259,20 +259,32 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 if (this.loading) {
                     return;
                 }
-                if (event.data > 5 && this.rows.length == 0) {
-                    console.log("Starting automatic refresh.");
-                    this.silentRefresh = true;
-                    this.refresh().then(() => {
-                        console.log("Refresh done.");
-                        this.silentRefresh = false;
-                    })
+
+                if (this.rows.length > 0 && event.data < 60) {
+                    return;
                 }
-                else if (this.rows.length > 0 &&
-                    this.getSelectedRows().length == 0 &&
-                    event.data > 60) {
-                    console.log("Starting automatic refresh.");
-                    this.refresh();
+
+                if (this.rows.length == 0 && event.data < 5) {
+                    return;
                 }
+
+                // Don't auto-refresh if Elastic Search jobs are in progress,
+                // could result in reloading events waiting to be archived.
+                // TODO: Limit to archive jobs only.
+                if (this.elasticSearchService.jobSize() > 0) {
+                    console.log("Elastic Search jobs active, not refreshing.");
+                    return;
+                }
+
+                if (this.rows.length > 0 && this.getSelectedRows().length > 0) {
+                    return;
+                }
+
+                this.silentRefresh = true;
+                this.refresh().then(() => {
+                    this.silentRefresh = false;
+                });
+
                 break;
         }
 
