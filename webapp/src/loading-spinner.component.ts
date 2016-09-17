@@ -47,7 +47,7 @@ import {
                     visibility: "visible",
                 })),
                 transition('false => true', animate('500ms ease-out')),
-                transition('true => false', animate('1000ms ease-out'))
+                transition('true => false', animate('500ms ease-out'))
             ]
         )
     ]
