@@ -167,6 +167,7 @@ export class EventComponent implements OnInit, OnDestroy {
         else {
             this.elasticSearchService.removeTagsFromEventSet([this.event], ["escalated", "evebox.escalated"]);
         }
+        this.location.back();
     }
 
     isEscalated() {

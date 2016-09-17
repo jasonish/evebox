@@ -242,6 +242,14 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 activeRow = rows.length - 1;
             }
         }
+        else if (this.appService.getRoute() == "/escalated") {
+            rows = rows.filter((row:any) => {
+                return row.event.escalatedCount > 0;
+            });
+            if (activeRow >= rows.length) {
+                activeRow = rows.length - 1;
+            }
+        }
 
         this.rows = rows;
         this.activeRow = activeRow;
