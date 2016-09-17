@@ -51,7 +51,7 @@ export class AppComponent implements OnInit {
         });
         window.addEventListener("click", () => {
             this.appService.resetIdleTime();
-        });
+        }, true);
     }
 
 }

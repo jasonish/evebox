@@ -62,15 +62,16 @@ declare var $:any;
     <tbody>
     <tr *ngFor="let row of rows; let i = index"
         [ngClass]="row.event.event | eventSeverityToBootstrapClass:'evebox-'"
-        (click)="onRowClick($event, row)">
+        (click)="rowClicked.emit(row)">
       <td style="width: 1% !important;">
       <span *ngIf="i == activeRow"
             class="glyphicon glyphicon-chevron-right"></span>
       </td>
       <td class="clearfix" style="width: 1% !important;">
-        <input type="checkbox" [(ngModel)]="row.selected">
+        <input type="checkbox" [(ngModel)]="row.selected"
+               (click)="$event.stopPropagation()">
       </td>
-      <td (click)="toggleEscalation.emit(row)"
+      <td (click)="$event.stopPropagation(); toggleEscalation.emit(row)"
           style="width: 1% !important;">
         <i *ngIf="row.event.escalatedCount == 0"
            class="fa fa-star-o"></i>
@@ -94,15 +95,16 @@ declare var $:any;
         {{row.event.event._source.dest_ip | eveboxFormatIpAddress}}
       </td>
       <td>
-        <div *ngIf="!isArchived(row)" class="btn-group pull-right">
+        <div *ngIf="!isArchived(row)" class="btn-group pull-right"
+             (click)="$event.stopPropagation()">
           <button type="button"
                   class="btn btn-default"
-                  (click)="archiveEvent.emit(row)">
+                  (click)="archiveEvent.emit(row); $event.stopPropagation()">
             Archive
           </button>
           <button type="button" class="btn btn-default"
                   title="Escalate and Archive"
-                  (click)="escalateAndArchiveEvent.emit(row);">
+                  (click)="$event.stopPropagation(); escalateAndArchiveEvent.emit(row);">
               <!-- This is supposed to be a star with an archive box overlaid,
                  the idea behing to escalate and archive the event. -->
               <i class="fa fa-star-o fa-lg"></i>
@@ -164,18 +166,16 @@ export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked 
         });
     }
 
-    onRowClick($event:any, row:any) {
-        if ($event.srcElement.parentElement == $event.currentTarget) {
-            this.rowClicked.emit(row);
-        }
-    }
-
     ngOnDestroy() {
         this.mousetrap.unbind(this);
     }
 
     ngAfterViewChecked() {
         $(".dropdown-toggle").dropdown();
+        $('[data-toggle="tooltip"]').tooltip({
+            container: 'body',
+            delay: {show: 500},
+        });
     }
 
     openDropdownMenu() {
