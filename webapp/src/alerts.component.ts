@@ -399,7 +399,8 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     submitFilter() {
-        this.appService.updateQueryParameters({q: this.queryString});
+        //this.appService.updateQueryParameters({q: this.queryString});
+        this.appService.updateParams(this.route, {q: this.queryString});
         document.getElementById("filter-input").blur();
         this.refresh();
     }
