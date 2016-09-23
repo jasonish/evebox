@@ -30,6 +30,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"net"
+	"crypto/tls"
 )
 
 type ElasticSearchProxy struct {
@@ -46,6 +48,9 @@ func NewElasticSearchProxy(elasticSearchUrl string, prefix string) (*ElasticSear
 		proxy:  httputil.NewSingleHostReverseProxy(esUrl),
 		prefix: prefix,
 	}
+
+	proxy.proxy.Transport = &http.Transport{DialTLS:proxy.DialTLS}
+
 	return &proxy, nil
 }
 
@@ -60,4 +65,12 @@ func (p *ElasticSearchProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Del("Referer")
 
 	p.proxy.ServeHTTP(w, r)
+}
+
+// As most users are likely to be using a self-signed certificate on their
+// Elastic Search install, set InsecureSkipVerify by default.
+func (p *ElasticSearchProxy) DialTLS(network string, addr string) (net.Conn, error) {
+	return tls.Dial(network, addr, &tls.Config{
+		InsecureSkipVerify:true,
+	})
 }
