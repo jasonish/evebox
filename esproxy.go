@@ -27,29 +27,41 @@
 package main
 
 import (
+	"crypto/tls"
+	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"net"
-	"crypto/tls"
+	"os"
 )
 
 type ElasticSearchProxy struct {
-	proxy  *httputil.ReverseProxy
-	prefix string
+	proxy            *httputil.ReverseProxy
+	prefix           string
+	disableCertCheck bool
 }
 
-func NewElasticSearchProxy(elasticSearchUrl string, prefix string) (*ElasticSearchProxy, error) {
+var EsProxyLogger *log.Logger
+
+func NewElasticSearchProxy(elasticSearchUrl string, prefix string,
+	disableCertCheck bool) (*ElasticSearchProxy, error) {
+
 	esUrl, err := url.Parse(elasticSearchUrl)
 	if err != nil {
 		return nil, err
 	}
 	proxy := ElasticSearchProxy{
-		proxy:  httputil.NewSingleHostReverseProxy(esUrl),
-		prefix: prefix,
+		proxy:            httputil.NewSingleHostReverseProxy(esUrl),
+		prefix:           prefix,
+		disableCertCheck: disableCertCheck,
 	}
 
-	proxy.proxy.Transport = &http.Transport{DialTLS:proxy.DialTLS}
+	EsProxyLogger = log.New(os.Stderr, "elasticsearch-proxy: ", 0)
+
+	proxy.proxy.ErrorLog = EsProxyLogger
+
+	proxy.proxy.Transport = &http.Transport{DialTLS: proxy.DialTLS}
 
 	return &proxy, nil
 }
@@ -71,6 +83,6 @@ func (p *ElasticSearchProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Elastic Search install, set InsecureSkipVerify by default.
 func (p *ElasticSearchProxy) DialTLS(network string, addr string) (net.Conn, error) {
 	return tls.Dial(network, addr, &tls.Config{
-		InsecureSkipVerify:true,
+		InsecureSkipVerify: p.disableCertCheck,
 	})
 }

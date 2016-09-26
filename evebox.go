@@ -56,6 +56,7 @@ var opts struct {
 	DevServerUri       string `long:"dev" description:"Frontend development server URI"`
 	Version            bool   `long:"version" description:"Show version"`
 	Config             string `long:"config" short:"c" description:"Configuration filename"`
+	NoCheckCertificate bool `long:"no-check-certificate" short:"k" description:"Disable certificate check for Elastic Search"`
 }
 
 var config = &Config{}
@@ -97,12 +98,11 @@ func setupElasticSearchProxy(router *mux.Router) {
 	}
 	log.Printf("Elastic Search URI: %v", opts.ElasticSearchUri)
 	esProxy, err := NewElasticSearchProxy(opts.ElasticSearchUri,
-		"/elasticsearch")
+		"/elasticsearch", opts.NoCheckCertificate)
 	if err != nil {
 		log.Fatal(err)
 	}
 	router.PathPrefix("/elasticsearch").Handler(esProxy)
-	//router.Handle("/elasticsearch/*", esProxy)
 }
 
 // Setup the handler for static files.
@@ -118,17 +118,16 @@ func setupStatic(router *mux.Router) {
 			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
 		router.PathPrefix("/").Handler(devServerProxy)
 
-
-
 	} else {
 		public := http.FileServer(
 			rice.MustFindBox("./public").HTTPBox())
 		router.PathPrefix("/").Handler(public)
-
 	}
 }
 
 func main() {
+
+	log.SetFlags(log.Lshortfile)
 
 	_, err := flags.Parse(&opts)
 	if err != nil {
@@ -165,8 +164,6 @@ func main() {
 
 	router := mux.NewRouter()
 
-	//mux := goji.NewMux()
-
 	router.HandleFunc("/eve2pcap", Eve2PcapHandler)
 	router.HandleFunc("/api/version", VersionHandler)
 	router.HandleFunc("/api/config", ConfigHandler)
@@ -175,7 +172,7 @@ func main() {
 	setupStatic(router)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
+	err = http.ListenAndServe(opts.Host + ":" + opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}
