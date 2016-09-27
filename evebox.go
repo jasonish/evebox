@@ -36,8 +36,8 @@ import (
 	"os"
 
 	"github.com/GeertJohan/go.rice"
-	"github.com/jessevdk/go-flags"
 	"github.com/gorilla/mux"
+	"github.com/jessevdk/go-flags"
 )
 
 var buildDate string
@@ -56,10 +56,10 @@ var opts struct {
 	DevServerUri       string `long:"dev" description:"Frontend development server URI"`
 	Version            bool   `long:"version" description:"Show version"`
 	Config             string `long:"config" short:"c" description:"Configuration filename"`
-	NoCheckCertificate bool `long:"no-check-certificate" short:"k" description:"Disable certificate check for Elastic Search"`
+	NoCheckCertificate bool   `long:"no-check-certificate" short:"k" description:"Disable certificate check for Elastic Search"`
 }
 
-var config = &Config{}
+var conf = &Config{}
 
 type VersionResponse struct {
 	Version  string
@@ -78,7 +78,7 @@ func VersionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ConfigHandler(w http.ResponseWriter, r *http.Request) {
-	configJson, err := config.toJSON()
+	configJson, err := conf.toJSON()
 	if err != nil {
 		// Return failure.
 		log.Println("error: ", err)
@@ -151,7 +151,7 @@ func main() {
 	}
 	if opts.Config != "" {
 		log.Printf("Loading configuration file %s.\n", opts.Config)
-		config, err = LoadConfig(opts.Config)
+		conf, err = LoadConfig(opts.Config)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -159,7 +159,7 @@ func main() {
 
 	if opts.ElasticSearchIndex != "" {
 		log.Printf("Using ElasticSearch Index %s.", opts.ElasticSearchIndex)
-		config.ElasticSearchIndex = opts.ElasticSearchIndex
+		conf.ElasticSearchIndex = opts.ElasticSearchIndex
 	}
 
 	router := mux.NewRouter()
@@ -172,7 +172,7 @@ func main() {
 	setupStatic(router)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host + ":" + opts.Port, router)
+	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}
