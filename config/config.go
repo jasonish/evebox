@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package main
+package config
 
 import (
 	"encoding/json"
@@ -39,7 +39,7 @@ type Config struct {
 	EventServices      []map[string]interface{} `yaml:"event-services" json:"event-services"`
 }
 
-func (c *Config) toJSON() ([]byte, error) {
+func (c *Config) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(c)
 	if err != nil {
 		return nil, err

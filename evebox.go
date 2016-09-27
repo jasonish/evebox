@@ -35,6 +35,8 @@ import (
 	"net/url"
 	"os"
 
+	"evebox/config"
+
 	"github.com/GeertJohan/go.rice"
 	"github.com/gorilla/mux"
 	"github.com/jessevdk/go-flags"
@@ -59,7 +61,7 @@ var opts struct {
 	NoCheckCertificate bool   `long:"no-check-certificate" short:"k" description:"Disable certificate check for Elastic Search"`
 }
 
-var conf = &Config{}
+var conf = &config.Config{}
 
 type VersionResponse struct {
 	Version  string
@@ -78,7 +80,7 @@ func VersionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ConfigHandler(w http.ResponseWriter, r *http.Request) {
-	configJson, err := conf.toJSON()
+	configJson, err := conf.ToJSON()
 	if err != nil {
 		// Return failure.
 		log.Println("error: ", err)
@@ -151,7 +153,7 @@ func main() {
 	}
 	if opts.Config != "" {
 		log.Printf("Loading configuration file %s.\n", opts.Config)
-		conf, err = LoadConfig(opts.Config)
+		conf, err = config.LoadConfig(opts.Config)
 		if err != nil {
 			log.Fatal(err)
 		}
