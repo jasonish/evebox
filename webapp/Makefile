@@ -10,4 +10,4 @@ distclean:
 	rm -rf typings
 
 start:
-	npm start
+	npm run start

@@ -23,6 +23,7 @@ install-deps:
 	which glide > /dev/null 2>&1 || go get github.com/Masterminds/glide
 	which rice > /dev/null 2>&1 || go get github.com/GeertJohan/go.rice/rice
 	which gin > /dev/null 2>&1 || go get github.com/codegangsta/gin
+	which reflex > /dev/null 2>&1 || go get github.com/cespare/reflex
 	glide install
 
 clean:
@@ -67,7 +68,13 @@ dev-server: evebox
 	fi
 	./webapp/node_modules/.bin/concurrently -k \
 		"make -C webapp start" \
-		"gin --appPort 5636 -i -b evebox ./evebox -e ${EVEBOX_ELASTICSEARCH_URL} --dev http://localhost:8080"
+		"make dev-server-reflex" \
+
+# Helper for dev-server mode, watches evebox Go source and rebuilds and
+# restarts as needed.
+dev-server-reflex: evebox
+	reflex -s -r '\.go$$' -- sh -c "make evebox && ./evebox \
+		-e ${EVEBOX_ELASTICSEARCH_URL} --dev http://localhost:8080"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
