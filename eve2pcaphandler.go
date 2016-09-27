@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package main
+package evebox
 
 import (
 	"fmt"
@@ -44,7 +44,7 @@ func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var pcap []byte
 
-	r.ParseForm();
+	r.ParseForm()
 
 	jsonEvent := r.Form["event"][0]
 	if jsonEvent != "" {
@@ -56,8 +56,8 @@ func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		HttpErrorAndLog(w, r, http.StatusBadRequest,
-		        "Form field \"event\" not provided.");
-		return;
+			"Form field \"event\" not provided.")
+		return
 	}
 
 	what := r.Form["what"][0] // r.URL.Query().Get("what")

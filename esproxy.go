@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package main
+package evebox
 
 import (
 	"crypto/tls"

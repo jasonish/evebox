@@ -37,6 +37,8 @@ import (
 
 	"evebox/config"
 
+	"evebox"
+
 	"github.com/GeertJohan/go.rice"
 	"github.com/gorilla/mux"
 	"github.com/jessevdk/go-flags"
@@ -99,7 +101,7 @@ func setupElasticSearchProxy(router *mux.Router) {
 		}
 	}
 	log.Printf("Elastic Search URI: %v", opts.ElasticSearchUri)
-	esProxy, err := NewElasticSearchProxy(opts.ElasticSearchUri,
+	esProxy, err := evebox.NewElasticSearchProxy(opts.ElasticSearchUri,
 		"/elasticsearch", opts.NoCheckCertificate)
 	if err != nil {
 		log.Fatal(err)
@@ -166,7 +168,7 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/eve2pcap", Eve2PcapHandler)
+	router.HandleFunc("/eve2pcap", evebox.Eve2PcapHandler)
 	router.HandleFunc("/api/version", VersionHandler)
 	router.HandleFunc("/api/config", ConfigHandler)
 

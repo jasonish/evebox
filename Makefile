@@ -44,7 +44,7 @@ public: public/bundle.js
 
 # Build's EveBox for the host platform.
 evebox: $(GO_SRCS)
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o ${APP}
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
 
 build-with-docker:
 	docker build --rm -t evebox/builder - < Dockerfile
