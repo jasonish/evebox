@@ -35,6 +35,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox"
+	"github.com/jasonish/evebox/cmd/eveimport"
 	"github.com/jasonish/evebox/config"
 	"github.com/jessevdk/go-flags"
 )
@@ -114,6 +115,8 @@ func main() {
 		switch os.Args[1] {
 		case "version":
 			VersionMain()
+		case "import":
+			eveimport.Main(os.Args[1:])
 		}
 		return
 	}
@@ -160,7 +163,7 @@ func main() {
 	evebox.SetupStatic(router, opts.DevServerUri)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host + ":" + opts.Port, router)
+	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -24,33 +24,70 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package evebox
+package elasticsearch
 
 import (
-	"github.com/GeertJohan/go.rice"
-	"github.com/gorilla/mux"
-	"log"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 )
 
-// Setup the handler for static files.
-func SetupStatic(router *mux.Router, devServerUri string) {
-	if len(devServerUri) > 0 {
-		log.Printf("Proxying static files to development server %v.",
-			devServerUri)
-		devServerProxyUrl, err := url.Parse(devServerUri)
-		if err != nil {
-			log.Fatal(err)
-		}
-		devServerProxy :=
-			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-		router.PathPrefix("/").Handler(devServerProxy)
+type ElasticSearch struct {
+	baseUrl    string
+	httpClient *http.Client
+	index      string
+}
 
-	} else {
-		public := http.FileServer(
-			rice.MustFindBox("./public").HTTPBox())
-		router.PathPrefix("/").Handler(public)
+func New(url string) *ElasticSearch {
+	return &ElasticSearch{
+		baseUrl:    url,
+		httpClient: &http.Client{},
+		index:      "logstash",
 	}
+}
+
+func (es *ElasticSearch) Ping() (*PingResponse, error) {
+
+	req, err := http.NewRequest("GET", es.baseUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := es.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		return nil, NewElasticSearchError(response)
+	}
+
+	decoder := json.NewDecoder(response.Body)
+	decoder.UseNumber()
+	var body PingResponse
+	if err := decoder.Decode(&body); err != nil {
+		return nil, err
+	}
+
+	return &body, nil
+}
+
+type ElasticSearchError struct {
+	// The raw error body as returned from the server.
+	Raw string
+}
+
+func (e ElasticSearchError) Error() string {
+	return e.Raw
+}
+
+func NewElasticSearchError(response *http.Response) ElasticSearchError {
+
+	error := ElasticSearchError{}
+
+	raw, _ := ioutil.ReadAll(response.Body)
+	if raw != nil {
+		error.Raw = string(raw)
+	}
+
+	return error
 }

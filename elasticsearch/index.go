@@ -24,33 +24,70 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package evebox
+package elasticsearch
 
 import (
-	"github.com/GeertJohan/go.rice"
-	"github.com/gorilla/mux"
-	"log"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"github.com/jasonish/evebox/eve"
+	"io/ioutil"
+	"math/rand"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
+	"time"
 )
 
-// Setup the handler for static files.
-func SetupStatic(router *mux.Router, devServerUri string) {
-	if len(devServerUri) > 0 {
-		log.Printf("Proxying static files to development server %v.",
-			devServerUri)
-		devServerProxyUrl, err := url.Parse(devServerUri)
-		if err != nil {
-			log.Fatal(err)
-		}
-		devServerProxy :=
-			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-		router.PathPrefix("/").Handler(devServerProxy)
+var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-	} else {
-		public := http.FileServer(
-			rice.MustFindBox("./public").HTTPBox())
-		router.PathPrefix("/").Handler(public)
+const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+func GenerateId() string {
+	id := make([]rune, 20)
+	for i := range id {
+		id[i] = chars[rand.Intn(len(chars))]
 	}
+	return string(id)
+}
+
+func AddAtTimestamp(event eve.RawEveEvent) {
+	timestamp, err := event.GetTimestamp()
+	if err != nil {
+		return
+	}
+	event["@timestamp"] = timestamp.UTC().Format(AtTimestampFormat)
+}
+
+func (es *ElasticSearch) IndexRawEveEvent(event eve.RawEveEvent) error {
+	id := GenerateId()
+
+	timestamp, err := event.GetTimestamp()
+	if err != nil {
+		return err
+	}
+	index := fmt.Sprintf("%s-%s", es.index, timestamp.UTC().Format("2006.01.02"))
+
+	AddAtTimestamp(event)
+
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.Encode(event)
+	request, err := http.NewRequest("POST",
+		fmt.Sprintf("%s/%s/log/%s", es.baseUrl, index, id), &buf)
+	if err != nil {
+		return err
+	}
+	response, err := es.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+
+	// Required for connection re-use.
+	ioutil.ReadAll(response.Body)
+	response.Body.Close()
+
+	return nil
 }

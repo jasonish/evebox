@@ -1,5 +1,5 @@
-hash: 2175df818215fc3782ce565fec1085c051fdd5f5b4d2174639c41e434b347273
-updated: 2016-09-04T16:15:59.786610562-06:00
+hash: eb05c310506c464a29eb04907909b0229f7a28c9d41588dd74c3373a9ad0a9ab
+updated: 2016-09-27T01:01:52.670260195-06:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -21,6 +21,8 @@ imports:
   version: 97448c91aac742cbca3d020b3e769013a420a06f
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
+- name: github.com/spf13/pflag
+  version: c7e63cf4530bcd3ba943729cee0efeff2ebea63f
 - name: golang.org/x/net
   version: f841c39de738b1d0df95b5a7187744f0e03d8112
   subpackages:
