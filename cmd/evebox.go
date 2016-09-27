@@ -34,9 +34,9 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/jessevdk/go-flags"
 	"github.com/jasonish/evebox"
 	"github.com/jasonish/evebox/config"
+	"github.com/jessevdk/go-flags"
 )
 
 const DEFAULT_ELASTICSEARCH_URI string = "http://localhost:9200"
@@ -100,9 +100,23 @@ func setupElasticSearchProxy(router *mux.Router) {
 	router.PathPrefix("/elasticsearch").Handler(esProxy)
 }
 
+func VersionMain() {
+	fmt.Printf("EveBox Version %s (rev %s) [%s]\n",
+		evebox.BuildVersion, evebox.BuildRev, evebox.BuildDate)
+}
+
 func main() {
 
 	log.SetFlags(log.Lshortfile)
+
+	// Look for sub-commands, then fall back to server.
+	if len(os.Args) > 1 && os.Args[1][0] != '-' {
+		switch os.Args[1] {
+		case "version":
+			VersionMain()
+		}
+		return
+	}
 
 	_, err := flags.Parse(&opts)
 	if err != nil {
@@ -111,9 +125,8 @@ func main() {
 	}
 
 	if opts.Version {
-		fmt.Printf("EveBox Version %s (rev %s) [%s]\n",
-			evebox.BuildVersion, evebox.BuildRev, evebox.BuildDate)
-		os.Exit(0)
+		VersionMain()
+		return
 	}
 
 	// If no configuration was provided, see if evebox.yaml exists
