@@ -35,13 +35,11 @@ import (
 	"net/url"
 	"os"
 
-	"evebox/config"
-
-	"evebox"
-
 	"github.com/GeertJohan/go.rice"
 	"github.com/gorilla/mux"
 	"github.com/jessevdk/go-flags"
+	"github.com/jasonish/evebox"
+	"github.com/jasonish/evebox/config"
 )
 
 var buildDate string
