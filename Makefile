@@ -5,9 +5,9 @@ BUILD_DATE	:=	$(shell TZ=UTC date)
 BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 
-LDFLAGS :=	-X \"main.buildDate=$(BUILD_DATE)\" \
-		-X \"main.buildRev=$(BUILD_REV)\" \
-		-X \"main.buildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
+LDFLAGS :=	-X \"github.com/jasonish/evebox.BuildDate=$(BUILD_DATE)\" \
+		-X \"github.com/jasonish/evebox.BuildRev=$(BUILD_REV)\" \
+		-X \"github.com/jasonish/evebox.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
 
 APP :=		evebox
 
@@ -43,7 +43,7 @@ public/bundle.js: $(WEBAPP_SRCS)
 public: public/bundle.js
 
 # Build's EveBox for the host platform.
-evebox: $(GO_SRCS)
+evebox: Makefile $(GO_SRCS)
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
 
 build-with-docker:
@@ -75,7 +75,7 @@ dist: DISTNAME ?= ${APP}-${VERSION}${VERSION_SUFFIX}-${GOOS}-${GOARCH}
 dist: LDFLAGS += -s -w
 dist: public/bundle.js
 	GOARCH=$(GOARCH) GOOS=$(GOOS) CGO_ENABLED=0 \
-		go build -ldflags "$(LDFLAGS)" -o dist/$(DISTNAME)/${APP}
+		go build -ldflags "$(LDFLAGS)" -o dist/$(DISTNAME)/${APP} cmd/evebox.go
 	rice -v append --exec dist/${DISTNAME}/${APP}
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 

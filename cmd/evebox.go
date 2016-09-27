@@ -31,20 +31,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 
-	"github.com/GeertJohan/go.rice"
 	"github.com/gorilla/mux"
 	"github.com/jessevdk/go-flags"
 	"github.com/jasonish/evebox"
 	"github.com/jasonish/evebox/config"
 )
-
-var buildDate string
-var buildVersion string
-var buildRev string
 
 const DEFAULT_ELASTICSEARCH_URI string = "http://localhost:9200"
 
@@ -71,9 +64,9 @@ type VersionResponse struct {
 
 func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	response := VersionResponse{
-		buildVersion,
-		buildRev,
-		buildDate,
+		evebox.BuildVersion,
+		evebox.BuildRev,
+		evebox.BuildDate,
 	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	json.NewEncoder(w).Encode(response)
@@ -107,26 +100,6 @@ func setupElasticSearchProxy(router *mux.Router) {
 	router.PathPrefix("/elasticsearch").Handler(esProxy)
 }
 
-// Setup the handler for static files.
-func setupStatic(router *mux.Router) {
-	if len(opts.DevServerUri) > 0 {
-		log.Printf("Proxying static files to development server %v.",
-			opts.DevServerUri)
-		devServerProxyUrl, err := url.Parse(opts.DevServerUri)
-		if err != nil {
-			log.Fatal(err)
-		}
-		devServerProxy :=
-			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-		router.PathPrefix("/").Handler(devServerProxy)
-
-	} else {
-		public := http.FileServer(
-			rice.MustFindBox("./public").HTTPBox())
-		router.PathPrefix("/").Handler(public)
-	}
-}
-
 func main() {
 
 	log.SetFlags(log.Lshortfile)
@@ -139,7 +112,7 @@ func main() {
 
 	if opts.Version {
 		fmt.Printf("EveBox Version %s (rev %s) [%s]\n",
-			buildVersion, buildRev, buildDate)
+			evebox.BuildVersion, evebox.BuildRev, evebox.BuildDate)
 		os.Exit(0)
 	}
 
@@ -171,10 +144,10 @@ func main() {
 	router.HandleFunc("/api/config", ConfigHandler)
 
 	setupElasticSearchProxy(router)
-	setupStatic(router)
+	evebox.SetupStatic(router, opts.DevServerUri)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
+	err = http.ListenAndServe(opts.Host + ":" + opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}
