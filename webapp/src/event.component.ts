@@ -195,7 +195,11 @@ export class EventComponent implements OnInit, OnDestroy {
 
     findFlow(event:any) {
 
-        console.log("Attempting to find flow...");
+        if (!event.flow_id) {
+            console.log("Unable to find flow for event, event does not have a flow id.");
+            return;
+        }
+
         let query = {
             query: {
                 filtered: {
@@ -251,9 +255,7 @@ export class EventComponent implements OnInit, OnDestroy {
             .then((response:any) => {
                 this.event = response;
                 if (this.event._source.event_type != "flow") {
-                    if (this.event._source.flow_id) {
-                        this.findFlow(response);
-                    }
+                    this.findFlow(response);
                 }
                 this.setup();
             });

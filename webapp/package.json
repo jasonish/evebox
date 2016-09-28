@@ -25,7 +25,7 @@
     "font-awesome": "^4.6.3",
     "humanize-plus": "^1.8.2",
     "jquery": "^2.2.4",
-    "metrics-graphics": "2.8.0",
+    "metrics-graphics": "2.10.1",
     "moment": "^2.13.0",
     "mousetrap": "^1.6.0",
     "queue": "^4.0.0",
