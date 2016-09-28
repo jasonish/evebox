@@ -56,20 +56,39 @@
             <dt>Source</dt>
             <dd>
               <search-link field="src_ip"
-                           value="{{event._source.src_ip | eveboxFormatIpAddress}}"></search-link>
-              <span
-                  *ngIf="event._source.src_port"
-                  style="color: dimgray">:{{event._source.src_port}}
-            </span>
+                           value="{{event._source.src_ip | eveboxFormatIpAddress}}">
+              </search-link><span
+                *ngIf="event._source.src_port"
+                style="color: dimgray">:{{event._source.src_port}}</span>
+              <span class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle"
+                   data-toggle="dropdown"
+                   aria-haspopup="true" aria-expanded="true">
+                  <span class="caret"></span></a>
+                <ul class="dropdown-menu">
+                  <li><a
+                      [routerLink]="['/reports/ip', {ip: event._source.src_ip}]">IP
+                    Report</a></li>
+                </ul>
+              </span>
             </dd>
             <dt>Destination</dt>
             <dd>
               <search-link field="dest_ip"
-                           value="{{event._source.dest_ip | eveboxFormatIpAddress}}"></search-link>
-              <span
-                  *ngIf="event._source.dest_port"
-                  style="color: dimgray">:{{event._source.dest_port}}
-            </span>
+                           value="{{event._source.dest_ip | eveboxFormatIpAddress}}">
+              </search-link><span *ngIf="event._source.dest_port"
+                                  style="color: dimgray">:{{event._source.dest_port}}</span>
+              <span class="dropdown">
+                <a href="javascript:void(0)" class="dropdown-toggle"
+                   data-toggle="dropdown"
+                   aria-haspopup="true" aria-expanded="true">
+                  <span class="caret"></span></a>
+                <ul class="dropdown-menu">
+                  <li><a
+                      [routerLink]="['/reports/ip', {ip: event._source.dest_ip}]">IP
+                    Report</a></li>
+                </ul>
+              </span>
             </dd>
 
             <div *ngIf="event._source.in_iface">
@@ -110,7 +129,8 @@
                   {{event._source.alert.gid}}:
                   <search-link
                       field="alert.signature_id" router="/alerts"
-                      value="{{event._source.alert.signature_id}}"></search-link>
+                      value="{{event._source.alert.signature_id}}">
+                  </search-link>
                   :{{event._source.alert.rev}}
                 </dd>
                 <dt>Severity</dt>
@@ -263,7 +283,8 @@
       <b>JSON</b>
     </div>
     <div class="panel-body" style="padding: 0px;">
-      <ace-editor value="{{event | eveboxJsonPretty }}" mode="json"></ace-editor>
+      <ace-editor value="{{event | eveboxJsonPretty }}"
+                  mode="json"></ace-editor>
     </div>
   </div>
 

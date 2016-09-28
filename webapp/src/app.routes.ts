@@ -33,6 +33,7 @@ import {DNSReportComponent} from "./reports/dns-report.component";
 import {FlowReportComponent} from "./reports/flow-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
 import {ModuleWithProviders} from "@angular/core";
+import {IpReportComponent} from "./reports/ip-report.component";
 
 const routes:Routes = [
     {
@@ -59,6 +60,7 @@ const routes:Routes = [
     {path: "reports/dns", component: DNSReportComponent},
     {path: "reports/flow", component: FlowReportComponent},
     {path: "reports/netflow", component: NetflowReportComponent},
+    {path: "reports/ip", component: IpReportComponent},
     // Let the inbox by the default route.
     {
         path: "", redirectTo: "inbox", pathMatch: "prefix"
