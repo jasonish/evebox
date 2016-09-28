@@ -30,7 +30,7 @@ import {AppService, AppEvent, AppEventCode} from "../app.service";
                          [headers]="['#', 'Hostname']"></report-data-table>
 
       <report-data-table *ngIf="userAgents"
-                         title="HTTP User Agents"
+                         title="Outgoing HTTP User Agents"
                          [rows]="userAgents"
                          [headers]="['#', 'User Agent']"></report-data-table>
 
@@ -66,7 +66,7 @@ import {AppService, AppEvent, AppEventCode} from "../app.service";
       </div> <!-- end panel -->
 
       <report-data-table *ngIf="tlsSni"
-                         title="TLS Server Names (SNI)"
+                         title="Incoming TLS Server Names (SNI)"
                          [rows]="tlsSni"
                          [headers]="['#', 'Name']"></report-data-table>
 
