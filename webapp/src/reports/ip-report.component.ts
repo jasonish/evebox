@@ -7,6 +7,85 @@ import {TopNavService} from "../topnav.service";
 import moment = require("moment");
 import {ReportsService} from "./reports.service";
 import {AppService, AppEvent, AppEventCode} from "../app.service";
+import {Input} from "@angular/core";
+
+@Component({
+    selector: "requestedHostnamesForIp",
+    template: `
+      <report-data-table *ngIf="topRrnames"
+                         title="DNS: Top Requested Hostnames By {{address}}"
+                         [rows]="topRrnames"
+                         [headers]="['#', 'Hostname']"></report-data-table>
+`
+})
+export class RequestedHostnamesForIpComponent implements OnInit, OnDestroy {
+
+    @Input() private address:string;
+    @Input() private count:number = 10;
+
+    private topRrnames:any[];
+
+    constructor(private elasticsearch:ElasticSearchService,
+                private topNavService:TopNavService) {
+    }
+
+    ngOnInit() {
+        this.refresh();
+    }
+
+    ngOnDestroy() {
+    }
+
+    refresh() {
+
+        console.log("Loading top DNS requests for " + this.address);
+
+        let now = moment();
+        let range = this.topNavService.getTimeRangeAsSeconds();
+
+        let query = {
+            query: {
+                filtered: {
+                    filter: {
+                        and: [
+                            {term: {"event_type": "dns"}},
+                            {term: {"dns.type": "query"}},
+                            {term: {"src_ip.raw": this.address}},
+                        ]
+                    }
+                }
+            },
+            aggs: {
+                rrnames: {
+                    terms: {
+                        field: "dns.rrname.raw",
+                        size: this.count,
+                    }
+                }
+            }
+        };
+
+        this.elasticsearch.addTimeRangeFilter(query, now, range);
+
+        this.elasticsearch.search(query).then((response:any) => {
+            console.log("DNS requests:");
+            console.log(response);
+
+            let returnCount = response.aggregations.rrnames.buckets.length;
+            let total = response.aggregations.rrnames.sum_other_doc_count;
+
+            console.log(`Total: ${total}; Returned: ${returnCount}`);
+
+            let topRrnames:any[] = response.aggregations.rrnames.buckets.map((bucket:any) => {
+                return {
+                    key: bucket.key,
+                    count: bucket.doc_count,
+                }
+            });
+            this.topRrnames = topRrnames;
+        })
+    }
+}
 
 @Component({
     template: `<div *ngIf="ip">
@@ -29,11 +108,22 @@ import {AppService, AppEvent, AppEventCode} from "../app.service";
                          [rows]="dnsRequestsByHostname"
                          [headers]="['#', 'Hostname']"></report-data-table>
 
+      <requestedHostnamesForIp [address]="ip"></requestedHostnamesForIp>
+
       <report-data-table *ngIf="userAgents"
                          title="Outgoing HTTP User Agents"
                          [rows]="userAgents"
                          [headers]="['#', 'User Agent']"></report-data-table>
 
+      <report-data-table *ngIf="topDestinationHttpHostnames"
+                         title="HTTP: Incoming HTTP Request Hostnames"
+                         [rows]="topDestinationHttpHostnames"
+                         [headers]="['#', 'Hostnames']"></report-data-table>
+
+      <report-data-table *ngIf="topSignatures"
+                         title="Alerts: Top Alerts"
+                         [rows]="topSignatures"
+                         [headers]="['#', 'Signature']"></report-data-table>
     </div>
 
     <!-- Second Column -->
@@ -84,6 +174,24 @@ import {AppService, AppEvent, AppEventCode} from "../app.service";
                              [headers]="['#', 'Version']"></report-data-table>
         </div>
       </div>
+      
+      <report-data-table *ngIf="topHttpHostnames"
+                          title="HTTP: Top Requested Hostnames"
+                          [rows]="topHttpHostnames"
+                          [headers]="['#', 'Hostname']">
+      </report-data-table>
+
+      <report-data-table *ngIf="topTlsSniRequests"
+                          title="TLS: Top Requested SNI Names"
+                          [rows]="topTlsSniRequests"
+                          [headers]="['#', 'Name']">
+      </report-data-table>
+
+      <report-data-table *ngIf="topTlsSubjectRequests"
+                          title="TLS: Top Requested TLS Subjects"
+                          [rows]="topTlsSubjectRequests"
+                          [headers]="['#', 'Subject']">
+      </report-data-table>
 
     </div>
 
@@ -114,10 +222,21 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
     private userAgents:any[];
 
+    private topHttpHostnames:any[];
+
     private tlsSni:any[];
 
+    private topTlsSniRequests:any[];
+
     private tlsClientVersions:any[];
+
     private tlsServerVersions:any[];
+
+    private topTlsSubjectRequests:any[];
+
+    private topDestinationHttpHostnames:any[];
+
+    private topSignatures:any[];
 
     constructor(private route:ActivatedRoute,
                 private elasticsearch:ElasticSearchService,
@@ -216,6 +335,20 @@ export class IpReportComponent implements OnInit, OnDestroy {
             ],
             aggs: {
 
+                alerts: {
+                    filter: {
+                        term: {event_type: "alert"}
+                    },
+                    aggs: {
+                        signatures: {
+                            terms: {
+                                field: "alert.signature.raw",
+                                size: 10,
+                            }
+                        }
+                    }
+                },
+
                 // HTTP user agents.
                 httpRequests: {
                     filter: {
@@ -230,7 +363,34 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                 field: "http.http_user_agent.raw",
                                 size: 10,
                             }
+                        },
+                        hostnames: {
+                            terms: {
+                                field: "http.hostname.raw",
+                                size: 10,
+                            }
                         }
+                    }
+                },
+
+                http: {
+                    filter: {
+                        term: {event_type: "http"},
+                    },
+                    aggs: {
+                        dest: {
+                            filter: {
+                                term: {"dest_ip.raw": this.ip}
+                            },
+                            aggs: {
+                                hostnames: {
+                                    terms: {
+                                        field: "http.hostname.raw",
+                                        size: 10,
+                                    },
+                                }
+                            }
+                        },
                     }
                 },
 
@@ -266,7 +426,19 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                 versions: {
                                     terms: {
                                         field: "tls.version.raw",
-                                        size: 100,
+                                        size: 10,
+                                    }
+                                },
+                                sni: {
+                                    terms: {
+                                        field: "tls.sni.raw",
+                                        size: 10,
+                                    }
+                                },
+                                subjects: {
+                                    terms: {
+                                        field: "tls.subject.raw",
+                                        size: 10,
                                     }
                                 }
                             }
@@ -279,7 +451,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                 versions: {
                                     terms: {
                                         field: "tls.version.raw",
-                                        size: 100,
+                                        size: 10,
                                     }
                                 }
                             }
@@ -356,39 +528,37 @@ export class IpReportComponent implements OnInit, OnDestroy {
             this.sourceFlowCount = response.aggregations.sourceFlows.doc_count;
             this.destFlowCount = response.aggregations.destFlows.doc_count;
 
-            let userAgents:any = response.aggregations.httpRequests.userAgents.buckets.map((bucket:any) => {
-                return {
-                    key: bucket.key,
-                    count: bucket.doc_count,
-                }
-            });
-            this.userAgents = userAgents;
+            this.userAgents = this.mapTerms(response.aggregations.httpRequests.userAgents.buckets);
 
-            let tlsSni:any = response.aggregations.tlsSni.sni.buckets.map((bucket:any) => {
-                return {
-                    key: bucket.key,
-                    count: bucket.doc_count,
-                }
-            });
-            this.tlsSni = tlsSni;
+            this.topHttpHostnames = this.mapTerms(response.aggregations.httpRequests.hostnames.buckets);
 
-            let tlsClientVersions = response.aggregations.tls.asSource.versions.buckets.map((bucket:any) => {
-                return {
-                    key: bucket.key,
-                    count: bucket.doc_count,
-                }
-            });
-            this.tlsClientVersions = tlsClientVersions;
+            this.tlsSni = this.mapTerms(response.aggregations.tlsSni.sni.buckets);
 
-            let tlsServerVersions = response.aggregations.tls.asDest.versions.buckets.map((bucket:any) => {
-                return {
-                    key: bucket.key,
-                    count: bucket.doc_count,
-                }
-            });
-            this.tlsServerVersions = tlsServerVersions;
+            this.tlsClientVersions = this.mapTerms(response.aggregations.tls.asSource.versions.buckets);
 
+            this.tlsServerVersions = this.mapTerms(response.aggregations.tls.asDest.versions.buckets);
+
+            this.topTlsSniRequests = this.mapTerms(response.aggregations.tls.asSource.sni.buckets);
+
+            this.topTlsSubjectRequests = this.mapTerms(response.aggregations.tls.asSource.subjects.buckets);
+
+            this.topDestinationHttpHostnames = this.mapTerms(response.aggregations.http.dest.hostnames.buckets);
+
+            this.topSignatures = this.mapTerms(response.aggregations.alerts.signatures.buckets);
         });
 
+    }
+
+    /**
+     * Helper function to map terms aggregations into the common format used
+     * by Evebox.
+     */
+    private mapTerms(buckets:any):any[] {
+        return buckets.map((bucket:any) => {
+            return {
+                key: bucket.key,
+                count: bucket.doc_count,
+            }
+        });
     }
 }
