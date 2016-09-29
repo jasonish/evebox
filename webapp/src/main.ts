@@ -56,7 +56,7 @@ import {EveboxSubscriptionService} from "./subscription.service";
 import {
     IpReportComponent,
     RequestedHostnamesForIpComponent
-} from "./reports/ip-report.component";
+} from "./reports/ip-report/ip-report.component";
 import {EveboxHumanizeService} from "./humanize.service";
 import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 import {AppComponent} from "./app.component";

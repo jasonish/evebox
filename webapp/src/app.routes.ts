@@ -33,7 +33,7 @@ import {DNSReportComponent} from "./reports/dns-report.component";
 import {FlowReportComponent} from "./reports/flow-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
 import {ModuleWithProviders} from "@angular/core";
-import {IpReportComponent} from "./reports/ip-report.component";
+import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 
 const routes:Routes = [
     {

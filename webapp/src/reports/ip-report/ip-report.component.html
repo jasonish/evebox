@@ -1,0 +1,147 @@
+<div *ngIf="ip">
+
+  <h2>Report for IP {{ip}}</h2>
+
+  <metrics-graphic *ngIf="eventsOverTime"
+                   graphId="eventsOverTime"
+                   title="Activity Over Time"
+                   [data]="eventsOverTime">
+  </metrics-graphic>
+
+  <div class="row">
+
+    <!-- First Column -->
+    <div class="col-md-6">
+
+      <report-data-table *ngIf="dnsRequestsByHostname"
+                         title="DNS Hostnames Returning {{ip}} (Total: {{dnsRequestCount}})"
+                         [rows]="dnsRequestsByHostname"
+                         [headers]="['#', 'Hostname']"></report-data-table>
+      <requestedHostnamesForIp [address]="ip"></requestedHostnamesForIp>
+
+      <report-data-table *ngIf="userAgents"
+                         title="Outgoing HTTP User Agents"
+                         [rows]="userAgents"
+                         [headers]="['#', 'User Agent']"></report-data-table>
+
+      <report-data-table *ngIf="topDestinationHttpHostnames"
+                         title="HTTP: Incoming HTTP Request Hostnames"
+                         [rows]="topDestinationHttpHostnames"
+                         [headers]="['#', 'Hostnames']"></report-data-table>
+
+      <report-data-table *ngIf="topSignatures"
+                         title="Alerts: Top Alerts"
+                         [rows]="topSignatures"
+                         [headers]="['#', 'Signature']"></report-data-table>
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <b>SSH</b>
+        </div>
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-md-6">
+              <report-data-table *ngIf="sshClientSoftwareVersions"
+                                 title="Client Sotware Versions"
+                                 [rows]="sshClientSoftwareVersions"
+                                 [headers]="['#', 'Version']"></report-data-table>
+            </div>
+            <div class="col-md-6">
+              <report-data-table *ngIf="sshServerSoftwareVersions"
+                                 title="Server Sotware Versions"
+                                 [rows]="sshServerSoftwareVersions"
+                                 [headers]="['#', 'Version']"></report-data-table>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <report-data-table *ngIf="sshClientProtoVersions"
+                                 title="Client Protocol Versions"
+                                 [rows]="sshClientProtoVersions"
+                                 [headers]="['#', 'Version']"></report-data-table>
+            </div>
+            <div class="col-md-6">
+              <report-data-table *ngIf="sshServerProtoVersions"
+                                 title="Server Protocol Versions"
+                                 [rows]="sshServerProtoVersions"
+                                 [headers]="['#', 'Version']"></report-data-table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- Second Column -->
+    <div class="col-md-6">
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <b>Flow</b>
+        </div>
+        <table class="table">
+          <tbody>
+          <tr>
+            <td>Flows As Client</td>
+            <td>{{sourceFlowCount}}</td>
+          </tr>
+          <tr>
+            <td>Flows As Server</td>
+            <td>{{destFlowCount}}</td>
+          </tr>
+          <tr>
+            <td>Bytes To...</td>
+            <td>{{bytesToIp}}</td>
+          </tr>
+          <tr>
+            <td>Bytes From...</td>
+            <td>{{bytesFromIp}}</td>
+          </tr>
+          </tbody>
+        </table>
+      </div> <!-- end panel -->
+
+      <report-data-table *ngIf="tlsSni"
+                         title="Incoming TLS Server Names (SNI)"
+                         [rows]="tlsSni"
+                         [headers]="['#', 'Name']"></report-data-table>
+
+      <div class="row">
+        <div class="col-md-6">
+          <report-data-table *ngIf="tlsClientVersions"
+                             title="TLS Versions as Client"
+                             [rows]="tlsClientVersions"
+                             [headers]="['#', 'Version']"></report-data-table>
+        </div>
+        <div class="col-md-6">
+          <report-data-table *ngIf="tlsServerVersions"
+                             title="TLS Versions as Server"
+                             [rows]="tlsServerVersions"
+                             [headers]="['#', 'Version']"></report-data-table>
+        </div>
+      </div>
+
+      <report-data-table *ngIf="topHttpHostnames"
+                         title="HTTP: Top Requested Hostnames"
+                         [rows]="topHttpHostnames"
+                         [headers]="['#', 'Hostname']">
+      </report-data-table>
+
+      <report-data-table *ngIf="topTlsSniRequests"
+                         title="TLS: Top Requested SNI Names"
+                         [rows]="topTlsSniRequests"
+                         [headers]="['#', 'Name']">
+      </report-data-table>
+
+      <report-data-table *ngIf="topTlsSubjectRequests"
+                         title="TLS: Top Requested TLS Subjects"
+                         [rows]="topTlsSubjectRequests"
+                         [headers]="['#', 'Subject']">
+      </report-data-table>
+
+    </div>
+
+  </div>
+
+</div>

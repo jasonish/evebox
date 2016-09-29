@@ -1,12 +1,12 @@
 import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ActivatedRoute} from "@angular/router";
-import {EveboxSubscriptionService} from "../subscription.service";
-import {ElasticSearchService} from "../elasticsearch.service";
-import {TopNavService} from "../topnav.service";
+import {EveboxSubscriptionService} from "../../subscription.service";
+import {ElasticSearchService} from "../../elasticsearch.service";
+import {TopNavService} from "../../topnav.service";
 
 import moment = require("moment");
-import {ReportsService} from "./reports.service";
-import {AppService, AppEvent, AppEventCode} from "../app.service";
+import {ReportsService} from "../reports.service";
+import {AppService, AppEvent, AppEventCode} from "../../app.service";
 import {Input} from "@angular/core";
 
 @Component({
@@ -88,116 +88,7 @@ export class RequestedHostnamesForIpComponent implements OnInit, OnDestroy {
 }
 
 @Component({
-    template: `<div *ngIf="ip">
-
-  <h2>Report for IP {{ip}}</h2>
-
-  <metrics-graphic *ngIf="eventsOverTime"
-                   graphId="eventsOverTime"
-                   title="Activity Over Time"
-                   [data]="eventsOverTime">
-  </metrics-graphic>
-
-  <div class="row">
-
-    <!-- First Column -->
-    <div class="col-md-6">
-
-      <report-data-table *ngIf="dnsRequestsByHostname"
-                         title="DNS Hostnames Returning {{ip}} (Total: {{dnsRequestCount}})"
-                         [rows]="dnsRequestsByHostname"
-                         [headers]="['#', 'Hostname']"></report-data-table>
-
-      <requestedHostnamesForIp [address]="ip"></requestedHostnamesForIp>
-
-      <report-data-table *ngIf="userAgents"
-                         title="Outgoing HTTP User Agents"
-                         [rows]="userAgents"
-                         [headers]="['#', 'User Agent']"></report-data-table>
-
-      <report-data-table *ngIf="topDestinationHttpHostnames"
-                         title="HTTP: Incoming HTTP Request Hostnames"
-                         [rows]="topDestinationHttpHostnames"
-                         [headers]="['#', 'Hostnames']"></report-data-table>
-
-      <report-data-table *ngIf="topSignatures"
-                         title="Alerts: Top Alerts"
-                         [rows]="topSignatures"
-                         [headers]="['#', 'Signature']"></report-data-table>
-    </div>
-
-    <!-- Second Column -->
-    <div class="col-md-6">
-
-      <div class="panel panel-default">
-        <div class="panel-heading">
-          <b>Flow</b>
-        </div>
-        <table class="table">
-          <tbody>
-          <tr>
-            <td>Flows As Client</td>
-            <td>{{sourceFlowCount}}</td>
-          </tr>
-          <tr>
-            <td>Flows As Server</td>
-            <td>{{destFlowCount}}</td>
-          </tr>
-          <tr>
-            <td>Bytes To...</td>
-            <td>{{bytesToIp}}</td>
-          </tr>
-          <tr>
-            <td>Bytes From...</td>
-            <td>{{bytesFromIp}}</td>
-          </tr>
-          </tbody>
-        </table>
-      </div> <!-- end panel -->
-
-      <report-data-table *ngIf="tlsSni"
-                         title="Incoming TLS Server Names (SNI)"
-                         [rows]="tlsSni"
-                         [headers]="['#', 'Name']"></report-data-table>
-
-      <div class="row">
-        <div class="col-md-6">
-          <report-data-table *ngIf="tlsClientVersions"
-                             title="TLS Versions as Client"
-                             [rows]="tlsClientVersions"
-                             [headers]="['#', 'Version']"></report-data-table>
-        </div>
-        <div class="col-md-6">
-          <report-data-table *ngIf="tlsServerVersions"
-                             title="TLS Versions as Server"
-                             [rows]="tlsServerVersions"
-                             [headers]="['#', 'Version']"></report-data-table>
-        </div>
-      </div>
-      
-      <report-data-table *ngIf="topHttpHostnames"
-                          title="HTTP: Top Requested Hostnames"
-                          [rows]="topHttpHostnames"
-                          [headers]="['#', 'Hostname']">
-      </report-data-table>
-
-      <report-data-table *ngIf="topTlsSniRequests"
-                          title="TLS: Top Requested SNI Names"
-                          [rows]="topTlsSniRequests"
-                          [headers]="['#', 'Name']">
-      </report-data-table>
-
-      <report-data-table *ngIf="topTlsSubjectRequests"
-                          title="TLS: Top Requested TLS Subjects"
-                          [rows]="topTlsSubjectRequests"
-                          [headers]="['#', 'Subject']">
-      </report-data-table>
-
-    </div>
-
-  </div>
-
-</div>`
+    templateUrl: "./ip-report.component.html",
 })
 export class IpReportComponent implements OnInit, OnDestroy {
 
@@ -237,6 +128,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
     private topDestinationHttpHostnames:any[];
 
     private topSignatures:any[];
+
+    private sshClientSoftwareVersions:any[];
+
+    private sshServerSoftwareVersions:any[];
+
+    private sshClientProtoVersions:any[];
+
+    private sshServerProtoVersions:any[];
 
     constructor(private route:ActivatedRoute,
                 private elasticsearch:ElasticSearchService,
@@ -459,6 +358,52 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     }
                 },
 
+                ssh: {
+                    filter: {
+                        term: {event_type: "ssh"},
+                    },
+                    aggs: {
+                        sources: {
+                            filter: {
+                                term: {"src_ip.raw": this.ip}
+                            },
+                            aggs: {
+                                softwareVersions: {
+                                    terms: {
+                                        field: "ssh.client.software_version.raw",
+                                        size: 10,
+                                    }
+                                },
+                                protoVersions: {
+                                    terms: {
+                                        field: "ssh.client.proto_version.raw",
+                                        size: 10,
+                                    }
+                                }
+                            }
+                        },
+                        dests: {
+                            filter: {
+                                term: {"dest_ip.raw": this.ip}
+                            },
+                            aggs: {
+                                softwareVersions: {
+                                    terms: {
+                                        field: "ssh.server.software_version.raw",
+                                        size: 10,
+                                    }
+                                },
+                                protoVersions: {
+                                    terms: {
+                                        field: "ssh.server.proto_version.raw",
+                                        size: 10,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+
                 // Number of flows as client.
                 sourceFlows: {
                     filter: {
@@ -479,7 +424,6 @@ export class IpReportComponent implements OnInit, OnDestroy {
                             }
                         }
                     }
-
                 },
 
                 // Number of flows as server.
@@ -545,6 +489,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
             this.topDestinationHttpHostnames = this.mapTerms(response.aggregations.http.dest.hostnames.buckets);
 
             this.topSignatures = this.mapTerms(response.aggregations.alerts.signatures.buckets);
+
+            this.sshClientSoftwareVersions = this.mapTerms(response.aggregations.ssh.sources.softwareVersions.buckets);
+
+            this.sshServerSoftwareVersions = this.mapTerms(response.aggregations.ssh.dests.softwareVersions.buckets);
+
+            this.sshClientProtoVersions = this.mapTerms(response.aggregations.ssh.sources.protoVersions.buckets);
+
+            this.sshServerProtoVersions = this.mapTerms(response.aggregations.ssh.dests.protoVersions.buckets);
         });
 
     }
