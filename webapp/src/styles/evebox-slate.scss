@@ -1,4 +1,3 @@
-//@import "~bootswatch/slate/bootstrap.css";
 $icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
 @import "~bootswatch/slate/variables";
 @import "~bootstrap-sass/assets/stylesheets/bootstrap";
@@ -47,6 +46,7 @@ hr {
   .mg-line1-color {
     stroke: lightblue;
   }
+
   .mg-area1-color {
     fill: lightblue;
     opacity: 1;
@@ -60,35 +60,54 @@ pre {
   background-color: lightgray;
 }
 
+$evebox-danger-color: #72383e;
+$evebox-warning-color: #3d5f5f;
+$evebox-info-color: #50656f;
+
 // Apply Bootstrap colouring to event tables.
-// Unlike the default theme, we only color the first column.
-.evebox-event-table > tbody > tr.evebox-danger > td:first-child {
-  @extend .danger;
+.evebox-event-table > tbody > tr.evebox-danger > td {
+  background-color: $evebox-danger-color;
+  font-weight: bold;
 }
 
-.evebox-event-table > tbody > tr.evebox-warning > td:first-child {
-  @extend .warning;
+.evebox-event-table > tbody > tr.evebox-danger:hover > td {
+  background-color: lighten($evebox-danger-color, 10%);
 }
 
-.evebox-event-table > tbody > tr.evebox-info > td:first-child {
-  @extend .info;
+.evebox-event-table > tbody > tr.evebox-warning > td {
+  background-color: $evebox-warning-color;
 }
 
-.evebox-event-table > tbody > tr.evebox-success > td:first-child {
-  @extend .success;
+.evebox-event-table > tbody > tr.evebox-warning:hover > td {
+  background-color: lighten($evebox-warning-color, 10%);
 }
 
-.evebox-event-table > tbody > tr > td:not(:first-child) {
+.evebox-event-table > tbody > tr.evebox-info > td {
+  background-color: $evebox-info-color;
+}
+
+.evebox-event-table > tbody > tr.evebox-info:hover > td {
+  background-color: lighten($evebox-info-color, 10%);
+}
+
+.evebox-event-table > tbody > tr.evebox-success > td {
   @extend .active;
 }
 
-// Dims the colouring a bit.
-.evebox-event-table tr td:first-child {
-  opacity: 0.6;
+.panel.panel-danger > .panel-heading {
+  background-color: $evebox-danger-color;
 }
 
-.evebox-event-table > tbody > tr > td:first-child {
-  color: black;
+.panel.panel-warning > .panel-heading {
+  background-color: $evebox-warning-color;
+}
+
+.panel.panel-info > .panel-heading {
+  background-color: $evebox-info-color;
+}
+
+.panel.panel-success > .panel-heading {
+  background-color: #49515a;
 }
 
 // Shrink up the default button sizes a little to match the default Bootstrap
