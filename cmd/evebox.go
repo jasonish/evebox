@@ -29,7 +29,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -38,6 +37,7 @@ import (
 	"github.com/jasonish/evebox/cmd/eveimport"
 	"github.com/jasonish/evebox/config"
 	"github.com/jessevdk/go-flags"
+	"github.com/jasonish/evebox/log"
 )
 
 const DEFAULT_ELASTICSEARCH_URI string = "http://localhost:9200"
@@ -108,8 +108,6 @@ func VersionMain() {
 
 func main() {
 
-	log.SetFlags(log.Lshortfile)
-
 	// Look for sub-commands, then fall back to server.
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		switch os.Args[1] {
@@ -148,10 +146,14 @@ func main() {
 		}
 	}
 
+	log.Info("Index: %s", os.Getenv("ELASTICSEARCH_INDEX"))
+
 	if opts.ElasticSearchIndex != "" {
-		log.Printf("Using ElasticSearch Index %s.", opts.ElasticSearchIndex)
 		conf.ElasticSearchIndex = opts.ElasticSearchIndex
+	} else if os.Getenv("ELASTICSEARCH_INDEX") != "" {
+		conf.ElasticSearchIndex = os.Getenv("ELASTICSEARCH_INDEX")
 	}
+	log.Info("Using ElasticSearch Index %s.", conf.ElasticSearchIndex)
 
 	router := mux.NewRouter()
 
@@ -163,7 +165,7 @@ func main() {
 	evebox.SetupStatic(router, opts.DevServerUri)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
+	err = http.ListenAndServe(opts.Host + ":" + opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}
