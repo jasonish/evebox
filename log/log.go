@@ -115,6 +115,10 @@ func doLog(calldepth int, level LogLevel, format string, v ...interface{}) {
 	}
 }
 
+func Error(format string, v ...interface{}) {
+	doLog(2, ERROR, format, v...)
+}
+
 func Info(format string, v ...interface{}) {
 	doLog(2, INFO, format, v...)
 }
