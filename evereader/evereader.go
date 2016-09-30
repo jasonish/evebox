@@ -33,6 +33,7 @@ import (
 	"github.com/jasonish/evebox/eve"
 	"io"
 	"os"
+	"github.com/jasonish/evebox/log"
 )
 
 type EveReader struct {
@@ -84,6 +85,7 @@ func (er *EveReader) Close() {
 }
 
 func (er *EveReader) Reopen() error {
+	log.Debug("Reopening %s", er.path)
 	er.file.Close()
 	return er.OpenFile()
 }
@@ -100,7 +102,26 @@ func (er *EveReader) SkipTo(lineno uint64) error {
 			return err
 		}
 		lineno--
+		er.lineno++
 	}
+	return nil
+}
+
+func (er *EveReader) SkipToEnd() error {
+
+	for {
+		_, err := er.reader.ReadBytes('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				return err
+			}
+		} else {
+			er.lineno++
+		}
+	}
+
 	return nil
 }
 

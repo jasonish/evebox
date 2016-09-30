@@ -54,6 +54,7 @@ func Main(args []string) {
 	var oneshot bool
 	var index string
 	var verbose bool
+	var end bool
 
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
@@ -61,6 +62,7 @@ func Main(args []string) {
 	flagset.BoolVar(&oneshot, "oneshot", false, "One shot mode (exit on EOF)")
 	flagset.StringVar(&index, "index", "evebox", "Elastic Search index prefix")
 	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	flagset.BoolVar(&end, "end", false, "Start at end of file")
 	flagset.Parse(args[1:])
 
 	if verbose {
@@ -68,7 +70,9 @@ func Main(args []string) {
 	}
 
 	if elasticSearchUri == "" {
-		log.Fatal("error: --elasticsearch is a required parameter")
+		log.Error("error: --elasticsearch is a required parameter")
+		usage()
+		os.Exit(1)
 	}
 
 	if len(flagset.Args()) == 0 {
@@ -105,6 +109,14 @@ func Main(args []string) {
 		log.Fatal(err)
 	}
 
+	if end {
+		log.Info("Jumping to end of file.")
+		err := reader.SkipToEnd()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	count := 0
 
 	go func() {
@@ -126,8 +138,14 @@ func Main(args []string) {
 					break
 				}
 				// Flush the connection and sleep for a moment.
-				log.Println("Got EOF. Flushing...")
-				indexer.FlushConnection()
+				response, err := indexer.FlushConnection()
+				if err != nil {
+					log.Fatal(err)
+				}
+				if response != nil {
+					log.Debug("Indexed %d events {errors=%v}", len(response.Items),
+						response.Errors)
+				}
 				time.Sleep(1 * time.Second)
 				continue
 			} else {

@@ -214,3 +214,49 @@ func TestEveReaderFollowRename(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestEveReader_SkipToEnd(t *testing.T) {
+	filename := "TestEveReader_SkipToEnd.json"
+	defer os.Remove(filename)
+
+	// Write out 100 events.
+	writer, err := OpenTestEveWriter(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 100; i++ {
+		writer.WriteLine(rawEvent)
+	}
+
+	// Create a reader and skip to the end.
+	reader, err := New(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reader.SkipToEnd(); err != nil {
+		t.Fatal(err)
+	}
+	lineno := reader.Pos()
+	if lineno != 100 {
+		t.Fatalf("Line number is %v; expected 100.", lineno)
+	}
+
+	// Should also get nil on read.
+	event, err := reader.Next()
+	if err == nil || err != io.EOF {
+		t.Fatal("expected EOF")
+	}
+	if event != nil {
+		t.Fatal("expected nil event")
+	}
+
+	// Write out an event and read it.
+	writer.WriteLine(rawEvent)
+	event, err = reader.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if event == nil {
+		t.Fatal("got nil event")
+	}
+}
