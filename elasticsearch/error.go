@@ -27,67 +27,28 @@
 package elasticsearch
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"github.com/jasonish/evebox/eve"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
 )
 
-var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
+type ElasticSearchError struct {
+	// The raw error body as returned from the server.
+	Raw string
 }
 
-func GenerateId() string {
-	id := make([]rune, 20)
-	for i := range id {
-		id[i] = chars[rand.Intn(len(chars))]
-	}
-	return string(id)
+func (e ElasticSearchError) Error() string {
+	return e.Raw
 }
 
-func AddAtTimestamp(event eve.RawEveEvent) {
-	timestamp, err := event.GetTimestamp()
-	if err != nil {
-		return
+func NewElasticSearchError(response *http.Response) ElasticSearchError {
+
+	error := ElasticSearchError{}
+
+	raw, _ := ioutil.ReadAll(response.Body)
+	if raw != nil {
+		error.Raw = string(raw)
 	}
-	event["@timestamp"] = timestamp.UTC().Format(AtTimestampFormat)
+
+	return error
 }
 
-func (es *ElasticSearch) IndexRawEveEvent(event eve.RawEveEvent) error {
-	id := GenerateId()
-
-	timestamp, err := event.GetTimestamp()
-	if err != nil {
-		return err
-	}
-	index := fmt.Sprintf("%s-%s", es.index, timestamp.UTC().Format("2006.01.02"))
-
-	AddAtTimestamp(event)
-
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	encoder.Encode(event)
-	request, err := http.NewRequest("POST",
-		fmt.Sprintf("%s/%s/log/%s", es.baseUrl, index, id), &buf)
-	if err != nil {
-		return err
-	}
-	response, err := es.httpClient.Do(request)
-	if err != nil {
-		return err
-	}
-
-	// Required for connection re-use.
-	ioutil.ReadAll(response.Body)
-	response.Body.Close()
-
-	return nil
-}

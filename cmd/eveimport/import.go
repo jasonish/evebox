@@ -31,8 +31,10 @@ import (
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/evereader"
 	flag "github.com/spf13/pflag"
-	"log"
 	"os"
+	"io"
+	"time"
+	"github.com/jasonish/evebox/log"
 )
 
 var flagset *flag.FlagSet
@@ -46,33 +48,24 @@ Options:
 	flagset.PrintDefaults()
 }
 
-func ImportFile(es *elasticsearch.ElasticSearch, filename string) error {
-
-	reader, err := evereader.New(filename)
-	if err != nil {
-		return err
-	}
-
-	for {
-		event, err := reader.Next()
-		if err != nil {
-			return err
-		}
-
-		es.IndexRawEveEvent(event)
-	}
-
-	return nil
-}
-
 func Main(args []string) {
 
 	var elasticSearchUri string
+	var oneshot bool
+	var index string
+	var verbose bool
 
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
 	flagset.StringVarP(&elasticSearchUri, "elasticsearch", "e", "", "Elastic Search URL")
+	flagset.BoolVar(&oneshot, "oneshot", false, "One shot mode (exit on EOF)")
+	flagset.StringVar(&index, "index", "evebox", "Elastic Search index prefix")
+	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	flagset.Parse(args[1:])
+
+	if verbose {
+		log.SetLevel(log.DEBUG)
+	}
 
 	if elasticSearchUri == "" {
 		log.Fatal("error: --elasticsearch is a required parameter")
@@ -87,16 +80,77 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatal("error: failed to ping Elastic Search:", err)
 	}
-	log.Printf("Connected to Elastic Search v%s (cluster:%s; name: %s)",
+	log.Info("Connected to Elastic Search v%s (cluster:%s; name: %s)",
 		response.Version.Number, response.ClusterName, response.Name)
+
+	// Check if the template exists.
+	templateExists, err := es.CheckTemplate(index)
+	if !templateExists {
+		log.Info("Template %s does not exist, creating...", index)
+		err = es.LoadTemplate(index)
+		if err != nil {
+			log.Fatal("Failed to create template:", err)
+		}
+	} else {
+		log.Info("Template %s exists, will not create.", index)
+	}
 
 	inputFiles := flagset.Args()
 
-	for i := 0; i < len(inputFiles); i++ {
-		log.Println("Importing", inputFiles[i])
-		err = ImportFile(es, inputFiles[i])
+	indexer := elasticsearch.NewIndexer(es)
+	indexer.IndexPrefix = index
+
+	reader, err := evereader.New(inputFiles[0])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	count := 0
+
+	go func() {
+		err := indexer.Run()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Elastic Search indexer connection unexpectedly closed:", err)
+		} else {
+			log.Println("Indexer exited without issue.")
+		}
+	}()
+
+	for {
+		event, err := reader.Next()
+		if err != nil {
+			if err == io.EOF {
+				if oneshot {
+					indexer.Stop()
+					log.Println("EOF: Exiting due to --oneshot.")
+					break
+				}
+				// Flush the connection and sleep for a moment.
+				log.Println("Got EOF. Flushing...")
+				indexer.FlushConnection()
+				time.Sleep(1 * time.Second)
+				continue
+			} else {
+				log.Fatal(err)
+			}
+		}
+
+		if event == nil {
+			log.Fatal("Unexpected nil event: err=", err)
+		}
+
+		indexer.IndexRawEvent(event)
+
+		count++
+
+		if count > 0 && count % 1000 == 0 {
+			response, err := indexer.FlushConnection()
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Debug("Indexed %d events {errors=%v}", len(response.Items),
+				response.Errors)
 		}
 	}
+
 }

@@ -28,21 +28,24 @@ package elasticsearch
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
+	"fmt"
+	"github.com/GeertJohan/go.rice"
+	"io"
+	"strings"
+	"bytes"
+	"io/ioutil"
 )
 
 type ElasticSearch struct {
 	baseUrl    string
 	httpClient *http.Client
-	index      string
 }
 
 func New(url string) *ElasticSearch {
 	return &ElasticSearch{
 		baseUrl:    url,
 		httpClient: &http.Client{},
-		index:      "logstash",
 	}
 }
 
@@ -71,23 +74,88 @@ func (es *ElasticSearch) Ping() (*PingResponse, error) {
 	return &body, nil
 }
 
-type ElasticSearchError struct {
-	// The raw error body as returned from the server.
-	Raw string
-}
+func (es *ElasticSearch) PUT(path string, body interface{}) (error) {
 
-func (e ElasticSearchError) Error() string {
-	return e.Raw
-}
+	var bodyAsReader io.Reader
 
-func NewElasticSearchError(response *http.Response) ElasticSearchError {
+	bodyAsReader = nil
 
-	error := ElasticSearchError{}
-
-	raw, _ := ioutil.ReadAll(response.Body)
-	if raw != nil {
-		error.Raw = string(raw)
+	if body == nil {
+		bodyAsReader = nil
+	} else {
+		switch body := body.(type) {
+		case string:
+			bodyAsReader = strings.NewReader(body)
+		case []byte:
+			bodyAsReader = bytes.NewReader(body)
+		default:
+			buf := new(bytes.Buffer)
+			encoder := json.NewEncoder(buf)
+			encoder.Encode(body)
+			bodyAsReader = buf
+		}
 	}
 
-	return error
+	request, err := http.NewRequest("PUT",
+		fmt.Sprintf("%s/%s", es.baseUrl, path), bodyAsReader)
+	if err != nil {
+		return err
+	}
+
+	response, err := es.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	if response.StatusCode != http.StatusOK {
+		return NewElasticSearchError(response)
+	}
+
+	io.Copy(ioutil.Discard, response.Body)
+
+	return nil
+}
+
+func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
+	request, err := http.NewRequest("HEAD",
+		fmt.Sprintf("%s/_template/%s", es.baseUrl, name), nil)
+	if err != nil {
+		return exists, err
+	}
+	response, err := es.httpClient.Do(request)
+	if err != nil {
+		return exists, err
+	}
+	exists = response.StatusCode == 200
+	return exists, nil
+}
+
+func (es *ElasticSearch) LoadTemplate(index string) error {
+
+	templateBox, err := rice.FindBox("static")
+	if err != nil {
+		return err
+	}
+
+	templateFile, err := templateBox.Open("es2x-template.json")
+	if err != nil {
+		return err
+	}
+
+	decoder := json.NewDecoder(templateFile)
+	decoder.UseNumber()
+
+	var template map[string]interface{}
+	err = decoder.Decode(&template)
+	if err != nil {
+		return err
+	}
+	template["template"] = fmt.Sprintf("%s-*", index)
+
+	err = es.PUT(fmt.Sprintf("_template/%s", index), template)
+	if err != nil {
+		return err
+	}
+
+	// Success.
+	return nil
 }
