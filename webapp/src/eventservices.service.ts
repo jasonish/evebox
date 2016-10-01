@@ -113,13 +113,7 @@ export class EventServices {
 
         /* The config may already be here... */
         let config = configService.getConfig()
-        if (config) {
-            this.initServices(config)
-        }
-
-        this.configService.subscribe((config:any) => {
-            this.initServices(config);
-        })
+        this.initServices(config)
 
     }
 

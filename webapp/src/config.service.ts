@@ -24,36 +24,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable, EventEmitter} from "@angular/core";
-import {Http, Response} from "@angular/http";
+import {Injectable} from "@angular/core";
+
+declare var window:any;
 
 @Injectable()
 export class ConfigService {
 
-    private config:any;
-
-    private eventEmitter:EventEmitter<any> = new EventEmitter<any>();
-
-    constructor(private http:Http) {
-        let url = window.location.pathname + "api/config";
-
-        this.http.get(url)
-            .map((response:Response) => response.json())
-            .toPromise()
-            .then(response => {
-                console.log("Got config from server:");
-                console.log(response);
-                this.config = response;
-                this.eventEmitter.emit(this.config);
-            });
-    }
+    private config:any = window.config;
 
     getConfig() {
         return this.config;
     }
 
-    subscribe(handler:any) {
-        return this.eventEmitter.subscribe(handler);
-    }
-    
 }

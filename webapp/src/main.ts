@@ -183,4 +183,11 @@ switch (localStorage.theme) {
 export class AppModule {
 }
 
-platformBrowserDynamic().bootstrapModule(AppModule);
+declare var jQuery:any;
+declare var window:any;
+
+jQuery.getJSON("api/config", (config:any) => {
+    window.config = config;
+    platformBrowserDynamic().bootstrapModule(AppModule);
+});
+

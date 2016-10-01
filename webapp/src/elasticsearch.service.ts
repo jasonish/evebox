@@ -56,7 +56,7 @@ export class ElasticSearchService {
 
     private defaultBatchSize:number = 1000;
     private url:string = window.location.pathname + "elasticsearch";
-    private index:string = "logstash-*";
+    private index:string;
     private jobs = queue({concurrency: 16});
 
     constructor(private http:Http,
@@ -64,12 +64,7 @@ export class ElasticSearchService {
                 private appService:AppService,
                 private config:ConfigService,
                 private toastr:ToastrService) {
-        config.subscribe((config:any) => {
-            if (config.ElasticSearchIndex && config.ElasticSearchIndex != "") {
-                console.log("Using Elastic Search index: " + config.ElasticSearchIndex);
-                this.index = config.ElasticSearchIndex;
-            }
-        })
+        this.index = config.getConfig().ElasticSearchIndex;
     }
 
     /**
