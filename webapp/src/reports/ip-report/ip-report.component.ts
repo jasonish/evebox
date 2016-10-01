@@ -129,13 +129,17 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
     private topSignatures:any[];
 
-    private sshClientSoftwareVersions:any[];
-
-    private sshServerSoftwareVersions:any[];
-
     private sshClientProtoVersions:any[];
 
     private sshServerProtoVersions:any[];
+
+    private sshInboundClientVersions:any[];
+
+    private sshOutboundClientVersions:any[];
+
+    private sshOutboundServerVersions:any[];
+
+    private sshInboundServerVersions:any[];
 
     constructor(private route:ActivatedRoute,
                 private elasticsearch:ElasticSearchService,
@@ -363,39 +367,58 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         term: {event_type: "ssh"},
                     },
                     aggs: {
+                        // SSH connections as client.
                         sources: {
                             filter: {
                                 term: {"src_ip.raw": this.ip}
                             },
                             aggs: {
-                                softwareVersions: {
-                                    terms: {
-                                        field: "ssh.client.software_version.raw",
-                                        size: 10,
-                                    }
-                                },
                                 protoVersions: {
                                     terms: {
                                         field: "ssh.client.proto_version.raw",
                                         size: 10,
                                     }
-                                }
-                            }
-                        },
-                        dests: {
-                            filter: {
-                                term: {"dest_ip.raw": this.ip}
-                            },
-                            aggs: {
-                                softwareVersions: {
+                                },
+                                // Outbound server versions - that is, the server
+                                // versions connected to by this host.
+                                outboundServerVersions: {
                                     terms: {
                                         field: "ssh.server.software_version.raw",
                                         size: 10,
                                     }
                                 },
+                                // Outbound client versions.
+                                outboundClientVersions: {
+                                    terms: {
+                                        field: "ssh.client.software_version.raw",
+                                        size: 10,
+                                    }
+                                }
+                            }
+                        },
+                        // SSH connections as server.
+                        dests: {
+                            filter: {
+                                term: {"dest_ip.raw": this.ip}
+                            },
+                            aggs: {
                                 protoVersions: {
                                     terms: {
                                         field: "ssh.server.proto_version.raw",
+                                        size: 10,
+                                    }
+                                },
+                                // Inbound client versions.
+                                inboundClientVersions: {
+                                    terms: {
+                                        field: "ssh.client.software_version.raw",
+                                        size: 10,
+                                    }
+                                },
+                                // Inbound server versions.
+                                inboundServerVersions: {
+                                    terms: {
+                                        field: "ssh.server.software_version.raw",
                                         size: 10,
                                     }
                                 }
@@ -490,13 +513,23 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
             this.topSignatures = this.mapTerms(response.aggregations.alerts.signatures.buckets);
 
-            this.sshClientSoftwareVersions = this.mapTerms(response.aggregations.ssh.sources.softwareVersions.buckets);
+            this.sshClientProtoVersions = this.mapTerms(
+                response.aggregations.ssh.sources.protoVersions.buckets);
 
-            this.sshServerSoftwareVersions = this.mapTerms(response.aggregations.ssh.dests.softwareVersions.buckets);
+            this.sshServerProtoVersions = this.mapTerms(
+                response.aggregations.ssh.dests.protoVersions.buckets);
 
-            this.sshClientProtoVersions = this.mapTerms(response.aggregations.ssh.sources.protoVersions.buckets);
+            this.sshInboundClientVersions = this.mapTerms(
+                response.aggregations.ssh.dests.inboundClientVersions.buckets);
 
-            this.sshServerProtoVersions = this.mapTerms(response.aggregations.ssh.dests.protoVersions.buckets);
+            this.sshOutboundClientVersions = this.mapTerms(
+                response.aggregations.ssh.sources.outboundClientVersions.buckets);
+
+            this.sshOutboundServerVersions = this.mapTerms(
+                response.aggregations.ssh.sources.outboundServerVersions.buckets);
+
+            this.sshInboundServerVersions = this.mapTerms(
+                response.aggregations.ssh.dests.inboundServerVersions.buckets);
         });
 
     }

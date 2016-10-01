@@ -39,20 +39,37 @@
           <b>SSH</b>
         </div>
         <div class="panel-body">
+
           <div class="row">
             <div class="col-md-6">
-              <report-data-table *ngIf="sshClientSoftwareVersions"
-                                 title="Client Sotware Versions"
-                                 [rows]="sshClientSoftwareVersions"
+              <report-data-table *ngIf="sshInboundClientVersions"
+                                 title="Inbound Client Versions"
+                                 [rows]="sshInboundClientVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
             <div class="col-md-6">
-              <report-data-table *ngIf="sshServerSoftwareVersions"
-                                 title="Server Sotware Versions"
-                                 [rows]="sshServerSoftwareVersions"
+              <report-data-table *ngIf="sshOutboundClientVersions"
+                                 title="Outbound Client Versions"
+                                 [rows]="sshOutboundClientVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
-          </div>
+          </div> <!-- end row -->
+
+          <div class="row">
+            <div class="col-md-6">
+              <report-data-table *ngIf="sshOutboundServerVersions"
+                                 title="Outbound Server Versions"
+                                 [rows]="sshOutboundServerVersions"
+                                 [headers]="['#', 'Version']"></report-data-table>
+            </div>
+            <div class="col-md-6">
+              <report-data-table *ngIf="sshInboundServerVersions"
+                                 title="Inbound Server Versions"
+                                 [rows]="sshInboundServerVersions"
+                                 [headers]="['#', 'Version']"></report-data-table>
+            </div>
+          </div> <!-- end row -->
+
           <div class="row">
             <div class="col-md-6">
               <report-data-table *ngIf="sshClientProtoVersions"
@@ -66,10 +83,10 @@
                                  [rows]="sshServerProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
-          </div>
+          </div> <!-- end row -->
+
         </div>
       </div>
-
 
     </div>
 
