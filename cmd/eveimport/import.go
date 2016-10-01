@@ -55,6 +55,7 @@ func Main(args []string) {
 	var index string
 	var verbose bool
 	var end bool
+	var batchSize uint64
 
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
@@ -63,10 +64,15 @@ func Main(args []string) {
 	flagset.StringVar(&index, "index", "evebox", "Elastic Search index prefix")
 	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	flagset.BoolVar(&end, "end", false, "Start at end of file")
+	flagset.Uint64Var(&batchSize, "batch-size", 1000, "Batch import size")
 	flagset.Parse(args[1:])
 
 	if verbose {
 		log.SetLevel(log.DEBUG)
+	}
+
+	if batchSize < 1 {
+		log.Fatal("Batch size must be greater than 0")
 	}
 
 	if elasticSearchUri == "" {
@@ -117,14 +123,15 @@ func Main(args []string) {
 		}
 	}
 
-	count := 0
+	count := uint64(0)
+	startTime := time.Now()
 
 	go func() {
 		err := indexer.Run()
 		if err != nil {
 			log.Fatal("Elastic Search indexer connection unexpectedly closed:", err)
 		} else {
-			log.Println("Indexer exited without issue.")
+			log.Debug("Indexer exited without issue.")
 		}
 	}()
 
@@ -161,7 +168,7 @@ func Main(args []string) {
 
 		count++
 
-		if count > 0 && count % 1000 == 0 {
+		if count > 0 && count % batchSize == 0 {
 			response, err := indexer.FlushConnection()
 			if err != nil {
 				log.Fatal(err)
@@ -171,4 +178,10 @@ func Main(args []string) {
 		}
 	}
 
+	totalTime := time.Since(startTime)
+
+	if oneshot {
+		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
+			uint64(float64(count) / totalTime.Seconds()))
+	}
 }
