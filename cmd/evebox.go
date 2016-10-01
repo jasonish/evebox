@@ -146,12 +146,12 @@ func main() {
 		}
 	}
 
-	log.Info("Index: %s", os.Getenv("ELASTICSEARCH_INDEX"))
-
 	if opts.ElasticSearchIndex != "" {
 		conf.ElasticSearchIndex = opts.ElasticSearchIndex
 	} else if os.Getenv("ELASTICSEARCH_INDEX") != "" {
 		conf.ElasticSearchIndex = os.Getenv("ELASTICSEARCH_INDEX")
+	} else {
+		conf.ElasticSearchIndex = "logstash-*"
 	}
 	log.Info("Using ElasticSearch Index %s.", conf.ElasticSearchIndex)
 
