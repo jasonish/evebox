@@ -63,7 +63,7 @@ EveBox consists of a JavaScript frontend, and a very minimal backend
 written in Go. To build Evebox the following requirements must first
 be satisfied:
 
-* Node.js v4.5.0 or newer installed.
+* Node.js v6.5.0 or newer installed.
 * A working Go 1.7 installation and GOPATH.
 
 If this is the first build the npm and Go dependencies must be
@@ -84,10 +84,9 @@ make release
 
 ## Run in Development Mode
 
-EVEBOX_ELASTICSEARCH_URL=http://localhost:9200 make dev-server
+ELASTICSEARCH_URL=http://localhost:9200 make dev-server
 
-Where the EVEBOX_ELASTICSEARCH_URL is pointing to your Elastic Search
-server.
+Where the ELASTICSEARCH_URL is pointing to your Elastic Search server.
 
 ## License
 
