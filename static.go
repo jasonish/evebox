@@ -29,16 +29,16 @@ package evebox
 import (
 	"github.com/GeertJohan/go.rice"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"github.com/jasonish/evebox/log"
 )
 
 // Setup the handler for static files.
 func SetupStatic(router *mux.Router, devServerUri string) {
 	if len(devServerUri) > 0 {
-		log.Printf("Proxying static files to development server %v.",
+		log.Notice("Proxying static files to %v.",
 			devServerUri)
 		devServerProxyUrl, err := url.Parse(devServerUri)
 		if err != nil {
