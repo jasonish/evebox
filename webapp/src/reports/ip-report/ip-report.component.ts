@@ -129,10 +129,6 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
     private topSignatures:any[];
 
-    private sshClientProtoVersions:any[];
-
-    private sshServerProtoVersions:any[];
-
     private sshInboundClientVersions:any[];
 
     private sshOutboundClientVersions:any[];
@@ -140,6 +136,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
     private sshOutboundServerVersions:any[];
 
     private sshInboundServerVersions:any[];
+
+    private sshOutboundClientProtoVersions:any[];
+
+    private sshOutboundServerProtoVersions:any[]
+
+    private sshInboundClientProtoVersions:any[];
+
+    private sshInboundServerProtoVersions:any[]
 
     constructor(private route:ActivatedRoute,
                 private elasticsearch:ElasticSearchService,
@@ -373,10 +377,16 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                 term: {"src_ip.raw": this.ip}
                             },
                             aggs: {
-                                protoVersions: {
+                                outboundClientProtoVersions: {
+                                  terms: {
+                                      field: "ssh.client.proto_version.raw",
+                                      size:10,
+                                  }
+                                },
+                                outboundServerProtoVersions: {
                                     terms: {
-                                        field: "ssh.client.proto_version.raw",
-                                        size: 10,
+                                        field: "ssh.server.proto_version.raw",
+                                        size:10,
                                     }
                                 },
                                 // Outbound server versions - that is, the server
@@ -402,10 +412,16 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                 term: {"dest_ip.raw": this.ip}
                             },
                             aggs: {
-                                protoVersions: {
+                                inboundClientProtoVersions: {
+                                    terms: {
+                                        field: "ssh.client.proto_version.raw",
+                                        size:10,
+                                    }
+                                },
+                                inboundServerProtoVersions: {
                                     terms: {
                                         field: "ssh.server.proto_version.raw",
-                                        size: 10,
+                                        size:10,
                                     }
                                 },
                                 // Inbound client versions.
@@ -513,12 +529,6 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
             this.topSignatures = this.mapTerms(response.aggregations.alerts.signatures.buckets);
 
-            this.sshClientProtoVersions = this.mapTerms(
-                response.aggregations.ssh.sources.protoVersions.buckets);
-
-            this.sshServerProtoVersions = this.mapTerms(
-                response.aggregations.ssh.dests.protoVersions.buckets);
-
             this.sshInboundClientVersions = this.mapTerms(
                 response.aggregations.ssh.dests.inboundClientVersions.buckets);
 
@@ -530,6 +540,18 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
             this.sshInboundServerVersions = this.mapTerms(
                 response.aggregations.ssh.dests.inboundServerVersions.buckets);
+
+            this.sshInboundClientProtoVersions = this.mapTerms(
+                response.aggregations.ssh.dests.inboundClientProtoVersions.buckets);
+
+            this.sshInboundServerProtoVersions = this.mapTerms(
+                response.aggregations.ssh.dests.inboundServerProtoVersions.buckets);
+
+            this.sshOutboundClientProtoVersions = this.mapTerms(
+                response.aggregations.ssh.sources.outboundClientProtoVersions.buckets);
+
+            this.sshOutboundServerProtoVersions = this.mapTerms(
+                response.aggregations.ssh.sources.outboundServerProtoVersions.buckets);
         });
 
     }

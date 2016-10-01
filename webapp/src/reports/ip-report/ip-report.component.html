@@ -72,18 +72,33 @@
 
           <div class="row">
             <div class="col-md-6">
-              <report-data-table *ngIf="sshClientProtoVersions"
-                                 title="Client Protocol Versions"
-                                 [rows]="sshClientProtoVersions"
+              <report-data-table *ngIf="sshInboundClientProtoVersions"
+                                 title="Inbound Client Proto Versions"
+                                 [rows]="sshInboundClientProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
             <div class="col-md-6">
-              <report-data-table *ngIf="sshServerProtoVersions"
-                                 title="Server Protocol Versions"
-                                 [rows]="sshServerProtoVersions"
+              <report-data-table *ngIf="sshOutboundClientProtoVersions"
+                                 title="Outbound Client Proto Versions"
+                                 [rows]="sshOutboundClientProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
-          </div> <!-- end row -->
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <report-data-table *ngIf="sshInboundServerProtoVersions"
+                                 title="Inbound Server Proto Versions"
+                                 [rows]="sshInboundServerProtoVersions"
+                                 [headers]="['#', 'Version']"></report-data-table>
+            </div>
+            <div class="col-md-6">
+              <report-data-table *ngIf="sshOutboundServerProtoVersions"
+                                 title="Outbound Server Proto Versions"
+                                 [rows]="sshOutboundServerProtoVersions"
+                                 [headers]="['#', 'Version']"></report-data-table>
+            </div>
+          </div>
 
         </div>
       </div>
