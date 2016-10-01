@@ -38,6 +38,7 @@ type LogLevel int
 
 const (
 	ERROR LogLevel = iota
+	NOTICE
 	INFO
 	DEBUG
 )
@@ -64,6 +65,10 @@ func Blue(v interface{}) string {
 
 func Yellow(v interface{}) string {
 	return fmt.Sprintf("%s%v%s", YELLOW, v, RESET)
+}
+
+func YellowB(v interface{}) string {
+	return fmt.Sprintf("%s%v%s", YELLOWB, v, RESET)
 }
 
 func Red(v interface{}) string {
@@ -96,6 +101,15 @@ func doLog(calldepth int, level LogLevel, format string, v ...interface{}) {
 			Red(fmt.Sprintf(format, v...)))
 	}
 
+	if level == NOTICE {
+		fmt.Fprintf(os.Stderr, "%s (%s:%s) <%s> -- %s\n",
+			Green(Timestamp()),
+			Blue(filepath.Base(filename)),
+			Green(line),
+			YellowB("Notice"),
+			fmt.Sprintf(format, v...))
+	}
+
 	if level == INFO {
 		fmt.Fprintf(os.Stderr, "%s (%s:%s) <%s> -- %s\n",
 			Green(Timestamp()),
@@ -117,6 +131,10 @@ func doLog(calldepth int, level LogLevel, format string, v ...interface{}) {
 
 func Error(format string, v ...interface{}) {
 	doLog(2, ERROR, format, v...)
+}
+
+func Notice(format string, v ...interface{}) {
+	doLog(2, NOTICE, format, v...)
 }
 
 func Info(format string, v ...interface{}) {
