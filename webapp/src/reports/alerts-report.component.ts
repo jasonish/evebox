@@ -32,9 +32,10 @@ import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 import moment = require("moment");
 import {ActivatedRoute, Params} from "@angular/router";
 import {EveboxSubscriptionService} from "../subscription.service";
+import {loadingAnimation} from "../animations";
 
 @Component({
-    template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
+    template: `<div [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
   <loading-spinner [loading]="loading > 0"></loading-spinner>
 
@@ -79,6 +80,9 @@ import {EveboxSubscriptionService} from "../subscription.service";
   </div>
 
 </div>`,
+    animations: [
+        loadingAnimation,
+    ]
 })
 export class AlertReportComponent implements OnInit, OnDestroy {
 

@@ -24,56 +24,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnDestroy, OnInit, Input} from "@angular/core";
+import {Component, OnDestroy, OnInit} from "@angular/core";
 import {ReportsService} from "./reports.service";
 import {AppService, AppEventCode} from "../app.service";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 
 import moment = require("moment");
-
-@Component({
-    selector: "report-data-table",
-    template: `<div class="panel panel-default" [ngClass]="{'evebox-opacity-50': loading > 0}">
-  <div class="panel-heading">
-    <b>{{title}}</b>
-  </div>
-  <div *ngIf="loading > 0 || !rows">
-    <i class="fa fa-spinner fa-pulse"
-       style="position: absolute; left: 50%; margin-left: -100px; font-size: 200px; opacity: 0.5;"></i>
-  </div>
-
-  <div *ngIf="!rows || rows.length == 0" class="panel-body">
-    No data.
-  </div>
-  
-  <table *ngIf="rows && rows.length > 0"
-         class="table table-striped table-condensed">
-    <thead>
-    <tr>
-      <th class="col-md-1">{{headers[0]}}</th>
-      <th class="col-md-11">{{headers[1]}}</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr *ngFor="let row of rows; let i = index">
-      <td class="col-md-1">{{row.count}}</td>
-      <td class="col-md-11"><a [routerLink]="['/events', {q: q(row)}]">{{row.key}}</a></td>
-    </tr>
-    </tbody>
-  </table>
-</div>`,
-})
-export class EveboxReportDataTable {
-
-    @Input() private title:string;
-    @Input() private headers:string[] = [];
-    @Input() private rows:any[];
-    @Input() private loading:number = 0;
-
-    q(row:any) {
-        return `+"${row.key}"`;
-    }
-}
 
 @Component({
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">

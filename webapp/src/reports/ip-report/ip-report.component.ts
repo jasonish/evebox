@@ -1,13 +1,14 @@
-import {Component, OnInit, OnDestroy} from "@angular/core";
+import {Component, OnInit, OnDestroy, Input} from "@angular/core";
 import {ActivatedRoute} from "@angular/router";
 import {EveboxSubscriptionService} from "../../subscription.service";
 import {ElasticSearchService} from "../../elasticsearch.service";
 import {TopNavService} from "../../topnav.service";
-
-import moment = require("moment");
 import {ReportsService} from "../reports.service";
 import {AppService, AppEvent, AppEventCode} from "../../app.service";
-import {Input} from "@angular/core";
+import {loadingAnimation} from "../../animations";
+
+import moment = require("moment");
+import {humanizeFileSize} from "../../humanize.service";
 
 @Component({
     selector: "requestedHostnamesForIp",
@@ -89,10 +90,15 @@ export class RequestedHostnamesForIpComponent implements OnInit, OnDestroy {
 
 @Component({
     templateUrl: "./ip-report.component.html",
+    animations: [
+        loadingAnimation,
+    ]
 })
 export class IpReportComponent implements OnInit, OnDestroy {
 
     private ip:string;
+
+    private loading:number = 0;
 
     private eventsOverTime:any[];
 
@@ -171,6 +177,9 @@ export class IpReportComponent implements OnInit, OnDestroy {
     }
 
     loadDnsInfo(range:any, now:any) {
+
+        this.loading++;
+
         let query = {
             query: {
                 filtered: {
@@ -210,6 +219,8 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 }
             });
 
+            this.loading--;
+
         });
     }
 
@@ -219,6 +230,8 @@ export class IpReportComponent implements OnInit, OnDestroy {
         let now = moment();
 
         this.loadDnsInfo(range, now);
+
+        this.loading++;
 
         let query = {
             query: {
@@ -378,15 +391,15 @@ export class IpReportComponent implements OnInit, OnDestroy {
                             },
                             aggs: {
                                 outboundClientProtoVersions: {
-                                  terms: {
-                                      field: "ssh.client.proto_version.raw",
-                                      size:10,
-                                  }
+                                    terms: {
+                                        field: "ssh.client.proto_version.raw",
+                                        size: 10,
+                                    }
                                 },
                                 outboundServerProtoVersions: {
                                     terms: {
                                         field: "ssh.server.proto_version.raw",
-                                        size:10,
+                                        size: 10,
                                     }
                                 },
                                 // Outbound server versions - that is, the server
@@ -415,13 +428,13 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                 inboundClientProtoVersions: {
                                     terms: {
                                         field: "ssh.client.proto_version.raw",
-                                        size:10,
+                                        size: 10,
                                     }
                                 },
                                 inboundServerProtoVersions: {
                                     terms: {
                                         field: "ssh.server.proto_version.raw",
-                                        size:10,
+                                        size: 10,
                                     }
                                 },
                                 // Inbound client versions.
@@ -505,8 +518,11 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
             this.bytesFromIp = response.aggregations.destFlows.bytesToClient.value +
                 response.aggregations.sourceFlows.bytesToServer.value;
+            this.bytesFromIp = humanizeFileSize(this.bytesFromIp);
+
             this.bytesToIp = response.aggregations.destFlows.bytesToServer.value +
                 response.aggregations.sourceFlows.bytesToClient.value;
+            this.bytesToIp = humanizeFileSize(this.bytesToIp);
 
             this.sourceFlowCount = response.aggregations.sourceFlows.doc_count;
             this.destFlowCount = response.aggregations.destFlows.doc_count;
@@ -552,6 +568,8 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
             this.sshOutboundServerProtoVersions = this.mapTerms(
                 response.aggregations.ssh.sources.outboundServerProtoVersions.buckets);
+
+            this.loading--;
         });
 
     }

@@ -33,14 +33,20 @@ import {EventServices} from "./eventservices.service";
 import {EventService} from "./event.service";
 import {MousetrapService} from "./mousetrap.service";
 import {EveboxSubscriptionService} from "./subscription.service";
+import {loadingAnimation} from "./animations";
 
 /**
  * Component to show a single event.
  */
 @Component({
-    template: require("./event.component.html"),
+    templateUrl: "./event.component.html",
+    animations: [
+        loadingAnimation,
+    ]
 })
 export class EventComponent implements OnInit, OnDestroy {
+
+    private loading:boolean = false;
 
     private eventId:string;
     private alertGroup:AlertGroup;
@@ -251,6 +257,9 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     refresh() {
+
+        this.loading = true;
+
         this.elasticSearchService.getEventById(this.eventId)
             .then((response:any) => {
                 this.event = response;
@@ -258,6 +267,7 @@ export class EventComponent implements OnInit, OnDestroy {
                     this.findFlow(response);
                 }
                 this.setup();
+                this.loading = false;
             });
     }
 }

@@ -62,11 +62,9 @@ import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 import {AppComponent} from "./app.component";
 import {AlertsComponent} from "./alerts.component";
 import {EventsComponent} from "./events.component";
+import {EveboxReportDataTable} from "./reports/report-data-table";
 import {EventComponent} from "./event.component";
-import {
-    DNSReportComponent,
-    EveboxReportDataTable,
-} from "./reports/dns-report.component";
+import {DNSReportComponent} from "./reports/dns-report.component";
 import {AlertReportComponent} from "./reports/alerts-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
 import {FlowReportComponent} from "./reports/flow-report.component";

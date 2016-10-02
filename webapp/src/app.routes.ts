@@ -60,7 +60,7 @@ const routes:Routes = [
     {path: "reports/dns", component: DNSReportComponent},
     {path: "reports/flow", component: FlowReportComponent},
     {path: "reports/netflow", component: NetflowReportComponent},
-    {path: "reports/ip", component: IpReportComponent},
+    {path: "reports/ip", component: IpReportComponent, pathMatch: "prefix",},
     // Let the inbox by the default route.
     {
         path: "", redirectTo: "inbox", pathMatch: "prefix"

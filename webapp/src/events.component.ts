@@ -27,18 +27,18 @@
 import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ActivatedRoute} from "@angular/router";
 import {ElasticSearchService, ResultSet} from "./elasticsearch.service";
-import {
-    EveboxEventTableComponent,
-    EveboxEventTableConfig
-} from "./event-table.component";
+import {EveboxEventTableConfig} from "./event-table.component";
 import {MousetrapService} from "./mousetrap.service";
-import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
 import {AppService} from "./app.service";
 import {ToastrService} from "./toastr.service";
 import {EveboxSubscriptionService} from "./subscription.service";
+import {loadingAnimation} from "./animations";
 
 @Component({
-    template: `<div [ngClass]="{'evebox-opacity-50': loading}">
+    template: `<div [@loadingState]="(!resultSet || loading) ? 'true' : 'false'">
+
+  <loading-spinner [loading]="loading"></loading-spinner>
+
   <div class="row">
     <div class="col-md-12">
       <div class="form-group">
@@ -66,14 +66,17 @@ import {EveboxSubscriptionService} from "./subscription.service";
       </button>
 
       <div class="btn-group">
-        <button type="button" class="btn btn-default dropdown-toggle"
-                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <button type="button"
+                class="btn btn-default dropdown-toggle"
+                data-toggle="dropdown"
+                aria-haspopup="true"
+                aria-expanded="false">
           Event Type: {{eventTypeFilter}} <span class="caret"></span>
         </button>
         <ul class="dropdown-menu">
           <li *ngFor="let type of eventTypeFilterValues">
-          <a (click)="setEventTypeFilter(type)">{{type}}</a>
-</li>
+            <a (click)="setEventTypeFilter(type)">{{type}}</a>
+          </li>
         </ul>
       </div>
 
@@ -89,8 +92,6 @@ import {EveboxSubscriptionService} from "./subscription.service";
     </div>
   </div>
 
-  <loading-spinner [loading]="loading"></loading-spinner>
-
   <div *ngIf="!loading && !hasEvents()" style="text-align: center;">
     <hr/>
     No events found.
@@ -102,6 +103,9 @@ import {EveboxSubscriptionService} from "./subscription.service";
   <eveboxEventTable
       [config]="eveboxEventTableConfig"></eveboxEventTable>
 </div>`,
+    animations: [
+        loadingAnimation,
+    ]
 })
 export class EventsComponent implements OnInit, OnDestroy {
 
@@ -233,6 +237,8 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.eveboxEventTableConfig.rows = resultSet.events.map((event:any) => {
                 return event;
             });
+            this.loading = false;
+
         }, (error:any) => {
 
             console.log("Error fetching alerts:");
@@ -249,8 +255,8 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.resultSet = undefined;
             this.eveboxEventTableConfig.rows = [];
 
-        }).then(() => {
             this.loading = false;
+        }).then(() => {
         });
 
     }

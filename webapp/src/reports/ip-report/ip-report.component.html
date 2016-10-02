@@ -1,6 +1,14 @@
-<div *ngIf="ip">
+<loading-spinner [loading]="loading > 0"></loading-spinner>
 
-  <h2>Report for IP {{ip}}</h2>
+<div *ngIf="ip" [@loadingState]="loading > 0 ? 'true' : 'false'">
+
+  <h2>Report for IP {{ip}}
+    <span class="pull-right">
+      <button type="button" class="btn btn-default" (click)="refresh()">
+        Refresh
+      </button>
+    </span>
+  </h2>
 
   <metrics-graphic *ngIf="eventsOverTime"
                    graphId="eventsOverTime"

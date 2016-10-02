@@ -25,16 +25,7 @@
  */
 
 import {AlertService} from "./alert.service";
-import {
-    Component,
-    OnInit,
-    OnDestroy,
-    style,
-    state,
-    animate,
-    transition,
-    trigger
-} from "@angular/core";
+import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
 import {Router, ActivatedRoute} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
@@ -43,6 +34,7 @@ import {EventService} from "./event.service";
 import {ToastrService} from "./toastr.service";
 import {TopNavService} from "./topnav.service";
 import {EveboxSubscriptionService} from "./subscription.service";
+import {loadingAnimation} from "./animations";
 
 export interface AlertsState {
     rows:any[];
@@ -53,10 +45,9 @@ export interface AlertsState {
 
 @Component({
     template: `
-<!--<div [@loadingState]="!silentFresh && loading ? 'true' : 'false'">-->
-<div [@loadingState]="(!silentRefresh && loading) ? 'true' : 'false'">
+<div [@loadingState]="!rows || (!silentRefresh && loading) ? 'true' : 'false'">
 
-  <loading-spinner [loading]="!silentRefresh && loading"></loading-spinner>
+  <loading-spinner [loading]="!rows || !silentRefresh && loading"></loading-spinner>
 
   <!-- Button and filter bar. -->
   <div class="row">
@@ -64,20 +55,20 @@ export interface AlertsState {
       <button type="button" class="btn btn-default" (click)="refresh()">
         Refresh
       </button>
-      <button *ngIf="rows.length > 0 && !allSelected()" type="button"
+      <button *ngIf="rows && rows.length > 0 && !allSelected()" type="button"
               class="btn btn-default"
               (click)="selectAllRows()">Select All
       </button>
-      <button *ngIf="rows.length > 0 && allSelected()" type="button"
+      <button *ngIf="rows && rows.length > 0 && allSelected()" type="button"
               class="btn btn-default"
               (click)="deselectAllRows()">Deselect All
       </button>
-      <button *ngIf="rows.length > 0 && getSelectedCount() > 0"
+      <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
               type="button"
               class="btn btn-default"
               (click)="archiveSelected()">Archive
       </button>
-      <button *ngIf="rows.length > 0 && getSelectedCount() > 0"
+      <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
               type="button"
               class="btn btn-default"
               (click)="escalateSelected()">Escalate
@@ -101,7 +92,7 @@ export interface AlertsState {
     </div>
   </div>
 
-  <div *ngIf="rows.length == 0" style="text-align: center;">
+  <div *ngIf="rows && rows.length == 0" style="text-align: center;">
     <hr/>
     No events found.
     <hr/>
@@ -110,7 +101,7 @@ export interface AlertsState {
   <br/>
 
   <alert-table
-      *ngIf="rows.length > 0"
+      *ngIf="rows && rows.length > 0"
 
       (rowClicked)="rowClicked($event)"
       (toggleEscalation)="toggleEscalatedState($event)"
@@ -120,22 +111,12 @@ export interface AlertsState {
       [rows]="rows"></alert-table>
 </div>`,
     animations: [
-        trigger('loadingState', [
-                state("false", style({
-                    opacity: '1.0',
-                })),
-                state("true", style({
-                    opacity: '0.5',
-                })),
-                transition('false => true', animate('1000ms ease-out')),
-                transition('true => false', animate('1000ms ease-out'))
-            ]
-        )
+        loadingAnimation,
     ]
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 
-    private rows:any[] = [];
+    private rows:any[];
     private activeRow:number = 0;
     private queryString:string = "";
     private loading:boolean = false;
