@@ -159,3 +159,8 @@ func Fatal(v ...interface{}) {
 	doLog(2, ERROR, "%s", fmt.Sprint(v...))
 	os.Exit(1)
 }
+
+func Fatalf(format string, v ...interface{}) {
+	doLog(2, ERROR, format, v...)
+	os.Exit(1)
+}
