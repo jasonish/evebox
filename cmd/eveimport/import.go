@@ -56,6 +56,8 @@ func Main(args []string) {
 	var verbose bool
 	var end bool
 	var batchSize uint64
+	var useBookmark bool
+	var bookmarkPath string
 
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
@@ -65,6 +67,8 @@ func Main(args []string) {
 	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	flagset.BoolVar(&end, "end", false, "Start at end of file")
 	flagset.Uint64Var(&batchSize, "batch-size", 1000, "Batch import size")
+	flagset.BoolVar(&useBookmark, "bookmark", false, "Bookmark location")
+	flagset.StringVar(&bookmarkPath, "bookmark-path", "", "Path to bookmark file")
 	flagset.Parse(args[1:])
 
 	if verbose {
@@ -83,6 +87,11 @@ func Main(args []string) {
 
 	if len(flagset.Args()) == 0 {
 		log.Fatal("error: no input file provided")
+	}
+
+	if useBookmark && bookmarkPath == "" {
+		bookmarkPath = fmt.Sprintf("%s.bookmark", flagset.Args()[0])
+		log.Info("Using bookmark file %s", bookmarkPath)
 	}
 
 	es := elasticsearch.New(elasticSearchUri)
@@ -115,7 +124,42 @@ func Main(args []string) {
 		log.Fatal(err)
 	}
 
-	if end {
+	// Attempt to read the bookmark.
+	if useBookmark {
+		currentBookmark, err := evereader.ReadBookmark(bookmarkPath)
+		if err != nil {
+			log.Debug("Failed to read current bookmark: %v", err)
+		}
+		if currentBookmark == nil {
+			currentBookmark = evereader.GetBookmark(reader)
+		}
+
+		// Attempt to write the bookmark so we know we can.
+		err = evereader.WriteBookmark(bookmarkPath, currentBookmark)
+		if err != nil {
+			log.Fatalf("Bookmark location (%s) not writable", bookmarkPath)
+		}
+
+		// Check if bookmark is valid for the current file.
+		if !evereader.BookmarkIsValid(currentBookmark, reader) {
+			if end {
+				log.Info("Stale bookmark file found, will start reading from end of file.")
+				reader.SkipToEnd()
+			} else {
+				log.Info("Stale bookmark file found, will start reading from beginning of file.")
+			}
+		} else {
+			log.Debug("Skipping to line %d", currentBookmark.Offset)
+			err = reader.SkipTo(currentBookmark.Offset)
+			if err != nil {
+				log.Error("Failed to jump bookmark location, will start at end of file: %s", err)
+				err = reader.SkipToEnd()
+				if err != nil {
+					log.Error("Sigh, failed to skip to end of file, will just read...")
+				}
+			}
+		}
+	} else if end {
 		log.Info("Jumping to end of file.")
 		err := reader.SkipToEnd()
 		if err != nil {
@@ -136,45 +180,48 @@ func Main(args []string) {
 	}()
 
 	for {
+		eof := false
 		event, err := reader.Next()
 		if err != nil {
 			if err == io.EOF {
-				if oneshot {
-					indexer.Stop()
-					log.Println("EOF: Exiting due to --oneshot.")
-					break
-				}
-				// Flush the connection and sleep for a moment.
-				response, err := indexer.FlushConnection()
-				if err != nil {
-					log.Fatal(err)
-				}
-				if response != nil {
-					log.Debug("Indexed %d events {errors=%v}", len(response.Items),
-						response.Errors)
-				}
-				time.Sleep(1 * time.Second)
-				continue
+				eof = true
 			} else {
 				log.Fatal(err)
 			}
 		}
 
-		if event == nil {
-			log.Fatal("Unexpected nil event: err=", err)
+		if event != nil {
+			indexer.IndexRawEvent(event)
+			count++
 		}
 
-		indexer.IndexRawEvent(event)
+		if eof || (count > 0 && count % batchSize == 0) {
+			var bookmark *evereader.Bookmark = nil
 
-		count++
+			if useBookmark {
+				bookmark = evereader.GetBookmark(reader)
+			}
 
-		if count > 0 && count % batchSize == 0 {
 			response, err := indexer.FlushConnection()
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Debug("Indexed %d events {errors=%v}", len(response.Items),
-				response.Errors)
+			if response != nil {
+				log.Debug("Indexed %d events {errors=%v}", len(response.Items),
+					response.Errors)
+			}
+
+			if bookmark != nil {
+				evereader.WriteBookmark(bookmarkPath, bookmark)
+			}
+		}
+
+		if eof {
+			if oneshot {
+				break;
+			} else {
+				time.Sleep(1 * time.Second)
+			}
 		}
 	}
 
