@@ -35,6 +35,43 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
     constructor(private ipFormatter:EveboxFormatIpAddressPipe) {
     }
 
+    formatDnsRequest(event:any) {
+        let dns = event.dns;
+        return `QUERY ${dns.rrtype} ${dns.rrname}`;
+    }
+
+    formatDnsResponse(event:any) {
+        let dns:any = event.dns;
+        let desc = "";
+        switch (dns.rcode) {
+            case "NXDOMAIN":
+                desc += `ANSWER: NXDOMAIN for ${dns.rrname}`;
+                break;
+            default:
+                desc += `ANSWER for ${dns.rrname}: ${dns.rrtype} ${dns.rdata || ""}`;
+                break;
+        }
+        return desc;
+    }
+
+    formatDnsUnified(event:any) {
+        let dns = event.dns;
+        let desc = "";
+
+        desc += `QUERY ${dns.query.rrtype} ${dns.query.rrname}`;
+
+        // And include the last answer.
+        if (dns.answer.length == 0) {
+            desc += `-> NO ANSWERS`;
+        }
+        else {
+            let answer = dns.answer[dns.answer.length - 1];
+            desc += `-> RESPONSE: ${answer.rrtype || ""} ${answer.rdata || ""} (${answer.rrname || ""})`;
+        }
+
+        return desc;
+    }
+
     transform(value:any, args:any):any {
 
         let event = value;
@@ -103,24 +140,18 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                     + `; Packets: ${netflow.pkts}`;
             }
             case "dns": {
-                let dns = eve.dns;
-                let desc = "";
-                switch (dns.type) {
-                    case "query":
-                        desc += `QUERY ${dns.rrtype} ${dns.rrname}`;
-                        break;
-                    case "answer":
-                        switch (dns.rcode) {
-                            case "NXDOMAIN":
-                                desc += `ANSWER: NXDOMAIN for ${dns.rrname}`;
-                                break;
-                            default:
-                                desc += `ANSWER for ${dns.rrname}: ${dns.rrtype} ${dns.rdata || ""}`;
-                                break;
-                        }
-                        break;
+                if (eve.dns.type == "answer") {
+                    return this.formatDnsResponse(eve);
                 }
-                return `${desc}`
+                else if (eve.dns.type == "query") {
+                    return this.formatDnsRequest(eve);
+                }
+                else if (eve.dns.type == "unified") {
+                    return this.formatDnsUnified(eve);
+                }
+                else {
+                    return `UNSUPPORTED DNS TYPE "${eve.dns.type}"`;
+                }
             }
             case "drop":
                 let drop:any = eve.drop;
