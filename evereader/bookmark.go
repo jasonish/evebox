@@ -3,7 +3,7 @@ package evereader
 import (
 	"os"
 	"encoding/json"
-	"syscall"
+	"github.com/jasonish/evebox/log"
 )
 
 type Bookmark struct {
@@ -16,9 +16,7 @@ type Bookmark struct {
 	// The sile of the file referenced in path.
 	Size   int64 `json:"size"`
 
-	State  struct {
-		       Inode uint64 `json:"inode"`
-	       } `json:"state"`
+	Sys    interface{} `json:"sys"`
 }
 
 type Bookmarker struct {
@@ -33,10 +31,7 @@ func (b *Bookmarker) GetBookmark() (*Bookmark) {
 
 	fileInfo, err := b.Reader.GetFileInfo()
 	if err == nil {
-		sysStat, ok := fileInfo.Sys().(*syscall.Stat_t)
-		if ok {
-			bookmark.State.Inode = sysStat.Ino
-		}
+		bookmark.Sys = GetSys(fileInfo)
 		bookmark.Size = fileInfo.Size()
 	}
 
@@ -62,6 +57,7 @@ func (b *Bookmarker) ReadBookmark() (*Bookmark, error) {
 		return nil, err
 	}
 	decoder := json.NewDecoder(file)
+	decoder.UseNumber()
 	var bookmark Bookmark
 	err = decoder.Decode(&bookmark)
 	if err != nil {
@@ -85,11 +81,8 @@ func (b *Bookmarker) BookmarkIsValid(bookmark *Bookmark) bool {
 			return false
 		}
 
-		sysStat, ok := fileInfo.Sys().(*syscall.Stat_t)
-		if ok {
-			if sysStat.Ino != bookmark.State.Inode {
-				return false
-			}
+		if !SameSys(bookmark.Sys, GetSys(fileInfo)) {
+			log.Error("Inodes don't match")
 		}
 	}
 
