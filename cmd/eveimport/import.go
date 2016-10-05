@@ -126,39 +126,41 @@ func Main(args []string) {
 
 	// Attempt to read the bookmark.
 	if useBookmark {
-		currentBookmark, err := evereader.ReadBookmark(bookmarkPath)
-		if err != nil {
-			log.Debug("Failed to read current bookmark: %v", err)
-		}
-		if currentBookmark == nil {
-			currentBookmark = evereader.GetBookmark(reader)
-		}
 
-		// Attempt to write the bookmark so we know we can.
-		err = evereader.WriteBookmark(bookmarkPath, currentBookmark)
-		if err != nil {
-			log.Fatalf("Bookmark location (%s) not writable", bookmarkPath)
-		}
-
-		// Check if bookmark is valid for the current file.
-		if !evereader.BookmarkIsValid(currentBookmark, reader) {
-			if end {
-				log.Info("Stale bookmark file found, will start reading from end of file.")
-				reader.SkipToEnd()
+		// If there is an existing bookmark, validate.
+		bookmark, err := evereader.ReadBookmark(bookmarkPath)
+		if err == nil && bookmark != nil {
+			if evereader.BookmarkIsValid(bookmark, reader) {
+				log.Debug("Skipping to line %d", bookmark.Offset)
+				if err := reader.SkipTo(bookmark.Offset); err != nil {
+					log.Error("Failed to skip to line %d; will skip to end: %s", err)
+					if err := reader.SkipToEnd(); err != nil {
+						log.Error("Failed to skip to end of file, will just read.")
+					}
+				}
 			} else {
-				log.Info("Stale bookmark file found, will start reading from beginning of file.")
+				// Just set bookmark to nil...
+				bookmark = nil
 			}
 		} else {
-			log.Debug("Skipping to line %d", currentBookmark.Offset)
-			err = reader.SkipTo(currentBookmark.Offset)
-			if err != nil {
-				log.Error("Failed to jump bookmark location, will start at end of file: %s", err)
-				err = reader.SkipToEnd()
-				if err != nil {
-					log.Error("Sigh, failed to skip to end of file, will just read...")
-				}
-			}
+			log.Info("Failed to read bookmark: %s", err)
 		}
+
+		if bookmark == nil {
+			if end {
+				log.Info("No existing bookmark, starting at end of file")
+				reader.SkipToEnd()
+			} else {
+				log.Info("No existing bookmark, starting at beginning of file.")
+			}
+			bookmark = evereader.GetBookmark(reader)
+		}
+
+		// Test a write.
+		if err := evereader.WriteBookmark(bookmarkPath, bookmark); err != nil {
+			log.Fatalf("Bookmark location not writable: %s", err)
+		}
+
 	} else if end {
 		log.Info("Jumping to end of file.")
 		err := reader.SkipToEnd()

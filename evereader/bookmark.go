@@ -14,7 +14,7 @@ type Bookmark struct {
 	Offset uint64 `json:"offset"`
 
 	// The sile of the file referenced in path.
-	Size int64 `json:"size"`
+	Size   int64 `json:"size"`
 
 	State  struct {
 		       Inode uint64 `json:"inode"`
