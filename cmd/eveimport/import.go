@@ -168,7 +168,12 @@ func Main(args []string) {
 	}
 
 	count := uint64(0)
+	lastStatTs := time.Now()
+	lastStatCount := uint64(0)
 	startTime := time.Now()
+
+	// Number of EOFs in last stat interval.
+	eofs := uint64(0)
 
 	go func() {
 		err := indexer.Run()
@@ -185,6 +190,7 @@ func Main(args []string) {
 		if err != nil {
 			if err == io.EOF {
 				eof = true
+				eofs++
 			} else {
 				log.Fatal(err)
 			}
@@ -214,6 +220,18 @@ func Main(args []string) {
 			if bookmark != nil {
 				evereader.WriteBookmark(bookmarkPath, bookmark)
 			}
+		}
+
+		now := time.Now()
+		if now.Sub(lastStatTs).Seconds() > 1 && now.Second() == 0 {
+			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d",
+				count,
+				count - lastStatCount,
+				float64(count - lastStatCount) / (now.Sub(lastStatTs).Seconds()),
+				eofs)
+			lastStatTs = now
+			lastStatCount = count
+			eofs = 0
 		}
 
 		if eof {
