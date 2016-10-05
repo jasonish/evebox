@@ -21,8 +21,43 @@ type Bookmark struct {
 	       } `json:"state"`
 }
 
-func ReadBookmark(filename string) (*Bookmark, error) {
-	file, err := os.Open(filename)
+type Bookmarker struct {
+	Filename string
+	Reader   *EveReader
+}
+
+func (b *Bookmarker) GetBookmark() (*Bookmark) {
+	bookmark := Bookmark{}
+	bookmark.Path = b.Reader.path
+	bookmark.Offset = b.Reader.Pos()
+
+	fileInfo, err := b.Reader.GetFileInfo()
+	if err == nil {
+		sysStat, ok := fileInfo.Sys().(*syscall.Stat_t)
+		if ok {
+			bookmark.State.Inode = sysStat.Ino
+		}
+		bookmark.Size = fileInfo.Size()
+	}
+
+	return &bookmark
+}
+
+func (b *Bookmarker) WriteBookmark(bookmark *Bookmark) error {
+	file, err := os.Create(b.Filename)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(bookmark)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bookmarker) ReadBookmark() (*Bookmark, error) {
+	file, err := os.Open(b.Filename)
 	if err != nil {
 		return nil, err
 	}
@@ -35,44 +70,13 @@ func ReadBookmark(filename string) (*Bookmark, error) {
 	return &bookmark, nil
 }
 
-func GetBookmark(eveReader *EveReader) (*Bookmark) {
+func (b *Bookmarker) BookmarkIsValid(bookmark *Bookmark) bool {
 
-	bookmark := Bookmark{}
-	bookmark.Path = eveReader.path
-	bookmark.Offset = eveReader.Pos()
-
-	fileInfo, err := eveReader.GetFileInfo()
-	if err == nil {
-		sysStat, ok := fileInfo.Sys().(*syscall.Stat_t)
-		if ok {
-			bookmark.State.Inode = sysStat.Ino
-		}
-		bookmark.Size = fileInfo.Size()
-	}
-
-	return &bookmark
-}
-
-func WriteBookmark(bookmarkFilename string, bookmark *Bookmark) error {
-	file, err := os.Create(bookmarkFilename)
-	if err != nil {
-		return err
-	}
-	encoder := json.NewEncoder(file)
-	err = encoder.Encode(bookmark)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func BookmarkIsValid(bookmark *Bookmark, reader *EveReader) bool {
-
-	if bookmark.Path != reader.path {
+	if bookmark.Path != b.Reader.path {
 		return false;
 	}
 
-	fileInfo, err := reader.GetFileInfo()
+	fileInfo, err := b.Reader.GetFileInfo()
 	if err == nil {
 
 		// If the current file size is less than the bookmark file

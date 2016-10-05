@@ -124,13 +124,20 @@ func Main(args []string) {
 		log.Fatal(err)
 	}
 
+	var bookmarker *evereader.Bookmarker = nil
+
 	// Attempt to read the bookmark.
 	if useBookmark {
 
+		bookmarker = &evereader.Bookmarker{
+			Filename: bookmarkPath,
+			Reader: reader,
+		}
+
 		// If there is an existing bookmark, validate.
-		bookmark, err := evereader.ReadBookmark(bookmarkPath)
+		bookmark, err := bookmarker.ReadBookmark()
 		if err == nil && bookmark != nil {
-			if evereader.BookmarkIsValid(bookmark, reader) {
+			if bookmarker.BookmarkIsValid(bookmark) {
 				log.Debug("Skipping to line %d", bookmark.Offset)
 				if err := reader.SkipTo(bookmark.Offset); err != nil {
 					log.Error("Failed to skip to line %d; will skip to end: %s", err)
@@ -153,11 +160,11 @@ func Main(args []string) {
 			} else {
 				log.Info("No existing bookmark, starting at beginning of file.")
 			}
-			bookmark = evereader.GetBookmark(reader)
+			bookmark = bookmarker.GetBookmark()
 		}
 
 		// Test a write.
-		if err := evereader.WriteBookmark(bookmarkPath, bookmark); err != nil {
+		if err := bookmarker.WriteBookmark(bookmark); err != nil {
 			log.Fatalf("Bookmark location not writable: %s", err)
 		}
 
@@ -207,7 +214,7 @@ func Main(args []string) {
 			var bookmark *evereader.Bookmark = nil
 
 			if useBookmark {
-				bookmark = evereader.GetBookmark(reader)
+				bookmark = bookmarker.GetBookmark()
 			}
 
 			response, err := indexer.FlushConnection()
@@ -219,8 +226,8 @@ func Main(args []string) {
 					response.Errors)
 			}
 
-			if bookmark != nil {
-				evereader.WriteBookmark(bookmarkPath, bookmark)
+			if useBookmark {
+				bookmarker.WriteBookmark(bookmark)
 			}
 		}
 
