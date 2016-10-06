@@ -50,15 +50,15 @@ evebox: Makefile $(GO_SRCS)
 build-with-docker:
 	docker build --rm -t evebox/builder - < Dockerfile
 	docker run --rm -it \
-		-v `pwd`:/go/src/evebox \
-		-w /go/src/evebox \
+		-v `pwd`:/go/src/github.com/jasonish/evebox \
+		-w /go/src/github.com/jasonish/evebox \
 		evebox/builder make install-deps all
 
 release-with-docker:
 	docker build --rm -t evebox/builder - < Dockerfile
 	docker run --rm -it \
-		-v `pwd`:/go/src/evebox \
-		-w /go/src/evebox \
+		-v `pwd`:/go/src/github.com/jasonish/evebox \
+		-w /go/src/github.com/jasonish/evebox \
 		evebox/builder make install-deps release deb rpm
 
 dev-server: evebox
