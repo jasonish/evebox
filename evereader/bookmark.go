@@ -88,3 +88,26 @@ func (b *Bookmarker) BookmarkIsValid(bookmark *Bookmark) bool {
 
 	return true
 }
+
+func (b *Bookmarker) Init(end bool) error {
+	bookmark, err := b.ReadBookmark()
+	if err == nil && b.BookmarkIsValid(bookmark) {
+		err = b.Reader.SkipTo(bookmark.Offset)
+		if err != nil {
+			log.Error("Failed to skip to line %d, will skip to end of file: %s", err)
+			b.Reader.SkipToEnd()
+		}
+	} else {
+		log.Info("Failed to read bookmark: %s", err)
+		if end {
+			log.Info("Will start reading at end of file.")
+			b.Reader.SkipToEnd()
+		} else {
+			log.Info("Will start reading at beginning of file.")
+		}
+	}
+
+	// Test write.
+	bookmark = b.GetBookmark()
+	return b.WriteBookmark(bookmark)
+}

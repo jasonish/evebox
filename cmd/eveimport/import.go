@@ -124,50 +124,17 @@ func Main(args []string) {
 		log.Fatal(err)
 	}
 
+	// Initialize bookmarking...
 	var bookmarker *evereader.Bookmarker = nil
-
-	// Attempt to read the bookmark.
 	if useBookmark {
-
 		bookmarker = &evereader.Bookmarker{
 			Filename: bookmarkPath,
 			Reader: reader,
 		}
-
-		// If there is an existing bookmark, validate.
-		bookmark, err := bookmarker.ReadBookmark()
-		if err == nil && bookmark != nil {
-			if bookmarker.BookmarkIsValid(bookmark) {
-				log.Debug("Skipping to line %d", bookmark.Offset)
-				if err := reader.SkipTo(bookmark.Offset); err != nil {
-					log.Error("Failed to skip to line %d; will skip to end: %s", err)
-					if err := reader.SkipToEnd(); err != nil {
-						log.Error("Failed to skip to end of file, will just read.")
-					}
-				}
-			} else {
-				// Just set bookmark to nil...
-				bookmark = nil
-			}
-		} else {
-			log.Info("Failed to read bookmark: %s", err)
+		err := bookmarker.Init(end)
+		if err != nil {
+			log.Fatal(err)
 		}
-
-		if bookmark == nil {
-			if end {
-				log.Info("No existing bookmark, starting at end of file")
-				reader.SkipToEnd()
-			} else {
-				log.Info("No existing bookmark, starting at beginning of file.")
-			}
-			bookmark = bookmarker.GetBookmark()
-		}
-
-		// Test a write.
-		if err := bookmarker.WriteBookmark(bookmark); err != nil {
-			log.Fatalf("Bookmark location not writable: %s", err)
-		}
-
 	} else if end {
 		log.Info("Jumping to end of file.")
 		err := reader.SkipToEnd()
