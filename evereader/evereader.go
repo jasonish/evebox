@@ -132,6 +132,18 @@ func (er *EveReader) Pos() uint64 {
 	return er.lineno
 }
 
+func (er *EveReader) FileOffset() (int64, error) {
+	return er.file.Seek(0, 1)
+}
+
+func (er *EveReader) FileSize() (int64, error) {
+	info, err := er.file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
 func (er *EveReader) IsNewFile() bool {
 	fileInfo1, err := er.file.Stat()
 	if err != nil {

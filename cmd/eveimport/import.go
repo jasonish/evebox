@@ -200,11 +200,20 @@ func Main(args []string) {
 
 		now := time.Now()
 		if now.Sub(lastStatTs).Seconds() > 1 && now.Second() == 0 {
-			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d",
+
+			// Calculate the lag in bytes, that is the number of bytes behind
+			// the end of file we are.
+			lag, err := GetLag(reader)
+			if err != nil {
+				log.Error("Failed to calculate lag: %v", err)
+			}
+
+			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d; Lag (bytes): %d",
 				count,
 				count - lastStatCount,
 				float64(count - lastStatCount) / (now.Sub(lastStatTs).Seconds()),
-				eofs)
+				eofs,
+				lag)
 			lastStatTs = now
 			lastStatCount = count
 			eofs = 0
@@ -225,4 +234,16 @@ func Main(args []string) {
 		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
 			uint64(float64(count) / totalTime.Seconds()))
 	}
+}
+
+func GetLag(reader *evereader.EveReader) (int64, error) {
+	fileSize, err := reader.FileSize()
+	if err != nil {
+		return 0, err
+	}
+	fileOffset, err := reader.FileOffset()
+	if err != nil {
+		return 0, err
+	}
+	return fileSize - fileOffset, nil
 }
