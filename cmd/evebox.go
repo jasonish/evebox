@@ -38,6 +38,7 @@ import (
 	"github.com/jasonish/evebox/config"
 	"github.com/jessevdk/go-flags"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/cmd/evereader"
 )
 
 const DEFAULT_ELASTICSEARCH_URI string = "http://localhost:9200"
@@ -115,6 +116,8 @@ func main() {
 			VersionMain()
 		case "import":
 			eveimport.Main(os.Args[1:])
+		case "evereader":
+			evereader.Main(os.Args[1:])
 		}
 		return
 	}
