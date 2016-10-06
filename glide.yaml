@@ -1,4 +1,4 @@
-package: evebox
+package: github.com/jasonish/evebox
 import:
 - package: github.com/GeertJohan/go.rice
   subpackages:
