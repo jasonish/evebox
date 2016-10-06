@@ -62,8 +62,8 @@ release-with-docker:
 		evebox/builder make install-deps release deb rpm
 
 dev-server: evebox
-	@if [ "${EVEBOX_ELASTICSEARCH_URL}" = "" ]; then \
-		echo "error: EVEBOX_ELASTICSEARCH_URL not set."; \
+	@if [ "${ELASTICSEARCH_URL}" = "" ]; then \
+		echo "error: ELASTICSEARCH_URL not set."; \
 		exit 1; \
 	fi
 	./webapp/node_modules/.bin/concurrently -k \
@@ -74,7 +74,7 @@ dev-server: evebox
 # restarts as needed.
 dev-server-reflex: evebox
 	reflex -s -r '\.go$$' -- sh -c "make evebox && ./evebox \
-		-e ${EVEBOX_ELASTICSEARCH_URL} --dev http://localhost:8080"
+		--dev http://localhost:8080"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)

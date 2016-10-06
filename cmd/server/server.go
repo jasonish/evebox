@@ -91,7 +91,7 @@ func setupElasticSearchProxy(router *mux.Router) {
 			opts.ElasticSearchUri = DEFAULT_ELASTICSEARCH_URI
 		}
 	}
-	log.Printf("Elastic Search URI: %v", opts.ElasticSearchUri)
+	log.Printf("Elastic Search URL: %v", opts.ElasticSearchUri)
 	esProxy, err := evebox.NewElasticSearchProxy(opts.ElasticSearchUri,
 		"/elasticsearch", opts.NoCheckCertificate)
 	if err != nil {
