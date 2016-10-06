@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package eveimport
+package esimport
 
 import (
 	"fmt"

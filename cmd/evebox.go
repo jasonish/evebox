@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/jasonish/evebox/cmd/server"
 	"os"
-	"github.com/jasonish/evebox/cmd/eveimport"
+	"github.com/jasonish/evebox/cmd/esimport"
 	"fmt"
 	"github.com/jasonish/evebox"
 	"github.com/jasonish/evebox/cmd/evereader"
@@ -21,7 +21,7 @@ func Usage() {
 Commands:
 	server			Start the EveBox server
 	version			Print the EveBox version
-	import			Run the Elastic Search Eve import tool
+	esimport		Run the Elastic Search Eve import tool
 	evereader		Run the Eve log reader tool
 
 `, os.Args[0])
@@ -36,8 +36,8 @@ func main() {
 		case "version":
 			VersionMain()
 			return
-		case "import":
-			eveimport.Main(os.Args[1:])
+		case "esimport":
+			esimport.Main(os.Args[1:])
 			return
 		case "evereader":
 			evereader.Main(os.Args[1:])
