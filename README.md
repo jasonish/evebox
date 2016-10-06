@@ -82,6 +82,12 @@ Or to build a release:
 make release
 ```
 
+If you don't want to bother with the required development tools, but do have
+Docker installed, you can build a release with the following command:
+```
+make release-with-docker`
+```
+
 ## Run in Development Mode
 
 ELASTICSEARCH_URL=http://localhost:9200 make dev-server
