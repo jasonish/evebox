@@ -19,7 +19,7 @@ func Main(args []string) {
 	var bookmarkPath string
 	var verbose bool
 
-	flagset := flag.NewFlagSet("import", flag.ExitOnError)
+	flagset := flag.NewFlagSet("evereader", flag.ExitOnError)
 	flagset.BoolVar(&end, "end", false, "Start at end of file")
 	flagset.BoolVar(&oneshot, "oneshot", false, "One shot mode (exit on EOF)")
 	flagset.BoolVar(&useBookmark, "bookmark", false, "Bookmark location")
