@@ -1,5 +1,5 @@
-hash: f0b391763fdb68072dda34e08b6b25f433cc56abcb5c0064c89c642ded0b122b
-updated: 2016-10-06T15:12:09.567151795-06:00
+hash: 57def74d0a1bd1829ee96d710a541c68c014f72bad2837c06cc049ecf65a275d
+updated: 2016-10-06T22:38:26.441855248-06:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -21,6 +21,10 @@ imports:
   version: 97448c91aac742cbca3d020b3e769013a420a06f
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
+- name: github.com/oschwald/geoip2-golang
+  version: ccee6e9d9b1ee5cee16ac664bc1982952edfb13d
+- name: github.com/oschwald/maxminddb-golang
+  version: f4aa55714a3f843869ca9a38625e177a627c1ce6
 - name: github.com/spf13/pflag
   version: c7e63cf4530bcd3ba943729cee0efeff2ebea63f
 - name: golang.org/x/net
@@ -29,4 +33,9 @@ imports:
   - context
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
-testImports: []
+testImports:
+- name: golang.org/x/sys
+  version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
+  subpackages:
+  - unix
+  - windows

@@ -13,3 +13,5 @@ import:
 - package: github.com/gorilla/mux
 - package: github.com/gorilla/context
 - package: github.com/spf13/pflag
+- package: github.com/oschwald/geoip2-golang
+- package: github.com/oschwald/maxminddb-golang
