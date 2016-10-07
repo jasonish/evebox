@@ -33,6 +33,7 @@ import (
 	"net/http"
 	"io"
 	"sync"
+	"github.com/jasonish/evebox/log"
 )
 
 const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
@@ -41,6 +42,8 @@ type BulkEveIndexer struct {
 	// Index prefix to use. For example, if this is set to "logstash",
 	// events will be put in index "logstash-YYYY.MM.DD"
 	IndexPrefix string
+
+	baseUrl     string
 
 	es          *ElasticSearch
 	httpClient  *http.Client
@@ -62,6 +65,7 @@ func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
 
 	indexer := BulkEveIndexer{
 		es:es,
+		baseUrl: es.baseUrl,
 		httpClient:&http.Client{},
 		channel: make(chan interface{}),
 	}
@@ -69,11 +73,30 @@ func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
 	// Set a default index name.
 	indexer.IndexPrefix = "logstash"
 
+	// Check for a redirect.
+	indexer.CheckForRedirect()
+
 	pipeReader, pipeWriter := io.Pipe()
 	indexer.pipeReader = pipeReader
 	indexer.pipeWriter = pipeWriter
 
 	return &indexer
+}
+
+func (i *BulkEveIndexer) CheckForRedirect() {
+	httpClient := http.Client{
+		CheckRedirect: func(request *http.Request, via []*http.Request) error {
+			if request.Response != nil {
+				location, err := request.Response.Location()
+				if err == nil {
+					log.Info("Redirection to %s detected, updating Elastic Search base URL.", location.String())
+					i.baseUrl = location.String()
+				}
+			}
+			return nil
+		},
+	}
+	httpClient.Head(i.es.baseUrl)
 }
 
 func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse, error) {
@@ -101,11 +124,9 @@ func (i *BulkEveIndexer) Run() (err error) {
 			return nil
 		}
 
-		request, err := http.NewRequest("POST", fmt.Sprintf("%s/_bulk", i.es.baseUrl), i.pipeReader)
-		if err != nil {
-			return err
-		}
-		response, err := i.httpClient.Do(request)
+		response, err := i.httpClient.Post(
+			fmt.Sprintf("%s/_bulk", i.baseUrl),
+			"application/json", i.pipeReader)
 		if err != nil {
 			return err
 		}
