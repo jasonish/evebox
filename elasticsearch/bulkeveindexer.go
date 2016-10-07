@@ -117,7 +117,7 @@ func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse,
 	return nil, err
 }
 
-func (i *BulkEveIndexer) Run() (err error) {
+func (i *BulkEveIndexer) Run() (error) {
 
 	for {
 		if i.done {
