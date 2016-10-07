@@ -30,16 +30,16 @@ func FindDbPath() (string) {
 }
 
 type GeoIp struct {
-	Ip            string `json:"ip"`
-	ContinentCode string `json:"continent_code"`
-	CountryCode2  string `json:"country_code2"`
-	CountryName   string `json:"country_name"`
-	RegionName    string `json:"region_name"`
-	RegionCode    string `json:"region_code"`
-	CityName      string `json:"city_name"`
-	Latitude      float64 `json:"latitude"`
-	Longitude     float64 `json:"longitude"`
-	Coordinates   [2]float64 `json:"coordinates"`
+	Ip            string `json:"ip,omitempty"`
+	ContinentCode string `json:"continent_code,omitempty"`
+	CountryCode2  string `json:"country_code2,omitempty"`
+	CountryName   string `json:"country_name,omitempty"`
+	RegionName    string `json:"region_name,omitempty"`
+	RegionCode    string `json:"region_code,omitempty"`
+	CityName      string `json:"city_name,omitempty"`
+	Latitude      float64 `json:"latitude,omitempty"`
+	Longitude     float64 `json:"longitude,omitempty"`
+	Coordinates   [2]float64 `json:"coordinates,omitempty"`
 }
 
 type GeoIpDb struct {

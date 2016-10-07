@@ -35,7 +35,27 @@ import (
 	"io"
 	"time"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/geoip"
+	"encoding/json"
+	"net"
 )
+
+var RFC1918_Netstrings = []string{
+	"10.0.0.0/8",
+	"127.16.0.0/12",
+	"192.168.0.0/16",
+}
+
+var RFC1918_IPNets []*net.IPNet
+
+func init() {
+	for _, network := range (RFC1918_Netstrings) {
+		_, ipnet, err := net.ParseCIDR(network)
+		if err == nil {
+			RFC1918_IPNets = append(RFC1918_IPNets, ipnet)
+		}
+	}
+}
 
 var flagset *flag.FlagSet
 
@@ -48,6 +68,16 @@ Options:
 	flagset.PrintDefaults()
 }
 
+func IsRFC1918(addr string) bool {
+	ip := net.ParseIP(addr)
+	for _, ipnet := range (RFC1918_IPNets) {
+		if ipnet.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 func Main(args []string) {
 
 	var elasticSearchUri string
@@ -58,6 +88,8 @@ func Main(args []string) {
 	var batchSize uint64
 	var useBookmark bool
 	var bookmarkPath string
+	var stdout bool
+	var nogeoip bool
 
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
@@ -69,6 +101,8 @@ func Main(args []string) {
 	flagset.Uint64Var(&batchSize, "batch-size", 1000, "Batch import size")
 	flagset.BoolVar(&useBookmark, "bookmark", false, "Bookmark location")
 	flagset.StringVar(&bookmarkPath, "bookmark-path", "", "Path to bookmark file")
+	flagset.BoolVar(&nogeoip, "no-geoip", false, "Disable GeoIP lookups")
+	flagset.BoolVar(&stdout, "stdout", false, "Print events to stdout")
 	flagset.Parse(args[1:])
 
 	if verbose {
@@ -112,6 +146,17 @@ func Main(args []string) {
 		}
 	} else {
 		log.Info("Template %s exists, will not create.", index)
+	}
+
+	var geoipdb *geoip.GeoIpDb
+
+	if !nogeoip {
+		geoipdb, err = geoip.NewGeoIpDb("")
+		if err != nil {
+			log.Notice("Failed to load GeoIP database: %v", err)
+		} else {
+			log.Info("Using GeoIP database %s, %s", geoipdb.Type(), geoipdb.BuildDate())
+		}
 	}
 
 	inputFiles := flagset.Args()
@@ -173,6 +218,44 @@ func Main(args []string) {
 		}
 
 		if event != nil {
+
+			if geoipdb != nil {
+				srcip, ok := event["src_ip"].(string)
+				if ok && !IsRFC1918(srcip) {
+					gip, err := geoipdb.LookupString(srcip)
+					if err != nil {
+						log.Debug("Failed to lookup geoip for %s", srcip)
+					}
+
+					// Need at least a continent code.
+					if gip.ContinentCode != "" {
+						event["geoip"] = gip
+					}
+				}
+				if event["geoip"] == nil {
+					destip, ok := event["dest_ip"].(string)
+					if ok && !IsRFC1918(destip) {
+						gip, err := geoipdb.LookupString(destip)
+						if err != nil {
+							log.Debug("Failed to lookup geoip for %s", destip)
+						}
+						// Need at least a continent code.
+						if gip.ContinentCode != "" {
+							event["geoip"] = gip
+						}
+					}
+				}
+			}
+
+			if stdout {
+				asJson, err := json.Marshal(event)
+				if err != nil {
+					log.Error("Failed to print event as json: %v", err)
+				} else {
+					fmt.Println(string(asJson))
+				}
+			}
+
 			indexer.IndexRawEvent(event)
 			count++
 		}
