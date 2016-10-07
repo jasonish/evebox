@@ -90,6 +90,7 @@ func Main(args []string) {
 	var bookmarkPath string
 	var stdout bool
 	var nogeoip bool
+	var geoIpDatabase string
 
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
@@ -103,6 +104,7 @@ func Main(args []string) {
 	flagset.StringVar(&bookmarkPath, "bookmark-path", "", "Path to bookmark file")
 	flagset.BoolVar(&nogeoip, "no-geoip", false, "Disable GeoIP lookups")
 	flagset.BoolVar(&stdout, "stdout", false, "Print events to stdout")
+	flagset.StringVar(&geoIpDatabase, "geoip-database", "", "Path to GeoIP (v2) database file")
 	flagset.Parse(args[1:])
 
 	if verbose {
@@ -151,7 +153,7 @@ func Main(args []string) {
 	var geoipdb *geoip.GeoIpDb
 
 	if !nogeoip {
-		geoipdb, err = geoip.NewGeoIpDb("")
+		geoipdb, err = geoip.NewGeoIpDb(geoIpDatabase)
 		if err != nil {
 			log.Notice("Failed to load GeoIP database: %v", err)
 		} else {
