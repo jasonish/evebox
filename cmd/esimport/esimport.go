@@ -92,6 +92,7 @@ func Main(args []string) {
 	var nogeoip bool
 	var geoIpDatabase string
 	var noCheckCertificate bool
+	var usernamePassword string
 
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
@@ -107,6 +108,8 @@ func Main(args []string) {
 	flagset.BoolVar(&stdout, "stdout", false, "Print events to stdout")
 	flagset.StringVar(&geoIpDatabase, "geoip-database", "", "Path to GeoIP (v2) database file")
 	flagset.BoolVarP(&noCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check")
+	flagset.StringVarP(&usernamePassword, "user", "u", "", "Username:password")
+
 	flagset.Parse(args[1:])
 
 	if verbose {
@@ -134,6 +137,11 @@ func Main(args []string) {
 
 	es := elasticsearch.New(elasticSearchUri)
 	es.DisableCertCheck = noCheckCertificate
+	if usernamePassword != "" {
+		if err := es.SetUsernamePassword(usernamePassword); err != nil {
+			log.Fatal("Failed to set username:password: %v", err)
+		}
+	}
 	response, err := es.Ping()
 	if err != nil {
 		log.Fatal("error: failed to ping Elastic Search:", err)

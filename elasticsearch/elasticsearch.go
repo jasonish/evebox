@@ -43,6 +43,8 @@ type ElasticSearch struct {
 	baseUrl          string
 	httpClient       *http.Client
 	DisableCertCheck bool
+	username         string
+	password         string
 }
 
 func New(url string) *ElasticSearch {
@@ -54,38 +56,52 @@ func New(url string) *ElasticSearch {
 	return es
 }
 
+func (i *ElasticSearch) SetUsernamePassword(username... string) error {
+	if len(username) == 1 {
+		parts := strings.SplitN(username[0], ":", 2)
+		if len(parts) < 2 {
+			return fmt.Errorf("bad format")
+		}
+		i.username = parts[0]
+		i.password = parts[1]
+	} else {
+		i.username = username[0]
+		i.password = username[1]
+	}
+	return nil
+}
+
 func (es *ElasticSearch) DialTLS(network string, addr string) (net.Conn, error) {
 	return tls.Dial(network, addr, &tls.Config{
 		InsecureSkipVerify: es.DisableCertCheck,
 	})
 }
 
-func (es *ElasticSearch) Ping() (*PingResponse, error) {
-
-	req, err := http.NewRequest("GET", es.baseUrl, nil)
-	if err != nil {
-		return nil, err
+func (es *ElasticSearch) httpDo(request *http.Request) (*http.Response, error) {
+	if es.username != "" || es.password != "" {
+		request.SetBasicAuth(es.username, es.password)
 	}
-	response, err := es.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if response.StatusCode != 200 {
-		return nil, NewElasticSearchError(response)
-	}
-
-	decoder := json.NewDecoder(response.Body)
-	decoder.UseNumber()
-	var body PingResponse
-	if err := decoder.Decode(&body); err != nil {
-		return nil, err
-	}
-
-	return &body, nil
+	return es.httpClient.Do(request)
 }
 
-func (es *ElasticSearch) PUT(path string, body interface{}) (error) {
+func (es *ElasticSearch) Get(url string) (*http.Response, error) {
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return es.httpDo(request)
+}
+
+func (es *ElasticSearch) Post(url string, bodyType string, body io.Reader) (*http.Response, error) {
+	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", bodyType)
+	return es.httpDo(request)
+}
+
+func (es *ElasticSearch) Put(path string, body interface{}) (error) {
 
 	var bodyAsReader io.Reader
 
@@ -113,7 +129,7 @@ func (es *ElasticSearch) PUT(path string, body interface{}) (error) {
 		return err
 	}
 
-	response, err := es.httpClient.Do(request)
+	response, err := es.httpDo(request)
 	if err != nil {
 		return err
 	}
@@ -124,6 +140,27 @@ func (es *ElasticSearch) PUT(path string, body interface{}) (error) {
 	io.Copy(ioutil.Discard, response.Body)
 
 	return nil
+}
+
+func (es *ElasticSearch) Ping() (*PingResponse, error) {
+
+	response, err := es.Get(es.baseUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		return nil, NewElasticSearchError(response)
+	}
+
+	decoder := json.NewDecoder(response.Body)
+	decoder.UseNumber()
+	var body PingResponse
+	if err := decoder.Decode(&body); err != nil {
+		return nil, err
+	}
+
+	return &body, nil
 }
 
 func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
@@ -162,7 +199,7 @@ func (es *ElasticSearch) LoadTemplate(index string) error {
 	}
 	template["template"] = fmt.Sprintf("%s-*", index)
 
-	err = es.PUT(fmt.Sprintf("_template/%s", index), template)
+	err = es.Put(fmt.Sprintf("_template/%s", index), template)
 	if err != nil {
 		return err
 	}
