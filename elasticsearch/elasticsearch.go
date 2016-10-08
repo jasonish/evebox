@@ -35,18 +35,29 @@ import (
 	"strings"
 	"bytes"
 	"io/ioutil"
+	"net"
+	"crypto/tls"
 )
 
 type ElasticSearch struct {
-	baseUrl    string
-	httpClient *http.Client
+	baseUrl          string
+	httpClient       *http.Client
+	DisableCertCheck bool
 }
 
 func New(url string) *ElasticSearch {
-	return &ElasticSearch{
+	es := &ElasticSearch{
 		baseUrl:    url,
 		httpClient: &http.Client{},
 	}
+	es.httpClient.Transport = &http.Transport{DialTLS:es.DialTLS}
+	return es
+}
+
+func (es *ElasticSearch) DialTLS(network string, addr string) (net.Conn, error) {
+	return tls.Dial(network, addr, &tls.Config{
+		InsecureSkipVerify: es.DisableCertCheck,
+	})
 }
 
 func (es *ElasticSearch) Ping() (*PingResponse, error) {

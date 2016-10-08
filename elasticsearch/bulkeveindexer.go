@@ -34,6 +34,8 @@ import (
 	"io"
 	"sync"
 	"github.com/jasonish/evebox/log"
+	"net"
+	"crypto/tls"
 )
 
 const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
@@ -41,34 +43,39 @@ const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
 type BulkEveIndexer struct {
 	// Index prefix to use. For example, if this is set to "logstash",
 	// events will be put in index "logstash-YYYY.MM.DD"
-	IndexPrefix string
+	IndexPrefix      string
 
-	baseUrl     string
+	baseUrl          string
 
-	es          *ElasticSearch
-	httpClient  *http.Client
+	es               *ElasticSearch
+	httpClient       *http.Client
 
-	pipeReader  *io.PipeReader
-	pipeWriter  *io.PipeWriter
+	pipeReader       *io.PipeReader
+	pipeWriter       *io.PipeWriter
 
 	// Number of events queued in flight.
-	queued      uint
+	queued           uint
 
-	wait        sync.WaitGroup
+	wait             sync.WaitGroup
 
-	done        bool
+	done             bool
 
-	channel     chan interface{}
+	disableCertCheck bool
+
+	channel          chan interface{}
 }
 
-func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
+func NewIndexer(es *ElasticSearch, disableCertCheck bool) *BulkEveIndexer {
 
 	indexer := BulkEveIndexer{
 		es:es,
 		baseUrl: es.baseUrl,
 		httpClient:&http.Client{},
+		disableCertCheck:disableCertCheck,
 		channel: make(chan interface{}),
 	}
+
+	indexer.httpClient.Transport = &http.Transport{DialTLS:indexer.DialTLS}
 
 	// Set a default index name.
 	indexer.IndexPrefix = "logstash"
@@ -81,6 +88,12 @@ func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
 	indexer.pipeWriter = pipeWriter
 
 	return &indexer
+}
+
+func (i *BulkEveIndexer) DialTLS(network string, addr string) (net.Conn, error) {
+	return tls.Dial(network, addr, &tls.Config{
+		InsecureSkipVerify: i.disableCertCheck,
+	})
 }
 
 func (i *BulkEveIndexer) CheckForRedirect() {

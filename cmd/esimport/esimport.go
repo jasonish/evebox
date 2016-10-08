@@ -91,6 +91,7 @@ func Main(args []string) {
 	var stdout bool
 	var nogeoip bool
 	var geoIpDatabase string
+	var noCheckCertificate bool
 
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
@@ -105,6 +106,7 @@ func Main(args []string) {
 	flagset.BoolVar(&nogeoip, "no-geoip", false, "Disable GeoIP lookups")
 	flagset.BoolVar(&stdout, "stdout", false, "Print events to stdout")
 	flagset.StringVar(&geoIpDatabase, "geoip-database", "", "Path to GeoIP (v2) database file")
+	flagset.BoolVarP(&noCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check")
 	flagset.Parse(args[1:])
 
 	if verbose {
@@ -131,6 +133,7 @@ func Main(args []string) {
 	}
 
 	es := elasticsearch.New(elasticSearchUri)
+	es.DisableCertCheck = noCheckCertificate
 	response, err := es.Ping()
 	if err != nil {
 		log.Fatal("error: failed to ping Elastic Search:", err)
@@ -163,7 +166,7 @@ func Main(args []string) {
 
 	inputFiles := flagset.Args()
 
-	indexer := elasticsearch.NewIndexer(es)
+	indexer := elasticsearch.NewIndexer(es, noCheckCertificate)
 	indexer.IndexPrefix = index
 
 	reader, err := evereader.New(inputFiles[0])
