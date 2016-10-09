@@ -84,6 +84,14 @@ func (es *ElasticSearch) httpDo(request *http.Request) (*http.Response, error) {
 	return es.httpClient.Do(request)
 }
 
+func (es *ElasticSearch) Head(url string) (*http.Response, error) {
+	request, err := http.NewRequest("HEAD", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return es.httpDo(request)
+}
+
 func (es *ElasticSearch) Get(url string) (*http.Response, error) {
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -164,12 +172,7 @@ func (es *ElasticSearch) Ping() (*PingResponse, error) {
 }
 
 func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
-	request, err := http.NewRequest("HEAD",
-		fmt.Sprintf("%s/_template/%s", es.baseUrl, name), nil)
-	if err != nil {
-		return exists, err
-	}
-	response, err := es.httpClient.Do(request)
+	response, err := es.Head(fmt.Sprintf("%s/_template/%s", es.baseUrl, name))
 	if err != nil {
 		return exists, err
 	}

@@ -38,7 +38,44 @@ import (
 	"github.com/jasonish/evebox/geoip"
 	"encoding/json"
 	"net"
+	"github.com/jasonish/evebox/config"
 )
+
+type Config struct {
+	// The filename to read.
+	InputFilename           string `yaml:"input"`
+
+	// Elastic Search URL.
+	Url                     string `yaml:"url"`
+
+	// Elastic Search index (prefix)
+	Index                   string `yaml:"index"`
+
+	DisableCertificateCheck bool `yaml:"disable-certificate-check"`
+
+	Username                string `yaml:"username"`
+	Password                string `yaml:"password"`
+
+	Bookmark                bool `yaml:"bookmark"`
+	BookmarkPath            string `yaml:"bookmark-path"`
+
+	DisableGeoIp            bool `yaml:"disable-geoip"`
+	GeoIpDatabase           string `yaml:"geoip-database"`
+
+	Verbose                 bool `yaml:"verbose"`
+
+	End                     bool `yaml:"end"`
+
+	BatchSize               uint64 `yaml:"batch-size"`
+
+	// Not exposed in configuration file.
+	stdout                  bool
+	oneshot                 bool
+}
+
+type ConfigWrapper struct {
+	Config Config `yaml:"esimport"`
+}
 
 var RFC1918_Netstrings = []string{
 	"10.0.0.0/8",
@@ -78,68 +115,122 @@ func IsRFC1918(addr string) bool {
 	return false
 }
 
-func Main(args []string) {
-
-	var elasticSearchUri string
-	var oneshot bool
-	var index string
-	var verbose bool
-	var end bool
-	var batchSize uint64
-	var useBookmark bool
-	var bookmarkPath string
-	var stdout bool
-	var nogeoip bool
-	var geoIpDatabase string
-	var noCheckCertificate bool
-	var usernamePassword string
-
+func configure(args []string) Config {
 	flagset = flag.NewFlagSet("import", flag.ExitOnError)
 	flagset.Usage = usage
-	flagset.StringVarP(&elasticSearchUri, "elasticsearch", "e", "", "Elastic Search URL")
-	flagset.BoolVar(&oneshot, "oneshot", false, "One shot mode (exit on EOF)")
-	flagset.StringVar(&index, "index", "evebox", "Elastic Search index prefix")
-	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
-	flagset.BoolVar(&end, "end", false, "Start at end of file")
-	flagset.Uint64Var(&batchSize, "batch-size", 1000, "Batch import size")
-	flagset.BoolVar(&useBookmark, "bookmark", false, "Bookmark location")
-	flagset.StringVar(&bookmarkPath, "bookmark-path", "", "Path to bookmark file")
-	flagset.BoolVar(&nogeoip, "no-geoip", false, "Disable GeoIP lookups")
-	flagset.BoolVar(&stdout, "stdout", false, "Print events to stdout")
-	flagset.StringVar(&geoIpDatabase, "geoip-database", "", "Path to GeoIP (v2) database file")
-	flagset.BoolVarP(&noCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check")
-	flagset.StringVarP(&usernamePassword, "user", "u", "", "Username:password")
+
+	configFilename := flagset.StringP("config", "c", "", "Configuration file")
+	verbose := flagset.BoolP("verbose", "v", false, "Verbose output")
+	elasticSearchUri := flagset.StringP("elasticsearch", "e", "", "Elastic Search URL")
+	username := flagset.StringP("username", "u", "", "Username")
+	password := flagset.StringP("password", "p", "", "Password")
+	noCheckCertificate := flagset.BoolP("no-check-certificate", "k", false, "Disable certificate check")
+	index := flagset.String("index", "evebox", "Elastic Search index prefix")
+	oneshot := flagset.Bool("oneshot", false, "One shot mode (exit on EOF)")
+	stdout := flagset.Bool("stdout", false, "Print events to stdout")
+	end := flagset.Bool("end", false, "Start at end of file")
+	batchSize := flagset.Uint64("batch-size", 1000, "Batch import size")
+	useBookmark := flagset.Bool("bookmark", false, "Bookmark location")
+	bookmarkPath := flagset.String("bookmark-path", "", "Path to bookmark file")
+	noGeoIp := flagset.Bool("no-geoip", false, "Disable GeoIP lookups")
+	geoIpDatabase := flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
 
 	flagset.Parse(args[1:])
 
-	if verbose {
+	if *verbose {
+		log.Info("Setting log level to debug")
 		log.SetLevel(log.DEBUG)
 	}
 
-	if batchSize < 1 {
+	configWrapper := ConfigWrapper{
+	}
+	configWrapper.Config.BatchSize = 1000
+
+	if *configFilename != "" {
+		log.Debug("Loading configuration file %s", *configFilename)
+		err := config.LoadConfigTo(*configFilename, &configWrapper)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	conf := configWrapper.Config
+
+	flagset.Visit(func(flag *flag.Flag) {
+		log.Debug("Found command line argument %s -> %s", flag.Name,
+			flag.Value.String())
+		switch flag.Name {
+		case "elasticsearch":
+			conf.Url = *elasticSearchUri
+		case "username":
+			conf.Username = *username
+		case "password":
+			conf.Password = *password
+		case "no-check-certificate":
+			conf.DisableCertificateCheck = *noCheckCertificate
+		case "index":
+			conf.Index = *index
+		case "oneshot":
+			conf.oneshot = *oneshot
+		case "stdout":
+			conf.stdout = *stdout
+		case "end":
+			conf.End = *end
+		case "batch-size":
+			conf.BatchSize = *batchSize
+		case "bookmark":
+			conf.Bookmark = *useBookmark
+		case "bookmark-path":
+			conf.BookmarkPath = *bookmarkPath
+		case "no-geoip":
+			conf.DisableGeoIp = *noGeoIp
+		case "geoip-database":
+			conf.GeoIpDatabase = *geoIpDatabase
+		case "verbose":
+			conf.Verbose = *verbose
+		case "config":
+		default:
+			log.Notice("Unhandle configuration flag %s", flag.Name)
+		}
+	})
+
+	if len(flagset.Args()) == 1 {
+		conf.InputFilename = flagset.Args()[0]
+	} else if len(flagset.Args()) > 1 {
+		log.Fatal("Multiple input filenames not allowed")
+	}
+
+	return conf
+}
+
+func Main(args []string) {
+
+	conf := configure(args)
+
+	if conf.BatchSize < 1 {
 		log.Fatal("Batch size must be greater than 0")
 	}
 
-	if elasticSearchUri == "" {
+	if conf.Url == "" {
 		log.Error("error: --elasticsearch is a required parameter")
 		usage()
 		os.Exit(1)
 	}
 
-	if len(flagset.Args()) == 0 {
+	if conf.InputFilename == "" {
 		log.Fatal("error: no input file provided")
 	}
 
-	if useBookmark && bookmarkPath == "" {
-		bookmarkPath = fmt.Sprintf("%s.bookmark", flagset.Args()[0])
-		log.Info("Using bookmark file %s", bookmarkPath)
+	if conf.Bookmark && conf.BookmarkPath == "" {
+		conf.BookmarkPath = fmt.Sprintf("%s.bookmark", conf.InputFilename)
+		log.Info("Using bookmark file %s", conf.BookmarkPath)
 	}
 
-	es := elasticsearch.New(elasticSearchUri)
-	es.DisableCertCheck = noCheckCertificate
-	if usernamePassword != "" {
-		if err := es.SetUsernamePassword(usernamePassword); err != nil {
-			log.Fatal("Failed to set username:password: %v", err)
+	es := elasticsearch.New(conf.Url)
+	es.DisableCertCheck = conf.DisableCertificateCheck
+	if conf.Username != "" || conf.Password != "" {
+		if err := es.SetUsernamePassword(conf.Username,
+			conf.Password); err != nil {
+			log.Fatal("Failed to set username and password: %v", err)
 		}
 	}
 	response, err := es.Ping()
@@ -150,21 +241,21 @@ func Main(args []string) {
 		response.Version.Number, response.ClusterName, response.Name)
 
 	// Check if the template exists.
-	templateExists, err := es.CheckTemplate(index)
+	templateExists, err := es.CheckTemplate(conf.Index)
 	if !templateExists {
-		log.Info("Template %s does not exist, creating...", index)
-		err = es.LoadTemplate(index)
+		log.Info("Template %s does not exist, creating...", conf.Index)
+		err = es.LoadTemplate(conf.Index)
 		if err != nil {
 			log.Fatal("Failed to create template:", err)
 		}
 	} else {
-		log.Info("Template %s exists, will not create.", index)
+		log.Info("Template %s exists, will not create.", conf.Index)
 	}
 
 	var geoipdb *geoip.GeoIpDb
 
-	if !nogeoip {
-		geoipdb, err = geoip.NewGeoIpDb(geoIpDatabase)
+	if !conf.DisableGeoIp {
+		geoipdb, err = geoip.NewGeoIpDb(conf.GeoIpDatabase)
 		if err != nil {
 			log.Notice("Failed to load GeoIP database: %v", err)
 		} else {
@@ -172,28 +263,26 @@ func Main(args []string) {
 		}
 	}
 
-	inputFiles := flagset.Args()
+	indexer := elasticsearch.NewIndexer(es, conf.DisableCertificateCheck)
+	indexer.IndexPrefix = conf.Index
 
-	indexer := elasticsearch.NewIndexer(es, noCheckCertificate)
-	indexer.IndexPrefix = index
-
-	reader, err := evereader.New(inputFiles[0])
+	reader, err := evereader.New(conf.InputFilename)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Initialize bookmarking...
 	var bookmarker *evereader.Bookmarker = nil
-	if useBookmark {
+	if conf.Bookmark {
 		bookmarker = &evereader.Bookmarker{
-			Filename: bookmarkPath,
+			Filename: conf.BookmarkPath,
 			Reader: reader,
 		}
-		err := bookmarker.Init(end)
+		err := bookmarker.Init(conf.End)
 		if err != nil {
 			log.Fatal(err)
 		}
-	} else if end {
+	} else if conf.End {
 		log.Info("Jumping to end of file.")
 		err := reader.SkipToEnd()
 		if err != nil {
@@ -260,7 +349,7 @@ func Main(args []string) {
 				}
 			}
 
-			if stdout {
+			if conf.stdout {
 				asJson, err := json.Marshal(event)
 				if err != nil {
 					log.Error("Failed to print event as json: %v", err)
@@ -273,10 +362,10 @@ func Main(args []string) {
 			count++
 		}
 
-		if eof || (count > 0 && count % batchSize == 0) {
+		if eof || (count > 0 && count % conf.BatchSize == 0) {
 			var bookmark *evereader.Bookmark = nil
 
-			if useBookmark {
+			if conf.Bookmark {
 				bookmark = bookmarker.GetBookmark()
 			}
 
@@ -289,7 +378,7 @@ func Main(args []string) {
 					response.Errors)
 			}
 
-			if useBookmark {
+			if conf.Bookmark {
 				bookmarker.WriteBookmark(bookmark)
 			}
 		}
@@ -316,7 +405,7 @@ func Main(args []string) {
 		}
 
 		if eof {
-			if oneshot {
+			if conf.oneshot {
 				break;
 			} else {
 				time.Sleep(1 * time.Second)
@@ -326,7 +415,7 @@ func Main(args []string) {
 
 	totalTime := time.Since(startTime)
 
-	if oneshot {
+	if conf.oneshot {
 		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
 			uint64(float64(count) / totalTime.Seconds()))
 	}

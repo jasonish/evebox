@@ -59,3 +59,11 @@ func LoadConfig(filename string) (*Config, error) {
 	}
 	return &config, nil
 }
+
+func LoadConfigTo(filename string, output interface{}) error {
+	buf, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(buf, output)
+}
