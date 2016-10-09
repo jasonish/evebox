@@ -31,6 +31,7 @@ func FindDbPath() (string) {
 
 type GeoIp struct {
 	Ip            string `json:"ip,omitempty"`
+	Ip6           string `json:"ip6,omitempty"`
 	ContinentCode string `json:"continent_code,omitempty"`
 	CountryCode2  string `json:"country_code2,omitempty"`
 	CountryName   string `json:"country_name,omitempty"`
@@ -90,8 +91,15 @@ func (g *GeoIpDb) BuildDate() time.Time {
 func (g *GeoIpDb) LookupString(addr string) (GeoIp, error) {
 	ip := net.ParseIP(addr)
 
-	result := GeoIp{
-		Ip: addr,
+	result := GeoIp{}
+
+	// Logstash/elasticsearch template work-around - the template for
+	// logstash expects IPv4 addresses in the geoip section, so for now
+	// put IPv6 addresses in the "ip6" field.
+	if ip.To4() != nil {
+		result.Ip = addr;
+	} else {
+		result.Ip6 = addr
 	}
 
 	if g.dbType == "GeoLite2-Country" {
