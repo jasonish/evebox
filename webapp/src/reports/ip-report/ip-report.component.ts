@@ -10,6 +10,13 @@ import {loadingAnimation} from "../../animations";
 import moment = require("moment");
 import {humanizeFileSize} from "../../humanize.service";
 
+function termQuery(type:string, field:string, value:string) {
+    let term = {};
+    term[type] = {};
+    term[type][field] = value;
+    return term;
+}
+
 @Component({
     selector: "requestedHostnamesForIp",
     template: `
@@ -39,6 +46,12 @@ export class RequestedHostnamesForIpComponent implements OnInit, OnDestroy {
 
     refresh() {
 
+        let ipTermType = "term";
+
+        if (this.address[this.address.length - 1] == '.') {
+            ipTermType = "prefix";
+        }
+
         console.log("Loading top DNS requests for " + this.address);
 
         let now = moment();
@@ -51,7 +64,7 @@ export class RequestedHostnamesForIpComponent implements OnInit, OnDestroy {
                         and: [
                             {term: {"event_type": "dns"}},
                             {term: {"dns.type": "query"}},
-                            {term: {"src_ip.raw": this.address}},
+                            termQuery(ipTermType, "src_ip", this.address),
                         ]
                     }
                 }
@@ -180,6 +193,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
         this.loading++;
 
+        let ipTermType = "term";
+
+        if (this.ip[this.ip.length - 1] == '.') {
+            ipTermType = "prefix";
+        }
+
         let query = {
             query: {
                 filtered: {
@@ -188,7 +207,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                             {exists: {field: "event_type"}},
                             {term: {"event_type": "dns"}},
                             {term: {"dns.type.raw": "answer"}},
-                            {term: {"dns.rdata.raw": this.ip}},
+                            termQuery(ipTermType, "dns.rdata", this.ip),
                         ]
                     }
                 }
@@ -233,6 +252,13 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
         this.loading++;
 
+        let ipTermType = "term";
+
+        if (this.ip[this.ip.length - 1] == '.') {
+            console.log("Using prefix query.")
+            ipTermType = "prefix";
+        }
+
         let query = {
             query: {
                 filtered: {
@@ -241,8 +267,8 @@ export class IpReportComponent implements OnInit, OnDestroy {
                             {exists: {field: "event_type"}},
                             {
                                 or: [
-                                    {term: {"src_ip.raw": this.ip}},
-                                    {term: {"dest_ip.raw": this.ip}}
+                                    termQuery(ipTermType, "src_ip", this.ip),
+                                    termQuery(ipTermType, "dest_ip", this.ip),
                                 ]
                             }
                         ]
@@ -274,7 +300,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         and: [
                             {term: {"event_type": "http"}},
-                            {term: {"src_ip.raw": this.ip}},
+                            termQuery(ipTermType, "src_ip", this.ip),
                         ]
                     },
                     aggs: {
@@ -299,9 +325,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     },
                     aggs: {
                         dest: {
-                            filter: {
-                                term: {"dest_ip.raw": this.ip}
-                            },
+                            filter: termQuery(ipTermType, "dest_ip", this.ip),
                             aggs: {
                                 hostnames: {
                                     terms: {
@@ -319,7 +343,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         and: [
                             {term: {"event_type": "tls"}},
-                            {term: {"dest_ip.raw": this.ip}},
+                            termQuery(ipTermType, "dest_ip", this.ip),
                         ]
                     },
                     aggs: {
@@ -339,9 +363,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     },
                     aggs: {
                         asSource: {
-                            filter: {
-                                term: {"src_ip.raw": this.ip}
-                            },
+                            filter: termQuery(ipTermType, "src_ip", this.ip),
                             aggs: {
                                 versions: {
                                     terms: {
@@ -364,9 +386,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                             }
                         },
                         asDest: {
-                            filter: {
-                                term: {"dest_ip.raw": this.ip}
-                            },
+                            filter: termQuery(ipTermType, "dest_ip", this.ip),
                             aggs: {
                                 versions: {
                                     terms: {
@@ -386,9 +406,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     aggs: {
                         // SSH connections as client.
                         sources: {
-                            filter: {
-                                term: {"src_ip.raw": this.ip}
-                            },
+                            filter: termQuery(ipTermType, "src_ip", this.ip),
                             aggs: {
                                 outboundClientProtoVersions: {
                                     terms: {
@@ -421,9 +439,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         },
                         // SSH connections as server.
                         dests: {
-                            filter: {
-                                term: {"dest_ip.raw": this.ip}
-                            },
+                            filter: termQuery(ipTermType, "dest_ip", this.ip),
                             aggs: {
                                 inboundClientProtoVersions: {
                                     terms: {
@@ -461,7 +477,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         and: [
                             {term: {"event_type": "flow"}},
-                            {term: {"src_ip.raw": this.ip}},
+                            termQuery(ipTermType, "src_ip", this.ip),
                         ]
                     },
                     aggs: {
@@ -483,7 +499,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         and: [
                             {term: {"event_type": "flow"}},
-                            {term: {"dest_ip.raw": this.ip}},
+                            termQuery(ipTermType, "dest_ip", this.ip),
                         ]
                     },
                     aggs: {
