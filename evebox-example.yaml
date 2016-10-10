@@ -34,15 +34,15 @@ esimport:
   input: /var/log/suricata/eve.json
 
   # Elastic Search URL
-  url: https://localhost:8000
+  url: http://localhost:9200
 
   # Elastic Search username and password.
-  username: admin
-  password: password
+  #username: admin
+  #password: password
 
   # Elastic Search index. -%{YYYY.MM.DD) will be appended, so this is just the
   # prefix.
-  index: logstash
+  index: evebox
 
   # Disable TLS certificate check.
   #disable-certificate-check: true
