@@ -42,12 +42,6 @@ import moment = require("moment");
 
   <loading-spinner [loading]="loading > 0"></loading-spinner>
 
-  <div *ngIf="noEvents" style="text-align: center;">
-    <hr/>
-    No netflow events found.
-    <hr/>
-  </div>
-
   <div class="row">
     <div class="col-md-6 col-sm-6">
       <button type="button" class="btn btn-default" (click)="refresh()">
@@ -60,6 +54,12 @@ import moment = require("moment");
   </div>
 
   <br/>
+
+  <div *ngIf="noEvents" style="text-align: center;">
+    <hr/>
+    No netflow events found.
+    <hr/>
+  </div>
 
   <metrics-graphic *ngIf="eventsOverTime"
                    graphId="eventsOverTime"
