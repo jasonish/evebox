@@ -58,13 +58,17 @@ import moment = require("moment");
                    [data]="eventsOverTime"></metrics-graphic>
 
   <div class="row">
-    <div class="col-md-12">
-
+    <div class="col-md-6">
       <report-data-table *ngIf="signatureRows"
                          title="Top Alert Signatures"
                          [rows]="signatureRows"
                          [headers]="['#', 'Signature']"></report-data-table>
-
+    </div>
+    <div class="col-md-6">
+      <report-data-table *ngIf="categoryRows"
+                         title="Top Alert Categories"
+                         [rows]="categoryRows"
+                         [headers]="['#', 'Category']"></report-data-table>
     </div>
   </div>
 
@@ -83,6 +87,21 @@ import moment = require("moment");
     </div>
   </div>
 
+  <div class="row">
+    <div class="col-md-6">
+      <report-data-table *ngIf="srcPorts"
+                         title="Top Alerting Source Ports"
+                         [rows]="srcPorts"
+                         [headers]="['#', 'Port']"></report-data-table>
+    </div>
+    <div class="col-md-6">
+      <report-data-table *ngIf="destPorts"
+                         title="Top Alerting Destination Ports"
+                         [rows]="destPorts"
+                         [headers]="['#', 'Port']"></report-data-table>
+    </div>
+  </div>
+
 </div>`,
     animations: [
         loadingAnimation,
@@ -95,6 +114,10 @@ export class AlertReportComponent implements OnInit, OnDestroy {
     private sourceRows:any[];
     private destinationRows:any[];
     private signatureRows:any[];
+    private categoryRows:any[];
+
+    private srcPorts:any[];
+    private destPorts:any[];
 
     private loading:number = 0;
 
@@ -132,18 +155,18 @@ export class AlertReportComponent implements OnInit, OnDestroy {
         this.subTracker.unsubscribe();
     }
 
-    mapAggregation(response:any, name:string):any[] {
+    mapTermsAggregation(response:any, name:string):any[] {
         return response.aggregations[name].buckets.map((item:any) => {
             return {
                 count: item.doc_count,
-                key: item.key
-            }
+                key: item.key,
+            };
         });
     }
 
     refresh() {
 
-        let size:number = 20;
+        let size:number = 10;
 
         this.loading++;
 
@@ -157,7 +180,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
         }).then(
             (response:any) => {
 
-                this.sourceRows = this.mapAggregation(response, "sources")
+                this.sourceRows = this.mapTermsAggregation(response, "sources")
                     .map((row:any) => {
                         return {
                             count: row.count,
@@ -165,7 +188,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                         }
                     });
 
-                this.destinationRows = this.mapAggregation(response, "destinations")/**/
+                this.destinationRows = this.mapTermsAggregation(response, "destinations")/**/
                     .map((row:any) => {
                         return {
                             count: row.count,
@@ -173,7 +196,11 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                         }
                     });
 
-                this.signatureRows = this.mapAggregation(response, "signatures");
+                this.srcPorts = this.mapTermsAggregation(response, "src_ports");
+                this.destPorts = this.mapTermsAggregation(response, "dest_ports");
+
+                this.signatureRows = this.mapTermsAggregation(response, "signatures");
+                this.categoryRows = this.mapTermsAggregation(response, "categories");
 
                 this.eventsOverTime = response.aggregations.events_over_time.buckets.map((x:any) => {
                     return {

@@ -212,10 +212,28 @@ export class ReportsService {
                         size: size
                     }
                 },
+                src_ports: {
+                    terms: {
+                        field: "src_port",
+                        size: size,
+                    }
+                },
+                dest_ports: {
+                    terms: {
+                        field: "dest_port",
+                        size: size,
+                    }
+                },
                 signatures: {
                     terms: {
                         field: "alert.signature.raw",
                         size: size
+                    }
+                },
+                categories: {
+                    terms: {
+                        field: "alert.category.raw",
+                        size: size,
                     }
                 }
             }
