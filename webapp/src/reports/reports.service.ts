@@ -98,6 +98,14 @@ export class ReportsService {
             }
         };
 
+        if (options.queryString) {
+            query.query.filtered.query = {
+                query_string: {
+                    query: options.queryString
+                }
+            }
+        }
+
         this.elasticsearch.addTimeRangeFilter(query, now, range);
 
         return this.elasticsearch.search(query);
@@ -152,6 +160,14 @@ export class ReportsService {
                 }
             }
         };
+
+        if (options.queryString) {
+            query.query.filtered.query = {
+                query_string: {
+                    query: options.queryString
+                }
+            }
+        }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
         this.addEventsOverTimeAggregation(query, now, range);

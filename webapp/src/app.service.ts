@@ -151,7 +151,7 @@ export class AppService {
             }
         });
 
-        this.router.navigate([this.getRoute(), newParams], {
+        this.router.navigate([activatedRoute.routeConfig.path, newParams], {
             queryParams: newQueryParams
         });
     }

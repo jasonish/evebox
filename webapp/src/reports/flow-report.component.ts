@@ -25,19 +25,34 @@
  */
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
+import {ActivatedRoute, Params} from "@angular/router";
 import {ReportsService} from "./reports.service";
-import {EveboxSubscriptionService} from "../subscription.service";
 import {AppService, AppEvent, AppEventCode} from "../app.service";
 import {EveboxHumanizeService} from "../humanize.service";
 import {TopNavService} from "../topnav.service";
+import {ElasticSearchService} from "../elasticsearch.service";
+import {loadingAnimation} from "../animations";
+import {EveboxSubscriptionTracker} from "../subscription-tracker";
 
 import moment = require("moment");
-import {ElasticSearchService} from "../elasticsearch.service";
 
 @Component({
-    template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
+    template: `<div [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
   <loading-spinner [loading]="loading > 0"></loading-spinner>
+
+  <div class="row">
+    <div class="col-md-6 col-sm-6">
+      <button type="button" class="btn btn-default" (click)="refresh()">
+        Refresh
+      </button>
+    </div>
+    <div class="col-md-6 col-sm-6">
+      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+    </div>
+  </div>
+
+  <br/>
 
   <metrics-graphic *ngIf="eventsOverTime"
                    graphId="eventsOverTime"
@@ -72,6 +87,9 @@ import {ElasticSearchService} from "../elasticsearch.service";
   </div>
 
 </div>`,
+    animations: [
+        loadingAnimation,
+    ]
 })
 export class FlowReportComponent implements OnInit, OnDestroy {
 
@@ -84,8 +102,12 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
     private loading:number = 0;
 
+    private queryString:string = "";
+
+    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+
     constructor(private appService:AppService,
-                private ss:EveboxSubscriptionService,
+                private route:ActivatedRoute,
                 private reportsService:ReportsService,
                 private topNavService:TopNavService,
                 private elasticsearch:ElasticSearchService,
@@ -94,9 +116,12 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
 
-        this.refresh();
+        this.subTracker.subscribe(this.route.params, (params:Params) => {
+            this.queryString = params["q"] || "";
+            this.refresh();
+        });
 
-        this.ss.subscribe(this, this.appService, (event:AppEvent) => {
+        this.subTracker.subscribe(this.appService, (event:AppEvent) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -105,7 +130,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy() {
-        this.ss.unsubscribe(this);
+        this.subTracker.unsubscribe();
     }
 
     refresh() {
@@ -158,6 +183,14 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 }
             }
         };
+
+        if (this.queryString && this.queryString != "") {
+            query.query.filtered.query = {
+                query_string: {
+                    query: this.queryString
+                }
+            }
+        }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
         this.reportsService.addEventsOverTimeAggregation(query, now, range);

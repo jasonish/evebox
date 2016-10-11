@@ -25,18 +25,20 @@
  */
 
 import {Component, OnInit, OnDestroy} from "@angular/core";
+import {Params, ActivatedRoute} from "@angular/router";
 import {ReportsService} from "./reports.service";
-import {EveboxSubscriptionService} from "../subscription.service";
 import {AppService, AppEvent, AppEventCode} from "../app.service";
 import {ToastrService} from "../toastr.service";
 import {EveboxHumanizeService} from "../humanize.service";
 import {TopNavService} from "../topnav.service";
+import {ElasticSearchService} from "../elasticsearch.service";
+import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {loadingAnimation} from "../animations";
 
 import moment = require("moment");
-import {ElasticSearchService} from "../elasticsearch.service";
 
 @Component({
-    template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
+    template: `<div [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
   <loading-spinner [loading]="loading > 0"></loading-spinner>
 
@@ -45,6 +47,19 @@ import {ElasticSearchService} from "../elasticsearch.service";
     No netflow events found.
     <hr/>
   </div>
+
+  <div class="row">
+    <div class="col-md-6 col-sm-6">
+      <button type="button" class="btn btn-default" (click)="refresh()">
+        Refresh
+      </button>
+    </div>
+    <div class="col-md-6 col-sm-6">
+      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+    </div>
+  </div>
+
+  <br/>
 
   <metrics-graphic *ngIf="eventsOverTime"
                    graphId="eventsOverTime"
@@ -104,6 +119,9 @@ import {ElasticSearchService} from "../elasticsearch.service";
   </div>
 
 </div>`,
+    animations: [
+        loadingAnimation,
+    ]
 })
 export class NetflowReportComponent implements OnInit, OnDestroy {
 
@@ -120,13 +138,17 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     private loading:number = 0;
 
+    private queryString:string = "";
+
     // A flag that will be set to true if not events to report on were found.
     private noEvents:boolean = false;
 
-    constructor(private ss:EveboxSubscriptionService,
-                private reportsService:ReportsService,
+    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+
+    constructor(private reportsService:ReportsService,
                 private elasticsearch:ElasticSearchService,
                 private appService:AppService,
+                private route:ActivatedRoute,
                 private toastr:ToastrService,
                 private topNavService:TopNavService,
                 private humanize:EveboxHumanizeService) {
@@ -134,9 +156,12 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
 
-        this.refresh();
+        this.subTracker.subscribe(this.route.params, (params:Params) => {
+            this.queryString = params["q"] || "";
+            this.refresh();
+        });
 
-        this.ss.subscribe(this, this.appService, (event:AppEvent) => {
+        this.subTracker.subscribe(this.appService, (event:AppEvent) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -145,7 +170,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy() {
-        this.ss.unsubscribe(this);
+        this.subTracker.unsubscribe();
     }
 
     refresh() {
@@ -287,6 +312,14 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 },
             }
         };
+
+        if (this.queryString && this.queryString != "") {
+            query.query.filtered.query = {
+                query_string: {
+                    query: this.queryString
+                }
+            }
+        }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
         this.reportsService.addEventsOverTimeAggregation(query, now, range);

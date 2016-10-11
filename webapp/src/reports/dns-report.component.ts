@@ -28,6 +28,8 @@ import {Component, OnDestroy, OnInit} from "@angular/core";
 import {ReportsService} from "./reports.service";
 import {AppService, AppEventCode} from "../app.service";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
+import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {ActivatedRoute, Params} from "@angular/router";
 
 import moment = require("moment");
 
@@ -35,6 +37,19 @@ import moment = require("moment");
     template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
 
   <loading-spinner [loading]="loading > 0"></loading-spinner>
+
+  <div class="row">
+    <div class="col-md-6 col-sm-6">
+      <button type="button" class="btn btn-default" (click)="refresh()">
+        Refresh
+      </button>
+    </div>
+    <div class="col-md-6 col-sm-6">
+      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+    </div>
+  </div>
+
+  <br/>
 
   <metrics-graphic *ngIf="eventsOverTime"
                    graphId="dnsRequestsOverTime"
@@ -102,26 +117,26 @@ export class DNSReportComponent implements OnInit, OnDestroy {
     private topServers:any[];
     private topClients:any[];
 
-    private dispatcherSubscription:any;
-    private destroyed:boolean = false;
-
     private loading:number = 0;
 
-    constructor(private reports:ReportsService,
+    private queryString:string = "";
+
+    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+
+    constructor(private route:ActivatedRoute,
+                private reports:ReportsService,
                 private appService:AppService,
                 private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
     }
 
     ngOnInit() {
 
-        this.reports.showWarning();
+        this.subTracker.subscribe(this.route.params, (params:Params) => {
+            this.queryString = params["q"] || "";
+            this.refresh();
+        });
 
-        this.refresh();
-
-        this.dispatcherSubscription = this.appService.subscribe((event:any) => {
-            if (this.destroyed) {
-                return;
-            }
+        this.subTracker.subscribe(this.appService, (event:any) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -130,8 +145,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy() {
-        this.destroyed = true;
-        this.dispatcherSubscription.unsubscribe();
+        this.subTracker.unsubscribe();
     }
 
     mapAddressAggregation(items:any[]) {
@@ -167,7 +181,10 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         this.loading++;
 
-        this.reports.dnsResponseReport({size: size}).then((response:any) => {
+        this.reports.dnsResponseReport({
+            size: size,
+            queryString: this.queryString,
+        }).then((response:any) => {
 
             this.topRdata = this.mapAddressAggregation(response.aggregations.top_rdata.buckets);
             this.topRcodes = this.mapAggregation(response.aggregations.top_rcode.buckets);
@@ -178,7 +195,10 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         this.loading++;
 
-        this.reports.dnsRequestReport({size: size}).then((response:any) => {
+        this.reports.dnsRequestReport({
+            size: size,
+            queryString: this.queryString,
+        }).then((response:any) => {
 
             this.eventsOverTime = response.aggregations.events_over_time.buckets.map((item:any) => {
                 return {

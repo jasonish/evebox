@@ -54,8 +54,8 @@ import {ToastrService} from "./toastr.service";
 import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {
-    IpReportComponent,
-    RequestedHostnamesForIpComponent
+IpReportComponent,
+RequestedHostnamesForIpComponent
 } from "./reports/ip-report/ip-report.component";
 import {EveboxHumanizeService} from "./humanize.service";
 import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
@@ -82,6 +82,7 @@ import {EveBoxGenericPrettyPrinter} from "./pipes/generic-pretty-printer.pipe";
 import {EveboxJsonPrettyPipe} from "./pipes/json.pipe";
 import {EveboxMapToItemsPipe} from "./pipes/maptoitems.pipe";
 import {EveboxBase64DecodePipe} from "./pipes/base64decode.pipe";
+import {EveboxFilterInputComponent} from "./shared/filter-input.component";
 import {EveboxFormatTimestampPipe} from "./pipes/format-timestamp.pipe";
 import {AceEditor} from "./ace-editor.component";
 import {EveboxSearchLinkComponent} from "./search-link.component";
@@ -133,6 +134,7 @@ switch (localStorage.theme) {
         EveboxMetricsGraphicComponent,
         EveboxReportDataTable,
         IpReportComponent,
+        EveboxFilterInputComponent,
 
         RequestedHostnamesForIpComponent,
 

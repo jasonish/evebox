@@ -28,11 +28,11 @@ import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ReportsService} from "./reports.service";
 import {AppService, AppEventCode} from "../app.service";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
-
-import moment = require("moment");
 import {ActivatedRoute, Params} from "@angular/router";
 import {EveboxSubscriptionService} from "../subscription.service";
 import {loadingAnimation} from "../animations";
+import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import moment = require("moment");
 
 @Component({
     template: `<div [@loadingState]="(loading > 0) ? 'true' : 'false'">
@@ -40,9 +40,13 @@ import {loadingAnimation} from "../animations";
   <loading-spinner [loading]="loading > 0"></loading-spinner>
 
   <div class="row">
-    <div class="col-md-12">
-      <button type="button" class="btn btn-default" (click)="refresh()">Refresh
+    <div class="col-md-6 col-sm-6">
+      <button type="button" class="btn btn-default" (click)="refresh()">
+        Refresh
       </button>
+    </div>
+    <div class="col-md-6 col-sm-6">
+      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
     </div>
   </div>
 
@@ -92,11 +96,11 @@ export class AlertReportComponent implements OnInit, OnDestroy {
     private destinationRows:any[];
     private signatureRows:any[];
 
-    private dispatcherSubscription:any;
-
     private loading:number = 0;
 
     private queryString:string = "";
+
+    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
     constructor(private appService:AppService,
                 private ss:EveboxSubscriptionService,
@@ -107,19 +111,16 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
 
-        this.reports.showWarning();
-
         if (this.route.snapshot.queryParams["q"]) {
             this.queryString = this.route.snapshot.queryParams["q"];
         }
 
-        this.ss.subscribe(this, this.route.params, (params:Params) => {
-            this.queryString = params["q"]|| "";
+        this.subTracker.subscribe(this.route.params, (params:Params) => {
+            this.queryString = params["q"] || "";
             this.refresh();
         });
 
-
-        this.dispatcherSubscription = this.appService.subscribe((event:any) => {
+        this.subTracker.subscribe(this.appService, (event:any) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -128,7 +129,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy() {
-        this.dispatcherSubscription.unsubscribe();
+        this.subTracker.unsubscribe();
     }
 
     mapAggregation(response:any, name:string):any[] {
@@ -155,8 +156,6 @@ export class AlertReportComponent implements OnInit, OnDestroy {
             queryString: this.queryString
         }).then(
             (response:any) => {
-
-                console.log(response);
 
                 this.sourceRows = this.mapAggregation(response, "sources")
                     .map((row:any) => {
