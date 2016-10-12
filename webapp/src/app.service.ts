@@ -26,6 +26,7 @@
 
 import {Injectable, EventEmitter} from "@angular/core";
 import {Router, Params, ActivatedRoute} from "@angular/router";
+import {MousetrapService} from "./mousetrap.service";
 
 declare var localStorage:any;
 
@@ -50,7 +51,12 @@ export class AppService {
     private lastRouteEvent:number = new Date().getTime() / 1000;
 
     constructor(private router:Router,
-                private route:ActivatedRoute) {
+                private route:ActivatedRoute,
+                private mousetrap:MousetrapService) {
+
+        mousetrap.bindAny(this, () => {
+            this.resetIdleTime();
+        });
 
         // Setup idle check interval.
         setInterval(() => this.dispatchIdleEvent(), 1000);
@@ -63,7 +69,6 @@ export class AppService {
     }
 
     resetIdleTime() {
-        console.log("Resetting idle time.");
         this.lastRouteEvent = new Date().getTime() / 1000;
     }
 

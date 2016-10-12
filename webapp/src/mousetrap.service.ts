@@ -28,12 +28,33 @@ import {Injectable, NgZone} from "@angular/core";
 
 var mousetrap = require("mousetrap/mousetrap");
 
+declare var Mousetrap:any;
+
 @Injectable()
 export class MousetrapService {
 
     private bindings:any[] = [];
+    private anyBindings:any[] = [];
 
     constructor(private ngZone:NgZone) {
+
+        let mouseTrapService = this;
+
+        Mousetrap.prototype.handleKey = function() {
+            let self = this;
+            self._handleKey.apply(this, arguments);
+
+            mouseTrapService.anyBindings.forEach(binding => {
+                binding.handler();
+            });
+        }
+    }
+
+    bindAny(component:any, handler:any) {
+        this.anyBindings.push({
+            component: component,
+            handler: handler,
+        });
     }
 
     bind(component:any, key:string, handler:any) {

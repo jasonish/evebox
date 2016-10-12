@@ -390,7 +390,7 @@ export class ElasticSearchService {
                     }
                 }
             },
-            size: 1000,
+            size: 500,
             sort: [
                 {"@timestamp": {order: "desc"}}
             ],

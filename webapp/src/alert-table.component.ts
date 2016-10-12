@@ -43,7 +43,7 @@ declare var $:any;
     selector: "alert-table",
     templateUrl: "./alert-table.component.html",
 })
-export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked {
+export class AlertTableComponent implements OnInit, OnDestroy {
 
     @Input() private rows:any[] = [];
     @Output() private rowClicked:EventEmitter<any> = new EventEmitter<any>();
@@ -74,14 +74,6 @@ export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked 
 
     ngOnDestroy() {
         this.mousetrap.unbind(this);
-    }
-
-    ngAfterViewChecked() {
-        $(".dropdown-toggle").dropdown();
-        $('[data-toggle="tooltip"]').tooltip({
-            container: 'body',
-            delay: {show: 500},
-        });
     }
 
     openDropdownMenu() {

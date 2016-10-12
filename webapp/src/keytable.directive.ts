@@ -43,28 +43,16 @@ declare var window:any;
 @Directive({
     selector: "[eveboxKeyTable]"
 })
-export class KeyTableDirective implements OnInit, OnDestroy, OnChanges, AfterViewChecked {
+export class KeyTableDirective implements OnInit, OnDestroy {
 
     @Input() private rows:any[] = [];
     @Input() activeRow:number = 0;
     @Output() activeRowChange:EventEmitter<number> = new EventEmitter<number>();
 
-    private doScrollToActive:boolean = false;
-
     constructor(private el:ElementRef, private mousetrap:MousetrapService) {
     }
 
-    ngAfterViewChecked() {
-        if (this.doScrollToActive) {
-            console.log("KeyTableDirective.ngAfterViewChecked: scrolling to active row.");
-            this.scrollToActive();
-            this.doScrollToActive = false;
-        }
-    }
-
     ngOnInit():any {
-
-        console.log(`KeyTableDirective.ngOnInit`);
 
         this.mousetrap.bind(this, "j", () => {
             if (this.getActiveRow() < this.getRowCount() - 1) {
@@ -92,42 +80,40 @@ export class KeyTableDirective implements OnInit, OnDestroy, OnChanges, AfterVie
         this.mousetrap.unbind(this);
     }
 
-    ngOnChanges(changes:{}):any {
-
-        console.log(`KeyTableDirective.ngOnChanges: activeRow: ${this.activeRow}.`);
-
-        this.doScrollToActive = true;
-
-        // Check that the active row is still within range of the rows,
-        // decrementing it if necessary.
-        if (this.getActiveRow() > 0) {
-            if (this.getActiveRow() >= this.getRowCount()) {
-                this.setActiveRow(this.getRowCount() - 1);
-            }
-        }
-    }
-
     scrollToActive() {
 
-        console.log(`Scrolling to row ${this.activeRow}.`);
+        let error = 175;
+
+        let el = this.el.nativeElement.getElementsByTagName("tbody")[0]
+            .children[this.activeRow];
+
+        let elOffset = el.offsetTop;
+        let elHeight = el.scrollHeight;
+
+        let windowOffset = window.pageYOffset;
+        let windowHeight = window.innerHeight;
+
+        let elBottom = elOffset + elHeight;
+        let windowBottom = windowOffset + windowHeight;
 
         if (this.activeRow == 0) {
             window.scrollTo(0, 0);
         }
-        else {
-            let activeElement = jQuery(this.el.nativeElement)
-                .find("tbody")
-                .children()[this.activeRow];
-            if (activeElement) {
-                console.log(`KeyTableDirective.scrollToActive: offsetTop=${activeElement.offsetTop}.`)
+        else if (elBottom > windowBottom - error - (windowHeight * 0.20)) {
+            let newOffset = windowOffset + elHeight;
 
-                // Do this in a delay, otherwise it doesn't always happen.
-                setTimeout(() => {
-                    jQuery(window).scrollTop(activeElement.offsetTop)
-                }, 0);
+            // The first case gives up somewhat of a smooth scroll. But if it
+            // doesn't get the active element into view, we need to jump to
+            // which is handled by the else.
+            if (elBottom < newOffset + windowHeight) {
+                window.scrollTo(0, windowOffset + elHeight);
             }
             else {
-                console.log("KeyTableDirective.scrollToActive: element is null.");
+                window.scrollTo(0, elBottom);
+            }
+        } else if (windowOffset > 0) {
+            if (elOffset < windowOffset + (windowHeight * 0.10)) {
+                window.scrollTo(0, Math.min(elOffset, windowOffset - elHeight));
             }
         }
     }

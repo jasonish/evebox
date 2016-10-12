@@ -46,9 +46,6 @@ export class AppComponent implements OnInit {
     }
 
     ngOnInit() {
-        window.addEventListener('keypress', () => {
-            this.appService.resetIdleTime();
-        });
         window.addEventListener("click", () => {
             this.appService.resetIdleTime();
         }, true);

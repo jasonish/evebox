@@ -36,11 +36,14 @@ import {TopNavService} from "./topnav.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {loadingAnimation} from "./animations";
 
+declare var window:any;
+
 export interface AlertsState {
     rows:any[];
     activeRow:number;
     route:string,
     queryString:string;
+    scrollOffset:number;
 }
 
 @Component({
@@ -142,6 +145,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
             activeRow: this.activeRow,
             queryString: this.queryString,
             route: this.appService.getRoute(),
+            scrollOffset: window.pageYOffset,
         };
         return state;
     }
@@ -234,6 +238,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         this.rows = rows;
         this.activeRow = activeRow;
+
+        setTimeout(() => {
+            window.scrollTo(0, state.scrollOffset)
+        }, 0);
 
         return true;
     }
