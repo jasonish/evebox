@@ -43,7 +43,7 @@ declare var window:any;
 @Directive({
     selector: "[eveboxKeyTable]"
 })
-export class KeyTableDirective implements OnInit, OnDestroy {
+export class KeyTableDirective implements OnInit, OnDestroy, OnChanges {
 
     @Input() private rows:any[] = [];
     @Input() activeRow:number = 0;
@@ -78,6 +78,15 @@ export class KeyTableDirective implements OnInit, OnDestroy {
 
     ngOnDestroy():any {
         this.mousetrap.unbind(this);
+    }
+
+    ngOnChanges() {
+        try {
+            this.scrollToActive()
+        }
+        catch (err) {
+
+        }
     }
 
     scrollToActive() {
@@ -125,7 +134,8 @@ export class KeyTableDirective implements OnInit, OnDestroy {
     setActiveRow(activeRow:number) {
         this.activeRow = activeRow;
         this.activeRowChange.emit(this.activeRow);
-        this.scrollToActive();
+
+        // Let onChanges scroll to active row...
     }
 
     getRowCount():number {
