@@ -187,8 +187,9 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     escalateAndArchiveEvent(row:any) {
-        this.toggleEscalatedState(row);
-        this.archiveAlertGroup(row);
+        this.archiveAlertGroup(row).then(() => {
+            this.toggleEscalatedState(row);
+        });
     }
 
     ngOnDestroy():any {
@@ -346,7 +347,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
             this.removeRow(row);
         }
 
-        this.elasticSearchService.archiveAlertGroup(row.event);
+        return this.elasticSearchService.archiveAlertGroup(row.event);
     }
 
     archiveEvents() {
@@ -361,6 +362,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     removeRow(row:any) {
+        console.log("Removing row.")
         this.rows = this.rows.filter((_row:any) => {
             if (_row == row) {
                 return false;

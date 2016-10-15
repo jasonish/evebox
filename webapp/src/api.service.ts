@@ -9,6 +9,12 @@ export class ApiService {
     constructor(private http:Http) {
     }
 
+    post(path:string, body:any) {
+        return this.http.post(this.baseUrl + path, JSON.stringify(body))
+            .map((res:Response) => res.json())
+            .toPromise();
+    }
+
     getVersion() {
         return this.http.get(this.baseUrl + "api/version")
             .map((res:Response) => res.json())

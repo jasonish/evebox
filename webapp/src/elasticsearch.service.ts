@@ -30,6 +30,7 @@ import {TopNavService} from "./topnav.service";
 import {AppService} from "./app.service";
 import {ConfigService} from "./config.service";
 import {ToastrService} from "./toastr.service";
+import {ApiService} from "./api.service";
 
 import moment = require("moment");
 var queue = require("queue");
@@ -57,9 +58,10 @@ export class ElasticSearchService {
     private defaultBatchSize:number = 1000;
     private url:string = window.location.pathname + "elasticsearch";
     private index:string;
-    private jobs = queue({concurrency: 16});
+    private jobs = queue({concurrency: 4});
 
     constructor(private http:Http,
+                private api:ApiService,
                 private topNavService:TopNavService,
                 private appService:AppService,
                 private config:ConfigService,
@@ -103,6 +105,7 @@ export class ElasticSearchService {
             this.jobs.push((cb:any) => {
                 func().then(() => {
                     cb();
+                    resolve();
                 });
             });
 
@@ -118,15 +121,21 @@ export class ElasticSearchService {
         // Make sure options is at least an empty object.
         options = options || {};
 
-        let query = {
+        let query:any = {
             query: {
-                filtered: {
+                bool: {
                     filter: {
                         and: [
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "alert"}},
-                            {range: {timestamp: {gte: alertGroup.oldestTs}}},
-                            {range: {timestamp: {lte: alertGroup.newestTs}}},
+                            {exists: {"field": "event_type"}},
+                            {term: {"event_type": "alert"}},
+                            {
+                                range: {
+                                    "timestamp": {
+                                        gte: alertGroup.oldestTs,
+                                        lte: alertGroup.newestTs
+                                    }
+                                }
+                            },
                             {term: {"alert.signature_id": alertGroup.event._source.alert.signature_id}},
                             {term: {"src_ip.raw": alertGroup.event._source.src_ip}},
                             {term: {"dest_ip.raw": alertGroup.event._source.dest_ip}}
@@ -140,7 +149,7 @@ export class ElasticSearchService {
 
         if (options.filters) {
             options.filters.forEach((filter:any) => {
-                query.query.filtered.filter.and.push(filter);
+                query.query.bool.filter.and.push(filter);
             })
         }
 
@@ -307,43 +316,20 @@ export class ElasticSearchService {
     }
 
     archiveAlertGroup(alertGroup:AlertGroup) {
-
         return this.submit(() => {
-            return this._archiveAlertGroup(alertGroup);
+            return this.doArchiveAlertGroup(alertGroup)
         });
-
     }
 
-    _archiveAlertGroup(alertGroup:AlertGroup) {
-
-        let self = this;
-
-        return new Promise<any>((resolve, reject) => {
-
-            (function execute() {
-
-                self.getAlertsInAlertGroup(alertGroup, {
-                    _source: "tags",
-                    filters: [
-                        {not: {term: {tags: "archived"}}}
-                    ]
-                }).then((response:any) => {
-                    if (response.hits.hits.length == 0) {
-                        resolve();
-                    }
-                    else {
-                        self.addTagsToEventSet(response.hits.hits,
-                            ["archived", "evebox.archived"])
-                            .then((response:any) => {
-                                execute();
-                            })
-                    }
-                })
-
-            })();
-
-        });
-
+    doArchiveAlertGroup(alertGroup:AlertGroup) {
+        let request = {
+            signature_id: alertGroup.event._source.alert.signature_id,
+            src_ip: alertGroup.event._source.src_ip,
+            dest_ip: alertGroup.event._source.dest_ip,
+            min_timestamp: alertGroup.oldestTs,
+            max_timestamp: alertGroup.newestTs,
+        };
+        return this.api.post("api/1/archive", request);
     }
 
     getEventById(id:string):Promise<any> {
