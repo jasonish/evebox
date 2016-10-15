@@ -35,11 +35,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox"
 	"github.com/jasonish/evebox/config"
-	"github.com/jessevdk/go-flags"
+	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/server"
+	"github.com/jessevdk/go-flags"
 )
 
-const DEFAULT_ELASTICSEARCH_URI string = "http://localhost:9200"
+const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
 
 var opts struct {
 	// We don't provide a default for this one so we can easily
@@ -88,7 +90,7 @@ func setupElasticSearchProxy(router *mux.Router) {
 		if os.Getenv("ELASTICSEARCH_URL") != "" {
 			opts.ElasticSearchUri = os.Getenv("ELASTICSEARCH_URL")
 		} else {
-			opts.ElasticSearchUri = DEFAULT_ELASTICSEARCH_URI
+			opts.ElasticSearchUri = DEFAULT_ELASTICSEARCH_URL
 		}
 	}
 	log.Printf("Elastic Search URL: %v", opts.ElasticSearchUri)
@@ -103,6 +105,16 @@ func setupElasticSearchProxy(router *mux.Router) {
 func VersionMain() {
 	fmt.Printf("EveBox Version %s (rev %s) [%s]\n",
 		evebox.BuildVersion, evebox.BuildRev, evebox.BuildDate)
+}
+
+func getElasticSearchUrl() string {
+	if opts.ElasticSearchUri != "" {
+		return opts.ElasticSearchUri
+	}
+	if os.Getenv("ELASTICSEARCH_URL") != "" {
+		return os.Getenv("ELASTICSEARCH_URL")
+	}
+	return DEFAULT_ELASTICSEARCH_URL
 }
 
 func Main(args []string) {
@@ -143,17 +155,33 @@ func Main(args []string) {
 	}
 	log.Info("Using ElasticSearch Index %s.", conf.ElasticSearchIndex)
 
+	appContext := server.AppContext{}
+	elasticSearch := elasticsearch.New(getElasticSearchUrl())
+	elasticSearch.EventIndex = conf.ElasticSearchIndex
+	appContext.ElasticSearch = elasticSearch
+	pingResponse, err := elasticSearch.Ping()
+	if err != nil {
+		log.Error("Failed to ping Elastic Search: %v", err)
+	} else {
+
+		log.Info("Connected to Elastic Search (version: %s)",
+			pingResponse.Version.Number)
+	}
+
 	router := mux.NewRouter()
 
 	router.HandleFunc("/eve2pcap", evebox.Eve2PcapHandler)
 	router.HandleFunc("/api/version", VersionHandler)
 	router.HandleFunc("/api/config", ConfigHandler)
 
+	router.Handle("/api/1/archive", server.Api(appContext,
+		&server.ArchiveHandler{appContext}))
+
 	setupElasticSearchProxy(router)
 	evebox.SetupStatic(router, opts.DevServerUri)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host + ":" + opts.Port, router)
+	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}

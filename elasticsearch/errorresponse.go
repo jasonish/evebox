@@ -51,4 +51,3 @@ func NewElasticSearchError(response *http.Response) ElasticSearchError {
 
 	return error
 }
-

@@ -31,21 +31,33 @@ type PingResponse struct {
 	Name        string `json:"name"`
 	ClusterName string `json:"cluster_name"`
 	Version     struct {
-			    Number string `json:"number"`
-		    } `json:"version"`
-	Tagline     string `json:"tagline"`
+		Number string `json:"number"`
+	} `json:"version"`
+	Tagline string `json:"tagline"`
 }
 
 type BulkCreateHeader struct {
 	Create struct {
-		       Index string `json:"_index"`
-		       Type  string `json:"_type"`
-	       } `json:"create"`
+		Index string `json:"_index"`
+		Type  string `json:"_type"`
+	} `json:"create"`
 }
 
 // Struct representing a response to a _bulk request.
 type BulkResponse struct {
-	Took   uint64 `json:"took"`
-	Errors bool   `json:"errors"`
+	Took   uint64                   `json:"took"`
+	Errors bool                     `json:"errors"`
 	Items  []map[string]interface{} `json:"items"`
+}
+
+type Hits struct {
+	Total uint64                   `json:"total"`
+	Hits  []map[string]interface{} `json:"hits"`
+}
+
+type SearchResponse struct {
+	Shards   map[string]interface{} `json:"_shards"`
+	TimedOut bool                   `json:"timed_out"`
+	Took     uint64                 `json:"took"`
+	Hits     Hits                   `json:"hits"`
 }

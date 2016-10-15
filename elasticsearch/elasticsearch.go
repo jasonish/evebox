@@ -27,16 +27,18 @@
 package elasticsearch
 
 import (
-	"encoding/json"
-	"net/http"
-	"fmt"
-	"github.com/GeertJohan/go.rice"
-	"io"
-	"strings"
 	"bytes"
+	"crypto/tls"
+	"encoding/json"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
-	"crypto/tls"
+	"net/http"
+	"strings"
+
+	"github.com/GeertJohan/go.rice"
+	"github.com/jasonish/evebox/log"
 )
 
 type ElasticSearch struct {
@@ -45,6 +47,7 @@ type ElasticSearch struct {
 	DisableCertCheck bool
 	username         string
 	password         string
+	EventIndex       string
 }
 
 func New(url string) *ElasticSearch {
@@ -52,11 +55,11 @@ func New(url string) *ElasticSearch {
 		baseUrl:    url,
 		httpClient: &http.Client{},
 	}
-	es.httpClient.Transport = &http.Transport{DialTLS:es.DialTLS}
+	es.httpClient.Transport = &http.Transport{DialTLS: es.DialTLS}
 	return es
 }
 
-func (i *ElasticSearch) SetUsernamePassword(username... string) error {
+func (i *ElasticSearch) SetUsernamePassword(username ...string) error {
 	if len(username) == 1 {
 		parts := strings.SplitN(username[0], ":", 2)
 		if len(parts) < 2 {
@@ -109,7 +112,28 @@ func (es *ElasticSearch) Post(url string, bodyType string, body io.Reader) (*htt
 	return es.httpDo(request)
 }
 
-func (es *ElasticSearch) Put(path string, body interface{}) (error) {
+func (es *ElasticSearch) PostString(path string, contentType string, body string) (*http.Response, error) {
+	url := fmt.Sprintf("%s/%s", es.baseUrl, path)
+	log.Println(url)
+	request, err := http.NewRequest("POST", url, strings.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", contentType)
+	return es.httpDo(request)
+}
+
+func (es *ElasticSearch) PostJson(path string, body interface{}) (*http.Response, error) {
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/%s", es.baseUrl, path)
+	log.Println(url)
+	return es.Post(url, "application/json", bytes.NewReader(buf))
+}
+
+func (es *ElasticSearch) Put(path string, body interface{}) error {
 
 	var bodyAsReader io.Reader
 
