@@ -38,7 +38,6 @@ import (
 	"strings"
 
 	"github.com/GeertJohan/go.rice"
-	"github.com/jasonish/evebox/log"
 )
 
 type ElasticSearch struct {
@@ -114,7 +113,6 @@ func (es *ElasticSearch) Post(url string, bodyType string, body io.Reader) (*htt
 
 func (es *ElasticSearch) PostString(path string, contentType string, body string) (*http.Response, error) {
 	url := fmt.Sprintf("%s/%s", es.baseUrl, path)
-	log.Println(url)
 	request, err := http.NewRequest("POST", url, strings.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -129,7 +127,6 @@ func (es *ElasticSearch) PostJson(path string, body interface{}) (*http.Response
 		return nil, err
 	}
 	url := fmt.Sprintf("%s/%s", es.baseUrl, path)
-	log.Println(url)
 	return es.Post(url, "application/json", bytes.NewReader(buf))
 }
 

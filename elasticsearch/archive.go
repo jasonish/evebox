@@ -97,7 +97,8 @@ func ArchiveAlerts(es *ElasticSearch, signatureId uint64, srcIp string, destIp s
 				},
 			},
 		},
-		"size": 1000,
+		"size":    10000,
+		"_source": "tags",
 	}
 
 	for {
@@ -195,8 +196,25 @@ func BulkAddTags(es *ElasticSearch, documents []map[string]interface{}, _tags []
 		} else {
 			log.Info("Archived %d events; errors=%v",
 				len(bulkResponse.Items), bulkResponse.Errors)
+			if bulkResponse.Errors {
+				for _, item := range bulkResponse.Items {
+					logBulkError(item)
+				}
+			}
 		}
 	}
 
 	return nil
+}
+
+func logBulkError(item map[string]interface{}) {
+	update, ok := item["update"].(map[string]interface{})
+	if !ok || update == nil {
+		return
+	}
+	error := update["error"]
+	if error == nil {
+		return
+	}
+	log.Notice("Archive error: %s", ToJson(error))
 }
