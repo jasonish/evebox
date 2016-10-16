@@ -102,6 +102,17 @@ func (es *ElasticSearch) Get(url string) (*http.Response, error) {
 	return es.httpDo(request)
 }
 
+func (es *ElasticSearch) DeleteWithStringBody(path string, bodyType string, body string) (*http.Response, error) {
+	request, err := http.NewRequest("DELETE",
+		fmt.Sprintf("%s/%s", es.baseUrl, path),
+		strings.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", bodyType)
+	return es.httpDo(request)
+}
+
 func (es *ElasticSearch) Post(url string, bodyType string, body io.Reader) (*http.Response, error) {
 	request, err := http.NewRequest("POST", url, body)
 	if err != nil {

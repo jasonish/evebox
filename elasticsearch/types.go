@@ -60,4 +60,5 @@ type SearchResponse struct {
 	TimedOut bool                   `json:"timed_out"`
 	Took     uint64                 `json:"took"`
 	Hits     Hits                   `json:"hits"`
+	ScrollId string                 `json:"_scroll_id"`
 }
