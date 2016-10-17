@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
@@ -78,7 +77,6 @@ func (w *ApiResponseWriter) WriteHeader(header int) {
 
 func Api(appContext AppContext, handler ApiHandler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
 		responseWriterWrapper := NewApiResponseWriter(w)
 		response, err := handler.ServeHTTP(responseWriterWrapper, r)
 		if responseWriterWrapper.clean {
@@ -95,7 +93,5 @@ func Api(appContext AppContext, handler ApiHandler) http.Handler {
 		} else {
 			log.Info("Response writer is not clean.")
 		}
-		duration := time.Since(start)
-		log.Info("%s - %.6fs", r.URL, duration.Seconds())
 	})
 }

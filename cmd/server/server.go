@@ -130,6 +130,8 @@ func Main(args []string) {
 		return
 	}
 
+	log.SetLevel(log.DEBUG)
+
 	// If no configuration was provided, see if evebox.yaml exists
 	// in the current directory.
 	if opts.Config == "" {

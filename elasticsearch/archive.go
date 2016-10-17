@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"fmt"
-
 	"io/ioutil"
+
+	"io"
 
 	"github.com/jasonish/evebox/log"
 )
@@ -106,110 +106,72 @@ func ArchiveAlerts(es *ElasticSearch, signatureId uint64, srcIp string, destIp s
 		"size": 10000,
 	}
 
-	path := fmt.Sprintf("%s/_search?scroll=1m", es.EventIndex)
-	log.Println(path)
-	response, err := es.PostJson(path, query)
+	searchResponse, err := es.SearchScroll(query, "1m")
 	if err != nil {
 		log.Error("Failed to initialize scroll: %v", err)
 		return err
 	}
-	decoder := json.NewDecoder(response.Body)
-	searchResponse := SearchResponse{}
-	decoder.Decode(&searchResponse)
 
 	scrollId := searchResponse.ScrollId
 
 	for {
 
+		log.Debug("Search response total: %d; hits: %d",
+			searchResponse.Hits.Total, len(searchResponse.Hits.Hits))
+
 		if len(searchResponse.Hits.Hits) == 0 {
-			log.Info("No more events to archive.")
 			break
 		}
 
-		log.Info("Found %d events to archive.", len(searchResponse.Hits.Hits))
-		err = BulkAddTags(es, searchResponse.Hits.Hits,
-			[]string{"evebox.archived", "archived"})
-		if err != nil {
-			log.Error("BulkAddTags failed: %v", err)
-			return err
+		// We do this in a retry loop as some documents may fail to be
+		// updated. Most likely rejected due to max thread count or
+		// something.
+		maxRetries := 5
+		retries := 0
+		for {
+			retry, err := BulkAddTags(es, searchResponse.Hits.Hits,
+				[]string{"evebox.archived", "archived"})
+			if err != nil {
+				log.Error("BulkAddTags failed: %v", err)
+				return err
+			}
+			if !retry {
+				break
+			}
+			retries++
+			if retries > maxRetries {
+				log.Warning("Errors occurred archive events, not all events may have been archived.")
+				break
+			}
 		}
 
 		// Get next set of events to archive.
-
-		path := "_search/scroll"
-		body := m{
-			"scroll":    "1m",
-			"scroll_id": scrollId,
-		}
-		response, err := es.PostJson(path, body)
+		searchResponse, err = es.Scroll(scrollId, "1m")
 		if err != nil {
 			log.Error("Failed to fetch from scroll: %v", err)
 			return err
 		}
 
-		decoder := json.NewDecoder(response.Body)
-		searchResponse = SearchResponse{}
-		decoder.Decode(&searchResponse)
 	}
 
-	response, err = es.DeleteWithStringBody("_search/scroll",
+	response, err := es.DeleteWithStringBody("_search/scroll",
 		"application/json", scrollId)
 	if err != nil {
 		log.Error("Failed to delete scroll id: %v", err)
 	}
-	deleteResponse, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Error("Failed to read delete response: %v", err)
-	}
-	log.Info("Delete response: %s", string(deleteResponse))
+	io.Copy(ioutil.Discard, response.Body)
 
-	log.Info("Sending refresh.")
 	response, err = es.PostString("_refresh", "application/json", "{}")
 	if err != nil {
 		log.Error("Failed to post refresh: %v", err)
 		return err
 	}
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Error("Failed to read response body: %v", err)
-	}
-	log.Println(string(body))
-
-	return nil
-
-	//for {
-	//	path := fmt.Sprintf("%s/log/_search?scroll=1m", es.EventIndex)
-	//	log.Println(path)
-	//	response, err := es.PostJson(path, query)
-	//	if err != nil {
-	//		log.Error("es.PostJson failed: %v", err)
-	//		return err
-	//	}
-	//
-	//	decoder := json.NewDecoder(response.Body)
-	//	searchResponse = SearchResponse{}
-	//	decoder.Decode(&searchResponse)
-	//	log.Println(ToJson(searchResponse))
-	//
-	//	if searchResponse.Hits.Total == 0 {
-	//		log.Info("Found 0 events, stopping archive.")
-	//		break
-	//	}
-	//
-	//	log.Info("Found %d events to archive", searchResponse.Hits.Total)
-	//	err = BulkAddTags(es, searchResponse.Hits.Hits,
-	//		[]string{"evebox.archived", "archived"})
-	//	if err != nil {
-	//		log.Error("BulkAddTags failed: %v", err)
-	//		return err
-	//	}
-	//
-	//}
+	io.Copy(ioutil.Discard, response.Body)
 
 	return nil
 }
 
-func BulkAddTags(es *ElasticSearch, documents []map[string]interface{}, _tags []string) error {
+func BulkAddTags(es *ElasticSearch, documents []map[string]interface{}, _tags []string) (bool, error) {
 	bulk := make([]string, 0)
 
 	for _, item := range documents {
@@ -257,11 +219,13 @@ func BulkAddTags(es *ElasticSearch, documents []map[string]interface{}, _tags []
 	response, err := es.PostString("_bulk", "application/json", bulkString)
 	if err != nil {
 		log.Error("Failed to archive events: %v", err)
-		return err
+		return false, err
 	}
 
+	retry := false
+
 	if response.StatusCode != http.StatusOK {
-		return NewElasticSearchError(response)
+		return retry, NewElasticSearchError(response)
 	} else {
 		bulkResponse := BulkResponse{}
 		decoder := json.NewDecoder(response.Body)
@@ -273,6 +237,7 @@ func BulkAddTags(es *ElasticSearch, documents []map[string]interface{}, _tags []
 			log.Info("Archived %d events; errors=%v",
 				len(bulkResponse.Items), bulkResponse.Errors)
 			if bulkResponse.Errors {
+				retry = true
 				for _, item := range bulkResponse.Items {
 					logBulkError(item)
 				}
@@ -280,7 +245,7 @@ func BulkAddTags(es *ElasticSearch, documents []map[string]interface{}, _tags []
 		}
 	}
 
-	return nil
+	return retry, nil
 }
 
 func logBulkError(item map[string]interface{}) {

@@ -242,3 +242,41 @@ func (es *ElasticSearch) LoadTemplate(index string) error {
 	// Success.
 	return nil
 }
+
+func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*SearchResponse, error) {
+	path := fmt.Sprintf("%s/_search?scroll=%s", es.EventIndex, duration)
+	response, err := es.PostJson(path, body)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, NewElasticSearchError(response)
+	}
+	searchResponse := SearchResponse{}
+	if err := DecodeResponse(response.Body, &searchResponse); err != nil {
+		return nil, err
+	}
+	return &searchResponse, nil
+}
+
+func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchResponse, error) {
+	body := m{
+		"scroll_id": scrollId,
+		"scroll":    duration,
+	}
+	response, err := es.PostJson("_search/scroll", body)
+	if err != nil {
+		return nil, err
+	}
+	searchResponse := SearchResponse{}
+	if err := DecodeResponse(response.Body, &searchResponse); err != nil {
+		return nil, err
+	}
+	return &searchResponse, nil
+}
+
+func DecodeResponse(reader io.Reader, output interface{}) error {
+	decoder := json.NewDecoder(reader)
+	decoder.UseNumber()
+	return decoder.Decode(output)
+}

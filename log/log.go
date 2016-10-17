@@ -27,17 +27,18 @@
 package log
 
 import (
-	"runtime"
 	"fmt"
 	"os"
-	"time"
 	"path/filepath"
+	"runtime"
+	"time"
 )
 
 type LogLevel int
 
 const (
 	ERROR LogLevel = iota
+	WARNING
 	NOTICE
 	INFO
 	DEBUG
@@ -46,13 +47,14 @@ const (
 var logLevel LogLevel = INFO
 
 const (
-	GREEN = "\x1b[32m"
-	BLUE = "\x1b[34m";
-	REDB = "\x1b[1;31m";
-	YELLOW = "\x1b[33m";
-	RED = "\x1b[31m";
-	YELLOWB = "\x1b[1;33m";
-	RESET = "\x1b[0m"
+	GREEN   = "\x1b[32m"
+	BLUE    = "\x1b[34m"
+	REDB    = "\x1b[1;31m"
+	YELLOW  = "\x1b[33m"
+	RED     = "\x1b[31m"
+	YELLOWB = "\x1b[1;33m"
+	ORANGE  = "\x1b[38;5;208m"
+	RESET   = "\x1b[0m"
 )
 
 func Green(v interface{}) string {
@@ -73,6 +75,10 @@ func YellowB(v interface{}) string {
 
 func Red(v interface{}) string {
 	return fmt.Sprintf("%s%v%s", RED, v, RESET)
+}
+
+func Orange(v interface{}) string {
+	return fmt.Sprintf("%s%v%s", ORANGE, v, RESET)
 }
 
 func Timestamp() string {
@@ -99,6 +105,15 @@ func doLog(calldepth int, level LogLevel, format string, v ...interface{}) {
 			Green(line),
 			Red("Error"),
 			Red(fmt.Sprintf(format, v...)))
+	}
+
+	if level == WARNING {
+		fmt.Fprintf(os.Stderr, "%s (%s:%s) <%s> -- %s\n",
+			Green(Timestamp()),
+			Blue(filepath.Base(filename)),
+			Green(line),
+			Orange("Warning"),
+			Orange(fmt.Sprintf(format, v...)))
 	}
 
 	if level == NOTICE {
@@ -131,6 +146,10 @@ func doLog(calldepth int, level LogLevel, format string, v ...interface{}) {
 
 func Error(format string, v ...interface{}) {
 	doLog(2, ERROR, format, v...)
+}
+
+func Warning(format string, v ...interface{}) {
+	doLog(2, WARNING, format, v...)
 }
 
 func Notice(format string, v ...interface{}) {
