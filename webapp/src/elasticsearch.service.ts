@@ -106,7 +106,10 @@ export class ElasticSearchService {
                 func().then(() => {
                     cb();
                     resolve();
-                });
+                }).catch(() => {
+                    cb();
+                    reject();
+                })
             });
 
         });
