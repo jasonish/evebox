@@ -362,7 +362,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     removeRow(row:any) {
-        console.log("Removing row.")
         this.rows = this.rows.filter((_row:any) => {
             if (_row == row) {
                 return false;
