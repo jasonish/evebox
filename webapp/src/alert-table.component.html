@@ -9,10 +9,11 @@
       <th></th>
       <th></th>
       <th></th>
-      <th>#</th>
-      <th>Timestamp</th>
-      <th>Source/Dest</th>
-      <th width="50%">Signature</th>
+      <th><a (click)="sort('count')">#</a></th>
+      <th><a (click)="sort('timestamp')">Timestamp</a>
+      </th>
+      <th><a (click)="sort('source')">Source</a>/<a (click)="sort('dest')">Dest</a></th>
+      <th width="50%"><a (click)="sort('signature')">Signature</a></th>
     </tr>
     </thead>
 
@@ -81,12 +82,14 @@
             <li><a href="javascript:void(0)" (click)="filterBySignatureId(row)">2.
               Filter
               on SID: {{row.event.event._source.alert.signature_id}}</a></li>
-            <li><a [routerLink]="['/reports/ip', {ip: row.event.event._source.src_ip}]">
-              Source IP report for {{row.event.event._source.src_ip}}
-            </a></li>
-            <li><a [routerLink]="['/reports/ip', {ip: row.event.event._source.dest_ip}]">
-              Destination IP report for {{row.event.event._source.dest_ip}}
-            </a></li>
+            <li>
+              <a [routerLink]="['/reports/ip', {ip: row.event.event._source.src_ip}]">
+                Source IP report for {{row.event.event._source.src_ip}}
+              </a></li>
+            <li>
+              <a [routerLink]="['/reports/ip', {ip: row.event.event._source.dest_ip}]">
+                Destination IP report for {{row.event.event._source.dest_ip}}
+              </a></li>
           </ul>
         </div>
         <span *ngIf="row.event.event._source.alert.action != 'allowed'"

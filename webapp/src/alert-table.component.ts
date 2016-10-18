@@ -30,13 +30,13 @@ import {
     Output,
     EventEmitter,
     OnInit,
-    AfterViewChecked,
     OnDestroy
 } from "@angular/core";
 import {AppService} from "./app.service";
 import {MousetrapService} from "./mousetrap.service";
 import {ActivatedRoute} from "@angular/router";
 
+import moment = require("moment");
 declare var $:any;
 
 @Component({
@@ -53,6 +53,8 @@ export class AlertTableComponent implements OnInit, OnDestroy {
     @Output() archiveEvent:EventEmitter<any> = new EventEmitter<any>();
 
     @Output() escalateAndArchiveEvent:EventEmitter<any> = new EventEmitter<any>();
+
+    private sortBy:string = "timestampDesc";
 
     constructor(private appService:AppService,
                 private mousetrap:MousetrapService,
@@ -118,4 +120,119 @@ export class AlertTableComponent implements OnInit, OnDestroy {
         });
 
     }
+
+    states:any = {
+        "count": {
+            "countAsc": "countDesc",
+            "countDesc": "countAsc",
+            default: "countDesc",
+        },
+        "timestamp": {
+            "timestampAsc": "timestampDesc",
+            "timestampDesc": "timestampAsc",
+            default: "timestampDesc",
+        },
+        "signature": {
+            "signatureAsc": "signatureDesc",
+            "signatureDesc": "signatureAsc",
+            default: "signatureAsc",
+        },
+        "source": {
+            "sourceDesc": "sourceAsc",
+            "sourceAsc": "sourceDesc",
+            default: "sourceAsc",
+        },
+        "dest": {
+            "destDesc": "destAsc",
+            "destAsc": "destDesc",
+            default: "destAsc",
+        },
+    };
+
+    sort(column:string) {
+        this.sortBy = this.states[column][this.sortBy] ||
+            this.states[column].default;
+        switch (this.sortBy) {
+            case "timestampDesc":
+                this.rows.sort((a:any, b:any) => {
+                    return -1 * this.timestampSort(a.event.newestTs, b.event.newestTs);
+                });
+                break;
+            case "timestampAsc":
+                this.rows.sort((a:any, b:any) => {
+                    return this.timestampSort(a.event.newestTs, b.event.newestTs);
+                });
+                break;
+            case "countDesc":
+                this.rows.sort((a:any, b:any) => {
+                    return b.event.count - a.event.count;
+                });
+                break;
+            case "countAsc":
+                this.rows.sort((a:any, b:any) => {
+                    return a.event.count - b.event.count;
+                });
+                break;
+            case "signatureDesc":
+                this.rows.sort((a:any, b:any) => {
+                    return this.stringSort(
+                            a.event.event._source.alert.signature.toUpperCase(),
+                            b.event.event._source.alert.signature.toUpperCase()
+                        ) * -1;
+                });
+                break;
+            case "signatureAsc":
+                this.rows.sort((a:any, b:any) => {
+                    return this.stringSort(
+                        a.event.event._source.alert.signature.toUpperCase(),
+                        b.event.event._source.alert.signature.toUpperCase()
+                    );
+                });
+                break;
+            case "sourceDesc":
+                this.rows.sort((a:any, b:any) => {
+                    return this.stringSort(
+                        a.event.event._source.src_ip,
+                        b.event.event._source.src_ip);
+                });
+                break;
+            case "sourceAsc":
+                this.rows.sort((a:any, b:any) => {
+                    return this.stringSort(
+                            a.event.event._source.src_ip,
+                            b.event.event._source.src_ip) * -1;
+                });
+                break;
+            case "destDesc":
+                break;
+            case "destAsc":
+                break;
+            default:
+                console.log("error: don't know how to sort by " + this.sortBy)
+                break;
+        }
+    }
+
+    timestampSort(a:string, b:string):number {
+        let ma = moment(a);
+        let mb = moment(b);
+        if (ma.isBefore(mb)) {
+            return -1;
+        }
+        else if (ma.isAfter(mb)) {
+            return 1;
+        }
+        return 0;
+    }
+
+    stringSort(a:string, b:string):number {
+        if (a < b) {
+            return -1;
+        }
+        else if (a > b) {
+            return 1;
+        }
+        return 0;
+    }
+
 }
