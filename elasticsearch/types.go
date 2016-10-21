@@ -40,6 +40,7 @@ type BulkCreateHeader struct {
 	Create struct {
 		Index string `json:"_index"`
 		Type  string `json:"_type"`
+		Id    string `json:"_id"`
 	} `json:"create"`
 }
 

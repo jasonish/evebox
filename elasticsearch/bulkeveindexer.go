@@ -27,15 +27,17 @@
 package elasticsearch
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/jasonish/evebox/eve"
-	"net/http"
 	"io"
-	"sync"
-	"github.com/jasonish/evebox/log"
 	"net"
-	"crypto/tls"
+	"net/http"
+	"sync"
+
+	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/log"
+	"github.com/satori/go.uuid"
 )
 
 const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
@@ -43,39 +45,39 @@ const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
 type BulkEveIndexer struct {
 	// Index prefix to use. For example, if this is set to "logstash",
 	// events will be put in index "logstash-YYYY.MM.DD"
-	IndexPrefix      string
+	IndexPrefix string
 
-	baseUrl          string
+	baseUrl string
 
-	es               *ElasticSearch
-	httpClient       *http.Client
+	es         *ElasticSearch
+	httpClient *http.Client
 
-	pipeReader       *io.PipeReader
-	pipeWriter       *io.PipeWriter
+	pipeReader *io.PipeReader
+	pipeWriter *io.PipeWriter
 
 	// Number of events queued in flight.
-	queued           uint
+	queued uint
 
-	wait             sync.WaitGroup
+	wait sync.WaitGroup
 
-	done             bool
+	done bool
 
 	disableCertCheck bool
 
-	channel          chan interface{}
+	channel chan interface{}
 }
 
 func NewIndexer(es *ElasticSearch, disableCertCheck bool) *BulkEveIndexer {
 
 	indexer := BulkEveIndexer{
-		es:es,
-		baseUrl: es.baseUrl,
-		httpClient:&http.Client{},
-		disableCertCheck:disableCertCheck,
-		channel: make(chan interface{}),
+		es:               es,
+		baseUrl:          es.baseUrl,
+		httpClient:       &http.Client{},
+		disableCertCheck: disableCertCheck,
+		channel:          make(chan interface{}),
 	}
 
-	indexer.httpClient.Transport = &http.Transport{DialTLS:indexer.DialTLS}
+	indexer.httpClient.Transport = &http.Transport{DialTLS: indexer.DialTLS}
 
 	// Set a default index name.
 	indexer.IndexPrefix = "logstash"
@@ -130,7 +132,7 @@ func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse,
 	return nil, err
 }
 
-func (i *BulkEveIndexer) Run() (error) {
+func (i *BulkEveIndexer) Run() error {
 
 	for {
 		if i.done {
@@ -176,6 +178,7 @@ func (i *BulkEveIndexer) IndexRawEvent(event eve.RawEveEvent) error {
 	header := BulkCreateHeader{}
 	header.Create.Index = index
 	header.Create.Type = "log"
+	header.Create.Id = uuid.NewV1().String()
 
 	encoder := json.NewEncoder(i.pipeWriter)
 
