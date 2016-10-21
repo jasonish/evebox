@@ -18,90 +18,6 @@ function termQuery(type:string, field:string, value:string) {
 }
 
 @Component({
-    selector: "requestedHostnamesForIp",
-    template: `
-      <report-data-table *ngIf="topRrnames"
-                         title="DNS: Top Requested Hostnames By {{address}}"
-                         [rows]="topRrnames"
-                         [headers]="['#', 'Hostname']"></report-data-table>
-`
-})
-export class RequestedHostnamesForIpComponent implements OnInit, OnDestroy {
-
-    @Input() private address:string;
-    @Input() private count:number = 10;
-
-    private topRrnames:any[];
-
-    constructor(private elasticsearch:ElasticSearchService,
-                private topNavService:TopNavService) {
-    }
-
-    ngOnInit() {
-        this.refresh();
-    }
-
-    ngOnDestroy() {
-    }
-
-    refresh() {
-
-        let ipTermType = "term";
-
-        if (this.address[this.address.length - 1] == '.') {
-            ipTermType = "prefix";
-        }
-
-        console.log("Loading top DNS requests for " + this.address);
-
-        let now = moment();
-        let range = this.topNavService.getTimeRangeAsSeconds();
-
-        let query = {
-            query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {term: {"event_type": "dns"}},
-                            {term: {"dns.type": "query"}},
-                            termQuery(ipTermType, "src_ip", this.address),
-                        ]
-                    }
-                }
-            },
-            aggs: {
-                rrnames: {
-                    terms: {
-                        field: "dns.rrname.raw",
-                        size: this.count,
-                    }
-                }
-            }
-        };
-
-        this.elasticsearch.addTimeRangeFilter(query, now, range);
-
-        this.elasticsearch.search(query).then((response:any) => {
-            console.log("DNS requests:");
-            console.log(response);
-
-            let returnCount = response.aggregations.rrnames.buckets.length;
-            let total = response.aggregations.rrnames.sum_other_doc_count;
-
-            console.log(`Total: ${total}; Returned: ${returnCount}`);
-
-            let topRrnames:any[] = response.aggregations.rrnames.buckets.map((bucket:any) => {
-                return {
-                    key: bucket.key,
-                    count: bucket.doc_count,
-                }
-            });
-            this.topRrnames = topRrnames;
-        })
-    }
-}
-
-@Component({
     templateUrl: "./ip-report.component.html",
     animations: [
         loadingAnimation,
@@ -121,10 +37,11 @@ export class IpReportComponent implements OnInit, OnDestroy {
     // Number of flows as server.
     private destFlowCount:number;
 
-    // Number of DNS requests returning this IP.
-    private dnsRequestCount:number;
+    // DNS hostname lookups returning this IP.
+    private dnsHostnamesForAddress:any[];
 
-    private dnsRequestsByHostname:any[];
+    // Top requested hostnames.
+    private dnsRequestedHostnames:any[];
 
     private bytesToIp:number;
 
@@ -162,7 +79,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
     private sshInboundClientProtoVersions:any[];
 
-    private sshInboundServerProtoVersions:any[]
+    private sshInboundServerProtoVersions:any[];
+
+    private sensors:Set<string> = new Set<string>();
+
+    // Empty string defaults to all sensors.
+    private sensorFilter:string = "";
 
     constructor(private route:ActivatedRoute,
                 private elasticsearch:ElasticSearchService,
@@ -189,7 +111,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
         this.ss.unsubscribe(this);
     }
 
-    loadDnsInfo(range:any, now:any) {
+    queryDnsHostnamesForAddress(range:any, now:any) {
 
         this.loading++;
 
@@ -225,13 +147,15 @@ export class IpReportComponent implements OnInit, OnDestroy {
             }
         };
 
+        if (this.sensorFilter != "") {
+            this.elasticsearch.addSensorNameFilter(query, this.sensorFilter);
+        }
+
         this.elasticsearch.addTimeRangeFilter(query, now, range);
 
         this.elasticsearch.search(query).then((response:any) => {
 
-            this.dnsRequestCount = response.hits.total;
-
-            this.dnsRequestsByHostname = response.aggregations.uniqueHostnames.buckets.map((bucket:any) => {
+            this.dnsHostnamesForAddress = response.aggregations.uniqueHostnames.buckets.map((bucket:any) => {
                 return {
                     key: bucket.key,
                     count: bucket.doc_count,
@@ -248,14 +172,13 @@ export class IpReportComponent implements OnInit, OnDestroy {
         let range = this.topNavService.getTimeRangeAsSeconds();
         let now = moment();
 
-        this.loadDnsInfo(range, now);
+        this.queryDnsHostnamesForAddress(range, now);
 
         this.loading++;
 
         let ipTermType = "term";
 
         if (this.ip[this.ip.length - 1] == '.') {
-            console.log("Using prefix query.")
             ipTermType = "prefix";
         }
 
@@ -270,7 +193,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                     termQuery(ipTermType, "src_ip", this.ip),
                                     termQuery(ipTermType, "dest_ip", this.ip),
                                 ]
-                            }
+                            },
                         ]
                     }
                 }
@@ -281,6 +204,13 @@ export class IpReportComponent implements OnInit, OnDestroy {
             ],
             aggs: {
 
+                sensors: {
+                    terms: {
+                        field: "host.raw",
+                        size: 1000,
+                    },
+                },
+
                 alerts: {
                     filter: {
                         term: {event_type: "alert"}
@@ -289,6 +219,25 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         signatures: {
                             terms: {
                                 field: "alert.signature.raw",
+                                size: 10,
+                            }
+                        }
+                    }
+                },
+
+                // Top DNS requests made by this IP.
+                dnsRequests: {
+                    filter: {
+                        and: [
+                            {term: {"event_type": "dns"}},
+                            {term: {"dns.type": "query"}},
+                            termQuery(ipTermType, "src_ip", this.ip),
+                        ]
+                    },
+                    aggs: {
+                        rrnames: {
+                            terms: {
+                                field: "dns.rrname.raw",
                                 size: 10,
                             }
                         }
@@ -519,6 +468,10 @@ export class IpReportComponent implements OnInit, OnDestroy {
             }
         };
 
+        if (this.sensorFilter != "") {
+            this.elasticsearch.addSensorNameFilter(query, this.sensorFilter);
+        }
+
         this.elasticsearch.addTimeRangeFilter(query, now, range);
         this.reportsService.addEventsOverTimeAggregation(query, now, range);
 
@@ -584,6 +537,13 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
             this.sshOutboundServerProtoVersions = this.mapTerms(
                 response.aggregations.ssh.sources.outboundServerProtoVersions.buckets);
+
+            response.aggregations.sensors.buckets.forEach((bucket:any) => {
+                this.sensors.add(bucket.key);
+            });
+
+            this.dnsRequestedHostnames = this.mapTerms(
+                response.aggregations.dnsRequests.rrnames.buckets);
 
             this.loading--;
         });

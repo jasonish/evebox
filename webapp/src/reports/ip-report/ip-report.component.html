@@ -2,13 +2,32 @@
 
 <div *ngIf="ip" [@loadingState]="loading > 0 ? 'true' : 'false'">
 
-  <h2>Report for IP {{ip}}
-    <span class="pull-right">
+  <h2 style="margin-top: 0px;">Report for IP {{ip}}</h2>
+
+  <div class="row">
+    <div class="col-md-1 col-sm-1">
       <button type="button" class="btn btn-default" (click)="refresh()">
         Refresh
       </button>
-    </span>
-  </h2>
+    </div>
+    <div class="col-md-5 col-sm-5">
+      <div *ngIf="sensors">
+        <select class="form-control"
+                [(ngModel)]="sensorFilter"
+                (ngModelChange)="refresh()">
+          <option value="">All Sensors</option>
+          <option *ngFor="let sensor of sensors" [value]="sensor">
+            {{sensor}}
+          </option>
+        </select>
+      </div>
+    </div>
+    <div class="col-md-6 col-sm-6">
+      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+    </div>
+  </div>
+
+  <br/>
 
   <metrics-graphic *ngIf="eventsOverTime"
                    graphId="eventsOverTime"
@@ -21,11 +40,15 @@
     <!-- First Column -->
     <div class="col-md-6">
 
-      <report-data-table *ngIf="dnsRequestsByHostname"
-                         title="DNS Hostnames Returning {{ip}} (Total: {{dnsRequestCount}})"
-                         [rows]="dnsRequestsByHostname"
+      <report-data-table *ngIf="dnsHostnamesForAddress"
+                         title="DNS Hostnames Returning {{ip}}"
+                         [rows]="dnsHostnamesForAddress"
                          [headers]="['#', 'Hostname']"></report-data-table>
-      <requestedHostnamesForIp [address]="ip"></requestedHostnamesForIp>
+
+      <report-data-table *ngIf="dnsRequestedHostnames"
+                         title="DNS: Top Requested Hostnames"
+                         [rows]="dnsRequestedHostnames"
+                         [headers]="['#', 'Hostname']"></report-data-table>
 
       <report-data-table *ngIf="userAgents"
                          title="Outgoing HTTP User Agents"

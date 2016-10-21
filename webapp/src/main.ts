@@ -53,10 +53,7 @@ import {EventService} from "./event.service";
 import {ToastrService} from "./toastr.service";
 import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
-import {
-IpReportComponent,
-RequestedHostnamesForIpComponent
-} from "./reports/ip-report/ip-report.component";
+import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 import {EveboxHumanizeService} from "./humanize.service";
 import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 import {AppComponent} from "./app.component";
@@ -135,8 +132,6 @@ switch (localStorage.theme) {
         EveboxReportDataTable,
         IpReportComponent,
         EveboxFilterInputComponent,
-
-        RequestedHostnamesForIpComponent,
 
         TopNavComponent,
         EveboxHelpComponent,

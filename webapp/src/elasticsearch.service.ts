@@ -621,4 +621,12 @@ export class ElasticSearchService {
         })
     }
 
+    addSensorNameFilter(query:any, sensor:string) {
+        query.query.filtered.filter.and.push({
+            term: {
+                "host.raw": sensor,
+            }
+        });
+    }
+
 }
