@@ -1,5 +1,5 @@
-hash: 57def74d0a1bd1829ee96d710a541c68c014f72bad2837c06cc049ecf65a275d
-updated: 2016-10-06T22:38:26.441855248-06:00
+hash: fbc4ba6b808eb9de0556485c9fd3c9b71ab0f67519a589448d2712d0448332de
+updated: 2016-10-21T10:28:31.374324755-06:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -25,17 +25,19 @@ imports:
   version: ccee6e9d9b1ee5cee16ac664bc1982952edfb13d
 - name: github.com/oschwald/maxminddb-golang
   version: f4aa55714a3f843869ca9a38625e177a627c1ce6
+- name: github.com/satori/go.uuid
+  version: 0aa62d5ddceb50dbcb909d790b5345affd3669b6
 - name: github.com/spf13/pflag
   version: c7e63cf4530bcd3ba943729cee0efeff2ebea63f
 - name: golang.org/x/net
   version: f841c39de738b1d0df95b5a7187744f0e03d8112
   subpackages:
   - context
-- name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
-testImports:
 - name: golang.org/x/sys
   version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
   subpackages:
   - unix
   - windows
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
+testImports: []
