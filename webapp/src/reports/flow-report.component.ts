@@ -142,14 +142,12 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         let query:any = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            // Somewhat limit to eve events only.
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "flow"}}
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        // Somewhat limit to eve events only.
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "flow"}}
+                    ]
                 }
             },
             size: 0,

@@ -123,27 +123,23 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
         let query = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {term: {"event_type": "dns"}},
-                            {term: {"dns.type.raw": "answer"}},
-                            termQuery(ipTermType, "dns.rdata", this.ip),
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        {exists: {field: "event_type"}},
+                        {term: {"event_type": "dns"}},
+                        {term: {"dns.type.raw": "answer"}},
+                        termQuery(ipTermType, "dns.rdata", this.ip),
+                    ]
                 }
             },
             size: 0,
             aggs: {
-
                 uniqueHostnames: {
                     terms: {
                         field: "dns.rrname.raw",
                         size: 100,
                     }
                 }
-
             }
         };
 
@@ -184,18 +180,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
         let query = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {
-                                or: [
-                                    termQuery(ipTermType, "src_ip", this.ip),
-                                    termQuery(ipTermType, "dest_ip", this.ip),
-                                ]
-                            },
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        {exists: {field: "event_type"}},
+                    ],
+                    should: [
+                        termQuery(ipTermType, "src_ip", this.ip),
+                        termQuery(ipTermType, "dest_ip", this.ip),
+                    ]
                 }
             },
             size: 0,
@@ -228,11 +220,13 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 // Top DNS requests made by this IP.
                 dnsRequests: {
                     filter: {
-                        and: [
-                            {term: {"event_type": "dns"}},
-                            {term: {"dns.type": "query"}},
-                            termQuery(ipTermType, "src_ip", this.ip),
-                        ]
+                        bool: {
+                            filter: [
+                                {term: {"event_type": "dns"}},
+                                {term: {"dns.type": "query"}},
+                                termQuery(ipTermType, "src_ip", this.ip),
+                            ]
+                        },
                     },
                     aggs: {
                         rrnames: {
@@ -247,10 +241,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 // HTTP user agents.
                 httpRequests: {
                     filter: {
-                        and: [
-                            {term: {"event_type": "http"}},
-                            termQuery(ipTermType, "src_ip", this.ip),
-                        ]
+                        bool: {
+                            filter: [
+                                {term: {"event_type": "http"}},
+                                termQuery(ipTermType, "src_ip", this.ip),
+                            ]
+                        }
                     },
                     aggs: {
                         userAgents: {
@@ -290,10 +286,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 // TLS SNI...
                 tlsSni: {
                     filter: {
-                        and: [
-                            {term: {"event_type": "tls"}},
-                            termQuery(ipTermType, "dest_ip", this.ip),
-                        ]
+                        bool: {
+                            filter: [
+                                {term: {"event_type": "tls"}},
+                                termQuery(ipTermType, "dest_ip", this.ip),
+                            ]
+                        }
                     },
                     aggs: {
                         sni: {
@@ -424,10 +422,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 // Number of flows as client.
                 sourceFlows: {
                     filter: {
-                        and: [
-                            {term: {"event_type": "flow"}},
-                            termQuery(ipTermType, "src_ip", this.ip),
-                        ]
+                        bool: {
+                            filter: [
+                                {term: {"event_type": "flow"}},
+                                termQuery(ipTermType, "src_ip", this.ip),
+                            ]
+                        }
                     },
                     aggs: {
                         bytesToClient: {
@@ -446,10 +446,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 // Number of flows as server.
                 destFlows: {
                     filter: {
-                        and: [
-                            {term: {"event_type": "flow"}},
-                            termQuery(ipTermType, "dest_ip", this.ip),
-                        ]
+                        bool: {
+                            filter: [
+                                {term: {"event_type": "flow"}},
+                                termQuery(ipTermType, "dest_ip", this.ip),
+                            ]
+                        }
                     },
                     aggs: {
                         bytesToClient: {

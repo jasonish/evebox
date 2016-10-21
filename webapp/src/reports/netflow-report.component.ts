@@ -191,14 +191,12 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
         let query:any = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            // Somewhat limit to eve events of netflow only.
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "netflow"}}
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        // Somewhat limit to eve events of netflow only.
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "netflow"}}
+                    ]
                 }
             },
             size: 0,
@@ -219,14 +217,12 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
         let query:any = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            // Somewhat limit to eve events of netflow only.
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "netflow"}}
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        // Somewhat limit to eve events of netflow only.
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "netflow"}}
+                    ]
                 }
             },
             size: 0,
