@@ -66,11 +66,21 @@ be satisfied:
 * Node.js v6.5.0 or newer installed.
 * A working Go 1.7 installation and GOPATH.
 
+First checkout Evebox into your GOPATH, for example:
+
+```
+git clone https://github.com/jasonish/evebox.git \
+    $GOPATH/src/github.com/jasonish/evebox
+```
+
 If this is the first build the npm and Go dependencies must be
 installed, this can be done with:
 ```
 make install-deps
 ```
+
+```install-deps``` will also upgrade any dependencies, so its a good idea
+to re-run after git pulls.
 
 Then to build the binary:
 ```
