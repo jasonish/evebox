@@ -64,11 +64,6 @@ func (r RangeQuery) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rangeq)
 }
 
-// Wraps a search query in a {not: {...}}
-type Not struct {
-	Not interface{} `json:"not"`
-}
-
 type m map[string]interface{}
 
 type l []interface{}
@@ -79,23 +74,23 @@ func ArchiveAlerts(es *ElasticSearch, signatureId uint64, srcIp string, destIp s
 	query := m{
 		"query": m{
 			"bool": m{
-				"filter": m{
-					"and": l{
-						ExistsQuery{"event_type"},
-						TermQuery{"event_type", "alert"},
-						RangeQuery{
-							Field: "timestamp",
-							Gte:   minTimestamp,
-							Lte:   maxTimestamp,
-						},
-						TermQuery{"src_ip.raw", srcIp},
-						TermQuery{"dest_ip.raw", destIp},
-						TermQuery{
-							"alert.signature_id",
-							signatureId,
-						},
-						Not{TermQuery{"tags", "archived"}},
+				"filter": l{
+					ExistsQuery{"event_type"},
+					TermQuery{"event_type", "alert"},
+					RangeQuery{
+						Field: "timestamp",
+						Gte:   minTimestamp,
+						Lte:   maxTimestamp,
 					},
+					TermQuery{"src_ip.raw", srcIp},
+					TermQuery{"dest_ip.raw", destIp},
+					TermQuery{
+						"alert.signature_id",
+						signatureId,
+					},
+				},
+				"must_not": l{
+					TermQuery{"tags", "archived"},
 				},
 			},
 		},
