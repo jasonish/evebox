@@ -62,19 +62,17 @@ export class ReportsService {
 
         let query:any = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "dns"}},
-                            {term: {"dns.type": "answer"}}
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "dns"}},
+                        {term: {"dns.type": "answer"}}
+                    ]
                 }
             },
             size: 0,
             sort: [
-                {"@timestamp": {order: "dest"}}
+                {"@timestamp": {order: "desc"}}
             ],
             aggs: {
                 rcodes: {
@@ -119,19 +117,17 @@ export class ReportsService {
 
         let query:any = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "dns"}},
-                            {term: {"dns.type": "query"}}
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "dns"}},
+                        {term: {"dns.type": "query"}}
+                    ]
                 }
             },
             size: 0,
             sort: [
-                {"@timestamp": {order: "dest"}}
+                {"@timestamp": {order: "desc"}}
             ],
             aggs: {
                 top_rrnames: {
@@ -183,16 +179,14 @@ export class ReportsService {
 
         let query:any = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            // Somewhat limit to eve events only.
-                            {exists: {field: "event_type"}},
+                bool: {
+                    filter: [
+                        // Somewhat limit to eve events only.
+                        {exists: {field: "event_type"}},
 
-                            // And only look at alerts.
-                            {term: {event_type: "alert"}}
-                        ]
-                    }
+                        // And only look at alerts.
+                        {term: {event_type: "alert"}}
+                    ]
                 }
             },
             size: 0,

@@ -35,6 +35,7 @@ import {ToastrService} from "./toastr.service";
 import {TopNavService} from "./topnav.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {loadingAnimation} from "./animations";
+import moment = require("moment");
 
 declare var window:any;
 
@@ -466,11 +467,13 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         let filters:any[] = [];
 
+        let mustNots:any[] = [];
+
         // Add filters depending on view.
         switch (this.appService.getRoute()) {
             case "/inbox":
                 // Limit to non-archived events.
-                filters.push({not: {term: {tags: "archived"}}});
+                mustNots.push({term: {tags: "archived"}});
                 break;
             case "/escalated":
                 // Limit to escalated events only, no time range applied.
@@ -493,8 +496,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         return this.alertService.fetchAlerts({
             queryString: this.queryString,
+            now: moment(),
             range: range,
-            filters: filters
+            filters: filters,
+            mustNots: mustNots,
         }).then((rows:any) => {
             this.rows = rows;
         }, (error:any) => {

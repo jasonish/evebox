@@ -127,33 +127,43 @@ export class ElasticSearchService {
         let query:any = {
             query: {
                 bool: {
-                    filter: {
-                        and: [
-                            {exists: {"field": "event_type"}},
-                            {term: {"event_type": "alert"}},
-                            {
-                                range: {
-                                    "timestamp": {
-                                        gte: alertGroup.oldestTs,
-                                        lte: alertGroup.newestTs
-                                    }
+                    filter: [
+                        {exists: {"field": "event_type"}},
+                        {term: {"event_type": "alert"}},
+                        {
+                            range: {
+                                "timestamp": {
+                                    gte: alertGroup.oldestTs,
+                                    lte: alertGroup.newestTs
                                 }
-                            },
-                            {term: {"alert.signature_id": alertGroup.event._source.alert.signature_id}},
-                            {term: {"src_ip.raw": alertGroup.event._source.src_ip}},
-                            {term: {"dest_ip.raw": alertGroup.event._source.dest_ip}}
-                        ]
-                    }
+                            }
+                        },
+                        {term: {"alert.signature_id": alertGroup.event._source.alert.signature_id}},
+                        {term: {"src_ip.raw": alertGroup.event._source.src_ip}},
+                        {term: {"dest_ip.raw": alertGroup.event._source.dest_ip}}
+                    ],
+                    must_not: []
                 }
             },
             _source: options._source || true,
             size: this.defaultBatchSize
         };
 
+        if (options.filter) {
+            options.filter.forEach((q:any) => {
+                query.query.bool.filter.push(q);
+            })
+        }
         if (options.filters) {
             options.filters.forEach((filter:any) => {
                 query.query.bool.filter.and.push(filter);
             })
+        }
+
+        if (options.must_not) {
+            options.must_not.forEach((q:any) => {
+                query.query.bool.must_not.push(q);
+            });
         }
 
         return this.search(query);
@@ -237,7 +247,9 @@ export class ElasticSearchService {
 
             return this.getAlertsInAlertGroup(alertGroup, {
                 _source: "tags",
-                filters: [{not: {term: {tags: "escalated"}}}]
+                must_not: [
+                    {term: {tags: "escalated"}}
+                ],
             }).then((response:any) => {
                 if (response.hits.hits.length == 0) {
                     resolve("OK");
@@ -270,7 +282,7 @@ export class ElasticSearchService {
 
             return this.getAlertsInAlertGroup(alertGroup, {
                 _source: "tags",
-                filters: [{term: {tags: "escalated"}}],
+                filter: [{term: {tags: "escalated"}}],
             }).then((response:any) => {
                 if (response.hits.hits.length == 0) {
                     console.log("No more alerts to de-escalate.");
@@ -370,50 +382,51 @@ export class ElasticSearchService {
 
         let query:any = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {not: {term: {event_type: "stats"}}}
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        {exists: {field: "event_type"}},
+                    ],
+                    must_not: [
+                        {term: {event_type: "stats"}}
+                    ]
                 }
             },
             size: 500,
             sort: [
                 {"@timestamp": {order: "desc"}}
             ],
-            timeout: 1000
+            timeout: "6s",
         };
 
         if (options.queryString) {
-            query.query.filtered.query = {
+
+            query.query.bool.filter.push({
                 query_string: {
-                    query: options.queryString
+                    query: options.queryString,
                 }
-            }
+            });
         }
 
         if (options.timeEnd) {
-            query.query.filtered.filter.and.push({
+            query.query.bool.filter.push({
                 range: {
                     timestamp: {lte: options.timeEnd}
                 }
-            })
+            });
         }
 
         if (options.timeStart) {
-            query.query.filtered.filter.and.push({
+            query.query.bool.filter.push({
                 range: {
                     timestamp: {gte: options.timeStart}
                 }
-            })
+            });
         }
 
         if (options.filters) {
             options.filters.forEach((filter:any) => {
-                query.query.filtered.filter.and.push(filter);
-            })
+                query.query.bool.filter.push(filter);
+            });
         }
 
         return this.search(query).then((response:any) => {
@@ -453,13 +466,12 @@ export class ElasticSearchService {
 
         let query:any = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "alert"}}
-                        ]
-                    }
+                bool: {
+                    filter: [
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "alert"}}
+                    ],
+                    must_not: []
                 }
             },
             size: 0,
@@ -470,19 +482,19 @@ export class ElasticSearchService {
                 signatures: {
                     terms: {
                         field: "alert.signature_id",
-                        size: 0
+                        size: 100000,
                     },
                     aggs: {
                         sources: {
                             terms: {
                                 field: "src_ip.raw",
-                                size: 0
+                                size: 100000
                             },
                             aggs: {
                                 destinations: {
                                     terms: {
                                         field: "dest_ip.raw",
-                                        size: 0
+                                        size: 100000
                                     },
                                     aggs: {
                                         newest: {
@@ -509,26 +521,34 @@ export class ElasticSearchService {
                     }
                 }
             },
-            timeout: 1000
+            timeout: "30s"
         };
 
         if (options.queryString) {
-            query.query.filtered.query = {
+            query.query.bool.filter.push({
                 query_string: {
                     query: options.queryString
                 }
-            }
+            })
+        }
+
+        if (options.mustNots) {
+            options.mustNots.forEach((q:any) => {
+                query.query.bool.must_not.push(q);
+            });
         }
 
         if (options.filters) {
             options.filters.forEach((filter:any) => {
-                query.query.filtered.filter.and.push(filter);
+                query.query.bool.filter.push(filter);
             });
         }
 
         if (options.range) {
-            let now = moment();
-            this.addTimeRangeFilter(query, now, options.range);
+            if (!options.now) {
+                options.now = moment()
+            }
+            this.addTimeRangeFilter(query, options.now, options.range);
         }
 
         function unwrapResponse(response:any):AlertGroup[] {
@@ -612,7 +632,7 @@ export class ElasticSearchService {
 
         let then = now.clone().subtract(moment.duration(range, "seconds"));
 
-        query.query.filtered.filter.and.push({
+        query.query.bool.filter.push({
             range: {
                 "@timestamp": {
                     gte: `${then.format()}`,
@@ -622,7 +642,7 @@ export class ElasticSearchService {
     }
 
     addSensorNameFilter(query:any, sensor:string) {
-        query.query.filtered.filter.and.push({
+        query.query.bool.filter.push({
             term: {
                 "host.raw": sensor,
             }
