@@ -187,7 +187,8 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     should: [
                         termQuery(ipTermType, "src_ip", this.ip),
                         termQuery(ipTermType, "dest_ip", this.ip),
-                    ]
+                    ],
+                    "minimum_should_match" : 1
                 }
             },
             size: 0,
