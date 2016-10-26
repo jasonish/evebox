@@ -27,18 +27,12 @@
 import {Injectable} from "@angular/core";
 
 require("!!script!humanize-plus/dist/humanize.js");
-declare var Humanize:any;
+declare let Humanize:any;
 
 export function humanizeFileSize(value:any) {
     return Humanize.fileSize(value);
 }
 
-@Injectable()
-export class EveboxHumanizeService {
-
-    fileSize(value:any) {
-        return Humanize.fileSize(value);
-    }
-
+export function humanizeCompactInteger(value:any) {
+    return Humanize.compactInteger(value);
 }
-

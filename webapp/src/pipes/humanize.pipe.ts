@@ -25,20 +25,22 @@
  */
 
 import {Pipe, PipeTransform} from "@angular/core";
-import {EveboxHumanizeService} from "../humanize.service";
+import {
+    humanizeCompactInteger,
+    humanizeFileSize
+} from "../humanize.service";
 
 @Pipe({
     name: "eveboxHumanize"
 })
 export class EveboxHumanizePipe implements PipeTransform {
 
-    constructor(private humanize:EveboxHumanizeService) {
-    }
-
     transform(value:string, func:string) {
         switch (func) {
+            case "compactInteger":
+                return humanizeCompactInteger(value);
             case "fileSize":
-                return this.humanize.fileSize(value);
+                return humanizeFileSize(value);
             default:
                 console.log("EveboxHumanizePipe: Unknown func: " + func);
                 return value;

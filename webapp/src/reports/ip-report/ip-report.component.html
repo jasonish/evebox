@@ -161,6 +161,14 @@
             <td>Bytes From...</td>
             <td>{{bytesFromIp}}</td>
           </tr>
+          <tr>
+            <td>Packets To...</td>
+            <td>{{packetsToIp | eveboxHumanize: 'compactInteger'}} ({{packetsToIp}})</td>
+          </tr>
+          <tr>
+            <td>Packets From...</td>
+            <td>{{packetsFromIp | eveboxHumanize: 'compactInteger'}} ({{packetsFromIp}}</td>
+          </tr>
           </tbody>
         </table>
       </div> <!-- end panel -->

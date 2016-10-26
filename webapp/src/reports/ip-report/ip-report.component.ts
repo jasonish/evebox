@@ -8,7 +8,7 @@ import {AppService, AppEvent, AppEventCode} from "../../app.service";
 import {loadingAnimation} from "../../animations";
 
 import moment = require("moment");
-import {humanizeFileSize} from "../../humanize.service";
+import {humanizeFileSize, humanizeCompactInteger} from "../../humanize.service";
 
 function termQuery(type:string, field:string, value:string) {
     let term = {};
@@ -46,6 +46,10 @@ export class IpReportComponent implements OnInit, OnDestroy {
     private bytesToIp:number;
 
     private bytesFromIp:number;
+
+    private packetsToIp:number;
+
+    private packetsFromIp:number;
 
     private userAgents:any[];
 
@@ -440,7 +444,17 @@ export class IpReportComponent implements OnInit, OnDestroy {
                             sum: {
                                 field: "flow.bytes_toserver",
                             }
-                        }
+                        },
+                        packetsToClient: {
+                            sum: {
+                                field: "flow.pkts_toclient",
+                            }
+                        },
+                        packetsToServer: {
+                            sum: {
+                                field: "flow.pkts_toserver",
+                            }
+                        },
                     }
                 },
 
@@ -463,6 +477,16 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         bytesToServer: {
                             sum: {
                                 field: "flow.bytes_toserver",
+                            }
+                        },
+                        packetsToClient: {
+                            sum: {
+                                field: "flow.pkts_toclient",
+                            }
+                        },
+                        packetsToServer: {
+                            sum: {
+                                field: "flow.pkts_toserver",
                             }
                         }
                     }
@@ -495,6 +519,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
             this.bytesToIp = response.aggregations.destFlows.bytesToServer.value +
                 response.aggregations.sourceFlows.bytesToClient.value;
             this.bytesToIp = humanizeFileSize(this.bytesToIp);
+
+            this.packetsFromIp = response.aggregations.destFlows.packetsToClient.value +
+                response.aggregations.sourceFlows.packetsToServer.value;
+
+            this.packetsToIp = response.aggregations.destFlows.packetsToServer.value +
+                response.aggregations.sourceFlows.packetsToClient.value;
 
             this.sourceFlowCount = response.aggregations.sourceFlows.doc_count;
             this.destFlowCount = response.aggregations.destFlows.doc_count;

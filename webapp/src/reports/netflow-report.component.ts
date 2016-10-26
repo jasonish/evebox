@@ -29,11 +29,11 @@ import {Params, ActivatedRoute} from "@angular/router";
 import {ReportsService} from "./reports.service";
 import {AppService, AppEvent, AppEventCode} from "../app.service";
 import {ToastrService} from "../toastr.service";
-import {EveboxHumanizeService} from "../humanize.service";
 import {TopNavService} from "../topnav.service";
 import {ElasticSearchService} from "../elasticsearch.service";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {loadingAnimation} from "../animations";
+import {humanizeFileSize} from "../humanize.service";
 
 import moment = require("moment");
 
@@ -150,8 +150,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 private appService:AppService,
                 private route:ActivatedRoute,
                 private toastr:ToastrService,
-                private topNavService:TopNavService,
-                private humanize:EveboxHumanizeService) {
+                private topNavService:TopNavService) {
     }
 
     ngOnInit() {
@@ -332,14 +331,14 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             this.topSourcesByBytes = response.aggregations.sourcesByBytes.buckets.map((bucket:any) => {
                 return {
                     key: bucket.key,
-                    count: this.humanize.fileSize(bucket.bytes.value),
+                    count: humanizeFileSize(bucket.bytes.value),
                 };
             });
 
             this.topDestinationsByBytes = response.aggregations.topDestinationsByBytes.buckets.map((bucket:any) => {
                 return {
                     key: bucket.key,
-                    count: this.humanize.fileSize(bucket.bytes.value),
+                    count: humanizeFileSize(bucket.bytes.value),
                 };
             });
 

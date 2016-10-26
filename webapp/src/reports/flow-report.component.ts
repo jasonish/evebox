@@ -28,7 +28,6 @@ import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ActivatedRoute, Params} from "@angular/router";
 import {ReportsService} from "./reports.service";
 import {AppService, AppEvent, AppEventCode} from "../app.service";
-import {EveboxHumanizeService} from "../humanize.service";
 import {TopNavService} from "../topnav.service";
 import {ElasticSearchService} from "../elasticsearch.service";
 import {loadingAnimation} from "../animations";
@@ -110,8 +109,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 private route:ActivatedRoute,
                 private reportsService:ReportsService,
                 private topNavService:TopNavService,
-                private elasticsearch:ElasticSearchService,
-                private humanize:EveboxHumanizeService) {
+                private elasticsearch:ElasticSearchService) {
     }
 
     ngOnInit() {

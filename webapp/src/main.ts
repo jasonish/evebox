@@ -54,7 +54,6 @@ import {ToastrService} from "./toastr.service";
 import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
-import {EveboxHumanizeService} from "./humanize.service";
 import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
 import {AppComponent} from "./app.component";
 import {AlertsComponent} from "./alerts.component";
@@ -168,7 +167,6 @@ switch (localStorage.theme) {
         ToastrService,
         ReportsService,
         EveboxSubscriptionService,
-        EveboxHumanizeService,
         EveboxFormatIpAddressPipe,
     ],
     bootstrap: [
