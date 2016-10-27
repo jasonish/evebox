@@ -58,6 +58,7 @@
               <dt>Source</dt>
               <dd>
                 <search-link field="src_ip"
+                             [search]="event._source.src_ip"
                              value="{{event._source.src_ip | eveboxFormatIpAddress}}">
                 </search-link><span
                   *ngIf="event._source.src_port"
@@ -77,6 +78,7 @@
               <dt>Destination</dt>
               <dd>
                 <search-link field="dest_ip"
+                             [search]="event._source.dest_ip"
                              value="{{event._source.dest_ip | eveboxFormatIpAddress}}">
                 </search-link><span *ngIf="event._source.dest_port"
                                     style="color: dimgray">:{{event._source.dest_port}}</span>

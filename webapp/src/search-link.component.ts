@@ -36,11 +36,16 @@ export class EveboxSearchLinkComponent implements OnInit {
     @Input() private value:string;
     @Input() private searchParams:any;
     @Input() private route:string = "/events";
+    @Input() private search:string;
 
     private queryString:string;
 
     ngOnInit() {
         let queryString = "";
+
+        if (!this.search) {
+            this.search = this.value;
+        }
 
         if (this.searchParams) {
             Object.keys(this.searchParams).map((key:any) => {
@@ -49,10 +54,10 @@ export class EveboxSearchLinkComponent implements OnInit {
         }
         else {
             if (this.field) {
-                queryString = `${this.field}:"${this.value}"`;
+                queryString = `${this.field}:"${this.search}"`;
             }
             else {
-                queryString = `"${this.value}"`;
+                queryString = `"${this.search}"`;
             }
         }
 

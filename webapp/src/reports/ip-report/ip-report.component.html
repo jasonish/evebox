@@ -2,7 +2,23 @@
 
 <div *ngIf="ip" [@loadingState]="loading > 0 ? 'true' : 'false'">
 
-  <h2 style="margin-top: 0px;">Report for IP {{ip}}</h2>
+  <div>
+    <span *ngIf="relatedAddresses.length > 0" class="pull-right">
+      <div class="dropdown">
+        <a href="javascript:void(0)"
+           class="dropdown-toggle"
+           data-toggle="dropdown">Related Reports
+          <span class="caret"></span></a>
+        <ul class="dropdown-menu dropdown-menu-right"
+            aria-labelledby="dropdownMenu1">
+          <li *ngFor="let related of relatedAddresses">
+            <a [routerLink]="['/reports/ip', {ip: related.value}]">{{related.name}}</a>
+          </li>
+        </ul>
+      </div>
+    </span>
+    <h2 style="margin-top: 0px;">Report for IP {{ip}}</h2>
+  </div>
 
   <div class="row">
     <div class="col-md-1 col-sm-1">
@@ -163,11 +179,15 @@
           </tr>
           <tr>
             <td>Packets To...</td>
-            <td>{{packetsToIp | eveboxHumanize: 'compactInteger'}} ({{packetsToIp}})</td>
+            <td>{{packetsToIp | eveboxHumanize: 'compactInteger'}}
+              ({{packetsToIp}})
+            </td>
           </tr>
           <tr>
             <td>Packets From...</td>
-            <td>{{packetsFromIp | eveboxHumanize: 'compactInteger'}} ({{packetsFromIp}}</td>
+            <td>{{packetsFromIp | eveboxHumanize: 'compactInteger'}}
+              ({{packetsFromIp}}
+            </td>
           </tr>
           </tbody>
         </table>
