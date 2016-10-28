@@ -47,6 +47,10 @@ public: public/bundle.js
 evebox: Makefile $(GO_SRCS)
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
 
+# Format all go source code except in the vendor directory.
+gofmt:
+	find * -name \*.go | grep -v ^./vendor | go fmt
+
 build-with-docker:
 	docker build --rm -t evebox/builder - < Dockerfile
 	docker run --rm -it \
