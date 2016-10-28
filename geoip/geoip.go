@@ -1,15 +1,15 @@
 package geoip
 
 import (
-	"os"
 	"fmt"
 	"github.com/oschwald/geoip2-golang"
-	"time"
 	"net"
+	"os"
+	"time"
 )
 
 const (
-	CITY = "GeoLite2-City"
+	CITY    = "GeoLite2-City"
 	COUNTRY = "Geolite2-Country"
 )
 
@@ -20,7 +20,7 @@ var DbLocations = []string{
 	"/usr/share/GeoIP/GeoLite2-Country.mmdb",
 }
 
-func FindDbPath() (string) {
+func FindDbPath() string {
 	for _, path := range DbLocations {
 		if _, err := os.Stat(path); err == nil {
 			return path
@@ -30,16 +30,16 @@ func FindDbPath() (string) {
 }
 
 type GeoIp struct {
-	Ip            string `json:"ip,omitempty"`
-	Ip6           string `json:"ip6,omitempty"`
-	ContinentCode string `json:"continent_code,omitempty"`
-	CountryCode2  string `json:"country_code2,omitempty"`
-	CountryName   string `json:"country_name,omitempty"`
-	RegionName    string `json:"region_name,omitempty"`
-	RegionCode    string `json:"region_code,omitempty"`
-	CityName      string `json:"city_name,omitempty"`
-	Latitude      float64 `json:"latitude,omitempty"`
-	Longitude     float64 `json:"longitude,omitempty"`
+	Ip            string     `json:"ip,omitempty"`
+	Ip6           string     `json:"ip6,omitempty"`
+	ContinentCode string     `json:"continent_code,omitempty"`
+	CountryCode2  string     `json:"country_code2,omitempty"`
+	CountryName   string     `json:"country_name,omitempty"`
+	RegionName    string     `json:"region_name,omitempty"`
+	RegionCode    string     `json:"region_code,omitempty"`
+	CityName      string     `json:"city_name,omitempty"`
+	Latitude      float64    `json:"latitude,omitempty"`
+	Longitude     float64    `json:"longitude,omitempty"`
 	Coordinates   [2]float64 `json:"coordinates,omitempty"`
 }
 
@@ -74,9 +74,9 @@ func NewGeoIpDb(path string) (*GeoIpDb, error) {
 	buildDate := time.Unix(int64(reader.Metadata().BuildEpoch), 0)
 
 	return &GeoIpDb{
-		reader: reader,
+		reader:    reader,
 		buildDate: buildDate,
-		dbType: dbType,
+		dbType:    dbType,
 	}, nil
 }
 
@@ -97,7 +97,7 @@ func (g *GeoIpDb) LookupString(addr string) (GeoIp, error) {
 	// logstash expects IPv4 addresses in the geoip section, so for now
 	// put IPv6 addresses in the "ip6" field.
 	if ip.To4() != nil {
-		result.Ip = addr;
+		result.Ip = addr
 	} else {
 		result.Ip6 = addr
 	}

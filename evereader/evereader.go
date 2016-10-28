@@ -31,9 +31,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/log"
 	"io"
 	"os"
-	"github.com/jasonish/evebox/log"
 )
 
 type EveReader struct {

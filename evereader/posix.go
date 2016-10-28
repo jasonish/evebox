@@ -3,9 +3,9 @@
 package evereader
 
 import (
+	"encoding/json"
 	"os"
 	"syscall"
-	"encoding/json"
 )
 
 func GetSys(fileinfo os.FileInfo) interface{} {

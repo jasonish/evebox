@@ -1,9 +1,9 @@
 package geoip
 
 import (
-	"testing"
-	"log"
 	"encoding/json"
+	"log"
+	"testing"
 )
 
 func TestGeoIp(t *testing.T) {

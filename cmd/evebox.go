@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/jasonish/evebox/cmd/server"
-	"os"
-	"github.com/jasonish/evebox/cmd/esimport"
 	"fmt"
 	"github.com/jasonish/evebox"
+	"github.com/jasonish/evebox/cmd/esimport"
 	"github.com/jasonish/evebox/cmd/evereader"
+	"github.com/jasonish/evebox/cmd/server"
 	"github.com/jasonish/evebox/log"
+	"os"
 )
 
 func VersionMain() {

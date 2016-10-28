@@ -1,22 +1,22 @@
 package evereader
 
 import (
-	"os"
 	"encoding/json"
 	"github.com/jasonish/evebox/log"
+	"os"
 )
 
 type Bookmark struct {
 	// The filename.
-	Path   string `json:"path"`
+	Path string `json:"path"`
 
 	// The offset, for Eve this is the line number.
 	Offset uint64 `json:"offset"`
 
 	// The sile of the file referenced in path.
-	Size   int64 `json:"size"`
+	Size int64 `json:"size"`
 
-	Sys    interface{} `json:"sys"`
+	Sys interface{} `json:"sys"`
 }
 
 type Bookmarker struct {
@@ -24,7 +24,7 @@ type Bookmarker struct {
 	Reader   *EveReader
 }
 
-func (b *Bookmarker) GetBookmark() (*Bookmark) {
+func (b *Bookmarker) GetBookmark() *Bookmark {
 	bookmark := Bookmark{}
 	bookmark.Path = b.Reader.path
 	bookmark.Offset = b.Reader.Pos()
@@ -69,7 +69,7 @@ func (b *Bookmarker) ReadBookmark() (*Bookmark, error) {
 func (b *Bookmarker) BookmarkIsValid(bookmark *Bookmark) bool {
 
 	if bookmark.Path != b.Reader.path {
-		return false;
+		return false
 	}
 
 	fileInfo, err := b.Reader.GetFileInfo()

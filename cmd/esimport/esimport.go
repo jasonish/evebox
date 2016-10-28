@@ -27,50 +27,50 @@
 package esimport
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/jasonish/evebox/config"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/evereader"
-	flag "github.com/spf13/pflag"
-	"os"
-	"io"
-	"time"
-	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/geoip"
-	"encoding/json"
+	"github.com/jasonish/evebox/log"
+	flag "github.com/spf13/pflag"
+	"io"
 	"net"
-	"github.com/jasonish/evebox/config"
+	"os"
+	"time"
 )
 
 type Config struct {
 	// The filename to read.
-	InputFilename           string `yaml:"input"`
+	InputFilename string `yaml:"input"`
 
 	// Elastic Search URL.
-	Url                     string `yaml:"url"`
+	Url string `yaml:"url"`
 
 	// Elastic Search index (prefix)
-	Index                   string `yaml:"index"`
+	Index string `yaml:"index"`
 
 	DisableCertificateCheck bool `yaml:"disable-certificate-check"`
 
-	Username                string `yaml:"username"`
-	Password                string `yaml:"password"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 
-	Bookmark                bool `yaml:"bookmark"`
-	BookmarkPath            string `yaml:"bookmark-path"`
+	Bookmark     bool   `yaml:"bookmark"`
+	BookmarkPath string `yaml:"bookmark-path"`
 
-	DisableGeoIp            bool `yaml:"disable-geoip"`
-	GeoIpDatabase           string `yaml:"geoip-database"`
+	DisableGeoIp  bool   `yaml:"disable-geoip"`
+	GeoIpDatabase string `yaml:"geoip-database"`
 
-	Verbose                 bool `yaml:"verbose"`
+	Verbose bool `yaml:"verbose"`
 
-	End                     bool `yaml:"end"`
+	End bool `yaml:"end"`
 
-	BatchSize               uint64 `yaml:"batch-size"`
+	BatchSize uint64 `yaml:"batch-size"`
 
 	// Not exposed in configuration file.
-	stdout                  bool
-	oneshot                 bool
+	stdout  bool
+	oneshot bool
 }
 
 type ConfigWrapper struct {
@@ -86,7 +86,7 @@ var RFC1918_Netstrings = []string{
 var RFC1918_IPNets []*net.IPNet
 
 func init() {
-	for _, network := range (RFC1918_Netstrings) {
+	for _, network := range RFC1918_Netstrings {
 		_, ipnet, err := net.ParseCIDR(network)
 		if err == nil {
 			RFC1918_IPNets = append(RFC1918_IPNets, ipnet)
@@ -107,7 +107,7 @@ Options:
 
 func IsRFC1918(addr string) bool {
 	ip := net.ParseIP(addr)
-	for _, ipnet := range (RFC1918_IPNets) {
+	for _, ipnet := range RFC1918_IPNets {
 		if ipnet.Contains(ip) {
 			return true
 		}
@@ -142,8 +142,7 @@ func configure(args []string) Config {
 		log.SetLevel(log.DEBUG)
 	}
 
-	configWrapper := ConfigWrapper{
-	}
+	configWrapper := ConfigWrapper{}
 	configWrapper.Config.BatchSize = 1000
 
 	if *configFilename != "" {
@@ -276,7 +275,7 @@ func Main(args []string) {
 	if conf.Bookmark {
 		bookmarker = &evereader.Bookmarker{
 			Filename: conf.BookmarkPath,
-			Reader: reader,
+			Reader:   reader,
 		}
 		err := bookmarker.Init(conf.End)
 		if err != nil {
@@ -362,7 +361,7 @@ func Main(args []string) {
 			count++
 		}
 
-		if eof || (count > 0 && count % conf.BatchSize == 0) {
+		if eof || (count > 0 && count%conf.BatchSize == 0) {
 			var bookmark *evereader.Bookmark = nil
 
 			if conf.Bookmark {
@@ -395,8 +394,8 @@ func Main(args []string) {
 
 			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d; Lag (bytes): %d",
 				count,
-				count - lastStatCount,
-				float64(count - lastStatCount) / (now.Sub(lastStatTs).Seconds()),
+				count-lastStatCount,
+				float64(count-lastStatCount)/(now.Sub(lastStatTs).Seconds()),
 				eofs,
 				lag)
 			lastStatTs = now
@@ -406,7 +405,7 @@ func Main(args []string) {
 
 		if eof {
 			if conf.oneshot {
-				break;
+				break
 			} else {
 				time.Sleep(1 * time.Second)
 			}
@@ -417,7 +416,7 @@ func Main(args []string) {
 
 	if conf.oneshot {
 		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
-			uint64(float64(count) / totalTime.Seconds()))
+			uint64(float64(count)/totalTime.Seconds()))
 	}
 }
 

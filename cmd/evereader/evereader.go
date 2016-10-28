@@ -1,14 +1,14 @@
 package evereader
 
 import (
-	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/evereader"
-	"io"
-	flag "github.com/spf13/pflag"
-	"time"
 	"encoding/json"
-	"os"
 	"fmt"
+	"github.com/jasonish/evebox/evereader"
+	"github.com/jasonish/evebox/log"
+	flag "github.com/spf13/pflag"
+	"io"
+	"os"
+	"time"
 )
 
 func Main(args []string) {
@@ -55,7 +55,7 @@ func Main(args []string) {
 	if useBookmark {
 		bookmarker = &evereader.Bookmarker{
 			Filename: bookmarkPath,
-			Reader: reader,
+			Reader:   reader,
 		}
 		err := bookmarker.Init(end)
 		if err != nil {

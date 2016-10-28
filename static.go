@@ -29,10 +29,10 @@ package evebox
 import (
 	"github.com/GeertJohan/go.rice"
 	"github.com/gorilla/mux"
+	"github.com/jasonish/evebox/log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"github.com/jasonish/evebox/log"
 )
 
 // Setup the handler for static files.
