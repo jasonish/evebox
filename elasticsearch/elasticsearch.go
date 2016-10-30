@@ -27,164 +27,48 @@
 package elasticsearch
 
 import (
-	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net"
 	"net/http"
 	"strings"
+
+	eveboxhttp "github.com/jasonish/evebox/http"
 
 	"github.com/GeertJohan/go.rice"
 )
 
 type ElasticSearch struct {
-	baseUrl          string
-	httpClient       *http.Client
-	DisableCertCheck bool
-	username         string
-	password         string
-	EventIndex       string
+	baseUrl    string
+	username   string
+	password   string
+	EventIndex string
+
+	HttpClient *eveboxhttp.HttpClient
 }
 
 func New(url string) *ElasticSearch {
+	HttpClient := eveboxhttp.NewHttpClient()
+	HttpClient.SetBaseUrl(url)
+
 	es := &ElasticSearch{
 		baseUrl:    url,
-		httpClient: &http.Client{},
+		HttpClient: HttpClient,
 	}
-	es.httpClient.Transport = &http.Transport{DialTLS: es.DialTLS}
 	return es
 }
 
-func (i *ElasticSearch) SetUsernamePassword(username ...string) error {
-	if len(username) == 1 {
-		parts := strings.SplitN(username[0], ":", 2)
-		if len(parts) < 2 {
-			return fmt.Errorf("bad format")
-		}
-		i.username = parts[0]
-		i.password = parts[1]
-	} else {
-		i.username = username[0]
-		i.password = username[1]
-	}
-	return nil
+func (es *ElasticSearch) DisableCertCheck(disableCertCheck bool) {
+	es.HttpClient.DisableCertCheck(disableCertCheck)
 }
 
-func (es *ElasticSearch) DialTLS(network string, addr string) (net.Conn, error) {
-	return tls.Dial(network, addr, &tls.Config{
-		InsecureSkipVerify: es.DisableCertCheck,
-	})
-}
-
-func (es *ElasticSearch) httpDo(request *http.Request) (*http.Response, error) {
-	if es.username != "" || es.password != "" {
-		request.SetBasicAuth(es.username, es.password)
-	}
-	return es.httpClient.Do(request)
-}
-
-func (es *ElasticSearch) Head(url string) (*http.Response, error) {
-	request, err := http.NewRequest("HEAD", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	return es.httpDo(request)
-}
-
-func (es *ElasticSearch) Get(url string) (*http.Response, error) {
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	return es.httpDo(request)
-}
-
-func (es *ElasticSearch) DeleteWithStringBody(path string, bodyType string, body string) (*http.Response, error) {
-	request, err := http.NewRequest("DELETE",
-		fmt.Sprintf("%s/%s", es.baseUrl, path),
-		strings.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Set("Content-Type", bodyType)
-	return es.httpDo(request)
-}
-
-func (es *ElasticSearch) Post(url string, bodyType string, body io.Reader) (*http.Response, error) {
-	request, err := http.NewRequest("POST", url, body)
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Set("Content-Type", bodyType)
-	return es.httpDo(request)
-}
-
-func (es *ElasticSearch) PostString(path string, contentType string, body string) (*http.Response, error) {
-	url := fmt.Sprintf("%s/%s", es.baseUrl, path)
-	request, err := http.NewRequest("POST", url, strings.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Set("Content-Type", contentType)
-	return es.httpDo(request)
-}
-
-func (es *ElasticSearch) PostJson(path string, body interface{}) (*http.Response, error) {
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	url := fmt.Sprintf("%s/%s", es.baseUrl, path)
-	return es.Post(url, "application/json", bytes.NewReader(buf))
-}
-
-func (es *ElasticSearch) Put(path string, body interface{}) error {
-
-	var bodyAsReader io.Reader
-
-	bodyAsReader = nil
-
-	if body == nil {
-		bodyAsReader = nil
-	} else {
-		switch body := body.(type) {
-		case string:
-			bodyAsReader = strings.NewReader(body)
-		case []byte:
-			bodyAsReader = bytes.NewReader(body)
-		default:
-			buf := new(bytes.Buffer)
-			encoder := json.NewEncoder(buf)
-			encoder.Encode(body)
-			bodyAsReader = buf
-		}
-	}
-
-	request, err := http.NewRequest("PUT",
-		fmt.Sprintf("%s/%s", es.baseUrl, path), bodyAsReader)
-	if err != nil {
-		return err
-	}
-
-	response, err := es.httpDo(request)
-	if err != nil {
-		return err
-	}
-	if response.StatusCode != http.StatusOK {
-		return NewElasticSearchError(response)
-	}
-
-	io.Copy(ioutil.Discard, response.Body)
-
-	return nil
+func (es *ElasticSearch) SetUsernamePassword(username ...string) error {
+	return es.HttpClient.SetUsernamePassword(username...)
 }
 
 func (es *ElasticSearch) Ping() (*PingResponse, error) {
 
-	response, err := es.Get(es.baseUrl)
+	response, err := es.HttpClient.Get("")
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +88,7 @@ func (es *ElasticSearch) Ping() (*PingResponse, error) {
 }
 
 func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
-	response, err := es.Head(fmt.Sprintf("%s/_template/%s", es.baseUrl, name))
+	response, err := es.HttpClient.Head(fmt.Sprintf("_template/%s", name))
 	if err != nil {
 		return exists, err
 	}
@@ -234,10 +118,14 @@ func (es *ElasticSearch) LoadTemplate(index string) error {
 	}
 	template["template"] = fmt.Sprintf("%s-*", index)
 
-	err = es.Put(fmt.Sprintf("_template/%s", index), template)
+	response, err := es.HttpClient.PutJson(fmt.Sprintf("_template/%s", index), template)
 	if err != nil {
 		return err
 	}
+	if response.StatusCode != http.StatusOK {
+		return NewElasticSearchError(response)
+	}
+	es.HttpClient.DiscardResponse(response)
 
 	// Success.
 	return nil
@@ -245,7 +133,7 @@ func (es *ElasticSearch) LoadTemplate(index string) error {
 
 func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*SearchResponse, error) {
 	path := fmt.Sprintf("%s/_search?scroll=%s", es.EventIndex, duration)
-	response, err := es.PostJson(path, body)
+	response, err := es.HttpClient.PostJson(path, body)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +152,7 @@ func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchRespon
 		"scroll_id": scrollId,
 		"scroll":    duration,
 	}
-	response, err := es.PostJson("_search/scroll", body)
+	response, err := es.HttpClient.PostJson("_search/scroll", body)
 	if err != nil {
 		return nil, err
 	}
@@ -273,6 +161,11 @@ func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchRespon
 		return nil, err
 	}
 	return &searchResponse, nil
+}
+
+func (es *ElasticSearch) DeleteScroll(scrollId string) (*http.Response, error) {
+	return es.HttpClient.Delete("_search/scroll", "application/json",
+		strings.NewReader(scrollId))
 }
 
 func DecodeResponse(reader io.Reader, output interface{}) error {

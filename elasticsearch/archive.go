@@ -149,14 +149,13 @@ func ArchiveAlerts(es *ElasticSearch, signatureId uint64, srcIp string, destIp s
 
 	}
 
-	response, err := es.DeleteWithStringBody("_search/scroll",
-		"application/json", scrollId)
+	response, err := es.DeleteScroll(scrollId)
 	if err != nil {
 		log.Error("Failed to delete scroll id: %v", err)
 	}
 	io.Copy(ioutil.Discard, response.Body)
 
-	response, err = es.PostString("_refresh", "application/json", "{}")
+	response, err = es.HttpClient.PostString("_refresh", "application/json", "{}")
 	if err != nil {
 		log.Error("Failed to post refresh: %v", err)
 		return err
@@ -211,7 +210,7 @@ func BulkAddTags(es *ElasticSearch, documents []map[string]interface{}, _tags []
 	// Needs to finish with a new line.
 	bulk = append(bulk, "")
 	bulkString := strings.Join(bulk, "\n")
-	response, err := es.PostString("_bulk", "application/json", bulkString)
+	response, err := es.HttpClient.PostString("_bulk", "application/json", bulkString)
 	if err != nil {
 		log.Error("Failed to archive events: %v", err)
 		return false, err

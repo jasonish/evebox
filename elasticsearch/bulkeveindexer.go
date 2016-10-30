@@ -139,8 +139,7 @@ func (i *BulkEveIndexer) Run() error {
 			return nil
 		}
 
-		response, err := i.es.Post(
-			fmt.Sprintf("%s/_bulk", i.baseUrl),
+		response, err := i.es.HttpClient.Post("_bulk",
 			"application/json", i.pipeReader)
 		if err != nil {
 			return err
@@ -160,7 +159,6 @@ func (i *BulkEveIndexer) Run() error {
 		pipeReader, pipeWriter := io.Pipe()
 		i.pipeReader = pipeReader
 		i.pipeWriter = pipeWriter
-
 	}
 
 	return nil

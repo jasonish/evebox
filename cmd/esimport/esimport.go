@@ -225,7 +225,7 @@ func Main(args []string) {
 	}
 
 	es := elasticsearch.New(conf.Url)
-	es.DisableCertCheck = conf.DisableCertificateCheck
+	es.DisableCertCheck(conf.DisableCertificateCheck)
 	if conf.Username != "" || conf.Password != "" {
 		if err := es.SetUsernamePassword(conf.Username,
 			conf.Password); err != nil {
