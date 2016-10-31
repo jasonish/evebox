@@ -76,7 +76,6 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     setup() {
-        console.log("setup");
         this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
     }
 
@@ -201,51 +200,46 @@ export class EventComponent implements OnInit, OnDestroy {
 
     findFlow(event:any) {
 
-        if (!event.flow_id) {
+        if (!event._source.flow_id) {
             console.log("Unable to find flow for event, event does not have a flow id.");
+            console.log(event);
             return;
         }
 
         let query = {
             query: {
-                filtered: {
-                    filter: {
-                        and: [
-                            {exists: {field: "event_type"}},
-                            {term: {event_type: "flow"}},
-                            {term: {flow_id: event._source.flow_id}},
-                            {term: {"proto.raw": event._source.proto}},
-                            {
-                                or: [
-                                    {term: {"src_ip.raw": event._source.src_ip}},
-                                    {term: {"src_ip.raw": event._source.dest_ip}},
-                                ]
-                            },
-                            {
-                                or: [
-                                    {term: {"dest_ip.raw": event._source.src_ip}},
-                                    {term: {"dest_ip.raw": event._source.dest_ip}},
-                                ]
-                            },
-                            {
-                                range: {
-                                    "flow.start": {
-                                        lte: event._source.timestamp,
-                                    }
-                                }
-                            },
-                            {
-                                range: {
-                                    "flow.start": {
-                                        lte: event._source.timestamp,
-                                    }
+                bool: {
+                    filter: [
+                        {exists: {field: "event_type"}},
+                        {term: {"event_type": "flow"}},
+                        {term: {flow_id: event._source.flow_id}},
+                        {term: {"proto": event._source.proto.toLowerCase()}},
+                        {
+                            range: {
+                                "flow.start": {
+                                    lte: event._source.timestamp,
                                 }
                             }
-                        ]
-                    }
+                        },
+                        {
+                            range: {
+                                "flow.start": {
+                                    lte: event._source.timestamp,
+                                }
+                            }
+                        }
+                    ],
+                    should: [
+                        {term: {"src_ip": event._source.src_ip}},
+                        {term: {"src_ip": event._source.dest_ip}},
+                        {term: {"dest_ip": event._source.src_ip}},
+                        {term: {"dest_ip": event._source.dest_ip}},
+                    ],
+                    "minimum_should_match": 2,
                 }
             }
         };
+
         this.elasticSearchService.search(query).then((response:any) => {
             if (response.hits.hits.length > 0) {
                 this.flows = response.hits.hits;

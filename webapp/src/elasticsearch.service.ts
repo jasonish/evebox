@@ -350,7 +350,7 @@ export class ElasticSearchService {
     getEventById(id:string):Promise<any> {
         let query = {
             query: {
-                filtered: {
+                bool: {
                     filter: {
                         term: {_id: id}
                     }
