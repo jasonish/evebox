@@ -23,7 +23,6 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 import {Injectable} from "@angular/core";
 import {Http} from "@angular/http";
 import {TopNavService} from "./topnav.service";
@@ -60,6 +59,10 @@ export class ElasticSearchService {
     private index:string;
     private jobs = queue({concurrency: 4});
 
+    // Default to Logstash/ES 2 template unless we can detect Logstash/ES 5
+    // usage.
+    public keyword:string = "raw";
+
     constructor(private http:Http,
                 private api:ApiService,
                 private topNavService:TopNavService,
@@ -67,6 +70,13 @@ export class ElasticSearchService {
                 private config:ConfigService,
                 private toastr:ToastrService) {
         this.index = config.getConfig().ElasticSearchIndex;
+
+        try {
+            this.keyword = config.getConfig()["extra"]["elasticSearchKeyword"];
+        }
+        catch (err) {
+        }
+        console.log("Use Elastic Search keyword " + this.keyword);
     }
 
     /**
@@ -119,6 +129,19 @@ export class ElasticSearchService {
         return p;
     }
 
+    asKeyword(keyword:string):string {
+        return `${keyword}.${this.keyword}`;
+    }
+
+    keywordTerm(keyword:string, value:any):any {
+        let field = this.asKeyword(keyword);
+        let term = {};
+        term[field] = value;
+        return {
+            term: term
+        }
+    }
+
     getAlertsInAlertGroup(alertGroup:AlertGroup, options ?:any) {
 
         // Make sure options is at least an empty object.
@@ -139,8 +162,8 @@ export class ElasticSearchService {
                             }
                         },
                         {term: {"alert.signature_id": alertGroup.event._source.alert.signature_id}},
-                        {term: {"src_ip.raw": alertGroup.event._source.src_ip}},
-                        {term: {"dest_ip.raw": alertGroup.event._source.dest_ip}}
+                        this.keywordTerm("src_ip", alertGroup.event._source.src_ip),
+                        this.keywordTerm("dest_ip", alertGroup.event._source.dest_ip),
                     ],
                     must_not: []
                 }
@@ -487,13 +510,13 @@ export class ElasticSearchService {
                     aggs: {
                         sources: {
                             terms: {
-                                field: "src_ip.raw",
+                                field: this.asKeyword("src_ip"),
                                 size: 100000
                             },
                             aggs: {
                                 destinations: {
                                     terms: {
-                                        field: "dest_ip.raw",
+                                        field: this.asKeyword("dest_ip"),
                                         size: 100000
                                     },
                                     aggs: {
@@ -642,10 +665,10 @@ export class ElasticSearchService {
     }
 
     addSensorNameFilter(query:any, sensor:string) {
+        let term = {};
+        term[`host.${this.keyword}`] = sensor;
         query.query.bool.filter.push({
-            term: {
-                "host.raw": sensor,
-            }
+            "term": term,
         });
     }
 

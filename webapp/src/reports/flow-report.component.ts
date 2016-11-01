@@ -155,7 +155,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             aggs: {
                 topClientsByFlows: {
                     terms: {
-                        field: "src_ip.raw",
+                        field: `src_ip.${this.elasticsearch.keyword}`,
                         order: {
                             "_count": "desc",
                         }
@@ -163,7 +163,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 },
                 topServersByFlows: {
                     terms: {
-                        field: "dest_ip.raw",
+                        field: `dest_ip.${this.elasticsearch.keyword}`,
                         order: {
                             "_count": "desc",
                         }

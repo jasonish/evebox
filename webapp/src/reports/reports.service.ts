@@ -54,6 +54,10 @@ export class ReportsService {
         });
     }
 
+    asKeyword(keyword:string):string {
+        return this.elasticsearch.asKeyword(keyword);
+    }
+
     dnsResponseReport(options:any = {}):any {
 
         let now = moment();
@@ -77,19 +81,19 @@ export class ReportsService {
             aggs: {
                 rcodes: {
                     terms: {
-                        field: "dns.rcode.raw",
+                        field: this.asKeyword("dns.rcode"),
                         size: size,
                     }
                 },
                 top_rdata: {
                     terms: {
-                        field: "dns.rdata.raw",
+                        field: this.asKeyword("dns.rdata"),
                         size: size
                     }
                 },
                 top_rcode: {
                     terms: {
-                        field: "dns.rcode.raw",
+                        field: this.asKeyword("dns.rcode"),
                         size: size
                     }
                 },
@@ -132,25 +136,25 @@ export class ReportsService {
             aggs: {
                 top_rrnames: {
                     terms: {
-                        field: "dns.rrname.raw",
+                        field: this.asKeyword("dns.rrname"),
                         size: size
                     }
                 },
                 top_servers: {
                     terms: {
-                        field: "dest_ip.raw",
+                        field: this.asKeyword("dest_ip"),
                         size: size
                     }
                 },
                 top_clients: {
                     terms: {
-                        field: "src_ip.raw",
+                        field: this.asKeyword("src_ip"),
                         size: size
                     }
                 },
                 top_rrtype: {
                     terms: {
-                        field: "dns.rrtype.raw",
+                        field: this.asKeyword("dns.rrtype"),
                         size: size
                     }
                 }
@@ -196,13 +200,13 @@ export class ReportsService {
             aggs: {
                 sources: {
                     terms: {
-                        field: "src_ip.raw",
+                        field: this.asKeyword("src_ip"),
                         size: size
                     }
                 },
                 destinations: {
                     terms: {
-                        field: "dest_ip.raw",
+                        field: this.asKeyword("dest_ip"),
                         size: size
                     }
                 },
@@ -220,13 +224,13 @@ export class ReportsService {
                 },
                 signatures: {
                     terms: {
-                        field: "alert.signature.raw",
+                        field: this.asKeyword("alert.signature"),
                         size: size
                     }
                 },
                 categories: {
                     terms: {
-                        field: "alert.category.raw",
+                        field: this.asKeyword("alert.category"),
                         size: size,
                     }
                 }

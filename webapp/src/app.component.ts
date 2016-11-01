@@ -23,7 +23,6 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 import {Component, OnInit} from "@angular/core";
 import {AppService} from "./app.service";
 

@@ -169,6 +169,21 @@ export class IpReportComponent implements OnInit, OnDestroy {
         this.ss.unsubscribe(this);
     }
 
+    keywordTermQuery(keyword:string, value:any):any {
+        return this.elasticsearch.keywordTerm(keyword, value);
+    }
+
+    asKeyword(keyword:string):string {
+        return this.elasticsearch.asKeyword(keyword);
+    }
+
+    termQuery(type:string, field:string, value:string) {
+        let term = {};
+        term[type] = {};
+        term[type][field] = value;
+        return term;
+    }
+
     queryDnsHostnamesForAddress(range:any, now:any) {
 
         this.loading++;
@@ -185,7 +200,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: [
                         {exists: {field: "event_type"}},
                         {term: {"event_type": "dns"}},
-                        {term: {"dns.type.raw": "answer"}},
+                        this.keywordTermQuery("dns.type", "answer"),
                         termQuery(ipTermType, "dns.rdata", this.ip),
                     ]
                 }
@@ -194,7 +209,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
             aggs: {
                 uniqueHostnames: {
                     terms: {
-                        field: "dns.rrname.raw",
+                        field: this.asKeyword("dns.rrname"),
                         size: 100,
                     }
                 }
@@ -243,10 +258,10 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         {exists: {field: "event_type"}},
                     ],
                     should: [
-                        termQuery(ipTermType, "src_ip.raw", this.ip),
-                        termQuery(ipTermType, "dest_ip.raw", this.ip),
+                        termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
+                        termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
                     ],
-                    "minimum_should_match" : 1
+                    "minimum_should_match": 1
                 }
             },
             size: 0,
@@ -257,7 +272,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
                 sensors: {
                     terms: {
-                        field: "host.raw",
+                        field: this.asKeyword("host"),
                         size: 1000,
                     },
                 },
@@ -269,7 +284,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     aggs: {
                         signatures: {
                             terms: {
-                                field: "alert.signature.raw",
+                                field: this.asKeyword("alert.signature"),
                                 size: 10,
                             }
                         }
@@ -283,14 +298,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
                             filter: [
                                 {term: {"event_type": "dns"}},
                                 {term: {"dns.type": "query"}},
-                                termQuery(ipTermType, "src_ip.raw", this.ip),
+                                termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
                             ]
                         },
                     },
                     aggs: {
                         rrnames: {
                             terms: {
-                                field: "dns.rrname.raw",
+                                field: this.asKeyword("dns.rrname"),
                                 size: 10,
                             }
                         }
@@ -303,20 +318,20 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         bool: {
                             filter: [
                                 {term: {"event_type": "http"}},
-                                termQuery(ipTermType, "src_ip.raw", this.ip),
+                                termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
                             ]
                         }
                     },
                     aggs: {
                         userAgents: {
                             terms: {
-                                field: "http.http_user_agent.raw",
+                                field: this.asKeyword("http.http_user_agent"),
                                 size: 10,
                             }
                         },
                         hostnames: {
                             terms: {
-                                field: "http.hostname.raw",
+                                field: this.asKeyword("http.hostname"),
                                 size: 10,
                             }
                         }
@@ -329,11 +344,11 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     },
                     aggs: {
                         dest: {
-                            filter: termQuery(ipTermType, "dest_ip.raw", this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
                             aggs: {
                                 hostnames: {
                                     terms: {
-                                        field: "http.hostname.raw",
+                                        field: this.asKeyword("http.hostname"),
                                         size: 10,
                                     },
                                 }
@@ -348,14 +363,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         bool: {
                             filter: [
                                 {term: {"event_type": "tls"}},
-                                termQuery(ipTermType, "dest_ip.raw", this.ip),
+                                termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
                             ]
                         }
                     },
                     aggs: {
                         sni: {
                             terms: {
-                                field: "tls.sni.raw",
+                                field: this.asKeyword("tls.sni"),
                                 size: 100,
                             }
                         }
@@ -369,34 +384,34 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     },
                     aggs: {
                         asSource: {
-                            filter: termQuery(ipTermType, "src_ip.raw", this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
                             aggs: {
                                 versions: {
                                     terms: {
-                                        field: "tls.version.raw",
+                                        field: this.asKeyword("tls.version"),
                                         size: 10,
                                     }
                                 },
                                 sni: {
                                     terms: {
-                                        field: "tls.sni.raw",
+                                        field: this.asKeyword("tls.sni"),
                                         size: 10,
                                     }
                                 },
                                 subjects: {
                                     terms: {
-                                        field: "tls.subject.raw",
+                                        field: this.asKeyword("tls.subject"),
                                         size: 10,
                                     }
                                 }
                             }
                         },
                         asDest: {
-                            filter: termQuery(ipTermType, "dest_ip.raw", this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
                             aggs: {
                                 versions: {
                                     terms: {
-                                        field: "tls.version.raw",
+                                        field: this.asKeyword("tls.version"),
                                         size: 10,
                                     }
                                 }
@@ -412,17 +427,17 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     aggs: {
                         // SSH connections as client.
                         sources: {
-                            filter: termQuery(ipTermType, "src_ip.raw", this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
                             aggs: {
                                 outboundClientProtoVersions: {
                                     terms: {
-                                        field: "ssh.client.proto_version.raw",
+                                        field: this.asKeyword("ssh.client.proto_version"),
                                         size: 10,
                                     }
                                 },
                                 outboundServerProtoVersions: {
                                     terms: {
-                                        field: "ssh.server.proto_version.raw",
+                                        field: this.asKeyword("ssh.server.proto_version"),
                                         size: 10,
                                     }
                                 },
@@ -430,14 +445,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                 // versions connected to by this host.
                                 outboundServerVersions: {
                                     terms: {
-                                        field: "ssh.server.software_version.raw",
+                                        field: this.asKeyword("ssh.server.software_version"),
                                         size: 10,
                                     }
                                 },
                                 // Outbound client versions.
                                 outboundClientVersions: {
                                     terms: {
-                                        field: "ssh.client.software_version.raw",
+                                        field: this.asKeyword("ssh.client.software_version"),
                                         size: 10,
                                     }
                                 }
@@ -445,31 +460,31 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         },
                         // SSH connections as server.
                         dests: {
-                            filter: termQuery(ipTermType, "dest_ip.raw", this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
                             aggs: {
                                 inboundClientProtoVersions: {
                                     terms: {
-                                        field: "ssh.client.proto_version.raw",
+                                        field: this.asKeyword("ssh.client.proto_version"),
                                         size: 10,
                                     }
                                 },
                                 inboundServerProtoVersions: {
                                     terms: {
-                                        field: "ssh.server.proto_version.raw",
+                                        field: this.asKeyword("ssh.server.proto_version"),
                                         size: 10,
                                     }
                                 },
                                 // Inbound client versions.
                                 inboundClientVersions: {
                                     terms: {
-                                        field: "ssh.client.software_version.raw",
+                                        field: this.asKeyword("ssh.client.software_version"),
                                         size: 10,
                                     }
                                 },
                                 // Inbound server versions.
                                 inboundServerVersions: {
                                     terms: {
-                                        field: "ssh.server.software_version.raw",
+                                        field: this.asKeyword("ssh.server.software_version"),
                                         size: 10,
                                     }
                                 }
@@ -484,7 +499,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         bool: {
                             filter: [
                                 {term: {"event_type": "flow"}},
-                                termQuery(ipTermType, "src_ip.raw", this.ip),
+                                termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
                             ]
                         }
                     },

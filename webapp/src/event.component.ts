@@ -58,7 +58,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
     constructor(private route:ActivatedRoute,
                 private router:Router,
-                private elasticSearchService:ElasticSearchService,
+                private elasticSearch:ElasticSearchService,
                 private api:ApiService,
                 private eventServices:EventServices,
                 private location:Location,
@@ -130,8 +130,8 @@ export class EventComponent implements OnInit, OnDestroy {
 
     sessionSearch() {
         let q = `+alert.signature_id:${this.event._source.alert.signature_id}`;
-        q += ` +src_ip.raw:"${this.event._source.src_ip}"`;
-        q += ` +dest_ip.raw:"${this.event._source.dest_ip}"`;
+        q += ` +src_ip.${this.elasticSearch.keyword}:"${this.event._source.src_ip}"`;
+        q += ` +dest_ip.${this.elasticSearch.keyword}:"${this.event._source.dest_ip}"`;
 
         if (this.params && this.params.referer == "/inbox") {
             q += ` -tags:archived`;
@@ -144,33 +144,33 @@ export class EventComponent implements OnInit, OnDestroy {
 
     archiveEvent() {
         if (this.alertGroup) {
-            this.elasticSearchService.archiveAlertGroup(this.alertGroup);
+            this.elasticSearch.archiveAlertGroup(this.alertGroup);
             this.alertGroup.event._source.tags.push("archived");
         }
         else {
-            this.elasticSearchService.archiveEvent(this.event);
+            this.elasticSearch.archiveEvent(this.event);
         }
         this.location.back();
     }
 
     escalateEvent() {
         if (this.alertGroup) {
-            this.elasticSearchService.escalateAlertGroup(this.alertGroup);
+            this.elasticSearch.escalateAlertGroup(this.alertGroup);
             this.alertGroup.escalatedCount = this.alertGroup.count;
         }
         else {
             console.log("Escalating single event.");
-            this.elasticSearchService.escalateEvent(this.event);
+            this.elasticSearch.escalateEvent(this.event);
         }
     }
 
     deEscalateEvent() {
         if (this.alertGroup) {
-            this.elasticSearchService._removeEscalatedStateFromAlertGroup(this.alertGroup);
+            this.elasticSearch._removeEscalatedStateFromAlertGroup(this.alertGroup);
             this.alertGroup.escalatedCount = 0;
         }
         else {
-            this.elasticSearchService.removeTagsFromEventSet([this.event], ["escalated", "evebox.escalated"]);
+            this.elasticSearch.removeTagsFromEventSet([this.event], ["escalated", "evebox.escalated"]);
         }
         this.location.back();
     }
@@ -240,7 +240,7 @@ export class EventComponent implements OnInit, OnDestroy {
             }
         };
 
-        this.elasticSearchService.search(query).then((response:any) => {
+        this.elasticSearch.search(query).then((response:any) => {
             if (response.hits.hits.length > 0) {
                 this.flows = response.hits.hits;
             }
@@ -254,7 +254,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
         this.loading = true;
 
-        this.elasticSearchService.getEventById(this.eventId)
+        this.elasticSearch.getEventById(this.eventId)
             .then((response:any) => {
                 this.event = response;
                 if (this.event._source.event_type != "flow") {

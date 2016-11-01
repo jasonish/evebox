@@ -247,7 +247,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 },
                 sourcesByBytes: {
                     terms: {
-                        field: "src_ip.raw",
+                        field: `src_ip.${this.elasticsearch.keyword}`,
                         order: {
                             "bytes": "desc"
                         },
@@ -262,7 +262,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 },
                 topDestinationsByBytes: {
                     terms: {
-                        field: "dest_ip.raw",
+                        field: `dest_ip.${this.elasticsearch.keyword}`,
                         order: {
                             "bytes": "desc"
                         },
@@ -277,7 +277,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 },
                 sourcesByPackets: {
                     terms: {
-                        field: "src_ip.raw",
+                        field: `src_ip.${this.elasticsearch.keyword}`,
                         order: {
                             "packets": "desc"
                         }
@@ -292,7 +292,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 },
                 topDestinationsByPackets: {
                     terms: {
-                        field: "dest_ip.raw",
+                        field: `dest_ip.${this.elasticsearch.keyword}`,
                         order: {
                             "packets": "desc"
                         },
