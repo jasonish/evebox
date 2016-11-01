@@ -169,6 +169,7 @@ func Main(args []string) {
 		log.Info("Connected to Elastic Search (version: %s)",
 			pingResponse.Version.Number)
 	}
+	appContext.ArchiveService = elasticsearch.NewArchiveService(elasticSearch)
 
 	router := mux.NewRouter()
 

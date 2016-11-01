@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
 )
 
@@ -39,8 +38,7 @@ func (h *ArchiveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) (inte
 	decoder := json.NewDecoder(r.Body)
 	decoder.UseNumber()
 	decoder.Decode(&request)
-	err := elasticsearch.ArchiveAlerts(h.AppContext.ElasticSearch,
-		request.SignatureId, request.SrcIp,
+	err := h.AppContext.ArchiveService.ArchiveAlerts(request.SignatureId, request.SrcIp,
 		request.DestIp, request.MinTimestamp, request.MaxTimestamp)
 	if err != nil {
 		log.Error("%v", err)

@@ -27,11 +27,18 @@
 package elasticsearch
 
 import (
-	"strings"
+	"encoding/json"
 	"strconv"
+	"strings"
 )
 
-// Response to an Elastic Search ping (GET /)
+// Type alias for a map[string] - helper for building up JSON.
+type m map[string]interface{}
+
+// Type alias for an interface slice - helper for building up JSON lists.
+type l []interface{}
+
+// PingResponse represents the response to an Elastic Search ping (GET /).
 type PingResponse struct {
 	Name        string `json:"name"`
 	ClusterName string `json:"cluster_name"`
@@ -41,17 +48,21 @@ type PingResponse struct {
 	Tagline string `json:"tagline"`
 }
 
-func (p PingResponse) MajorVersion() (int64) {
+// MajorVersion returns the major version of Elastic Search as found
+// in the PingResponse.
+func (p PingResponse) MajorVersion() int64 {
 	version := p.Version.Number
 	parts := strings.Split(version, ".")
 	major, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
 		return -1
-	} else {
-		return major
 	}
+	return major
+
 }
 
+// BulkCreateHeader represents the JSON used to prefix a document to be indexed
+// in the bulk request.
 type BulkCreateHeader struct {
 	Create struct {
 		Index string `json:"_index"`
@@ -78,4 +89,56 @@ type SearchResponse struct {
 	Took     uint64                 `json:"took"`
 	Hits     Hits                   `json:"hits"`
 	ScrollId string                 `json:"_scroll_id"`
+}
+
+type ExistsQuery struct {
+	Field string
+}
+
+func (q ExistsQuery) MarshalJSON() ([]byte, error) {
+	var object struct {
+		Exists struct {
+			Field string `json:"field"`
+		} `json:"exists"`
+	}
+	object.Exists.Field = q.Field
+	return json.Marshal(object)
+}
+
+type TermQuery struct {
+	Field string
+	Value interface{}
+}
+
+func (q TermQuery) MarshalJSON() ([]byte, error) {
+	object := map[string]interface{}{
+		"term": map[string]interface{}{
+			q.Field: q.Value,
+		},
+	}
+	return json.Marshal(object)
+}
+
+type RangeQuery struct {
+	Field string
+	Gte   string
+	Lte   string
+}
+
+func (r RangeQuery) MarshalJSON() ([]byte, error) {
+	values := map[string]string{}
+	if r.Gte != "" {
+		values["gte"] = r.Gte
+	}
+	if r.Lte != "" {
+		values["lte"] = r.Lte
+	}
+
+	rangeq := map[string]interface{}{
+		"range": map[string]interface{}{
+			r.Field: values,
+		},
+	}
+
+	return json.Marshal(rangeq)
 }
