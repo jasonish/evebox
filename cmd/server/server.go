@@ -74,15 +74,26 @@ func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func ConfigHandler(w http.ResponseWriter, r *http.Request) {
-	configJson, err := conf.ToJSON()
-	if err != nil {
-		// Return failure.
-		log.Println("error: ", err)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(configJson)
+func ConfigHandler(appContext server.AppContext) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// A bit of a hack here... Provide the keyword type in the config
+		// object to the frontend doesn't have to do extra work to find it.
+		if conf.Extra == nil {
+			conf.Extra = make(map[string]interface{})
+		}
+		conf.Extra["elasticSearchKeyword"], _ = appContext.ElasticSearch.GetKeywordType("")
+
+		configJson, err :=
+			conf.ToJSON()
+		if err != nil {
+			// Return failure.
+			log.Println("error: ", err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Write(configJson)
+	})
 }
 
 func setupElasticSearchProxy(router *mux.Router) {
@@ -159,23 +170,22 @@ func Main(args []string) {
 
 	appContext := server.AppContext{}
 	elasticSearch := elasticsearch.New(getElasticSearchUrl())
-	elasticSearch.EventIndex = conf.ElasticSearchIndex
-	appContext.ElasticSearch = elasticSearch
+	elasticSearch.SetEventIndex(conf.ElasticSearchIndex)
 	pingResponse, err := elasticSearch.Ping()
 	if err != nil {
 		log.Error("Failed to ping Elastic Search: %v", err)
 	} else {
-
 		log.Info("Connected to Elastic Search (version: %s)",
 			pingResponse.Version.Number)
 	}
+	appContext.ElasticSearch = elasticSearch
 	appContext.ArchiveService = elasticsearch.NewArchiveService(elasticSearch)
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/eve2pcap", evebox.Eve2PcapHandler)
 	router.HandleFunc("/api/version", VersionHandler)
-	router.HandleFunc("/api/config", ConfigHandler)
+	router.Handle("/api/config", ConfigHandler(appContext))
 
 	router.Handle("/api/1/archive", server.Api(appContext,
 		&server.ArchiveHandler{appContext}))
@@ -184,7 +194,7 @@ func Main(args []string) {
 	evebox.SetupStatic(router, opts.DevServerUri)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
+	err = http.ListenAndServe(opts.Host + ":" + opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}

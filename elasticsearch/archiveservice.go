@@ -30,6 +30,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"io"
 	"io/ioutil"
+	"fmt"
 )
 
 type ArchiveService struct {
@@ -42,7 +43,23 @@ func NewArchiveService(es *ElasticSearch) *ArchiveService {
 		es: es,
 	}
 
+	keyword, err := es.GetKeywordType("")
+	if err != nil {
+		log.Warning("Failed to determine Elastic Search keyword type, using 'keyword'")
+		archiveService.keyword = keyword
+	} else {
+		log.Info("Using Elastic Search keyword type %s.", keyword)
+		archiveService.keyword = keyword
+	}
+
 	return archiveService
+}
+
+func (s *ArchiveService) KeywordTermQuery(term string, value string) TermQuery {
+	return TermQuery{
+		fmt.Sprintf("%s.%s", term, s.keyword),
+		value,
+	}
 }
 
 func (s *ArchiveService) ArchiveAlerts(signatureId uint64,
@@ -54,14 +71,14 @@ func (s *ArchiveService) ArchiveAlerts(signatureId uint64,
 			"bool": m{
 				"filter": l{
 					ExistsQuery{"event_type"},
-					TermQuery{"event_type", "alert"},
+					s.KeywordTermQuery("event_type", "alert"),
 					RangeQuery{
 						Field: "timestamp",
 						Gte:   minTimestamp,
 						Lte:   maxTimestamp,
 					},
-					TermQuery{"src_ip.raw", srcIp},
-					TermQuery{"dest_ip.raw", destIp},
+					s.KeywordTermQuery("src_ip", srcIp),
+					s.KeywordTermQuery("dest_ip", destIp),
 					TermQuery{
 						"alert.signature_id",
 						signatureId,

@@ -36,20 +36,23 @@ import (
 	eveboxhttp "github.com/jasonish/evebox/http"
 
 	"github.com/GeertJohan/go.rice"
+	"github.com/jasonish/evebox/log"
 )
 
 type ElasticSearch struct {
-	baseUrl       string
-	username      string
-	password      string
-	EventIndex    string
+	baseUrl  string
+	username string
+	password string
+
+	EventSearchIndex string
+	EventBaseIndex   string
 
 	// These are filled on a ping request. Perhaps when creating an
 	// instance of this object we should ping.
 	VersionString string
 	MajorVersion  int64
 
-	HttpClient    *eveboxhttp.HttpClient
+	HttpClient *eveboxhttp.HttpClient
 }
 
 func New(url string) *ElasticSearch {
@@ -72,7 +75,20 @@ func (es *ElasticSearch) SetUsernamePassword(username ...string) error {
 	return es.HttpClient.SetUsernamePassword(username...)
 }
 
-func (es *ElasticSearch) Decode(response *http.Response, v interface{}) (error) {
+func (es *ElasticSearch) SetEventIndex(index string) {
+	if strings.HasSuffix(index, "*") {
+		baseIndex := strings.TrimSuffix(strings.TrimSuffix(index, "*"), "-")
+		es.EventSearchIndex = index
+		es.EventBaseIndex = baseIndex
+	} else {
+		es.EventBaseIndex = index
+		es.EventSearchIndex = fmt.Sprintf("%s=*", index)
+	}
+	log.Info("Event base index: %s", es.EventBaseIndex)
+	log.Info("Event search index: %s", es.EventSearchIndex)
+}
+
+func (es *ElasticSearch) Decode(response *http.Response, v interface{}) error {
 	decoder := json.NewDecoder(response.Body)
 	decoder.UseNumber()
 	return decoder.Decode(v)
@@ -123,6 +139,9 @@ func (es *ElasticSearch) GetTemplate(name string) (JsonMap, error) {
 // GetKeywordType is a crude way of determining if the template is using
 // Logstash 5 keyword type, or Logstash 2 "raw" type.
 func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
+	if index == "" {
+		index = es.EventBaseIndex
+	}
 	template, err := es.GetTemplate(index)
 	if err != nil {
 		return "", err
@@ -193,7 +212,7 @@ func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 }
 
 func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*SearchResponse, error) {
-	path := fmt.Sprintf("%s/_search?scroll=%s", es.EventIndex, duration)
+	path := fmt.Sprintf("%s/_search?scroll=%s", es.EventSearchIndex, duration)
 	response, err := es.HttpClient.PostJson(path, body)
 	if err != nil {
 		return nil, err

@@ -37,6 +37,7 @@ import (
 type Config struct {
 	ElasticSearchIndex string
 	EventServices      []map[string]interface{} `yaml:"event-services" json:"event-services"`
+	Extra              map[string]interface{}   `json:"extra,omitempty"`
 }
 
 func (c *Config) ToJSON() ([]byte, error) {
