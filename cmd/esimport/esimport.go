@@ -238,12 +238,13 @@ func Main(args []string) {
 	}
 	log.Info("Connected to Elastic Search v%s (cluster:%s; name: %s)",
 		response.Version.Number, response.ClusterName, response.Name)
+	majorVersion := response.MajorVersion()
 
 	// Check if the template exists.
 	templateExists, err := es.CheckTemplate(conf.Index)
 	if !templateExists {
 		log.Info("Template %s does not exist, creating...", conf.Index)
-		err = es.LoadTemplate(conf.Index)
+		err = es.LoadTemplate(conf.Index, majorVersion)
 		if err != nil {
 			log.Fatal("Failed to create template:", err)
 		}

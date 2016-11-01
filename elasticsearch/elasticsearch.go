@@ -39,12 +39,17 @@ import (
 )
 
 type ElasticSearch struct {
-	baseUrl    string
-	username   string
-	password   string
-	EventIndex string
+	baseUrl       string
+	username      string
+	password      string
+	EventIndex    string
 
-	HttpClient *eveboxhttp.HttpClient
+	// These are filled on a ping request. Perhaps when creating an
+	// instance of this object we should ping.
+	VersionString string
+	MajorVersion  int64
+
+	HttpClient    *eveboxhttp.HttpClient
 }
 
 func New(url string) *ElasticSearch {
@@ -55,6 +60,7 @@ func New(url string) *ElasticSearch {
 		baseUrl:    url,
 		HttpClient: HttpClient,
 	}
+
 	return es
 }
 
@@ -64,6 +70,12 @@ func (es *ElasticSearch) DisableCertCheck(disableCertCheck bool) {
 
 func (es *ElasticSearch) SetUsernamePassword(username ...string) error {
 	return es.HttpClient.SetUsernamePassword(username...)
+}
+
+func (es *ElasticSearch) Decode(response *http.Response, v interface{}) (error) {
+	decoder := json.NewDecoder(response.Body)
+	decoder.UseNumber()
+	return decoder.Decode(v)
 }
 
 func (es *ElasticSearch) Ping() (*PingResponse, error) {
@@ -77,13 +89,10 @@ func (es *ElasticSearch) Ping() (*PingResponse, error) {
 		return nil, NewElasticSearchError(response)
 	}
 
-	decoder := json.NewDecoder(response.Body)
-	decoder.UseNumber()
 	var body PingResponse
-	if err := decoder.Decode(&body); err != nil {
+	if err := es.Decode(response, &body); err != nil {
 		return nil, err
 	}
-
 	return &body, nil
 }
 
@@ -96,14 +105,66 @@ func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
 	return exists, nil
 }
 
-func (es *ElasticSearch) LoadTemplate(index string) error {
+func (es *ElasticSearch) GetTemplate(name string) (JsonMap, error) {
+	response, err := es.HttpClient.Get(fmt.Sprintf("_template/%s", name))
+	if err != nil {
+		return nil, err
+	}
+
+	template := JsonMap{}
+
+	if err := es.Decode(response, &template); err != nil {
+		return nil, err
+	}
+
+	return template, nil
+}
+
+// GetKeywordType is a crude way of determining if the template is using
+// Logstash 5 keyword type, or Logstash 2 "raw" type.
+func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
+	template, err := es.GetTemplate(index)
+	if err != nil {
+		return "", err
+	}
+
+	dynamicTemplates := template.GetMap(index).
+		GetMap("mappings").
+		GetMap("_default_").
+		GetMapList("dynamic_templates")
+	for _, entry := range dynamicTemplates {
+		if entry["string_fields"] != nil {
+			mappingType := entry.GetMap("string_fields").
+				GetMap("mapping").
+				GetMap("fields").
+				GetMap("keyword").
+				Get("type")
+			if mappingType == "keyword" {
+				return "keyword", nil
+			}
+		}
+	}
+	return "raw", nil
+}
+
+func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 
 	templateBox, err := rice.FindBox("static")
 	if err != nil {
 		return err
 	}
 
-	templateFile, err := templateBox.Open("es2x-template.json")
+	var templateFilename string
+
+	if majorVersion == 5 {
+		templateFilename = "template-es5x.json"
+	} else if majorVersion == 2 {
+		templateFilename = "template-es2x.json"
+	} else {
+		return fmt.Errorf("No template for Elastic Search with major version %d", majorVersion)
+	}
+
+	templateFile, err := templateBox.Open(templateFilename)
 	if err != nil {
 		return err
 	}
