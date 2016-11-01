@@ -26,6 +26,11 @@
 
 package elasticsearch
 
+import (
+	"strings"
+	"strconv"
+)
+
 // Response to an Elastic Search ping (GET /)
 type PingResponse struct {
 	Name        string `json:"name"`
@@ -34,6 +39,17 @@ type PingResponse struct {
 		Number string `json:"number"`
 	} `json:"version"`
 	Tagline string `json:"tagline"`
+}
+
+func (p PingResponse) MajorVersion() (int64) {
+	version := p.Version.Number
+	parts := strings.Split(version, ".")
+	major, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return -1
+	} else {
+		return major
+	}
 }
 
 type BulkCreateHeader struct {
