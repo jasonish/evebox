@@ -41,10 +41,8 @@ import (
 	"github.com/jasonish/evebox/pcap"
 )
 
-const (
-	// The even timestamp format.
-	RFC3339Nano_Modified = "2006-01-02T15:04:05.999999999Z0700"
-)
+// The Eve timestamp format - a slightly modified RFC3339Nano format.
+const EveTimestampFormat = "2006-01-02T15:04:05.999999999Z0700"
 
 // Eve Timestamp.
 type EveTimestamp struct {
@@ -57,7 +55,7 @@ func (ev *EveTimestamp) UnmarshalJSON(b []byte) (err error) {
 		b = b[1 : len(b)-1]
 	}
 
-	ev.Time, err = time.Parse(RFC3339Nano_Modified, string(b))
+	ev.Time, err = time.Parse(EveTimestampFormat, string(b))
 	return err
 }
 
