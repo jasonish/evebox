@@ -50,7 +50,7 @@ func SetupStatic(router *mux.Router, devServerUri string) {
 
 	} else {
 		public := http.FileServer(
-			rice.MustFindBox("./public").HTTPBox())
+			rice.MustFindBox("../public").HTTPBox())
 		router.PathPrefix("/").Handler(public)
 	}
 }

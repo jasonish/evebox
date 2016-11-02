@@ -89,7 +89,8 @@ dist: LDFLAGS += -s -w
 dist: public/bundle.js
 	GOARCH=$(GOARCH) GOOS=$(GOOS) CGO_ENABLED=0 \
 		go build -ldflags "$(LDFLAGS)" -o dist/$(DISTNAME)/${APP} cmd/evebox.go
-	rice -v append -i . -i ./elasticsearch --exec dist/${DISTNAME}/${APP}
+	rice -v append -i ./server -i ./elasticsearch \
+		--exec dist/${DISTNAME}/${APP}
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 
 release:
