@@ -28,9 +28,9 @@ package server
 
 import (
 	"fmt"
-	"github.com/jasonish/evebox"
 	"log"
 	"net/http"
+	"github.com/jasonish/evebox/eve"
 )
 
 func HttpErrorAndLog(w http.ResponseWriter, r *http.Request, code int,
@@ -41,7 +41,7 @@ func HttpErrorAndLog(w http.ResponseWriter, r *http.Request, code int,
 }
 
 func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
-	var event *evebox.EveEvent
+	var event *eve.EveEvent
 	var err error
 	var pcap []byte
 
@@ -49,7 +49,7 @@ func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
 
 	jsonEvent := r.Form["event"][0]
 	if jsonEvent != "" {
-		event, err = evebox.NewEveEventFromJson(jsonEvent)
+		event, err = eve.NewEveEventFromJson(jsonEvent)
 		if err != nil {
 			HttpErrorAndLog(w, r, http.StatusBadRequest,
 				"Failed to decode JSON:", err)
@@ -76,7 +76,7 @@ func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
 				"Payload conversion requested but JSON contains no payload.")
 			return
 		}
-		pcap, err = evebox.EvePayloadToPcap(event)
+		pcap, err = eve.EvePayloadToPcap(event)
 		if err != nil {
 			HttpErrorAndLog(w, r, http.StatusInternalServerError,
 				"Failed to convert to PCAP: %s", err)
@@ -88,7 +88,7 @@ func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
 				"Packet conversion requested but JSON contains no packet.")
 			return
 		}
-		pcap, err = evebox.EvePacketToPcap(event)
+		pcap, err = eve.EvePacketToPcap(event)
 		if err != nil {
 			HttpErrorAndLog(w, r, http.StatusInternalServerError,
 				"Failed to convert to PCAP: %s", err)

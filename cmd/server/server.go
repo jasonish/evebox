@@ -33,8 +33,8 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/jasonish/evebox"
 	"github.com/jasonish/evebox/config"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
@@ -66,9 +66,9 @@ type VersionResponse struct {
 
 func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	response := VersionResponse{
-		evebox.BuildVersion,
-		evebox.BuildRev,
-		evebox.BuildDate,
+		core.BuildVersion,
+		core.BuildRev,
+		core.BuildDate,
 	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	json.NewEncoder(w).Encode(response)
@@ -115,7 +115,7 @@ func setupElasticSearchProxy(router *mux.Router) {
 
 func VersionMain() {
 	fmt.Printf("EveBox Version %s (rev %s) [%s]\n",
-		evebox.BuildVersion, evebox.BuildRev, evebox.BuildDate)
+		core.BuildVersion, core.BuildRev, core.BuildDate)
 }
 
 func getElasticSearchUrl() string {
@@ -195,7 +195,7 @@ func Main(args []string) {
 		server.ApiFunc(appContext, server.GetEventByIdHandler))
 
 	setupElasticSearchProxy(router)
-	evebox.SetupStatic(router, opts.DevServerUri)
+	server.SetupStatic(router, opts.DevServerUri)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
 	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)

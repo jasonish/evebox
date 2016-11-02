@@ -27,14 +27,14 @@
 package server
 
 import (
-	"github.com/jasonish/evebox"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 )
 
 type AppContext struct {
 	ElasticSearch *elasticsearch.ElasticSearch
 
-	ArchiveService evebox.ArchiveService
+	ArchiveService core.ArchiveService
 
-	EventService evebox.EventService
+	EventService core.EventService
 }

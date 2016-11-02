@@ -24,33 +24,41 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package evebox
+package pcap
 
 import (
-	"github.com/GeertJohan/go.rice"
-	"github.com/gorilla/mux"
-	"github.com/jasonish/evebox/log"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
+	"bytes"
+	"time"
+
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcapgo"
 )
 
-// Setup the handler for static files.
-func SetupStatic(router *mux.Router, devServerUri string) {
-	if len(devServerUri) > 0 {
-		log.Notice("Proxying static files to %v.",
-			devServerUri)
-		devServerProxyUrl, err := url.Parse(devServerUri)
-		if err != nil {
-			log.Fatal(err)
-		}
-		devServerProxy :=
-			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-		router.PathPrefix("/").Handler(devServerProxy)
+// Create a 1 packet PCAP buffer.
+//
+// Give a timestamp, a packet and a linktype return a []byte buffer
+// containing a complete PCAP file.
+func CreatePcap(timestamp time.Time, packet []byte, linktype layers.LinkType) ([]byte, error) {
+	var output bytes.Buffer
+	var err error
 
-	} else {
-		public := http.FileServer(
-			rice.MustFindBox("./public").HTTPBox())
-		router.PathPrefix("/").Handler(public)
+	pcapWriter := pcapgo.NewWriter(&output)
+	err = pcapWriter.WriteFileHeader(0xffff, linktype)
+	if err != nil {
+		return nil, err
 	}
+
+	captureInfo := gopacket.CaptureInfo{
+		Timestamp:     timestamp,
+		CaptureLength: len(packet),
+		Length:        len(packet),
+	}
+
+	err = pcapWriter.WritePacket(captureInfo, packet)
+	if err != nil {
+		return nil, err
+	}
+
+	return output.Bytes(), nil
 }

@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package evebox
+package eve
 
 import (
 	"encoding/base64"
@@ -38,6 +38,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/jasonish/evebox/pcap"
 )
 
 const (
@@ -131,7 +132,7 @@ func ProtoNumber(proto string) (layers.IPProtocol, error) {
 // Convert the packet of an EveEvent to a PCAP file. A buffer
 // representing a complete PCAP file is returned.
 func EvePacketToPcap(event *EveEvent) ([]byte, error) {
-	return CreatePcap(event.Timestamp.Time,
+	return pcap.CreatePcap(event.Timestamp.Time,
 		event.Packet, layers.LinkTypeEthernet)
 }
 
@@ -219,6 +220,6 @@ func EvePayloadToPcap(event *EveEvent) ([]byte, error) {
 		ip6Layer.SerializeTo(buffer, options)
 	}
 
-	return CreatePcap(event.Timestamp.Time,
+	return pcap.CreatePcap(event.Timestamp.Time,
 		buffer.Bytes(), layers.LinkTypeRaw)
 }

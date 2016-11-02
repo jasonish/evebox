@@ -2,17 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/jasonish/evebox"
 	"github.com/jasonish/evebox/cmd/esimport"
 	"github.com/jasonish/evebox/cmd/evereader"
 	"github.com/jasonish/evebox/cmd/server"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"os"
 )
 
 func VersionMain() {
 	fmt.Printf("EveBox Version %s (rev %s) [%s]\n",
-		evebox.BuildVersion, evebox.BuildRev, evebox.BuildDate)
+		core.BuildVersion, core.BuildRev, core.BuildDate)
 }
 
 func Usage() {

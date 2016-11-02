@@ -1,4 +1,4 @@
-package evebox
+package core
 
 type ArchiveService interface {
 	ArchiveAlerts(signatureId uint64,

@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package evebox
+package core
 
 type EventService interface {
 	GetEventById(id string) (map[string]interface{}, error)
