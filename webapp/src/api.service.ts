@@ -15,6 +15,12 @@ export class ApiService {
             .toPromise();
     }
 
+    get(path:string):Promise<any> {
+        return this.http.get(`${this.baseUrl}${path}`)
+            .map((res:Response) => res.json())
+            .toPromise();
+    }
+
     getVersion() {
         return this.http.get(this.baseUrl + "api/version")
             .map((res:Response) => res.json())

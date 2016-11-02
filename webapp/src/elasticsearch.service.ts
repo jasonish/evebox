@@ -371,19 +371,9 @@ export class ElasticSearchService {
     }
 
     getEventById(id:string):Promise<any> {
-        let query = {
-            query: {
-                bool: {
-                    filter: {
-                        term: {_id: id}
-                    }
-                }
-            }
-        };
-        return this.search(query).then(response => {
-            if (response.hits.hits.length > 0) {
-
-                let event = response.hits.hits[0];
+        return this.api.get(`api/1/event/${id}`)
+            .then((response:any) => {
+                let event = response;
 
                 // Make sure tags exists.
                 if (!event._source.tags) {
@@ -391,11 +381,7 @@ export class ElasticSearchService {
                 }
 
                 return event;
-            }
-            else {
-                throw "event not found error";
-            }
-        })
+            })
     }
 
     /**
