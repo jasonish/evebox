@@ -14,6 +14,8 @@ APP :=		evebox
 WEBAPP_SRCS :=	$(shell find webapp/src -type f)
 GO_SRCS :=	$(shell find . -name \*.go)
 
+GO_PACKAGES :=	$(shell go list ./... | grep -v /vendor/)
+
 all: public evebox
 
 install-deps:
@@ -49,7 +51,7 @@ evebox: Makefile $(GO_SRCS)
 
 # Format all go source code except in the vendor directory.
 gofmt:
-	find * -name \*.go | grep -v ^./vendor | go fmt
+	@go fmt $(GO_PACKAGES)
 
 build-with-docker:
 	docker build --rm -t evebox/builder - < Dockerfile

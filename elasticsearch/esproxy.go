@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package evebox
+package elasticsearch
 
 import (
 	"crypto/tls"

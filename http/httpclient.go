@@ -62,7 +62,7 @@ func (c *HttpClient) Do(request *http.Request) (*http.Response, error) {
 	return c.httpClient.Do(request)
 }
 
-func (c *HttpClient) Request(method string, path string, contentType string, body io.Reader) (*http.Response, error){
+func (c *HttpClient) Request(method string, path string, contentType string, body io.Reader) (*http.Response, error) {
 	request, err := http.NewRequest(method, fmt.Sprintf("%s/%s", c.baseUrl, path), body)
 	if err != nil {
 		return nil, err

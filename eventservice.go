@@ -27,7 +27,5 @@
 package evebox
 
 type EventService interface {
-
 	GetEventById(id string) (map[string]interface{}, error)
-
 }

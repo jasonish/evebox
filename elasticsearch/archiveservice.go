@@ -27,10 +27,10 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"github.com/jasonish/evebox/log"
 	"io"
 	"io/ioutil"
-	"fmt"
 )
 
 type ArchiveService struct {

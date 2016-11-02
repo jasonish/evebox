@@ -39,7 +39,6 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jessevdk/go-flags"
-	"github.com/jasonish/evebox/elasticsearch/eventservice"
 )
 
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
@@ -106,7 +105,7 @@ func setupElasticSearchProxy(router *mux.Router) {
 		}
 	}
 	log.Printf("Elastic Search URL: %v", opts.ElasticSearchUri)
-	esProxy, err := evebox.NewElasticSearchProxy(opts.ElasticSearchUri,
+	esProxy, err := elasticsearch.NewElasticSearchProxy(opts.ElasticSearchUri,
 		"/elasticsearch", opts.NoCheckCertificate)
 	if err != nil {
 		log.Fatal(err)
@@ -181,11 +180,12 @@ func Main(args []string) {
 	}
 	appContext.ElasticSearch = elasticSearch
 	appContext.ArchiveService = elasticsearch.NewArchiveService(elasticSearch)
-	appContext.EventService = eventservice.NewEventService(elasticSearch)
+
+	appContext.EventService = elasticsearch.NewEventService(elasticSearch)
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/eve2pcap", evebox.Eve2PcapHandler)
+	router.HandleFunc("/eve2pcap", server.Eve2PcapHandler)
 	router.HandleFunc("/api/version", VersionHandler)
 	router.Handle("/api/config", ConfigHandler(appContext))
 
@@ -198,7 +198,7 @@ func Main(args []string) {
 	evebox.SetupStatic(router, opts.DevServerUri)
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = http.ListenAndServe(opts.Host + ":" + opts.Port, router)
+	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)
 	if err != nil {
 		log.Fatal(err)
 	}

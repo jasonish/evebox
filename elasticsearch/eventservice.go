@@ -24,29 +24,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package eventservice
-
-import (
-	"github.com/jasonish/evebox/elasticsearch"
-)
+package elasticsearch
 
 type GetEventByIdQuery struct {
 	Query struct {
-		      Bool struct {
-				   Filter struct {
-						  Term struct {
-							       ID string `json:"_id"`
-						       } `json:"term"`
-					  } `json:"filter"`
-			   } `json:"bool"`
-	      } `json:"query"`
+		Bool struct {
+			Filter struct {
+				Term struct {
+					ID string `json:"_id"`
+				} `json:"term"`
+			} `json:"filter"`
+		} `json:"bool"`
+	} `json:"query"`
 }
 
 type EventService struct {
-	es *elasticsearch.ElasticSearch
+	es *ElasticSearch
 }
 
-func NewEventService(es *elasticsearch.ElasticSearch) *EventService {
+func NewEventService(es *ElasticSearch) *EventService {
 	eventService := &EventService{
 		es: es,
 	}

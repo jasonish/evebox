@@ -112,7 +112,7 @@ func ApiFunc(appContext AppContext, handler func(appContext AppContext, r *http.
 				encoder := json.NewEncoder(w)
 				encoder.Encode(HttpStatusResponseBody{
 					StatusCode: http.StatusBadRequest,
-					Message: response.Error(),
+					Message:    response.Error(),
 				})
 			case HttpResponse:
 				statusCode := http.StatusOK
