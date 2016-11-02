@@ -24,17 +24,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package eventservice
 
 import (
 	"github.com/jasonish/evebox/elasticsearch"
-	"github.com/jasonish/evebox"
 )
 
-type AppContext struct {
-	ElasticSearch  *elasticsearch.ElasticSearch
+type GetEventByIdQuery struct {
+	Query struct {
+		      Bool struct {
+				   Filter struct {
+						  Term struct {
+							       ID string `json:"_id"`
+						       } `json:"term"`
+					  } `json:"filter"`
+			   } `json:"bool"`
+	      } `json:"query"`
+}
 
-	ArchiveService evebox.ArchiveService
+type EventService struct {
+	es *elasticsearch.ElasticSearch
+}
 
-	EventService   evebox.EventService
+func NewEventService(es *elasticsearch.ElasticSearch) *EventService {
+	eventService := &EventService{
+		es: es,
+	}
+	return eventService
+}
+
+// GetEventById returns the event with the given ID. If not event is found
+// nil will be returned for the event and error will not be set.
+func (s *EventService) GetEventById(id string) (map[string]interface{}, error) {
+	query := GetEventByIdQuery{}
+	query.Query.Bool.Filter.Term.ID = id
+	result, err := s.es.Search(query)
+	if err != nil {
+		return nil, err
+	}
+	if len(result.Hits.Hits) > 0 {
+		return result.Hits.Hits[0], nil
+	}
+
+	// No event found.
+	return nil, nil
 }

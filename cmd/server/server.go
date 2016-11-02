@@ -39,6 +39,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jessevdk/go-flags"
+	"github.com/jasonish/evebox/elasticsearch/eventservice"
 )
 
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
@@ -180,6 +181,7 @@ func Main(args []string) {
 	}
 	appContext.ElasticSearch = elasticSearch
 	appContext.ArchiveService = elasticsearch.NewArchiveService(elasticSearch)
+	appContext.EventService = eventservice.NewEventService(elasticSearch)
 
 	router := mux.NewRouter()
 
@@ -187,8 +189,10 @@ func Main(args []string) {
 	router.HandleFunc("/api/version", VersionHandler)
 	router.Handle("/api/config", ConfigHandler(appContext))
 
-	router.Handle("/api/1/archive", server.Api(appContext,
-		&server.ArchiveHandler{appContext}))
+	router.Handle("/api/1/archive",
+		server.ApiFunc(appContext, server.ArchiveHandler))
+	router.Handle("/api/1/event/{id}",
+		server.ApiFunc(appContext, server.GetEventByIdHandler))
 
 	setupElasticSearchProxy(router)
 	evebox.SetupStatic(router, opts.DevServerUri)

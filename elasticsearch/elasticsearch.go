@@ -211,6 +211,19 @@ func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 	return nil
 }
 
+func (es *ElasticSearch) Search(query interface{}) (*SearchResponse, error) {
+	path := fmt.Sprintf("%s/_search", es.EventSearchIndex)
+	response, err := es.HttpClient.PostJson(path, query)
+	if err != nil {
+		return nil, err
+	}
+	result := SearchResponse{}
+	if err := es.Decode(response, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*SearchResponse, error) {
 	path := fmt.Sprintf("%s/_search?scroll=%s", es.EventSearchIndex, duration)
 	response, err := es.HttpClient.PostJson(path, body)

@@ -1,11 +1,70 @@
+/* Copyright (c) 2014-2015 Jason Ish
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 package server
 
 import (
 	"encoding/json"
 	"net/http"
 
+	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox/log"
 )
+
+type HttpStatusResponseBody struct {
+	StatusCode int    `json:"status"`
+	Message    string `json:"message,omitempty"`
+}
+
+type HttpResponse struct {
+	statusCode  int
+	contentType string
+	body        interface{}
+}
+
+func HttpNotFoundResponse(message string) HttpResponse {
+	return HttpResponse{
+		statusCode:  http.StatusNotFound,
+		contentType: "application/json",
+		body: HttpStatusResponseBody{
+			http.StatusNotFound,
+			message,
+		},
+	}
+}
+
+func HttpOkResponse() HttpResponse {
+	return HttpResponse{
+		statusCode: http.StatusOK,
+		body: HttpStatusResponseBody{
+			StatusCode: http.StatusOK,
+		},
+	}
+}
 
 type ArchiveHandlerRequest struct {
 	SignatureId  uint64 `json:"signature_id"`
@@ -15,81 +74,67 @@ type ArchiveHandlerRequest struct {
 	MaxTimestamp string `json:"max_timestamp"`
 }
 
-var OkResponse map[string]string
-
-func init() {
-	OkResponse = map[string]string{
-		"status": "ok",
-	}
-}
-
-type ApiHandlerFunc func(w http.ResponseWriter, r *http.Request) error
-
-type ApiHandler interface {
-	ServeHTTP(w http.ResponseWriter, r *http.Request) (interface{}, error)
-}
-
-type ArchiveHandler struct {
-	AppContext AppContext
-}
-
-func (h *ArchiveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+func ArchiveHandler(appContext AppContext, r *http.Request) interface{} {
 	var request ArchiveHandlerRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.UseNumber()
 	decoder.Decode(&request)
-	err := h.AppContext.ArchiveService.ArchiveAlerts(request.SignatureId, request.SrcIp,
+	err := appContext.ArchiveService.ArchiveAlerts(request.SignatureId, request.SrcIp,
 		request.DestIp, request.MinTimestamp, request.MaxTimestamp)
 	if err != nil {
 		log.Error("%v", err)
-		return nil, err
+		return err
 	}
-	return OkResponse, nil
+	return HttpOkResponse()
 }
 
-type ApiResponseWriter struct {
-	w     http.ResponseWriter
-	clean bool
-}
-
-func NewApiResponseWriter(w http.ResponseWriter) *ApiResponseWriter {
-	return &ApiResponseWriter{
-		w:     w,
-		clean: true,
+func GetEventByIdHandler(appContext AppContext, r *http.Request) interface{} {
+	eventId := mux.Vars(r)["id"]
+	event, err := appContext.EventService.GetEventById(eventId)
+	if err != nil {
+		log.Error("%v", err)
+		return err
 	}
+	if event == nil {
+		return HttpNotFoundResponse(fmt.Sprintf("No event with ID %s", eventId))
+	}
+	return event
 }
 
-func (w *ApiResponseWriter) Write(bytes []byte) (int, error) {
-	w.clean = false
-	return w.w.Write(bytes)
-}
-
-func (w *ApiResponseWriter) Header() http.Header {
-	return w.w.Header()
-}
-
-func (w *ApiResponseWriter) WriteHeader(header int) {
-	w.clean = false
-	w.w.WriteHeader(header)
-}
-
-func Api(appContext AppContext, handler ApiHandler) http.Handler {
+func ApiFunc(appContext AppContext, handler func(appContext AppContext, r *http.Request) interface{}) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		responseWriterWrapper := NewApiResponseWriter(w)
-		response, err := handler.ServeHTTP(responseWriterWrapper, r)
-		if responseWriterWrapper.clean {
-			if err != nil {
+		response := handler(appContext, r)
+		if response != nil {
+			switch response := response.(type) {
+			case error:
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(err.Error()))
-			} else {
+				encoder := json.NewEncoder(w)
+				encoder.Encode(HttpStatusResponseBody{
+					StatusCode: http.StatusBadRequest,
+					Message: response.Error(),
+				})
+			case HttpResponse:
+				statusCode := http.StatusOK
+				contentType := "application/json"
+				if response.statusCode != 0 {
+					statusCode = response.statusCode
+				}
+				if response.contentType != "" {
+					contentType = response.contentType
+				}
+				w.Header().Set("Content-Type", contentType)
+				w.WriteHeader(statusCode)
+				if response.body != nil {
+					encoder := json.NewEncoder(w)
+					encoder.Encode(response.body)
+				}
+			default:
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				encoder := json.NewEncoder(w)
 				encoder.Encode(response)
 			}
-		} else {
-			log.Info("Response writer is not clean.")
 		}
 	})
 }

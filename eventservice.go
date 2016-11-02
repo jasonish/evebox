@@ -24,17 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package evebox
 
-import (
-	"github.com/jasonish/evebox/elasticsearch"
-	"github.com/jasonish/evebox"
-)
+type EventService interface {
 
-type AppContext struct {
-	ElasticSearch  *elasticsearch.ElasticSearch
+	GetEventById(id string) (map[string]interface{}, error)
 
-	ArchiveService evebox.ArchiveService
-
-	EventService   evebox.EventService
 }
