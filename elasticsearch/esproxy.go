@@ -38,14 +38,12 @@ import (
 
 type ElasticSearchProxy struct {
 	proxy            *httputil.ReverseProxy
-	prefix           string
 	disableCertCheck bool
 }
 
 var EsProxyLogger *log.Logger
 
-func NewElasticSearchProxy(elasticSearchUrl string, prefix string,
-	disableCertCheck bool) (*ElasticSearchProxy, error) {
+func NewElasticSearchProxy(elasticSearchUrl string, disableCertCheck bool) (*ElasticSearchProxy, error) {
 
 	esUrl, err := url.Parse(elasticSearchUrl)
 	if err != nil {
@@ -53,23 +51,17 @@ func NewElasticSearchProxy(elasticSearchUrl string, prefix string,
 	}
 	proxy := ElasticSearchProxy{
 		proxy:            httputil.NewSingleHostReverseProxy(esUrl),
-		prefix:           prefix,
 		disableCertCheck: disableCertCheck,
 	}
 
 	EsProxyLogger = log.New(os.Stderr, "elasticsearch-proxy: ", 0)
-
 	proxy.proxy.ErrorLog = EsProxyLogger
-
 	proxy.proxy.Transport = &http.Transport{DialTLS: proxy.DialTLS}
 
 	return &proxy, nil
 }
 
 func (p *ElasticSearchProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
-	// Strip the prefix from the URL.
-	r.URL.Path = r.URL.Path[len(p.prefix):]
 
 	// Strip headers that will get in the way of CORS.
 	r.Header.Del("X-Forwarded-For")

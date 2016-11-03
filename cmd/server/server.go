@@ -27,9 +27,7 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/gorilla/mux"
@@ -39,6 +37,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jessevdk/go-flags"
+	"net/http"
 )
 
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
@@ -56,61 +55,10 @@ var opts struct {
 	NoCheckCertificate bool   `long:"no-check-certificate" short:"k" description:"Disable certificate check for Elastic Search"`
 }
 
-var conf = &config.Config{}
+var conf *config.Config
 
-type VersionResponse struct {
-	Version  string
-	Revision string
-	Date     string
-}
-
-func VersionHandler(w http.ResponseWriter, r *http.Request) {
-	response := VersionResponse{
-		core.BuildVersion,
-		core.BuildRev,
-		core.BuildDate,
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	json.NewEncoder(w).Encode(response)
-}
-
-func ConfigHandler(appContext server.AppContext) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		// A bit of a hack here... Provide the keyword type in the config
-		// object to the frontend doesn't have to do extra work to find it.
-		if conf.Extra == nil {
-			conf.Extra = make(map[string]interface{})
-		}
-		conf.Extra["elasticSearchKeyword"], _ = appContext.ElasticSearch.GetKeywordType("")
-
-		configJson, err :=
-			conf.ToJSON()
-		if err != nil {
-			// Return failure.
-			log.Println("error: ", err)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.Write(configJson)
-	})
-}
-
-func setupElasticSearchProxy(router *mux.Router) {
-	if opts.ElasticSearchUri == "" {
-		if os.Getenv("ELASTICSEARCH_URL") != "" {
-			opts.ElasticSearchUri = os.Getenv("ELASTICSEARCH_URL")
-		} else {
-			opts.ElasticSearchUri = DEFAULT_ELASTICSEARCH_URL
-		}
-	}
-	log.Printf("Elastic Search URL: %v", opts.ElasticSearchUri)
-	esProxy, err := elasticsearch.NewElasticSearchProxy(opts.ElasticSearchUri,
-		"/elasticsearch", opts.NoCheckCertificate)
-	if err != nil {
-		log.Fatal(err)
-	}
-	router.PathPrefix("/elasticsearch").Handler(esProxy)
+func init() {
+	conf = config.NewConfig()
 }
 
 func VersionMain() {
@@ -168,7 +116,9 @@ func Main(args []string) {
 	}
 	log.Info("Using ElasticSearch Index %s.", conf.ElasticSearchIndex)
 
-	appContext := server.AppContext{}
+	appContext := server.AppContext{
+		Config: conf,
+	}
 	elasticSearch := elasticsearch.New(getElasticSearchUrl())
 	elasticSearch.SetEventIndex(conf.ElasticSearchIndex)
 	pingResponse, err := elasticSearch.Ping()
@@ -180,22 +130,30 @@ func Main(args []string) {
 	}
 	appContext.ElasticSearch = elasticSearch
 	appContext.ArchiveService = elasticsearch.NewArchiveService(elasticSearch)
-
 	appContext.EventService = elasticsearch.NewEventService(elasticSearch)
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/eve2pcap", server.Eve2PcapHandler)
-	router.HandleFunc("/api/version", VersionHandler)
-	router.Handle("/api/config", ConfigHandler(appContext))
-
 	router.Handle("/api/1/archive",
-		server.ApiFunc(appContext, server.ArchiveHandler))
+		server.ApiF(appContext, server.ArchiveHandler))
 	router.Handle("/api/1/event/{id}",
-		server.ApiFunc(appContext, server.GetEventByIdHandler))
+		server.ApiF(appContext, server.GetEventByIdHandler))
+	router.Handle("/api/1/config",
+		server.ApiF(appContext, server.ConfigHandler))
+	router.Handle("/api/1/version",
+		server.ApiF(appContext, server.VersionHandler))
+	router.Handle("/api/1/eve2pcap", server.ApiF(appContext, server.Eve2PcapHandler))
 
-	setupElasticSearchProxy(router)
-	server.SetupStatic(router, opts.DevServerUri)
+	// Elastic Search proxy.
+	esProxyHandler, err := elasticsearch.NewElasticSearchProxy(
+		getElasticSearchUrl(), opts.NoCheckCertificate)
+	if err != nil {
+		log.Fatal("Failed to initialize Elastic Search proxy: %v", err)
+	}
+	router.PathPrefix("/elasticsearch").Handler(http.StripPrefix("/elasticsearch", esProxyHandler))
+
+	// Static file server, must be last as it serves as the fallback.
+	router.PathPrefix("/").Handler(server.StaticHandlerFactory(opts.DevServerUri))
 
 	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
 	err = http.ListenAndServe(opts.Host+":"+opts.Port, router)

@@ -28,29 +28,22 @@ package server
 
 import (
 	"github.com/GeertJohan/go.rice"
-	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox/log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 )
 
-// Setup the handler for static files.
-func SetupStatic(router *mux.Router, devServerUri string) {
-	if len(devServerUri) > 0 {
+func StaticHandlerFactory(devServerUri string) http.Handler {
+	if devServerUri != "" {
 		log.Notice("Proxying static files to %v.",
 			devServerUri)
 		devServerProxyUrl, err := url.Parse(devServerUri)
 		if err != nil {
 			log.Fatal(err)
 		}
-		devServerProxy :=
-			httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-		router.PathPrefix("/").Handler(devServerProxy)
-
-	} else {
-		public := http.FileServer(
-			rice.MustFindBox("../public").HTTPBox())
-		router.PathPrefix("/").Handler(public)
+		return httputil.NewSingleHostReverseProxy(devServerProxyUrl)
 	}
+	return http.FileServer(
+		rice.MustFindBox("../public").HTTPBox())
 }

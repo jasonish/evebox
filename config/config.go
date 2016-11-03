@@ -40,6 +40,12 @@ type Config struct {
 	Extra              map[string]interface{}   `json:"extra,omitempty"`
 }
 
+func NewConfig() *Config {
+	c := Config{}
+	c.Extra = map[string]interface{}{}
+	return &c
+}
+
 func (c *Config) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(c)
 	if err != nil {

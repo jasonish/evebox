@@ -28,37 +28,29 @@ package server
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 	"github.com/jasonish/evebox/eve"
+	"net/http"
 )
 
-func HttpErrorAndLog(w http.ResponseWriter, r *http.Request, code int,
-	format string, v ...interface{}) {
-	error := fmt.Sprintf(format, v...)
-	log.Printf("%s", error)
-	http.Error(w, error, code)
-}
-
-func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
+func Eve2PcapHandler(_ AppContext, r *http.Request) interface{} {
 	var event *eve.EveEvent
 	var err error
 	var pcap []byte
 
 	r.ParseForm()
 
+	if r.Form["event"] == nil {
+		return fmt.Errorf("Event parameter not provided.")
+	}
+
 	jsonEvent := r.Form["event"][0]
 	if jsonEvent != "" {
 		event, err = eve.NewEveEventFromJson(jsonEvent)
 		if err != nil {
-			HttpErrorAndLog(w, r, http.StatusBadRequest,
-				"Failed to decode JSON:", err)
-			return
+			return fmt.Errorf("Failed to decode JSON: %v", err)
 		}
 	} else {
-		HttpErrorAndLog(w, r, http.StatusBadRequest,
-			"Form field \"event\" not provided.")
-		return
+		return fmt.Errorf("Form field \"event\" not provided.")
 	}
 
 	what := r.Form["what"][0] // r.URL.Query().Get("what")
@@ -72,32 +64,27 @@ func Eve2PcapHandler(w http.ResponseWriter, r *http.Request) {
 
 	if what == "payload" {
 		if len(event.Payload) == 0 {
-			HttpErrorAndLog(w, r, http.StatusBadRequest,
-				"Payload conversion requested but JSON contains no payload.")
-			return
+			return fmt.Errorf("Payload conversion requested but event does not contain the payload.")
 		}
 		pcap, err = eve.EvePayloadToPcap(event)
 		if err != nil {
-			HttpErrorAndLog(w, r, http.StatusInternalServerError,
-				"Failed to convert to PCAP: %s", err)
-			return
+			return fmt.Errorf("Failed to convert payload to pcap: %v", err)
 		}
 	} else if what == "packet" {
 		if len(event.Packet) == 0 {
-			HttpErrorAndLog(w, r, http.StatusBadRequest,
-				"Packet conversion requested but JSON contains no packet.")
-			return
+			return fmt.Errorf("Packet conversion requested but event not contain the packet.")
 		}
 		pcap, err = eve.EvePacketToPcap(event)
 		if err != nil {
-			HttpErrorAndLog(w, r, http.StatusInternalServerError,
-				"Failed to convert to PCAP: %s", err)
-			return
+			return fmt.Errorf("Failed to convert packet to pcap: %v", err)
 		}
 	}
 
-	w.Header().Add("content-type", "application/vnd.tcpdump.pcap")
-	w.Header().Add("content-disposition",
-		"attachment; filename=event.pcap")
-	w.Write(pcap)
+	return HttpResponse{
+		contentType: "application/vnc.tcpdump.pcap",
+		headers: map[string]string{
+			"Content-Disposition": "attachment; filename=event.pcap",
+		},
+		body: pcap,
+	}
 }

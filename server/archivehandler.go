@@ -30,41 +30,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"fmt"
-	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox/log"
 )
-
-type HttpStatusResponseBody struct {
-	StatusCode int    `json:"status"`
-	Message    string `json:"message,omitempty"`
-}
-
-type HttpResponse struct {
-	statusCode  int
-	contentType string
-	body        interface{}
-}
-
-func HttpNotFoundResponse(message string) HttpResponse {
-	return HttpResponse{
-		statusCode:  http.StatusNotFound,
-		contentType: "application/json",
-		body: HttpStatusResponseBody{
-			http.StatusNotFound,
-			message,
-		},
-	}
-}
-
-func HttpOkResponse() HttpResponse {
-	return HttpResponse{
-		statusCode: http.StatusOK,
-		body: HttpStatusResponseBody{
-			StatusCode: http.StatusOK,
-		},
-	}
-}
 
 type ArchiveHandlerRequest struct {
 	SignatureId  uint64 `json:"signature_id"`
@@ -86,55 +53,4 @@ func ArchiveHandler(appContext AppContext, r *http.Request) interface{} {
 		return err
 	}
 	return HttpOkResponse()
-}
-
-func GetEventByIdHandler(appContext AppContext, r *http.Request) interface{} {
-	eventId := mux.Vars(r)["id"]
-	event, err := appContext.EventService.GetEventById(eventId)
-	if err != nil {
-		log.Error("%v", err)
-		return err
-	}
-	if event == nil {
-		return HttpNotFoundResponse(fmt.Sprintf("No event with ID %s", eventId))
-	}
-	return event
-}
-
-func ApiFunc(appContext AppContext, handler func(appContext AppContext, r *http.Request) interface{}) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := handler(appContext, r)
-		if response != nil {
-			switch response := response.(type) {
-			case error:
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				encoder := json.NewEncoder(w)
-				encoder.Encode(HttpStatusResponseBody{
-					StatusCode: http.StatusBadRequest,
-					Message:    response.Error(),
-				})
-			case HttpResponse:
-				statusCode := http.StatusOK
-				contentType := "application/json"
-				if response.statusCode != 0 {
-					statusCode = response.statusCode
-				}
-				if response.contentType != "" {
-					contentType = response.contentType
-				}
-				w.Header().Set("Content-Type", contentType)
-				w.WriteHeader(statusCode)
-				if response.body != nil {
-					encoder := json.NewEncoder(w)
-					encoder.Encode(response.body)
-				}
-			default:
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				encoder := json.NewEncoder(w)
-				encoder.Encode(response)
-			}
-		}
-	})
 }
