@@ -22,7 +22,7 @@ export class ApiService {
     }
 
     getVersion() {
-        return this.http.get(this.baseUrl + "api/version")
+        return this.http.get(this.baseUrl + "api/1/version")
             .map((res:Response) => res.json())
             .toPromise();
     }
@@ -31,7 +31,7 @@ export class ApiService {
 
         let form = document.createElement("form");
         form.setAttribute("method", "post");
-        form.setAttribute("action", "eve2pcap");
+        form.setAttribute("action", "api/1/eve2pcap");
 
         let whatField = document.createElement("input");
         whatField.setAttribute("type", "hidden");

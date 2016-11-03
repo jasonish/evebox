@@ -179,7 +179,7 @@ export class AppModule {
 declare var jQuery:any;
 declare var window:any;
 
-jQuery.getJSON("api/config", (config:any) => {
+jQuery.getJSON("api/1/config", (config:any) => {
     window.config = config;
     platformBrowserDynamic().bootstrapModule(AppModule);
 });
