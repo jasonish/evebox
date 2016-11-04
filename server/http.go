@@ -1,3 +1,29 @@
+/* Copyright (c) 2016 Jason Ish
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 package server
 
 import (
@@ -14,7 +40,6 @@ type HttpStatusResponseBody struct {
 // HttpResponse can be returned by API handlers to control how the response
 // is processed.
 type HttpResponse struct {
-
 	// Set the status code of the reponse. If not provided, 200 (OK) will
 	// be used.
 	statusCode int
@@ -55,13 +80,24 @@ func HttpOkResponse() HttpResponse {
 	}
 }
 
-type ApiHandler struct {
-	appContext AppContext
-	handler    func(appContent AppContext, r *http.Request) interface{}
+type ApiHandler interface {
+	ServeHTTP(appContext AppContext, r *http.Request) interface{}
 }
 
-func (h ApiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	response := h.handler(h.appContext, r)
+type ApiHandlerFunc func(AppContext, *http.Request) interface{}
+
+func (h ApiHandlerFunc) ServeHTTP(appContext AppContext, r *http.Request) interface{} {
+	return h(appContext, r)
+}
+
+type ApiWrapper struct {
+	appContext AppContext
+	//handler    func(appContent AppContext, r *http.Request) interface{}
+	handler ApiHandler
+}
+
+func (h ApiWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	response := h.handler.ServeHTTP(h.appContext, r)
 	if response != nil {
 		switch response := response.(type) {
 		case error:
@@ -118,9 +154,13 @@ func (h ApiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ApiF(appContext AppContext, handler func(AppContext, *http.Request) interface{}) http.Handler {
-	return ApiHandler{
+func ApiH(appContext AppContext, handler ApiHandler) http.Handler {
+	return ApiWrapper{
 		appContext,
 		handler,
 	}
+}
+
+func ApiF(appContext AppContext, handler func(AppContext, *http.Request) interface{}) http.Handler {
+	return ApiH(appContext, ApiHandlerFunc(handler))
 }

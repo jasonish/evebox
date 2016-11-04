@@ -27,21 +27,24 @@
 package server
 
 import (
-	"github.com/jasonish/evebox/core"
+	"encoding/json"
 	"net/http"
 )
 
-type VersionResponse struct {
-	Version  string `json:"version"`
-	Revision string `json:"revision"`
-	Date     string `json:"date"`
-}
+// QueryHandler passes the request to an Elastic Search search and
+// returns the raw result.
+func QueryHandler(appContext AppContext, r *http.Request) interface{} {
+	var query interface{}
+	decoder := json.NewDecoder(r.Body)
+	decoder.UseNumber()
+	err := decoder.Decode(&query)
+	if err != nil {
+		return err
+	}
 
-func VersionHandler(appContext AppContext, r *http.Request) interface{} {
-	response := VersionResponse{
-		core.BuildVersion,
-		core.BuildRev,
-		core.BuildDate,
+	response, err := appContext.ElasticSearch.Search(query)
+	if err != nil {
+		return err
 	}
 	return response
 }

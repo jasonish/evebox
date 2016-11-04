@@ -87,13 +87,11 @@ export class ElasticSearchService {
     }
 
     search(query:any):Promise<any> {
-        return this.http.post(`${this.url}/${this.index}/_search`, JSON.stringify(query))
-            .toPromise()
-            .then(
-                (response:any) => response.json(),
-                (error:any) => {
-                    throw error.json()
-                });
+            return this.api.post("api/1/query", query)
+                .then((response:any) => response,
+                    (error:any) => {
+                        throw error.json()
+                    });
     }
 
 

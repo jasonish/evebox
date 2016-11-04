@@ -28,4 +28,6 @@ package core
 
 type EventService interface {
 	GetEventById(id string) (map[string]interface{}, error)
+
+	Inbox(options map[string]interface{}) (map[string]interface{}, error)
 }

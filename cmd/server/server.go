@@ -144,6 +144,10 @@ func Main(args []string) {
 		server.ApiF(appContext, server.VersionHandler))
 	router.Handle("/api/1/eve2pcap", server.ApiF(appContext, server.Eve2PcapHandler))
 
+	router.Handle("/api/1/inbox", server.ApiH(appContext, server.InboxHandler{}))
+
+	router.Handle("/api/1/query", server.ApiF(appContext, server.QueryHandler))
+
 	// Elastic Search proxy.
 	esProxyHandler, err := elasticsearch.NewElasticSearchProxy(
 		getElasticSearchUrl(), opts.NoCheckCertificate)

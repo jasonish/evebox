@@ -70,7 +70,7 @@ func (s *ArchiveService) ArchiveAlerts(signatureId uint64,
 		"query": m{
 			"bool": m{
 				"filter": l{
-					ExistsQuery{"event_type"},
+					ExistsQuery("event_type"),
 					s.KeywordTermQuery("event_type", "alert"),
 					RangeQuery{
 						Field: "timestamp",

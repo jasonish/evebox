@@ -84,25 +84,20 @@ type Hits struct {
 }
 
 type SearchResponse struct {
-	Shards   map[string]interface{} `json:"_shards"`
-	TimedOut bool                   `json:"timed_out"`
-	Took     uint64                 `json:"took"`
-	Hits     Hits                   `json:"hits"`
-	ScrollId string                 `json:"_scroll_id"`
+	Shards       map[string]interface{} `json:"_shards"`
+	TimedOut     bool                   `json:"timed_out"`
+	Took         uint64                 `json:"took"`
+	Hits         Hits                   `json:"hits"`
+	Aggregations map[string]interface{} `json:"aggregations"`
+	ScrollId     string                 `json:"_scroll_id,omitempty"`
 }
 
-type ExistsQuery struct {
-	Field string
-}
-
-func (q ExistsQuery) MarshalJSON() ([]byte, error) {
-	var object struct {
-		Exists struct {
-			Field string `json:"field"`
-		} `json:"exists"`
+func ExistsQuery(field string) interface{} {
+	return map[string]interface{}{
+		"exists": map[string]interface{}{
+			"field": field,
+		},
 	}
-	object.Exists.Field = q.Field
-	return json.Marshal(object)
 }
 
 type TermQuery struct {
@@ -117,6 +112,14 @@ func (q TermQuery) MarshalJSON() ([]byte, error) {
 		},
 	}
 	return json.Marshal(object)
+}
+
+func NewTermQuery(field string, value interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"term": map[string]interface{}{
+			field: value,
+		},
+	}
 }
 
 type RangeQuery struct {

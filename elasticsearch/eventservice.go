@@ -26,6 +26,12 @@
 
 package elasticsearch
 
+import (
+	"fmt"
+	"github.com/jasonish/evebox/log"
+	"time"
+)
+
 type GetEventByIdQuery struct {
 	Query struct {
 		Bool struct {
@@ -63,5 +69,61 @@ func (s *EventService) GetEventById(id string) (map[string]interface{}, error) {
 	}
 
 	// No event found.
+	return nil, nil
+}
+
+type EventQuery struct {
+	Query struct {
+		Bool struct {
+			Filter []interface{} `json:"filter"`
+		} `json:"bool"`
+	} `json:"query"`
+	Size int64         `json:"size"`
+	Sort []interface{} `json:"sort,omitempty"`
+}
+
+func (q *EventQuery) AddFilter(filter interface{}) {
+	q.Query.Bool.Filter = append(q.Query.Bool.Filter, filter)
+}
+
+func (q *EventQuery) AddTimeRangeFilter(timeRange string) {
+	duration, _ := time.ParseDuration(fmt.Sprintf("-%s", timeRange))
+	then := time.Now().Add(duration)
+	q.AddFilter(map[string]interface{}{
+		"range": map[string]interface{}{
+			"@timestamp": m{
+				"gte": then,
+			},
+		},
+	})
+}
+
+func (s *EventService) Inbox(options map[string]interface{}) (map[string]interface{}, error) {
+	query := EventQuery{}
+
+	query.AddFilter(ExistsQuery("event_type"))
+	query.AddFilter(NewTermQuery("event_type", "alert"))
+
+	if queryString, ok := options["queryString"]; ok {
+		query.AddFilter(map[string]interface{}{
+			"query_string": map[string]interface{}{
+				"query": queryString,
+			},
+		})
+	}
+
+	if timeRange, ok := options["timeRange"]; ok {
+		query.AddTimeRangeFilter(timeRange.(string))
+	}
+
+	log.Println(ToJson(query))
+
+	results, err := s.es.Search(query)
+	if err != nil {
+		log.Error("%v", err)
+	} else {
+		log.Println(ToJson(results))
+	}
+
 	return nil, nil
 }

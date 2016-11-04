@@ -27,21 +27,27 @@
 package server
 
 import (
-	"github.com/jasonish/evebox/core"
 	"net/http"
 )
 
-type VersionResponse struct {
-	Version  string `json:"version"`
-	Revision string `json:"revision"`
-	Date     string `json:"date"`
+type InboxHandler struct {
 }
 
-func VersionHandler(appContext AppContext, r *http.Request) interface{} {
-	response := VersionResponse{
-		core.BuildVersion,
-		core.BuildRev,
-		core.BuildDate,
+func (h InboxHandler) ServeHTTP(appContext AppContext, r *http.Request) interface{} {
+
+	options := map[string]interface{}{}
+
+	if r.FormValue("queryString") != "" {
+		options["queryString"] = r.FormValue("queryString")
 	}
-	return response
+
+	if r.FormValue("timeRange") != "" {
+		options["timeRange"] = r.FormValue("timeRange")
+	}
+
+	results, err := appContext.EventService.Inbox(options)
+	if err != nil {
+		return err
+	}
+	return results
 }
