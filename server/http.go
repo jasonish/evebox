@@ -164,3 +164,9 @@ func ApiH(appContext AppContext, handler ApiHandler) http.Handler {
 func ApiF(appContext AppContext, handler func(AppContext, *http.Request) interface{}) http.Handler {
 	return ApiH(appContext, ApiHandlerFunc(handler))
 }
+
+func DecodeRequestBody(r *http.Request, value interface{}) error {
+	decoder := json.NewDecoder(r.Body)
+	decoder.UseNumber()
+	return decoder.Decode(value)
+}

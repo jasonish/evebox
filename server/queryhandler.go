@@ -27,18 +27,15 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 )
 
 // QueryHandler passes the request to an Elastic Search search and
 // returns the raw result.
 func QueryHandler(appContext AppContext, r *http.Request) interface{} {
+
 	var query interface{}
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
-	err := decoder.Decode(&query)
-	if err != nil {
+	if err := DecodeRequestBody(r, &query); err != nil {
 		return err
 	}
 

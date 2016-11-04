@@ -27,7 +27,6 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/jasonish/evebox/log"
@@ -43,9 +42,9 @@ type ArchiveHandlerRequest struct {
 
 func ArchiveHandler(appContext AppContext, r *http.Request) interface{} {
 	var request ArchiveHandlerRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
-	decoder.Decode(&request)
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
 	err := appContext.ArchiveService.ArchiveAlerts(request.SignatureId, request.SrcIp,
 		request.DestIp, request.MinTimestamp, request.MaxTimestamp)
 	if err != nil {
