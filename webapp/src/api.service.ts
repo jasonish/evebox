@@ -15,6 +15,12 @@ export class ApiService {
             .toPromise();
     }
 
+    postRaw(path:string, body:any) {
+        return this.http.post(this.baseUrl + path, body)
+            .map((res:Response) => res.json())
+            .toPromise();
+    }
+
     get(path:string):Promise<any> {
         return this.http.get(`${this.baseUrl}${path}`)
             .map((res:Response) => res.json())

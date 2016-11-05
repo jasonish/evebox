@@ -63,8 +63,7 @@ export class ElasticSearchService {
     // usage.
     public keyword:string = "raw";
 
-    constructor(private http:Http,
-                private api:ApiService,
+    constructor(private api:ApiService,
                 private topNavService:TopNavService,
                 private appService:AppService,
                 private config:ConfigService,
@@ -99,11 +98,7 @@ export class ElasticSearchService {
         let request = commands.map(command => {
                 return JSON.stringify(command);
             }).join("\n") + "\n";
-        return this.http.post(`${this.url}/_bulk?refresh=true`, request)
-            .map(response => {
-                return response.json();
-            })
-            .toPromise();
+        return this.api.postRaw("api/1/_bulk?refresh=true", request)
     }
 
     submit(func:any) {

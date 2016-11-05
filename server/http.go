@@ -28,8 +28,9 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/jasonish/evebox/log"
 	"net/http"
+
+	"github.com/jasonish/evebox/log"
 )
 
 type HttpStatusResponseBody struct {
@@ -133,16 +134,12 @@ func (h ApiWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", contentType)
 			w.WriteHeader(statusCode)
 			if response.body != nil {
-				if contentType == "application/json" {
+				switch body := response.body.(type) {
+				case []byte:
+					w.Write(body)
+				default:
 					encoder := json.NewEncoder(w)
 					encoder.Encode(response.body)
-				} else {
-					switch body := response.body.(type) {
-					case []byte:
-						w.Write(body)
-					default:
-						log.Error("Don't know how to write reponse body for content type %s", contentType)
-					}
 				}
 			}
 		default:

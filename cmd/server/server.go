@@ -148,13 +148,19 @@ func Main(args []string) {
 
 	router.Handle("/api/1/query", server.ApiF(appContext, server.QueryHandler))
 
-	// Elastic Search proxy.
-	esProxyHandler, err := elasticsearch.NewElasticSearchProxy(
-		getElasticSearchUrl(), opts.NoCheckCertificate)
-	if err != nil {
-		log.Fatal("Failed to initialize Elastic Search proxy: %v", err)
-	}
-	router.PathPrefix("/elasticsearch").Handler(http.StripPrefix("/elasticsearch", esProxyHandler))
+	router.Handle("/api/1/_bulk", server.ApiF(appContext, server.EsBulkHandler))
+
+	//
+	// Disable the Elastic Search proxy for now to weed out its usage.
+	//
+
+	//// Elastic Search proxy.
+	//esProxyHandler, err := elasticsearch.NewElasticSearchProxy(
+	//	getElasticSearchUrl(), opts.NoCheckCertificate)
+	//if err != nil {
+	//	log.Fatal("Failed to initialize Elastic Search proxy: %v", err)
+	//}
+	//router.PathPrefix("/elasticsearch").Handler(http.StripPrefix("/elasticsearch", esProxyHandler))
 
 	// Static file server, must be last as it serves as the fallback.
 	router.PathPrefix("/").Handler(server.StaticHandlerFactory(opts.DevServerUri))

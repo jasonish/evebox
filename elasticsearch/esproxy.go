@@ -28,6 +28,7 @@ package elasticsearch
 
 import (
 	"crypto/tls"
+	logger "github.com/jasonish/evebox/log"
 	"log"
 	"net"
 	"net/http"
@@ -62,6 +63,8 @@ func NewElasticSearchProxy(elasticSearchUrl string, disableCertCheck bool) (*Ela
 }
 
 func (p *ElasticSearchProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	logger.Info("Proxying Elastic Search request to %s", r.URL)
 
 	// Strip headers that will get in the way of CORS.
 	r.Header.Del("X-Forwarded-For")
