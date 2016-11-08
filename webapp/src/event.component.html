@@ -215,6 +215,21 @@
       </div>
     </div>
 
+    <!-- TLS (in-event). -->
+    <div *ngIf="event._source.event_type != 'tls' && event._source.tls" class="panel panel-default">
+      <div class="panel-heading">
+        TLS
+      </div>
+      <div class="panel-body">
+        <div *ngFor="let item of event._source.tls | mapToItems">
+          <div class="col-md-6 col-sm-6">
+            <em>{{item.key | genericPrettyPrinter}}:</em>
+            <search-link [value]="item.val"></search-link>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Flows, if any. -->
     <div *ngFor="let flow of flows">
       <div class="panel panel-default">
