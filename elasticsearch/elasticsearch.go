@@ -82,7 +82,7 @@ func (es *ElasticSearch) SetEventIndex(index string) {
 		es.EventBaseIndex = baseIndex
 	} else {
 		es.EventBaseIndex = index
-		es.EventSearchIndex = fmt.Sprintf("%s=*", index)
+		es.EventSearchIndex = fmt.Sprintf("%s-*", index)
 	}
 	log.Info("Event base index: %s", es.EventBaseIndex)
 	log.Info("Event search index: %s", es.EventSearchIndex)
