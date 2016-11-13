@@ -46,7 +46,7 @@ var opts struct {
 	// We don't provide a default for this one so we can easily
 	// detect if its been set or not.
 	ElasticSearchUri   string `long:"elasticsearch" short:"e" description:"Elastic Search URI (default: http://localhost:9200)"`
-	ElasticSearchIndex string `long:"index" short:"i" description:"Elastic Search Index (default: logstash-*)"`
+	ElasticSearchIndex string `long:"index" short:"i" description:"Elastic Search Index (default: logstash)"`
 	Port               string `long:"port" short:"p" default:"5636" description:"Port to bind to"`
 	Host               string `long:"host" default:"0.0.0.0" description:"Host to bind to"`
 	DevServerUri       string `long:"dev" description:"Frontend development server URI"`
@@ -74,6 +74,16 @@ func getElasticSearchUrl() string {
 		return os.Getenv("ELASTICSEARCH_URL")
 	}
 	return DEFAULT_ELASTICSEARCH_URL
+}
+
+func getElasticSearchIndex() string {
+	if opts.ElasticSearchIndex != "" {
+		return opts.ElasticSearchIndex
+	} else if os.Getenv("ELASTICSEARCH_INDEX") != "" {
+		return os.Getenv("ELASTICSEARCH_INDEX")
+	} else {
+		return "logstash"
+	}
 }
 
 func Main(args []string) {
@@ -107,13 +117,7 @@ func Main(args []string) {
 		}
 	}
 
-	if opts.ElasticSearchIndex != "" {
-		conf.ElasticSearchIndex = opts.ElasticSearchIndex
-	} else if os.Getenv("ELASTICSEARCH_INDEX") != "" {
-		conf.ElasticSearchIndex = os.Getenv("ELASTICSEARCH_INDEX")
-	} else {
-		conf.ElasticSearchIndex = "logstash-*"
-	}
+	conf.ElasticSearchIndex = getElasticSearchIndex()
 	log.Info("Using ElasticSearch Index %s.", conf.ElasticSearchIndex)
 
 	appContext := server.AppContext{
@@ -149,18 +153,6 @@ func Main(args []string) {
 	router.Handle("/api/1/query", server.ApiF(appContext, server.QueryHandler))
 
 	router.Handle("/api/1/_bulk", server.ApiF(appContext, server.EsBulkHandler))
-
-	//
-	// Disable the Elastic Search proxy for now to weed out its usage.
-	//
-
-	//// Elastic Search proxy.
-	//esProxyHandler, err := elasticsearch.NewElasticSearchProxy(
-	//	getElasticSearchUrl(), opts.NoCheckCertificate)
-	//if err != nil {
-	//	log.Fatal("Failed to initialize Elastic Search proxy: %v", err)
-	//}
-	//router.PathPrefix("/elasticsearch").Handler(http.StripPrefix("/elasticsearch", esProxyHandler))
 
 	// Static file server, must be last as it serves as the fallback.
 	router.PathPrefix("/").Handler(server.StaticHandlerFactory(opts.DevServerUri))
