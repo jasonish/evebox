@@ -32,6 +32,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"github.com/stretchr/testify/assert"
 )
 
 var rawEvent string = `{"timestamp":"2016-09-15T11:23:20.197956-0600","flow_id":943590776193120,"event_type":"alert","src_ip":"82.165.177.154","src_port":80,"dest_ip":"10.16.1.11","dest_port":59852,"proto":"TCP","http":{"hostname":"www.testmyids.com","url":"\/","http_user_agent":"curl\/7.47.1","http_content_type":"text\/html","http_method":"GET","protocol":"HTTP\/1.1","status":200,"length":39},"payload":"SFRUUC8xLjEgMjAwIE9LDQpEYXRlOiBUaHUsIDE1IFNlcCAyMDE2IDE3OjIzOjIwIEdNVA0KU2VydmVyOiBBcGFjaGUNCkxhc3QtTW9kaWZpZWQ6IE1vbiwgMTUgSmFuIDIwMDcgMjM6MTE6NTUgR01UDQpFVGFnOiAiMjctNDI3MWM1ZjFhYzRjMCINCkFjY2VwdC1SYW5nZXM6IGJ5dGVzDQpDb250ZW50LUxlbmd0aDogMzkNCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sDQoNCnVpZD0wKHJvb3QpIGdpZD0wKHJvb3QpIGdyb3Vwcz0wKHJvb3QpCg==","payload_printable":"HTTP\/1.1 200 OK\r\nDate: Thu, 15 Sep 2016 17:23:20 GMT\r\nServer: Apache\r\nLast-Modified: Mon, 15 Jan 2007 23:11:55 GMT\r\nETag: \"27-4271c5f1ac4c0\"\r\nAccept-Ranges: bytes\r\nContent-Length: 39\r\nContent-Type: text\/html\r\n\r\nuid=0(root) gid=0(root) groups=0(root)\n","stream":1,"packet":"RQABLhOhQAAyBiTPUqWxmgoQAQsAUOnMrUcvtFca6JaAGAFU0FAAAAEBCAoXuzwUD2A3JkhUVFAvMS4xIDIwMCBPSw0KRGF0ZTogVGh1LCAxNSBTZXAgMjAxNiAxNzoyMzoyMCBHTVQNClNlcnZlcjogQXBhY2hlDQpMYXN0LU1vZGlmaWVkOiBNb24sIDE1IEphbiAyMDA3IDIzOjExOjU1IEdNVA0KRVRhZzogIjI3LTQyNzFjNWYxYWM0YzAiDQpBY2NlcHQtUmFuZ2VzOiBieXRlcw0KQ29udGVudC1MZW5ndGg6IDM5DQpDb250ZW50LVR5cGU6IHRleHQvaHRtbA0KDQp1aWQ9MChyb290KSBnaWQ9MChyb290KSBncm91cHM9MChyb290KQo=","packet_info":{"linktype":12},"host":"fw","alert":{"action":"allowed","gid":1,"signature_id":10000000,"rev":1,"signature":"","category":"Potentially Bad Traffic","severity":2}}`
@@ -259,4 +260,35 @@ func TestEveReader_SkipToEnd(t *testing.T) {
 	if event == nil {
 		t.Fatal("got nil event")
 	}
+}
+
+func TestEveReader_BadLine(t *testing.T) {
+	filename := "TestEveReader_BadLine.json"
+	defer os.Remove(filename)
+
+	writer, err := OpenTestEveWriter(filename)
+	assert.Nil(t, err)
+
+	reader, err := New(filename)
+	assert.Nil(t, err)
+
+	writer.WriteLine(rawEvent)
+	event, err := reader.Next()
+	assert.Nil(t, err)
+	assert.NotNil(t, event)
+
+	// Write out something that won't decode as JSON...
+	writer.WriteLine("{asdf: asdf...")
+
+	// Should get a MalformeedEventError
+	event, err = reader.Next()
+	assert.NotNil(t, err)
+	_, ok := err.(MalformedEventError)
+	assert.True(t, ok)
+
+	// Make sure we recover by writing a new valid event and reading it.
+	writer.WriteLine(rawEvent)
+	event, err = reader.Next()
+	assert.Nil(t, err)
+	assert.NotNil(t, event)
 }

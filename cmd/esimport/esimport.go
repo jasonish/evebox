@@ -314,8 +314,10 @@ func Main(args []string) {
 			if err == io.EOF {
 				eof = true
 				eofs++
+			} else if _, ok := err.(evereader.MalformedEventError); ok {
+				log.Error("Failed to read event but will continue: %v", err)
 			} else {
-				log.Fatal(err)
+				log.Fatalf("Unrecoverable error reading event: %v", err)
 			}
 		}
 

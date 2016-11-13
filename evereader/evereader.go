@@ -30,11 +30,21 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"io"
 	"os"
 )
+
+type MalformedEventError struct {
+	Event string
+	Err   error
+}
+
+func (e MalformedEventError) Error() string {
+	return fmt.Sprintf("Failed to parse event: %s: %s", e.Err.Error(), e.Event)
+}
 
 type EveReader struct {
 	path   string
@@ -193,7 +203,7 @@ func (er *EveReader) Next() (eve.RawEveEvent, error) {
 	decoder.UseNumber()
 
 	if err := decoder.Decode(&event); err != nil {
-		return nil, err
+		return nil, MalformedEventError{string(line), err}
 	}
 
 	return event, nil
