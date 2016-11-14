@@ -41,6 +41,8 @@ import (
 	"github.com/jasonish/evebox/eve"
 )
 
+const DEFAULT_INDEX = "evebox"
+
 type Config struct {
 	// The filename to read.
 	InputFilename           string `yaml:"input"`
@@ -98,7 +100,7 @@ func configure(args []string) Config {
 	username := flagset.StringP("username", "u", "", "Username")
 	password := flagset.StringP("password", "p", "", "Password")
 	noCheckCertificate := flagset.BoolP("no-check-certificate", "k", false, "Disable certificate check")
-	index := flagset.String("index", "evebox", "Elastic Search index prefix")
+	index := flagset.String("index", DEFAULT_INDEX, "Elastic Search index prefix")
 	oneshot := flagset.Bool("oneshot", false, "One shot mode (exit on EOF)")
 	stdout := flagset.Bool("stdout", false, "Print events to stdout")
 	end := flagset.Bool("end", false, "Start at end of file")
@@ -115,8 +117,12 @@ func configure(args []string) Config {
 		log.SetLevel(log.DEBUG)
 	}
 
-	configWrapper := ConfigWrapper{}
-	configWrapper.Config.BatchSize = 1000
+	configWrapper := ConfigWrapper{
+		Config: Config{
+			Index: DEFAULT_INDEX,
+			BatchSize: 1000,
+		},
+	}
 
 	if *configFilename != "" {
 		log.Debug("Loading configuration file %s", *configFilename)
