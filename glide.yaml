@@ -16,3 +16,4 @@ import:
 - package: github.com/oschwald/geoip2-golang
 - package: github.com/oschwald/maxminddb-golang
 - package: github.com/satori/go.uuid
+- package: github.com/lib/pq

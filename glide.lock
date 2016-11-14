@@ -1,5 +1,5 @@
-hash: fbc4ba6b808eb9de0556485c9fd3c9b71ab0f67519a589448d2712d0448332de
-updated: 2016-10-21T10:28:31.374324755-06:00
+hash: 66578219b0c878dba498e14bb0a91dd8f75991df8ee5b3881c0767f23101b77e
+updated: 2016-11-13T23:16:28.653762453-06:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -21,6 +21,8 @@ imports:
   version: 97448c91aac742cbca3d020b3e769013a420a06f
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
+- name: github.com/lib/pq
+  version: d8eeeb8bae8896dd8e1b7e514ab0d396c4f12a1b
 - name: github.com/oschwald/geoip2-golang
   version: ccee6e9d9b1ee5cee16ac664bc1982952edfb13d
 - name: github.com/oschwald/maxminddb-golang
@@ -40,4 +42,16 @@ imports:
   - windows
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
-testImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
+  subpackages:
+  - assert
