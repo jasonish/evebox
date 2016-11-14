@@ -36,62 +36,45 @@ import (
 	"github.com/jasonish/evebox/log"
 	flag "github.com/spf13/pflag"
 	"io"
-	"net"
 	"os"
 	"time"
+	"github.com/jasonish/evebox/eve"
 )
 
 type Config struct {
 	// The filename to read.
-	InputFilename string `yaml:"input"`
+	InputFilename           string `yaml:"input"`
 
 	// Elastic Search URL.
-	Url string `yaml:"url"`
+	Url                     string `yaml:"url"`
 
 	// Elastic Search index (prefix)
-	Index string `yaml:"index"`
+	Index                   string `yaml:"index"`
 
 	DisableCertificateCheck bool `yaml:"disable-certificate-check"`
 
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	Username                string `yaml:"username"`
+	Password                string `yaml:"password"`
 
-	Bookmark     bool   `yaml:"bookmark"`
-	BookmarkPath string `yaml:"bookmark-path"`
+	Bookmark                bool   `yaml:"bookmark"`
+	BookmarkPath            string `yaml:"bookmark-path"`
 
-	DisableGeoIp  bool   `yaml:"disable-geoip"`
-	GeoIpDatabase string `yaml:"geoip-database"`
+	DisableGeoIp            bool   `yaml:"disable-geoip"`
+	GeoIpDatabase           string `yaml:"geoip-database"`
 
-	Verbose bool `yaml:"verbose"`
+	Verbose                 bool `yaml:"verbose"`
 
-	End bool `yaml:"end"`
+	End                     bool `yaml:"end"`
 
-	BatchSize uint64 `yaml:"batch-size"`
+	BatchSize               uint64 `yaml:"batch-size"`
 
 	// Not exposed in configuration file.
-	stdout  bool
-	oneshot bool
+	stdout                  bool
+	oneshot                 bool
 }
 
 type ConfigWrapper struct {
 	Config Config `yaml:"esimport"`
-}
-
-var RFC1918_Netstrings = []string{
-	"10.0.0.0/8",
-	"127.16.0.0/12",
-	"192.168.0.0/16",
-}
-
-var RFC1918_IPNets []*net.IPNet
-
-func init() {
-	for _, network := range RFC1918_Netstrings {
-		_, ipnet, err := net.ParseCIDR(network)
-		if err == nil {
-			RFC1918_IPNets = append(RFC1918_IPNets, ipnet)
-		}
-	}
 }
 
 var flagset *flag.FlagSet
@@ -103,16 +86,6 @@ Options:
 `
 	fmt.Fprint(os.Stderr, usage)
 	flagset.PrintDefaults()
-}
-
-func IsRFC1918(addr string) bool {
-	ip := net.ParseIP(addr)
-	for _, ipnet := range RFC1918_IPNets {
-		if ipnet.Contains(ip) {
-			return true
-		}
-	}
-	return false
 }
 
 func configure(args []string) Config {
@@ -252,14 +225,15 @@ func Main(args []string) {
 		log.Info("Template %s exists, will not create.", conf.Index)
 	}
 
-	var geoipdb *geoip.GeoIpDb
+	var geoipFilter *eve.GeoipFilter
 
 	if !conf.DisableGeoIp {
-		geoipdb, err = geoip.NewGeoIpDb(conf.GeoIpDatabase)
+		geoipdb, err := geoip.NewGeoIpDb(conf.GeoIpDatabase)
 		if err != nil {
 			log.Notice("Failed to load GeoIP database: %v", err)
 		} else {
 			log.Info("Using GeoIP database %s, %s", geoipdb.Type(), geoipdb.BuildDate())
+			geoipFilter = eve.NewGeoipFilter(geoipdb)
 		}
 	}
 
@@ -323,32 +297,8 @@ func Main(args []string) {
 
 		if event != nil {
 
-			if geoipdb != nil {
-				srcip, ok := event["src_ip"].(string)
-				if ok && !IsRFC1918(srcip) {
-					gip, err := geoipdb.LookupString(srcip)
-					if err != nil {
-						log.Debug("Failed to lookup geoip for %s", srcip)
-					}
-
-					// Need at least a continent code.
-					if gip.ContinentCode != "" {
-						event["geoip"] = gip
-					}
-				}
-				if event["geoip"] == nil {
-					destip, ok := event["dest_ip"].(string)
-					if ok && !IsRFC1918(destip) {
-						gip, err := geoipdb.LookupString(destip)
-						if err != nil {
-							log.Debug("Failed to lookup geoip for %s", destip)
-						}
-						// Need at least a continent code.
-						if gip.ContinentCode != "" {
-							event["geoip"] = gip
-						}
-					}
-				}
+			if geoipFilter != nil {
+				geoipFilter.AddGeoIP(event)
 			}
 
 			if conf.stdout {
@@ -364,7 +314,7 @@ func Main(args []string) {
 			count++
 		}
 
-		if eof || (count > 0 && count%conf.BatchSize == 0) {
+		if eof || (count > 0 && count % conf.BatchSize == 0) {
 			var bookmark *evereader.Bookmark = nil
 
 			if conf.Bookmark {
@@ -397,8 +347,8 @@ func Main(args []string) {
 
 			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d; Lag (bytes): %d",
 				count,
-				count-lastStatCount,
-				float64(count-lastStatCount)/(now.Sub(lastStatTs).Seconds()),
+				count - lastStatCount,
+				float64(count - lastStatCount) / (now.Sub(lastStatTs).Seconds()),
 				eofs,
 				lag)
 			lastStatTs = now
@@ -419,7 +369,7 @@ func Main(args []string) {
 
 	if conf.oneshot {
 		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
-			uint64(float64(count)/totalTime.Seconds()))
+			uint64(float64(count) / totalTime.Seconds()))
 	}
 }
 
