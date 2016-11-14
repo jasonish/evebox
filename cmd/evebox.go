@@ -8,6 +8,7 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"os"
+	"github.com/jasonish/evebox/cmd/pgimport"
 )
 
 func VersionMain() {
@@ -44,6 +45,9 @@ func main() {
 			return
 		case "server":
 			server.Main(os.Args[2:])
+			return
+		case "pgimport":
+			pgimport.Main(os.Args[2:])
 			return
 		default:
 			log.Fatalf("Unknown command: %s", os.Args[1])
