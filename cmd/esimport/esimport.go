@@ -232,6 +232,7 @@ func Main(args []string) {
 	}
 
 	var geoipFilter *eve.GeoipFilter
+	tagsFilter := &eve.TagsFilter{}
 
 	if !conf.DisableGeoIp {
 		geoipdb, err := geoip.NewGeoIpDb(conf.GeoIpDatabase)
@@ -306,6 +307,8 @@ func Main(args []string) {
 			if geoipFilter != nil {
 				geoipFilter.AddGeoIP(event)
 			}
+
+			tagsFilter.Filter(event)
 
 			if conf.stdout {
 				asJson, err := json.Marshal(event)
