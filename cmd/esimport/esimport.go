@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/config"
 	"github.com/jasonish/evebox/elasticsearch"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
@@ -38,41 +39,40 @@ import (
 	"io"
 	"os"
 	"time"
-	"github.com/jasonish/evebox/eve"
 )
 
 const DEFAULT_INDEX = "evebox"
 
 type Config struct {
 	// The filename to read.
-	InputFilename           string `yaml:"input"`
+	InputFilename string `yaml:"input"`
 
 	// Elastic Search URL.
-	Url                     string `yaml:"url"`
+	Url string `yaml:"url"`
 
 	// Elastic Search index (prefix)
-	Index                   string `yaml:"index"`
+	Index string `yaml:"index"`
 
 	DisableCertificateCheck bool `yaml:"disable-certificate-check"`
 
-	Username                string `yaml:"username"`
-	Password                string `yaml:"password"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 
-	Bookmark                bool   `yaml:"bookmark"`
-	BookmarkPath            string `yaml:"bookmark-path"`
+	Bookmark     bool   `yaml:"bookmark"`
+	BookmarkPath string `yaml:"bookmark-path"`
 
-	DisableGeoIp            bool   `yaml:"disable-geoip"`
-	GeoIpDatabase           string `yaml:"geoip-database"`
+	DisableGeoIp  bool   `yaml:"disable-geoip"`
+	GeoIpDatabase string `yaml:"geoip-database"`
 
-	Verbose                 bool `yaml:"verbose"`
+	Verbose bool `yaml:"verbose"`
 
-	End                     bool `yaml:"end"`
+	End bool `yaml:"end"`
 
-	BatchSize               uint64 `yaml:"batch-size"`
+	BatchSize uint64 `yaml:"batch-size"`
 
 	// Not exposed in configuration file.
-	stdout                  bool
-	oneshot                 bool
+	stdout  bool
+	oneshot bool
 }
 
 type ConfigWrapper struct {
@@ -119,7 +119,7 @@ func configure(args []string) Config {
 
 	configWrapper := ConfigWrapper{
 		Config: Config{
-			Index: DEFAULT_INDEX,
+			Index:     DEFAULT_INDEX,
 			BatchSize: 1000,
 		},
 	}
@@ -323,7 +323,7 @@ func Main(args []string) {
 			count++
 		}
 
-		if eof || (count > 0 && count % conf.BatchSize == 0) {
+		if eof || (count > 0 && count%conf.BatchSize == 0) {
 			var bookmark *evereader.Bookmark = nil
 
 			if conf.Bookmark {
@@ -356,8 +356,8 @@ func Main(args []string) {
 
 			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d; Lag (bytes): %d",
 				count,
-				count - lastStatCount,
-				float64(count - lastStatCount) / (now.Sub(lastStatTs).Seconds()),
+				count-lastStatCount,
+				float64(count-lastStatCount)/(now.Sub(lastStatTs).Seconds()),
 				eofs,
 				lag)
 			lastStatTs = now
@@ -378,7 +378,7 @@ func Main(args []string) {
 
 	if conf.oneshot {
 		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
-			uint64(float64(count) / totalTime.Seconds()))
+			uint64(float64(count)/totalTime.Seconds()))
 	}
 }
 
