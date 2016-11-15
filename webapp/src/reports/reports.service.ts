@@ -29,7 +29,6 @@ import {ElasticSearchService} from "../elasticsearch.service";
 import {TopNavService} from "../topnav.service";
 import {ToastrService} from "../toastr.service";
 import moment = require("moment");
-import UnitOfTime = moment.UnitOfTime;
 
 @Injectable()
 export class ReportsService {
