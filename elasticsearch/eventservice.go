@@ -46,11 +46,24 @@ type GetEventByIdQuery struct {
 
 type EventService struct {
 	es *ElasticSearch
+
+	// Keyword for keyword queryes. Should be "raw" or "keyword".
+	keyword string
 }
 
 func NewEventService(es *ElasticSearch) *EventService {
+
+	keyword, err := es.GetKeywordType("")
+	if err != nil {
+		log.Warning("Failed to determine Elastic Search keyword type, using 'keyword'")
+		keyword = "keyword"
+	} else {
+		log.Info("Using Elastic Search keyword type %s.", keyword)
+	}
+
 	eventService := &EventService{
-		es: es,
+		es:      es,
+		keyword: keyword,
 	}
 	return eventService
 }
@@ -102,7 +115,7 @@ func (s *EventService) Inbox(options map[string]interface{}) (map[string]interfa
 	query := EventQuery{}
 
 	query.AddFilter(ExistsQuery("event_type"))
-	query.AddFilter(NewTermQuery("event_type", "alert"))
+	query.AddFilter(TermQuery("event_type", "alert"))
 
 	if queryString, ok := options["queryString"]; ok {
 		query.AddFilter(map[string]interface{}{

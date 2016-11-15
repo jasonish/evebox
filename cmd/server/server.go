@@ -133,13 +133,14 @@ func Main(args []string) {
 			pingResponse.Version.Number)
 	}
 	appContext.ElasticSearch = elasticSearch
-	appContext.ArchiveService = elasticsearch.NewArchiveService(elasticSearch)
 	appContext.EventService = elasticsearch.NewEventService(elasticSearch)
 
 	router := mux.NewRouter()
 
 	router.Handle("/api/1/archive",
 		server.ApiF(appContext, server.ArchiveHandler))
+	router.Handle("/api/1/escalate",
+		server.ApiF(appContext, server.EscalateHandler))
 	router.Handle("/api/1/event/{id}",
 		server.ApiF(appContext, server.GetEventByIdHandler))
 	router.Handle("/api/1/config",

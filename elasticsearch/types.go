@@ -28,6 +28,7 @@ package elasticsearch
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -100,24 +101,18 @@ func ExistsQuery(field string) interface{} {
 	}
 }
 
-type TermQuery struct {
-	Field string
-	Value interface{}
-}
-
-func (q TermQuery) MarshalJSON() ([]byte, error) {
-	object := map[string]interface{}{
-		"term": map[string]interface{}{
-			q.Field: q.Value,
-		},
-	}
-	return json.Marshal(object)
-}
-
-func NewTermQuery(field string, value interface{}) map[string]interface{} {
+func TermQuery(field string, value interface{}) map[string]interface{} {
 	return map[string]interface{}{
 		"term": map[string]interface{}{
 			field: value,
+		},
+	}
+}
+
+func KeywordTermQuery(field string, value string, suffix string) map[string]interface{} {
+	return map[string]interface{}{
+		"term": map[string]interface{}{
+			fmt.Sprintf("%s.%s", field, suffix): value,
 		},
 	}
 }

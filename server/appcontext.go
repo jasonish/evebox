@@ -37,7 +37,5 @@ type AppContext struct {
 
 	ElasticSearch *elasticsearch.ElasticSearch
 
-	ArchiveService core.ArchiveService
-
 	EventService core.EventService
 }

@@ -26,8 +26,20 @@
 
 package core
 
+type AlertGroupQueryParams struct {
+	SignatureID  uint64
+	SrcIP        string
+	DstIP        string
+	MinTimestamp string
+	MaxTimestamp string
+}
+
 type EventService interface {
 	GetEventById(id string) (map[string]interface{}, error)
+
+	ArchiveAlertGroup(p AlertGroupQueryParams) error
+
+	EscalateAlertGroup(p AlertGroupQueryParams) error
 
 	Inbox(options map[string]interface{}) (map[string]interface{}, error)
 }

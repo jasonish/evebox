@@ -249,41 +249,6 @@ export class ElasticSearchService {
         return this.bulk(bulkUpdates);
     }
 
-    escalateAlertGroup(alertGroup:AlertGroup):Promise < string > {
-
-        return this.submit(() => {
-            return this._escalateAlertGroup(alertGroup);
-        });
-
-    }
-
-    _escalateAlertGroup(alertGroup:AlertGroup) {
-
-        return new Promise<string>((resolve, reject) => {
-
-            return this.getAlertsInAlertGroup(alertGroup, {
-                _source: "tags",
-                must_not: [
-                    {term: {tags: "escalated"}}
-                ],
-            }).then((response:any) => {
-                if (response.hits.hits.length == 0) {
-                    resolve("OK");
-                }
-                else {
-                    return this.addTagsToEventSet(response.hits.hits,
-                        ["escalated", "evebox.escalated"])
-                        .then(() => {
-                            this._escalateAlertGroup(alertGroup)
-                                .then(() => resolve("OK"));
-                        });
-                }
-            });
-
-        });
-
-    }
-
     removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise < string > {
 
         return this.submit(() => {
@@ -346,21 +311,30 @@ export class ElasticSearchService {
 
     }
 
-    archiveAlertGroup(alertGroup:AlertGroup) {
+    escalateAlertGroup(alertGroup:AlertGroup):Promise < string > {
         return this.submit(() => {
-            return this.doArchiveAlertGroup(alertGroup)
+            let request = {
+                signature_id: alertGroup.event._source.alert.signature_id,
+                src_ip: alertGroup.event._source.src_ip,
+                dest_ip: alertGroup.event._source.dest_ip,
+                min_timestamp: alertGroup.oldestTs,
+                max_timestamp: alertGroup.newestTs,
+            };
+            return this.api.post("api/1/escalate", request);
         });
     }
 
-    doArchiveAlertGroup(alertGroup:AlertGroup) {
-        let request = {
-            signature_id: alertGroup.event._source.alert.signature_id,
-            src_ip: alertGroup.event._source.src_ip,
-            dest_ip: alertGroup.event._source.dest_ip,
-            min_timestamp: alertGroup.oldestTs,
-            max_timestamp: alertGroup.newestTs,
-        };
-        return this.api.post("api/1/archive", request);
+    archiveAlertGroup(alertGroup:AlertGroup) {
+        return this.submit(() => {
+            let request = {
+                signature_id: alertGroup.event._source.alert.signature_id,
+                src_ip: alertGroup.event._source.src_ip,
+                dest_ip: alertGroup.event._source.dest_ip,
+                min_timestamp: alertGroup.oldestTs,
+                max_timestamp: alertGroup.newestTs,
+            };
+            return this.api.post("api/1/archive", request);
+        });
     }
 
     getEventById(id:string):Promise<any> {

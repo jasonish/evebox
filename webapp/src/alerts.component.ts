@@ -189,7 +189,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     escalateAndArchiveEvent(row:any) {
         this.archiveAlertGroup(row).then(() => {
-            this.toggleEscalatedState(row);
+            this.escalateAlertGroup(row);
         });
     }
 
@@ -459,6 +459,16 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
             this.elasticSearchService.removeEscalatedStateFromAlertGroup(alertGroup);
         }
+    }
+
+    escalateAlertGroup(row:any) {
+
+        let alertGroup:any = row.event;
+
+        // Optimistically mark as all escalated.
+        alertGroup.escalatedCount = alertGroup.count;
+
+        return this.elasticSearchService.escalateAlertGroup(alertGroup);
     }
 
     refresh() {

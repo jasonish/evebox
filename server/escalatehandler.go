@@ -33,7 +33,7 @@ import (
 	"github.com/jasonish/evebox/log"
 )
 
-type ArchiveHandlerRequest struct {
+type EscalateHandlerRequest struct {
 	SignatureId  uint64 `json:"signature_id"`
 	SrcIp        string `json:"src_ip"`
 	DestIp       string `json:"dest_ip"`
@@ -41,13 +41,13 @@ type ArchiveHandlerRequest struct {
 	MaxTimestamp string `json:"max_timestamp"`
 }
 
-func ArchiveHandler(appContext AppContext, r *http.Request) interface{} {
-	var request ArchiveHandlerRequest
+func EscalateHandler(appContext AppContext, r *http.Request) interface{} {
+	var request EscalateHandlerRequest
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err
 	}
 
-	err := appContext.EventService.ArchiveAlertGroup(core.AlertGroupQueryParams{
+	err := appContext.EventService.EscalateAlertGroup(core.AlertGroupQueryParams{
 		SignatureID:  request.SignatureId,
 		SrcIP:        request.SrcIp,
 		DstIP:        request.DestIp,

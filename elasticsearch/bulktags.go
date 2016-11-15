@@ -83,7 +83,7 @@ func bulkAddTags(es *ElasticSearch, documents []map[string]interface{},
 	bulkString := strings.Join(bulk, "\n")
 	response, err := es.HttpClient.PostString("_bulk", "application/json", bulkString)
 	if err != nil {
-		log.Error("Failed to archive events: %v", err)
+		log.Error("Failed to add tags to events: %v", err)
 		return false, err
 	}
 
@@ -97,7 +97,7 @@ func bulkAddTags(es *ElasticSearch, documents []map[string]interface{},
 		if err := es.Decode(response, &bulkResponse); err != nil {
 			log.Error("Failed to decode bulk response: %v", err)
 		} else {
-			log.Info("Archived %d events; errors=%v",
+			log.Info("Tags added to %d events; errors=%v",
 				len(bulkResponse.Items), bulkResponse.Errors)
 			if bulkResponse.Errors {
 				retry = true
