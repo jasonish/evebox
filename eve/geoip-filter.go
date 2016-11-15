@@ -1,9 +1,9 @@
 package eve
 
 import (
-	"net"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
+	"net"
 )
 
 var RFC1918_Netstrings = []string{
