@@ -21,8 +21,8 @@ export class ApiService {
             .toPromise();
     }
 
-    get(path:string):Promise<any> {
-        return this.http.get(`${this.baseUrl}${path}`)
+    get(path:string, options={}):Promise<any> {
+        return this.http.get(`${this.baseUrl}${path}`, options)
             .map((res:Response) => res.json())
             .toPromise();
     }

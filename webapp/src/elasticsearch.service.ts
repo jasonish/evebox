@@ -46,16 +46,14 @@ export interface ResultSet {
 export interface AlertGroup {
     count:number,
     escalatedCount:number,
-    newestTs:string,
-    oldestTs:string,
+    maxTs:string,
+    minTs:string,
     event:any
 }
 
 @Injectable()
 export class ElasticSearchService {
 
-    private defaultBatchSize:number = 1000;
-    private url:string = window.location.pathname + "elasticsearch";
     private index:string;
     private jobs = queue({concurrency: 4});
 
@@ -86,11 +84,11 @@ export class ElasticSearchService {
     }
 
     search(query:any):Promise<any> {
-            return this.api.post("api/1/query", query)
-                .then((response:any) => response,
-                    (error:any) => {
-                        throw error.json()
-                    });
+        return this.api.post("api/1/query", query)
+            .then((response:any) => response,
+                (error:any) => {
+                    throw error.json()
+                });
     }
 
     submit(func:any) {
@@ -162,8 +160,8 @@ export class ElasticSearchService {
                 signature_id: alertGroup.event._source.alert.signature_id,
                 src_ip: alertGroup.event._source.src_ip,
                 dest_ip: alertGroup.event._source.dest_ip,
-                min_timestamp: alertGroup.oldestTs,
-                max_timestamp: alertGroup.newestTs,
+                min_timestamp: alertGroup.minTs,
+                max_timestamp: alertGroup.maxTs,
             };
             return this.api.post("api/1/escalate", request);
         });
@@ -175,8 +173,8 @@ export class ElasticSearchService {
                 signature_id: alertGroup.event._source.alert.signature_id,
                 src_ip: alertGroup.event._source.src_ip,
                 dest_ip: alertGroup.event._source.dest_ip,
-                min_timestamp: alertGroup.oldestTs,
-                max_timestamp: alertGroup.newestTs,
+                min_timestamp: alertGroup.minTs,
+                max_timestamp: alertGroup.maxTs,
             };
             return this.api.post("api/1/archive", request);
         });
@@ -189,8 +187,8 @@ export class ElasticSearchService {
                     signature_id: alertGroup.event._source.alert.signature_id,
                     src_ip: alertGroup.event._source.src_ip,
                     dest_ip: alertGroup.event._source.dest_ip,
-                    min_timestamp: alertGroup.oldestTs,
-                    max_timestamp: alertGroup.newestTs,
+                    min_timestamp: alertGroup.minTs,
+                    max_timestamp: alertGroup.maxTs,
                 },
                 tags: ["escalated", "evebox.escalated"],
             };
@@ -298,162 +296,38 @@ export class ElasticSearchService {
         });
     }
 
-    getAlerts(options ?:any):Promise < AlertGroup[] > {
+    newGetAlerts(options:any = {}):Promise<any> {
 
-        options = options || {};
+        let tags:string[] = [];
 
-        let query:any = {
-            query: {
-                bool: {
-                    filter: [
-                        {exists: {field: "event_type"}},
-                        {term: {event_type: "alert"}}
-                    ],
-                    must_not: []
-                }
-            },
-            size: 0,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
-            aggs: {
-                signatures: {
-                    terms: {
-                        field: "alert.signature_id",
-                        size: 100000,
-                    },
-                    aggs: {
-                        sources: {
-                            terms: {
-                                field: this.asKeyword("src_ip"),
-                                size: 100000
-                            },
-                            aggs: {
-                                destinations: {
-                                    terms: {
-                                        field: this.asKeyword("dest_ip"),
-                                        size: 100000
-                                    },
-                                    aggs: {
-                                        newest: {
-                                            top_hits: {
-                                                sort: [{"@timestamp": {order: "desc"}}],
-                                                size: 1
-                                            }
-                                        },
-                                        oldest: {
-                                            top_hits: {
-                                                sort: [
-                                                    {"@timestamp": {order: "asc"}}
-                                                ],
-                                                size: 1
-                                            }
-                                        },
-                                        escalated: {
-                                            filter: {term: {tags: "escalated"}}
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            timeout: "30s"
-        };
-
-        if (options.queryString) {
-            query.query.bool.filter.push({
-                query_string: {
-                    query: options.queryString
-                }
+        if (options.mustHaveTags) {
+            options.mustHaveTags.forEach((tag:string) => {
+                tags.push(tag);
             })
         }
 
-        if (options.mustNots) {
-            options.mustNots.forEach((q:any) => {
-                query.query.bool.must_not.push(q);
-            });
+        if (options.mustNotHaveTags) {
+            options.mustNotHaveTags.forEach((tag:string) => {
+                tags.push(`-${tag}`);
+            })
         }
 
-        if (options.filters) {
-            options.filters.forEach((filter:any) => {
-                query.query.bool.filter.push(filter);
-            });
-        }
+        let requestOptions = {
+            search: `tags=${tags.join(",")}&` +
+            `timeRange=${options.timeRange}&` +
+            `queryString=${encodeURIComponent(options.queryString)}&`
+        };
 
-        if (options.range) {
-            if (!options.now) {
-                options.now = moment()
-            }
-            this.addTimeRangeFilter(query, options.now, options.range);
-        }
+        return this.api.get("api/1/alerts", requestOptions).then((response:any) => {
+            return response.alerts.map((alert:AlertGroup) => {
+                return {
+                    event: alert,
+                    selected: false,
+                    date: moment(alert.maxTs).toDate()
+                }
+            })
 
-        function unwrapResponse(response:any):AlertGroup[] {
-
-            let events:AlertGroup[] = [];
-
-            if (!response.aggregations) {
-                return events;
-            }
-
-            // Unwrap from the buckets.
-            response.aggregations.signatures.buckets.forEach((sig:any) => {
-                sig.sources.buckets.forEach((source:any) => {
-                    source.destinations.buckets.forEach((dest:any) => {
-
-                        let event = {
-
-                            // Total number of events in group.
-                            count: <number>dest.doc_count,
-
-                            // Number of escalated events.
-                            escalatedCount: <number>dest.escalated.doc_count,
-
-                            // The newest (most recent timestamp).
-                            newestTs: <string>dest.newest.hits.hits[0]._source.timestamp,
-
-                            // The oldest timestampa.
-                            oldestTs: <string>dest.oldest.hits.hits[0]._source.timestamp,
-
-                            // The newest occurrence of the event.
-                            event: <any>dest.newest.hits.hits[0]
-
-                        };
-
-                        // Make sure tags exists.
-                        if (!event.event._source.tags) {
-                            event.event._source.tags = [];
-                        }
-
-                        events.push(event);
-
-                    })
-                })
-            });
-
-            // Sort.
-            events.sort((a, b) => {
-                let x = moment(a.newestTs);
-                let y = moment(b.newestTs);
-                return y.diff(x);
-            });
-
-            return events;
-
-        }
-
-        return this.search(query).then((response:any) => {
-
-            if (response._shards.total == 0) {
-                console.log(`No shards found for index ${this.index}.`);
-                this.toastr.error(`No shards found for index ${this.index}`, {
-                    title: "Error"
-                });
-            }
-
-            return unwrapResponse(response)
-        });
+        })
     }
 
     /**

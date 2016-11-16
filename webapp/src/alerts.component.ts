@@ -475,19 +475,22 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         this.loading = true;
 
-        let filters:any[] = [];
-
-        let mustNots:any[] = [];
+        let queryOptions:any = {
+            mustHaveTags: [],
+            mustNotHaveTags: [],
+            timeRange: "",
+            queryString: this.queryString,
+        };
 
         // Add filters depending on view.
         switch (this.appService.getRoute()) {
             case "/inbox":
                 // Limit to non-archived events.
-                mustNots.push({term: {tags: "archived"}});
+                queryOptions.mustNotHaveTags.push("archived");
                 break;
             case "/escalated":
                 // Limit to escalated events only, no time range applied.
-                filters.push({term: {tags: "escalated"}});
+                queryOptions.mustHaveTags.push("escalated");
                 break;
             default:
                 break;
@@ -500,17 +503,14 @@ export class AlertsComponent implements OnInit, OnDestroy {
             case "/escalated":
                 break;
             default:
-                range = this.topNavService.getTimeRangeAsSeconds();
+                //queryOptions.timeRange = this.topNavService.timeRange;
+                if (this.topNavService.timeRange) {
+                    queryOptions.timeRange = `${this.topNavService.getTimeRangeAsSeconds()}s`;
+                }
                 break;
         }
 
-        return this.alertService.fetchAlerts({
-            queryString: this.queryString,
-            now: moment(),
-            range: range,
-            filters: filters,
-            mustNots: mustNots,
-        }).then((rows:any) => {
+        return this.elasticSearchService.newGetAlerts(queryOptions).then((rows:any) => {
             this.rows = rows;
         }, (error:any) => {
 

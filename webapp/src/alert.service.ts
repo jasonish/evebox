@@ -52,17 +52,4 @@ export class AlertService {
         return state;
     }
 
-    fetchAlerts(options?:any) {
-        return this.elasticSearchService.getAlerts(options)
-            .then((response:AlertGroup[]) => {
-                return response.map((alert:AlertGroup) => {
-                    return {
-                        event: alert,
-                        selected: false,
-                        date: moment(alert.newestTs).toDate()
-                    }
-                })
-            })
-    }
-
 }
