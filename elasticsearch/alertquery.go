@@ -187,6 +187,10 @@ func (s *AlertQueryService) Query(options core.AlertQueryOptions) (interface{}, 
 
 				alertGroup.Event = maxEvent
 
+				if maxEvent["_source"].(map[string]interface{})["tags"] == nil {
+					maxEvent["_source"].(map[string]interface{})["tags"] = []string{}
+				}
+
 				alertGroups = append(alertGroups, alertGroup)
 			}
 		}
