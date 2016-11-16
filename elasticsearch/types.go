@@ -28,7 +28,6 @@ package elasticsearch
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -82,7 +81,6 @@ type BulkResponse struct {
 type Hits struct {
 	Total uint64                   `json:"total"`
 	Hits  []map[string]interface{} `json:"hits"`
-	//Hits []Hit `json:"hits"`
 }
 
 type SearchResponse struct {
@@ -92,30 +90,6 @@ type SearchResponse struct {
 	Hits         Hits                   `json:"hits"`
 	Aggregations map[string]interface{} `json:"aggregations"`
 	ScrollId     string                 `json:"_scroll_id,omitempty"`
-}
-
-func ExistsQuery(field string) interface{} {
-	return map[string]interface{}{
-		"exists": map[string]interface{}{
-			"field": field,
-		},
-	}
-}
-
-func TermQuery(field string, value interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"term": map[string]interface{}{
-			field: value,
-		},
-	}
-}
-
-func KeywordTermQuery(field string, value string, suffix string) map[string]interface{} {
-	return map[string]interface{}{
-		"term": map[string]interface{}{
-			fmt.Sprintf("%s.%s", field, suffix): value,
-		},
-	}
 }
 
 type RangeQuery struct {

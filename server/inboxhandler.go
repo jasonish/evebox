@@ -27,25 +27,31 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/core"
 	"net/http"
+	"strings"
 )
 
-type InboxHandler struct {
-}
+func AlertsHandler(appContext AppContext, r *http.Request) interface{} {
 
-func (h InboxHandler) ServeHTTP(appContext AppContext, r *http.Request) interface{} {
+	options := core.AlertQueryOptions{}
 
-	options := map[string]interface{}{}
-
-	if r.FormValue("queryString") != "" {
-		options["queryString"] = r.FormValue("queryString")
+	tags := r.FormValue("tags")
+	if tags != "" {
+		for _, tag := range strings.Split(tags, ",") {
+			if strings.HasPrefix(tag, "-") {
+				options.MustNotHaveTags = append(options.MustNotHaveTags,
+					strings.TrimPrefix(tag, "-"))
+			} else {
+				options.MustHaveTags = append(options.MustHaveTags, tag)
+			}
+		}
 	}
 
-	if r.FormValue("timeRange") != "" {
-		options["timeRange"] = r.FormValue("timeRange")
-	}
+	options.QueryString = r.FormValue("queryString")
+	options.TimeRange = r.FormValue("timeRange")
 
-	results, err := appContext.EventService.Inbox(options)
+	results, err := appContext.AlertQueryService.Query(options)
 	if err != nil {
 		return err
 	}

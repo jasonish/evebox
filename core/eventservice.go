@@ -26,12 +26,36 @@
 
 package core
 
+// AlertGroupQueryParams holds the parameters for querying a specific
+// group of alerts.
 type AlertGroupQueryParams struct {
 	SignatureID  uint64
 	SrcIP        string
 	DstIP        string
 	MinTimestamp string
 	MaxTimestamp string
+}
+
+// AlertyQueryOptions includes the options for querying alerts which are then
+// returned as alert groups.
+type AlertQueryOptions struct {
+	// Tags that events must have.
+	MustHaveTags []string
+
+	// Tags that events must not have.
+	MustNotHaveTags []string
+
+	// Query string.
+	QueryString string
+
+	// Time range which is a duration string telling how far back
+	// to log for events (eg. 24h, 1m). Must be parsable by
+	// https://golang.org/pkg/time/#ParseDuration
+	TimeRange string
+}
+
+type AlertQueryService interface {
+	Query(options AlertQueryOptions) (interface{}, error)
 }
 
 type EventService interface {
@@ -48,6 +72,4 @@ type EventService interface {
 	AddTagsToEvent(id string, tags []string) error
 
 	RemoveTagsFromEvent(id string, tags []string) error
-
-	Inbox(options map[string]interface{}) (map[string]interface{}, error)
 }

@@ -53,6 +53,10 @@ type ElasticSearch struct {
 	VersionString string
 	MajorVersion  int64
 
+	// The keyword to use for "keyword" type queries. Older versions
+	// of the Logstash template used "raw", newer ones use "keyword".
+	keyword string
+
 	HttpClient *eveboxhttp.HttpClient
 }
 
@@ -64,6 +68,8 @@ func New(url string) *ElasticSearch {
 		baseUrl:    url,
 		HttpClient: HttpClient,
 	}
+
+	es.InitKeyword()
 
 	return es
 }
@@ -167,6 +173,16 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 	return "raw", nil
 }
 
+func (es *ElasticSearch) InitKeyword() error {
+	keyword, err := es.GetKeywordType(es.EventBaseIndex)
+	if err != nil {
+		return err
+	}
+	es.keyword = keyword
+	log.Info("Elastic Search keyword initialized to \"%s\"", es.keyword)
+	return nil
+}
+
 func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 
 	templateBox, err := rice.FindBox("static")
@@ -220,6 +236,7 @@ func (es *ElasticSearch) Search(query interface{}) (*SearchResponse, error) {
 	}
 	result := SearchResponse{}
 	if err := es.Decode(response, &result); err != nil {
+		log.Println("Failed to decode response...")
 		return nil, err
 	}
 	return &result, nil

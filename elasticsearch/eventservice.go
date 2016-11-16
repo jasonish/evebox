@@ -49,24 +49,11 @@ type GetEventByIdQuery struct {
 
 type EventService struct {
 	es *ElasticSearch
-
-	// Keyword for keyword queryes. Should be "raw" or "keyword".
-	keyword string
 }
 
 func NewEventService(es *ElasticSearch) *EventService {
-
-	keyword, err := es.GetKeywordType("")
-	if err != nil {
-		log.Warning("Failed to determine Elastic Search keyword type, using 'keyword'")
-		keyword = "keyword"
-	} else {
-		log.Info("Using Elastic Search keyword type %s.", keyword)
-	}
-
 	eventService := &EventService{
-		es:      es,
-		keyword: keyword,
+		es: es,
 	}
 	return eventService
 }
@@ -91,15 +78,30 @@ func (s *EventService) GetEventById(id string) (map[string]interface{}, error) {
 type EventQuery struct {
 	Query struct {
 		Bool struct {
-			Filter []interface{} `json:"filter"`
+			Filter  []interface{} `json:"filter"`
+			MustNot []interface{} `json:"must_not,omitempty"`
 		} `json:"bool"`
 	} `json:"query"`
-	Size int64         `json:"size"`
-	Sort []interface{} `json:"sort,omitempty"`
+	Size int64                  `json:"size"`
+	Sort []interface{}          `json:"sort,omitempty"`
+	Aggs map[string]interface{} `json:"aggs,omitempty"`
+}
+
+func NewEventQuery() EventQuery {
+	query := EventQuery{}
+	query.AddFilter(ExistsQuery("event_type"))
+	query.Sort = []interface{}{
+		Sort("@timestamp", "desc"),
+	}
+	return query
 }
 
 func (q *EventQuery) AddFilter(filter interface{}) {
 	q.Query.Bool.Filter = append(q.Query.Bool.Filter, filter)
+}
+
+func (q *EventQuery) MustNot(query interface{}) {
+	q.Query.Bool.MustNot = append(q.Query.Bool.MustNot, query)
 }
 
 func (q *EventQuery) AddTimeRangeFilter(timeRange string) {
@@ -114,34 +116,8 @@ func (q *EventQuery) AddTimeRangeFilter(timeRange string) {
 	})
 }
 
-func (s *EventService) Inbox(options map[string]interface{}) (map[string]interface{}, error) {
-	query := EventQuery{}
-
-	query.AddFilter(ExistsQuery("event_type"))
-	query.AddFilter(TermQuery("event_type", "alert"))
-
-	if queryString, ok := options["queryString"]; ok {
-		query.AddFilter(map[string]interface{}{
-			"query_string": map[string]interface{}{
-				"query": queryString,
-			},
-		})
-	}
-
-	if timeRange, ok := options["timeRange"]; ok {
-		query.AddTimeRangeFilter(timeRange.(string))
-	}
-
-	log.Println(ToJson(query))
-
-	results, err := s.es.Search(query)
-	if err != nil {
-		log.Error("%v", err)
-	} else {
-		log.Println(ToJson(results))
-	}
-
-	return nil, nil
+func (s *EventService) asKeyword(keyword string) string {
+	return fmt.Sprintf("%s.%s", keyword, s.es.keyword)
 }
 
 // AddTagsToEvent will add the given tags to the event referenced by ID.
@@ -208,14 +184,14 @@ func (s *EventService) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []
 			"bool": m{
 				"filter": l{
 					ExistsQuery("event_type"),
-					KeywordTermQuery("event_type", "alert", s.keyword),
+					KeywordTermQuery("event_type", "alert", s.es.keyword),
 					RangeQuery{
 						Field: "timestamp",
 						Gte:   p.MinTimestamp,
 						Lte:   p.MaxTimestamp,
 					},
-					KeywordTermQuery("src_ip", p.SrcIP, s.keyword),
-					KeywordTermQuery("dest_ip", p.DstIP, s.keyword),
+					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
+					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
 					TermQuery("alert.signature_id", p.SignatureID),
 				},
 				"must_not": mustNot,
@@ -303,14 +279,14 @@ func (s *EventService) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, ta
 
 	filter := []interface{}{
 		ExistsQuery("event_type"),
-		KeywordTermQuery("event_type", "alert", s.keyword),
+		KeywordTermQuery("event_type", "alert", s.es.keyword),
 		RangeQuery{
 			Field: "timestamp",
 			Gte:   p.MinTimestamp,
 			Lte:   p.MaxTimestamp,
 		},
-		KeywordTermQuery("src_ip", p.SrcIP, s.keyword),
-		KeywordTermQuery("dest_ip", p.DstIP, s.keyword),
+		KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
+		KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
 		TermQuery("alert.signature_id", p.SignatureID),
 	}
 
@@ -330,6 +306,8 @@ func (s *EventService) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, ta
 		},
 		"size": 10000,
 	}
+
+	log.Println(ToJson(query))
 
 	searchResponse, err := s.es.SearchScroll(query, "1m")
 	if err != nil {
