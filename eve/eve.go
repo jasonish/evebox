@@ -59,6 +59,10 @@ func (ev *EveTimestamp) UnmarshalJSON(b []byte) (err error) {
 	return err
 }
 
+func ParseTimestamp(timestamp string) (time.Time, error) {
+	return time.Parse(EveTimestampFormat, timestamp)
+}
+
 // Eve Buffer
 //
 // In the EVE JSON, some fields such as packet and payload are base64
