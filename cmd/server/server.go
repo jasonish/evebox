@@ -141,8 +141,19 @@ func Main(args []string) {
 		server.ApiF(appContext, server.ArchiveHandler))
 	router.Handle("/api/1/escalate",
 		server.ApiF(appContext, server.EscalateHandler))
+
+	router.Handle("/api/1/alert-group/add-tags",
+		server.ApiF(appContext, server.AlertGroupAddTags)).Methods("POST")
+	router.Handle("/api/1/alert-group/remove-tags",
+		server.ApiF(appContext, server.AlertGroupRemoveTags)).Methods("POST")
+
 	router.Handle("/api/1/event/{id}",
 		server.ApiF(appContext, server.GetEventByIdHandler))
+
+	router.Handle("/api/1/event/{id}/archive", server.ApiF(appContext, server.ArchiveEventHandler)).Methods("POST")
+	router.Handle("/api/1/event/{id}/escalate", server.ApiF(appContext, server.EscalateEventHandler)).Methods("POST")
+	router.Handle("/api/1/event/{id}/de-escalate", server.ApiF(appContext, server.DeEscalateEventHandler)).Methods("POST")
+
 	router.Handle("/api/1/config",
 		server.ApiF(appContext, server.ConfigHandler))
 	router.Handle("/api/1/version",

@@ -37,3 +37,37 @@ func (m JsonMap) Get(name string) interface{} {
 	}
 	return m[name]
 }
+
+func (m JsonMap) GetString(name string) string {
+	if m == nil {
+		return ""
+	}
+	if m[name] == nil {
+		return ""
+	}
+	val, ok := m[name].(string)
+	if !ok {
+		return ""
+	}
+	return val
+}
+
+// GetAsStrings will return the value with the given name as a slice
+// of strings. On failure an empty slice will be returned.
+func (m JsonMap) GetAsStrings(name string) []string {
+	if m[name] == nil {
+		return []string{}
+	}
+	items, ok := m[name].([]interface{})
+	if !ok {
+		return []string{}
+	}
+	strings := make([]string, 0, len(items))
+	if items != nil {
+		for _, item := range items {
+			strings = append(strings, item.(string))
+		}
+
+	}
+	return strings
+}

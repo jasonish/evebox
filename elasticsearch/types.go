@@ -82,6 +82,7 @@ type BulkResponse struct {
 type Hits struct {
 	Total uint64                   `json:"total"`
 	Hits  []map[string]interface{} `json:"hits"`
+	//Hits []Hit `json:"hits"`
 }
 
 type SearchResponse struct {

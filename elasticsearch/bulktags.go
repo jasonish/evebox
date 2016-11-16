@@ -32,26 +32,26 @@ import (
 	"strings"
 )
 
-// bulkAddTags will add a set of tags to a set of documents using the Elastic
-// Search bulk API.
-func bulkAddTags(es *ElasticSearch, documents []map[string]interface{},
-	_tags []string) (bool, error) {
+// bulkUpdateTags will add and/or remvoe tags from a set of documents using
+// the Elastic Search bulk API.
+func bulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
+	addTags []string, rmTags []string) (bool, error) {
 
 	bulk := make([]string, 0)
 
 	for _, item := range documents {
 		doc := JsonMap(item)
 
-		// Add tags.
+		currentTags := doc.GetMap("_source").GetAsStrings("tags")
 		tags := make([]string, 0)
 
-		itags, ok := doc.GetMap("_source").Get("tags").([]interface{})
-		if ok {
-			for _, tag := range itags {
-				tags = append(tags, tag.(string))
+		for _, tag := range currentTags {
+			if rmTags == nil || !StringSliceContains(rmTags, tag) {
+				tags = append(tags, tag)
 			}
 		}
-		for _, tag := range _tags {
+
+		for _, tag := range addTags {
 			if !StringSliceContains(tags, tag) {
 				tags = append(tags, tag)
 			}
@@ -83,7 +83,7 @@ func bulkAddTags(es *ElasticSearch, documents []map[string]interface{},
 	bulkString := strings.Join(bulk, "\n")
 	response, err := es.HttpClient.PostString("_bulk", "application/json", bulkString)
 	if err != nil {
-		log.Error("Failed to add tags to events: %v", err)
+		log.Error("Failed to update event tags: %v", err)
 		return false, err
 	}
 
@@ -97,12 +97,12 @@ func bulkAddTags(es *ElasticSearch, documents []map[string]interface{},
 		if err := es.Decode(response, &bulkResponse); err != nil {
 			log.Error("Failed to decode bulk response: %v", err)
 		} else {
-			log.Info("Tags added to %d events; errors=%v",
+			log.Info("Tags updated on %d events; errors=%v",
 				len(bulkResponse.Items), bulkResponse.Errors)
 			if bulkResponse.Errors {
 				retry = true
 				for _, item := range bulkResponse.Items {
-					logBulkError(item)
+					logBulkUpdateError(item)
 				}
 			}
 		}
@@ -111,7 +111,7 @@ func bulkAddTags(es *ElasticSearch, documents []map[string]interface{},
 	return retry, nil
 }
 
-func logBulkError(item map[string]interface{}) {
+func logBulkUpdateError(item map[string]interface{}) {
 	update, ok := item["update"].(map[string]interface{})
 	if !ok || update == nil {
 		return
@@ -120,5 +120,5 @@ func logBulkError(item map[string]interface{}) {
 	if error == nil {
 		return
 	}
-	log.Notice("Archive error: %s", ToJson(error))
+	log.Notice("Elastic Search bulk update error: %s", ToJson(error))
 }

@@ -29,32 +29,18 @@ package server
 import (
 	"net/http"
 
-	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 )
 
-type EscalateHandlerRequest struct {
-	SignatureId  uint64 `json:"signature_id"`
-	SrcIp        string `json:"src_ip"`
-	DestIp       string `json:"dest_ip"`
-	MinTimestamp string `json:"min_timestamp"`
-	MaxTimestamp string `json:"max_timestamp"`
-}
-
 func EscalateHandler(appContext AppContext, r *http.Request) interface{} {
-	var request EscalateHandlerRequest
+
+	var request AlertGroupQueryParameters
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err
 	}
 
-	err := appContext.EventService.EscalateAlertGroup(core.AlertGroupQueryParams{
-		SignatureID:  request.SignatureId,
-		SrcIP:        request.SrcIp,
-		DstIP:        request.DestIp,
-		MinTimestamp: request.MinTimestamp,
-		MaxTimestamp: request.MaxTimestamp,
-	})
-
+	err := appContext.EventService.EscalateAlertGroup(
+		request.ToCoreAlertGroupQueryParams())
 	if err != nil {
 		log.Error("%v", err)
 		return err

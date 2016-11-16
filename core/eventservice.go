@@ -41,5 +41,13 @@ type EventService interface {
 
 	EscalateAlertGroup(p AlertGroupQueryParams) error
 
+	AddTagsToAlertGroup(p AlertGroupQueryParams, tags []string) error
+
+	RemoveTagsFromAlertGroup(p AlertGroupQueryParams, tags []string) error
+
+	AddTagsToEvent(id string, tags []string) error
+
+	RemoveTagsFromEvent(id string, tags []string) error
+
 	Inbox(options map[string]interface{}) (map[string]interface{}, error)
 }

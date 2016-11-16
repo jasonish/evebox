@@ -33,7 +33,7 @@ import (
 	"github.com/jasonish/evebox/log"
 )
 
-type ArchiveHandlerRequest struct {
+type AlertGroupQueryParameters struct {
 	SignatureId  uint64 `json:"signature_id"`
 	SrcIp        string `json:"src_ip"`
 	DestIp       string `json:"dest_ip"`
@@ -42,19 +42,67 @@ type ArchiveHandlerRequest struct {
 }
 
 func ArchiveHandler(appContext AppContext, r *http.Request) interface{} {
-	var request ArchiveHandlerRequest
+	var request AlertGroupQueryParameters
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err
 	}
 
-	err := appContext.EventService.ArchiveAlertGroup(core.AlertGroupQueryParams{
-		SignatureID:  request.SignatureId,
-		SrcIP:        request.SrcIp,
-		DstIP:        request.DestIp,
-		MinTimestamp: request.MinTimestamp,
-		MaxTimestamp: request.MaxTimestamp,
-	})
+	err := appContext.EventService.ArchiveAlertGroup(request.ToCoreAlertGroupQueryParams())
 
+	if err != nil {
+		log.Error("%v", err)
+		return err
+	}
+	return HttpOkResponse()
+}
+
+func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() core.AlertGroupQueryParams {
+	return core.AlertGroupQueryParams{
+		SignatureID:  a.SignatureId,
+		SrcIP:        a.SrcIp,
+		DstIP:        a.DestIp,
+		MinTimestamp: a.MinTimestamp,
+		MaxTimestamp: a.MaxTimestamp,
+	}
+}
+
+type AlertGroupAddTagsRequest struct {
+	AlertGroup AlertGroupQueryParameters `json:"alert_group"`
+	Tags       []string                  `json:"tags"`
+}
+
+func AlertGroupAddTags(appContext AppContext, r *http.Request) interface{} {
+
+	var request AlertGroupAddTagsRequest
+
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
+
+	err := appContext.EventService.AddTagsToAlertGroup(
+		request.AlertGroup.ToCoreAlertGroupQueryParams(), request.Tags)
+	if err != nil {
+		log.Error("%v", err)
+		return err
+	}
+	return HttpOkResponse()
+}
+
+type AlertGroupRemoveTagsRequest struct {
+	AlertGroup AlertGroupQueryParameters `json:"alert_group"`
+	Tags       []string                  `json:"tags"`
+}
+
+func AlertGroupRemoveTags(appContext AppContext, r *http.Request) interface{} {
+
+	var request AlertGroupRemoveTagsRequest
+
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
+
+	err := appContext.EventService.RemoveTagsFromAlertGroup(
+		request.AlertGroup.ToCoreAlertGroupQueryParams(), request.Tags)
 	if err != nil {
 		log.Error("%v", err)
 		return err

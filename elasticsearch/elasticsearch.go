@@ -37,6 +37,7 @@ import (
 
 	"github.com/GeertJohan/go.rice"
 	"github.com/jasonish/evebox/log"
+	"io/ioutil"
 )
 
 type ElasticSearch struct {
@@ -259,6 +260,26 @@ func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchRespon
 func (es *ElasticSearch) DeleteScroll(scrollId string) (*http.Response, error) {
 	return es.HttpClient.Delete("_search/scroll", "application/json",
 		strings.NewReader(scrollId))
+}
+
+func (es *ElasticSearch) PartialUpdate(index string, doctype string, id string,
+	doc interface{}) (*http.Response, error) {
+	body := map[string]interface{}{
+		"doc": doc,
+	}
+	return es.HttpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
+		index, doctype, id), body)
+}
+
+// Refresh refreshes all indices logging any error but not returning and
+// discarding the response so the caller doesn't have to.
+func (es *ElasticSearch) Refresh() {
+	response, err := es.HttpClient.PostString("_refresh", "application/json", "{}")
+	if err != nil {
+		log.Error("Failed to refresh Elastic Search: %v", err)
+		return
+	}
+	io.Copy(ioutil.Discard, response.Body)
 }
 
 func DecodeResponse(reader io.Reader, output interface{}) error {

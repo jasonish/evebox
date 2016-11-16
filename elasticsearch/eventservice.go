@@ -28,7 +28,10 @@ package elasticsearch
 
 import (
 	"fmt"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
+	"io"
+	"io/ioutil"
 	"time"
 )
 
@@ -139,4 +142,250 @@ func (s *EventService) Inbox(options map[string]interface{}) (map[string]interfa
 	}
 
 	return nil, nil
+}
+
+// AddTagsToEvent will add the given tags to the event referenced by ID.
+func (s *EventService) AddTagsToEvent(id string, addTags []string) error {
+
+	raw, err := s.GetEventById(id)
+	if err != nil {
+		return err
+	}
+
+	event := JsonMap(raw)
+	tags := event.GetMap("_source").GetAsStrings("tags")
+
+	for _, tag := range addTags {
+		if !StringSliceContains(tags, tag) {
+			tags = append(tags, tag)
+		}
+	}
+
+	s.es.PartialUpdate(event.GetString("_index"), event.GetString("_type"),
+		event.GetString("_id"), map[string]interface{}{
+			"tags": tags,
+		})
+
+	return nil
+}
+
+func (s *EventService) RemoveTagsFromEvent(id string, rmTags []string) error {
+
+	raw, err := s.GetEventById(id)
+	if err != nil {
+		return err
+	}
+
+	event := JsonMap(raw)
+	currentTags := event.GetMap("_source").GetAsStrings("tags")
+	tags := make([]string, 0)
+
+	for _, tag := range currentTags {
+		if !StringSliceContains(rmTags, tag) {
+			tags = append(tags, tag)
+		}
+	}
+
+	s.es.PartialUpdate(event.GetString("_index"), event.GetString("_type"),
+		event.GetString("_id"), map[string]interface{}{
+			"tags": tags,
+		})
+
+	return nil
+}
+
+// AddTagsToAlertGroup adds the provided tags to all alerts that match the
+// provided alert group parameters.
+func (s *EventService) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []string) error {
+
+	mustNot := []interface{}{}
+	for _, tag := range tags {
+		mustNot = append(mustNot, TermQuery("tags", tag))
+	}
+
+	query := m{
+		"query": m{
+			"bool": m{
+				"filter": l{
+					ExistsQuery("event_type"),
+					KeywordTermQuery("event_type", "alert", s.keyword),
+					RangeQuery{
+						Field: "timestamp",
+						Gte:   p.MinTimestamp,
+						Lte:   p.MaxTimestamp,
+					},
+					KeywordTermQuery("src_ip", p.SrcIP, s.keyword),
+					KeywordTermQuery("dest_ip", p.DstIP, s.keyword),
+					TermQuery("alert.signature_id", p.SignatureID),
+				},
+				"must_not": mustNot,
+			},
+		},
+		"_source": "tags",
+		"sort": l{
+			"_doc",
+		},
+		"size": 10000,
+	}
+
+	searchResponse, err := s.es.SearchScroll(query, "1m")
+	if err != nil {
+		log.Error("Failed to initialize scroll: %v", err)
+		return err
+	}
+
+	scrollID := searchResponse.ScrollId
+
+	for {
+
+		log.Debug("Search response total: %d; hits: %d",
+			searchResponse.Hits.Total, len(searchResponse.Hits.Hits))
+
+		if len(searchResponse.Hits.Hits) == 0 {
+			break
+		}
+
+		// We do this in a retry loop as some documents may fail to be
+		// updated. Most likely rejected due to max thread count or
+		// something.
+		maxRetries := 5
+		retries := 0
+		for {
+			retry, err := bulkUpdateTags(s.es, searchResponse.Hits.Hits,
+				tags, nil)
+			if err != nil {
+				log.Error("BulkAddTags failed: %v", err)
+				return err
+			}
+			if !retry {
+				break
+			}
+			retries++
+			if retries > maxRetries {
+				log.Warning("Errors occurred archive events, not all events may have been archived.")
+				break
+			}
+		}
+
+		// Get next set of events to archive.
+		searchResponse, err = s.es.Scroll(scrollID, "1m")
+		if err != nil {
+			log.Error("Failed to fetch from scroll: %v", err)
+			return err
+		}
+
+	}
+
+	response, err := s.es.DeleteScroll(scrollID)
+	if err != nil {
+		log.Error("Failed to delete scroll id: %v", err)
+	}
+	io.Copy(ioutil.Discard, response.Body)
+
+	s.es.Refresh()
+
+	return nil
+}
+
+// ArchiveAlertGroup is a specialization of AddTagsToAlertGroup.
+func (s *EventService) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
+	return s.AddTagsToAlertGroup(p, []string{"archived", "evebox.archived"})
+}
+
+// EscalateAlertGroup is a specialization of AddTagsToAlertGroup.
+func (s *EventService) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
+	return s.AddTagsToAlertGroup(p, []string{"escalated", "evebox.escalated"})
+}
+
+// RemoveTagsFromAlertGroup removes the given tags from all alerts matching
+// the provided parameters.
+func (s *EventService) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags []string) error {
+
+	filter := []interface{}{
+		ExistsQuery("event_type"),
+		KeywordTermQuery("event_type", "alert", s.keyword),
+		RangeQuery{
+			Field: "timestamp",
+			Gte:   p.MinTimestamp,
+			Lte:   p.MaxTimestamp,
+		},
+		KeywordTermQuery("src_ip", p.SrcIP, s.keyword),
+		KeywordTermQuery("dest_ip", p.DstIP, s.keyword),
+		TermQuery("alert.signature_id", p.SignatureID),
+	}
+
+	for _, tag := range tags {
+		filter = append(filter, TermQuery("tags", tag))
+	}
+
+	query := m{
+		"query": m{
+			"bool": m{
+				"filter": filter,
+			},
+		},
+		"_source": "tags",
+		"sort": l{
+			"_doc",
+		},
+		"size": 10000,
+	}
+
+	searchResponse, err := s.es.SearchScroll(query, "1m")
+	if err != nil {
+		log.Error("Failed to initialize scroll: %v", err)
+		return err
+	}
+
+	scrollID := searchResponse.ScrollId
+
+	for {
+
+		log.Debug("Search response total: %d; hits: %d",
+			searchResponse.Hits.Total, len(searchResponse.Hits.Hits))
+
+		if len(searchResponse.Hits.Hits) == 0 {
+			break
+		}
+
+		// We do this in a retry loop as some documents may fail to be
+		// updated. Most likely rejected due to max thread count or
+		// something.
+		maxRetries := 5
+		retries := 0
+		for {
+			retry, err := bulkUpdateTags(s.es, searchResponse.Hits.Hits,
+				nil, tags)
+			if err != nil {
+				log.Error("BulkAddTags failed: %v", err)
+				return err
+			}
+			if !retry {
+				break
+			}
+			retries++
+			if retries > maxRetries {
+				log.Warning("Errors occurred archive events, not all events may have been archived.")
+				break
+			}
+		}
+
+		// Get next set of events to archive.
+		searchResponse, err = s.es.Scroll(scrollID, "1m")
+		if err != nil {
+			log.Error("Failed to fetch from scroll: %v", err)
+			return err
+		}
+
+	}
+
+	response, err := s.es.DeleteScroll(scrollID)
+	if err != nil {
+		log.Error("Failed to delete scroll id: %v", err)
+	}
+	io.Copy(ioutil.Discard, response.Body)
+
+	s.es.Refresh()
+
+	return nil
 }
