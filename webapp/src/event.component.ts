@@ -166,11 +166,11 @@ export class EventComponent implements OnInit, OnDestroy {
 
     deEscalateEvent() {
         if (this.alertGroup) {
-            this.elasticSearch._removeEscalatedStateFromAlertGroup(this.alertGroup);
+            this.elasticSearch.removeEscalatedStateFromAlertGroup(this.alertGroup);
             this.alertGroup.escalatedCount = 0;
         }
         else {
-            this.elasticSearch.removeTagsFromEventSet([this.event], ["escalated", "evebox.escalated"]);
+            this.elasticSearch.deEscalateEvent(this.event);
         }
         this.location.back();
     }

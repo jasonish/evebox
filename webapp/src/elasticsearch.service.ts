@@ -93,14 +93,6 @@ export class ElasticSearchService {
                     });
     }
 
-
-    bulk(commands:any[]):Promise<any> {
-        let request = commands.map(command => {
-                return JSON.stringify(command);
-            }).join("\n") + "\n";
-        return this.api.postRaw("api/1/_bulk?refresh=true", request)
-    }
-
     submit(func:any) {
 
         let p = new Promise<any>((resolve, reject) => {
@@ -135,161 +127,22 @@ export class ElasticSearchService {
         }
     }
 
-    getAlertsInAlertGroup(alertGroup:AlertGroup, options ?:any) {
-
-        // Make sure options is at least an empty object.
-        options = options || {};
-
-        let query:any = {
-            query: {
-                bool: {
-                    filter: [
-                        {exists: {"field": "event_type"}},
-                        {term: {"event_type": "alert"}},
-                        {
-                            range: {
-                                "timestamp": {
-                                    gte: alertGroup.oldestTs,
-                                    lte: alertGroup.newestTs
-                                }
-                            }
-                        },
-                        {term: {"alert.signature_id": alertGroup.event._source.alert.signature_id}},
-                        this.keywordTerm("src_ip", alertGroup.event._source.src_ip),
-                        this.keywordTerm("dest_ip", alertGroup.event._source.dest_ip),
-                    ],
-                    must_not: []
-                }
-            },
-            _source: options._source || true,
-            size: this.defaultBatchSize
-        };
-
-        if (options.filter) {
-            options.filter.forEach((q:any) => {
-                query.query.bool.filter.push(q);
-            })
-        }
-        if (options.filters) {
-            options.filters.forEach((filter:any) => {
-                query.query.bool.filter.and.push(filter);
-            })
-        }
-
-        if (options.must_not) {
-            options.must_not.forEach((q:any) => {
-                query.query.bool.must_not.push(q);
-            });
-        }
-
-        return this.search(query);
-    }
-
-    addTagsToEventSet(events:any[], tags:string[]) {
-
-        let bulkUpdates = <any[]>[];
-
-        events.forEach((event:any) => {
-
-            let eventTags:any[] = event._source.tags || [];
-
-            tags.forEach((tag:any) => {
-                if (eventTags.indexOf(tag) < 0) {
-                    eventTags.push(tag);
-                }
-            });
-
-            bulkUpdates.push({
-                update: {
-                    "_index": event._index,
-                    "_type": event._type,
-                    "_id": event._id
-                }
-            });
-            bulkUpdates.push({
-                "doc": {
-                    tags: eventTags
-                }
-            });
-        });
-
-        return this.bulk(bulkUpdates);
-    }
-
-    removeTagsFromEventSet(events:any[], tags:string[]) {
-
-        let bulkUpdates = <any[]>[];
-
-        events.forEach((event:any) => {
-
-            let eventTags:any[] = event._source.tags || [];
-
-            tags.forEach((tag:any) => {
-                let idx = eventTags.indexOf(tag);
-
-                if (idx > -1) {
-                    eventTags.splice(idx, 1);
-                }
-            });
-
-            bulkUpdates.push({
-                update: {
-                    "_index": event._index,
-                    "_type": event._type,
-                    "_id": event._id
-                }
-            });
-            bulkUpdates.push({
-                "doc": {
-                    tags: eventTags
-                }
-            });
-        });
-
-        return this.bulk(bulkUpdates);
-    }
-
-    removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise < string > {
-
-        return this.submit(() => {
-            return this._removeEscalatedStateFromAlertGroup(alertGroup);
-        });
-
-    }
-
-    _removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise < string > {
-
-        return new Promise<string>((resolve, reject) => {
-
-            return this.getAlertsInAlertGroup(alertGroup, {
-                _source: "tags",
-                filter: [{term: {tags: "escalated"}}],
-            }).then((response:any) => {
-                if (response.hits.hits.length == 0) {
-                    console.log("No more alerts to de-escalate.");
-                    resolve("OK");
-                }
-                else {
-                    console.log(`De-escalated ${response.hits.hits.length} alerts.`);
-                    return this.removeTagsFromEventSet(response.hits.hits,
-                        ["escalated", "evebox.escalated"])
-                        .then(() => {
-                            this._removeEscalatedStateFromAlertGroup(alertGroup)
-                                .then((response:any) => {
-                                    resolve("OK");
-                                });
-                        });
-                }
-            });
-
-        });
-
-    }
-
     escalateEvent(event:any):Promise<any> {
+        event._source.tags.push("escalated");
+        event._source.tags.push("evebox.escalated");
+        return this.api.post(`api/1/event/${event._id}/escalate`, {})
+    }
 
-        return this.addTagsToEventSet([event], ["evebox.escalated", "escalated"]);
-
+    deEscalateEvent(event:any):Promise<any> {
+        let idx = event._source.tags.indexOf("escalated")
+        if (idx > -1) {
+            event._source.tags.splice(idx, 1);
+        }
+        idx = event._source.tags.indexOf("evebox.escalated")
+        if (idx > -1) {
+            event._source.tags.splice(idx, 1);
+        }
+        return this.api.post(`api/1/event/${event._id}/de-escalate`, {})
     }
 
     /**
@@ -298,17 +151,9 @@ export class ElasticSearchService {
      * @param event An Elastic Search document.
      */
     archiveEvent(event:any):Promise<any> {
-
         return this.submit(() => {
-            return this._archiveEvent(event);
+            return this.api.post(`api/1/event/${event._id}/archive`, {})
         });
-
-    }
-
-    _archiveEvent(event:any):Promise<any> {
-
-        return this.addTagsToEventSet([event], ["evebox.archived", "archived"]);
-
     }
 
     escalateAlertGroup(alertGroup:AlertGroup):Promise < string > {
@@ -335,6 +180,23 @@ export class ElasticSearchService {
             };
             return this.api.post("api/1/archive", request);
         });
+    }
+
+    removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise < string > {
+        return this.submit(() => {
+            let request = {
+                alert_group: {
+                    signature_id: alertGroup.event._source.alert.signature_id,
+                    src_ip: alertGroup.event._source.src_ip,
+                    dest_ip: alertGroup.event._source.dest_ip,
+                    min_timestamp: alertGroup.oldestTs,
+                    max_timestamp: alertGroup.newestTs,
+                },
+                tags: ["escalated", "evebox.escalated"],
+            };
+            return this.api.post("api/1/alert-group/remove-tags", request);
+        });
+
     }
 
     getEventById(id:string):Promise<any> {

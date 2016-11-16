@@ -146,6 +146,9 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
         if ($event) {
             $event.stopPropagation();
         }
-        this.elasticSearchService.archiveEvent(row);
+        this.elasticSearchService.archiveEvent(row).then((response:any) => {
+            row._source.tags.push("archived");
+            row._source.tags.push("evebox.archived");
+        })
     }
 }
