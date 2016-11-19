@@ -43,8 +43,8 @@ export class EveboxDurationComponent implements OnInit, OnDestroy {
     refresh() {
         let then = moment(this.timestamp);
         let now = moment();
-        let diff = then.diff(now); //now.diff(then);
-        let duration = moment.duration(diff); //umanize(true);
+        let diff = then.diff(now);
+        let duration = moment.duration(diff);
         //noinspection TypeScriptUnresolvedFunction
         this.duration = duration.humanize();
     }

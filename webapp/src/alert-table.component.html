@@ -43,7 +43,7 @@
         {{row.date | eveboxFormatTimestamp}}
         <br/>
         <evebox-duration style="color:gray"
-                         [timestamp]="row.event.newestTs"></evebox-duration>
+                         [timestamp]="row.event.maxTs"></evebox-duration>
       </td>
       <td class="text-nowrap" style="width: 1% !important">
         <label>S:</label>

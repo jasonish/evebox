@@ -216,56 +216,26 @@ export class ElasticSearchService {
      */
     findEvents(options:any = {}):Promise < ResultSet > {
 
-        let query:any = {
-            query: {
-                bool: {
-                    filter: [
-                        {exists: {field: "event_type"}},
-                    ],
-                    must_not: [
-                        {term: {event_type: "stats"}}
-                    ]
-                }
-            },
-            size: 500,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
-            timeout: "6s",
-        };
+        let queryParts:string[] = [];
 
         if (options.queryString) {
-
-            query.query.bool.filter.push({
-                query_string: {
-                    query: options.queryString,
-                }
-            });
+            queryParts.push(`queryString=${options.queryString}`)
         }
-
         if (options.timeEnd) {
-            query.query.bool.filter.push({
-                range: {
-                    timestamp: {lte: options.timeEnd}
-                }
-            });
+            queryParts.push(`maxTs=${options.timeEnd}`);
         }
-
         if (options.timeStart) {
-            query.query.bool.filter.push({
-                range: {
-                    timestamp: {gte: options.timeStart}
-                }
-            });
+            queryParts.push(`minTs=${options.timeStart}`);
+        }
+        if (options.eventType && options.eventType != "all") {
+            queryParts.push(`eventType=${options.eventType}`)
         }
 
-        if (options.filters) {
-            options.filters.forEach((filter:any) => {
-                query.query.bool.filter.push(filter);
-            });
-        }
+        let requestOptions:any = {
+            search: queryParts.join("&"),
+        };
 
-        return this.search(query).then((response:any) => {
+        return this.api.get("api/1/event-query", requestOptions).then((response:any) => {
 
             let events = response.hits.hits;
 
@@ -293,12 +263,15 @@ export class ElasticSearchService {
             };
 
             return resultSet;
+
         });
     }
 
     newGetAlerts(options:any = {}):Promise<any> {
 
         let tags:string[] = [];
+
+        let queryParts:string[] = [];
 
         if (options.mustHaveTags) {
             options.mustHaveTags.forEach((tag:string) => {
@@ -312,10 +285,12 @@ export class ElasticSearchService {
             })
         }
 
+        queryParts.push(`tags=${tags.join(",")}`);
+        queryParts.push(`timeRange=${options.timeRange}`);
+        queryParts.push(`queryString=${options.queryString}`);
+
         let requestOptions = {
-            search: `tags=${tags.join(",")}&` +
-            `timeRange=${options.timeRange}&` +
-            `queryString=${encodeURIComponent(options.queryString)}&`
+            search: queryParts.join("&"),
         };
 
         return this.api.get("api/1/alerts", requestOptions).then((response:any) => {

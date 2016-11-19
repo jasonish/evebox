@@ -189,7 +189,6 @@ export class EventsComponent implements OnInit, OnDestroy {
     setEventTypeFilter(type:string) {
         this.eventTypeFilter = type;
         this.appService.updateParams(this.route, {eventType: this.eventTypeFilter});
-        //this.refresh();
     }
 
     gotoNewest() {
@@ -214,24 +213,11 @@ export class EventsComponent implements OnInit, OnDestroy {
 
         this.loading = true;
 
-        // Additional filters.
-        let filters:any = [];
-
-        switch (this.eventTypeFilter.toLowerCase()) {
-            case "all":
-                break;
-            default:
-                filters.push({
-                    term: {event_type: this.eventTypeFilter.toLocaleLowerCase()}
-                });
-                break;
-        }
-
         this.elasticsearch.findEvents({
             queryString: this.queryString,
             timeEnd: this.timeEnd,
             timeStart: this.timeStart,
-            filters: filters,
+            eventType: this.eventTypeFilter.toLowerCase(),
         }).then((resultSet:ResultSet) => {
             this.resultSet = resultSet;
             this.eveboxEventTableConfig.rows = resultSet.events.map((event:any) => {
