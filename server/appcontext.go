@@ -40,5 +40,7 @@ type AppContext struct {
 	// Service for querying alerts.
 	AlertQueryService core.AlertQueryService
 
+	EventQueryService core.EventQueryService
+
 	EventService core.EventService
 }

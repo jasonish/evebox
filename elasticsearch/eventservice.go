@@ -104,6 +104,11 @@ func (q *EventQuery) MustNot(query interface{}) {
 	q.Query.Bool.MustNot = append(q.Query.Bool.MustNot, query)
 }
 
+func (q *EventQuery) SortBy(field string, order string) *EventQuery {
+	q.Sort = append(q.Sort, Sort(field, order))
+	return q
+}
+
 func (q *EventQuery) AddTimeRangeFilter(timeRange string) {
 	duration, _ := time.ParseDuration(fmt.Sprintf("-%s", timeRange))
 	then := time.Now().Add(duration)

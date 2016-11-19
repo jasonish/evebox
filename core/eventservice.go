@@ -58,6 +58,25 @@ type AlertQueryService interface {
 	Query(options AlertQueryOptions) (interface{}, error)
 }
 
+type EventQueryOptions struct {
+	QueryString string
+
+	Size int64
+
+	// Maximum timestamp to include in result set.
+	MaxTs string
+
+	// Minimum timestamp to include in result set.
+	MinTs string
+
+	// Event type to limit results to.
+	EventType string
+}
+
+type EventQueryService interface {
+	Query(options EventQueryOptions) (interface{}, error)
+}
+
 type EventService interface {
 	GetEventById(id string) (map[string]interface{}, error)
 

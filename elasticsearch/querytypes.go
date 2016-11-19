@@ -37,3 +37,21 @@ func Sort(field string, order string) map[string]interface{} {
 		},
 	}
 }
+
+func Range(rangeType string, field string, value interface{}) interface{} {
+	return map[string]interface{}{
+		"range": map[string]interface{}{
+			field: map[string]interface{}{
+				rangeType: value,
+			},
+		},
+	}
+}
+
+func RangeGte(field string, value interface{}) interface{} {
+	return Range("gte", field, value)
+}
+
+func RangeLte(field string, value interface{}) interface{} {
+	return Range("lte", field, value)
+}
