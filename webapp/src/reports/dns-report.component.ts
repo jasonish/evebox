@@ -220,30 +220,25 @@ export class DNSReportComponent implements OnInit, OnDestroy {
             });
         });
 
-        this.loading++;
-
         this.load(() => {
             return this.api.post("api/1/report/dns/requests/rrnames", {
                 timeRange: `${this.topNavService.getTimeRangeAsSeconds()}s`,
                 size: size,
                 queryString: this.queryString,
             }).then((response:any) => {
-                console.log(response);
                 this.topRrnames = response.data;
             });
         });
 
-        this.reports.dnsRequestReport({
-            size: size,
-            queryString: this.queryString,
-        }).then((response:any) => {
-            this.topServers = this.mapAddressAggregation(response.aggregations.top_servers.buckets);
-            this.topClients = this.mapAddressAggregation(response.aggregations.top_clients.buckets);
-            this.topRrtypes = this.mapAggregation(response.aggregations.top_rrtype.buckets);
-
-            this.loading--;
-
-        });
-
+        this.load(() => {
+            return this.reports.dnsRequestReport({
+                size: size,
+                queryString: this.queryString,
+            }).then((response:any) => {
+                this.topServers = this.mapAddressAggregation(response.aggregations.top_servers.buckets);
+                this.topClients = this.mapAddressAggregation(response.aggregations.top_clients.buckets);
+                this.topRrtypes = this.mapAggregation(response.aggregations.top_rrtype.buckets);
+            });
+        })
     }
 }
