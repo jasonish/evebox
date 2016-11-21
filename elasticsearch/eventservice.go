@@ -93,6 +93,7 @@ func NewEventQuery() EventQuery {
 	query.Sort = []interface{}{
 		Sort("@timestamp", "desc"),
 	}
+	query.Aggs = map[string]interface{}{}
 	return query
 }
 

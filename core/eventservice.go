@@ -92,3 +92,13 @@ type EventService interface {
 
 	RemoveTagsFromEvent(id string, tags []string) error
 }
+
+type ReportOptions struct {
+	Size int64
+
+	TimeRange string
+}
+
+type ReportService interface {
+	ReportDnsRequestRrnames(options ReportOptions) (interface{}, error)
+}

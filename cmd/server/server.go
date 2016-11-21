@@ -134,6 +134,7 @@ func Main(args []string) {
 	appContext.EventService = elasticsearch.NewEventService(elasticSearch)
 	appContext.AlertQueryService = elasticsearch.NewAlertQueryService(elasticSearch)
 	appContext.EventQueryService = elasticsearch.NewEventQueryService(elasticSearch)
+	appContext.ReportService = elasticsearch.NewReportService(elasticSearch)
 
 	router := server.NewRouter()
 
@@ -166,6 +167,9 @@ func Main(args []string) {
 	router.Handle("/api/1/query", server.ApiF(appContext, server.QueryHandler))
 
 	router.Handle("/api/1/_bulk", server.ApiF(appContext, server.EsBulkHandler))
+
+	router.GET("/api/1/report/dns/requests/rrnames", server.ApiF(appContext, server.ReportDnsRequestRrnames))
+	router.POST("/api/1/report/dns/requests/rrnames", server.ApiF(appContext, server.ReportDnsRequestRrnames))
 
 	// Static file server, must be last as it serves as the fallback.
 	router.Prefix("/", server.StaticHandlerFactory(opts.DevServerUri))

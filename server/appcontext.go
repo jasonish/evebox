@@ -43,4 +43,6 @@ type AppContext struct {
 	EventQueryService core.EventQueryService
 
 	EventService core.EventService
+
+	ReportService core.ReportService
 }
