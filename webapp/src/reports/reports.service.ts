@@ -40,19 +40,6 @@ export class ReportsService {
                 private toastr:ToastrService) {
     }
 
-    showWarning() {
-        if (this.warningShown) {
-            return;
-        }
-        this.warningShown = true;
-        this.toastr.warning("Reports are experimental are are subject to change.", {
-            title: "Warning",
-            closeButton: true,
-            timeOut: 3000,
-            preventDuplicates: true,
-        });
-    }
-
     asKeyword(keyword:string):string {
         return this.elasticsearch.asKeyword(keyword);
     }
@@ -100,11 +87,11 @@ export class ReportsService {
         };
 
         if (options.queryString) {
-            query.query.filtered.query = {
+            query.query.bool.filter.push({
                 query_string: {
                     query: options.queryString
                 }
-            }
+            });
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
@@ -161,112 +148,16 @@ export class ReportsService {
         };
 
         if (options.queryString) {
-            query.query.filtered.query = {
+            query.query.bool.filter.push({
                 query_string: {
                     query: options.queryString
                 }
-            }
+            });
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
-        this.addEventsOverTimeAggregation(query, now, range);
 
         return this.elasticsearch.search(query);
-    }
-
-    alertsReport(options:any = {}):any {
-
-        let range:number = this.topNavService.getTimeRangeAsSeconds();
-        let now:any = moment();
-        let size:number = options.size || 20;
-
-        let query:any = {
-            query: {
-                bool: {
-                    filter: [
-                        // Somewhat limit to eve events only.
-                        {exists: {field: "event_type"}},
-
-                        // And only look at alerts.
-                        {term: {event_type: "alert"}}
-                    ]
-                }
-            },
-            size: 0,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
-            aggs: {
-                sources: {
-                    terms: {
-                        field: this.asKeyword("src_ip"),
-                        size: size
-                    }
-                },
-                destinations: {
-                    terms: {
-                        field: this.asKeyword("dest_ip"),
-                        size: size
-                    }
-                },
-                src_ports: {
-                    terms: {
-                        field: "src_port",
-                        size: size,
-                    }
-                },
-                dest_ports: {
-                    terms: {
-                        field: "dest_port",
-                        size: size,
-                    }
-                },
-                signatures: {
-                    terms: {
-                        field: this.asKeyword("alert.signature"),
-                        size: size
-                    }
-                },
-                categories: {
-                    terms: {
-                        field: this.asKeyword("alert.category"),
-                        size: size,
-                    }
-                }
-            }
-        };
-
-        if (options.queryString) {
-            query.query.filtered.query = {
-                query_string: {
-                    query: options.queryString
-                }
-            }
-        }
-
-        this.elasticsearch.addTimeRangeFilter(query, now, range);
-        this.addEventsOverTimeAggregation(query, now, range);
-
-        return this.elasticsearch.search(query);
-    }
-
-    addEventsOverTimeAggregation(query:any, now:any, range:number) {
-
-        query.aggs.events_over_time = {
-            date_histogram: {
-                field: "@timestamp",
-                interval: this.histogramTimeInterval(range),
-                min_doc_count: 0,
-            }
-        };
-
-        if (range) {
-            let then = now.clone().subtract(moment.duration(range, "seconds"));
-            query.aggs.events_over_time.date_histogram.extended_bounds = {
-                min: then.format(),
-                max: now.format(),
-            }
-        }
     }
 
     histogramTimeInterval(range:number):string {

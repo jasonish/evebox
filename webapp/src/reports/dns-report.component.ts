@@ -130,6 +130,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 private appService:AppService,
                 private api:ApiService,
                 private topNavService:TopNavService,
+                private reportsService:ReportsService,
                 private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
     }
 
@@ -179,47 +180,63 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         });
     }
 
+
+    load(fn:any) {
+        this.loading++;
+        fn().then(() => {
+            this.loading--;
+        })
+    }
+
     refresh() {
 
         let size = 20;
+        let range = this.topNavService.getTimeRangeAsSeconds();
 
-        this.loading++;
+        this.load(() => {
+            return this.reports.dnsResponseReport({
+                size: size,
+                queryString: this.queryString,
+            }).then((response:any) => {
+                this.topRdata = this.mapAddressAggregation(response.aggregations.top_rdata.buckets);
+                this.topRcodes = this.mapAggregation(response.aggregations.top_rcode.buckets);
+            });
+        });
 
-        this.reports.dnsResponseReport({
-            size: size,
-            queryString: this.queryString,
-        }).then((response:any) => {
-
-            this.topRdata = this.mapAddressAggregation(response.aggregations.top_rdata.buckets);
-            this.topRcodes = this.mapAggregation(response.aggregations.top_rcode.buckets);
-
-            this.loading--;
-
+        this.load(() => {
+            return this.api.reportHistogram({
+                timeRange: range,
+                interval: this.reportsService.histogramTimeInterval(range),
+                eventType: "dns",
+                dnsType: "query",
+                queryString: this.queryString,
+            }).then((response:any) => {
+                this.eventsOverTime = response.data.map((x:any) => {
+                    return {
+                        date: moment(x.key).toDate(),
+                        value: x.count
+                    }
+                });
+            });
         });
 
         this.loading++;
 
-        this.api.post("api/1/report/dns/requests/rrnames", {
-            timeRange: `${this.topNavService.getTimeRangeAsSeconds()}s`,
-            size: size,
-        }).then((response:any) => {
-            console.log(response);
-            this.topRrnames = response.data;
+        this.load(() => {
+            return this.api.post("api/1/report/dns/requests/rrnames", {
+                timeRange: `${this.topNavService.getTimeRangeAsSeconds()}s`,
+                size: size,
+                queryString: this.queryString,
+            }).then((response:any) => {
+                console.log(response);
+                this.topRrnames = response.data;
+            });
         });
 
         this.reports.dnsRequestReport({
             size: size,
             queryString: this.queryString,
         }).then((response:any) => {
-
-            this.eventsOverTime = response.aggregations.events_over_time.buckets.map((item:any) => {
-                return {
-                    date: moment(item.key).toDate(),
-                    value: item.doc_count
-                }
-            });
-
-            //this.topRrnames = this.mapAggregation(response.aggregations.top_rrnames.buckets);
             this.topServers = this.mapAddressAggregation(response.aggregations.top_servers.buckets);
             this.topClients = this.mapAddressAggregation(response.aggregations.top_clients.buckets);
             this.topRrtypes = this.mapAggregation(response.aggregations.top_rrtype.buckets);

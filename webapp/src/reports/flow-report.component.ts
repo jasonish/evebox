@@ -32,6 +32,7 @@ import {TopNavService} from "../topnav.service";
 import {ElasticSearchService} from "../elasticsearch.service";
 import {loadingAnimation} from "../animations";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {ApiService} from "../api.service";
 
 import moment = require("moment");
 
@@ -109,6 +110,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 private route:ActivatedRoute,
                 private reportsService:ReportsService,
                 private topNavService:TopNavService,
+                private api:ApiService,
                 private elasticsearch:ElasticSearchService) {
     }
 
@@ -131,12 +133,35 @@ export class FlowReportComponent implements OnInit, OnDestroy {
         this.subTracker.unsubscribe();
     }
 
+    load(fn:any) {
+        this.loading++;
+        fn().then(() => {
+            this.loading--;
+        })
+    }
+
     refresh() {
 
         this.loading++;
 
         let range = this.topNavService.getTimeRangeAsSeconds();
         let now = moment();
+
+        this.load(() => {
+            return this.api.reportHistogram({
+                timeRange: range,
+                interval: this.reportsService.histogramTimeInterval(range),
+                eventType: "flow",
+                queryString: this.queryString,
+            }).then((response:any) => {
+                this.eventsOverTime = response.data.map((x:any) => {
+                    return {
+                        date: moment(x.key).toDate(),
+                        value: x.count
+                    }
+                });
+            });
+        });
 
         let query:any = {
             query: {
@@ -189,11 +214,8 @@ export class FlowReportComponent implements OnInit, OnDestroy {
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
-        this.reportsService.addEventsOverTimeAggregation(query, now, range);
 
         this.reportsService.submitQuery(query).then((response:any) => {
-
-            console.log(response);
 
             this.topClientsByFlows = response.aggregations.topClientsByFlows.buckets.map((bucket:any) => {
                 return {
@@ -207,16 +229,6 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                     key: bucket.key,
                     count: bucket.doc_count,
                 };
-            });
-
-            this.eventsOverTime = response.aggregations.events_over_time.buckets.map((item:any) => {
-
-                let date = moment(item.key).toDate();
-
-                return {
-                    date: date,
-                    value: item.doc_count
-                }
             });
 
             this.topFlowsByAge = response.aggregations.topFlowsByAge.hits.hits;

@@ -34,6 +34,7 @@ import {ElasticSearchService} from "../elasticsearch.service";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {loadingAnimation} from "../animations";
 import {humanizeFileSize} from "../humanize.service";
+import {ApiService} from "../api.service";
 
 import moment = require("moment");
 
@@ -150,6 +151,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 private appService:AppService,
                 private route:ActivatedRoute,
                 private toastr:ToastrService,
+                private api:ApiService,
                 private topNavService:TopNavService) {
     }
 
@@ -204,7 +206,13 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         return this.reportsService.submitQuery(query).then((response:any) => {
             return response.hits.total > 0;
         });
+    }
 
+    wrapLoad(fn:any) {
+        this.loading++;
+        fn().then(() => {
+            this.loading--;
+        })
     }
 
     load() {
@@ -213,6 +221,22 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
         let range = this.topNavService.getTimeRangeAsSeconds();
         let now = moment();
+
+        this.wrapLoad(() => {
+            return this.api.reportHistogram({
+                timeRange: range,
+                interval: this.reportsService.histogramTimeInterval(range),
+                eventType: "netflow",
+                queryString: this.queryString,
+            }).then((response:any) => {
+                this.eventsOverTime = response.data.map((x:any) => {
+                    return {
+                        date: moment(x.key).toDate(),
+                        value: x.count
+                    }
+                });
+            });
+        })
 
         let query:any = {
             query: {
@@ -317,16 +341,8 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
-        this.reportsService.addEventsOverTimeAggregation(query, now, range);
 
         this.reportsService.submitQuery(query).then((response:any) => {
-
-            this.eventsOverTime = response.aggregations.events_over_time.buckets.map((item:any) => {
-                return {
-                    date: moment(item.key).toDate(),
-                    value: item.doc_count
-                }
-            });
 
             this.topSourcesByBytes = response.aggregations.sourcesByBytes.buckets.map((bucket:any) => {
                 return {

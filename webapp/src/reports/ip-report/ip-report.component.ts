@@ -9,6 +9,7 @@ import {loadingAnimation} from "../../animations";
 
 import moment = require("moment");
 import {humanizeFileSize, humanizeCompactInteger} from "../../humanize.service";
+import {QueryStringBuilder, ApiService} from "../../api.service";
 
 function termQuery(type:string, field:string, value:string) {
     let term = {};
@@ -29,7 +30,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
     private loading:number = 0;
 
-    private eventsOverTime:any[];
+    private alertsOverTime:any[];
 
     // Number of flows as client.
     private sourceFlowCount:number;
@@ -90,17 +91,21 @@ export class IpReportComponent implements OnInit, OnDestroy {
     // Empty string defaults to all sensors.
     private sensorFilter:string = "";
 
+    private queryString:string = "";
+
     constructor(private route:ActivatedRoute,
                 private elasticsearch:ElasticSearchService,
                 private appService:AppService,
                 private topNavService:TopNavService,
                 private reportsService:ReportsService,
+                private api:ApiService,
                 private ss:EveboxSubscriptionService) {
     }
 
     ngOnInit() {
         this.ss.subscribe(this, this.route.params, (params:any) => {
             this.ip = params.ip;
+            this.queryString = params.q;
             this.refresh();
             this.buildRelated(this.ip);
         });
@@ -569,17 +574,26 @@ export class IpReportComponent implements OnInit, OnDestroy {
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
-        this.reportsService.addEventsOverTimeAggregation(query, now, range);
 
-        this.elasticsearch.search(query).then((response) => {
+        // Alert histogram.
+        this.api.reportHistogram({
+            timeRange: range,
+            interval: this.reportsService.histogramTimeInterval(range),
+            addressFilter: this.ip,
+            queryString: this.queryString,
+            eventType: "alert",
+            sensorFilter: this.sensorFilter,
+        }).then((response:any) => {
             console.log(response);
-
-            this.eventsOverTime = response.aggregations.events_over_time.buckets.map((bucket:any) => {
+            this.alertsOverTime = response.data.map((x:any) => {
                 return {
-                    date: moment(bucket.key).toDate(),
-                    value: bucket.doc_count,
+                    date: moment(x.key).toDate(),
+                    value: x.count,
                 }
             });
+        });
+
+        this.elasticsearch.search(query).then((response) => {
 
             this.bytesFromIp = response.aggregations.destFlows.bytesToClient.value +
                 response.aggregations.sourceFlows.bytesToServer.value;

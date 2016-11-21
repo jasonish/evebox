@@ -1,6 +1,25 @@
 import {Injectable} from "@angular/core";
 import {Http, Response} from "@angular/http";
 
+export class QueryStringBuilder {
+
+    keys:any = {};
+
+    set(key:string, value:any) {
+        this.keys[key] = value;
+    }
+
+    build() {
+        let parts:any = [];
+
+        for (let key in this.keys) {
+            parts.push(`${key}=${this.keys[key]}`);
+        }
+
+        return parts.join("&")
+    }
+}
+
 @Injectable()
 export class ApiService {
 
@@ -21,7 +40,7 @@ export class ApiService {
             .toPromise();
     }
 
-    get(path:string, options={}):Promise<any> {
+    get(path:string, options = {}):Promise<any> {
         return this.http.get(`${this.baseUrl}${path}`, options)
             .map((res:Response) => res.json())
             .toPromise();
@@ -55,4 +74,48 @@ export class ApiService {
         form.submit();
     }
 
+    reportHistogram(options:ReportHistogramOptions = {}) {
+        let query:any = [];
+
+        if (options.timeRange && options.timeRange > 0) {
+            query.push(`timeRange=${options.timeRange}s`);
+        }
+
+        if (options.interval) {
+            query.push(`interval=${options.interval}`);
+        }
+
+        if (options.addressFilter) {
+            query.push(`addressFilter=${options.addressFilter}`);
+        }
+
+        if (options.queryString) {
+            query.push(`queryString=${options.queryString}`);
+        }
+
+        if (options.sensorFilter) {
+            query.push(`sensorFilter=${options.sensorFilter}`);
+        }
+
+        if (options.dnsType) {
+            query.push(`dnsType=${options.dnsType}`);
+        }
+
+        return this.get(`api/1/report/histogram?${query.join("&")}`);
+    }
+
+}
+
+interface ReportHistogramOptions {
+    timeRange?:number
+    interval?:string
+    addressFilter?:string
+    queryString?:string
+    sensorFilter?:string
+    eventType?:string
+    dnsType?:string
+
+    // An additional query string, for doing things programmatically assuming
+    // the first query string is user provided.
+    queryString2?:string
 }

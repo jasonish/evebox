@@ -23,7 +23,6 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ReportsService} from "./reports.service";
 import {AppService, AppEventCode} from "../app.service";
@@ -32,6 +31,8 @@ import {ActivatedRoute, Params} from "@angular/router";
 import {EveboxSubscriptionService} from "../subscription.service";
 import {loadingAnimation} from "../animations";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {ApiService, QueryStringBuilder} from "../api.service";
+import {TopNavService} from "../topnav.service";
 import moment = require("moment");
 
 @Component({
@@ -129,6 +130,8 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                 private ss:EveboxSubscriptionService,
                 private route:ActivatedRoute,
                 private reports:ReportsService,
+                private api:ApiService,
+                private topNavService:TopNavService,
                 private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
     }
 
@@ -155,63 +158,88 @@ export class AlertReportComponent implements OnInit, OnDestroy {
         this.subTracker.unsubscribe();
     }
 
-    mapTermsAggregation(response:any, name:string):any[] {
-        return response.aggregations[name].buckets.map((item:any) => {
-            return {
-                count: item.doc_count,
-                key: item.key,
-            };
-        });
+    load(fn:any) {
+        this.loading++;
+        fn().then(() => {
+            this.loading--;
+        })
     }
 
     refresh() {
 
         let size:number = 10;
 
-        this.loading++;
-
         this.sourceRows = undefined;
         this.destinationRows = undefined;
         this.signatureRows = undefined;
 
-        this.reports.alertsReport({
-            size: size,
-            queryString: this.queryString
-        }).then(
-            (response:any) => {
+        let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
 
-                this.sourceRows = this.mapTermsAggregation(response, "sources")
-                    .map((row:any) => {
-                        return {
-                            count: row.count,
-                            key: this.formatIpAddressPipe.transform(row.key)
-                        }
-                    });
+        let q = new QueryStringBuilder();
+        q.set("size", size);
+        q.set("queryString", this.queryString);
+        if (timeRangeSeconds > 0) {
+            q.set("timeRange", `${timeRangeSeconds}s`);
+        }
 
-                this.destinationRows = this.mapTermsAggregation(response, "destinations")/**/
-                    .map((row:any) => {
-                        return {
-                            count: row.count,
-                            key: this.formatIpAddressPipe.transform(row.key)
-                        }
-                    });
+        q.set("agg", "alert.signature");
+        this.load(() => {
+            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
+                this.signatureRows = response.data;
+            });
+        });
 
-                this.srcPorts = this.mapTermsAggregation(response, "src_ports");
-                this.destPorts = this.mapTermsAggregation(response, "dest_ports");
+        q.set("agg", "alert.category");
+        this.load(() => {
+            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
+                this.categoryRows = response.data;
+            });
+        });
 
-                this.signatureRows = this.mapTermsAggregation(response, "signatures");
-                this.categoryRows = this.mapTermsAggregation(response, "categories");
+        q.set("agg", "src_ip");
+        this.load(() => {
+            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
+                this.sourceRows = response.data;
+            });
+        });
 
-                this.eventsOverTime = response.aggregations.events_over_time.buckets.map((x:any) => {
+        q.set("agg", "dest_ip");
+        this.load(() => {
+            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
+                this.destinationRows = response.data;
+            });
+        });
+
+        q.set("agg", "src_port");
+        this.load(() => {
+            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
+                this.srcPorts = response.data;
+            });
+        });
+
+        q.set("agg", "dest_port");
+        this.load(() => {
+            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
+                this.destPorts = response.data;
+            });
+        });
+
+        this.load(() => {
+            return this.api.reportHistogram({
+                timeRange: timeRangeSeconds,
+                interval: this.reports.histogramTimeInterval(timeRangeSeconds),
+                eventType: "alert",
+                queryString: this.queryString,
+            }).then((response:any) => {
+                this.eventsOverTime = response.data.map((x:any) => {
                     return {
                         date: moment(x.key).toDate(),
-                        value: x.doc_count
+                        value: x.count,
                     }
-                });
-
-                this.loading--;
-
-            });
+                })
+            })
+        });
 
     }
+
 }

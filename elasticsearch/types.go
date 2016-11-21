@@ -88,7 +88,7 @@ type SearchResponse struct {
 	TimedOut     bool                   `json:"timed_out"`
 	Took         uint64                 `json:"took"`
 	Hits         Hits                   `json:"hits"`
-	Aggregations map[string]interface{} `json:"aggregations"`
+	Aggregations JsonMap                `json:"aggregations"`
 	ScrollId     string                 `json:"_scroll_id,omitempty"`
 }
 

@@ -36,7 +36,7 @@ type AlertGroupQueryParams struct {
 	MaxTimestamp string
 }
 
-// AlertyQueryOptions includes the options for querying alerts which are then
+// AlertQueryOptions includes the options for querying alerts which are then
 // returned as alert groups.
 type AlertQueryOptions struct {
 	// Tags that events must have.
@@ -96,9 +96,36 @@ type EventService interface {
 type ReportOptions struct {
 	Size int64
 
+	QueryString string
+
 	TimeRange string
+
+	// Limit the result set to events with this address as either the
+	// source or the destination.
+	AddressFilter string
+
+	// Limit results to a certain event type.
+	EventType string
+
+	// Subtypes...
+	DnsType string
+
+	// Limit results to a specific sensor name.
+	SensorFilter string
 }
 
 type ReportService interface {
 	ReportDnsRequestRrnames(options ReportOptions) (interface{}, error)
+
+	// Report on alert aggregations. For example the top "alert.signature"s
+	// with their counts. Valid aggregations include:
+	// - src_ip
+	// - dest_ip
+	// - alert.category
+	// - alert.signature
+	// - src_port
+	// - dest_port
+	ReportAlertAggs(agg string, options ReportOptions) (interface{}, error)
+
+	ReportHistogram(interval string, options ReportOptions) (interface{}, error)
 }

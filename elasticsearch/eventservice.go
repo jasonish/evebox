@@ -32,6 +32,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"io"
 	"io/ioutil"
+	"strings"
 	"time"
 )
 
@@ -80,6 +81,11 @@ type EventQuery struct {
 		Bool struct {
 			Filter  []interface{} `json:"filter"`
 			MustNot []interface{} `json:"must_not,omitempty"`
+			Should  []interface{} `json:"should,omitempty"`
+
+			// Should be an integer, but we make it an interface so
+			// its not included if not set.
+			MinimumShouldMatch interface{} `json:"minimum_should_match,omitempty"`
 		} `json:"bool"`
 	} `json:"query"`
 	Size int64                  `json:"size"`
@@ -97,8 +103,27 @@ func NewEventQuery() EventQuery {
 	return query
 }
 
+func (q *EventQuery) EventType(eventType string) {
+	q.AddFilter(TermQuery("event_type", eventType))
+}
+
+func (q *EventQuery) ShouldHaveIp(addr string, keyword string) {
+	if strings.HasSuffix(addr, ".") {
+		q.Should(KeywordPrefixQuery("src_ip", addr, keyword))
+		q.Should(KeywordPrefixQuery("dest_ip", addr, keyword))
+	} else {
+		q.Should(KeywordTermQuery("src_ip", addr, keyword))
+		q.Should(KeywordTermQuery("dest_ip", addr, keyword))
+	}
+	q.Query.Bool.MinimumShouldMatch = 1
+}
+
 func (q *EventQuery) AddFilter(filter interface{}) {
 	q.Query.Bool.Filter = append(q.Query.Bool.Filter, filter)
+}
+
+func (q *EventQuery) Should(filter interface{}) {
+	q.Query.Bool.Should = append(q.Query.Bool.Should, filter)
 }
 
 func (q *EventQuery) MustNot(query interface{}) {
@@ -110,8 +135,11 @@ func (q *EventQuery) SortBy(field string, order string) *EventQuery {
 	return q
 }
 
-func (q *EventQuery) AddTimeRangeFilter(timeRange string) {
-	duration, _ := time.ParseDuration(fmt.Sprintf("-%s", timeRange))
+func (q *EventQuery) AddTimeRangeFilter(timeRange string) error {
+	duration, err := time.ParseDuration(fmt.Sprintf("-%s", timeRange))
+	if err != nil {
+		return err
+	}
 	then := time.Now().Add(duration)
 	q.AddFilter(map[string]interface{}{
 		"range": map[string]interface{}{
@@ -120,6 +148,8 @@ func (q *EventQuery) AddTimeRangeFilter(timeRange string) {
 			},
 		},
 	})
+
+	return nil
 }
 
 func (s *EventService) asKeyword(keyword string) string {
