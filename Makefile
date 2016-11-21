@@ -5,9 +5,9 @@ BUILD_DATE	:=	$(shell TZ=UTC date)
 BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 
-LDFLAGS :=	-X \"github.com/jasonish/evebox.core.BuildDate=$(BUILD_DATE)\" \
-		-X \"github.com/jasonish/evebox.core.BuildRev=$(BUILD_REV)\" \
-		-X \"github.com/jasonish/evebox.core.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
+LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildDate=$(BUILD_DATE)\" \
+		-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
+		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
 
 APP :=		evebox
 
