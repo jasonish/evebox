@@ -30,6 +30,8 @@ import {AppService, AppEventCode} from "../app.service";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {ActivatedRoute, Params} from "@angular/router";
+import {ApiService} from "../api.service";
+import {TopNavService} from "../topnav.service";
 
 import moment = require("moment");
 
@@ -126,6 +128,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
     constructor(private route:ActivatedRoute,
                 private reports:ReportsService,
                 private appService:AppService,
+                private api:ApiService,
+                private topNavService:TopNavService,
                 private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
     }
 
@@ -195,6 +199,14 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         this.loading++;
 
+        this.api.post("api/1/report/dns/requests/rrnames", {
+            timeRange: `${this.topNavService.getTimeRangeAsSeconds()}s`,
+            size: size,
+        }).then((response:any) => {
+            console.log(response);
+            this.topRrnames = response.data;
+        });
+
         this.reports.dnsRequestReport({
             size: size,
             queryString: this.queryString,
@@ -207,7 +219,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 }
             });
 
-            this.topRrnames = this.mapAggregation(response.aggregations.top_rrnames.buckets);
+            //this.topRrnames = this.mapAggregation(response.aggregations.top_rrnames.buckets);
             this.topServers = this.mapAddressAggregation(response.aggregations.top_servers.buckets);
             this.topClients = this.mapAddressAggregation(response.aggregations.top_clients.buckets);
             this.topRrtypes = this.mapAggregation(response.aggregations.top_rrtype.buckets);
