@@ -3,6 +3,11 @@ $icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
 
 @import "./common.scss";
 
+//.form-control {
+// // Fix height to match default theme.
+//  height: 34px !important;
+//}
+
 table.table.evebox-event-table {
 
   th {
@@ -48,6 +53,8 @@ table.table.evebox-event-table {
   padding-right: 12px;
   padding-bottom: 7px;
   padding-left: 13px;
+
+  height: 34px;
 }
 
 .tab-content .tab-pane {
