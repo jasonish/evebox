@@ -63,7 +63,7 @@ func ReportDnsRequestRrnames(appContext AppContext, r *http.Request) interface{}
 
 }
 
-func ReportAlertAggs(appContext AppContext, r *http.Request) interface{} {
+func ReportAggs(appContext AppContext, r *http.Request) interface{} {
 	options := core.ReportOptions{}
 
 	agg := r.FormValue("agg")
@@ -72,7 +72,11 @@ func ReportAlertAggs(appContext AppContext, r *http.Request) interface{} {
 	options.AddressFilter = r.FormValue("addressFilter")
 	options.QueryString = r.FormValue("queryString")
 
-	response, err := appContext.ReportService.ReportAlertAggs(agg, options)
+	options.EventType = r.FormValue("eventType")
+
+	options.DnsType = r.FormValue("dnsType")
+
+	response, err := appContext.ReportService.ReportAggs(agg, options)
 	if err != nil {
 		return err
 	}

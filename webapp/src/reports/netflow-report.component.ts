@@ -203,7 +203,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             size: 0,
         };
 
-        return this.reportsService.submitQuery(query).then((response:any) => {
+        return this.elasticsearch.search(query).then((response:any) => {
             return response.hits.total > 0;
         });
     }
@@ -342,7 +342,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
 
-        this.reportsService.submitQuery(query).then((response:any) => {
+        this.elasticsearch.search(query).then((response:any) => {
 
             this.topSourcesByBytes = response.aggregations.sourcesByBytes.buckets.map((bucket:any) => {
                 return {

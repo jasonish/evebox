@@ -104,9 +104,31 @@ export class ApiService {
         return this.get(`api/1/report/histogram?${query.join("&")}`);
     }
 
+    reportAgg(agg:string, options:ReportAggOptions = {}) {
+
+        let qsb:any = [];
+
+        qsb.push(`agg=${agg}`);
+
+        for (let option in options) {
+            switch (option) {
+                case "timeRange":
+                    if (options[option] > 0) {
+                        qsb.push(`timeRange=${options[option]}s`);
+                    }
+                    break;
+                default:
+                    qsb.push(`${option}=${options[option]}`);
+                    break;
+            }
+        }
+
+        return this.get(`api/1/report/agg?${qsb.join("&")}`);
+    }
+
 }
 
-interface ReportHistogramOptions {
+export interface ReportHistogramOptions {
     timeRange?:number
     interval?:string
     addressFilter?:string
@@ -114,8 +136,18 @@ interface ReportHistogramOptions {
     sensorFilter?:string
     eventType?:string
     dnsType?:string
+}
 
-    // An additional query string, for doing things programmatically assuming
-    // the first query string is user provided.
-    queryString2?:string
+// Options for an aggregation report.
+export interface ReportAggOptions {
+    size?:number
+    queryString?:string
+    timeRange?:string
+
+    // Event type.
+    eventType?:string
+
+    // Subtype info.
+    dnsType?:string
+
 }

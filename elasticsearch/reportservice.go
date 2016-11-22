@@ -29,6 +29,7 @@ package elasticsearch
 import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/log"
 	"time"
 )
 
@@ -165,7 +166,6 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 	size := int64(10)
 
 	query := NewEventQuery()
-	query.EventType("alert")
 
 	// Event type...
 	if options.EventType != "" {
@@ -196,119 +196,44 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 		size = options.Size
 	}
 
-	switch agg {
+	aggregations := map[string]string{
+		// Generic.
+		"src_ip":    "keyword",
+		"dest_ip":   "keyword",
+		"src_port":  "term",
+		"dest_port": "term",
 
-	// Aggregations on keyword terms...
-	case "src_ip":
-		fallthrough
-	case "dest_ip":
-		fallthrough
-	case "alert.category":
-		fallthrough
-	case "alert.signature":
+		// Alert.
+		"alert.category":  "keyword",
+		"alert.signature": "keyword",
+
+		// DNS.
+		"dns.rrname": "keyword",
+		"dns.rrtype": "keyword",
+		"dns.rcode":  "keyword",
+		"dns.rdata":  "keyword",
+	}
+
+	aggType := aggregations[agg]
+	if aggType == "" {
+		log.Warning("Unknown aggregation type for %s, will use term.", agg)
+		aggType = "term"
+	}
+
+	if aggType == "keyword" {
 		query.Aggs[agg] = map[string]interface{}{
 			"terms": map[string]interface{}{
 				"field": fmt.Sprintf("%s.%s", agg, s.es.keyword),
 				"size":  size,
 			},
 		}
-
-	// Aggregatiosn on number types.
-	case "src_port":
-		fallthrough
-	case "dest_port":
+	} else {
 		query.Aggs[agg] = map[string]interface{}{
 			"terms": map[string]interface{}{
 				"field": agg,
 				"size":  size,
 			},
 		}
-
-	default:
-		return nil, fmt.Errorf("unknown aggregation: %s", agg)
-	}
-
-	response, err := s.es.Search(query)
-	if err != nil {
-		return nil, err
-	}
-
-	// Unwrap response.
-	buckets := JsonMap(response.Aggregations[agg].(map[string]interface{})).GetMapList("buckets")
-	data := []map[string]interface{}{}
-	for _, bucket := range buckets {
-		data = append(data, map[string]interface{}{
-			"key":   bucket["key"],
-			"count": bucket["doc_count"],
-		})
-	}
-
-	return map[string]interface{}{
-		"data": data,
-	}, nil
-}
-
-func (s *ReportService) ReportAlertAggs(agg string, options core.ReportOptions) (interface{}, error) {
-
-	if true {
-		options.EventType = "alert"
-		return s.ReportAggs(agg, options)
-	}
-
-	size := int64(10)
-
-	query := NewEventQuery()
-	query.EventType("alert")
-
-	if options.QueryString != "" {
-		query.AddFilter(QueryString(options.QueryString))
-	}
-
-	if options.AddressFilter != "" {
-		query.ShouldHaveIp(options.AddressFilter, s.es.keyword)
-	}
-
-	if options.TimeRange != "" {
-		err := query.AddTimeRangeFilter(options.TimeRange)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if options.Size > 0 {
-		size = options.Size
-	}
-
-	switch agg {
-
-	// Aggregations on keyword terms...
-	case "src_ip":
-		fallthrough
-	case "dest_ip":
-		fallthrough
-	case "alert.category":
-		fallthrough
-	case "alert.signature":
-		query.Aggs[agg] = map[string]interface{}{
-			"terms": map[string]interface{}{
-				"field": fmt.Sprintf("%s.%s", agg, s.es.keyword),
-				"size":  size,
-			},
-		}
-
-	// Aggregatiosn on number types.
-	case "src_port":
-		fallthrough
-	case "dest_port":
-		query.Aggs[agg] = map[string]interface{}{
-			"terms": map[string]interface{}{
-				"field": agg,
-				"size":  size,
-			},
-		}
-
-	default:
-		return nil, fmt.Errorf("unknown aggregation: %s", agg)
 	}
 
 	response, err := s.es.Search(query)

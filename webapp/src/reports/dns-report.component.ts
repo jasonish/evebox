@@ -30,7 +30,7 @@ import {AppService, AppEventCode} from "../app.service";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {ActivatedRoute, Params} from "@angular/router";
-import {ApiService} from "../api.service";
+import {ApiService, ReportAggOptions} from "../api.service";
 import {TopNavService} from "../topnav.service";
 
 import moment = require("moment");
@@ -193,16 +193,61 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         let size = 20;
         let range = this.topNavService.getTimeRangeAsSeconds();
 
+        let aggOptions:ReportAggOptions = {
+            eventType: "dns",
+            dnsType: "answer",
+            timeRange: range,
+            queryString: this.queryString,
+            size: size,
+        };
+
+
         this.load(() => {
-            return this.reports.dnsResponseReport({
-                size: size,
-                queryString: this.queryString,
-            }).then((response:any) => {
-                this.topRdata = this.mapAddressAggregation(response.aggregations.top_rdata.buckets);
-                this.topRcodes = this.mapAggregation(response.aggregations.top_rcode.buckets);
-            });
+            return this.api.reportAgg("dns.rcode", aggOptions)
+                .then((response:any) => {
+                    this.topRcodes = response.data;
+                });
         });
 
+        this.load(() => {
+            return this.api.reportAgg("dns.rdata", aggOptions)
+                .then((response:any) => {
+                    this.topRdata = response.data;
+                });
+        });
+
+        // Switch to request queries.
+        aggOptions.dnsType = "query";
+
+        this.load(() => {
+            return this.api.reportAgg("dns.rrname", aggOptions)
+                .then((response:any) => {
+                    this.topRrnames = response.data;
+                });
+        });
+
+        this.load(() => {
+            return this.api.reportAgg("dns.rrtype", aggOptions)
+                .then((response:any) => {
+                    this.topRrtypes = response.data;
+                });
+        });
+
+        this.load(() => {
+            return this.api.reportAgg("src_ip", aggOptions)
+                .then((response:any) => {
+                    this.topClients = response.data;
+                })
+        });
+
+        this.load(() => {
+            return this.api.reportAgg("dest_ip", aggOptions)
+                .then((response:any) => {
+                    this.topServers = response.data;
+                })
+        });
+
+        // Queries over time histogram.
         this.load(() => {
             return this.api.reportHistogram({
                 timeRange: range,
@@ -220,25 +265,5 @@ export class DNSReportComponent implements OnInit, OnDestroy {
             });
         });
 
-        this.load(() => {
-            return this.api.post("api/1/report/dns/requests/rrnames", {
-                timeRange: `${this.topNavService.getTimeRangeAsSeconds()}s`,
-                size: size,
-                queryString: this.queryString,
-            }).then((response:any) => {
-                this.topRrnames = response.data;
-            });
-        });
-
-        this.load(() => {
-            return this.reports.dnsRequestReport({
-                size: size,
-                queryString: this.queryString,
-            }).then((response:any) => {
-                this.topServers = this.mapAddressAggregation(response.aggregations.top_servers.buckets);
-                this.topClients = this.mapAddressAggregation(response.aggregations.top_clients.buckets);
-                this.topRrtypes = this.mapAggregation(response.aggregations.top_rrtype.buckets);
-            });
-        })
     }
 }

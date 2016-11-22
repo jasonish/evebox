@@ -117,15 +117,17 @@ type ReportOptions struct {
 type ReportService interface {
 	ReportDnsRequestRrnames(options ReportOptions) (interface{}, error)
 
-	// Report on alert aggregations. For example the top "alert.signature"s
-	// with their counts. Valid aggregations include:
+	// Create aggregations reports where the result is a count and a key
+	// in descending order.
+	//
+	// Alert aggregations:
 	// - src_ip
 	// - dest_ip
 	// - alert.category
 	// - alert.signature
 	// - src_port
 	// - dest_port
-	ReportAlertAggs(agg string, options ReportOptions) (interface{}, error)
+	ReportAggs(agg string, options ReportOptions) (interface{}, error)
 
 	ReportHistogram(interval string, options ReportOptions) (interface{}, error)
 }

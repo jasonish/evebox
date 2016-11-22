@@ -171,7 +171,7 @@ func Main(args []string) {
 	router.GET("/api/1/report/dns/requests/rrnames", server.ApiF(appContext, server.ReportDnsRequestRrnames))
 	router.POST("/api/1/report/dns/requests/rrnames", server.ApiF(appContext, server.ReportDnsRequestRrnames))
 
-	router.GET("/api/1/report/alerts/agg", server.ApiF(appContext, server.ReportAlertAggs))
+	router.GET("/api/1/report/agg", server.ApiF(appContext, server.ReportAggs))
 	router.GET("/api/1/report/histogram", server.ApiF(appContext, server.ReportHistogram))
 
 	// Static file server, must be last as it serves as the fallback.

@@ -23,142 +23,11 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 import {Injectable} from "@angular/core";
-import {ElasticSearchService} from "../elasticsearch.service";
-import {TopNavService} from "../topnav.service";
-import {ToastrService} from "../toastr.service";
 import moment = require("moment");
 
 @Injectable()
 export class ReportsService {
-
-    private warningShown:boolean = false;
-
-    constructor(private elasticsearch:ElasticSearchService,
-                private topNavService:TopNavService,
-                private toastr:ToastrService) {
-    }
-
-    asKeyword(keyword:string):string {
-        return this.elasticsearch.asKeyword(keyword);
-    }
-
-    dnsResponseReport(options:any = {}):any {
-
-        let now = moment();
-        let range = this.topNavService.getTimeRangeAsSeconds();
-        let size:number = options.size || 20;
-
-        let query:any = {
-            query: {
-                bool: {
-                    filter: [
-                        {exists: {field: "event_type"}},
-                        {term: {event_type: "dns"}},
-                        {term: {"dns.type": "answer"}}
-                    ]
-                }
-            },
-            size: 0,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
-            aggs: {
-                rcodes: {
-                    terms: {
-                        field: this.asKeyword("dns.rcode"),
-                        size: size,
-                    }
-                },
-                top_rdata: {
-                    terms: {
-                        field: this.asKeyword("dns.rdata"),
-                        size: size
-                    }
-                },
-                top_rcode: {
-                    terms: {
-                        field: this.asKeyword("dns.rcode"),
-                        size: size
-                    }
-                },
-            }
-        };
-
-        if (options.queryString) {
-            query.query.bool.filter.push({
-                query_string: {
-                    query: options.queryString
-                }
-            });
-        }
-
-        this.elasticsearch.addTimeRangeFilter(query, now, range);
-
-        return this.elasticsearch.search(query);
-    }
-
-    dnsRequestReport(options:any = {}):any {
-
-        let now:any = moment();
-        let range:number = this.topNavService.getTimeRangeAsSeconds();
-        let size:number = options.size || 20;
-
-        let query:any = {
-            query: {
-                bool: {
-                    filter: [
-                        {exists: {field: "event_type"}},
-                        {term: {event_type: "dns"}},
-                        {term: {"dns.type": "query"}}
-                    ]
-                }
-            },
-            size: 0,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
-            aggs: {
-                top_rrnames: {
-                    terms: {
-                        field: this.asKeyword("dns.rrname"),
-                        size: size
-                    }
-                },
-                top_servers: {
-                    terms: {
-                        field: this.asKeyword("dest_ip"),
-                        size: size
-                    }
-                },
-                top_clients: {
-                    terms: {
-                        field: this.asKeyword("src_ip"),
-                        size: size
-                    }
-                },
-                top_rrtype: {
-                    terms: {
-                        field: this.asKeyword("dns.rrtype"),
-                        size: size
-                    }
-                }
-            }
-        };
-
-        if (options.queryString) {
-            query.query.bool.filter.push({
-                query_string: {
-                    query: options.queryString
-                }
-            });
-        }
-
-        this.elasticsearch.addTimeRangeFilter(query, now, range);
-
-        return this.elasticsearch.search(query);
-    }
 
     histogramTimeInterval(range:number):string {
         let interval:string = "day";
@@ -182,10 +51,6 @@ export class ReportsService {
         console.log(`Returning interval: ${interval}.`);
 
         return interval;
-    }
-
-    submitQuery(query:any) {
-        return this.elasticsearch.search(query);
     }
 
 }

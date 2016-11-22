@@ -31,7 +31,7 @@ import {ActivatedRoute, Params} from "@angular/router";
 import {EveboxSubscriptionService} from "../subscription.service";
 import {loadingAnimation} from "../animations";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {ApiService, QueryStringBuilder} from "../api.service";
+import {ApiService, QueryStringBuilder, ReportAggOptions} from "../api.service";
 import {TopNavService} from "../topnav.service";
 import moment = require("moment");
 
@@ -175,53 +175,53 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
         let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
 
-        let q = new QueryStringBuilder();
-        q.set("size", size);
-        q.set("queryString", this.queryString);
-        if (timeRangeSeconds > 0) {
-            q.set("timeRange", `${timeRangeSeconds}s`);
-        }
+        let aggOptions:ReportAggOptions = {
+            queryString: this.queryString,
+            timeRange: timeRangeSeconds,
+            size: size,
+            eventType: "alert",
+        };
 
-        q.set("agg", "alert.signature");
         this.load(() => {
-            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
-                this.signatureRows = response.data;
-            });
+            return this.api.reportAgg("alert.signature", aggOptions)
+                .then((response:any) => {
+                    this.signatureRows = response.data;
+                });
         });
 
-        q.set("agg", "alert.category");
         this.load(() => {
-            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
-                this.categoryRows = response.data;
-            });
+            return this.api.reportAgg("alert.category", aggOptions)
+                .then((response:any) => {
+                    this.categoryRows = response.data;
+                });
         });
 
-        q.set("agg", "src_ip");
         this.load(() => {
-            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
-                this.sourceRows = response.data;
-            });
+            return this.api.reportAgg("src_ip", aggOptions)
+                .then((response:any) => {
+                    this.sourceRows = response.data;
+                });
         });
 
-        q.set("agg", "dest_ip");
         this.load(() => {
-            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
-                this.destinationRows = response.data;
-            });
+            return this.api.reportAgg("dest_ip", aggOptions)
+                .then((response:any) => {
+                    this.destinationRows = response.data;
+                });
         });
 
-        q.set("agg", "src_port");
         this.load(() => {
-            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
-                this.srcPorts = response.data;
-            });
+            return this.api.reportAgg("src_port", aggOptions)
+                .then((response:any) => {
+                    this.srcPorts = response.data;
+                });
         });
 
-        q.set("agg", "dest_port");
         this.load(() => {
-            return this.api.get(`api/1/report/alerts/agg?${q.build()}`).then((response) => {
-                this.destPorts = response.data;
-            });
+            return this.api.reportAgg("dest_port", aggOptions)
+                .then((response:any) => {
+                    this.destPorts = response.data;
+                });
         });
 
         this.load(() => {

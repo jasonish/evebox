@@ -32,7 +32,7 @@ import {TopNavService} from "../topnav.service";
 import {ElasticSearchService} from "../elasticsearch.service";
 import {loadingAnimation} from "../animations";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {ApiService} from "../api.service";
+import {ApiService, ReportAggOptions} from "../api.service";
 
 import moment = require("moment");
 
@@ -142,8 +142,6 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
     refresh() {
 
-        this.loading++;
-
         let range = this.topNavService.getTimeRangeAsSeconds();
         let now = moment();
 
@@ -163,6 +161,27 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             });
         });
 
+        let aggOptions:ReportAggOptions = {
+            timeRange: range,
+            eventType: "flow",
+            size: 10,
+            queryString: this.queryString,
+        };
+
+        this.load(() => {
+            return this.api.reportAgg("src_ip", aggOptions)
+                .then((response:any) => {
+                    this.topClientsByFlows = response.data;
+                });
+        });
+
+        this.load(() => {
+            return this.api.reportAgg("dest_ip", aggOptions)
+                .then((response:any) => {
+                    this.topServersByFlows = response.data;
+                });
+        });
+
         let query:any = {
             query: {
                 bool: {
@@ -178,22 +197,6 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 {"@timestamp": {order: "desc"}}
             ],
             aggs: {
-                topClientsByFlows: {
-                    terms: {
-                        field: `src_ip.${this.elasticsearch.keyword}`,
-                        order: {
-                            "_count": "desc",
-                        }
-                    }
-                },
-                topServersByFlows: {
-                    terms: {
-                        field: `dest_ip.${this.elasticsearch.keyword}`,
-                        order: {
-                            "_count": "desc",
-                        }
-                    }
-                },
                 topFlowsByAge: {
                     top_hits: {
                         sort: [
@@ -215,27 +218,12 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
 
-        this.reportsService.submitQuery(query).then((response:any) => {
-
-            this.topClientsByFlows = response.aggregations.topClientsByFlows.buckets.map((bucket:any) => {
-                return {
-                    key: bucket.key,
-                    count: bucket.doc_count,
-                };
+        this.load(() => {
+            return this.elasticsearch.search(query).then((response:any) => {
+                this.topFlowsByAge = response.aggregations.topFlowsByAge.hits.hits;
+                this.loading--;
             });
-
-            this.topServersByFlows = response.aggregations.topServersByFlows.buckets.map((bucket:any) => {
-                return {
-                    key: bucket.key,
-                    count: bucket.doc_count,
-                };
-            });
-
-            this.topFlowsByAge = response.aggregations.topFlowsByAge.hits.hits;
-
-            this.loading--;
-
-        });
+        })
 
     }
 }
