@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/cmd/esimport"
 	"github.com/jasonish/evebox/cmd/evereader"
+	"github.com/jasonish/evebox/cmd/pgimport"
 	"github.com/jasonish/evebox/cmd/server"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"os"
-	"github.com/jasonish/evebox/cmd/pgimport"
 )
 
 func VersionMain() {
