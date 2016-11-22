@@ -29,7 +29,6 @@ package elasticsearch
 import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
-	"strings"
 	"time"
 )
 
@@ -91,41 +90,6 @@ func (s *ReportService) ReportDnsRequestRrnames(options core.ReportOptions) (int
 	}
 
 	return data, nil
-}
-
-// Alerts over time (histogram) for Ip.
-func (s *ReportService) ReportIpAlertsOverTime(addr string, options core.ReportOptions) (interface{}, error) {
-
-	query := NewEventQuery()
-	query.AddFilter(TermQuery("event_type", "alert"))
-	if strings.HasSuffix(addr, ".") {
-		query.Should(KeywordPrefixQuery("src_ip", addr, s.es.keyword))
-		query.Should(KeywordPrefixQuery("dest_ip", addr, s.es.keyword))
-	} else {
-		query.Should(KeywordTermQuery("src_ip", addr, s.es.keyword))
-		query.Should(KeywordTermQuery("dest_ip", addr, s.es.keyword))
-	}
-	query.Query.Bool.MinimumShouldMatch = 1
-	query.AddTimeRangeFilter(options.TimeRange)
-
-	now := time.Now()
-	duration, _ := time.ParseDuration(fmt.Sprintf("-%s", options.TimeRange))
-	then := now.Add(duration)
-
-	query.Aggs["alertsOverTime"] = map[string]interface{}{
-		"date_histogram": map[string]interface{}{
-			"field":         "@timestamp",
-			"interval":      "1h",
-			"min_doc_count": 0,
-			"extended_bounds": map[string]interface{}{
-				"min": then,
-				"max": now,
-			},
-		},
-	}
-
-	response, err := s.es.Search(query)
-	return response, err
 }
 
 func (s *ReportService) ReportHistogram(interval string, options core.ReportOptions) (interface{}, error) {
@@ -196,7 +160,100 @@ func (s *ReportService) ReportHistogram(interval string, options core.ReportOpti
 	}, nil
 }
 
+func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (interface{}, error) {
+
+	size := int64(10)
+
+	query := NewEventQuery()
+	query.EventType("alert")
+
+	// Event type...
+	if options.EventType != "" {
+		query.EventType(options.EventType)
+	}
+
+	// Narrow the type even further...
+	if options.DnsType != "" {
+		query.AddFilter(TermQuery("dns.type", options.DnsType))
+	}
+
+	if options.QueryString != "" {
+		query.AddFilter(QueryString(options.QueryString))
+	}
+
+	if options.AddressFilter != "" {
+		query.ShouldHaveIp(options.AddressFilter, s.es.keyword)
+	}
+
+	if options.TimeRange != "" {
+		err := query.AddTimeRangeFilter(options.TimeRange)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if options.Size > 0 {
+		size = options.Size
+	}
+
+	switch agg {
+
+	// Aggregations on keyword terms...
+	case "src_ip":
+		fallthrough
+	case "dest_ip":
+		fallthrough
+	case "alert.category":
+		fallthrough
+	case "alert.signature":
+		query.Aggs[agg] = map[string]interface{}{
+			"terms": map[string]interface{}{
+				"field": fmt.Sprintf("%s.%s", agg, s.es.keyword),
+				"size":  size,
+			},
+		}
+
+	// Aggregatiosn on number types.
+	case "src_port":
+		fallthrough
+	case "dest_port":
+		query.Aggs[agg] = map[string]interface{}{
+			"terms": map[string]interface{}{
+				"field": agg,
+				"size":  size,
+			},
+		}
+
+	default:
+		return nil, fmt.Errorf("unknown aggregation: %s", agg)
+	}
+
+	response, err := s.es.Search(query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unwrap response.
+	buckets := JsonMap(response.Aggregations[agg].(map[string]interface{})).GetMapList("buckets")
+	data := []map[string]interface{}{}
+	for _, bucket := range buckets {
+		data = append(data, map[string]interface{}{
+			"key":   bucket["key"],
+			"count": bucket["doc_count"],
+		})
+	}
+
+	return map[string]interface{}{
+		"data": data,
+	}, nil
+}
+
 func (s *ReportService) ReportAlertAggs(agg string, options core.ReportOptions) (interface{}, error) {
+
+	if true {
+		options.EventType = "alert"
+		return s.ReportAggs(agg, options)
+	}
 
 	size := int64(10)
 
