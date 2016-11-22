@@ -1,9 +1,9 @@
 package postgres
 
 import (
-	"testing"
 	"log"
 	"os"
+	"testing"
 	"time"
 )
 

@@ -1,13 +1,13 @@
 package postgres
 
 import (
-	_ "github.com/lib/pq"
 	"database/sql"
-	"fmt"
-	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/eve"
-	"github.com/satori/go.uuid"
 	"encoding/json"
+	"fmt"
+	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/log"
+	_ "github.com/lib/pq"
+	"github.com/satori/go.uuid"
 )
 
 const PGDATABASE = "evebox"

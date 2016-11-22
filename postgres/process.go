@@ -1,13 +1,13 @@
 package postgres
 
 import (
-	"os/exec"
-	"io/ioutil"
-	"strings"
 	"bufio"
 	"github.com/jasonish/evebox/log"
 	"io"
+	"io/ioutil"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -72,7 +72,7 @@ func Init(directory string) error {
 	return command.Wait()
 }
 
-func ReadPipe(pipe io.ReadCloser, doLog bool, logPrefix string) (error) {
+func ReadPipe(pipe io.ReadCloser, doLog bool, logPrefix string) error {
 	reader := bufio.NewReader(pipe)
 	for {
 		line, err := reader.ReadBytes('\n')

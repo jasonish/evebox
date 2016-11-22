@@ -1,13 +1,13 @@
 package pgimport
 
 import (
+	"fmt"
+	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/postgres"
+	flag "github.com/spf13/pflag"
 	"io"
 	"time"
-	"fmt"
-	flag "github.com/spf13/pflag"
-	"github.com/jasonish/evebox/evereader"
 )
 
 func Main(args []string) {
@@ -99,5 +99,5 @@ func Main(args []string) {
 		}
 	}
 
-	indexer.Flush();
+	indexer.Flush()
 }
