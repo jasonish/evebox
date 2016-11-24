@@ -39,6 +39,14 @@ func ToJson(value interface{}) string {
 	return string(buf)
 }
 
+func ToJsonPretty(value interface{}) string {
+	buf, err := json.MarshalIndent(value, "", "    ")
+	if err != nil {
+		return fmt.Sprintf("<failed to marshal to json: %v>", err)
+	}
+	return string(buf)
+}
+
 // Check if a slice of strings contains a string.
 func StringSliceContains(slice []string, what string) bool {
 	for _, item := range slice {

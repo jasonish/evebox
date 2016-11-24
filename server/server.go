@@ -28,6 +28,7 @@ package server
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/jasonish/evebox/log"
 	"net/http"
 )
 
@@ -41,8 +42,8 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) Handle(path string, handler http.Handler) {
-	r.router.Handle(path, handler)
+func (r *Router) Handle(path string, handler http.Handler) *mux.Route {
+	return r.router.Handle(path, handler)
 }
 
 func (r *Router) Prefix(path string, handler http.Handler) {
@@ -50,6 +51,7 @@ func (r *Router) Prefix(path string, handler http.Handler) {
 }
 
 func (r *Router) GET(path string, handler http.Handler) {
+	log.Debug("Adding GET route: %s", path)
 	r.router.Handle(path, handler).Methods("GET")
 }
 
@@ -57,16 +59,37 @@ func (r *Router) POST(path string, handler http.Handler) {
 	r.router.Handle(path, handler).Methods("POST")
 }
 
-type Server struct {
-	router *Router
+type ApiRouter struct {
+	appContext AppContext
+	router     *Router
 }
 
-func NewServer(router *Router) *Server {
-	return &Server{
-		router: router,
+func (r *ApiRouter) GET(path string, handler ApiHandlerFunc) {
+	r.router.GET(path, ApiF(r.appContext, handler))
+}
+
+type Server struct {
+	appContext AppContext
+	router     *Router
+}
+
+func NewServer(appContext AppContext, router *Router) *Server {
+	server := &Server{
+		appContext: appContext,
+		router:     router,
 	}
+
+	return server
 }
 
 func (s *Server) Start(addr string) error {
+	log.Printf("Listening on %s", addr)
 	return http.ListenAndServe(addr, s.router.router)
+}
+
+func (s *Server) RegisterApiHandlers() {
+
+	apiRouter := ApiRouter{s.appContext, s.router}
+
+	apiRouter.GET("/api/1/netflow", NetflowHandler)
 }

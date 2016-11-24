@@ -174,11 +174,21 @@ func Main(args []string) {
 	router.GET("/api/1/report/agg", server.ApiF(appContext, server.ReportAggs))
 	router.GET("/api/1/report/histogram", server.ApiF(appContext, server.ReportHistogram))
 
+	// /api/1/report/netflow/sources/bytes
+	// /api/1/report/netflow/sources/packets
+
+	// /api/1/report/netflow/destinations/bytes
+	// /api/1/report/netflow/destinations/packets
+
+	// This all needs some cleanup...
+
+	httpServer := server.NewServer(appContext, router)
+	httpServer.RegisterApiHandlers()
+
 	// Static file server, must be last as it serves as the fallback.
 	router.Prefix("/", server.StaticHandlerFactory(opts.DevServerUri))
 
-	log.Printf("Listening on %s:%s", opts.Host, opts.Port)
-	err = server.NewServer(router).Start(opts.Host + ":" + opts.Port)
+	err = httpServer.Start(opts.Host + ":" + opts.Port)
 	if err != nil {
 		log.Fatal(err)
 	}

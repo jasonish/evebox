@@ -26,6 +26,11 @@
 
 package core
 
+import (
+	"net/http"
+	"strconv"
+)
+
 // AlertGroupQueryParams holds the parameters for querying a specific
 // group of alerts.
 type AlertGroupQueryParams struct {
@@ -61,6 +66,9 @@ type AlertQueryService interface {
 type EventQueryOptions struct {
 	QueryString string
 
+	TimeRange string
+
+	// Number of results to return.
 	Size int64
 
 	// Maximum timestamp to include in result set.
@@ -71,6 +79,19 @@ type EventQueryOptions struct {
 
 	// Event type to limit results to.
 	EventType string
+}
+
+func EventQueryOptionsFromHttpRequest(r *http.Request) EventQueryOptions {
+	options := EventQueryOptions{}
+
+	options.QueryString = r.FormValue("queryString")
+	options.TimeRange = r.FormValue("timeRange")
+	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 10, 64)
+	options.MaxTs = r.FormValue("maxTs")
+	options.MinTs = r.FormValue("minTs")
+	options.EventType = r.FormValue("eventType")
+
+	return options
 }
 
 type EventQueryService interface {
@@ -91,6 +112,43 @@ type EventService interface {
 	AddTagsToEvent(id string, tags []string) error
 
 	RemoveTagsFromEvent(id string, tags []string) error
+
+	FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error)
+}
+
+type NotImplementedEventService struct {
+}
+
+func (s *NotImplementedEventService) GetEventById(id string) (map[string]interface{}, error) {
+	return nil, nil
+}
+
+func (s *NotImplementedEventService) AddTagsToEvent(id string, tags []string) error {
+	return nil
+}
+
+func (s *NotImplementedEventService) AddTagsToAlertGroup(p AlertGroupQueryParams, tags []string) error {
+	return nil
+}
+
+func (s *NotImplementedEventService) RemoveTagsFromAlertGroup(p AlertGroupQueryParams, tags []string) error {
+	return nil
+}
+
+func (s *NotImplementedEventService) RemoveTagsFromEvent(id string, tags []string) error {
+	return nil
+}
+
+func (s *NotImplementedEventService) ArchiveAlertGroup(p AlertGroupQueryParams) error {
+	return nil
+}
+
+func (s *NotImplementedEventService) EscalateAlertGroup(p AlertGroupQueryParams) error {
+	return nil
+}
+
+func (s *NotImplementedEventService) FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error) {
+	return nil, nil
 }
 
 type ReportOptions struct {
@@ -104,14 +162,14 @@ type ReportOptions struct {
 	// source or the destination.
 	AddressFilter string
 
+	// Limit results to a specific sensor name.
+	SensorFilter string
+
 	// Limit results to a certain event type.
 	EventType string
 
 	// Subtypes...
 	DnsType string
-
-	// Limit results to a specific sensor name.
-	SensorFilter string
 }
 
 type ReportService interface {

@@ -42,7 +42,8 @@ type AppContext struct {
 
 	EventQueryService core.EventQueryService
 
-	EventService core.EventService
+	EventService   core.EventService
+	EsEventService elasticsearch.EventService
 
 	ReportService core.ReportService
 }
