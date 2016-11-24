@@ -236,7 +236,31 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                     }
                 });
             });
-        })
+        });
+
+        let params:any = {
+            queryString: this.queryString,
+        };
+
+        if (range > 0) {
+            params.timeRange = `${range}s`;
+        }
+
+        this.wrapLoad(() => {
+            params.sortBy = "netflow.pkts";
+            return this.api.getWithParams("api/1/netflow", params)
+                .then((response:any) => {
+                    this.topFlowsByPackets = response.data;
+                });
+        });
+
+        this.wrapLoad(() => {
+            params.sortBy = "netflow.bytes";
+            return this.api.getWithParams("api/1/netflow", params)
+                .then((response:any) => {
+                    this.topByBytes = response.data;
+                });
+        });
 
         let query:any = {
             query: {
@@ -253,40 +277,9 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 {"@timestamp": {order: "desc"}}
             ],
             aggs: {
-                topByBytes: {
-                    top_hits: {
-                        sort: [
-                            {"netflow.bytes": {order: "desc"}}
-                        ],
-                        size: 10,
-                    }
-                },
-                topByPackets: {
-                    top_hits: {
-                        sort: [
-                            {"netflow.pkts": {order: "desc"}}
-                        ],
-                        size: 10,
-                    }
-                },
                 sourcesByBytes: {
                     terms: {
                         field: `src_ip.${this.elasticsearch.keyword}`,
-                        order: {
-                            "bytes": "desc"
-                        },
-                    },
-                    aggs: {
-                        bytes: {
-                            sum: {
-                                field: "netflow.bytes"
-                            }
-                        }
-                    }
-                },
-                topDestinationsByBytes: {
-                    terms: {
-                        field: `dest_ip.${this.elasticsearch.keyword}`,
                         order: {
                             "bytes": "desc"
                         },
@@ -310,6 +303,21 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                         packets: {
                             sum: {
                                 field: "netflow.pkts"
+                            }
+                        }
+                    }
+                },
+                topDestinationsByBytes: {
+                    terms: {
+                        field: `dest_ip.${this.elasticsearch.keyword}`,
+                        order: {
+                            "bytes": "desc"
+                        },
+                    },
+                    aggs: {
+                        bytes: {
+                            sum: {
+                                field: "netflow.bytes"
                             }
                         }
                     }
@@ -371,9 +379,6 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                     count: bucket.packets.value,
                 };
             });
-
-            this.topByBytes = response.aggregations.topByBytes.hits.hits;
-            this.topFlowsByPackets = response.aggregations.topByPackets.hits.hits;
 
             this.loading--;
 

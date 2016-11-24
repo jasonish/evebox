@@ -46,6 +46,18 @@ export class ApiService {
             .toPromise();
     }
 
+    getWithParams(path:string, params={}):Promise<any> {
+
+        let qsb:any = [];
+
+        for (let param in params) {
+                    qsb.push(`${param}=${params[param]}`);
+        }
+
+        return this.get(`${path}?${qsb.join("&")}`);
+
+    }
+
     getVersion() {
         return this.http.get(this.baseUrl + "api/1/version")
             .map((res:Response) => res.json())
