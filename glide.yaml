@@ -17,3 +17,4 @@ import:
 - package: github.com/oschwald/maxminddb-golang
 - package: github.com/satori/go.uuid
 - package: github.com/lib/pq
+- package: github.com/mattn/go-sqlite3
