@@ -6,6 +6,7 @@ import (
 	"github.com/jasonish/evebox/cmd/evereader"
 	"github.com/jasonish/evebox/cmd/pgimport"
 	"github.com/jasonish/evebox/cmd/server"
+	"github.com/jasonish/evebox/cmd/sqliteimport"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"os"
@@ -48,6 +49,9 @@ func main() {
 			return
 		case "pgimport":
 			pgimport.Main(os.Args[2:])
+			return
+		case "sqliteimport":
+			sqliteimport.Main(os.Args[2:])
 			return
 		default:
 			log.Fatalf("Unknown command: %s", os.Args[1])
