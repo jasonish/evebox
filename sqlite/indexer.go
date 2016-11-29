@@ -2,11 +2,11 @@ package sqlite
 
 import (
 	"database/sql"
+	"encoding/json"
 	"github.com/jasonish/evebox/eve"
-	"time"
 	"github.com/jasonish/evebox/log"
 	"github.com/satori/go.uuid"
-	"encoding/json"
+	"time"
 )
 
 type SqliteIndexer struct {
@@ -41,7 +41,7 @@ func (i *SqliteIndexer) IndexRawEve(event eve.RawEveEvent) error {
 		return err
 	}
 
-	_, err = i.tx.Exec("insert into events values ($1, $2, $3)", eventId,
+	_, err = i.tx.Exec("insert into events values ($1, $2, 0, 0, $3)", eventId,
 		timestamp, encoded)
 	if err != nil {
 		log.Fatal(err)
