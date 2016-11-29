@@ -9,6 +9,8 @@ LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildDate=$(BUILD_DATE)\" \
 		-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
 		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
 
+TAGS :=		fts5
+
 APP :=		evebox
 
 WEBAPP_SRCS :=	$(shell find webapp/src -type f)
@@ -47,7 +49,7 @@ public: public/bundle.js
 
 # Build's EveBox for the host platform.
 evebox: Makefile $(GO_SRCS)
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
+	go build --tags $(TAGS) -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
 
 # Format all go source code except in the vendor directory.
 gofmt:
@@ -87,8 +89,9 @@ dist: GOOS ?= $(shell go env GOOS)
 dist: DISTNAME ?= ${APP}-${VERSION}${VERSION_SUFFIX}-${GOOS}-${GOARCH}
 dist: LDFLAGS += -s -w
 dist: public/bundle.js
-	GOARCH=$(GOARCH) GOOS=$(GOOS) CGO_ENABLED=0 \
-		go build -ldflags "$(LDFLAGS)" -o dist/$(DISTNAME)/${APP} cmd/evebox.go
+	GOARCH=$(GOARCH) GOOS=$(GOOS) \
+		go build -tags $(TAGS) -ldflags "$(LDFLAGS)" \
+		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
 	rice -v append -i ./server -i ./elasticsearch \
 		--exec dist/${DISTNAME}/${APP}
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
