@@ -15,3 +15,6 @@ import:
 - package: github.com/satori/go.uuid
 - package: github.com/lib/pq
 - package: github.com/mattn/go-sqlite3
+- package: golang.org/x/sys
+  subpackages:
+  - unix
