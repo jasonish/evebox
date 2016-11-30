@@ -35,6 +35,8 @@ import (
 type AppContext struct {
 	Config *config.Config
 
+	DataStore core.Datastore
+
 	ElasticSearch *elasticsearch.ElasticSearch
 
 	// Service for querying alerts.

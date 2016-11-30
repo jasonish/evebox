@@ -35,8 +35,8 @@ import (
 
 	eveboxhttp "github.com/jasonish/evebox/http"
 
-	"github.com/GeertJohan/go.rice"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/resources"
 	"io/ioutil"
 )
 
@@ -185,11 +185,6 @@ func (es *ElasticSearch) InitKeyword() error {
 
 func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 
-	templateBox, err := rice.FindBox("static")
-	if err != nil {
-		return err
-	}
-
 	var templateFilename string
 
 	if majorVersion == 5 {
@@ -200,7 +195,7 @@ func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 		return fmt.Errorf("No template for Elastic Search with major version %d", majorVersion)
 	}
 
-	templateFile, err := templateBox.Open(templateFilename)
+	templateFile, err := resources.GetReader(fmt.Sprintf("elasticsearch/%s", templateFilename))
 	if err != nil {
 		return err
 	}

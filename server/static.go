@@ -27,8 +27,8 @@
 package server
 
 import (
-	"github.com/GeertJohan/go.rice"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/resources"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -44,6 +44,5 @@ func StaticHandlerFactory(devServerUri string) http.Handler {
 		}
 		return httputil.NewSingleHostReverseProxy(devServerProxyUrl)
 	}
-	return http.FileServer(
-		rice.MustFindBox("../public").HTTPBox())
+	return resources.FileServer{}
 }
