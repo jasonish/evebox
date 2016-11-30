@@ -7,7 +7,7 @@ import (
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
 	"github.com/satori/go.uuid"
-	"gopkg.in/square/go-jose.v1/json"
+	"encoding/json"
 )
 
 type EventService struct {
