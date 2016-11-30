@@ -52,7 +52,7 @@ module.exports = {
     ],
 
     output: {
-        path: "../public",
+        path: "../resources/public",
         filename: "bundle.js"
     }
 };
