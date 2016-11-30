@@ -1,4 +1,4 @@
-// +build cgo
+// +build linux,amd64,cgo
 
 package sqliteimport
 

@@ -1,9 +1,12 @@
+// +build linux,amd64,cgo
+
 package sqlite
 
 import (
 	"database/sql"
 	"fmt"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/resources"
 	"os"
 )
 
@@ -24,33 +27,32 @@ func (m *Migrator) Migrate() error {
 
 	rows, err := m.db.Query("select max(version) from schema")
 	if err == nil {
-
 		if rows.Next() {
 			if err := rows.Scan(&currentVersion); err != nil {
 				return err
 			}
 			nextVersion = currentVersion + 1
 		}
-
+		log.Debug("Current database schema version: %d", currentVersion)
+	} else {
+		log.Debug("Initializing database.")
 	}
-
-	log.Debug("Current database schema version: %d", currentVersion)
 
 	for {
 
-		path := fmt.Sprintf("resources/sqlite/V%d.sql", nextVersion)
-		if !m.fileExists(path) {
+		script, err := resources.AssetString(fmt.Sprintf("sqlite/V%d.sql", nextVersion))
+		if err != nil {
 			break
 		}
 
-		log.Info("Updating database with %s.", path)
+		log.Info("Updating database to version %d.", nextVersion)
 
 		tx, err := m.db.Begin()
 		if err != nil {
 			return err
 		}
 
-		err = m.db.TxLoadScript(tx, path)
+		_, err = tx.Exec(script)
 		if err != nil {
 			return err
 		}
