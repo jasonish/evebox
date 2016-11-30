@@ -1,18 +1,8 @@
-hash: e715828b18334ebfa58777ebd879dc5f40a9f3f29e8caaa1b212c96a32c52118
-updated: 2016-11-24T23:38:14.696843649-06:00
+hash: 80cbd3575a8175df788f681e1f44b0d9cb47b334c29e257d89bfc33215b668a1
+updated: 2016-11-29T23:40:55.085860058-06:00
 imports:
-- name: github.com/daaku/go.zipexe
-  version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
-- name: github.com/GeertJohan/go.rice
-  version: 9fdfd46f9806a9228aae341d65ab75c5235c383c
-  subpackages:
-  - embedded
-  - rice
 - name: github.com/google/gopacket
   version: c4d647984d4671d9dd91770dae77923a0b48b389
-  subpackages:
-  - layers
-  - pcapgo
 - name: github.com/gorilla/context
   version: 1ea25387ff6f684839d82767c1733ff4d4d15d0a
 - name: github.com/gorilla/mux
@@ -23,8 +13,6 @@ imports:
   version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/lib/pq
   version: d8eeeb8bae8896dd8e1b7e514ab0d396c4f12a1b
-  subpackages:
-  - oid
 - name: github.com/mattn/go-sqlite3
   version: 3fb7a0e792edd47bf0cf1e919dfc14e2be412e15
 - name: github.com/oschwald/geoip2-golang
@@ -39,27 +27,6 @@ imports:
   version: f841c39de738b1d0df95b5a7187744f0e03d8112
   subpackages:
   - context
-- name: golang.org/x/sys
-  version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
-  subpackages:
-  - unix
-  - windows
-- name: gopkg.in/square/go-jose.v1
-  version: aa2e30fdd1fe9dd3394119af66451ae790d50e0d
-  subpackages:
-  - json
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
-testImports:
-- name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
-  subpackages:
-  - spew
-- name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
-  subpackages:
-  - difflib
-- name: github.com/stretchr/testify
-  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
-  subpackages:
-  - assert
+testImports: []
