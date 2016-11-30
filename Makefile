@@ -16,6 +16,8 @@ APP :=		evebox
 WEBAPP_SRCS :=	$(shell find webapp/src -type f)
 GO_SRCS :=	$(shell find . -name \*.go)
 
+RESOURCES :=	$(shell find resources | grep -v bindata.go)
+
 GO_PACKAGES :=	$(shell go list ./... | grep -v /vendor/)
 
 all: public evebox
@@ -25,9 +27,9 @@ install-deps:
 	$(MAKE) -C webapp $@
 # Go
 	which glide > /dev/null 2>&1 || go get github.com/Masterminds/glide
-	which rice > /dev/null 2>&1 || go get github.com/GeertJohan/go.rice/rice
 	which gin > /dev/null 2>&1 || go get github.com/codegangsta/gin
 	which reflex > /dev/null 2>&1 || go get github.com/cespare/reflex
+	which go-bindata > /dev/null 2>&1 || go get github.com/jteeuwen/go-bindata/...
 	glide install
 
 clean:
@@ -40,15 +42,18 @@ distclean: clean
 	rm -rf vendor
 	$(MAKE) -C webapp $@
 
-.PHONY: public dist rpm deb
+.PHONY: dist rpm deb
 
 # Build the webapp bundle.
-public/bundle.js: $(WEBAPP_SRCS)
+resources/public/bundle.js: $(WEBAPP_SRCS)
 	cd webapp && $(MAKE)
-public: public/bundle.js
+public: resources/public/bundle.js
+
+resources/bindata.go: $(RESOURCES)
+	go generate ./resources/...
 
 # Build's EveBox for the host platform.
-evebox: Makefile $(GO_SRCS)
+evebox: Makefile $(GO_SRCS) resources/bindata.go
 	go build --tags $(TAGS) -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
 
 # Format all go source code except in the vendor directory.
@@ -81,19 +86,17 @@ dev-server: evebox
 # Helper for dev-server mode, watches evebox Go source and rebuilds and
 # restarts as needed.
 dev-server-reflex: evebox
-	reflex -s -r '\.go$$' -- sh -c "make evebox && ./evebox \
+	reflex -s -R 'bindata\.go' -r '\.go$$' -- sh -c "make evebox && ./evebox \
 		--dev http://localhost:8080"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
 dist: DISTNAME ?= ${APP}-${VERSION}${VERSION_SUFFIX}-${GOOS}-${GOARCH}
 dist: LDFLAGS += -s -w
-dist: public/bundle.js
+dist: resources/public/bundle.js resources/bindata.go
 	GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags $(TAGS) -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
-	rice -v append -i ./server -i ./elasticsearch \
-		--exec dist/${DISTNAME}/${APP}
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 
 release:
