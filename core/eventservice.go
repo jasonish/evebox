@@ -98,6 +98,13 @@ type EventQueryService interface {
 	Query(options EventQueryOptions) (interface{}, error)
 }
 
+type NotImplementedEventQueryService struct {
+}
+
+func (s *NotImplementedEventQueryService) Query(options EventQueryOptions) (interface{}, error) {
+	return nil, NotImplementedError
+}
+
 type EventService interface {
 	GetEventById(id string) (map[string]interface{}, error)
 
@@ -114,41 +121,6 @@ type EventService interface {
 	RemoveTagsFromEvent(id string, tags []string) error
 
 	FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error)
-}
-
-type NotImplementedEventService struct {
-}
-
-func (s *NotImplementedEventService) GetEventById(id string) (map[string]interface{}, error) {
-	return nil, nil
-}
-
-func (s *NotImplementedEventService) AddTagsToEvent(id string, tags []string) error {
-	return nil
-}
-
-func (s *NotImplementedEventService) AddTagsToAlertGroup(p AlertGroupQueryParams, tags []string) error {
-	return nil
-}
-
-func (s *NotImplementedEventService) RemoveTagsFromAlertGroup(p AlertGroupQueryParams, tags []string) error {
-	return nil
-}
-
-func (s *NotImplementedEventService) RemoveTagsFromEvent(id string, tags []string) error {
-	return nil
-}
-
-func (s *NotImplementedEventService) ArchiveAlertGroup(p AlertGroupQueryParams) error {
-	return nil
-}
-
-func (s *NotImplementedEventService) EscalateAlertGroup(p AlertGroupQueryParams) error {
-	return nil
-}
-
-func (s *NotImplementedEventService) FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error) {
-	return nil, nil
 }
 
 type ReportOptions struct {
