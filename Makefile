@@ -9,7 +9,7 @@ LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildDate=$(BUILD_DATE)\" \
 		-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
 		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
 
-TAGS :=		fts5
+TAGS :=		'fts5 json1'
 
 APP :=		evebox
 
