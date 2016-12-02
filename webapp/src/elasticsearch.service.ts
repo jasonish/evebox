@@ -237,7 +237,7 @@ export class ElasticSearchService {
 
         return this.api.get("api/1/event-query", requestOptions).then((response:any) => {
 
-            let events = response.hits.hits;
+            let events = response.data;
 
             events.sort((a:any, b:any) => {
                 let x = moment(a._source.timestamp);

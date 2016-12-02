@@ -6,7 +6,7 @@
   "license": "BSD",
   "private": true,
   "scripts": {
-    "start": "RUN_MODE=development ./node_modules/.bin/webpack-dev-server --inline --progress --port 8080 --content-base ../public"
+    "start": "RUN_MODE=development ./node_modules/.bin/webpack-dev-server --inline --progress --port 8080 --content-base ../resources/public"
   },
   "dependencies": {
     "@angular/common": "~2.2.0",

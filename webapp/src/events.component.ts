@@ -220,9 +220,7 @@ export class EventsComponent implements OnInit, OnDestroy {
             eventType: this.eventTypeFilter.toLowerCase(),
         }).then((resultSet:ResultSet) => {
             this.resultSet = resultSet;
-            this.eveboxEventTableConfig.rows = resultSet.events.map((event:any) => {
-                return event;
-            });
+            this.eveboxEventTableConfig.rows = resultSet.events;
             this.loading = false;
 
         }, (error:any) => {
