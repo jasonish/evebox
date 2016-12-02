@@ -3,6 +3,7 @@ package resources
 import (
 	"bytes"
 	"fmt"
+	"github.com/jasonish/evebox/log"
 	"io"
 	"net/http"
 	"strings"
@@ -40,9 +41,12 @@ func (s FileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		path = strings.TrimPrefix(r.URL.String(), "/")
 	}
 
+	log.Info("Static file request for %s.", path)
+
 	asset := fmt.Sprintf("public/%s", path)
 	bytes, err := Asset(asset)
 	if err != nil {
+		log.Error("Public file not found: %s", path)
 		w.WriteHeader(http.StatusNotFound)
 	} else {
 		w.Write(bytes)

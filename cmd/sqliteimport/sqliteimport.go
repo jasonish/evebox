@@ -4,6 +4,7 @@ package sqliteimport
 
 import (
 	"fmt"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/sqlite"
@@ -94,6 +95,8 @@ func Main(args []string) {
 	// Number of EOFs in last stat interval.
 	eofs := uint64(0)
 
+	tagsFilter := eve.TagsFilter{}
+
 	for {
 		eof := false
 		event, err := reader.Next()
@@ -107,8 +110,12 @@ func Main(args []string) {
 		}
 
 		if event != nil {
+
+			tagsFilter.Filter(event)
+
 			indexer.IndexRawEve(event)
 			count++
+
 			if useBookmark {
 				bookmark := bookmarker.GetBookmark()
 				bookmarker.WriteBookmark(bookmark)

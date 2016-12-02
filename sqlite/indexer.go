@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/jasonish/evebox/eve"
-	"github.com/jasonish/evebox/log"
 	"github.com/satori/go.uuid"
 	"time"
 )
@@ -46,13 +45,13 @@ func (i *SqliteIndexer) IndexRawEve(event eve.RawEveEvent) error {
 	_, err = i.tx.Exec("insert into events values ($1, $2, 0, 0, $3)", eventId,
 		timestamp, encoded)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	_, err = i.tx.Exec("insert into events_fts values ($1, $2)", eventId,
 		encoded)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	return nil

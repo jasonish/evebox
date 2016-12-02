@@ -41,7 +41,7 @@ func NewEventQueryService(es *ElasticSearch) *EventQueryService {
 	}
 }
 
-func (s *EventQueryService) Query(options core.EventQueryOptions) (interface{}, error) {
+func (s *EventQueryService) EventQuery(options core.EventQueryOptions) (interface{}, error) {
 
 	query := NewEventQuery()
 	query.MustNot(TermQuery("event_type", "stats"))
@@ -74,5 +74,9 @@ func (s *EventQueryService) Query(options core.EventQueryOptions) (interface{}, 
 		log.Error("%v", err)
 	}
 
-	return response, nil
+	hits := response.Hits.Hits
+
+	return map[string]interface{}{
+		"data": hits,
+	}, nil
 }

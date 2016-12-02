@@ -35,6 +35,7 @@ import (
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
+	"github.com/jasonish/evebox/sqlite"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -135,6 +136,21 @@ func Main(args []string) {
 	appContext.AlertQueryService = elasticsearch.NewAlertQueryService(elasticSearch)
 	appContext.EventQueryService = elasticsearch.NewEventQueryService(elasticSearch)
 	appContext.ReportService = elasticsearch.NewReportService(elasticSearch)
+
+	//dataStoreType := "elasticsearch"
+	dataStoreType := "sqlite"
+
+	if dataStoreType == "elasticsearch" {
+		appContext.DataStore, err = elasticsearch.NewDataStore(elasticSearch)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else if dataStoreType == "sqlite" {
+		appContext.DataStore, err = sqlite.NewDataStore()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	router := server.NewRouter()
 

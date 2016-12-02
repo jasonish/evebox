@@ -2,12 +2,12 @@ package postgres
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
 	"github.com/satori/go.uuid"
-	"encoding/json"
 )
 
 type EventService struct {

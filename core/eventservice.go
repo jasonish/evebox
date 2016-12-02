@@ -60,7 +60,14 @@ type AlertQueryOptions struct {
 }
 
 type AlertQueryService interface {
-	Query(options AlertQueryOptions) (interface{}, error)
+	AlertQuery(options AlertQueryOptions) (interface{}, error)
+}
+
+type NIAlertQueryService struct {
+}
+
+func (s *NIAlertQueryService) AlertQuery(options AlertQueryOptions) (interface{}, error) {
+	return nil, NotImplementedError
 }
 
 type EventQueryOptions struct {
@@ -95,13 +102,13 @@ func EventQueryOptionsFromHttpRequest(r *http.Request) EventQueryOptions {
 }
 
 type EventQueryService interface {
-	Query(options EventQueryOptions) (interface{}, error)
+	EventQuery(options EventQueryOptions) (interface{}, error)
 }
 
 type NotImplementedEventQueryService struct {
 }
 
-func (s *NotImplementedEventQueryService) Query(options EventQueryOptions) (interface{}, error) {
+func (s *NotImplementedEventQueryService) EventQuery(options EventQueryOptions) (interface{}, error) {
 	return nil, NotImplementedError
 }
 

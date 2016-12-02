@@ -1,5 +1,5 @@
-hash: 7c666e1c9e115a96aef2dde3eb0f353d79dacf5c499ee19679f9d367fe9c281e
-updated: 2016-11-30T09:33:24.759220477-06:00
+hash: ab81ca4ee0c0177fc790e94f6bfa60a857c762eeec7ef019454f3a616167ac0e
+updated: 2016-12-01T00:37:35.415476077-06:00
 imports:
 - name: github.com/google/gopacket
   version: c4d647984d4671d9dd91770dae77923a0b48b389
@@ -18,6 +18,8 @@ imports:
   version: d8eeeb8bae8896dd8e1b7e514ab0d396c4f12a1b
   subpackages:
   - oid
+- name: github.com/mattn/go-shellwords
+  version: 525bedee691b5a8df547cb5cf9f86b7fb1883e24
 - name: github.com/mattn/go-sqlite3
   version: 3fb7a0e792edd47bf0cf1e919dfc14e2be412e15
 - name: github.com/oschwald/geoip2-golang

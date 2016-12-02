@@ -130,7 +130,7 @@ func (s *AlertQueryService) get3TupleAggs() map[string]interface{} {
 	return aggs
 }
 
-func (s *AlertQueryService) Query(options core.AlertQueryOptions) (interface{}, error) {
+func (s *AlertQueryService) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
 
 	query := NewEventQuery()
 

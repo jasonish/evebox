@@ -51,7 +51,8 @@ func AlertsHandler(appContext AppContext, r *http.Request) interface{} {
 	options.QueryString = r.FormValue("queryString")
 	options.TimeRange = r.FormValue("timeRange")
 
-	results, err := appContext.AlertQueryService.Query(options)
+	//results, err := appContext.AlertQueryService.AlertQuery(options)
+	results, err := appContext.DataStore.AlertQuery(options)
 	if err != nil {
 		return err
 	}

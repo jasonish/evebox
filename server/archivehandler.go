@@ -47,8 +47,7 @@ func ArchiveHandler(appContext AppContext, r *http.Request) interface{} {
 		return err
 	}
 
-	err := appContext.EventService.ArchiveAlertGroup(request.ToCoreAlertGroupQueryParams())
-
+	err := appContext.DataStore.ArchiveAlertGroup(request.ToCoreAlertGroupQueryParams())
 	if err != nil {
 		log.Error("%v", err)
 		return err
