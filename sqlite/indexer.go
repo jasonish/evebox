@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"github.com/jasonish/evebox/eve"
 	"github.com/satori/go.uuid"
-	"time"
 )
 
 type SqliteIndexer struct {
@@ -37,7 +36,7 @@ func (i *SqliteIndexer) IndexRawEve(event eve.RawEveEvent) error {
 
 	eventId := uuid.NewV1()
 
-	timestamp, err := FormatTimestamp(event["timestamp"].(string))
+	timestamp, err := eveTs2SqliteTs(event["timestamp"].(string))
 	if err != nil {
 		return err
 	}
@@ -70,15 +69,4 @@ func (i *SqliteIndexer) Flush() (err error) {
 	}
 
 	return nil
-}
-
-// Format an event timestamp for use in a SQLite column. The format is
-// already correct, just needs to be converted to UTC.
-func FormatTimestamp(timestamp string) (string, error) {
-	var RFC3339Nano_Modified string = "2006-01-02T15:04:05.999999999Z0700"
-	result, err := time.Parse(RFC3339Nano_Modified, timestamp)
-	if err != nil {
-		return "", err
-	}
-	return result.UTC().Format("2006-01-02T15:04:05.999999999"), nil
 }

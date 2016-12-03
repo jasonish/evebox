@@ -46,41 +46,36 @@ func decodeRawEveEvent(rawBytes []byte) (map[string]interface{}, error) {
 func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
 
 	sql := `select
-	          count(*) as count,
-	          t1.id,
-		  t1.source,
-		  t1.archived
-	        from events t1
-	        LEFT OUTER JOIN events t2 ON
-	          json_extract(t1.source, '$.alert.signature') =
-		    json_extract(t2.source, '$.alert.signature')
-	          AND datetime(t1.timestamp) < datetime(t2.timestamp)
-	        %WHERE%
-	        GROUP BY json_extract(t1.source, '$.alert.signature'),
-		  json_extract(t1.source, '$.src_ip'),
-		  json_extract(t1.source, '$.dest_ip')
-		ORDER BY t1.timestamp DESC
-	`
+	          count(json_extract(a.source, '$.alert.signature')),
+	          case a.timestamp when max(a.timestamp) then a.id end,
+	          b.source,
+	          b.archived
+	         from events a
+	         join events b on a.id = b.id
+	         %WHERE%
+	         group by
+	           json_extract(a.source, '$.alert.signature'),
+	           json_extract(a.source, '$.src_ip'),
+	           json_extract(a.source, '$.dest_ip')
+	         order by json_extract(a.source, '$.timestamp') DESC`
 
 	builder := SqlBuilder{}
 
-	builder.WhereEquals("json_extract(t1.source, '$.event_type')", "alert")
+	builder.WhereEquals("json_extract(a.source, '$.event_type')", "alert")
 
 	if elasticsearch.StringSliceContains(options.MustHaveTags, "archived") {
-		builder.WhereEquals("t1.archived", 1)
+		builder.WhereEquals("b.archived", 1)
 	}
 
 	if elasticsearch.StringSliceContains(options.MustNotHaveTags, "archived") {
-		builder.WhereEquals("t1.archived", 0)
+		builder.WhereEquals("b.archived", 0)
 	}
 
 	if elasticsearch.StringSliceContains(options.MustHaveTags, "escalated") {
-		builder.WhereEquals("t1.escalated", 1)
+		builder.WhereEquals("b.escalated", 1)
 	}
 
 	sql = strings.Replace(sql, "%WHERE%", builder.BuildWhere(), 1)
-
-	log.Println(sql)
 
 	rows, err := s.db.Query(sql, builder.args...)
 	if err != nil {
@@ -131,11 +126,11 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 
 func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 
-	log.Println("ArchiveAlertGroup")
-
 	sql := `UPDATE events SET archived = 1 WHERE`
 
 	builder := SqlBuilder{}
+
+	builder.WhereEquals("archived", 0)
 
 	builder.WhereEquals(
 		"json_extract(events.source, '$.alert.signature_id')",
@@ -149,17 +144,25 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
 
-	builder.WhereLte("datetime(timestamp)", p.MaxTimestamp)
+	if p.MaxTimestamp != "" {
+		ts, err := eveTs2SqliteTs(p.MaxTimestamp)
+		if err != nil {
+			return err
+		}
+		builder.WhereLte("timestamp", ts)
+	}
 
 	sql = strings.Replace(sql, "WHERE", builder.BuildWhere(), 1)
 
-	log.Println(sql)
-	log.Println(builder.args)
-
-	_, err := s.db.DB.Exec(sql, builder.args...)
+	start := time.Now()
+	r, err := s.db.DB.Exec(sql, builder.args...)
 	if err != nil {
 		return err
 	}
+	rows, _ := r.RowsAffected()
+	log.Debug("Archived %d alerts.", rows)
+	duration := time.Now().Sub(start).Seconds()
+	log.Debug("Archive query time: %v", duration)
 
 	return nil
 }
