@@ -3,6 +3,11 @@ $icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
 
 @import "./common.scss";
 
+.raised-background {
+  background-color: white;
+  z-index: 9000;
+}
+
 table.table.evebox-event-table {
 
   th {

@@ -48,65 +48,92 @@ export interface AlertsState {
 }
 
 @Component({
-    template: `
-<div [@loadingState]="!rows || (!silentRefresh && loading) ? 'true' : 'false'">
+    template: `<div [@loadingState]="!rows || (!silentRefresh && loading) ? 'true' : 'false'">
 
   <loading-spinner [loading]="!rows || !silentRefresh && loading"></loading-spinner>
 
   <!-- Button and filter bar. -->
-  <div class="row">
-    <div class="col-md-6">
-      <button type="button" class="btn btn-default" (click)="refresh()">
-        Refresh
-      </button>
-      <button *ngIf="rows && rows.length > 0 && !allSelected()" type="button"
-              class="btn btn-default"
-              (click)="selectAllRows()">Select All
-      </button>
-      <button *ngIf="rows && rows.length > 0 && allSelected()" type="button"
-              class="btn btn-default"
-              (click)="deselectAllRows()">Deselect All
-      </button>
-      <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-              type="button"
-              class="btn btn-default"
-              (click)="archiveSelected()">Archive
-      </button>
-      <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-              type="button"
-              class="btn btn-default"
-              (click)="escalateSelected()">Escalate
-      </button>
-    </div>
-    <div class="col-md-6">
-
-      <br class="hidden-lg hidden-md"/>
-
-      <form (submit)="submitFilter()">
-        <div class="input-group">
-          <input id="filter-input" type="text" class="form-control"
-                 placeholder="Filter..." [(ngModel)]="queryString" name="queryString"/>
-          <div class="input-group-btn">
-            <button class="btn btn-default" type="submit">Apply
-            </button>
-            <button type="button" class="btn btn-default" (click)="clearFilter()">Clear</button>
-          </div>
+  <div style="position: relative;">
+  
+    <!-- Padding that allows the navbar border to show, but creates an opaque
+         background so the scrolling event table won't be seen. -->
+    <div class="raised-background"
+         style="position: fixed; width: 100%; height: 19px; margin-top: 1px;"></div>
+         
+    <!-- Fixes the button/search bar in place, and hides the page as it scrolls
+         underneath. -->
+    <div class="raised-background"
+         style="position: fixed; width: 100%; margin-top: 20px;">
+      <div class="row" style="margin-right: 14px;">
+        <div class="col-md-6">
+          <button type="button" class="btn btn-default" (click)="refresh()">
+            Refresh
+          </button>
+          <button *ngIf="rows && rows.length > 0 && !allSelected()"
+                  type="button"
+                  class="btn btn-default"
+                  (click)="selectAllRows()">Select All
+          </button>
+          <button *ngIf="rows && rows.length > 0 && allSelected()" type="button"
+                  class="btn btn-default"
+                  (click)="deselectAllRows()">Deselect All
+          </button>
+          <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                  type="button"
+                  class="btn btn-default"
+                  (click)="archiveSelected()">Archive
+          </button>
+          <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                  type="button"
+                  class="btn btn-default"
+                  (click)="escalateSelected()">Escalate
+          </button>
         </div>
-      </form>
+        <div class="col-md-6">
+
+          <br class="hidden-lg hidden-md"/>
+
+          <form (submit)="submitFilter()">
+            <div class="input-group">
+              <input id="filter-input"
+                     type="text"
+                     class="form-control"
+                     placeholder="Filter..."
+                     [(ngModel)]="queryString"
+                     name="queryString"/>
+              <div class="input-group-btn">
+                <button class="btn btn-default" type="submit">Apply
+                </button>
+                <button type="button"
+                        class="btn btn-default"
+                        (click)="clearFilter()">Clear
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <!-- More padding underneath the button bar that the page will scroll
+           "underneath". -->
+      <div class="raised-background"
+           style="position: fixed; width: 100%; height: 15px; z-index: 1000;"></div>
     </div>
   </div>
 
+  <!-- Pushes the start of the table down below the button bar. -->
+  <div style="width: 100%; height: 70px;"></div>
+  
+  <!-- On a narrow view port the page needs to be pushed down some more. -->
+  <div class="hidden-lg hidden-md" style="width: 100%; height: 53px;"></div>
+  
   <div *ngIf="rows && rows.length == 0" style="text-align: center;">
     <hr/>
     No events found.
     <hr/>
   </div>
 
-  <br/>
-
   <alert-table
       *ngIf="rows && rows.length > 0"
-
       (rowClicked)="rowClicked($event)"
       (toggleEscalation)="toggleEscalatedState($event)"
       (archiveEvent)="archiveAlertGroup($event)"

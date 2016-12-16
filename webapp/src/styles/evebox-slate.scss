@@ -5,6 +5,11 @@ $icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
 
 @import "./common.scss";
 
+.raised-background {
+  background-color: #272B30;
+  z-index: 9000;
+}
+
 .form-control {
 
   // Darken up form-control backgrounds a little.

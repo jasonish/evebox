@@ -35,7 +35,7 @@ import {EveboxSubscriptionService} from "./subscription.service";
 import {loadingAnimation} from "./animations";
 
 @Component({
-    template: `<div [@loadingState]="(!resultSet || loading) ? 'true' : 'false'">
+    template: `<div class="content" [@loadingState]="(!resultSet || loading) ? 'true' : 'false'">
 
   <loading-spinner [loading]="loading"></loading-spinner>
 
