@@ -51,7 +51,7 @@ resources/public/bundle.js: $(WEBAPP_SRCS)
 	cd webapp && $(MAKE)
 public: resources/public/bundle.js
 
-resources/bindata.go: $(RESOURCES)
+resources/bindata.go: $(RESOURCES) resources/public/bundle.js
 	go generate ./resources/...
 
 # Build's EveBox for the host platform.
