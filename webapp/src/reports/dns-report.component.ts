@@ -36,7 +36,7 @@ import {TopNavService} from "../topnav.service";
 import moment = require("moment");
 
 @Component({
-    template: `<div [ngClass]="{'evebox-opacity-50': loading > 0}">
+    template: `<div class="content" [ngClass]="{'evebox-opacity-50': loading > 0}">
 
   <loading-spinner [loading]="loading > 0"></loading-spinner>
 

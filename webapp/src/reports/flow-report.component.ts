@@ -37,7 +37,7 @@ import {ApiService, ReportAggOptions} from "../api.service";
 import moment = require("moment");
 
 @Component({
-    template: `<div [@loadingState]="(loading > 0) ? 'true' : 'false'">
+    template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
   <loading-spinner [loading]="loading > 0"></loading-spinner>
 
