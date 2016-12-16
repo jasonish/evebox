@@ -137,8 +137,8 @@ func Main(args []string) {
 	appContext.EventQueryService = elasticsearch.NewEventQueryService(elasticSearch)
 	appContext.ReportService = elasticsearch.NewReportService(elasticSearch)
 
-	//dataStoreType := "elasticsearch"
-	dataStoreType := "sqlite"
+	dataStoreType := "elasticsearch"
+	//dataStoreType := "sqlite"
 
 	if dataStoreType == "elasticsearch" {
 		appContext.DataStore, err = elasticsearch.NewDataStore(elasticSearch)
