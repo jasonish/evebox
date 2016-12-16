@@ -9,7 +9,9 @@ LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildDate=$(BUILD_DATE)\" \
 		-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
 		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
 
-TAGS :=		'fts5 json1'
+#TAGS :=		'fts5 json1'
+TAGS :=		''
+CGO_ENABLED :=	0
 
 APP :=		evebox
 
@@ -54,7 +56,7 @@ resources/bindata.go: $(RESOURCES)
 
 # Build's EveBox for the host platform.
 evebox: Makefile $(GO_SRCS) resources/bindata.go
-	go build --tags $(TAGS) -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
+	CGO_ENABLED=$(CGO_ENABLED) go build --tags $(TAGS) -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
 
 # Format all go source code except in the vendor directory.
 gofmt:
@@ -94,7 +96,7 @@ dist: GOOS ?= $(shell go env GOOS)
 dist: DISTNAME ?= ${APP}-${VERSION}${VERSION_SUFFIX}-${GOOS}-${GOARCH}
 dist: LDFLAGS += -s -w
 dist: resources/public/bundle.js resources/bindata.go
-	GOARCH=$(GOARCH) GOOS=$(GOOS) \
+	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags $(TAGS) -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
