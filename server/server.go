@@ -27,9 +27,10 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox/log"
-	"net/http"
 )
 
 type Router struct {
@@ -64,8 +65,16 @@ type ApiRouter struct {
 	router     *Router
 }
 
+func (r *ApiRouter) Handle(path string, handler ApiHandlerFunc) {
+	r.router.Handle(path, ApiF(r.appContext, handler))
+}
+
 func (r *ApiRouter) GET(path string, handler ApiHandlerFunc) {
 	r.router.GET(path, ApiF(r.appContext, handler))
+}
+
+func (r *ApiRouter) POST(path string, handler ApiHandlerFunc) {
+	r.router.POST(path, ApiF(r.appContext, handler))
 }
 
 type Server struct {
@@ -91,5 +100,35 @@ func (s *Server) RegisterApiHandlers() {
 
 	apiRouter := ApiRouter{s.appContext, s.router}
 
+	apiRouter.Handle("/api/1/archive", ArchiveHandler)
+	apiRouter.Handle("/api/1/escalate", EscalateHandler)
+
+	apiRouter.POST("/api/1/alert-group/add-tags", AlertGroupAddTags)
+	apiRouter.POST("/api/1/alert-group/remove-tags", AlertGroupRemoveTags)
+
+	apiRouter.Handle("/api/1/event/{id}", GetEventByIdHandler)
+
+	apiRouter.POST("/api/1/event/{id}/archive", ArchiveEventHandler)
+	apiRouter.POST("/api/1/event/{id}/escalate", EscalateEventHandler)
+	apiRouter.POST("/api/1/event/{id}/de-escalate", DeEscalateEventHandler)
+
+	apiRouter.Handle("/api/1/config", ConfigHandler)
+	apiRouter.Handle("/api/1/version", VersionHandler)
+	apiRouter.Handle("/api/1/eve2pcap", Eve2PcapHandler)
+
+	apiRouter.GET("/api/1/alerts", AlertsHandler)
+	apiRouter.GET("/api/1/event-query", EventQueryHandler)
+
+	apiRouter.Handle("/api/1/query", QueryHandler)
+
+	apiRouter.Handle("/api/1/_bulk", EsBulkHandler)
+
+	apiRouter.GET("/api/1/report/dns/requests/rrnames", ReportDnsRequestRrnames)
+	apiRouter.POST("/api/1/report/dns/requests/rrnames", ReportDnsRequestRrnames)
+
 	apiRouter.GET("/api/1/netflow", NetflowHandler)
+
+	apiRouter.GET("/api/1/report/agg", ReportAggs)
+	apiRouter.GET("/api/1/report/histogram", ReportHistogram)
+
 }

@@ -153,51 +153,6 @@ func Main(args []string) {
 	}
 
 	router := server.NewRouter()
-
-	router.Handle("/api/1/archive",
-		server.ApiF(appContext, server.ArchiveHandler))
-	router.Handle("/api/1/escalate",
-		server.ApiF(appContext, server.EscalateHandler))
-
-	router.POST("/api/1/alert-group/add-tags",
-		server.ApiF(appContext, server.AlertGroupAddTags))
-	router.POST("/api/1/alert-group/remove-tags",
-		server.ApiF(appContext, server.AlertGroupRemoveTags))
-
-	router.Handle("/api/1/event/{id}",
-		server.ApiF(appContext, server.GetEventByIdHandler))
-
-	router.POST("/api/1/event/{id}/archive", server.ApiF(appContext, server.ArchiveEventHandler))
-	router.POST("/api/1/event/{id}/escalate", server.ApiF(appContext, server.EscalateEventHandler))
-	router.POST("/api/1/event/{id}/de-escalate", server.ApiF(appContext, server.DeEscalateEventHandler))
-
-	router.Handle("/api/1/config",
-		server.ApiF(appContext, server.ConfigHandler))
-	router.Handle("/api/1/version",
-		server.ApiF(appContext, server.VersionHandler))
-	router.Handle("/api/1/eve2pcap", server.ApiF(appContext, server.Eve2PcapHandler))
-
-	router.GET("/api/1/alerts", server.ApiF(appContext, server.AlertsHandler))
-	router.GET("/api/1/event-query", server.ApiF(appContext, server.EventQueryHandler))
-
-	router.Handle("/api/1/query", server.ApiF(appContext, server.QueryHandler))
-
-	router.Handle("/api/1/_bulk", server.ApiF(appContext, server.EsBulkHandler))
-
-	router.GET("/api/1/report/dns/requests/rrnames", server.ApiF(appContext, server.ReportDnsRequestRrnames))
-	router.POST("/api/1/report/dns/requests/rrnames", server.ApiF(appContext, server.ReportDnsRequestRrnames))
-
-	router.GET("/api/1/report/agg", server.ApiF(appContext, server.ReportAggs))
-	router.GET("/api/1/report/histogram", server.ApiF(appContext, server.ReportHistogram))
-
-	// /api/1/report/netflow/sources/bytes
-	// /api/1/report/netflow/sources/packets
-
-	// /api/1/report/netflow/destinations/bytes
-	// /api/1/report/netflow/destinations/packets
-
-	// This all needs some cleanup...
-
 	httpServer := server.NewServer(appContext, router)
 	httpServer.RegisterApiHandlers()
 
