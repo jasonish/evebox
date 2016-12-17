@@ -131,4 +131,5 @@ func (s *Server) RegisterApiHandlers() {
 	apiRouter.GET("/api/1/report/agg", ReportAggs)
 	apiRouter.GET("/api/1/report/histogram", ReportHistogram)
 
+	apiRouter.POST("/api/1/submit", SubmitHandler)
 }
