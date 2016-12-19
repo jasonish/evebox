@@ -1,6 +1,5 @@
 package: github.com/jasonish/evebox
 import:
-- package: github.com/jessevdk/go-flags
 - package: github.com/kardianos/osext
 - package: gopkg.in/yaml.v2
 - package: golang.org/x/net

@@ -36,7 +36,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
-	"github.com/jessevdk/go-flags"
+	flag "github.com/spf13/pflag"
 )
 
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
@@ -44,14 +44,14 @@ const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
 var opts struct {
 	// We don't provide a default for this one so we can easily
 	// detect if its been set or not.
-	ElasticSearchUri   string `long:"elasticsearch" short:"e" description:"Elastic Search URI (default: http://localhost:9200)"`
-	ElasticSearchIndex string `long:"index" short:"i" description:"Elastic Search Index (default: logstash)"`
-	Port               string `long:"port" short:"p" default:"5636" description:"Port to bind to"`
-	Host               string `long:"host" default:"0.0.0.0" description:"Host to bind to"`
-	DevServerUri       string `long:"dev" description:"Frontend development server URI"`
-	Version            bool   `long:"version" description:"Show version"`
-	Config             string `long:"config" short:"c" description:"Configuration filename"`
-	NoCheckCertificate bool   `long:"no-check-certificate" short:"k" description:"Disable certificate check for Elastic Search"`
+	ElasticSearchUri   string
+	ElasticSearchIndex string
+	Port               string
+	Host               string
+	DevServerUri       string
+	Version            bool
+	Config             string
+	NoCheckCertificate bool
 }
 
 var conf *config.Config
@@ -87,11 +87,20 @@ func getElasticSearchIndex() string {
 
 func Main(args []string) {
 
-	_, err := flags.ParseArgs(&opts, args)
-	if err != nil {
-		// flags.Parse should have already presented an error message.
-		os.Exit(1)
-	}
+	var err error
+
+	flagset := flag.NewFlagSet("server", flag.ExitOnError)
+
+	flagset.StringVarP(&opts.ElasticSearchUri, "elasticsearch", "e", "", "Elastic Search URI (default: http://localhost:9200")
+	flagset.StringVarP(&opts.ElasticSearchIndex, "index", "i", "", "Elastic Search Index (default: logstash)")
+	flagset.StringVarP(&opts.Port, "port", "p", "5636", "Port to bind to")
+	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
+	flagset.StringVarP(&opts.DevServerUri, "dev", "", "", "Frontend development server URI")
+	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
+	flagset.StringVarP(&opts.Config, "config", "c", "", "Configuration filename")
+	flagset.BoolVarP(&opts.NoCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check for Elastic Search")
+
+	flagset.Parse(args[0:])
 
 	if opts.Version {
 		VersionMain()
