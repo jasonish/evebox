@@ -1,19 +1,27 @@
 # Version info.
-VERSION		:=	0.6.0
 VERSION_SUFFIX	:=	dev
+VERSION		:=	0.6.0${VERSION_SUFFIX}
 BUILD_DATE	:=	$(shell TZ=UTC date)
 BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 
 LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildDate=$(BUILD_DATE)\" \
 		-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
-		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
+		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)\" \
 
-#TAGS :=		'fts5 json1'
-TAGS :=		''
-CGO_ENABLED :=	0
+# Tags required to build with sqlite - cgo must also be enabled.
+TAGS :=		'fts5 json1'
+
+ifdef WITH_SQLITE
+CGO_ENABLED :=	1
+else
+CGO_ENABLED ?= 	0
+endif
 
 APP :=		evebox
+
+GOOS ?=		$(shell go env GOOS)
+GOARCH ?=	$(shell go env GOARCH)
 
 WEBAPP_SRCS :=	$(shell find webapp/src -type f)
 GO_SRCS :=	$(shell find . -name \*.go)
@@ -88,13 +96,14 @@ dev-server: evebox
 # Helper for dev-server mode, watches evebox Go source and rebuilds and
 # restarts as needed.
 dev-server-reflex: evebox
-	reflex -s -R 'bindata\.go' -r '\.go$$' -- sh -c "make evebox && ./evebox \
-		--dev http://localhost:8080"
+	reflex -s -R 'bindata\.go' -r '\.go$$' -- \
+		sh -c "make evebox && ./evebox --dev http://localhost:8080"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
-dist: DISTNAME ?= ${APP}-${VERSION}${VERSION_SUFFIX}-${GOOS}-${GOARCH}
+dist: DISTNAME ?= ${APP}$(DIST_SUFFIX)-${VERSION}-${GOOS}-${GOARCH}
 dist: LDFLAGS += -s -w
+dist: CGO_ENABLED ?= $(CGO_ENABLED)
 dist: resources/public/bundle.js resources/bindata.go
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags $(TAGS) -ldflags "$(LDFLAGS)" \
@@ -103,6 +112,7 @@ dist: resources/public/bundle.js resources/bindata.go
 
 release:
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
+	CGO_ENABLED=1 DIST_SUFFIX="-sqlite" GOOS=linux GOARCH=amd64 $(MAKE) dist
 	GOOS=linux GOARCH=386 $(MAKE) dist
 	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
@@ -121,7 +131,7 @@ deb:
 		--epoch $(EPOCH) \
 		-v $(VERSION)$(TILDE) \
 		--after-upgrade=deb/after-upgrade.sh \
-		dist/${APP}-${VERSION}${VERSION_SUFFIX}-linux-amd64/evebox=/usr/bin/evebox \
+		dist/${APP}-${VERSION}-linux-amd64/evebox=/usr/bin/evebox \
 		deb/evebox.default=/etc/default/evebox \
 		deb/evebox.service=/lib/systemd/system/evebox.service
 
@@ -133,10 +143,9 @@ deb:
 		-v $(VERSION)$(TILDE) \
 		--after-upgrade=deb/after-upgrade.sh \
 		-a i386 \
-		dist/${APP}-${VERSION}${VERSION_SUFFIX}-linux-386/evebox=/usr/bin/evebox \
+		dist/${APP}-${VERSION}-linux-386/evebox=/usr/bin/evebox \
 		deb/evebox.default=/etc/default/evebox \
 		deb/evebox.service=/lib/systemd/system/evebox.service
-
 
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
@@ -153,6 +162,6 @@ rpm:
 		--after-upgrade=rpm/after-upgrade.sh \
 		--iteration $(RPM_ITERATION) \
 		--config-files /etc/sysconfig/evebox \
-		dist/${APP}-${VERSION}${VERSION_SUFFIX}-linux-amd64/evebox=/usr/bin/evebox \
+		dist/${APP}-${VERSION}-linux-amd64/evebox=/usr/bin/evebox \
 		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 		rpm/evebox.service=/lib/systemd/system/evebox.service
