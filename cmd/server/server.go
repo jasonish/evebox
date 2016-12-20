@@ -52,6 +52,9 @@ var opts struct {
 	Version            bool
 	Config             string
 	NoCheckCertificate bool
+
+	// If true, use SQLite, otherwise use Elastic Search.
+	Sqlite bool
 }
 
 var conf *config.Config
@@ -99,6 +102,8 @@ func Main(args []string) {
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
 	flagset.StringVarP(&opts.Config, "config", "c", "", "Configuration filename")
 	flagset.BoolVarP(&opts.NoCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check for Elastic Search")
+
+	flagset.BoolVarP(&opts.Sqlite, "sqlite", "", false, "Use SQLite for the event store")
 
 	flagset.Parse(args[0:])
 
@@ -148,15 +153,17 @@ func Main(args []string) {
 
 	appContext.Vars.DevWebAppServerUrl = opts.DevServerUri
 
-	dataStoreType := "elasticsearch"
-	//dataStoreType := "sqlite"
+	var datastoreType string = "elasticsearch"
+	if opts.Sqlite {
+		datastoreType = "sqlite"
+	}
 
-	if dataStoreType == "elasticsearch" {
+	if datastoreType == "elasticsearch" {
 		appContext.DataStore, err = elasticsearch.NewDataStore(elasticSearch)
 		if err != nil {
 			log.Fatal(err)
 		}
-	} else if dataStoreType == "sqlite" {
+	} else if datastoreType == "sqlite" {
 		appContext.DataStore, err = sqlite.NewDataStore()
 		if err != nil {
 			log.Fatal(err)
