@@ -48,4 +48,10 @@ type AppContext struct {
 	EsEventService elasticsearch.EventService
 
 	ReportService core.ReportService
+
+	Vars struct {
+
+		// URL to the frontend web application development server.
+		DevWebAppServerUrl string
+	}
 }

@@ -82,11 +82,16 @@ type Server struct {
 	router     *Router
 }
 
-func NewServer(appContext AppContext, router *Router) *Server {
+func NewServer(appContext AppContext) *Server {
+
+	router := NewRouter()
+
 	server := &Server{
 		appContext: appContext,
 		router:     router,
 	}
+
+	server.RegisterApiHandlers()
 
 	return server
 }
@@ -132,4 +137,8 @@ func (s *Server) RegisterApiHandlers() {
 	apiRouter.GET("/api/1/report/histogram", ReportHistogram)
 
 	apiRouter.POST("/api/1/submit", SubmitHandler)
+
+	// Static file server, must be last as it serves as the fallback.
+	s.router.Prefix("/", StaticHandlerFactory(s.appContext))
+
 }

@@ -34,11 +34,11 @@ import (
 	"net/url"
 )
 
-func StaticHandlerFactory(devServerUri string) http.Handler {
-	if devServerUri != "" {
+func StaticHandlerFactory(appContext AppContext) http.Handler {
+	if appContext.Vars.DevWebAppServerUrl != "" {
 		log.Notice("Proxying static files to %v.",
-			devServerUri)
-		devServerProxyUrl, err := url.Parse(devServerUri)
+			appContext.Vars.DevWebAppServerUrl)
+		devServerProxyUrl, err := url.Parse(appContext.Vars.DevWebAppServerUrl)
 		if err != nil {
 			log.Fatal(err)
 		}

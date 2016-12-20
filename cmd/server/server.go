@@ -146,6 +146,8 @@ func Main(args []string) {
 	appContext.EventQueryService = elasticsearch.NewEventQueryService(elasticSearch)
 	appContext.ReportService = elasticsearch.NewReportService(elasticSearch)
 
+	appContext.Vars.DevWebAppServerUrl = opts.DevServerUri
+
 	dataStoreType := "elasticsearch"
 	//dataStoreType := "sqlite"
 
@@ -161,13 +163,7 @@ func Main(args []string) {
 		}
 	}
 
-	router := server.NewRouter()
-	httpServer := server.NewServer(appContext, router)
-	httpServer.RegisterApiHandlers()
-
-	// Static file server, must be last as it serves as the fallback.
-	router.Prefix("/", server.StaticHandlerFactory(opts.DevServerUri))
-
+	httpServer := server.NewServer(appContext)
 	err = httpServer.Start(opts.Host + ":" + opts.Port)
 	if err != nil {
 		log.Fatal(err)
