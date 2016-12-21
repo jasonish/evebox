@@ -7,7 +7,7 @@ module.exports = {
     devtool: "source-map",
 
     entry: {
-        app: './src/main.ts'
+        app: './src/entry.ts'
     },
 
     resolve: {
