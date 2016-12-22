@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "RUN_MODE=development ./node_modules/.bin/webpack-dev-server --inline --progress --port 8080 --content-base ../resources/public",
     "lint": "tslint \"src/**/*.ts\"",
     "test": "ng test",
     "pree2e": "webdriver-manager update --standalone false --gecko false",
@@ -45,8 +45,11 @@
     "@types/jasmine": "2.5.38",
     "@types/node": "^6.0.42",
     "angular-cli": "1.0.0-beta.24",
+    "angular2-template-loader": "^0.6.0",
     "codelyzer": "~2.0.0-beta.1",
     "concurrently": "^3.1.0",
+    "css-loader": "^0.26.1",
+    "html-loader": "^0.4.4",
     "jasmine-core": "2.5.2",
     "jasmine-spec-reporter": "2.5.0",
     "karma": "1.2.0",
@@ -55,8 +58,16 @@
     "karma-jasmine": "^1.0.2",
     "karma-remap-istanbul": "^0.2.1",
     "protractor": "~4.0.13",
+    "raw-loader": "^0.5.1",
+    "sass-loader": "^4.1.1",
+    "script-loader": "^0.7.0",
+    "style-loader": "^0.13.1",
+    "ts-loader": "^1.3.3",
     "ts-node": "1.2.1",
     "tslint": "^4.0.2",
-    "typescript": "~2.0.3"
+    "typescript": "~2.0.3",
+    "url-loader": "^0.5.7",
+    "webpack": "^1.14.0",
+    "webpack-dev-server": "^1.16.2"
   }
 }

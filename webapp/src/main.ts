@@ -20,10 +20,10 @@ if (environment.production) {
 // Set theme.
 switch (localStorage.theme) {
     case "slate":
-        require("style!styles/evebox-slate.scss");
+        require("./styles/evebox-slate.scss");
         break;
     default:
-        require("style!styles/evebox-default.scss");
+        require("./styles/evebox-default.scss");
         break;
 }
 
