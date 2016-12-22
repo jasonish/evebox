@@ -151,7 +151,8 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 	}
 	template, err := es.GetTemplate(index)
 	if err != nil {
-		return "", err
+		log.Warning("Failed to get template from Elastic Search, will use \"raw\" for keyword")
+		return "raw", nil
 	}
 
 	dynamicTemplates := template.GetMap(index).
