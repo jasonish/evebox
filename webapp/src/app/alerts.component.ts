@@ -35,7 +35,6 @@ import {ToastrService} from "./toastr.service";
 import {TopNavService} from "./topnav.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {loadingAnimation} from "./animations";
-//import moment = require("moment");
 import * as moment from "moment";
 
 declare var window:any;
@@ -542,6 +541,15 @@ export class AlertsComponent implements OnInit, OnDestroy {
             this.rows = rows;
         }, (error:any) => {
 
+            this.rows = [];
+
+            if (typeof error === "object") {
+                if (error.message) {
+                    this.toastr.error(error.message);
+                    return;
+                }
+            }
+
             console.log("Error fetching alerts:");
             console.log(error);
 
@@ -553,7 +561,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 this.toastr.error("An error occurred while executing query.");
             }
 
-            this.rows = [];
 
         }).then(() => {
             this.activeRow = 0;

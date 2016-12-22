@@ -43,15 +43,28 @@ export class ApiService {
     get(path:string, options = {}):Promise<any> {
         return this.http.get(`${this.baseUrl}${path}`, options)
             .map((res:Response) => res.json())
-            .toPromise();
+            .toPromise()
+            .then((response:any) => {
+                return response;
+            }, (response:any) => {
+                let error:any;
+                try {
+                    error = JSON.parse(response._body);
+                } catch (err) {
+                    console.log("Failed to parse response body.");
+                    console.log(err);
+                    error = response;
+                }
+                throw error;
+            });
     }
 
-    getWithParams(path:string, params={}):Promise<any> {
+    getWithParams(path:string, params = {}):Promise<any> {
 
         let qsb:any = [];
 
         for (let param in params) {
-                    qsb.push(`${param}=${params[param]}`);
+            qsb.push(`${param}=${params[param]}`);
         }
 
         return this.get(`${path}?${qsb.join("&")}`);
