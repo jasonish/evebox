@@ -30,7 +30,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
+	"github.com/pkg/errors"
 )
 
 type HttpStatusResponseBody struct {
@@ -102,12 +104,26 @@ func (h ApiWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if response != nil {
 		switch response := response.(type) {
 		case error:
+
+			log.Error("%+v", response)
+
+			var message string
+
+			switch cause := errors.Cause(response).(type) {
+			case *elasticsearch.DatastoreError:
+				message = cause.Message
+			}
+
+			if message == "" {
+				message = response.Error()
+			}
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			encoder := json.NewEncoder(w)
 			encoder.Encode(HttpStatusResponseBody{
 				StatusCode: http.StatusBadRequest,
-				Message:    response.Error(),
+				Message:    message,
 			})
 		case HttpResponse:
 			statusCode := http.StatusOK

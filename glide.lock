@@ -1,5 +1,5 @@
-hash: ab81ca4ee0c0177fc790e94f6bfa60a857c762eeec7ef019454f3a616167ac0e
-updated: 2016-12-01T00:37:35.415476077-06:00
+hash: 5c2500f6d9060e51a305ec16be60bc0d8c5cc0798ce02b5b83fffe8b68dc2fc0
+updated: 2016-12-22T13:58:19.234336852-06:00
 imports:
 - name: github.com/google/gopacket
   version: c4d647984d4671d9dd91770dae77923a0b48b389
@@ -24,6 +24,8 @@ imports:
   version: ccee6e9d9b1ee5cee16ac664bc1982952edfb13d
 - name: github.com/oschwald/maxminddb-golang
   version: f4aa55714a3f843869ca9a38625e177a627c1ce6
+- name: github.com/pkg/errors
+  version: 248dadf4e9068a0b3e79f02ed0a610d935de5302
 - name: github.com/satori/go.uuid
   version: 0aa62d5ddceb50dbcb909d790b5345affd3669b6
 - name: github.com/spf13/pflag

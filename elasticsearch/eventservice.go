@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -343,7 +344,7 @@ func (s *EventService) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, ta
 		"size": 10000,
 	}
 
-	log.Println(ToJson(query))
+	log.Println(util.ToJson(query))
 
 	searchResponse, err := s.es.SearchScroll(query, "1m")
 	if err != nil {
@@ -448,7 +449,7 @@ func (s *EventService) FindNetflow(options core.EventQueryOptions, sortBy string
 		query.Size = size
 	}
 
-	log.Println(ToJsonPretty(query))
+	log.Println(util.ToJsonPretty(query))
 
 	response, err := s.es.Search(query)
 	if err != nil {

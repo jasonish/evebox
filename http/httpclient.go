@@ -31,6 +31,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net"
@@ -85,7 +86,11 @@ func (c *HttpClient) Do(request *http.Request) (*http.Response, error) {
 	if c.username != "" || c.password != "" {
 		request.SetBasicAuth(c.username, c.password)
 	}
-	return c.httpClient.Do(request)
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return response, errors.Wrap(err, "")
+	}
+	return response, err
 }
 
 func (c *HttpClient) Request(method string, path string, contentType string, body io.Reader) (*http.Response, error) {

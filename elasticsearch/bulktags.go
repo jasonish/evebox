@@ -28,6 +28,7 @@ package elasticsearch
 
 import (
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
 	"net/http"
 	"strings"
 )
@@ -68,14 +69,14 @@ func bulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
 				"_index": index,
 			},
 		}
-		bulk = append(bulk, ToJson(command))
+		bulk = append(bulk, util.ToJson(command))
 
 		partial := m{
 			"doc": m{
 				"tags": tags,
 			},
 		}
-		bulk = append(bulk, ToJson(partial))
+		bulk = append(bulk, util.ToJson(partial))
 	}
 
 	// Needs to finish with a new line.
@@ -120,5 +121,5 @@ func logBulkUpdateError(item map[string]interface{}) {
 	if error == nil {
 		return
 	}
-	log.Notice("Elastic Search bulk update error: %s", ToJson(error))
+	log.Notice("Elastic Search bulk update error: %s", util.ToJson(error))
 }

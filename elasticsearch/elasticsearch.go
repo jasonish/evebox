@@ -37,6 +37,7 @@ import (
 
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/resources"
+	"github.com/pkg/errors"
 	"io/ioutil"
 )
 
@@ -224,11 +225,30 @@ func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 	return nil
 }
 
+type DatastoreError struct {
+	Message string
+	Cause   error
+}
+
+func (e *DatastoreError) Error() string {
+	if e.Message != "" && e.Cause != nil {
+		return fmt.Sprintf("%s: %s", e.Message, e.Cause.Error())
+	} else if e.Message != "" {
+		return e.Message
+	} else if e.Cause != nil {
+		return e.Cause.Error()
+	}
+	return ""
+}
+
 func (es *ElasticSearch) Search(query interface{}) (*SearchResponse, error) {
 	path := fmt.Sprintf("%s/_search", es.EventSearchIndex)
 	response, err := es.HttpClient.PostJson(path, query)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(&DatastoreError{
+			Message: "Failed to connect to Elastic Search",
+			Cause:   err,
+		})
 	}
 	result := SearchResponse{}
 	if err := es.Decode(response, &result); err != nil {

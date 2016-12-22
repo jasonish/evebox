@@ -18,3 +18,4 @@ import:
   subpackages:
   - unix
 - package: github.com/mattn/go-shellwords
+- package: github.com/pkg/errors

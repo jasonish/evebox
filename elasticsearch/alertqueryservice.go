@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
-	"github.com/jasonish/evebox/log"
 	"sort"
 	"time"
 )
@@ -187,7 +186,6 @@ func (s *AlertQueryService) AlertQuery(options core.AlertQueryOptions) (interfac
 
 	results, err := s.es.Search(query)
 	if err != nil {
-		log.Error("%v", err)
 		return nil, err
 	}
 
