@@ -24,45 +24,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnInit, OnDestroy, NgZone} from "@angular/core";
-import moment = require("moment");
+import {Pipe, PipeTransform} from "@angular/core";
 
-@Component({
-    selector: "evebox-duration",
-    template: "{{duration}} ago"
+//import moment = require("moment");
+import * as moment from "moment";
+
+@Pipe({
+    name: "eveboxFormatTimestamp"
 })
-export class EveboxDurationComponent implements OnInit, OnDestroy {
+export class EveboxFormatTimestampPipe implements PipeTransform {
 
-    @Input("timestamp") private timestamp:any;
-    private duration:any;
-    private interval:any = null;
-
-    constructor(private ngZone:NgZone) {
-    }
-
-    refresh() {
-        let then = moment(this.timestamp);
-        let now = moment();
-        let diff = then.diff(now);
-        let duration = moment.duration(diff);
-        //noinspection TypeScriptUnresolvedFunction
-        this.duration = duration.humanize();
-    }
-
-    ngOnInit() {
-        this.refresh();
-
-        this.interval = window.setInterval(() => {
-            this.ngZone.run(() => {
-                this.refresh();
-            });
-        }, 60000);
-    }
-
-    ngOnDestroy():any {
-        if (this.interval != null) {
-            clearInterval(this.interval);
-        }
+    transform(timestamp:string) {
+        return moment(timestamp).format("YYYY-MM-DD HH:mm:ss");
     }
 
 }

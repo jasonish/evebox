@@ -1,5 +1,6 @@
 import {Injectable} from "@angular/core";
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 
 @Injectable()
 export class TopNavService  {

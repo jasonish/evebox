@@ -1,8 +1,7 @@
-$icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
+$icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 @import "~bootswatch/slate/variables";
 @import "~bootstrap-sass/assets/stylesheets/bootstrap";
 @import "~bootswatch/slate/bootswatch";
-
 @import "./common.scss";
 
 .raised-background {

@@ -23,34 +23,47 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-import {Injectable} from "@angular/core";
-import moment = require("moment");
 
-@Injectable()
-export class ReportsService {
+import {Component, Input, OnInit, OnDestroy, NgZone} from "@angular/core";
+//import moment = require("moment");
+import * as moment from "moment";
 
-    histogramTimeInterval(range:number):string {
-        let interval:string = "day";
+@Component({
+    selector: "evebox-duration",
+    template: "{{duration}} ago"
+})
+export class EveboxDurationComponent implements OnInit, OnDestroy {
 
-        if (range == 0) {
-            return "day";
+    @Input("timestamp") private timestamp:any;
+    private duration:any;
+    private interval:any = null;
+
+    constructor(private ngZone:NgZone) {
+    }
+
+    refresh() {
+        let then = moment(this.timestamp);
+        let now = moment();
+        let diff = then.diff(now);
+        let duration = moment.duration(diff);
+        //noinspection TypeScriptUnresolvedFunction
+        this.duration = duration.humanize();
+    }
+
+    ngOnInit() {
+        this.refresh();
+
+        this.interval = window.setInterval(() => {
+            this.ngZone.run(() => {
+                this.refresh();
+            });
+        }, 60000);
+    }
+
+    ngOnDestroy():any {
+        if (this.interval != null) {
+            clearInterval(this.interval);
         }
-        else if (range <= 60) {
-            // Minute or less.
-            interval = "second";
-        }
-        else if (range <= 3600 * 6) {
-            // 6 hours or or less.
-            interval = "minute";
-        }
-        else if (range <= 86400) {
-            // Day or less.
-            interval = "hour";
-        }
-
-        console.log(`Returning interval: ${interval}.`);
-
-        return interval;
     }
 
 }

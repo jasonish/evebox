@@ -31,7 +31,8 @@ import {ConfigService} from "./config.service";
 import {ToastrService} from "./toastr.service";
 import {ApiService} from "./api.service";
 
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 var queue = require("queue");
 
 export interface ResultSet {

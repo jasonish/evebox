@@ -23,18 +23,35 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+import {Injectable} from "@angular/core";
+//import moment = require("moment");
+import * as moment from "moment";
 
-import {Pipe, PipeTransform} from "@angular/core";
+@Injectable()
+export class ReportsService {
 
-import moment = require("moment");
+    histogramTimeInterval(range:number):string {
+        let interval:string = "day";
 
-@Pipe({
-    name: "eveboxFormatTimestamp"
-})
-export class EveboxFormatTimestampPipe implements PipeTransform {
+        if (range == 0) {
+            return "day";
+        }
+        else if (range <= 60) {
+            // Minute or less.
+            interval = "second";
+        }
+        else if (range <= 3600 * 6) {
+            // 6 hours or or less.
+            interval = "minute";
+        }
+        else if (range <= 86400) {
+            // Day or less.
+            interval = "hour";
+        }
 
-    transform(timestamp:string) {
-        return moment(timestamp).format("YYYY-MM-DD HH:mm:ss");
+        console.log(`Returning interval: ${interval}.`);
+
+        return interval;
     }
 
 }

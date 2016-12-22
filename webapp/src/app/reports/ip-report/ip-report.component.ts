@@ -7,7 +7,8 @@ import {ReportsService} from "../reports.service";
 import {AppService, AppEvent, AppEventCode} from "../../app.service";
 import {loadingAnimation} from "../../animations";
 
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 import {humanizeFileSize, humanizeCompactInteger} from "../../humanize.service";
 import {QueryStringBuilder, ApiService} from "../../api.service";
 

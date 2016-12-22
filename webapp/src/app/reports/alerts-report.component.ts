@@ -23,6 +23,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ReportsService} from "./reports.service";
 import {AppService, AppEventCode} from "../app.service";
@@ -33,7 +34,8 @@ import {loadingAnimation} from "../animations";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {ApiService, QueryStringBuilder, ReportAggOptions} from "../api.service";
 import {TopNavService} from "../topnav.service";
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 
 @Component({
     template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">

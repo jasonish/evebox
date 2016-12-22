@@ -97,7 +97,7 @@ dev-server: evebox
 # restarts as needed.
 dev-server-reflex: evebox
 	reflex -s -R 'bindata\.go' -r '\.go$$' -- \
-		sh -c "make evebox && ./evebox --dev http://localhost:8080"
+		sh -c "make evebox && ./evebox --dev http://localhost:4200"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)

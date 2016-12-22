@@ -36,7 +36,8 @@ import {AppService} from "./app.service";
 import {MousetrapService} from "./mousetrap.service";
 import {ActivatedRoute} from "@angular/router";
 
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 declare var $:any;
 
 @Component({

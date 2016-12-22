@@ -1,13 +1,15 @@
 all:
-	./node_modules/.bin/webpack
+	ng build
 
 install-deps:
 	npm install
-	./node_modules/.bin/typings install
 
 distclean:
 	rm -rf node_modules
 	rm -rf typings
 
+clean:
+	rm -rf dist
+
 start:
-	npm run start
+	ng serve

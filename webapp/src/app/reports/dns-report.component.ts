@@ -33,7 +33,7 @@ import {ActivatedRoute, Params} from "@angular/router";
 import {ApiService, ReportAggOptions} from "../api.service";
 import {TopNavService} from "../topnav.service";
 
-import moment = require("moment");
+import * as moment from "moment";
 
 @Component({
     template: `<div class="content" [ngClass]="{'evebox-opacity-50': loading > 0}">

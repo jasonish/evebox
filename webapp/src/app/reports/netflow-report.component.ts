@@ -36,7 +36,8 @@ import {loadingAnimation} from "../animations";
 import {humanizeFileSize} from "../humanize.service";
 import {ApiService} from "../api.service";
 
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 
 @Component({
     template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">

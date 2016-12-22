@@ -27,7 +27,8 @@
 import {Injectable} from "@angular/core";
 import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
 
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 
 /**
  * A service to support the the alert views: inbox, escalated and alerts.

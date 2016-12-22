@@ -35,7 +35,8 @@ import {ToastrService} from "./toastr.service";
 import {TopNavService} from "./topnav.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {loadingAnimation} from "./animations";
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 
 declare var window:any;
 

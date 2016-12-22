@@ -34,7 +34,8 @@ import {loadingAnimation} from "../animations";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {ApiService, ReportAggOptions} from "../api.service";
 
-import moment = require("moment");
+//import moment = require("moment");
+import * as moment from "moment";
 
 @Component({
     template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
