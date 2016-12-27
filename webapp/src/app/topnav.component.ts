@@ -175,7 +175,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     timeRangeChanged($event:any) {
-        this.topNavService.timeRange = $event.target.value;
+        this.topNavService.setTimeRange($event.target.value);
         this.appService.dispatch({
             event: AppEventCode.TIME_RANGE_CHANGED,
             data: $event.target.value
