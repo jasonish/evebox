@@ -35,7 +35,7 @@ export class TopNavService  {
     timeRange:string = "24h";
 
     constructor() {
-        if (localStorage.timeRange) {
+        if (localStorage.timeRange !== undefined) {
             this.timeRange = localStorage.timeRange;
         }
     }
