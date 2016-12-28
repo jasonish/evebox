@@ -48,106 +48,19 @@ export interface AlertsState {
 }
 
 @Component({
-    template: `<div [@loadingState]="!rows || (!silentRefresh && loading) ? 'true' : 'false'">
-
-  <loading-spinner [loading]="!rows || !silentRefresh && loading"></loading-spinner>
-
-  <!-- Button and filter bar. -->
-  <div style="position: relative;">
-  
-    <!-- Padding that allows the navbar border to show, but creates an opaque
-         background so the scrolling event table won't be seen. -->
-    <div class="raised-background"
-         style="position: fixed; width: 100%; height: 19px; margin-top: 1px;"></div>
-         
-    <!-- Fixes the button/search bar in place, and hides the page as it scrolls
-         underneath. -->
-    <div class="raised-background"
-         style="position: fixed; width: 100%; margin-top: 20px;">
-      <div class="row" style="margin-right: 14px;">
-        <div class="col-md-6">
-          <button type="button" class="btn btn-default" (click)="refresh()">
-            Refresh
-          </button>
-          <button *ngIf="rows && rows.length > 0 && !allSelected()"
-                  type="button"
-                  class="btn btn-default"
-                  (click)="selectAllRows()">Select All
-          </button>
-          <button *ngIf="rows && rows.length > 0 && allSelected()" type="button"
-                  class="btn btn-default"
-                  (click)="deselectAllRows()">Deselect All
-          </button>
-          <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-                  type="button"
-                  class="btn btn-default"
-                  (click)="archiveSelected()">Archive
-          </button>
-          <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-                  type="button"
-                  class="btn btn-default"
-                  (click)="escalateSelected()">Escalate
-          </button>
-        </div>
-        <div class="col-md-6">
-
-          <br class="hidden-lg hidden-md"/>
-
-          <form (submit)="submitFilter()">
-            <div class="input-group">
-              <input id="filter-input"
-                     type="text"
-                     class="form-control"
-                     placeholder="Filter..."
-                     [(ngModel)]="queryString"
-                     name="queryString"/>
-              <div class="input-group-btn">
-                <button class="btn btn-default" type="submit">Apply
-                </button>
-                <button type="button"
-                        class="btn btn-default"
-                        (click)="clearFilter()">Clear
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-      <!-- More padding underneath the button bar that the page will scroll
-           "underneath". -->
-      <div class="raised-background"
-           style="position: fixed; width: 100%; height: 15px; z-index: 1000;"></div>
-    </div>
-  </div>
-
-  <!-- Pushes the start of the table down below the button bar. -->
-  <div style="width: 100%; height: 70px;"></div>
-  
-  <!-- On a narrow view port the page needs to be pushed down some more. -->
-  <div class="hidden-lg hidden-md" style="width: 100%; height: 53px;"></div>
-  
-  <div *ngIf="rows && rows.length == 0" style="text-align: center;">
-    <hr/>
-    No events found.
-    <hr/>
-  </div>
-
-  <alert-table
-      *ngIf="rows && rows.length > 0"
-      (rowClicked)="rowClicked($event)"
-      (toggleEscalation)="toggleEscalatedState($event)"
-      (archiveEvent)="archiveAlertGroup($event)"
-      (escalateAndArchiveEvent)="escalateAndArchiveEvent($event)"
-      [(activeRow)]="activeRow"
-      [rows]="rows"></alert-table>
-</div>`,
+    templateUrl: "./alerts.component.html",
     animations: [
         loadingAnimation,
     ]
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 
-    private rows:any[];
+    private windowSize:number = 100;
+    private offset:number = 0;
+
+    private rows:any[] = [];
+    private allRows:any[] = [];
+
     private activeRow:number = 0;
     private queryString:string = "";
     private loading:boolean = false;
@@ -180,6 +93,26 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     isInbox() {
         return this.appService.getRoute() == "/inbox";
+    }
+
+    older() {
+        console.log("next");
+        this.offset += this.windowSize;
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    newer() {
+        if (this.offset > this.windowSize) {
+            this.offset -= this.windowSize;
+        }
+        else {
+            this.offset = 0;
+        }
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    min(a:number, b:number):number {
+        return Math.min(a, b);
     }
 
     ngOnInit():any {
@@ -396,8 +329,27 @@ export class AlertsComponent implements OnInit, OnDestroy {
             }
             return true;
         });
+        this.allRows = this.allRows.filter((_row:any) => {
+            if (_row == row) {
+                return false;
+            }
+            return true;
+        });
         if (this.activeRow >= this.rows.length) {
             this.activeRow--;
+        }
+
+        if (this.rows.length == 0) {
+            if (this.offset < this.allRows.length) {
+            }
+            else if (this.offset > 0) {
+                this.offset -= this.windowSize;
+            }
+            this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+            this.activeRow = 0;
+
+            // And scroll to the top.
+            window.scrollTo(0, 0);
         }
     }
 
@@ -538,7 +490,9 @@ export class AlertsComponent implements OnInit, OnDestroy {
         }
 
         return this.elasticSearchService.newGetAlerts(queryOptions).then((rows:any) => {
-            this.rows = rows;
+            this.allRows = rows;
+            this.offset = 0;
+            this.rows = this.allRows.slice(this.offset, this.windowSize);
         }, (error:any) => {
 
             this.rows = [];
