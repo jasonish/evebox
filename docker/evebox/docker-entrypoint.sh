@@ -10,7 +10,7 @@ fi
 
 # Add evebox as command if needed
 if [ "${1:0:1}" = "-" ]; then
-    set -- evebox "$@"
+    set -- evebox server "$@"
 fi
 
 if [ "$1" = "evebox" ]; then

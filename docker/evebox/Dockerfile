@@ -1,4 +1,4 @@
-FROM busybox
+FROM alpine:latest
 MAINTAINER Jason Ish <ish@unx.ca>
 
 # Attempt multiple times to download evebox from bintray.
@@ -19,11 +19,11 @@ RUN cd /tmp && \
     mkdir -p /usr/local/bin && \
     cp -a evebox-*-linux-amd64/evebox /usr/local/bin/ && \
     rm -rf evebox* && \
-    /usr/local/bin/evebox --version
+    /usr/local/bin/evebox version
 
 EXPOSE 5636
 
 COPY /docker-entrypoint.sh /
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["evebox"]
+CMD ["evebox", "server"]
