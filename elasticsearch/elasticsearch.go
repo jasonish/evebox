@@ -152,8 +152,8 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 	}
 	template, err := es.GetTemplate(index)
 	if err != nil {
-		log.Warning("Failed to get template from Elastic Search, will use \"raw\" for keyword")
-		return "raw", nil
+		log.Warning("Failed to get template from Elastic Search, keyword resolution delayed.")
+		return "", nil
 	}
 
 	dynamicTemplates := template.GetMap(index).
@@ -242,6 +242,12 @@ func (e *DatastoreError) Error() string {
 }
 
 func (es *ElasticSearch) Search(query interface{}) (*SearchResponse, error) {
+
+	if es.keyword == "" {
+		log.Warning("Search keyword not known, trying again.")
+		es.InitKeyword()
+	}
+
 	path := fmt.Sprintf("%s/_search", es.EventSearchIndex)
 	response, err := es.HttpClient.PostJson(path, query)
 	if err != nil {
