@@ -1,4 +1,29 @@
-import {Component, OnInit, OnDestroy, Input} from "@angular/core";
+/* Copyright (c) 2016 Jason Ish
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+import {Component, OnInit, OnDestroy} from "@angular/core";
 import {ActivatedRoute} from "@angular/router";
 import {EveboxSubscriptionService} from "../../subscription.service";
 import {ElasticSearchService} from "../../elasticsearch.service";
@@ -6,11 +31,9 @@ import {TopNavService} from "../../topnav.service";
 import {ReportsService} from "../reports.service";
 import {AppService, AppEvent, AppEventCode} from "../../app.service";
 import {loadingAnimation} from "../../animations";
-
-//import moment = require("moment");
 import * as moment from "moment";
-import {humanizeFileSize, humanizeCompactInteger} from "../../humanize.service";
-import {QueryStringBuilder, ApiService} from "../../api.service";
+import {humanizeFileSize} from "../../humanize.service";
+import {ApiService} from "../../api.service";
 
 function termQuery(type:string, field:string, value:string) {
     let term = {};
@@ -33,25 +56,23 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
     private alertsOverTime:any[];
 
-    // Number of flows as client.
-    private sourceFlowCount:number;
+    private flow:any = {
 
-    // Number of flows as server.
-    private destFlowCount:number;
+        ready: false,
+
+        sourceFlowCount: 0,
+        destFlowCount: 0,
+        bytesToIp: 0,
+        bytesFromIp: 0,
+        packetsToIp: 0,
+        packetsFromIp: 0,
+    };
 
     // DNS hostname lookups returning this IP.
     private dnsHostnamesForAddress:any[];
 
     // Top requested hostnames.
     private dnsRequestedHostnames:any[];
-
-    private bytesToIp:number;
-
-    private bytesFromIp:number;
-
-    private packetsToIp:number;
-
-    private packetsFromIp:number;
 
     private userAgents:any[];
 
@@ -71,21 +92,16 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
     private topSignatures:any[];
 
-    private sshInboundClientVersions:any[];
-
-    private sshOutboundClientVersions:any[];
-
-    private sshOutboundServerVersions:any[];
-
-    private sshInboundServerVersions:any[];
-
-    private sshOutboundClientProtoVersions:any[];
-
-    private sshOutboundServerProtoVersions:any[]
-
-    private sshInboundClientProtoVersions:any[];
-
-    private sshInboundServerProtoVersions:any[];
+    private ssh:any = {
+        sshInboundClientVersions: [],
+        sshOutboundClientVersions: [],
+        sshOutboundServerVersions: [],
+        sshInboundServerVersions: [],
+        sshOutboundClientProtoVersions: [],
+        sshOutboundServerProtoVersions: [],
+        sshInboundClientProtoVersions: [],
+        sshInboundServerProtoVersions: [],
+    };
 
     private sensors:Set<string> = new Set<string>();
 
@@ -596,22 +612,19 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
         this.elasticsearch.search(query).then((response) => {
 
-            this.bytesFromIp = response.aggregations.destFlows.bytesToClient.value +
+            this.flow.bytesFromIp = response.aggregations.destFlows.bytesToClient.value +
                 response.aggregations.sourceFlows.bytesToServer.value;
-            this.bytesFromIp = humanizeFileSize(this.bytesFromIp);
-
-            this.bytesToIp = response.aggregations.destFlows.bytesToServer.value +
+            this.flow.bytesFromIp = humanizeFileSize(this.flow.bytesFromIp);
+            this.flow.bytesToIp = response.aggregations.destFlows.bytesToServer.value +
                 response.aggregations.sourceFlows.bytesToClient.value;
-            this.bytesToIp = humanizeFileSize(this.bytesToIp);
-
-            this.packetsFromIp = response.aggregations.destFlows.packetsToClient.value +
+            this.flow.bytesToIp = humanizeFileSize(this.flow.bytesToIp);
+            this.flow.packetsFromIp = response.aggregations.destFlows.packetsToClient.value +
                 response.aggregations.sourceFlows.packetsToServer.value;
-
-            this.packetsToIp = response.aggregations.destFlows.packetsToServer.value +
+            this.flow.packetsToIp = response.aggregations.destFlows.packetsToServer.value +
                 response.aggregations.sourceFlows.packetsToClient.value;
-
-            this.sourceFlowCount = response.aggregations.sourceFlows.doc_count;
-            this.destFlowCount = response.aggregations.destFlows.doc_count;
+            this.flow.sourceFlowCount = response.aggregations.sourceFlows.doc_count;
+            this.flow.destFlowCount = response.aggregations.destFlows.doc_count;
+            this.flow.ready = true;
 
             this.userAgents = this.mapTerms(response.aggregations.httpRequests.userAgents.buckets);
 
@@ -631,28 +644,21 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
             this.topSignatures = this.mapTerms(response.aggregations.alerts.signatures.buckets);
 
-            this.sshInboundClientVersions = this.mapTerms(
+            this.ssh.sshInboundClientVersions = this.mapTerms(
                 response.aggregations.ssh.dests.inboundClientVersions.buckets);
-
-            this.sshOutboundClientVersions = this.mapTerms(
+            this.ssh.sshOutboundClientVersions = this.mapTerms(
                 response.aggregations.ssh.sources.outboundClientVersions.buckets);
-
-            this.sshOutboundServerVersions = this.mapTerms(
+            this.ssh.sshOutboundServerVersions = this.mapTerms(
                 response.aggregations.ssh.sources.outboundServerVersions.buckets);
-
-            this.sshInboundServerVersions = this.mapTerms(
+            this.ssh.sshInboundServerVersions = this.mapTerms(
                 response.aggregations.ssh.dests.inboundServerVersions.buckets);
-
-            this.sshInboundClientProtoVersions = this.mapTerms(
+            this.ssh.sshInboundClientProtoVersions = this.mapTerms(
                 response.aggregations.ssh.dests.inboundClientProtoVersions.buckets);
-
-            this.sshInboundServerProtoVersions = this.mapTerms(
+            this.ssh.sshInboundServerProtoVersions = this.mapTerms(
                 response.aggregations.ssh.dests.inboundServerProtoVersions.buckets);
-
-            this.sshOutboundClientProtoVersions = this.mapTerms(
+            this.ssh.sshOutboundClientProtoVersions = this.mapTerms(
                 response.aggregations.ssh.sources.outboundClientProtoVersions.buckets);
-
-            this.sshOutboundServerProtoVersions = this.mapTerms(
+            this.ssh.sshOutboundServerProtoVersions = this.mapTerms(
                 response.aggregations.ssh.sources.outboundServerProtoVersions.buckets);
 
             response.aggregations.sensors.buckets.forEach((bucket:any) => {

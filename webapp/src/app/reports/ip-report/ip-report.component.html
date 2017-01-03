@@ -1,6 +1,6 @@
 <loading-spinner [loading]="loading > 0"></loading-spinner>
 
-<div *ngIf="ip" [@loadingState]="loading > 0 ? 'true' : 'false'">
+<div class="content" *ngIf="ip" [@loadingState]="loading > 0 ? 'true' : 'false'">
 
   <div>
     <span *ngIf="relatedAddresses.length > 0" class="pull-right">
@@ -81,7 +81,7 @@
                          [rows]="topSignatures"
                          [headers]="['#', 'Signature']"></report-data-table>
 
-      <div class="panel panel-default">
+      <div *ngIf="loading == 0" class="panel panel-default">
         <div class="panel-heading">
           <b>SSH</b>
         </div>
@@ -89,60 +89,60 @@
 
           <div class="row">
             <div class="col-md-6">
-              <report-data-table *ngIf="sshInboundClientVersions"
+              <report-data-table *ngIf="ssh.sshInboundClientVersions"
                                  title="Inbound Client Versions"
-                                 [rows]="sshInboundClientVersions"
+                                 [rows]="ssh.sshInboundClientVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
             <div class="col-md-6">
-              <report-data-table *ngIf="sshOutboundClientVersions"
+              <report-data-table *ngIf="ssh.sshOutboundClientVersions"
                                  title="Outbound Client Versions"
-                                 [rows]="sshOutboundClientVersions"
+                                 [rows]="ssh.sshOutboundClientVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
           </div> <!-- end row -->
 
           <div class="row">
             <div class="col-md-6">
-              <report-data-table *ngIf="sshOutboundServerVersions"
+              <report-data-table *ngIf="ssh.sshOutboundServerVersions"
                                  title="Outbound Server Versions"
-                                 [rows]="sshOutboundServerVersions"
+                                 [rows]="ssh.sshOutboundServerVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
             <div class="col-md-6">
-              <report-data-table *ngIf="sshInboundServerVersions"
+              <report-data-table *ngIf="ssh.sshInboundServerVersions"
                                  title="Inbound Server Versions"
-                                 [rows]="sshInboundServerVersions"
+                                 [rows]="ssh.sshInboundServerVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
           </div> <!-- end row -->
 
           <div class="row">
             <div class="col-md-6">
-              <report-data-table *ngIf="sshInboundClientProtoVersions"
+              <report-data-table *ngIf="ssh.sshInboundClientProtoVersions"
                                  title="Inbound Client Proto Versions"
-                                 [rows]="sshInboundClientProtoVersions"
+                                 [rows]="ssh.sshInboundClientProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
             <div class="col-md-6">
-              <report-data-table *ngIf="sshOutboundClientProtoVersions"
+              <report-data-table *ngIf="ssh.sshOutboundClientProtoVersions"
                                  title="Outbound Client Proto Versions"
-                                 [rows]="sshOutboundClientProtoVersions"
+                                 [rows]="ssh.sshOutboundClientProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
           </div>
 
           <div class="row">
             <div class="col-md-6">
-              <report-data-table *ngIf="sshInboundServerProtoVersions"
+              <report-data-table *ngIf="ssh.sshInboundServerProtoVersions"
                                  title="Inbound Server Proto Versions"
-                                 [rows]="sshInboundServerProtoVersions"
+                                 [rows]="ssh.sshInboundServerProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
             <div class="col-md-6">
-              <report-data-table *ngIf="sshOutboundServerProtoVersions"
+              <report-data-table *ngIf="ssh.sshOutboundServerProtoVersions"
                                  title="Outbound Server Proto Versions"
-                                 [rows]="sshOutboundServerProtoVersions"
+                                 [rows]="ssh.sshOutboundServerProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
           </div>
@@ -155,7 +155,7 @@
     <!-- Second Column -->
     <div class="col-md-6">
 
-      <div class="panel panel-default">
+      <div *ngIf="loading == 0 && flow.ready" class="panel panel-default">
         <div class="panel-heading">
           <b>Flow</b>
         </div>
@@ -163,30 +163,30 @@
           <tbody>
           <tr>
             <td>Flows As Client</td>
-            <td>{{sourceFlowCount}}</td>
+            <td>{{flow.sourceFlowCount}}</td>
           </tr>
           <tr>
             <td>Flows As Server</td>
-            <td>{{destFlowCount}}</td>
+            <td>{{flow.destFlowCount}}</td>
           </tr>
           <tr>
             <td>Bytes To...</td>
-            <td>{{bytesToIp}}</td>
+            <td>{{flow.bytesToIp}}</td>
           </tr>
           <tr>
             <td>Bytes From...</td>
-            <td>{{bytesFromIp}}</td>
+            <td>{{flow.bytesFromIp}}</td>
           </tr>
           <tr>
             <td>Packets To...</td>
-            <td>{{packetsToIp | eveboxHumanize: 'compactInteger'}}
-              ({{packetsToIp}})
+            <td>{{flow.packetsToIp | eveboxHumanize: 'compactInteger'}}
+              ({{flow.packetsToIp}})
             </td>
           </tr>
           <tr>
             <td>Packets From...</td>
-            <td>{{packetsFromIp | eveboxHumanize: 'compactInteger'}}
-              ({{packetsFromIp}}
+            <td>{{flow.packetsFromIp | eveboxHumanize: 'compactInteger'}}
+              ({{flow.packetsFromIp}})
             </td>
           </tr>
           </tbody>
