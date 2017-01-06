@@ -75,6 +75,7 @@ import {ToastrService} from "./toastr.service";
 import {ApiService} from "./api.service";
 import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
+import {SshReportComponent} from "./reports/ssh-report.component";
 
 @NgModule({
     declarations: [
@@ -92,6 +93,8 @@ import {EveboxSubscriptionService} from "./subscription.service";
         EveboxMetricsGraphicComponent,
         EveboxReportDataTable,
         IpReportComponent,
+        SshReportComponent,
+
         EveboxFilterInputComponent,
 
         TopNavComponent,
@@ -117,10 +120,13 @@ import {EveboxSubscriptionService} from "./subscription.service";
         EveboxFormatTimestampPipe,
     ],
     imports: [
+        // Angular modules.
         BrowserModule,
         FormsModule,
         HttpModule,
         RouterModule,
+
+        // Evebox modules.
         routing,
     ],
     providers: [

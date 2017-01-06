@@ -74,6 +74,7 @@ declare var $:any;
             <li><a href="#/reports/dns">DNS</a></li>
             <li><a href="#/reports/netflow">Netflow</a></li>
             <li><a href="#/reports/flow">Flow</a></li>
+            <li><a href="#/reports/ssh">SSH</a></li>
           </ul>
         </li>
 

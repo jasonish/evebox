@@ -34,6 +34,7 @@ import {FlowReportComponent} from "./reports/flow-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
 import {ModuleWithProviders} from "@angular/core";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
+import {SshReportComponent} from "./reports/ssh-report.component";
 
 const routes:Routes = [
     {
@@ -60,6 +61,7 @@ const routes:Routes = [
     {path: "reports/dns", component: DNSReportComponent},
     {path: "reports/flow", component: FlowReportComponent},
     {path: "reports/netflow", component: NetflowReportComponent},
+    {path: "reports/ssh", component: SshReportComponent},
     {path: "reports/ip", component: IpReportComponent, pathMatch: "prefix",},
     // Let the inbox by the default route.
     {
