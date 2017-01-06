@@ -114,7 +114,7 @@ func (s *ReportService) ReportHistogram(interval string, options core.ReportOpti
 	}
 
 	if options.EventType != "" {
-		query.AddFilter(TermQuery("event_type", options.EventType))
+		query.AddFilter(KeywordTermQuery("event_type", options.EventType, s.es.keyword))
 	}
 
 	if options.DnsType != "" {
@@ -212,6 +212,10 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 		"dns.rrtype": "keyword",
 		"dns.rcode":  "keyword",
 		"dns.rdata":  "keyword",
+
+		// SSH.
+		"ssh.client.software_version": "keyword",
+		"ssh.server.software_version": "keyword",
 	}
 
 	aggType := aggregations[agg]
