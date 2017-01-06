@@ -126,6 +126,10 @@ export class ApiService {
             query.push(`dnsType=${options.dnsType}`);
         }
 
+        if (options.eventType) {
+            query.push(`eventType=${options.eventType}`);
+        }
+
         return this.get(`api/1/report/histogram?${query.join("&")}`);
     }
 
