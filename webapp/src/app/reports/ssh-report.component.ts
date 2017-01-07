@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,8 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-import {Component, OnInit, OnDestroy} from "@angular/core";
+
+import {Component, OnInit, OnDestroy, Input, OnChanges} from "@angular/core";
 import {ReportsService} from "./reports.service";
 import {AppService, AppEventCode} from "../app.service";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
@@ -37,6 +38,96 @@ import * as moment from "moment";
 
 require("chart.js");
 declare var Chart:any;
+
+@Component({
+    selector: "evebox-ssh-top-client-hosts",
+    template: `<report-data-table *ngIf="results"
+                   title="Top SSH Client Hosts"
+                   [rows]="results"
+                   [headers]="['#', 'Address']"></report-data-table>
+`,
+})
+export class SshTopClientsComponent implements OnInit, OnChanges {
+
+    @Input() queryString:string = "";
+
+    private results:any[] = [];
+
+    constructor(private api:ApiService, private topNavService:TopNavService) {
+    }
+
+    ngOnInit():void {
+        this.refresh();
+    }
+
+    ngOnChanges():void {
+        this.refresh();
+    }
+
+    refresh():any {
+
+        let size:number = 10;
+
+        let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
+
+        let aggOptions:ReportAggOptions = {
+            queryString: this.queryString,
+            timeRange: timeRangeSeconds,
+            size: size,
+            eventType: "ssh",
+        };
+
+        return this.api.reportAgg("src_ip", aggOptions)
+            .then((response:any) => {
+                this.results = response.data;
+            });
+    }
+}
+
+@Component({
+    selector: "evebox-ssh-top-server-hosts",
+    template: `<report-data-table *ngIf="results"
+                   title="Top SSH Server Hosts"
+                   [rows]="results"
+                   [headers]="['#', 'Address']"></report-data-table>
+`,
+})
+export class SshTopServersComponent implements OnInit, OnChanges {
+
+    @Input() queryString:string = "";
+
+    private results:any[] = [];
+
+    constructor(private api:ApiService, private topNavService:TopNavService) {
+    }
+
+    ngOnInit():void {
+        this.refresh();
+    }
+
+    ngOnChanges():void {
+        this.refresh();
+    }
+
+    refresh():any {
+
+        let size:number = 10;
+
+        let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
+
+        let aggOptions:ReportAggOptions = {
+            queryString: this.queryString,
+            timeRange: timeRangeSeconds,
+            size: size,
+            eventType: "ssh",
+        };
+
+        return this.api.reportAgg("dest_ip", aggOptions)
+            .then((response:any) => {
+                this.results = response.data;
+            });
+    }
+}
 
 @Component({
     template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
@@ -102,6 +193,15 @@ declare var Chart:any;
     </div>
   </div>
 
+  <div class="row">
+    <div class="col-md-6">
+      <evebox-ssh-top-client-hosts [queryString]="queryString"></evebox-ssh-top-client-hosts>
+    </div>
+    <div class="col-md-6">
+      <evebox-ssh-top-server-hosts [queryString]="queryString"></evebox-ssh-top-server-hosts>
+    </div>
+  </div>
+
 </div>`,
     animations: [
         loadingAnimation,
@@ -161,14 +261,6 @@ export class SshReportComponent implements OnInit, OnDestroy {
         })
     }
 
-    randomColour() {
-        let r = Math.floor(Math.random() * 255);
-        let g = Math.floor(Math.random() * 255);
-        let b = Math.floor(Math.random() * 255);
-        let color = 'rgb(' + r + ', ' + g + ', ' + b + ')';
-        return color;
-    }
-
     refresh() {
 
         let size:number = 100;
@@ -216,7 +308,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                         labels: labels,
                         datasets: [
                             {
-                                backgroundColor: this.randomColour(),
+                                backgroundColor: randomColour(),
                                 data: values,
                                 pointStyle: "line",
                             }
@@ -308,7 +400,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
         data.forEach((version:any) => {
             labels.push(version.key);
             values.push(version.count);
-            colours.push(this.randomColour());
+            colours.push(randomColour());
         });
 
         let ctx = document.getElementById(canvasId);
@@ -338,4 +430,12 @@ export class SshReportComponent implements OnInit, OnDestroy {
 
     }
 
+}
+
+function randomColour() {
+    let r = Math.floor(Math.random() * 255);
+    let g = Math.floor(Math.random() * 255);
+    let b = Math.floor(Math.random() * 255);
+    let color = 'rgb(' + r + ', ' + g + ', ' + b + ')';
+    return color;
 }

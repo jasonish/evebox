@@ -75,7 +75,10 @@ import {ToastrService} from "./toastr.service";
 import {ApiService} from "./api.service";
 import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
-import {SshReportComponent} from "./reports/ssh-report.component";
+import {
+    SshReportComponent,
+    SshTopClientsComponent, SshTopServersComponent
+} from "./reports/ssh-report.component";
 
 @NgModule({
     declarations: [
@@ -94,6 +97,8 @@ import {SshReportComponent} from "./reports/ssh-report.component";
         EveboxReportDataTable,
         IpReportComponent,
         SshReportComponent,
+        SshTopClientsComponent,
+        SshTopServersComponent,
 
         EveboxFilterInputComponent,
 

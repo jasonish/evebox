@@ -273,6 +273,23 @@ export class IpReportComponent implements OnInit, OnDestroy {
             ipTermType = "prefix";
         }
 
+        // Alert histogram.
+        this.api.reportHistogram({
+            timeRange: range,
+            interval: this.reportsService.histogramTimeInterval(range),
+            addressFilter: this.ip,
+            queryString: this.queryString,
+            eventType: "alert",
+            sensorFilter: this.sensorFilter,
+        }).then((response:any) => {
+            this.alertsOverTime = response.data.map((x:any) => {
+                return {
+                    date: moment(x.key).toDate(),
+                    value: x.count,
+                }
+            });
+        });
+
         let query = {
             query: {
                 bool: {
@@ -591,24 +608,6 @@ export class IpReportComponent implements OnInit, OnDestroy {
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
-
-        // Alert histogram.
-        this.api.reportHistogram({
-            timeRange: range,
-            interval: this.reportsService.histogramTimeInterval(range),
-            addressFilter: this.ip,
-            queryString: this.queryString,
-            eventType: "alert",
-            sensorFilter: this.sensorFilter,
-        }).then((response:any) => {
-            console.log(response);
-            this.alertsOverTime = response.data.map((x:any) => {
-                return {
-                    date: moment(x.key).toDate(),
-                    value: x.count,
-                }
-            });
-        });
 
         this.elasticsearch.search(query).then((response) => {
 
