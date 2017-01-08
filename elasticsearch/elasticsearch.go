@@ -70,8 +70,6 @@ func New(url string) *ElasticSearch {
 		HttpClient: HttpClient,
 	}
 
-	es.InitKeyword()
-
 	return es
 }
 
@@ -130,6 +128,7 @@ func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
 }
 
 func (es *ElasticSearch) GetTemplate(name string) (JsonMap, error) {
+	log.Debug("Fetching template [%s]", name)
 	response, err := es.HttpClient.Get(fmt.Sprintf("_template/%s", name))
 	if err != nil {
 		return nil, err

@@ -138,6 +138,7 @@ func Main(args []string) {
 	}
 	elasticSearch := elasticsearch.New(getElasticSearchUrl())
 	elasticSearch.SetEventIndex(conf.ElasticSearchIndex)
+	elasticSearch.InitKeyword()
 	pingResponse, err := elasticSearch.Ping()
 	if err != nil {
 		log.Error("Failed to ping Elastic Search: %v", err)
