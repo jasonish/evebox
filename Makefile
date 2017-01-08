@@ -121,8 +121,11 @@ dist: resources/public/bundle.js resources/bindata.go
 		go build -tags $(TAGS) -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
+	cd dist && ln -s $(DISTNAME) \
+		$(APP)$(DIST_SUFFIX)-latest-$(GOOS)-$(DISTARCH)
 
 release:
+	rm -rf dist
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
 	CGO_ENABLED=1 DIST_SUFFIX="-sqlite" GOOS=linux GOARCH=amd64 $(MAKE) dist
 	GOOS=linux GOARCH=386 $(MAKE) dist
@@ -143,7 +146,7 @@ deb:
 		--epoch $(EPOCH) \
 		-v $(VERSION)$(TILDE) \
 		--after-upgrade=deb/after-upgrade.sh \
-		dist/${APP}-${VERSION}-linux-amd64/evebox=/usr/bin/evebox \
+		dist/${APP}-latest-linux-x64/evebox=/usr/bin/evebox \
 		deb/evebox.default=/etc/default/evebox \
 		deb/evebox.service=/lib/systemd/system/evebox.service
 
@@ -155,7 +158,7 @@ deb:
 		-v $(VERSION)$(TILDE) \
 		--after-upgrade=deb/after-upgrade.sh \
 		-a i386 \
-		dist/${APP}-${VERSION}-linux-386/evebox=/usr/bin/evebox \
+		dist/${APP}-latest-linux-x32/evebox=/usr/bin/evebox \
 		deb/evebox.default=/etc/default/evebox \
 		deb/evebox.service=/lib/systemd/system/evebox.service
 
@@ -174,6 +177,6 @@ rpm:
 		--after-upgrade=rpm/after-upgrade.sh \
 		--iteration $(RPM_ITERATION) \
 		--config-files /etc/sysconfig/evebox \
-		dist/${APP}-${VERSION}-linux-amd64/evebox=/usr/bin/evebox \
+		dist/${APP}-latest-linux-x64/evebox=/usr/bin/evebox \
 		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 		rpm/evebox.service=/lib/systemd/system/evebox.service
