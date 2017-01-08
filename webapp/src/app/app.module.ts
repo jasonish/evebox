@@ -77,7 +77,7 @@ import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {
     SshReportComponent,
-    SshTopClientsComponent, SshTopServersComponent
+    SshTopClientsComponent, SshTopServersComponent, IpAddrDataTableComponent
 } from "./reports/ssh-report.component";
 
 @NgModule({
@@ -99,6 +99,7 @@ import {
         SshReportComponent,
         SshTopClientsComponent,
         SshTopServersComponent,
+        IpAddrDataTableComponent,
 
         EveboxFilterInputComponent,
 

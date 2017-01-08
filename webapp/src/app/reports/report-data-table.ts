@@ -40,7 +40,7 @@ import {Component, Input} from "@angular/core";
   <div *ngIf="!rows || rows.length == 0" class="panel-body">
     No data.
   </div>
-  
+
   <table *ngIf="rows && rows.length > 0"
          class="table table-striped table-condensed">
     <thead>
@@ -52,7 +52,9 @@ import {Component, Input} from "@angular/core";
     <tbody>
     <tr *ngFor="let row of rows; let i = index">
       <td class="col-md-1">{{row.count}}</td>
-      <td class="col-md-11"><a [routerLink]="['/events', {q: q(row)}]">{{row.key}}</a></td>
+      <td class="col-md-11">
+        <a [routerLink]="['/events', {q: q(row)}]">{{row.key}}</a>
+      </td>
     </tr>
     </tbody>
   </table>
@@ -66,6 +68,9 @@ export class EveboxReportDataTable {
     @Input() private loading:number = 0;
 
     q(row:any) {
+        if (row.searchKey) {
+            return `+"${row.searchKey}"`;
+        }
         return `+"${row.key}"`;
     }
 }

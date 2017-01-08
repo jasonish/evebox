@@ -35,16 +35,17 @@ import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {ApiService, ReportAggOptions} from "../api.service";
 import {TopNavService} from "../topnav.service";
 import * as moment from "moment";
+import {ElasticSearchService} from "../elasticsearch.service";
 
 require("chart.js");
 declare var Chart:any;
 
 @Component({
     selector: "evebox-ssh-top-client-hosts",
-    template: `<report-data-table *ngIf="results"
+    template: `<evebox-ip-addr-data-table *ngIf="results"
                    title="Top SSH Client Hosts"
                    [rows]="results"
-                   [headers]="['#', 'Address']"></report-data-table>
+                   [headers]="['#', 'Address']"></evebox-ip-addr-data-table>
 `,
 })
 export class SshTopClientsComponent implements OnInit, OnChanges {
@@ -86,10 +87,10 @@ export class SshTopClientsComponent implements OnInit, OnChanges {
 
 @Component({
     selector: "evebox-ssh-top-server-hosts",
-    template: `<report-data-table *ngIf="results"
+    template: `<evebox-ip-addr-data-table *ngIf="results"
                    title="Top SSH Server Hosts"
                    [rows]="results"
-                   [headers]="['#', 'Address']"></report-data-table>
+                   [headers]="['#', 'Address']"></evebox-ip-addr-data-table>
 `,
 })
 export class SshTopServersComponent implements OnInit, OnChanges {
@@ -98,7 +99,8 @@ export class SshTopServersComponent implements OnInit, OnChanges {
 
     private results:any[] = [];
 
-    constructor(private api:ApiService, private topNavService:TopNavService) {
+    constructor(private api:ApiService, private topNavService:TopNavService,
+                private elasticSearch:ElasticSearchService) {
     }
 
     ngOnInit():void {
@@ -127,6 +129,50 @@ export class SshTopServersComponent implements OnInit, OnChanges {
                 this.results = response.data;
             });
     }
+
+}
+
+@Component({
+    selector: "evebox-ip-addr-data-table",
+    template: `<report-data-table *ngIf="rows"
+                   [title]="title"
+                   [rows]="rows"
+                   [headers]="headers"></report-data-table>
+`,
+})
+export class IpAddrDataTableComponent implements OnInit, OnChanges {
+
+    @Input() rows:any[] = [];
+    @Input() headers:string[] = [];
+    @Input() title:string;
+
+    constructor(private elasticSearch:ElasticSearchService) {
+    }
+
+    ngOnInit():void {
+        this.resolveHostnames();
+    }
+
+    ngOnChanges():void {
+        this.resolveHostnames();
+    }
+
+    resolveHostnames() {
+        if (this.rows.length == 0) {
+            return;
+        }
+
+        console.log(`Resolving hostnames for data table ${this.title}.`);
+        this.rows.forEach((result:any) => {
+            this.elasticSearch.resolveHostnameForIp(result.key).then((hostname:string) => {
+                if (hostname) {
+                    result.searchKey = result.key;
+                    result.key = `${result.key} (${hostname})`;
+                }
+            })
+        })
+    }
+
 }
 
 @Component({

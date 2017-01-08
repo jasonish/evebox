@@ -337,4 +337,29 @@ export class ElasticSearchService {
         });
     }
 
+    resolveHostnameForIp(ip:string) {
+        let query = {
+            query: {
+                bool: {
+                    filter: [
+                        {exists: {field: "event_type"}},
+                        {term: {"event_type": "dns"}},
+                        this.keywordTerm("dns.rdata", ip),
+                    ]
+                }
+            },
+            size: 1,
+            sort: [
+                {"@timestamp": {order: "desc"}}
+            ],
+        };
+
+        return this.search(query).then((response:any) => {
+            if (response.hits.hits.length > 0) {
+                let hostname = response.hits.hits[0]._source.dns.rrname;
+                return hostname;
+            }
+        })
+    }
+
 }
