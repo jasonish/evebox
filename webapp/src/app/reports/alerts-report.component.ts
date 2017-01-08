@@ -36,6 +36,7 @@ import {ApiService, QueryStringBuilder, ReportAggOptions} from "../api.service";
 import {TopNavService} from "../topnav.service";
 //import moment = require("moment");
 import * as moment from "moment";
+import {ElasticSearchService} from "../elasticsearch.service";
 
 @Component({
     template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
@@ -134,6 +135,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                 private reports:ReportsService,
                 private api:ApiService,
                 private topNavService:TopNavService,
+                private elasticSearch:ElasticSearchService,
                 private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
     }
 
@@ -202,6 +204,15 @@ export class AlertReportComponent implements OnInit, OnDestroy {
             return this.api.reportAgg("src_ip", aggOptions)
                 .then((response:any) => {
                     this.sourceRows = response.data;
+
+                    this.sourceRows.forEach((row:any) => {
+                        this.elasticSearch.resolveHostnameForIp(row.key).then((hostname:string) => {
+                            if (hostname) {
+                                row.searchKey = row.key;
+                                row.key = `${row.key} (${hostname})`;
+                            }
+                        })
+                    })
                 });
         });
 
@@ -209,6 +220,16 @@ export class AlertReportComponent implements OnInit, OnDestroy {
             return this.api.reportAgg("dest_ip", aggOptions)
                 .then((response:any) => {
                     this.destinationRows = response.data;
+
+                    this.destinationRows.forEach((row:any) => {
+                        this.elasticSearch.resolveHostnameForIp(row.key).then((hostname:string) => {
+                            if (hostname) {
+                                row.searchKey = row.key;
+                                row.key = `${row.key} (${hostname})`;
+                            }
+                        })
+                    })
+
                 });
         });
 
