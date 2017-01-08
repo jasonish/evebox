@@ -1,8 +1,10 @@
 # Version info.
 VERSION_SUFFIX	:=	dev
 VERSION		:=	0.6.0${VERSION_SUFFIX}
-BUILD_DATE	:=	$(shell TZ=UTC date)
-BUILD_DATE_ISO	:=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
+BUILD_DATE	?=	$(shell TZ=UTC date)
+BUILD_DATE_ISO	?=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
+export BUILD_DATE
+export BUILD_DATE_ISO
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 
 LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildDate=$(BUILD_DATE)\" \
@@ -101,7 +103,17 @@ dev-server-reflex: evebox
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
-dist: DISTNAME ?= ${APP}$(DIST_SUFFIX)-${VERSION}-${GOOS}-${GOARCH}
+dist: DISTARCH := $(GOARCH)
+ifeq ($(GOARCH),amd64)
+dist: DISTARCH := x64
+endif
+ifeq ($(GOARCH),386)
+dist: DISTARCH := x32
+endif
+ifneq ($(VERSION_SUFFIX),)
+dist: VERSION := $(VERSION).$(BUILD_DATE_ISO)
+endif
+dist: DISTNAME ?= ${APP}$(DIST_SUFFIX)-${VERSION}-${GOOS}-${DISTARCH}
 dist: LDFLAGS += -s -w
 dist: CGO_ENABLED ?= $(CGO_ENABLED)
 dist: resources/public/bundle.js resources/bindata.go
