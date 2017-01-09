@@ -120,8 +120,10 @@ dist: resources/public/bundle.js resources/bindata.go
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags $(TAGS) -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
-	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 	cd dist && ln -s $(DISTNAME) \
+		$(APP)$(DIST_SUFFIX)-latest-$(GOOS)-$(DISTARCH)
+	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
+	cd dist && zip -r $(APP)$(DIST_SUFFIX)-latest-$(GOOS)-$(DISTARCH).zip \
 		$(APP)$(DIST_SUFFIX)-latest-$(GOOS)-$(DISTARCH)
 
 release:
