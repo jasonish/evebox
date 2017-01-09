@@ -37,7 +37,6 @@ import {TopNavService} from "../topnav.service";
 import * as moment from "moment";
 import {ElasticSearchService} from "../elasticsearch.service";
 
-require("chart.js");
 declare var Chart:any;
 
 @Component({

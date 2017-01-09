@@ -32,12 +32,15 @@ import {environment} from './environments/environment';
 import {AppModule} from './app/app.module';
 
 import "rxjs";
+
 require("!!script!jquery/dist/jquery.min.js");
 require("!!script!bootstrap/dist/js/bootstrap.min.js");
+require("chart.js");
 
 declare var jQuery:any;
 declare var window:any;
 declare var localStorage:any;
+declare var Chart:any;
 
 if (environment.production) {
     enableProdMode();
@@ -53,8 +56,14 @@ switch (localStorage.theme) {
         break;
 }
 
+// Some chart configuration.
+switch (localStorage.theme) {
+    case "slate":
+        Chart.defaults.global.defaultFontColor = "#fff";
+        break;
+}
+
 jQuery.getJSON("api/1/config", (config:any) => {
     window.config = config;
     platformBrowserDynamic().bootstrapModule(AppModule);
 });
-
