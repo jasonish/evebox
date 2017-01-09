@@ -11,6 +11,12 @@ if [ "${BINTRAY_API_KEY}" = "" ]; then
 fi
 
 deploy_development() {
+
+    # Delete the "latest" version. We do this every time so we don't
+    # hit the 180 day limit.
+    curl -XDELETE -u jasonish:${BINTRAY_API_KEY} ${API_ROOT}/packages/jasonish/evebox-development/evebox/versions/latest
+    printf "\n\n"
+
     # Deploy zip's to Bintray.
     for zip in dist/evebox-*.zip; do
 	version=`echo $(basename ${zip}) | sed -n 's/.*-\([[:digit:]][^-]\+\).*/\1/p'`
@@ -21,15 +27,15 @@ deploy_development() {
 	     "${REPO_ROOT}/evebox-development/evebox/${version}/$(basename ${zip})"	 
 	printf "\n\n"
 
-	# # A bit crude, but also upload with the version of "latest".
-	# dest_filename=$(echo $(basename ${zip}) | sed -e "s#${version}#latest#g")
+	# A bit crude, but also upload with the version of "latest".
+	dest_filename=$(echo $(basename ${zip}) | sed -e "s#${version}#latest#g")
 
-	# echo "Uploading ${zip} to ${dest_filename}."
-	# curl -T ${zip} -u jasonish:${BINTRAY_API_KEY} \
-	#      -H "X-Bintray-Override: 1" \
-	#      -H "X-Bintray-Publish: 1" \
-	#      "${REPO_ROOT}/evebox-development/evebox/latest/${dest_filename}"
-	# printf "\n\n"
+	echo "Uploading ${zip} to ${dest_filename}."
+	curl -T ${zip} -u jasonish:${BINTRAY_API_KEY} \
+	     -H "X-Bintray-Override: 1" \
+	     -H "X-Bintray-Publish: 1" \
+	     "${REPO_ROOT}/evebox-development/evebox/latest/${dest_filename}"
+	printf "\n\n"
 
     done
 }
