@@ -37,6 +37,7 @@ import (
 
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/resources"
+	"github.com/jasonish/evebox/util"
 	"github.com/pkg/errors"
 	"io/ioutil"
 )
@@ -155,10 +156,18 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 		return "", nil
 	}
 
+	version := template.GetMap(index).Get("version")
+	log.Debug("Found template version %v", version)
+
 	dynamicTemplates := template.GetMap(index).
 		GetMap("mappings").
 		GetMap("_default_").
 		GetMapList("dynamic_templates")
+	if dynamicTemplates == nil {
+		log.Warning("Failed to lookup dynamic_templates in template, falling back to \"raw\"")
+		log.Warning("Template: %s", util.ToJson(template))
+		return "raw", nil
+	}
 	for _, entry := range dynamicTemplates {
 		if entry["string_fields"] != nil {
 			mappingType := entry.GetMap("string_fields").
@@ -171,6 +180,8 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 			}
 		}
 	}
+	log.Warning("Failed to find string_fields.mapping.fields.keyword.type in dynamic_template, falling back to \"raw\"")
+	log.Warning("Template: %s", util.ToJson(template))
 	return "raw", nil
 }
 
