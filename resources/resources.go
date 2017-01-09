@@ -67,6 +67,10 @@ func (s FileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		path = strings.TrimPrefix(r.URL.String(), "/")
 	}
 
+	// Remove any query string parameters...
+	parts := strings.SplitN(path, "?", 2)
+	path = parts[0]
+
 	log.Info("Static file request for %s.", path)
 
 	asset := fmt.Sprintf("public/%s", path)
