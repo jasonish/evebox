@@ -92,6 +92,8 @@ func Main(args []string) {
 
 	var err error
 
+	log.Info("This is EveBox Server version %v (rev: %v)", core.BuildVersion, core.BuildRev)
+
 	flagset := flag.NewFlagSet("server", flag.ExitOnError)
 
 	flagset.StringVarP(&opts.ElasticSearchUri, "elasticsearch", "e", "", "Elastic Search URI (default: http://localhost:9200")
