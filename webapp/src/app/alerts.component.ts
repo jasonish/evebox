@@ -55,7 +55,7 @@ export interface AlertsState {
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 
-    private windowSize:number = 10;
+    private windowSize:number = 100;
     private offset:number = 0;
 
     private rows:any[] = [];
@@ -356,18 +356,26 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     removeRow(row:any) {
+
+        // Remove the event from the visible events.
         this.rows = this.rows.filter((_row:any) => {
             if (_row == row) {
                 return false;
             }
             return true;
         });
+
+        // Remove from the all event store as well.
         this.allRows = this.allRows.filter((_row:any) => {
             if (_row == row) {
                 return false;
             }
             return true;
         });
+
+        // Attempt to slide in an event from the next page.
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+
         if (this.activeRow >= this.rows.length) {
             this.activeRow--;
         }
