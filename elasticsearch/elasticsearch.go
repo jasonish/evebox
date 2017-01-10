@@ -164,9 +164,9 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 		GetMap("_default_").
 		GetMapList("dynamic_templates")
 	if dynamicTemplates == nil {
-		log.Warning("Failed to lookup dynamic_templates in template, falling back to \"raw\"")
+		log.Warning("Failed to parse template, keyword resolution delayed.")
 		log.Warning("Template: %s", util.ToJson(template))
-		return "raw", nil
+		return "", nil
 	}
 	for _, entry := range dynamicTemplates {
 		if entry["string_fields"] != nil {
@@ -178,11 +178,15 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 			if mappingType == "keyword" {
 				return "keyword", nil
 			}
+
+			if entry.GetMap("string_fields").GetMap("mapping").GetMap("fields").GetMap("raw") != nil {
+				return "raw", nil
+			}
 		}
 	}
-	log.Warning("Failed to find string_fields.mapping.fields.keyword.type in dynamic_template, falling back to \"raw\"")
+	log.Warning("Failed to parse template, keyword resolution delayed.")
 	log.Warning("Template: %s", util.ToJson(template))
-	return "raw", nil
+	return "", nil
 }
 
 func (es *ElasticSearch) InitKeyword() error {
