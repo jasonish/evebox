@@ -55,7 +55,7 @@ export interface AlertsState {
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 
-    private windowSize:number = 100;
+    private windowSize:number = 10;
     private offset:number = 0;
 
     private rows:any[] = [];
@@ -96,8 +96,19 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     older() {
-        console.log("next");
         this.offset += this.windowSize;
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    oldest() {
+        while (this.offset + this.windowSize < this.allRows.length) {
+            this.offset += this.windowSize;
+        }
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    newest() {
+        this.offset = 0;
         this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
     }
 
@@ -109,6 +120,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
             this.offset = 0;
         }
         this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    showAll() {
+        this.rows = this.allRows;
     }
 
     min(a:number, b:number):number {
@@ -141,6 +156,24 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.mousetrap.bind(this, "x", () =>
             this.toggleSelectedState(this.getActiveRow()));
         this.mousetrap.bind(this, "e", () => this.archiveEvents());
+
+        this.mousetrap.bind(this, ">", () => {
+            this.older();
+        });
+
+        this.mousetrap.bind(this, "<", () => {
+            this.newer();
+        });
+
+        // CTRL >
+        this.mousetrap.bind(this, "ctrl+shift+.", () => {
+            this.oldest();
+        });
+
+        // CTRL <
+        this.mousetrap.bind(this, "ctrl+shift+,", () => {
+            this.newest();
+        });
 
         this.dispatcherSubscription = this.appService.subscribe((event:any) => {
             this.appEventHandler(event);
