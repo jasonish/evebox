@@ -128,6 +128,14 @@ export class EventComponent implements OnInit, OnDestroy {
             this.event._source.tags.indexOf("archived") == -1;
     }
 
+    hasGeoip():boolean {
+        if (this.event._source.geoip &&
+            Object.keys(this.event._source.geoip).length > 0) {
+            return true;
+        }
+        return false;
+    }
+
     sessionSearch() {
         let q = `+alert.signature_id:${this.event._source.alert.signature_id}`;
         q += ` +src_ip.${this.elasticSearch.keyword}:"${this.event._source.src_ip}"`;

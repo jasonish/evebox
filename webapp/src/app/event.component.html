@@ -57,12 +57,14 @@
               <dd>{{event._source.proto}}</dd>
               <dt>Source</dt>
               <dd>
+                <!-- @formatter:off -->
                 <search-link field="src_ip"
                              [search]="event._source.src_ip"
                              value="{{event._source.src_ip | eveboxFormatIpAddress}}">
                 </search-link><span
-                  *ngIf="event._source.src_port"
-                  style="color: dimgray">:{{event._source.src_port}}</span>
+                    *ngIf="event._source.src_port"
+                    style="color: dimgray">:{{event._source.src_port}}</span>
+                <!-- @formatter:on -->
                 <span class="dropdown">
                   <a href="javascript:void(0)" class="dropdown-toggle"
                      data-toggle="dropdown"
@@ -77,11 +79,13 @@
               </dd>
               <dt>Destination</dt>
               <dd>
+                <!-- @formatter:off -->
                 <search-link field="dest_ip"
                              [search]="event._source.dest_ip"
                              value="{{event._source.dest_ip | eveboxFormatIpAddress}}">
                 </search-link><span *ngIf="event._source.dest_port"
-                                    style="color: dimgray">:{{event._source.dest_port}}</span>
+                      style="color: dimgray">:{{event._source.dest_port}}</span>
+                <!-- @formatter:on -->
                 <span class="dropdown">
                   <a href="javascript:void(0)" class="dropdown-toggle"
                      data-toggle="dropdown"
@@ -201,7 +205,7 @@
     </div>
 
     <!-- GeoIP. -->
-    <div *ngIf="event._source.geoip" class="panel panel-default">
+    <div *ngIf="hasGeoip()" class="panel panel-default">
       <div class="panel-heading">
         <b>GeoIP</b>
       </div>
@@ -216,7 +220,8 @@
     </div>
 
     <!-- TLS (in-event). -->
-    <div *ngIf="event._source.event_type != 'tls' && event._source.tls" class="panel panel-default">
+    <div *ngIf="event._source.event_type != 'tls' && event._source.tls"
+         class="panel panel-default">
       <div class="panel-heading">
         TLS
       </div>
