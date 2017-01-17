@@ -4,7 +4,7 @@ go: 1.7
 env:
   global:
     - PATH:$PATH:~/gopath/bin
-    - NODE_VERSION=4.4.7
+    - NODE_VERSION=6.9.4
     - RUBY_VERSION=2.1.1
     # Docker trigger token.
     - secure: RL1Ku0ikl6GBlsri8WSMOnCDFjQsMg/nDFZguq/xr0cNNNc1uYeTMxxd7yqXtKj4hhzu1K5jR5VywvN8pLj6KprjnTtXhtrlziwGWm/UoyZVs4Clo6pExsMue8FYNxyk7uqh1/IHpUokEksK26XHv/nes44OZTFsRT4/BszPLhk=
