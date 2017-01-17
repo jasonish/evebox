@@ -135,17 +135,46 @@
       [(activeRow)]="activeRow"
       [rows]="rows"></alert-table>
 
+  <br/>
+
   <div class="row"
        *ngIf="rows.length > 0"
-       style="line-height: 34px; margin-top: 5px; padding-top: 0px;">
+       style="line-height: 34px; margin-bottom: 15px;">
     <div class="col-md-12">
+
       <div class="pull-right">
-        <button [disabled]="offset == 0"
-                type="button" class="btn btn-default" (click)="newer()">Newer
-        </button>
-        <button [disabled]="offset + windowSize > allRows.length"
-                type="button" class="btn btn-default" (click)="older()">Older
-        </button>
+        <div class="btn-group" role="group">
+          <button [disabled]="offset == 0"
+                  type="button"
+                  class="btn btn-default" (click)="newest()">Newest
+          </button>
+          <button [disabled]="offset == 0"
+                  type="button"
+                  class="btn btn-default" (click)="newer()">Newer
+          </button>
+          <button [disabled]="rows.length == allRows.length || offset + windowSize >= allRows.length"
+                  type="button"
+                  class="btn btn-default" (click)="older()">Older
+          </button>
+          <button [disabled]="rows.length == allRows.length || offset + windowSize >= allRows.length"
+                  type="button"
+                  class="btn btn-default" (click)="oldest()">Oldest
+          </button>
+          <div class="btn-group" role="group">
+            <button type="button"
+                    class="btn btn-default dropdown-toggle"
+                    data-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+              <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right">
+              <li><a href="javascript:void(0)" (click)="showAll()">View All</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
       </div>
       Showing {{offset + 1}}-{{offset + rows.length}} of {{allRows.length}}.
     </div>
