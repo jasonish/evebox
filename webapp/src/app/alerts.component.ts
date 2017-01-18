@@ -35,12 +35,12 @@ import {ToastrService} from "./toastr.service";
 import {TopNavService} from "./topnav.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {loadingAnimation} from "./animations";
-import * as moment from "moment";
 
 declare var window:any;
 
 export interface AlertsState {
     rows:any[];
+    allRows:any[];
     activeRow:number;
     route:string,
     queryString:string;
@@ -78,56 +78,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 private toastr:ToastrService,
                 private ss:EveboxSubscriptionService,
                 private topNavService:TopNavService) {
-    }
-
-    buildState():any {
-        let state:AlertsState = {
-            rows: this.rows,
-            activeRow: this.activeRow,
-            queryString: this.queryString,
-            route: this.appService.getRoute(),
-            scrollOffset: window.pageYOffset,
-        };
-        return state;
-    }
-
-    isInbox() {
-        return this.appService.getRoute() == "/inbox";
-    }
-
-    older() {
-        this.offset += this.windowSize;
-        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
-    }
-
-    oldest() {
-        while (this.offset + this.windowSize < this.allRows.length) {
-            this.offset += this.windowSize;
-        }
-        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
-    }
-
-    newest() {
-        this.offset = 0;
-        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
-    }
-
-    newer() {
-        if (this.offset > this.windowSize) {
-            this.offset -= this.windowSize;
-        }
-        else {
-            this.offset = 0;
-        }
-        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
-    }
-
-    showAll() {
-        this.rows = this.allRows;
-    }
-
-    min(a:number, b:number):number {
-        return Math.min(a, b);
     }
 
     ngOnInit():any {
@@ -180,16 +130,22 @@ export class AlertsComponent implements OnInit, OnDestroy {
         });
     }
 
-    escalateAndArchiveEvent(row:any) {
-        this.archiveAlertGroup(row).then(() => {
-            this.escalateAlertGroup(row);
-        });
-    }
-
     ngOnDestroy():any {
         this.mousetrap.unbind(this);
         this.ss.unsubscribe(this);
         this.dispatcherSubscription.unsubscribe();
+    }
+
+    buildState():any {
+        let state:AlertsState = {
+            rows: this.rows,
+            allRows: this.allRows,
+            activeRow: this.activeRow,
+            queryString: this.queryString,
+            route: this.appService.getRoute(),
+            scrollOffset: window.pageYOffset,
+        };
+        return state;
     }
 
     restoreState():boolean {
@@ -201,9 +157,6 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         console.log("Restoring previous state.");
 
-        let rows = state.rows;
-        let activeRow = state.activeRow;
-
         if (state.route != this.appService.getRoute()) {
             console.log("Saved state route differs.");
             return false;
@@ -213,32 +166,81 @@ export class AlertsComponent implements OnInit, OnDestroy {
             return false;
         }
 
+        this.rows = state.rows;
+        this.allRows = state.allRows;
+        this.activeRow = state.activeRow;
+
         // If in inbox, remove any archived events.
         if (this.isInbox()) {
-            rows = rows.filter((row:any) => {
-                return row.event.event._source.tags.indexOf("archived") == -1;
+            let archived = this.rows.filter((row:any) => {
+                return row.event.event._source.tags.indexOf("archived") > -1;
             });
-            if (activeRow >= rows.length) {
-                activeRow = rows.length - 1;
-            }
+
+            archived.forEach((row:any) => {
+                this.removeRow(row);
+            });
         }
         else if (this.appService.getRoute() == "/escalated") {
-            rows = rows.filter((row:any) => {
-                return row.event.escalatedCount > 0;
+            let deEscalated = this.rows.filter(row => {
+                return row.event.escalatedCount == 0;
             });
-            if (activeRow >= rows.length) {
-                activeRow = rows.length - 1;
-            }
-        }
 
-        this.rows = rows;
-        this.activeRow = activeRow;
+            deEscalated.forEach(row => {
+                this.removeRow(row);
+            });
+        }
 
         setTimeout(() => {
             window.scrollTo(0, state.scrollOffset)
         }, 0);
 
         return true;
+    }
+
+    isInbox() {
+        return this.appService.getRoute() == "/inbox";
+    }
+
+    older() {
+        this.offset += this.windowSize;
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    oldest() {
+        while (this.offset + this.windowSize < this.allRows.length) {
+            this.offset += this.windowSize;
+        }
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    newest() {
+        this.offset = 0;
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    newer() {
+        if (this.offset > this.windowSize) {
+            this.offset -= this.windowSize;
+        }
+        else {
+            this.offset = 0;
+        }
+        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+    }
+
+    showAll() {
+        this.rows = this.allRows;
+    }
+
+    min(a:number, b:number):number {
+        return Math.min(a, b);
+    }
+
+
+    escalateAndArchiveEvent(row:any) {
+        this.archiveAlertGroup(row).then(() => {
+            this.escalateAlertGroup(row);
+        });
     }
 
     appEventHandler(event:AppEvent) {
