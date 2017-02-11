@@ -27,11 +27,9 @@
 package elasticsearch
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"sync"
 
@@ -43,14 +41,7 @@ import (
 const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
 
 type BulkEveIndexer struct {
-	// Index prefix to use. For example, if this is set to "logstash",
-	// events will be put in index "logstash-YYYY.MM.DD"
-	IndexPrefix string
-
-	baseUrl string
-
 	es         *ElasticSearch
-	httpClient *http.Client
 
 	pipeReader *io.PipeReader
 	pipeWriter *io.PipeWriter
@@ -62,56 +53,21 @@ type BulkEveIndexer struct {
 
 	done bool
 
-	disableCertCheck bool
-
 	channel chan interface{}
 }
 
-func NewIndexer(es *ElasticSearch, disableCertCheck bool) *BulkEveIndexer {
+func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
 
 	indexer := BulkEveIndexer{
 		es:               es,
-		baseUrl:          es.baseUrl,
-		httpClient:       &http.Client{},
-		disableCertCheck: disableCertCheck,
 		channel:          make(chan interface{}),
 	}
-
-	indexer.httpClient.Transport = &http.Transport{DialTLS: indexer.DialTLS}
-
-	// Set a default index name.
-	indexer.IndexPrefix = "logstash"
-
-	// Check for a redirect.
-	indexer.CheckForRedirect()
 
 	pipeReader, pipeWriter := io.Pipe()
 	indexer.pipeReader = pipeReader
 	indexer.pipeWriter = pipeWriter
 
 	return &indexer
-}
-
-func (i *BulkEveIndexer) DialTLS(network string, addr string) (net.Conn, error) {
-	return tls.Dial(network, addr, &tls.Config{
-		InsecureSkipVerify: i.disableCertCheck,
-	})
-}
-
-func (i *BulkEveIndexer) CheckForRedirect() {
-	httpClient := http.Client{
-		CheckRedirect: func(request *http.Request, via []*http.Request) error {
-			if request.Response != nil {
-				location, err := request.Response.Location()
-				if err == nil {
-					log.Info("Redirection to %s detected, updating Elastic Search base URL.", location.String())
-					i.baseUrl = location.String()
-				}
-			}
-			return nil
-		},
-	}
-	httpClient.Head(i.es.baseUrl)
 }
 
 func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse, error) {
@@ -126,6 +82,8 @@ func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse,
 			return nil, err
 		}
 		return &bulkResponse, nil
+	} else {
+		log.Info("Got unexpected status code %d", response.StatusCode)
 	}
 
 	err := NewElasticSearchError(response)
@@ -171,7 +129,7 @@ func (i *BulkEveIndexer) IndexRawEvent(event eve.RawEveEvent) error {
 		return err
 	}
 	event["@timestamp"] = timestamp.UTC().Format(AtTimestampFormat)
-	index := fmt.Sprintf("%s-%s", i.IndexPrefix, timestamp.UTC().Format("2006.01.02"))
+	index := fmt.Sprintf("%s-%s", i.es.EventBaseIndex, timestamp.UTC().Format("2006.01.02"))
 
 	header := BulkCreateHeader{}
 	header.Create.Index = index

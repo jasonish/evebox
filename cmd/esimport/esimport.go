@@ -204,6 +204,7 @@ func Main(args []string) {
 	}
 
 	es := elasticsearch.New(conf.Url)
+	es.EventBaseIndex = conf.Index
 	es.DisableCertCheck(conf.DisableCertificateCheck)
 	if conf.Username != "" || conf.Password != "" {
 		if err := es.SetUsernamePassword(conf.Username,
@@ -244,8 +245,7 @@ func Main(args []string) {
 		}
 	}
 
-	indexer := elasticsearch.NewIndexer(es, conf.DisableCertificateCheck)
-	indexer.IndexPrefix = conf.Index
+	indexer := elasticsearch.NewIndexer(es)
 
 	reader, err := evereader.New(conf.InputFilename)
 	if err != nil {

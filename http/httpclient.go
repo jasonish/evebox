@@ -37,10 +37,12 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"github.com/jasonish/evebox/log"
 )
 
 type HttpClient struct {
 	baseUrl          string
+	redirectBaseUrl  string
 	username         string
 	password         string
 	disableCertCheck bool
@@ -48,9 +50,11 @@ type HttpClient struct {
 }
 
 func NewHttpClient() *HttpClient {
-	return &HttpClient{
+	httpClient := &HttpClient{
 		httpClient: &http.Client{},
 	}
+	httpClient.httpClient.CheckRedirect = httpClient.CheckRedirect
+	return httpClient
 }
 
 func (c *HttpClient) SetBaseUrl(baseUrl string) {
@@ -82,6 +86,19 @@ func (c *HttpClient) DialTLS(network string, addr string) (net.Conn, error) {
 	})
 }
 
+func (c *HttpClient) CheckRedirect(request *http.Request, via []*http.Request) error {
+	log.Println("Got redirect check.")
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	location, err := request.Response.Location()
+	if err == nil {
+		log.Info("Updating redirect base URL to %s", location.String())
+		c.redirectBaseUrl = location.String();
+	}
+	return nil
+}
+
 func (c *HttpClient) Do(request *http.Request) (*http.Response, error) {
 	if c.username != "" || c.password != "" {
 		request.SetBasicAuth(c.username, c.password)
@@ -94,7 +111,11 @@ func (c *HttpClient) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (c *HttpClient) Request(method string, path string, contentType string, body io.Reader) (*http.Response, error) {
-	request, err := http.NewRequest(method, fmt.Sprintf("%s/%s", c.baseUrl, path), body)
+	baseUrl := c.baseUrl
+	if c.redirectBaseUrl != "" && (method == "POST" || method == "PUT") {
+		baseUrl = c.redirectBaseUrl
+	}
+	request, err := http.NewRequest(method, fmt.Sprintf("%s/%s", baseUrl, path), body)
 	if err != nil {
 		return nil, err
 	}
