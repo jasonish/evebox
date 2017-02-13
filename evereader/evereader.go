@@ -208,3 +208,17 @@ func (er *EveReader) Next() (eve.RawEveEvent, error) {
 
 	return event, nil
 }
+
+// Return the "lag" in bytes, that is the number of bytes behind the reader is
+// from the end of the file.
+func (er *EveReader) Lag() (int64, error) {
+	fileSize, err := er.FileSize()
+	if err != nil {
+		return 0, err
+	}
+	fileOffset, err := er.FileOffset()
+	if err != nil {
+		return 0, err
+	}
+	return fileSize - fileOffset, nil
+}

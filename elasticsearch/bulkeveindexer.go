@@ -29,43 +29,25 @@ package elasticsearch
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"sync"
-
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/satori/go.uuid"
+	"net/http"
 )
 
 const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
 
 type BulkEveIndexer struct {
-	es         *ElasticSearch
-
-	pipeReader *io.PipeReader
-	pipeWriter *io.PipeWriter
-
-	// Number of events queued in flight.
+	es     *ElasticSearch
 	queued uint
-
-	wait sync.WaitGroup
-
-	done bool
-
-	channel chan interface{}
+	buf    []byte
 }
 
 func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
 
 	indexer := BulkEveIndexer{
-		es:               es,
-		channel:          make(chan interface{}),
+		es: es,
 	}
-
-	pipeReader, pipeWriter := io.Pipe()
-	indexer.pipeReader = pipeReader
-	indexer.pipeWriter = pipeWriter
 
 	return &indexer
 }
@@ -90,38 +72,6 @@ func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse,
 	return nil, err
 }
 
-func (i *BulkEveIndexer) Run() error {
-
-	for {
-		if i.done {
-			return nil
-		}
-
-		response, err := i.es.HttpClient.Post("_bulk",
-			"application/json", i.pipeReader)
-		if err != nil {
-			return err
-		}
-
-		bulkResponse, err := i.DecodeResponse(response)
-		response.Body.Close()
-
-		// Sending done signal.
-		if err != nil {
-			i.channel <- err
-		} else {
-			i.channel <- bulkResponse
-		}
-
-		// Create new pipes for the next round...
-		pipeReader, pipeWriter := io.Pipe()
-		i.pipeReader = pipeReader
-		i.pipeWriter = pipeWriter
-	}
-
-	return nil
-}
-
 func (i *BulkEveIndexer) IndexRawEvent(event eve.RawEveEvent) error {
 
 	timestamp, err := event.GetTimestamp()
@@ -129,46 +79,39 @@ func (i *BulkEveIndexer) IndexRawEvent(event eve.RawEveEvent) error {
 		return err
 	}
 	event["@timestamp"] = timestamp.UTC().Format(AtTimestampFormat)
-	index := fmt.Sprintf("%s-%s", i.es.EventBaseIndex, timestamp.UTC().Format("2006.01.02"))
+	index := fmt.Sprintf("%s-%s", i.es.EventBaseIndex,
+		timestamp.UTC().Format("2006.01.02"))
 
 	header := BulkCreateHeader{}
 	header.Create.Index = index
 	header.Create.Type = "log"
 	header.Create.Id = uuid.NewV1().String()
 
-	encoder := json.NewEncoder(i.pipeWriter)
+	rheader, _ := json.Marshal(header)
+	revent, _ := json.Marshal(event)
 
-	encoder.Encode(&header)
-	encoder.Encode(event)
+	i.buf = append(i.buf, rheader...)
+	i.buf = append(i.buf, []byte("\n")...)
+	i.buf = append(i.buf, revent...)
+	i.buf = append(i.buf, []byte("\n")...)
 
 	i.queued++
 
 	return nil
 }
 
-func (i *BulkEveIndexer) Stop() {
-	i.done = true
-	i.FlushConnection()
-}
-
 func (i *BulkEveIndexer) FlushConnection() (*BulkResponse, error) {
-	if i.queued == 0 {
-		// Just return, there are no events left.
-		return nil, nil
-	}
 
-	i.pipeWriter.Close()
-	i.queued = 0
-
-	for {
-		result := <-i.channel
-		switch result := result.(type) {
-		case error:
-			return nil, result.(error)
-		case *BulkResponse:
-			return result, nil
+	if len(i.buf) > 0 {
+		response, err := i.es.HttpClient.PostBytes("_bulk",
+			"application/json", i.buf)
+		if err != nil {
+			return nil, err
 		}
-		break
+		i.buf = i.buf[:0]
+		i.queued = 0
+		bulkResponse, err := i.DecodeResponse(response)
+		return bulkResponse, err
 	}
 
 	return nil, nil

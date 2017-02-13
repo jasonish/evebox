@@ -31,13 +31,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/jasonish/evebox/log"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
-	"github.com/jasonish/evebox/log"
 )
 
 type HttpClient struct {
@@ -87,14 +87,13 @@ func (c *HttpClient) DialTLS(network string, addr string) (net.Conn, error) {
 }
 
 func (c *HttpClient) CheckRedirect(request *http.Request, via []*http.Request) error {
-	log.Println("Got redirect check.")
 	if len(via) >= 10 {
 		return errors.New("stopped after 10 redirects")
 	}
 	location, err := request.Response.Location()
 	if err == nil {
 		log.Info("Updating redirect base URL to %s", location.String())
-		c.redirectBaseUrl = location.String();
+		c.redirectBaseUrl = location.String()
 	}
 	return nil
 }
@@ -147,6 +146,10 @@ func (c *HttpClient) PostJson(path string, body interface{}) (*http.Response, er
 
 func (c *HttpClient) PostString(path string, contentType string, body string) (*http.Response, error) {
 	return c.Post(path, contentType, strings.NewReader(body))
+}
+
+func (c *HttpClient) PostBytes(path string, contentType string, body []byte) (*http.Response, error) {
+	return c.Post(path, contentType, bytes.NewReader(body))
 }
 
 func (c *HttpClient) Put(path string, contentType string, body io.Reader) (*http.Response, error) {

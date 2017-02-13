@@ -279,15 +279,6 @@ func Main(args []string) {
 	// Number of EOFs in last stat interval.
 	eofs := uint64(0)
 
-	go func() {
-		err := indexer.Run()
-		if err != nil {
-			log.Fatal("Elastic Search indexer connection unexpectedly closed:", err)
-		} else {
-			log.Debug("Indexer exited without issue.")
-		}
-	}()
-
 	for {
 		eof := false
 		event, err := reader.Next()
@@ -349,7 +340,7 @@ func Main(args []string) {
 
 			// Calculate the lag in bytes, that is the number of bytes behind
 			// the end of file we are.
-			lag, err := GetLag(reader)
+			lag, err := reader.Lag()
 			if err != nil {
 				log.Error("Failed to calculate lag: %v", err)
 			}
@@ -380,16 +371,4 @@ func Main(args []string) {
 		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
 			uint64(float64(count)/totalTime.Seconds()))
 	}
-}
-
-func GetLag(reader *evereader.EveReader) (int64, error) {
-	fileSize, err := reader.FileSize()
-	if err != nil {
-		return 0, err
-	}
-	fileOffset, err := reader.FileOffset()
-	if err != nil {
-		return 0, err
-	}
-	return fileSize - fileOffset, nil
 }
