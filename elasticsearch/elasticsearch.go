@@ -33,7 +33,7 @@ import (
 	"net/http"
 	"strings"
 
-	eveboxhttp "github.com/jasonish/evebox/http"
+	"github.com/jasonish/evebox/httputil"
 
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/resources"
@@ -59,11 +59,11 @@ type ElasticSearch struct {
 	// of the Logstash template used "raw", newer ones use "keyword".
 	keyword string
 
-	HttpClient *eveboxhttp.HttpClient
+	HttpClient *httputil.HttpClient
 }
 
 func New(url string) *ElasticSearch {
-	HttpClient := eveboxhttp.NewHttpClient()
+	HttpClient := httputil.NewHttpClient()
 	HttpClient.SetBaseUrl(url)
 
 	es := &ElasticSearch{
