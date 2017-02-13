@@ -104,9 +104,6 @@ func (h ApiWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if response != nil {
 		switch response := response.(type) {
 		case error:
-
-			log.Error("%+v", response)
-
 			var message string
 
 			switch cause := errors.Cause(response).(type) {
@@ -125,6 +122,9 @@ func (h ApiWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				StatusCode: http.StatusBadRequest,
 				Message:    message,
 			})
+		case []byte:
+			// Pass on the raw data.
+			w.Write(response)
 		case HttpResponse:
 			statusCode := http.StatusOK
 			contentType := "application/json"

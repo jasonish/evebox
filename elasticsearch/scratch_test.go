@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"fmt"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
 	"testing"
 )
 
@@ -49,14 +50,14 @@ func TestAggregateSum(t *testing.T) {
 
 	query.Aggs[agg].(map[string]interface{})["aggs"] = sum
 
-	fmt.Println(ToJsonPretty(query))
+	fmt.Println(util.ToJsonPretty(query))
 
 	response, err := es.Search(query)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fmt.Println(ToJsonPretty(response))
+	fmt.Println(util.ToJsonPretty(response))
 
 }
 

@@ -28,6 +28,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/jasonish/evebox/cmd/agent"
 	"github.com/jasonish/evebox/cmd/esimport"
 	"github.com/jasonish/evebox/cmd/evereader"
 	"github.com/jasonish/evebox/cmd/pgimport"
@@ -66,6 +67,9 @@ func main() {
 			return
 		case "esimport":
 			esimport.Main(os.Args[1:])
+			return
+		case "agent":
+			agent.Main(os.Args[2:])
 			return
 		case "evereader":
 			evereader.Main(os.Args[1:])

@@ -27,7 +27,9 @@
 package evereader
 
 import (
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"github.com/jasonish/evebox/log"
 	"os"
 )
@@ -48,6 +50,25 @@ type Bookmark struct {
 type Bookmarker struct {
 	Filename string
 	Reader   *EveReader
+}
+
+func ConfigureBookmarker(path string, bookmarkDirectory string, reader *EveReader) *Bookmarker {
+	var bookmarkPath string
+
+	if bookmarkDirectory == "" {
+		bookmarkPath = fmt.Sprintf("%s.bookmark", path)
+	} else {
+		hash := md5.Sum([]byte(path))
+		bookmarkPath = fmt.Sprintf("%s/%x.bookmark",
+			bookmarkDirectory, hash)
+	}
+
+	log.Info("Using bookmark file %s", bookmarkPath)
+
+	return &Bookmarker{
+		Filename: bookmarkPath,
+		Reader:   reader,
+	}
 }
 
 func (b *Bookmarker) GetBookmark() *Bookmark {
