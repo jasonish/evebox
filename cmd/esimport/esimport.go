@@ -29,57 +29,26 @@ package esimport
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jasonish/evebox/config"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
-	flag "github.com/spf13/pflag"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"io"
 	"os"
 	"time"
 )
 
 const DEFAULT_INDEX = "evebox"
+const BATCH_SIZE = 1000
 
-type Config struct {
-	// The filename to read.
-	InputFilename string `yaml:"input"`
+var flagset *pflag.FlagSet
 
-	// Elastic Search URL.
-	Url string `yaml:"url"`
-
-	// Elastic Search index (prefix)
-	Index string `yaml:"index"`
-
-	DisableCertificateCheck bool `yaml:"disable-certificate-check"`
-
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-
-	Bookmark     bool   `yaml:"bookmark"`
-	BookmarkPath string `yaml:"bookmark-path"`
-
-	DisableGeoIp  bool   `yaml:"disable-geoip"`
-	GeoIpDatabase string `yaml:"geoip-database"`
-
-	Verbose bool `yaml:"verbose"`
-
-	End bool `yaml:"end"`
-
-	BatchSize uint64 `yaml:"batch-size"`
-
-	// Not exposed in configuration file.
-	stdout  bool
-	oneshot bool
-}
-
-type ConfigWrapper struct {
-	Config Config `yaml:"esimport"`
-}
-
-var flagset *flag.FlagSet
+var verbose = false
+var stdout = false
+var oneshot = false
 
 func usage() {
 	usage := `Usage: evebox import [options] /path/to/eve.json
@@ -90,125 +59,101 @@ Options:
 	flagset.PrintDefaults()
 }
 
-func configure(args []string) Config {
-	flagset = flag.NewFlagSet("import", flag.ExitOnError)
+func configure(args []string) {
+
+	viper.SetDefault("index", DEFAULT_INDEX)
+	viper.SetDefault("disable-certificate-check", false)
+	viper.SetDefault("geoip-enabled", true)
+
+	flagset = pflag.NewFlagSet("esimport", pflag.ExitOnError)
 	flagset.Usage = usage
 
 	configFilename := flagset.StringP("config", "c", "", "Configuration file")
-	verbose := flagset.BoolP("verbose", "v", false, "Verbose output")
-	elasticSearchUri := flagset.StringP("elasticsearch", "e", "", "Elastic Search URL")
-	username := flagset.StringP("username", "u", "", "Username")
-	password := flagset.StringP("password", "p", "", "Password")
-	noCheckCertificate := flagset.BoolP("no-check-certificate", "k", false, "Disable certificate check")
-	index := flagset.String("index", DEFAULT_INDEX, "Elastic Search index prefix")
-	oneshot := flagset.Bool("oneshot", false, "One shot mode (exit on EOF)")
-	stdout := flagset.Bool("stdout", false, "Print events to stdout")
-	end := flagset.Bool("end", false, "Start at end of file")
-	batchSize := flagset.Uint64("batch-size", 1000, "Batch import size")
-	useBookmark := flagset.Bool("bookmark", false, "Bookmark location")
-	bookmarkPath := flagset.String("bookmark-path", "", "Path to bookmark file")
-	noGeoIp := flagset.Bool("no-geoip", false, "Disable GeoIP lookups")
-	geoIpDatabase := flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
+
+	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	flagset.BoolVar(&oneshot, "oneshot", false, "One shot mode (exit on EOF)")
+	flagset.BoolVar(&stdout, "stdout", false, "Print events to stdout")
+
+	flagset.StringP("elasticsearch", "e", "", "Elastic Search URL")
+	viper.BindPFlag("elasticsearch", flagset.Lookup("elasticsearch"))
+
+	flagset.StringP("username", "u", "", "Username")
+	viper.BindPFlag("username", flagset.Lookup("username"))
+
+	flagset.StringP("password", "p", "", "Password")
+	viper.BindPFlag("password", flagset.Lookup("password"))
+
+	flagset.BoolP("no-check-certificate", "k", false, "Disable certificate check")
+	viper.BindPFlag("disable-certificate-check", flagset.Lookup("no-check-certificate"))
+
+	flagset.String("index", DEFAULT_INDEX, "Elastic Search index prefix")
+	viper.BindPFlag("index", flagset.Lookup("index"))
+
+	flagset.Bool("end", false, "Start at end of file")
+	viper.BindPFlag("end", flagset.Lookup("end"))
+
+	flagset.Bool("bookmark", false, "Enable bookmarking")
+	viper.BindPFlag("bookmark", flagset.Lookup("bookmark"))
+
+	flagset.String("bookmark-path", "", "Path to bookmark file")
+	viper.BindPFlag("bookmark-path", flagset.Lookup("bookmark-path"))
+
+	flagset.Bool("geoip-enabled", true, "Enable/disable GeoIP lookups")
+	viper.BindPFlag("geoip-enabled", flagset.Lookup("geoip-enabled"))
+
+	flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
+	viper.BindPFlag("geoip-database", flagset.Lookup("geoip-database"))
 
 	flagset.Parse(args[1:])
 
-	if *verbose {
+	if *configFilename != "" {
+		log.Info("Using configuration file %s", *configFilename)
+		viper.SetConfigFile(*configFilename)
+		if err := viper.ReadInConfig(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if verbose {
 		log.Info("Setting log level to debug")
 		log.SetLevel(log.DEBUG)
 	}
 
-	configWrapper := ConfigWrapper{
-		Config: Config{
-			Index:     DEFAULT_INDEX,
-			BatchSize: 1000,
-		},
-	}
-
-	if *configFilename != "" {
-		log.Debug("Loading configuration file %s", *configFilename)
-		err := config.LoadConfigTo(*configFilename, &configWrapper)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	conf := configWrapper.Config
-
-	flagset.Visit(func(flag *flag.Flag) {
-		log.Debug("Found command line argument %s -> %s", flag.Name,
-			flag.Value.String())
-		switch flag.Name {
-		case "elasticsearch":
-			conf.Url = *elasticSearchUri
-		case "username":
-			conf.Username = *username
-		case "password":
-			conf.Password = *password
-		case "no-check-certificate":
-			conf.DisableCertificateCheck = *noCheckCertificate
-		case "index":
-			conf.Index = *index
-		case "oneshot":
-			conf.oneshot = *oneshot
-		case "stdout":
-			conf.stdout = *stdout
-		case "end":
-			conf.End = *end
-		case "batch-size":
-			conf.BatchSize = *batchSize
-		case "bookmark":
-			conf.Bookmark = *useBookmark
-		case "bookmark-path":
-			conf.BookmarkPath = *bookmarkPath
-		case "no-geoip":
-			conf.DisableGeoIp = *noGeoIp
-		case "geoip-database":
-			conf.GeoIpDatabase = *geoIpDatabase
-		case "verbose":
-			conf.Verbose = *verbose
-		case "config":
-		default:
-			log.Notice("Unhandle configuration flag %s", flag.Name)
-		}
-	})
-
 	if len(flagset.Args()) == 1 {
-		conf.InputFilename = flagset.Args()[0]
+		viper.Set("input", flagset.Args()[0])
 	} else if len(flagset.Args()) > 1 {
 		log.Fatal("Multiple input filenames not allowed")
 	}
-
-	return conf
 }
 
 func Main(args []string) {
 
-	conf := configure(args)
+	configure(args)
 
-	if conf.BatchSize < 1 {
-		log.Fatal("Batch size must be greater than 0")
-	}
-
-	if conf.Url == "" {
+	if viper.GetString("elasticsearch") == "" {
 		log.Error("error: --elasticsearch is a required parameter")
 		usage()
 		os.Exit(1)
 	}
 
-	if conf.InputFilename == "" {
+	if viper.GetString("input") == "" {
 		log.Fatal("error: no input file provided")
 	}
 
-	if conf.Bookmark && conf.BookmarkPath == "" {
-		conf.BookmarkPath = fmt.Sprintf("%s.bookmark", conf.InputFilename)
-		log.Info("Using bookmark file %s", conf.BookmarkPath)
+	useBookmark := viper.GetBool("bookmark")
+	bookmarkPath := viper.GetString("bookmark-path")
+
+	if useBookmark && bookmarkPath == "" {
+		bookmarkPath = fmt.Sprintf("%s.bookmark", viper.GetString("input"))
+		log.Info("Using bookmark file %s", bookmarkPath)
 	}
 
-	es := elasticsearch.New(conf.Url)
-	es.EventBaseIndex = conf.Index
-	es.DisableCertCheck(conf.DisableCertificateCheck)
-	if conf.Username != "" || conf.Password != "" {
-		if err := es.SetUsernamePassword(conf.Username,
-			conf.Password); err != nil {
+	es := elasticsearch.New(viper.GetString("elasticsearch"))
+	es.EventBaseIndex = viper.GetString("index")
+	es.DisableCertCheck(viper.GetBool("disable-certificate-check"))
+	if viper.GetString("username") != "" || viper.GetString("password") != "" {
+		if err := es.SetUsernamePassword(viper.GetString("username"),
+			viper.GetString("password")); err != nil {
 			log.Fatal("Failed to set username and password: %v", err)
 		}
 	}
@@ -221,22 +166,22 @@ func Main(args []string) {
 	majorVersion := response.MajorVersion()
 
 	// Check if the template exists.
-	templateExists, err := es.CheckTemplate(conf.Index)
+	templateExists, err := es.CheckTemplate(es.EventBaseIndex)
 	if !templateExists {
-		log.Info("Template %s does not exist, creating...", conf.Index)
-		err = es.LoadTemplate(conf.Index, majorVersion)
+		log.Info("Template %s does not exist, creating...", es.EventBaseIndex)
+		err = es.LoadTemplate(es.EventBaseIndex, majorVersion)
 		if err != nil {
 			log.Fatal("Failed to create template:", err)
 		}
 	} else {
-		log.Info("Template %s exists, will not create.", conf.Index)
+		log.Info("Template %s exists, will not create.", es.EventBaseIndex)
 	}
 
 	var geoipFilter *eve.GeoipFilter
 	tagsFilter := &eve.TagsFilter{}
 
-	if !conf.DisableGeoIp {
-		geoipdb, err := geoip.NewGeoIpDb(conf.GeoIpDatabase)
+	if viper.GetBool("geoip-enabled") {
+		geoipdb, err := geoip.NewGeoIpDb(viper.GetString("geoip-database"))
 		if err != nil {
 			log.Notice("Failed to load GeoIP database: %v", err)
 		} else {
@@ -247,23 +192,24 @@ func Main(args []string) {
 
 	indexer := elasticsearch.NewIndexer(es)
 
-	reader, err := evereader.New(conf.InputFilename)
+	reader, err := evereader.New(viper.GetString("input"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Initialize bookmarking...
 	var bookmarker *evereader.Bookmarker = nil
-	if conf.Bookmark {
+	optEnd := viper.GetBool("end")
+	if useBookmark {
 		bookmarker = &evereader.Bookmarker{
-			Filename: conf.BookmarkPath,
+			Filename: bookmarkPath,
 			Reader:   reader,
 		}
-		err := bookmarker.Init(conf.End)
+		err := bookmarker.Init(optEnd)
 		if err != nil {
 			log.Fatal(err)
 		}
-	} else if conf.End {
+	} else if optEnd {
 		log.Info("Jumping to end of file.")
 		err := reader.SkipToEnd()
 		if err != nil {
@@ -301,7 +247,7 @@ func Main(args []string) {
 
 			tagsFilter.Filter(event)
 
-			if conf.stdout {
+			if stdout {
 				asJson, err := json.Marshal(event)
 				if err != nil {
 					log.Error("Failed to print event as json: %v", err)
@@ -314,10 +260,10 @@ func Main(args []string) {
 			count++
 		}
 
-		if eof || (count > 0 && count%conf.BatchSize == 0) {
+		if eof || (count > 0 && count%BATCH_SIZE == 0) {
 			var bookmark *evereader.Bookmark = nil
 
-			if conf.Bookmark {
+			if useBookmark {
 				bookmark = bookmarker.GetBookmark()
 			}
 
@@ -330,7 +276,7 @@ func Main(args []string) {
 					response.Errors)
 			}
 
-			if conf.Bookmark {
+			if useBookmark {
 				bookmarker.WriteBookmark(bookmark)
 			}
 		}
@@ -357,7 +303,7 @@ func Main(args []string) {
 		}
 
 		if eof {
-			if conf.oneshot {
+			if oneshot {
 				break
 			} else {
 				time.Sleep(1 * time.Second)
@@ -367,7 +313,7 @@ func Main(args []string) {
 
 	totalTime := time.Since(startTime)
 
-	if conf.oneshot {
+	if oneshot {
 		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
 			uint64(float64(count)/totalTime.Seconds()))
 	}
