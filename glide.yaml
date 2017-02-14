@@ -1,7 +1,6 @@
 package: github.com/jasonish/evebox
 import:
 - package: github.com/kardianos/osext
-- package: gopkg.in/yaml.v2
 - package: golang.org/x/net
   subpackages:
   - context
@@ -19,3 +18,4 @@ import:
   - unix
 - package: github.com/mattn/go-shellwords
 - package: github.com/pkg/errors
+- package: github.com/spf13/viper
