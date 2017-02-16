@@ -27,3 +27,13 @@ event-services:
 
     # Open in new window. The default is the same window.
     target: new
+
+geoip:
+  disabled: false
+  # Path to the MaxMind database. This must be the version 2 database
+  # (http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz)
+  # File must be ungzipped.
+  #
+  # This is temporary, EveBox will eventually support downloading and
+  # updateing the geo database itself.
+  database: /etc/evebox/GeoLite2-City.mmdb

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2016-2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,34 +24,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package geoip
 
 import (
-	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/elasticsearch"
-	"github.com/jasonish/evebox/geoip"
+	"github.com/jasonish/evebox/log"
+	"github.com/spf13/viper"
 )
 
-type AppContext struct {
-	DataStore core.Datastore
+type GeoIpService struct {
+	db *GeoIpDb
+}
 
-	ElasticSearch *elasticsearch.ElasticSearch
+func NewGeoIpService() *GeoIpService {
+	geoIpService := GeoIpService{}
 
-	// Service for querying alerts.
-	AlertQueryService core.AlertQueryService
+	if viper.GetBool("geoip.disabled") == false {
 
-	EventQueryService core.EventQueryService
-
-	EventService   core.EventService
-	EsEventService elasticsearch.EventService
-
-	ReportService core.ReportService
-
-	GeoIpService *geoip.GeoIpService
-
-	Vars struct {
-
-		// URL to the frontend web application development server.
-		DevWebAppServerUrl string
+		db, err := NewGeoIpDb(viper.GetString("geoip.database"))
+		if err != nil {
+			log.Warning("Failed to initialize geoip database: %v", err)
+		} else {
+			geoIpService.db = db
+		}
 	}
+
+	return &geoIpService
+}
+
+func (s *GeoIpService) LookupString(addr string) (*GeoIp, error) {
+	if s.db == nil {
+		return nil, nil
+	}
+	return s.db.LookupString(addr)
 }

@@ -42,8 +42,6 @@ const (
 var DbLocations = []string{
 	"/usr/local/share/GeoIP/GeoLite2-City.mmdb",
 	"/usr/share/GeoIP/GeoLite2-City.mmdb",
-	"/usr/local/share/GeoIP/GeoLite2-Country.mmdb",
-	"/usr/share/GeoIP/GeoLite2-Country.mmdb",
 }
 
 func FindDbPath() string {
@@ -114,7 +112,7 @@ func (g *GeoIpDb) BuildDate() time.Time {
 	return g.buildDate
 }
 
-func (g *GeoIpDb) LookupString(addr string) (GeoIp, error) {
+func (g *GeoIpDb) LookupString(addr string) (*GeoIp, error) {
 	ip := net.ParseIP(addr)
 
 	result := GeoIp{}
@@ -131,7 +129,7 @@ func (g *GeoIpDb) LookupString(addr string) (GeoIp, error) {
 	if g.dbType == "GeoLite2-Country" {
 		country, err := g.reader.Country(ip)
 		if err != nil {
-			return result, err
+			return nil, err
 		}
 		result.ContinentCode = country.Continent.Code
 		result.CountryCode2 = country.Country.IsoCode
@@ -139,7 +137,7 @@ func (g *GeoIpDb) LookupString(addr string) (GeoIp, error) {
 	} else if g.dbType == "GeoLite2-City" {
 		city, err := g.reader.City(ip)
 		if err != nil {
-			return result, err
+			return nil, err
 		}
 		result.ContinentCode = city.Continent.Code
 		result.CountryCode2 = city.Country.IsoCode
@@ -157,5 +155,5 @@ func (g *GeoIpDb) LookupString(addr string) (GeoIp, error) {
 		result.Coordinates[1] = city.Location.Latitude
 	}
 
-	return result, nil
+	return &result, nil
 }

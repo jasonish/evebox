@@ -31,6 +31,7 @@ import (
 
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
+	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
@@ -116,6 +117,9 @@ func Main(args []string) {
 	log.Info("Using ElasticSearch Index %s.", viper.GetString("index"))
 
 	appContext := server.AppContext{}
+
+	appContext.GeoIpService = geoip.NewGeoIpService()
+
 	elasticSearch := elasticsearch.New(viper.GetString("elasticsearch"))
 	elasticSearch.SetEventIndex(viper.GetString("index"))
 	elasticSearch.InitKeyword()

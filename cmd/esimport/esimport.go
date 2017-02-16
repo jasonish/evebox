@@ -99,11 +99,8 @@ func configure(args []string) {
 	flagset.String("bookmark-path", "", "Path to bookmark file")
 	viper.BindPFlag("bookmark-path", flagset.Lookup("bookmark-path"))
 
-	flagset.Bool("geoip-enabled", true, "Enable/disable GeoIP lookups")
-	viper.BindPFlag("geoip-enabled", flagset.Lookup("geoip-enabled"))
-
 	flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
-	viper.BindPFlag("geoip-database", flagset.Lookup("geoip-database"))
+	viper.BindPFlag("geoip.database", flagset.Lookup("geoip-database"))
 
 	flagset.Parse(args[1:])
 
@@ -178,18 +175,7 @@ func Main(args []string) {
 		log.Info("Template %s exists, will not create.", es.EventBaseIndex)
 	}
 
-	var geoipFilter *eve.GeoipFilter
-	tagsFilter := &eve.TagsFilter{}
-
-	if viper.GetBool("geoip-enabled") {
-		geoipdb, err := geoip.NewGeoIpDb(viper.GetString("geoip-database"))
-		if err != nil {
-			log.Notice("Failed to load GeoIP database: %v", err)
-		} else {
-			log.Info("Using GeoIP database %s, %s", geoipdb.Type(), geoipdb.BuildDate())
-			geoipFilter = eve.NewGeoipFilter(geoipdb)
-		}
-	}
+	geoIpFilter := eve.NewGeoipFilter(geoip.NewGeoIpService())
 
 	indexer := elasticsearch.NewIndexer(es)
 
@@ -219,6 +205,7 @@ func Main(args []string) {
 	}
 
 	uaFilter := useragent.EveUserAgentFilter{}
+	tagsFilter := eve.TagsFilter{}
 
 	count := uint64(0)
 	lastStatTs := time.Now()
@@ -244,10 +231,7 @@ func Main(args []string) {
 
 		if event != nil {
 
-			if geoipFilter != nil {
-				geoipFilter.AddGeoIP(event)
-			}
-
+			geoIpFilter.Filter(event)
 			tagsFilter.Filter(event)
 			uaFilter.Filter(event)
 
