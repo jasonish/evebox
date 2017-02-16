@@ -34,6 +34,7 @@ import (
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/useragent"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"io"
@@ -217,6 +218,8 @@ func Main(args []string) {
 		}
 	}
 
+	uaFilter := useragent.EveUserAgentFilter{}
+
 	count := uint64(0)
 	lastStatTs := time.Now()
 	lastStatCount := uint64(0)
@@ -246,6 +249,7 @@ func Main(args []string) {
 			}
 
 			tagsFilter.Filter(event)
+			uaFilter.Filter(event)
 
 			if stdout {
 				asJson, err := json.Marshal(event)

@@ -1,5 +1,5 @@
-hash: 2f565aa98d0d5369013252d83f7a1c380642406474ce1d439bd9a576fd713a5f
-updated: 2017-02-14T00:31:45.20710204-06:00
+hash: 012e032c72b4ce2c420faadce633107246fe4e4cd136b1bcca58acc124d9f5f2
+updated: 2017-02-16T09:32:11.763376187-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -61,6 +61,10 @@ imports:
   version: c7e63cf4530bcd3ba943729cee0efeff2ebea63f
 - name: github.com/spf13/viper
   version: 5ed0fc31f7f453625df314d8e66b9791e8d13003
+- name: github.com/ua-parser/uap-go
+  version: 08c9ab17c54f06ccfe5256695a9f715a47404cfe
+  subpackages:
+  - uaparser
 - name: golang.org/x/net
   version: f841c39de738b1d0df95b5a7187744f0e03d8112
   subpackages:

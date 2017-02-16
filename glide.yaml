@@ -16,6 +16,6 @@ import:
 - package: golang.org/x/sys
   subpackages:
   - unix
-- package: github.com/mattn/go-shellwords
-- package: github.com/pkg/errors
-- package: github.com/spf13/viper
+- package: github.com/ua-parser/uap-go
+  subpackages:
+  - uaparser

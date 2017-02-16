@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,36 +24,59 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package eve
+package useragent
 
 import (
-	"github.com/jasonish/evebox/util"
-	"time"
+	"github.com/jasonish/evebox/eve"
+	"github.com/ua-parser/uap-go/uaparser"
 )
 
-// A RawEveEvent is an Eve event decoded into map[string]interface{} which
-// contains all the data in its raw format.
-type RawEveEvent map[string]interface{}
+var parser *uaparser.Parser
 
-func (e RawEveEvent) GetTimestamp() (*time.Time, error) {
-	result, err := time.Parse(EveTimestampFormat, e["timestamp"].(string))
-	if err != nil {
-		return nil, err
+func init() {
+	parser = uaparser.NewFromSaved()
+}
+
+type EveUserAgentFilter struct{}
+
+func (f *EveUserAgentFilter) setValue(ua map[string]string, name string, value string) {
+	switch value {
+	case "":
+		return
+	case "Other":
+		return
+	default:
+		ua[name] = value
 	}
-	return &result, nil
 }
 
-func (e RawEveEvent) EventType() string {
-	if eventType, ok := e["event_type"].(string); ok {
-		return eventType
+func (f *EveUserAgentFilter) Filter(event eve.RawEveEvent) {
+	if event.EventType() != "http" {
+		return
 	}
-	return ""
-}
 
-func (e RawEveEvent) GetMap(key string) util.JsonMap {
-	return util.JsonMap(e).GetMap(key)
-}
+	httpUserAgent := event.GetMap("http").GetString("http_user_agent")
+	if httpUserAgent == "" {
+		return
+	}
 
-func (e RawEveEvent) GetString(key string) string {
-	return util.JsonMap(e).GetString(key)
+	parsed := parser.Parse(event.GetMap("http").GetString("http_user_agent"))
+
+	ua := map[string]string{}
+
+	f.setValue(ua, "name", parsed.UserAgent.Family)
+	f.setValue(ua, "major", parsed.UserAgent.Major)
+	f.setValue(ua, "minor", parsed.UserAgent.Minor)
+	f.setValue(ua, "patch", parsed.UserAgent.Patch)
+
+	f.setValue(ua, "os", parsed.Os.ToString())
+	f.setValue(ua, "os_name", parsed.Os.Family)
+	f.setValue(ua, "os_major", parsed.Os.Major)
+	f.setValue(ua, "os_minor", parsed.Os.Minor)
+
+	f.setValue(ua, "device", parsed.Device.ToString())
+
+	if len(ua) > 0 {
+		event.GetMap("http")["user_agent"] = ua
+	}
 }
