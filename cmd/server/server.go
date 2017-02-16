@@ -28,39 +28,28 @@ package server
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/jasonish/evebox/config"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
 	flag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
+const DEFAULT_ELASTICSEARCH_INDEX string = "logstash"
 
 var opts struct {
-	// We don't provide a default for this one so we can easily
-	// detect if its been set or not.
-	ElasticSearchUri   string
-	ElasticSearchIndex string
 	Port               string
 	Host               string
 	DevServerUri       string
 	Version            bool
-	Config             string
 	NoCheckCertificate bool
 
 	// If true, use SQLite, otherwise use Elastic Search.
 	Sqlite bool
-}
-
-var conf *config.Config
-
-func init() {
-	conf = config.NewConfig()
 }
 
 func VersionMain() {
@@ -68,41 +57,35 @@ func VersionMain() {
 		core.BuildVersion, core.BuildRev, core.BuildDate)
 }
 
-func getElasticSearchUrl() string {
-	if opts.ElasticSearchUri != "" {
-		return opts.ElasticSearchUri
-	}
-	if os.Getenv("ELASTICSEARCH_URL") != "" {
-		return os.Getenv("ELASTICSEARCH_URL")
-	}
-	return DEFAULT_ELASTICSEARCH_URL
-}
-
-func getElasticSearchIndex() string {
-	if opts.ElasticSearchIndex != "" {
-		return opts.ElasticSearchIndex
-	} else if os.Getenv("ELASTICSEARCH_INDEX") != "" {
-		return os.Getenv("ELASTICSEARCH_INDEX")
-	} else {
-		return "logstash"
-	}
+func setDefaults() {
+	viper.SetDefault("elasticsearch", DEFAULT_ELASTICSEARCH_URL)
+	viper.SetDefault("index", DEFAULT_ELASTICSEARCH_INDEX)
 }
 
 func Main(args []string) {
 
+	var configFilename string
 	var err error
 
 	log.Info("This is EveBox Server version %v (rev: %v)", core.BuildVersion, core.BuildRev)
 
+	setDefaults()
+
 	flagset := flag.NewFlagSet("server", flag.ExitOnError)
 
-	flagset.StringVarP(&opts.ElasticSearchUri, "elasticsearch", "e", "", "Elastic Search URI (default: http://localhost:9200")
-	flagset.StringVarP(&opts.ElasticSearchIndex, "index", "i", "", "Elastic Search Index (default: logstash)")
+	flagset.StringP("elasticsearch", "e", DEFAULT_ELASTICSEARCH_URL, "Elastic Search URI (default: http://localhost:9200")
+	viper.BindPFlag("elasticsearch", flagset.Lookup("elasticsearch"))
+	viper.BindEnv("elasticsearch", "ELASTICSEARCH_URL")
+
+	flagset.StringP("index", "i", DEFAULT_ELASTICSEARCH_INDEX, "Elastic Search Index (default: logstash)")
+	viper.BindPFlag("index", flagset.Lookup("index"))
+	viper.BindEnv("index", "ELASTICSEARCH_INDEX")
+
 	flagset.StringVarP(&opts.Port, "port", "p", "5636", "Port to bind to")
 	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
 	flagset.StringVarP(&opts.DevServerUri, "dev", "", "", "Frontend development server URI")
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
-	flagset.StringVarP(&opts.Config, "config", "c", "", "Configuration filename")
+	flagset.StringVarP(&configFilename, "config", "c", "", "Configuration filename")
 	flagset.BoolVarP(&opts.NoCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check for Elastic Search")
 
 	flagset.BoolVarP(&opts.Sqlite, "sqlite", "", false, "Use SQLite for the event store")
@@ -116,30 +99,25 @@ func Main(args []string) {
 
 	log.SetLevel(log.DEBUG)
 
-	// If no configuration was provided, see if evebox.yaml exists
-	// in the current directory.
-	if opts.Config == "" {
-		_, err = os.Stat("./evebox.yaml")
-		if err == nil {
-			opts.Config = "./evebox.yaml"
-		}
+	if configFilename != "" {
+		viper.SetConfigFile(configFilename)
+	} else {
+		viper.SetConfigName("evebox")
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(".")
 	}
-	if opts.Config != "" {
-		log.Printf("Loading configuration file %s.\n", opts.Config)
-		conf, err = config.LoadConfig(opts.Config)
-		if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
+		if configFilename != "" {
 			log.Fatal(err)
 		}
 	}
 
-	conf.ElasticSearchIndex = getElasticSearchIndex()
-	log.Info("Using ElasticSearch Index %s.", conf.ElasticSearchIndex)
+	log.Info("Using ElasticSearch URL %s", viper.GetString("elasticsearch"))
+	log.Info("Using ElasticSearch Index %s.", viper.GetString("index"))
 
-	appContext := server.AppContext{
-		Config: conf,
-	}
-	elasticSearch := elasticsearch.New(getElasticSearchUrl())
-	elasticSearch.SetEventIndex(conf.ElasticSearchIndex)
+	appContext := server.AppContext{}
+	elasticSearch := elasticsearch.New(viper.GetString("elasticsearch"))
+	elasticSearch.SetEventIndex(viper.GetString("index"))
 	elasticSearch.InitKeyword()
 	pingResponse, err := elasticSearch.Ping()
 	if err != nil {

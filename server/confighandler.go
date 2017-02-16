@@ -26,7 +26,10 @@
 
 package server
 
-import "net/http"
+import (
+	"github.com/spf13/viper"
+	"net/http"
+)
 
 type ConfigResponse struct {
 	ElasticSearchIndex string                   `json:"ElasticSearchIndex"`
@@ -37,8 +40,8 @@ type ConfigResponse struct {
 func ConfigHandler(appContext AppContext, r *http.Request) interface{} {
 
 	response := &ConfigResponse{}
-	response.ElasticSearchIndex = appContext.Config.ElasticSearchIndex
-	response.EventServices = appContext.Config.EventServices
+	response.ElasticSearchIndex = viper.GetString("index")
+	viper.UnmarshalKey("event-services", &response.EventServices)
 
 	elasticSearchKeyword, _ := appContext.ElasticSearch.GetKeywordType("")
 	response.Extra = map[string]interface{}{
