@@ -27,31 +27,3 @@ event-services:
 
     # Open in new window. The default is the same window.
     target: new
-
-esimport:
-
-  # The eve log file to read. Only one allowed.
-  input: /var/log/suricata/eve.json
-
-  # Elastic Search URL
-  url: http://localhost:9200
-
-  # Elastic Search username and password.
-  #username: admin
-  #password: password
-
-  # Elastic Search index. -%{YYYY.MM.DD) will be appended, so this is just the
-  # prefix.
-  index: evebox
-
-  # Disable TLS certificate check.
-  #disable-certificate-check: true
-
-  # When no bookmark is present start reading at the end of the file.
-  end: true
-
-  bookmark: true
-  #bookmark-path: /var/tmp/eve.json.bookmark
-
-  # Change the amount of events to batch per bulk request.
-  #batch-size: 1000
