@@ -39,7 +39,6 @@ func NewGeoIpService() *GeoIpService {
 	geoIpService := GeoIpService{}
 
 	if viper.GetBool("geoip.disabled") == false {
-
 		db, err := NewGeoIpDb(viper.GetString("geoip.database"))
 		if err != nil {
 			log.Warning("Failed to initialize geoip database: %v", err)
@@ -53,7 +52,6 @@ func NewGeoIpService() *GeoIpService {
 
 func (s *GeoIpService) LookupString(addr string) (*GeoIp, error) {
 	if s.db == nil {
-		log.Println("no database")
 		return nil, nil
 	}
 	return s.db.LookupString(addr)
