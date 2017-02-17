@@ -132,10 +132,8 @@ release:
 	rm -rf dist
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
 	CGO_ENABLED=1 DIST_SUFFIX="-sqlite" GOOS=linux GOARCH=amd64 $(MAKE) dist
-	GOOS=linux GOARCH=386 $(MAKE) dist
 	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
-	GOOS=windows GOARCH=amd64 $(MAKE) dist
 
 # Debian packaging.
 deb: EPOCH := 1
@@ -151,18 +149,6 @@ deb:
 		-v $(VERSION)$(TILDE) \
 		--after-upgrade=deb/after-upgrade.sh \
 		dist/${APP}-latest-linux-x64/evebox=/usr/bin/evebox \
-		deb/evebox.default=/etc/default/evebox \
-		deb/evebox.service=/lib/systemd/system/evebox.service
-
-	fpm -s dir \
-		-t deb \
-		-p dist \
-		-n evebox \
-		--epoch $(EPOCH) \
-		-v $(VERSION)$(TILDE) \
-		--after-upgrade=deb/after-upgrade.sh \
-		-a i386 \
-		dist/${APP}-latest-linux-x32/evebox=/usr/bin/evebox \
 		deb/evebox.default=/etc/default/evebox \
 		deb/evebox.service=/lib/systemd/system/evebox.service
 
