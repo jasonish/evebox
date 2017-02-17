@@ -179,6 +179,9 @@ rpm:
 		--after-upgrade=rpm/after-upgrade.sh \
 		--iteration $(RPM_ITERATION) \
 		--config-files /etc/sysconfig/evebox \
+		--config-files /etc/evebox \
 		dist/${APP}-latest-linux-x64/evebox=/usr/bin/evebox \
+	        evebox-example.yaml=/etc/evebox/evebox-example.yaml \
 		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
-		rpm/evebox.service=/lib/systemd/system/evebox.service
+		rpm/evebox.service=/lib/systemd/system/evebox.service \
+		rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
