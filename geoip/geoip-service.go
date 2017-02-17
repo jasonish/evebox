@@ -53,6 +53,7 @@ func NewGeoIpService() *GeoIpService {
 
 func (s *GeoIpService) LookupString(addr string) (*GeoIp, error) {
 	if s.db == nil {
+		log.Println("no database")
 		return nil, nil
 	}
 	return s.db.LookupString(addr)

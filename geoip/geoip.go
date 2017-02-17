@@ -40,6 +40,7 @@ const (
 )
 
 var DbLocations = []string{
+	"/etc/evebox/GeoLite2-City.mmdb",
 	"/usr/local/share/GeoIP/GeoLite2-City.mmdb",
 	"/usr/share/GeoIP/GeoLite2-City.mmdb",
 }

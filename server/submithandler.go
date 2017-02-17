@@ -3,7 +3,9 @@ package server
 import (
 	"encoding/json"
 	"github.com/jasonish/evebox/elasticsearch"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/useragent"
 	"io"
 	"net/http"
 )
@@ -12,6 +14,10 @@ type SubmitResponse struct {
 	Count int
 }
 
+// Consumes events from agents and adds them to the database.
+//
+// TODO Refactor the actual event handling to a service that isn't
+//     ElasticSearch specific, and will re-use the filters.
 func SubmitHandler(appContext AppContext, r *http.Request) interface{} {
 
 	count := 0
@@ -21,6 +27,10 @@ func SubmitHandler(appContext AppContext, r *http.Request) interface{} {
 
 	es := appContext.ElasticSearch
 	eventSink := elasticsearch.NewIndexer(es)
+
+	geoFilter := eve.NewGeoipFilter(appContext.GeoIpService)
+	tagsFilter := eve.TagsFilter{}
+	uaFilter := useragent.EveUserAgentFilter{}
 
 	for {
 		var event map[string]interface{}
@@ -34,6 +44,10 @@ func SubmitHandler(appContext AppContext, r *http.Request) interface{} {
 			return err
 		}
 
+		tagsFilter.Filter(event)
+		geoFilter.Filter(event)
+		uaFilter.Filter(event)
+
 		eventSink.IndexRawEvent(event)
 
 		count++
@@ -45,7 +59,7 @@ func SubmitHandler(appContext AppContext, r *http.Request) interface{} {
 		return err
 	}
 
-	log.Info("Committed %d events from %v", count, r.RemoteAddr)
+	log.Debug("Committed %d events from %v", count, r.RemoteAddr)
 
 	return SubmitResponse{
 		Count: count,
