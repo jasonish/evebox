@@ -59,17 +59,6 @@ type AlertQueryOptions struct {
 	TimeRange string
 }
 
-type AlertQueryService interface {
-	AlertQuery(options AlertQueryOptions) (interface{}, error)
-}
-
-type NIAlertQueryService struct {
-}
-
-func (s *NIAlertQueryService) AlertQuery(options AlertQueryOptions) (interface{}, error) {
-	return nil, NotImplementedError
-}
-
 type EventQueryOptions struct {
 	QueryString string
 
@@ -99,17 +88,6 @@ func EventQueryOptionsFromHttpRequest(r *http.Request) EventQueryOptions {
 	options.EventType = r.FormValue("eventType")
 
 	return options
-}
-
-type EventQueryService interface {
-	EventQuery(options EventQueryOptions) (interface{}, error)
-}
-
-type NotImplementedEventQueryService struct {
-}
-
-func (s *NotImplementedEventQueryService) EventQuery(options EventQueryOptions) (interface{}, error) {
-	return nil, NotImplementedError
 }
 
 type EventService interface {

@@ -46,7 +46,7 @@ type ReaderLoop struct {
 	stop bool
 }
 
-func (r *ReaderLoop) addCustomFields(event eve.RawEveEvent) {
+func (r *ReaderLoop) addCustomFields(event eve.EveEvent) {
 	for key := range r.CustomFields {
 		event[key] = r.CustomFields[key]
 	}
@@ -80,13 +80,11 @@ func (r *ReaderLoop) readFile(reader *evereader.EveReader) {
 		}
 
 		if event != nil {
-
 			tagsFilter.Filter(event)
 			r.addCustomFields(event)
 
 			err := r.EventSink.Submit(event)
 			if err != nil {
-
 				log.Error("Failed to submit event: %v", err)
 				continue
 			}
@@ -94,7 +92,6 @@ func (r *ReaderLoop) readFile(reader *evereader.EveReader) {
 		}
 
 		if eof || count > 0 && count%BATCH_SIZE == 0 {
-
 			flushCount := count - lastFlushCount
 			lastFlushCount = count
 

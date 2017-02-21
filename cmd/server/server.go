@@ -35,9 +35,11 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
-	flag "github.com/spf13/pflag"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
+
+const DEFAULT_DATA_DIR = "."
 
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
 const DEFAULT_ELASTICSEARCH_INDEX string = "logstash"
@@ -48,9 +50,6 @@ var opts struct {
 	DevServerUri       string
 	Version            bool
 	NoCheckCertificate bool
-
-	// If true, use SQLite, otherwise use Elastic Search.
-	Sqlite bool
 }
 
 func VersionMain() {
@@ -59,28 +58,39 @@ func VersionMain() {
 }
 
 func setDefaults() {
+	viper.SetDefault("data-directory", DEFAULT_DATA_DIR)
 	viper.SetDefault("elasticsearch", DEFAULT_ELASTICSEARCH_URL)
 	viper.SetDefault("index", DEFAULT_ELASTICSEARCH_INDEX)
 }
 
 func Main(args []string) {
 
+	log.SetLevel(log.INFO)
+
 	var configFilename string
 	var err error
+	verbose := false
 
 	log.Info("This is EveBox Server version %v (rev: %v)", core.BuildVersion, core.BuildRev)
 
 	setDefaults()
 
-	flagset := flag.NewFlagSet("server", flag.ExitOnError)
+	flagset := pflag.NewFlagSet("server", pflag.ExitOnError)
+
+	// Datastore type.
+	flagset.String("datastore", "elasticsearch", "Datastore to use")
+	viper.BindPFlag("database.type", flagset.Lookup("datastore"))
+	viper.BindEnv("database.type", "DATABASE_TYPE")
 
 	flagset.StringP("elasticsearch", "e", DEFAULT_ELASTICSEARCH_URL, "Elastic Search URI (default: http://localhost:9200")
-	viper.BindPFlag("elasticsearch", flagset.Lookup("elasticsearch"))
+	viper.BindPFlag("database.elasticsearch.url", flagset.Lookup("elasticsearch"))
 	viper.BindEnv("elasticsearch", "ELASTICSEARCH_URL")
 
 	flagset.StringP("index", "i", DEFAULT_ELASTICSEARCH_INDEX, "Elastic Search Index (default: logstash)")
-	viper.BindPFlag("index", flagset.Lookup("index"))
+	viper.BindPFlag("database.elasticsearch.index", flagset.Lookup("index"))
 	viper.BindEnv("index", "ELASTICSEARCH_INDEX")
+
+	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose (debug logging)")
 
 	flagset.StringVarP(&opts.Port, "port", "p", "5636", "Port to bind to")
 	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
@@ -89,7 +99,9 @@ func Main(args []string) {
 	flagset.StringVarP(&configFilename, "config", "c", "", "Configuration filename")
 	flagset.BoolVarP(&opts.NoCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check for Elastic Search")
 
-	flagset.BoolVarP(&opts.Sqlite, "sqlite", "", false, "Use SQLite for the event store")
+	flagset.StringP("data-directory", "D", DEFAULT_DATA_DIR, "Data directory")
+	viper.BindPFlag("data-directory", flagset.Lookup("data-directory"))
+	viper.BindEnv("data-directory", "DATA_DIRECTORY")
 
 	flagset.Parse(args[0:])
 
@@ -98,7 +110,9 @@ func Main(args []string) {
 		return
 	}
 
-	log.SetLevel(log.DEBUG)
+	if verbose {
+		log.SetLevel(log.DEBUG)
+	}
 
 	if configFilename != "" {
 		viper.SetConfigFile(configFilename)
@@ -113,46 +127,49 @@ func Main(args []string) {
 		}
 	}
 
-	log.Info("Using ElasticSearch URL %s", viper.GetString("elasticsearch"))
-	log.Info("Using ElasticSearch Index %s.", viper.GetString("index"))
-
 	appContext := server.AppContext{}
-
 	appContext.GeoIpService = geoip.NewGeoIpService()
-
-	elasticSearch := elasticsearch.New(viper.GetString("elasticsearch"))
-	elasticSearch.SetEventIndex(viper.GetString("index"))
-	elasticSearch.InitKeyword()
-	pingResponse, err := elasticSearch.Ping()
-	if err != nil {
-		log.Error("Failed to ping Elastic Search: %v", err)
-	} else {
-		log.Info("Connected to Elastic Search (version: %s)",
-			pingResponse.Version.Number)
-	}
-	appContext.ElasticSearch = elasticSearch
-	appContext.EventService = elasticsearch.NewEventService(elasticSearch)
-	appContext.AlertQueryService = elasticsearch.NewAlertQueryService(elasticSearch)
-	appContext.EventQueryService = elasticsearch.NewEventQueryService(elasticSearch)
-	appContext.ReportService = elasticsearch.NewReportService(elasticSearch)
-
 	appContext.Vars.DevWebAppServerUrl = opts.DevServerUri
 
-	var datastoreType string = "elasticsearch"
-	if opts.Sqlite {
-		datastoreType = "sqlite"
-	}
-
-	if datastoreType == "elasticsearch" {
+	switch viper.GetString("database.type") {
+	case "elasticsearch":
+		log.Info("Configuring ElasticSearch datastore")
+		log.Info("Using ElasticSearch URL %s",
+			viper.GetString("database.elasticsearch.url"))
+		log.Info("Using ElasticSearch Index %s.",
+			viper.GetString("database.elasticsearch.index"))
+		elasticSearch := elasticsearch.New(
+			viper.GetString("database.elasticsearch.url"))
+		elasticSearch.SetEventIndex(
+			viper.GetString("database.elasticsearch.index"))
+		elasticSearch.InitKeyword()
+		pingResponse, err := elasticSearch.Ping()
+		if err != nil {
+			log.Error("Failed to ping Elastic Search: %v", err)
+		} else {
+			log.Info("Connected to Elastic Search (version: %s)",
+				pingResponse.Version.Number)
+		}
+		appContext.ElasticSearch = elasticSearch
+		appContext.EventService = elasticsearch.NewEventService(elasticSearch)
+		appContext.ReportService = elasticsearch.NewReportService(elasticSearch)
 		appContext.DataStore, err = elasticsearch.NewDataStore(elasticSearch)
 		if err != nil {
 			log.Fatal(err)
 		}
-	} else if datastoreType == "sqlite" {
-		appContext.DataStore, err = sqlite.NewDataStore()
+	case "sqlite":
+		log.Info("Configuring SQLite datastore")
+		if viper.GetString("data-directory") == "." {
+			log.Warning("Using current directory as the data directory, you may want to set the data-directory option")
+		}
+		appContext.DataStore, err = sqlite.NewDataStore(
+			viper.GetString("data-directory"))
 		if err != nil {
 			log.Fatal(err)
 		}
+	default:
+		log.Fatal("unsupported datastore: ",
+			viper.GetString("database.type"))
 	}
 
 	httpServer := server.NewServer(appContext)

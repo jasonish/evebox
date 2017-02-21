@@ -25,4 +25,4 @@ CREATE INDEX events_alert_signature_index
 CREATE INDEX events_alert_signature_id_index
   ON events (json_extract(source, '$.alert.signature_id'));
 
-CREATE VIRTUAL TABLE events_fts USING fts5(id, source);
+CREATE VIRTUAL TABLE events_fts USING fts5(id, timestamp, source);

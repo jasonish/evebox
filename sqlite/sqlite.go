@@ -30,9 +30,11 @@ package sqlite
 
 import "database/sql"
 import (
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"io/ioutil"
 	"os"
+	"time"
 )
 
 type SqliteService struct {
@@ -41,14 +43,30 @@ type SqliteService struct {
 
 func NewSqliteService(filename string) (*SqliteService, error) {
 
-	db, err := sql.Open("sqlite3", filename)
+	dsn := fmt.Sprintf("file:%s?cache=shared&mode=rwc&_txlock=immediate",
+		filename)
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	return &SqliteService{
-		db,
-	}, nil
+	service := &SqliteService{
+		DB: db,
+	}
+
+	return service, nil
+}
+
+func (s *SqliteService) GetTx() (tx *sql.Tx, err error) {
+	for i := 0; i < 100; i++ {
+		tx, err = s.DB.Begin()
+		if err == nil {
+			return tx, nil
+		} else {
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	return nil, err
 }
 
 func (s *SqliteService) Migrate() error {

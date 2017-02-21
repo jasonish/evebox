@@ -27,8 +27,6 @@
 package eve
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -44,68 +42,8 @@ import (
 // The Eve timestamp format - a slightly modified RFC3339Nano format.
 const EveTimestampFormat = "2006-01-02T15:04:05.999999999Z0700"
 
-// Eve Timestamp.
-type EveTimestamp struct {
-	time.Time
-}
-
-func (ev *EveTimestamp) UnmarshalJSON(b []byte) (err error) {
-	// Trim edge quotes.
-	if b[0] == '"' && b[len(b)-1] == '"' {
-		b = b[1 : len(b)-1]
-	}
-
-	ev.Time, err = time.Parse(EveTimestampFormat, string(b))
-	return err
-}
-
 func ParseTimestamp(timestamp string) (time.Time, error) {
 	return time.Parse(EveTimestampFormat, timestamp)
-}
-
-// Eve Buffer
-//
-// In the EVE JSON, some fields such as packet and payload are base64
-// encoded. This will allow us to decode the base64 as part of the
-// unmarshalling process.
-type EveBuffer []byte
-
-func (eb *EveBuffer) UnmarshalJSON(b []byte) (err error) {
-	// Trim edge quotes.
-	if b[0] == '"' && b[len(b)-1] == '"' {
-		b = b[1 : len(b)-1]
-	}
-
-	*eb, err = base64.StdEncoding.DecodeString(string(b))
-	return err
-}
-
-func (eb *EveBuffer) Bytes() []byte {
-	return *eb
-}
-
-type EveEvent struct {
-	Timestamp EveTimestamp `json:"timestamp"`
-	SrcIP     string       `json:"src_ip"`
-	DstIP     string       `json:"dest_ip"`
-	Proto     string       `json:"proto"`
-	SrcPort   uint16       `json:"src_port"`
-	DstPort   uint16       `json:"dest_port"`
-	IcmpType  uint8        `json:"icmp_type"`
-	IcmpCode  uint8        `json:"icmp_code"`
-	Payload   EveBuffer    `json:"payload"`
-	Packet    EveBuffer    `json:"packet"`
-	Buffer    EveBuffer    `json:"buffer"`
-}
-
-// Create a new EveEvent from a JSON string.
-func NewEveEventFromJson(eveJson string) (event *EveEvent, err error) {
-	bytes := []byte(eveJson)
-	err = json.Unmarshal(bytes, &event)
-	if err != nil {
-		return nil, err
-	}
-	return event, err
 }
 
 // Given a protocol name as a string (could be a number), return the
@@ -133,35 +71,34 @@ func ProtoNumber(proto string) (layers.IPProtocol, error) {
 
 // Convert the packet of an EveEvent to a PCAP file. A buffer
 // representing a complete PCAP file is returned.
-func EvePacketToPcap(event *EveEvent) ([]byte, error) {
-	return pcap.CreatePcap(event.Timestamp.Time,
-		event.Packet, layers.LinkTypeEthernet)
+func EvePacket2Pcap(event EveEvent) ([]byte, error) {
+	return pcap.CreatePcap(event.Timestamp(), event.Packet(), layers.LinkTypeEthernet)
 }
 
 // Given an EvePacket, convert the payload to a PCAP faking out the
 // headers as best we can.
 //
 // A buffer containing the 1 packet pcap file will be returned.
-func EvePayloadToPcap(event *EveEvent) ([]byte, error) {
+func EvePayloadToPcap(event EveEvent) ([]byte, error) {
 	buffer := gopacket.NewSerializeBuffer()
 	options := gopacket.SerializeOptions{
 		FixLengths:       true,
 		ComputeChecksums: true,
 	}
 
-	payloadLayer := gopacket.Payload(event.Payload.Bytes())
+	payloadLayer := gopacket.Payload(event.Payload())
 	payloadLayer.SerializeTo(buffer, options)
 
-	srcIp := net.ParseIP(event.SrcIP)
+	srcIp := net.ParseIP(event.SrcIp())
 	if srcIp == nil {
-		return nil, fmt.Errorf("Failed to parse IP address %s.", event.SrcIP)
+		return nil, fmt.Errorf("Failed to parse IP address %v.", event.SrcIp())
 	}
-	dstIp := net.ParseIP(event.DstIP)
+	dstIp := net.ParseIP(event.DestIp())
 	if dstIp == nil {
-		return nil, fmt.Errorf("Failed to parse IP address %s.", event.DstIP)
+		return nil, fmt.Errorf("Failed to parse IP address %s.", event.DestIp())
 	}
 
-	proto, err := ProtoNumber(event.Proto)
+	proto, err := ProtoNumber(event.Proto())
 	if err != nil {
 		return nil, err
 	}
@@ -170,22 +107,22 @@ func EvePayloadToPcap(event *EveEvent) ([]byte, error) {
 	case layers.IPProtocolTCP:
 		// Could probably fake up a better TCP layer here.
 		tcpLayer := layers.TCP{
-			SrcPort: layers.TCPPort(event.SrcPort),
-			DstPort: layers.TCPPort(event.DstPort),
+			SrcPort: layers.TCPPort(event.SrcPort()),
+			DstPort: layers.TCPPort(event.DestPort()),
 		}
 		tcpLayer.SerializeTo(buffer, options)
 		break
 	case layers.IPProtocolUDP:
 		udpLayer := layers.UDP{
-			SrcPort: layers.UDPPort(event.SrcPort),
-			DstPort: layers.UDPPort(event.DstPort),
+			SrcPort: layers.UDPPort(event.SrcPort()),
+			DstPort: layers.UDPPort(event.DestPort()),
 		}
 		udpLayer.SerializeTo(buffer, options)
 		break
 	case layers.IPProtocolICMPv4:
 		icmpLayer := layers.ICMPv4{
 			TypeCode: layers.CreateICMPv4TypeCode(
-				event.IcmpType, event.IcmpCode),
+				event.IcmpType(), event.IcmpCode()),
 			Id:  0,
 			Seq: 0,
 		}
@@ -194,7 +131,7 @@ func EvePayloadToPcap(event *EveEvent) ([]byte, error) {
 	case layers.IPProtocolICMPv6:
 		icmp6Layer := layers.ICMPv6{
 			TypeCode: layers.CreateICMPv6TypeCode(
-				event.IcmpType, event.IcmpCode),
+				event.IcmpType(), event.IcmpCode()),
 		}
 		icmp6Layer.SerializeTo(buffer, options)
 		break
@@ -222,6 +159,6 @@ func EvePayloadToPcap(event *EveEvent) ([]byte, error) {
 		ip6Layer.SerializeTo(buffer, options)
 	}
 
-	return pcap.CreatePcap(event.Timestamp.Time,
+	return pcap.CreatePcap(event.Timestamp(),
 		buffer.Bytes(), layers.LinkTypeRaw)
 }

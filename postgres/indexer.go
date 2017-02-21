@@ -58,12 +58,9 @@ func NewIndexer(service *Service) (*Indexer, error) {
 	}, nil
 }
 
-func (i *Indexer) AddEvent(event eve.RawEveEvent) error {
+func (i *Indexer) AddEvent(event eve.EveEvent) error {
 	uuid := uuid.NewV1()
-	timestamp, err := event.GetTimestamp()
-	if err != nil {
-		log.Error("Failed to get timestamp from event: %v", err)
-	}
+	timestamp := event.Timestamp()
 	encoded, err := json.Marshal(&event)
 	if err != nil {
 		log.Error("Failed to encode event.")

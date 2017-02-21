@@ -28,7 +28,6 @@ package useragent
 
 import (
 	"github.com/jasonish/evebox/eve"
-	"github.com/jasonish/evebox/log"
 	"github.com/ua-parser/uap-go/uaparser"
 )
 
@@ -53,7 +52,7 @@ func (f *EveUserAgentFilter) setValue(ua map[string]string, name string, value s
 	}
 }
 
-func (f *EveUserAgentFilter) Filter(event eve.RawEveEvent) {
+func (f *EveUserAgentFilter) Filter(event eve.EveEvent) {
 	if event.EventType() != "http" {
 		return
 	}
@@ -67,7 +66,6 @@ func (f *EveUserAgentFilter) Filter(event eve.RawEveEvent) {
 
 	ua = f.cache[httpUserAgent]
 	if ua != nil {
-		log.Println("using cached user agent")
 		if len(ua) > 0 {
 			event.GetMap("http")["user_agent"] = ua
 		}

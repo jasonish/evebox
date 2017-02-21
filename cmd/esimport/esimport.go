@@ -244,7 +244,7 @@ func Main(args []string) {
 				}
 			}
 
-			indexer.IndexRawEvent(event)
+			indexer.Submit(event)
 			count++
 		}
 
@@ -255,13 +255,16 @@ func Main(args []string) {
 				bookmark = bookmarker.GetBookmark()
 			}
 
-			response, err := indexer.FlushConnection()
+			status, err := indexer.Commit()
 			if err != nil {
 				log.Fatal(err)
 			}
-			if response != nil {
-				log.Debug("Indexed %d events {errors=%v}", len(response.Items),
-					response.Errors)
+			if status != nil {
+				response, ok := status.(*elasticsearch.BulkResponse)
+				if ok {
+					log.Debug("Indexed %d events {errors=%v}", len(response.Items),
+						response.Errors)
+				}
 			}
 
 			if useBookmark {

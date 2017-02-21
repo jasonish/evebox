@@ -1,8 +1,33 @@
+/* Copyright (c) 2017 Jason Ish
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 package server
 
 import (
-	"encoding/json"
-	"github.com/jasonish/evebox/elasticsearch"
+	"bufio"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/useragent"
@@ -15,32 +40,35 @@ type SubmitResponse struct {
 }
 
 // Consumes events from agents and adds them to the database.
-//
-// TODO Refactor the actual event handling to a service that isn't
-//     ElasticSearch specific, and will re-use the filters.
 func SubmitHandler(appContext AppContext, r *http.Request) interface{} {
 
 	count := 0
 
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
-
-	es := appContext.ElasticSearch
-	eventSink := elasticsearch.NewIndexer(es)
-
+	eventSink := appContext.DataStore.GetEveEventConsumer()
 	geoFilter := eve.NewGeoipFilter(appContext.GeoIpService)
 	tagsFilter := eve.TagsFilter{}
 	uaFilter := useragent.EveUserAgentFilter{}
 
+	reader := bufio.NewReader(r.Body)
 	for {
-		var event map[string]interface{}
-
-		err := decoder.Decode(&event)
+		eof := false
+		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
-				break
+				eof = true
+			} else {
+				log.Error("read error: %v", err)
+				return err
 			}
-			log.Error("failed to decode incoming event: %v", err)
+		}
+
+		if eof && len(line) == 0 {
+			break
+		}
+
+		event, err := eve.NewEveEventFromBytes(line)
+		if err != nil {
+			log.Error("failed to decode event: %v", err)
 			return err
 		}
 
@@ -48,12 +76,16 @@ func SubmitHandler(appContext AppContext, r *http.Request) interface{} {
 		geoFilter.Filter(event)
 		uaFilter.Filter(event)
 
-		eventSink.IndexRawEvent(event)
+		eventSink.Submit(event)
 
 		count++
+
+		if eof {
+			break
+		}
 	}
 
-	_, err := eventSink.FlushConnection()
+	_, err := eventSink.Commit()
 	if err != nil {
 		log.Error("Failed to commit events: %v", err)
 		return err

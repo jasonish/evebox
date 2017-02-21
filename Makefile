@@ -11,11 +11,9 @@ LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildDate=$(BUILD_DATE)\" \
 		-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
 		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)\" \
 
-# Tags required to build with sqlite - cgo must also be enabled.
-TAGS :=		'fts5 json1'
-
 ifdef WITH_SQLITE
 CGO_ENABLED :=	1
+TAGS +=		fts5 json1
 else
 CGO_ENABLED ?= 	0
 endif
@@ -66,7 +64,7 @@ resources/bindata.go: $(RESOURCES) resources/public/bundle.js
 
 # Build's EveBox for the host platform.
 evebox: Makefile $(GO_SRCS) resources/bindata.go
-	CGO_ENABLED=$(CGO_ENABLED) go build --tags $(TAGS) -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
+	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
 
 # Format all go source code except in the vendor directory.
 gofmt:
@@ -118,7 +116,7 @@ dist: LDFLAGS += -s -w
 dist: CGO_ENABLED ?= $(CGO_ENABLED)
 dist: resources/public/bundle.js resources/bindata.go
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
-		go build -tags $(TAGS) -ldflags "$(LDFLAGS)" \
+		go build -tags "$(TAGS)" -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
 	cp agent.toml dist/$(DISTNAME)
 	cp evebox-example.yaml dist/$(DISTNAME)

@@ -90,6 +90,10 @@ func SetLevel(level LogLevel) {
 	logLevel = level
 }
 
+func GetLevel() LogLevel {
+	return logLevel
+}
+
 func doLog(calldepth int, level LogLevel, format string, v ...interface{}) {
 
 	if level > logLevel {

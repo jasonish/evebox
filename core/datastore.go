@@ -26,8 +26,44 @@
 
 package core
 
+import (
+	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/log"
+)
+
+// EventConsumer takes events and stores them in a data store.
+type EveEventConsumer interface {
+
+	// Submit takes an event for submission to the datastore.
+	Submit(event eve.EveEvent) error
+
+	// Commit commits, or flushes out the event to the datastore. In some
+	// cases this might be a no-op.
+	Commit() (status interface{}, err error)
+}
+
 type Datastore interface {
-	EventQueryService
-	AlertQueryService
 	EventService
+
+	AlertQuery(options AlertQueryOptions) (interface{}, error)
+	EventQuery(options EventQueryOptions) (interface{}, error)
+	GetEveEventConsumer() EveEventConsumer
+}
+
+type UnimplementedDatastore struct {
+}
+
+func (d *UnimplementedDatastore) GetEveEventConsumer() EveEventConsumer {
+	log.Warning("GetEventConsumer not implemented in this datastore")
+	return nil
+}
+
+func (s *UnimplementedDatastore) AlertQuery(options AlertQueryOptions) (interface{}, error) {
+	log.Warning("AlertQuery not implemented in this datastore")
+	return nil, NotImplementedError
+}
+
+func (s *UnimplementedDatastore) EventQuery(options EventQueryOptions) (interface{}, error) {
+	log.Warning("EventQuery not implemented in this datastore")
+	return nil, NotImplementedError
 }

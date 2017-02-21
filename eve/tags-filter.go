@@ -30,7 +30,7 @@ package eve
 type TagsFilter struct {
 }
 
-func (f *TagsFilter) Filter(event RawEveEvent) {
+func (f *TagsFilter) Filter(event EveEvent) {
 	if event["tags"] == nil {
 		event["tags"] = []interface{}{}
 	}

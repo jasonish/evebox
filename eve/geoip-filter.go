@@ -71,7 +71,7 @@ func NewGeoipFilter(service *geoip.GeoIpService) *GeoipFilter {
 	}
 }
 
-func (f *GeoipFilter) Filter(event RawEveEvent) {
+func (f *GeoipFilter) Filter(event EveEvent) {
 
 	if f.service == nil {
 		return

@@ -28,8 +28,6 @@ package evereader
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
@@ -166,7 +164,7 @@ func (er *EveReader) IsNewFile() bool {
 	return !os.SameFile(fileInfo1, fileInfo2)
 }
 
-func (er *EveReader) Next() (eve.RawEveEvent, error) {
+func (er *EveReader) Next() (eve.EveEvent, error) {
 
 	// Check for file truncation.
 	fileInfo, err := er.file.Stat()
@@ -180,7 +178,7 @@ func (er *EveReader) Next() (eve.RawEveEvent, error) {
 	}
 	er.size = fileInfo.Size()
 
-	var event eve.RawEveEvent
+	//var event eve.EveEvent
 
 	line, err := er.reader.ReadBytes('\n')
 	if err != nil {
@@ -199,12 +197,17 @@ func (er *EveReader) Next() (eve.RawEveEvent, error) {
 
 	er.lineno++
 
-	decoder := json.NewDecoder(bytes.NewReader(line))
-	decoder.UseNumber()
-
-	if err := decoder.Decode(&event); err != nil {
+	event, err := eve.NewEveEventFromBytes(line)
+	if err != nil {
 		return nil, MalformedEventError{string(line), err}
 	}
+
+	//decoder := json.NewDecoder(bytes.NewReader(line))
+	//decoder.UseNumber()
+	//
+	//if err := decoder.Decode(&event); err != nil {
+	//	return nil, MalformedEventError{string(line), err}
+	//}
 
 	return event, nil
 }

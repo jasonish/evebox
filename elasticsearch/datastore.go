@@ -26,6 +26,8 @@
 
 package elasticsearch
 
+import "github.com/jasonish/evebox/core"
+
 type DataStore struct {
 	*AlertQueryService
 	*EventQueryService
@@ -48,4 +50,8 @@ func NewDataStore(es *ElasticSearch) (*DataStore, error) {
 	}
 
 	return &datastore, nil
+}
+
+func (d *DataStore) GetEveEventConsumer() core.EveEventConsumer {
+	return NewIndexer(d.es)
 }

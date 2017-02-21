@@ -43,9 +43,14 @@ func ConfigHandler(appContext AppContext, r *http.Request) interface{} {
 	response.ElasticSearchIndex = viper.GetString("index")
 	viper.UnmarshalKey("event-services", &response.EventServices)
 
-	elasticSearchKeyword, _ := appContext.ElasticSearch.GetKeywordType("")
+	esKeyword := ""
+
+	if appContext.ElasticSearch != nil {
+		esKeyword, _ = appContext.ElasticSearch.GetKeywordType("")
+	}
+
 	response.Extra = map[string]interface{}{
-		"elasticSearchKeyword": elasticSearchKeyword,
+		"elasticSearchKeyword": esKeyword,
 	}
 
 	return response

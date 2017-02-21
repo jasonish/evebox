@@ -44,11 +44,9 @@ type BulkEveIndexer struct {
 }
 
 func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
-
 	indexer := BulkEveIndexer{
 		es: es,
 	}
-
 	return &indexer
 }
 
@@ -72,12 +70,9 @@ func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse,
 	return nil, err
 }
 
-func (i *BulkEveIndexer) IndexRawEvent(event eve.RawEveEvent) error {
+func (i *BulkEveIndexer) Submit(event eve.EveEvent) error {
 
-	timestamp, err := event.GetTimestamp()
-	if err != nil {
-		return err
-	}
+	timestamp := event.Timestamp()
 	event["@timestamp"] = timestamp.UTC().Format(AtTimestampFormat)
 	index := fmt.Sprintf("%s-%s", i.es.EventBaseIndex,
 		timestamp.UTC().Format("2006.01.02"))
@@ -100,7 +95,7 @@ func (i *BulkEveIndexer) IndexRawEvent(event eve.RawEveEvent) error {
 	return nil
 }
 
-func (i *BulkEveIndexer) FlushConnection() (*BulkResponse, error) {
+func (i *BulkEveIndexer) Commit() (interface{}, error) {
 
 	if len(i.buf) > 0 {
 		response, err := i.es.HttpClient.PostBytes("_bulk",

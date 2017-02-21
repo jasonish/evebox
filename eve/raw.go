@@ -27,33 +27,137 @@
 package eve
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"github.com/jasonish/evebox/util"
+	"strings"
 	"time"
 )
 
-// A RawEveEvent is an Eve event decoded into map[string]interface{} which
+// A EveEvent is an Eve event decoded into map[string]interface{} which
 // contains all the data in its raw format.
-type RawEveEvent map[string]interface{}
+type EveEvent map[string]interface{}
 
-func (e RawEveEvent) GetTimestamp() (*time.Time, error) {
-	result, err := time.Parse(EveTimestampFormat, e["timestamp"].(string))
+func (e EveEvent) MarshalJSON() ([]byte, error) {
+	event := map[string]interface{}{}
+	for key, val := range e {
+		if strings.HasPrefix(key, "__") {
+			continue
+		}
+		event[key] = val
+	}
+	return json.Marshal(event)
+}
+
+func NewEveEventFromBytes(b []byte) (event EveEvent, err error) {
+
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.UseNumber()
+	if err := decoder.Decode(&event); err != nil {
+		return nil, err
+	}
+
+	// Attempt to parse the timestamp, fail the decode if it can't be
+	// parsed.
+	timestamp, err := event.parseTimestamp()
 	if err != nil {
 		return nil, err
 	}
-	return &result, nil
+
+	// Cache the timestamp.
+	event["__parsed_timestamp"] = timestamp
+
+	return event, nil
 }
 
-func (e RawEveEvent) EventType() string {
+func (e EveEvent) parseTimestamp() (time.Time, error) {
+	tsstring, ok := e["timestamp"].(string)
+	if !ok {
+		return time.Time{}, fmt.Errorf("not a string")
+	}
+	return ParseTimestamp(tsstring)
+}
+
+func (e EveEvent) Timestamp() time.Time {
+	return e["__parsed_timestamp"].(time.Time)
+}
+
+func (e EveEvent) EventType() string {
 	if eventType, ok := e["event_type"].(string); ok {
 		return eventType
 	}
 	return ""
 }
 
-func (e RawEveEvent) GetMap(key string) util.JsonMap {
+func (e EveEvent) Packet() []byte {
+	packet, ok := e["packet"].(string)
+	if !ok {
+		return nil
+	}
+	buf, err := base64.StdEncoding.DecodeString(packet)
+	if err != nil {
+		return nil
+	}
+	return buf
+}
+
+func (e EveEvent) Proto() string {
+	return e.GetString("proto")
+}
+
+func (e EveEvent) SrcIp() string {
+	return e.GetString("src_ip")
+}
+
+func (e EveEvent) DestIp() string {
+	return e.GetString("dest_ip")
+}
+
+func asUint16(in interface{}) uint16 {
+	if number, ok := in.(json.Number); ok {
+		i64, err := number.Int64()
+		if err == nil {
+			return uint16(i64)
+		}
+	}
+	return 0
+}
+
+func (e EveEvent) SrcPort() uint16 {
+	return asUint16(e["src_port"])
+}
+
+func (e EveEvent) DestPort() uint16 {
+	return asUint16(e["dest_port"])
+	return e["dest_port"].(uint16)
+}
+
+func (e EveEvent) IcmpType() uint8 {
+	return uint8(asUint16(e["icmp_type"]))
+}
+
+func (e EveEvent) IcmpCode() uint8 {
+	return uint8(asUint16(e["icmp_code"]))
+}
+
+func (e EveEvent) Payload() []byte {
+	packet, ok := e["payload"].(string)
+	if !ok {
+		return nil
+	}
+	buf, err := base64.StdEncoding.DecodeString(packet)
+	if err != nil {
+		return nil
+	}
+	return buf
+}
+
+func (e EveEvent) GetMap(key string) util.JsonMap {
 	return util.JsonMap(e).GetMap(key)
 }
 
-func (e RawEveEvent) GetString(key string) string {
+func (e EveEvent) GetString(key string) string {
 	return util.JsonMap(e).GetString(key)
 }

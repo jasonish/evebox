@@ -30,48 +30,49 @@ package sqlite
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/mattn/go-shellwords"
 	"github.com/satori/go.uuid"
+	"path"
 	"strconv"
 	"strings"
 	"time"
 )
 
+const DB_FILENAME = "evebox.sqlite"
+
 type DataStore struct {
-	core.NotImplementedEventQueryService
 	core.NotImplementedEventService
 	db *SqliteService
 }
 
-func NewDataStore() (*DataStore, error) {
-	db, err := NewSqliteService("evebox.db")
+func NewDataStore(dataDirectory string) (*DataStore, error) {
+	db, err := NewSqliteService(path.Join(dataDirectory, DB_FILENAME))
 	if err != nil {
 		return nil, err
 	}
+	if err := db.Migrate(); err != nil {
+		return nil, err
+	}
+
 	return &DataStore{
 		db: db,
 	}, nil
 }
 
-func decodeRawEveEvent(rawBytes []byte) (map[string]interface{}, error) {
-	decoder := json.NewDecoder(bytes.NewReader(rawBytes))
-	decoder.UseNumber()
-	var decoded map[string]interface{}
-	err := decoder.Decode(&decoded)
-	if err != nil {
-		return nil, err
-	}
-	return decoded, nil
+func (d *DataStore) GetEveEventConsumer() core.EveEventConsumer {
+	return NewSqliteIndexer(d.db)
 }
 
 func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
 
-	sql := `select
+	query := `select
 	          count(json_extract(a.source, '$.alert.signature')),
 	          case a.timestamp when max(a.timestamp) then a.id end,
 	          b.source,
@@ -101,12 +102,22 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 		builder.WhereEquals("b.escalated", 1)
 	}
 
-	sql = strings.Replace(sql, "%WHERE%", builder.BuildWhere(), 1)
+	query = strings.Replace(query, "%WHERE%", builder.BuildWhere(), 1)
 
-	rows, err := s.db.Query(sql, builder.args...)
+	var rows *sql.Rows
+	var err error
+
+	tx, err := s.db.GetTx()
+	if err != nil {
+		log.Error("%v", err)
+		return nil, err
+	}
+	defer tx.Commit()
+	rows, err = tx.Query(query, builder.args...)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	alerts := []interface{}{}
 
@@ -122,7 +133,7 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 			return nil, err
 		}
 
-		event, err := decodeRawEveEvent(rawEvent)
+		event, err := eve.NewEveEventFromBytes(rawEvent)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +163,7 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 
 func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 
-	sql := `UPDATE events SET archived = 1 WHERE`
+	query := `UPDATE events SET archived = 1 WHERE`
 
 	builder := SqlBuilder{}
 
@@ -178,19 +189,26 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 		builder.WhereLte("timestamp", ts)
 	}
 
-	sql = strings.Replace(sql, "WHERE", builder.BuildWhere(), 1)
+	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
 
 	start := time.Now()
-	r, err := s.db.DB.Exec(sql, builder.args...)
+
+	tx, err := s.db.GetTx()
 	if err != nil {
+		log.Error("%v", err)
+	}
+	defer tx.Commit()
+	result, err := tx.Exec(query, builder.args...)
+	if err != nil {
+		log.Error("error archiving alerts: %v", err)
 		return err
 	}
-	rows, _ := r.RowsAffected()
-	log.Debug("Archived %d alerts.", rows)
-	duration := time.Now().Sub(start).Seconds()
-	log.Debug("Archive query time: %v", duration)
+	count, _ := result.RowsAffected()
 
-	return nil
+	duration := time.Now().Sub(start).Seconds()
+	log.Info("Archived %d alerts, duration=%v", count, duration)
+
+	return err
 }
 
 func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, error) {
@@ -201,7 +219,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		size = options.Size
 	}
 
-	sql := `select events.id, events.timestamp, events.source`
+	query := `select events.id, events.timestamp, events.source`
 
 	sqlBuilder := SqlBuilder{}
 
@@ -268,21 +286,28 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		sqlBuilder.Where(fmt.Sprintf("events_fts MATCH '%s'", strings.Join(fts, " AND ")))
 	}
 
-	sql += sqlBuilder.BuildFrom()
+	query += sqlBuilder.BuildFrom()
 
 	if sqlBuilder.HasWhere() {
-		sql += sqlBuilder.BuildWhere()
+		query += sqlBuilder.BuildWhere()
 	}
 
-	sql += fmt.Sprintf(" ORDER BY timestamp DESC")
-	sql += fmt.Sprintf(" LIMIT %d", size)
+	query += fmt.Sprintf(" ORDER BY timestamp DESC")
+	query += fmt.Sprintf(" LIMIT %d", size)
 
-	log.Println(sql)
+	log.Println(query)
 
-	rows, err := s.db.Query(sql, sqlBuilder.args...)
+	tx, err := s.db.GetTx()
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Commit()
+
+	rows, err := tx.Query(query, sqlBuilder.args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	events := []interface{}{}
 

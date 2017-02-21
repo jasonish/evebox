@@ -1,3 +1,34 @@
+# EveBox Server configuration file.
+
+# Path to the data directory. This directory holds data for EveBox such as the
+# authentication database (not yet implemented), and SQLite database files if
+# the sqlite database is being used. It needs to be writable by the user
+# EveBox is running as. If not set it will default to the current directory.
+#data-directory:
+
+# Database configuration.
+database:
+
+  # Database type: elasticsearch, sqlite.
+  type: sqlite
+
+  elasticsearch:
+    url: http://10.16.1.10:9200
+    index: logstash
+    disable-certificate-check: false
+    #username: username
+    #password: password
+
+geoip:
+  disabled: false
+  # Path to the MaxMind database. This must be the version 2 database
+  # (http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz)
+  # File must be ungzipped.
+  #
+  # This is temporary, EveBox will eventually support downloading and
+  # updateing the geo database itself.
+  database: /etc/evebox/GeoLite2-City.mmdb
+
 # Event services: links that will be provided on events to link to additonal
 # services.
 event-services:
@@ -27,13 +58,3 @@ event-services:
 
     # Open in new window. The default is the same window.
     target: new
-
-geoip:
-  disabled: false
-  # Path to the MaxMind database. This must be the version 2 database
-  # (http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz)
-  # File must be ungzipped.
-  #
-  # This is temporary, EveBox will eventually support downloading and
-  # updateing the geo database itself.
-  database: /etc/evebox/GeoLite2-City.mmdb

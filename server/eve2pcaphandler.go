@@ -33,7 +33,7 @@ import (
 )
 
 func Eve2PcapHandler(_ AppContext, r *http.Request) interface{} {
-	var event *eve.EveEvent
+	var event eve.EveEvent
 	var err error
 	var pcap []byte
 
@@ -45,7 +45,7 @@ func Eve2PcapHandler(_ AppContext, r *http.Request) interface{} {
 
 	jsonEvent := r.Form["event"][0]
 	if jsonEvent != "" {
-		event, err = eve.NewEveEventFromJson(jsonEvent)
+		event, err = eve.NewEveEventFromBytes([]byte(jsonEvent))
 		if err != nil {
 			return fmt.Errorf("Failed to decode JSON: %v", err)
 		}
@@ -55,26 +55,28 @@ func Eve2PcapHandler(_ AppContext, r *http.Request) interface{} {
 
 	what := r.Form["what"][0] // r.URL.Query().Get("what")
 	if what == "" {
-		if len(event.Payload) > 0 {
+		if len(event.Payload()) > 0 {
 			what = "payload"
-		} else if len(event.Packet) > 0 {
+		} else if len(event.Packet()) > 0 {
 			what = "packet"
 		}
 	}
 
 	if what == "payload" {
-		if len(event.Payload) == 0 {
+		if len(event.Payload()) == 0 {
 			return fmt.Errorf("Payload conversion requested but event does not contain the payload.")
 		}
+
 		pcap, err = eve.EvePayloadToPcap(event)
 		if err != nil {
 			return fmt.Errorf("Failed to convert payload to pcap: %v", err)
 		}
+
 	} else if what == "packet" {
-		if len(event.Packet) == 0 {
+		if len(event.Packet()) == 0 {
 			return fmt.Errorf("Packet conversion requested but event not contain the packet.")
 		}
-		pcap, err = eve.EvePacketToPcap(event)
+		pcap, err = eve.EvePacket2Pcap(event)
 		if err != nil {
 			return fmt.Errorf("Failed to convert packet to pcap: %v", err)
 		}

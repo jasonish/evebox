@@ -37,11 +37,6 @@ type AppContext struct {
 
 	ElasticSearch *elasticsearch.ElasticSearch
 
-	// Service for querying alerts.
-	AlertQueryService core.AlertQueryService
-
-	EventQueryService core.EventQueryService
-
 	EventService   core.EventService
 	EsEventService elasticsearch.EventService
 

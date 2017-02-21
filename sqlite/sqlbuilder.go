@@ -93,8 +93,6 @@ func (b *SqlBuilder) BuildFrom() string {
 		idx++
 	}
 
-	log.Println(sql)
-
 	return sql
 }
 

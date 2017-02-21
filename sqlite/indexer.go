@@ -29,31 +29,29 @@
 package sqlite
 
 import (
-	"database/sql"
 	"encoding/json"
 	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/log"
 	"github.com/satori/go.uuid"
 )
 
-type SqliteIndexer struct {
-	db *SqliteService
-	tx *sql.Tx
+type op struct {
+	query string
+	args  []interface{}
 }
 
-func NewSqliteIndexer(db *SqliteService) (*SqliteIndexer, error) {
+type SqliteIndexer struct {
+	db    *SqliteService
+	queue []op
+}
 
-	tx, err := db.Begin()
-	if err != nil {
-		return nil, err
-	}
-
+func NewSqliteIndexer(db *SqliteService) *SqliteIndexer {
 	return &SqliteIndexer{
 		db: db,
-		tx: tx,
-	}, nil
+	}
 }
 
-func (i *SqliteIndexer) IndexRawEve(event eve.RawEveEvent) error {
+func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 
 	encoded, err := json.Marshal(event)
 	if err != nil {
@@ -67,32 +65,36 @@ func (i *SqliteIndexer) IndexRawEve(event eve.RawEveEvent) error {
 		return err
 	}
 
-	_, err = i.tx.Exec("insert into events values ($1, $2, 0, 0, $3)", eventId,
-		timestamp, encoded)
-	if err != nil {
-		return err
-	}
-
-	_, err = i.tx.Exec("insert into events_fts values ($1, $2)", eventId,
-		encoded)
-	if err != nil {
-		return err
-	}
+	i.queue = append(i.queue, op{
+		query: "insert into events values ($1, $2, 0, 0, $3)",
+		args:  []interface{}{eventId, timestamp, encoded},
+	})
+	i.queue = append(i.queue, op{
+		query: "insert into events_fts values ($1, $2, $2)",
+		args:  []interface{}{eventId, timestamp, encoded},
+	})
 
 	return nil
 }
 
-func (i *SqliteIndexer) Flush() (err error) {
+func (i *SqliteIndexer) Commit() (interface{}, error) {
+	queue := i.queue
+	i.queue = nil
 
-	err = i.tx.Commit()
+	tx, err := i.db.Begin()
 	if err != nil {
-		return err
+		log.Error("%v", err)
+		return nil, err
 	}
 
-	i.tx, err = i.db.Begin()
-	if err != nil {
-		return err
+	for _, op := range queue {
+		_, err := tx.Exec(op.query, op.args...)
+		if err != nil {
+			log.Error("%v", err)
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
-	return nil
+	return nil, tx.Commit()
 }

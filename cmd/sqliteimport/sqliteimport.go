@@ -30,14 +30,89 @@ package sqliteimport
 
 import (
 	"fmt"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/sqlite"
-	flag "github.com/spf13/pflag"
+	"github.com/spf13/pflag"
 	"io"
 	"time"
 )
+
+func MainLoop(reader *evereader.EveReader, indexer core.EveEventConsumer,
+	bookmarker *evereader.Bookmarker, oneshot bool) {
+
+	eofs := 0
+	count := 0
+	lastStatTs := time.Now()
+	lastStatCount := 0
+	lastCommitTs := time.Now()
+
+	tagsFilter := eve.TagsFilter{}
+
+	logInterval := 60
+
+	if log.GetLevel() == log.DEBUG {
+		logInterval = 1
+	}
+
+	for {
+		eof := false
+
+		event, err := reader.Next()
+		if err != nil {
+			if err == io.EOF {
+				eof = true
+				eofs++
+			}
+		}
+
+		if event != nil {
+			tagsFilter.Filter(event)
+			indexer.Submit(event)
+			count++
+		}
+
+		now := time.Now()
+
+		// Commit every 100ms or so...
+		if eof || now.Sub(lastCommitTs).Seconds() >= 0.1 {
+			indexer.Commit()
+			lastCommitTs = time.Now()
+
+			if bookmarker != nil {
+				bookmark := bookmarker.GetBookmark()
+				err := bookmarker.WriteBookmark(bookmark)
+				if err != nil {
+					log.Error("Failed to update bookmark: %v", err)
+				}
+			}
+		}
+
+		if now.Sub(lastStatTs).Seconds() >= float64(logInterval) {
+			log.Info("Total: %d; Last interval: %d; Avg: %.2f/s, EOFs: %d",
+				count,
+				count-lastStatCount,
+				float64(count-lastStatCount)/(now.Sub(lastStatTs).Seconds()),
+				eofs)
+			lastStatTs = now
+			lastStatCount = count
+			eofs = 0
+		}
+
+		if eof {
+			if oneshot {
+				indexer.Commit()
+				break
+			} else {
+				indexer.Commit()
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}
+
+}
 
 func Main(args []string) {
 
@@ -48,7 +123,7 @@ func Main(args []string) {
 	var verbose bool
 	var dbfile string
 
-	flagset := flag.NewFlagSet("sqliteimport", flag.ExitOnError)
+	flagset := pflag.NewFlagSet("sqliteimport", pflag.ExitOnError)
 	flagset.StringVarP(&dbfile, "database", "D", "", "Database filename")
 	flagset.BoolVar(&end, "end", false, "Start at end of file")
 	flagset.BoolVar(&oneshot, "oneshot", false, "One shot mode (exit on EOF)")
@@ -109,77 +184,7 @@ func Main(args []string) {
 		log.Fatal(err)
 	}
 
-	indexer, err := sqlite.NewSqliteIndexer(db)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	count := uint64(0)
-	lastStatTs := time.Now()
-	lastStatCount := uint64(0)
-
-	// Number of EOFs in last stat interval.
-	eofs := uint64(0)
-
-	tagsFilter := eve.TagsFilter{}
-
-	for {
-		eof := false
-		event, err := reader.Next()
-		if err != nil {
-			if err == io.EOF {
-				eof = true
-				eofs++
-			} else {
-				log.Fatal(err)
-			}
-		}
-
-		if event != nil {
-
-			tagsFilter.Filter(event)
-
-			indexer.IndexRawEve(event)
-			count++
-
-			if useBookmark {
-				bookmark := bookmarker.GetBookmark()
-				bookmarker.WriteBookmark(bookmark)
-			}
-		}
-
-		now := time.Now()
-
-		if now.Sub(lastStatTs).Seconds() > 1 {
-			log.Info("Total: %d; Last interval: %d; Avg: %.2f/s, EOFs: %d",
-				count,
-				count-lastStatCount,
-				float64(count-lastStatCount)/(now.Sub(lastStatTs).Seconds()),
-				eofs)
-			lastStatTs = now
-			lastStatCount = count
-			eofs = 0
-			indexer.Flush()
-		}
-
-		if eof {
-			if oneshot {
-				break
-			} else {
-				indexer.Flush()
-				time.Sleep(100 * time.Millisecond)
-			}
-		}
-
-	}
-
-	now := time.Now()
-
-	log.Info("Total: %d; Last interval: %d; Avg: %.2f/s, EOFs: %d",
-		count,
-		count-lastStatCount,
-		float64(count-lastStatCount)/(now.Sub(lastStatTs).Seconds()),
-		eofs)
-
-	indexer.Flush()
+	indexer := sqlite.NewSqliteIndexer(db)
+	MainLoop(reader, indexer, bookmarker, oneshot)
+	db.Close()
 }
