@@ -108,8 +108,6 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 	var rows *sql.Rows
 	var err error
 
-	log.Println(query)
-
 	tx, err := s.db.GetTx()
 	if err != nil {
 		log.Error("%v", err)
@@ -141,8 +139,6 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 		if err != nil {
 			return nil, err
 		}
-
-		log.Println("escalated: ", escalated)
 
 		if archived > 0 {
 			event["tags"] = append(event["tags"].([]interface{}),
@@ -223,8 +219,6 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 
 	builder := SqlBuilder{}
 
-	builder.WhereEquals("archived", 0)
-
 	builder.WhereEquals(
 		"json_extract(events.source, '$.alert.signature_id')",
 		p.SignatureID)
@@ -236,6 +230,14 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 	builder.WhereEquals(
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
+
+	if p.MinTimestamp != "" {
+		ts, err := eveTs2SqliteTs(p.MinTimestamp)
+		if err != nil {
+			return err
+		}
+		builder.WhereGte("timestamp", ts)
+	}
 
 	if p.MaxTimestamp != "" {
 		ts, err := eveTs2SqliteTs(p.MaxTimestamp)
@@ -273,8 +275,6 @@ func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
 
 	builder := SqlBuilder{}
 
-	builder.WhereEquals("archived", 0)
-
 	builder.WhereEquals(
 		"json_extract(events.source, '$.alert.signature_id')",
 		p.SignatureID)
@@ -286,6 +286,14 @@ func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
 	builder.WhereEquals(
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
+
+	if p.MinTimestamp != "" {
+		ts, err := eveTs2SqliteTs(p.MinTimestamp)
+		if err != nil {
+			return err
+		}
+		builder.WhereGte("timestamp", ts)
+	}
 
 	if p.MaxTimestamp != "" {
 		ts, err := eveTs2SqliteTs(p.MaxTimestamp)

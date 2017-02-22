@@ -29,6 +29,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 )
 
@@ -38,6 +39,31 @@ type AlertGroupQueryParameters struct {
 	DestIp       string `json:"dest_ip"`
 	MinTimestamp string `json:"min_timestamp"`
 	MaxTimestamp string `json:"max_timestamp"`
+}
+
+func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() core.AlertGroupQueryParams {
+	return core.AlertGroupQueryParams{
+		SignatureID:  a.SignatureId,
+		SrcIP:        a.SrcIp,
+		DstIP:        a.DestIp,
+		MinTimestamp: a.MinTimestamp,
+		MaxTimestamp: a.MaxTimestamp,
+	}
+}
+
+func AlertGroupArchiveHandler(appContext AppContext, r *http.Request) interface{} {
+	var request AlertGroupQueryParameters
+
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
+
+	err := appContext.DataStore.ArchiveAlertGroup(request.ToCoreAlertGroupQueryParams())
+	if err != nil {
+		log.Error("%v", err)
+		return err
+	}
+	return HttpOkResponse()
 }
 
 func StarAlertGroupHandler(appContext AppContext, r *http.Request) interface{} {
