@@ -184,16 +184,13 @@ export class ElasticSearchService {
     removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise < string > {
         return this.submit(() => {
             let request = {
-                alert_group: {
-                    signature_id: alertGroup.event._source.alert.signature_id,
-                    src_ip: alertGroup.event._source.src_ip,
-                    dest_ip: alertGroup.event._source.dest_ip,
-                    min_timestamp: alertGroup.minTs,
-                    max_timestamp: alertGroup.maxTs,
-                },
-                tags: ["escalated", "evebox.escalated"],
+                signature_id: alertGroup.event._source.alert.signature_id,
+                src_ip: alertGroup.event._source.src_ip,
+                dest_ip: alertGroup.event._source.dest_ip,
+                min_timestamp: alertGroup.minTs,
+                max_timestamp: alertGroup.maxTs,
             };
-            return this.api.post("api/1/alert-group/remove-tags", request);
+            return this.api.post("api/1/alert-group/unstar", request);
         });
 
     }

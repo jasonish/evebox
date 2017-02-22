@@ -76,7 +76,8 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 	          count(json_extract(a.source, '$.alert.signature')),
 	          case a.timestamp when max(a.timestamp) then a.id end,
 	          b.source,
-	          b.archived
+	          b.archived,
+	          sum(b.escalated)
 	         from events a
 	         join events b on a.id = b.id
 	         %WHERE%
@@ -107,6 +108,8 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 	var rows *sql.Rows
 	var err error
 
+	log.Println(query)
+
 	tx, err := s.db.GetTx()
 	if err != nil {
 		log.Error("%v", err)
@@ -127,8 +130,9 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 		var id string
 		var rawEvent []byte
 		var archived int8
+		var escalated int64
 
-		err = rows.Scan(&count, &id, &rawEvent, &archived)
+		err = rows.Scan(&count, &id, &rawEvent, &archived, &escalated)
 		if err != nil {
 			return nil, err
 		}
@@ -138,6 +142,8 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 			return nil, err
 		}
 
+		log.Println("escalated: ", escalated)
+
 		if archived > 0 {
 			event["tags"] = append(event["tags"].([]interface{}),
 				"archived")
@@ -145,7 +151,7 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 
 		alert := map[string]interface{}{
 			"count":          count,
-			"escalatedCount": 0,
+			"escalatedCount": escalated,
 			"maxTs":          event["timestamp"],
 			"event": map[string]interface{}{
 				"_id":     id,
@@ -207,6 +213,100 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 
 	duration := time.Now().Sub(start).Seconds()
 	log.Info("Archived %d alerts, duration=%v", count, duration)
+
+	return err
+}
+
+func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
+
+	query := `UPDATE events SET escalated = 1 WHERE`
+
+	builder := SqlBuilder{}
+
+	builder.WhereEquals("archived", 0)
+
+	builder.WhereEquals(
+		"json_extract(events.source, '$.alert.signature_id')",
+		p.SignatureID)
+
+	builder.WhereEquals(
+		"json_extract(events.source, '$.src_ip')",
+		p.SrcIP)
+
+	builder.WhereEquals(
+		"json_extract(events.source, '$.dest_ip')",
+		p.DstIP)
+
+	if p.MaxTimestamp != "" {
+		ts, err := eveTs2SqliteTs(p.MaxTimestamp)
+		if err != nil {
+			return err
+		}
+		builder.WhereLte("timestamp", ts)
+	}
+
+	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
+
+	start := time.Now()
+
+	tx, err := s.db.GetTx()
+	if err != nil {
+		log.Error("%v", err)
+	}
+	defer tx.Commit()
+	result, err := tx.Exec(query, builder.args...)
+	if err != nil {
+		log.Error("error archiving alerts: %v", err)
+		return err
+	}
+	count, _ := result.RowsAffected()
+
+	duration := time.Now().Sub(start).Seconds()
+	log.Info("Archived %d alerts, duration=%v", count, duration)
+
+	return err
+}
+
+func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
+
+	query := `UPDATE events SET escalated = 0 WHERE`
+
+	builder := SqlBuilder{}
+
+	builder.WhereEquals("archived", 0)
+
+	builder.WhereEquals(
+		"json_extract(events.source, '$.alert.signature_id')",
+		p.SignatureID)
+
+	builder.WhereEquals(
+		"json_extract(events.source, '$.src_ip')",
+		p.SrcIP)
+
+	builder.WhereEquals(
+		"json_extract(events.source, '$.dest_ip')",
+		p.DstIP)
+
+	if p.MaxTimestamp != "" {
+		ts, err := eveTs2SqliteTs(p.MaxTimestamp)
+		if err != nil {
+			return err
+		}
+		builder.WhereLte("timestamp", ts)
+	}
+
+	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
+
+	tx, err := s.db.GetTx()
+	if err != nil {
+		log.Error("%v", err)
+	}
+	defer tx.Commit()
+	_, err = tx.Exec(query, builder.args...)
+	if err != nil {
+		log.Error("error archiving alerts: %v", err)
+		return err
+	}
 
 	return err
 }

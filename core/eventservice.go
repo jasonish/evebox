@@ -93,10 +93,6 @@ func EventQueryOptionsFromHttpRequest(r *http.Request) EventQueryOptions {
 type EventService interface {
 	GetEventById(id string) (map[string]interface{}, error)
 
-	ArchiveAlertGroup(p AlertGroupQueryParams) error
-
-	EscalateAlertGroup(p AlertGroupQueryParams) error
-
 	AddTagsToAlertGroup(p AlertGroupQueryParams, tags []string) error
 
 	RemoveTagsFromAlertGroup(p AlertGroupQueryParams, tags []string) error

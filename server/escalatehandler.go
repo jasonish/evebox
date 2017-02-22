@@ -33,13 +33,27 @@ import (
 )
 
 func EscalateHandler(appContext AppContext, r *http.Request) interface{} {
-
 	var request AlertGroupQueryParameters
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err
 	}
 
-	err := appContext.EventService.EscalateAlertGroup(
+	err := appContext.DataStore.EscalateAlertGroup(
+		request.ToCoreAlertGroupQueryParams())
+	if err != nil {
+		log.Error("%v", err)
+		return err
+	}
+	return HttpOkResponse()
+}
+
+func UnstarAlertGroupHandler(appContext AppContext, r *http.Request) interface{} {
+	var request AlertGroupQueryParameters
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
+
+	err := appContext.DataStore.UnstarAlertGroup(
 		request.ToCoreAlertGroupQueryParams())
 	if err != nil {
 		log.Error("%v", err)

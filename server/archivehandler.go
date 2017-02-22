@@ -43,6 +43,7 @@ type AlertGroupQueryParameters struct {
 
 func ArchiveHandler(appContext AppContext, r *http.Request) interface{} {
 	var request AlertGroupQueryParameters
+
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err
 	}

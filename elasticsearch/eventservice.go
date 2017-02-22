@@ -310,6 +310,10 @@ func (s *EventService) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 	return s.AddTagsToAlertGroup(p, []string{"escalated", "evebox.escalated"})
 }
 
+func (s *EventService) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
+	return s.RemoveTagsFromAlertGroup(p, []string{"escalated", "evebox.escalated"})
+}
+
 // RemoveTagsFromAlertGroup removes the given tags from all alerts matching
 // the provided parameters.
 func (s *EventService) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags []string) error {

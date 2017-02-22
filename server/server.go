@@ -110,6 +110,7 @@ func (s *Server) RegisterApiHandlers() {
 
 	apiRouter.POST("/api/1/alert-group/add-tags", AlertGroupAddTags)
 	apiRouter.POST("/api/1/alert-group/remove-tags", AlertGroupRemoveTags)
+	apiRouter.POST("/api/1/alert-group/unstar", UnstarAlertGroupHandler)
 
 	apiRouter.Handle("/api/1/event/{id}", GetEventByIdHandler)
 

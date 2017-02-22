@@ -48,6 +48,10 @@ type Datastore interface {
 	AlertQuery(options AlertQueryOptions) (interface{}, error)
 	EventQuery(options EventQueryOptions) (interface{}, error)
 	GetEveEventConsumer() EveEventConsumer
+
+	ArchiveAlertGroup(p AlertGroupQueryParams) error
+	EscalateAlertGroup(p AlertGroupQueryParams) error
+	UnstarAlertGroup(p AlertGroupQueryParams) error
 }
 
 type UnimplementedDatastore struct {
