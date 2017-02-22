@@ -105,11 +105,11 @@ func (s *Server) RegisterApiHandlers() {
 
 	apiRouter := ApiRouter{s.appContext, s.router}
 
-	apiRouter.Handle("/api/1/archive", ArchiveHandler)
-	apiRouter.Handle("/api/1/escalate", EscalateHandler)
-
 	apiRouter.POST("/api/1/alert-group/add-tags", AlertGroupAddTags)
 	apiRouter.POST("/api/1/alert-group/remove-tags", AlertGroupRemoveTags)
+
+	apiRouter.Handle("/api/1/alert-group/archive", AlertGroupArchiveHandler)
+	apiRouter.Handle("/api/1/alert-group/star", StarAlertGroupHandler)
 	apiRouter.POST("/api/1/alert-group/unstar", UnstarAlertGroupHandler)
 
 	apiRouter.Handle("/api/1/event/{id}", GetEventByIdHandler)

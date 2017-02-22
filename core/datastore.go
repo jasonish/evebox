@@ -33,7 +33,6 @@ import (
 
 // EventConsumer takes events and stores them in a data store.
 type EveEventConsumer interface {
-
 	// Submit takes an event for submission to the datastore.
 	Submit(event eve.EveEvent) error
 
@@ -70,4 +69,9 @@ func (s *UnimplementedDatastore) AlertQuery(options AlertQueryOptions) (interfac
 func (s *UnimplementedDatastore) EventQuery(options EventQueryOptions) (interface{}, error) {
 	log.Warning("EventQuery not implemented in this datastore")
 	return nil, NotImplementedError
+}
+
+func (s *UnimplementedDatastore) UnstarAlertGroup(p AlertGroupQueryParams) error {
+	log.Warning("UnstarAlertGroup not implemented in this datastore")
+	return NotImplementedError
 }

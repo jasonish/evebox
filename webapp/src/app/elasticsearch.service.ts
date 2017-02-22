@@ -164,7 +164,7 @@ export class ElasticSearchService {
                 min_timestamp: alertGroup.minTs,
                 max_timestamp: alertGroup.maxTs,
             };
-            return this.api.post("api/1/escalate", request);
+            return this.api.post("api/1/alert-group/star", request);
         });
     }
 
@@ -177,7 +177,7 @@ export class ElasticSearchService {
                 min_timestamp: alertGroup.minTs,
                 max_timestamp: alertGroup.maxTs,
             };
-            return this.api.post("api/1/archive", request);
+            return this.api.post("api/1/alert-group/archive", request);
         });
     }
 

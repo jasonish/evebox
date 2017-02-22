@@ -33,15 +33,7 @@ import (
 	"github.com/jasonish/evebox/log"
 )
 
-type AlertGroupQueryParameters struct {
-	SignatureId  uint64 `json:"signature_id"`
-	SrcIp        string `json:"src_ip"`
-	DestIp       string `json:"dest_ip"`
-	MinTimestamp string `json:"min_timestamp"`
-	MaxTimestamp string `json:"max_timestamp"`
-}
-
-func ArchiveHandler(appContext AppContext, r *http.Request) interface{} {
+func AlertGroupArchiveHandler(appContext AppContext, r *http.Request) interface{} {
 	var request AlertGroupQueryParameters
 
 	if err := DecodeRequestBody(r, &request); err != nil {
