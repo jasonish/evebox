@@ -105,6 +105,16 @@ deploy_development_debian() {
 	     "${REPO_ROOT}/evebox-development-debian/evebox/${version}/$(basename ${deb})"
 	echo
 
+	# Debian Stretch / amd64.
+	curl -T "${deb}" -u "jasonish:${BINTRAY_API_KEY}" \
+	     -H "X-Bintray-Debian-Distribution: stable,unstable" \
+	     -H "X-Bintray-Debian-Component: main" \
+	     -H "X-Bintray-Debian-Architecture: amd64" \
+	     -H "X-Bintray-Override: 1" \
+	     -H "X-Bintray-Publish: 1" \
+	     "${REPO_ROOT}/evebox-development-debian/evebox/${version}/$(basename ${deb})"
+	echo
+
     done
 
     for deb in $(ls dist/evebox*_i386.deb); do
