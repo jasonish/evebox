@@ -36,8 +36,9 @@ import (
 )
 
 type MalformedEventError struct {
-	Event string
-	Err   error
+	Event  string
+	Err    error
+	LineNo uint64
 }
 
 func (e MalformedEventError) Error() string {
@@ -178,9 +179,11 @@ func (er *EveReader) Next() (eve.EveEvent, error) {
 	}
 	er.size = fileInfo.Size()
 
-	//var event eve.EveEvent
-
 	line, err := er.reader.ReadBytes('\n')
+	if len(line) > 0 && line[len(line)-1] != '\n' {
+		log.Warning("Line read without newline: err: %v; line: %s",
+			err, line)
+	}
 	if err != nil {
 		if err == io.EOF {
 			// Check for rotation.
@@ -195,19 +198,16 @@ func (er *EveReader) Next() (eve.EveEvent, error) {
 		return nil, err
 	}
 
-	er.lineno++
-
 	event, err := eve.NewEveEventFromBytes(line)
 	if err != nil {
-		return nil, MalformedEventError{string(line), err}
+		return nil, MalformedEventError{
+			Event:  string(line),
+			Err:    err,
+			LineNo: er.lineno,
+		}
 	}
 
-	//decoder := json.NewDecoder(bytes.NewReader(line))
-	//decoder.UseNumber()
-	//
-	//if err := decoder.Decode(&event); err != nil {
-	//	return nil, MalformedEventError{string(line), err}
-	//}
+	er.lineno++
 
 	return event, nil
 }
