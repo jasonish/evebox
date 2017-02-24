@@ -164,6 +164,7 @@ export class ElasticSearchService {
                 min_timestamp: alertGroup.minTs,
                 max_timestamp: alertGroup.maxTs,
             };
+            console.log(request);
             return this.api.post("api/1/alert-group/star", request);
         });
     }

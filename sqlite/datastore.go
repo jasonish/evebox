@@ -30,14 +30,12 @@ package sqlite
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
-	"github.com/mattn/go-shellwords"
 	"github.com/satori/go.uuid"
 	"path"
 	"strconv"
@@ -115,42 +113,65 @@ func (s *DataStore) GetEventById(id string) (map[string]interface{}, error) {
 func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
 
 	query := `select
-	          count(json_extract(a.source, '$.alert.signature')),
-	          case a.timestamp when max(a.timestamp) then a.id end,
-	          b.source,
-	          b.archived,
-	          sum(b.escalated)
-	         from events a
-	         join events b on a.id = b.id
-	         %WHERE%
-	         group by
-	           json_extract(a.source, '$.alert.signature'),
-	           json_extract(a.source, '$.src_ip'),
-	           json_extract(a.source, '$.dest_ip')
-	         order by json_extract(a.source, '$.timestamp') DESC`
-
-	log.Println(options.QueryString)
+	            count(*) as count,
+                    b.id as id,
+                    sum(a.escalated),
+                    b.archived,
+                    min(a.timestamp) as mints,
+                    max(a.timestamp) as maxts,
+                    json_extract(a.source, '$.alert.signature') as signature,
+                    json_extract(a.source, '$.src_ip') as src_ip,
+                    json_extract(a.source, '$.dest_ip') as dest_ip,
+                    b.source
+                  %FROM%
+                  join events b on
+                    signature = json_extract(b.source, '$.alert.signature')
+                    AND src_ip = json_extract(b.source, '$.src_ip')
+                    AND dest_ip = json_extract(b.source, '$.dest_ip')
+                  %WHERE%
+                  group by
+                    signature,
+                    src_ip,
+                    dest_ip
+                  order by maxts desc`
 
 	builder := SqlBuilder{}
+
+	builder.From("events a")
+
+	builder.Where("a.id = b.id")
 
 	builder.WhereEquals("json_extract(a.source, '$.event_type')", "alert")
 
 	if elasticsearch.StringSliceContains(options.MustHaveTags, "archived") {
-		builder.WhereEquals("b.archived", 1)
+		builder.WhereEquals("a.archived", 1)
 	}
 
 	if elasticsearch.StringSliceContains(options.MustNotHaveTags, "archived") {
-		builder.WhereEquals("b.archived", 0)
+		builder.WhereEquals("a.archived", 0)
 	}
 
 	if elasticsearch.StringSliceContains(options.MustHaveTags, "escalated") {
 		builder.WhereEquals("b.escalated", 1)
 	}
 
+	if options.QueryString != "" {
+		parseQueryString(&builder, options.QueryString, "a")
+	}
+
+	if options.TimeRange != "" {
+		log.Println(options.TimeRange)
+		duration := parseTimeRange(options.TimeRange)
+		if duration != "" {
+			builder.Where(fmt.Sprintf(
+				"a.timestamp >= strftime('%%Y-%%m-%%dT%%H:%%M:%%S.000000Z', 'now', '-%s seconds')", duration))
+		}
+	}
+
+	query = strings.Replace(query, "%FROM%", builder.BuildFrom(), 1)
 	query = strings.Replace(query, "%WHERE%", builder.BuildWhere(), 1)
 
-	var rows *sql.Rows
-	var err error
+	log.Info("query: %s", query)
 
 	tx, err := s.db.GetTx()
 	if err != nil {
@@ -158,8 +179,9 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 		return nil, err
 	}
 	defer tx.Commit()
-	rows, err = tx.Query(query, builder.args...)
+	rows, err := tx.Query(query, builder.args...)
 	if err != nil {
+		log.Error("%v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -170,12 +192,27 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 
 		var count int64
 		var id string
-		var rawEvent []byte
-		var archived int8
 		var escalated int64
+		var archived int8
+		var minTs string
+		var maxTs string
+		var signature string
+		var srcIp string
+		var destIp string
+		var rawEvent []byte
 
-		err = rows.Scan(&count, &id, &rawEvent, &archived, &escalated)
+		err = rows.Scan(&count,
+			&id,
+			&escalated,
+			&archived,
+			&minTs,
+			&maxTs,
+			&signature,
+			&srcIp,
+			&destIp,
+			&rawEvent)
 		if err != nil {
+			log.Error("%v", err)
 			return nil, err
 		}
 
@@ -192,7 +229,8 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 		alert := map[string]interface{}{
 			"count":          count,
 			"escalatedCount": escalated,
-			"maxTs":          event["timestamp"],
+			"minTs":          minTs,
+			"maxTs":          maxTs,
 			"event": map[string]interface{}{
 				"_id":     id,
 				"_source": event,
@@ -209,50 +247,48 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 
 func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 
-	query := `UPDATE events SET archived = 1 WHERE`
+	b := SqlBuilder{}
 
-	builder := SqlBuilder{}
-
-	builder.WhereEquals("archived", 0)
-
-	builder.WhereEquals(
+	b.Select("id")
+	b.From("events")
+	b.WhereEquals("archived", 0)
+	b.WhereEquals(
 		"json_extract(events.source, '$.alert.signature_id')",
 		p.SignatureID)
-
-	builder.WhereEquals(
+	b.WhereEquals(
 		"json_extract(events.source, '$.src_ip')",
 		p.SrcIP)
-
-	builder.WhereEquals(
+	b.WhereEquals(
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
-
+	if p.MinTimestamp != "" {
+		ts, err := eveTs2SqliteTs(p.MinTimestamp)
+		if err != nil {
+			return err
+		}
+		b.WhereGte("timestamp", ts)
+	}
 	if p.MaxTimestamp != "" {
 		ts, err := eveTs2SqliteTs(p.MaxTimestamp)
 		if err != nil {
 			return err
 		}
-		builder.WhereLte("timestamp", ts)
+		b.WhereLte("timestamp", ts)
 	}
 
-	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
-
-	start := time.Now()
+	query := fmt.Sprintf("UPDATE events SET archived = 1 WHERE id IN (%s)", b.Build())
 
 	tx, err := s.db.GetTx()
 	if err != nil {
 		log.Error("%v", err)
 	}
 	defer tx.Commit()
-	result, err := tx.Exec(query, builder.args...)
+
+	_, err = tx.Exec(query, b.args...)
 	if err != nil {
 		log.Error("error archiving alerts: %v", err)
 		return err
 	}
-	count, _ := result.RowsAffected()
-
-	duration := time.Now().Sub(start).Seconds()
-	log.Info("Archived %d alerts, duration=%v", count, duration)
 
 	return err
 }
@@ -294,6 +330,8 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
 
 	start := time.Now()
+
+	log.Println(query)
 
 	tx, err := s.db.GetTx()
 	if err != nil {
@@ -381,39 +419,8 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		sqlBuilder.WhereEquals("json_extract(events.source, '$.event_type')", options.EventType)
 	}
 
-	fts := []string{}
-
 	if options.QueryString != "" {
-
-		words, _ := shellwords.Parse(options.QueryString)
-
-		for _, word := range words {
-
-			log.Debug("Word: %s", word)
-
-			parts := strings.SplitN(word, "=", 2)
-
-			if len(parts) == 2 {
-
-				field := parts[0]
-				valuestr := parts[1]
-				var arg interface{}
-
-				valueint, err := strconv.ParseInt(valuestr, 0, 64)
-				if err == nil {
-					arg = valueint
-				} else {
-					arg = valuestr
-				}
-
-				sqlBuilder.WhereEquals(
-					fmt.Sprintf(" json_extract(events.source, '$.%s')", field),
-					arg)
-			} else {
-				fts = append(fts, fmt.Sprintf("\"%s\"", parts[0]))
-			}
-
-		}
+		parseQueryString(&sqlBuilder, options.QueryString, "events")
 	}
 
 	if options.MaxTs != "" {
@@ -430,12 +437,6 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 			return nil, fmt.Errorf("Bad timestamp: %s", options.MinTs)
 		}
 		sqlBuilder.WhereGte("datetime(events.timestamp)", minTs)
-	}
-
-	if len(fts) > 0 {
-		sqlBuilder.From("events_fts")
-		sqlBuilder.Where("events.id = events_fts.id")
-		sqlBuilder.Where(fmt.Sprintf("events_fts MATCH '%s'", strings.Join(fts, " AND ")))
 	}
 
 	query += sqlBuilder.BuildFrom()
@@ -492,4 +493,53 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 	return map[string]interface{}{
 		"data": events,
 	}, nil
+}
+
+// Parse the query string and populat the sqlbuilder with parsed data.
+//
+// eventTable is the column name to join against events_fts.id, as it may
+//   not always be the events table in case of aliasing.
+func parseQueryString(builder *SqlBuilder, queryString string, eventTable string) {
+	fts := []string{}
+
+	parser := NewQueryStringParser(queryString)
+	for {
+		key, val := parser.Next()
+		if key != "" && val != "" {
+
+			var arg interface{}
+
+			// Check if the value is a string...
+			valInt, err := strconv.ParseInt(val, 0, 64)
+			if err == nil {
+				arg = valInt
+			} else {
+				arg = val
+			}
+
+			builder.WhereEquals(
+				fmt.Sprintf(" json_extract(%s.source, '$.%s')", eventTable, key),
+				arg)
+		} else if val != "" {
+			fts = append(fts, fmt.Sprintf("\"%s\"", val))
+		}
+		if key == "" && val == "" {
+			break
+		}
+	}
+
+	if len(fts) > 0 {
+		builder.From("events_fts")
+		builder.Where(fmt.Sprintf("%s.id = events_fts.id", eventTable))
+		builder.Where(fmt.Sprintf("events_fts MATCH '%s'", strings.Join(fts, " AND ")))
+	}
+}
+
+func parseTimeRange(timeRange string) string {
+	duration, err := time.ParseDuration(timeRange)
+	if err != nil {
+		log.Error("Failed to parse duration: %v", err)
+		return ""
+	}
+	return strconv.FormatUint(uint64(duration.Seconds()), 10)
 }

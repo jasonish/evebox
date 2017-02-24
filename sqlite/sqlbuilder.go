@@ -31,17 +31,17 @@ import (
 )
 
 type SqlBuilder struct {
-	selec map[string]bool
-	from  map[string]bool
-	where []string
-	args  []interface{}
+	fields map[string]bool
+	from   map[string]bool
+	where  []string
+	args   []interface{}
 }
 
 func (b *SqlBuilder) Select(what string) (builder *SqlBuilder) {
-	if b.selec == nil {
-		b.selec = make(map[string]bool)
+	if b.fields == nil {
+		b.fields = make(map[string]bool)
 	}
-	b.selec[what] = true
+	b.fields[what] = true
 	return b
 }
 
@@ -78,10 +78,10 @@ func (b *SqlBuilder) HasWhere() bool {
 func (b *SqlBuilder) Build() string {
 	sql := ""
 
-	if len(b.selec) > 0 {
+	if len(b.fields) > 0 {
 		sql += "SELECT "
 		idx := 0
-		for field, _ := range b.selec {
+		for field, _ := range b.fields {
 			if idx > 0 {
 				sql += ", "
 			}
