@@ -255,6 +255,8 @@ export class EventComponent implements OnInit, OnDestroy {
             else {
                 console.log("No flows found for event.");
             }
+        }, error => {
+            console.log("Failed to find flows for event: " + error);
         })
     }
 

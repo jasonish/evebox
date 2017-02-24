@@ -39,10 +39,6 @@ func init() {
 type NotImplementedEventService struct {
 }
 
-func (s *NotImplementedEventService) GetEventById(id string) (map[string]interface{}, error) {
-	return nil, NotImplementedError
-}
-
 func (s *NotImplementedEventService) AddTagsToEvent(id string, tags []string) error {
 	return NotImplementedError
 }

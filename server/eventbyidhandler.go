@@ -35,7 +35,7 @@ import (
 
 func GetEventByIdHandler(appContext AppContext, r *http.Request) interface{} {
 	eventId := mux.Vars(r)["id"]
-	event, err := appContext.EventService.GetEventById(eventId)
+	event, err := appContext.DataStore.GetEventById(eventId)
 	if err != nil {
 		log.Error("%v", err)
 		return err

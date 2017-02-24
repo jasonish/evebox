@@ -44,13 +44,16 @@ type EveEventConsumer interface {
 type Datastore interface {
 	EventService
 
+	GetEveEventConsumer() EveEventConsumer
+
 	AlertQuery(options AlertQueryOptions) (interface{}, error)
 	EventQuery(options EventQueryOptions) (interface{}, error)
-	GetEveEventConsumer() EveEventConsumer
 
 	ArchiveAlertGroup(p AlertGroupQueryParams) error
 	EscalateAlertGroup(p AlertGroupQueryParams) error
 	UnstarAlertGroup(p AlertGroupQueryParams) error
+
+	GetEventById(id string) (map[string]interface{}, error)
 }
 
 type UnimplementedDatastore struct {
@@ -74,4 +77,9 @@ func (s *UnimplementedDatastore) EventQuery(options EventQueryOptions) (interfac
 func (s *UnimplementedDatastore) UnstarAlertGroup(p AlertGroupQueryParams) error {
 	log.Warning("UnstarAlertGroup not implemented in this datastore")
 	return NotImplementedError
+}
+
+func (s *UnimplementedDatastore) GetEventById(id string) (map[string]interface{}, error) {
+	log.Warning("GetEventById not implement by this datastore")
+	return nil, NotImplementedError
 }

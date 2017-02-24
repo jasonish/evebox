@@ -49,6 +49,7 @@ const DB_FILENAME = "evebox.sqlite"
 
 type DataStore struct {
 	core.NotImplementedEventService
+	core.UnimplementedDatastore
 	db *SqliteService
 }
 
@@ -70,6 +71,47 @@ func (d *DataStore) GetEveEventConsumer() core.EveEventConsumer {
 	return NewSqliteIndexer(d.db)
 }
 
+func (s *DataStore) GetEventById(id string) (map[string]interface{}, error) {
+	builder := SqlBuilder{}
+	builder.Select("source")
+	builder.From("events")
+	builder.WhereEquals("id", id)
+
+	tx, err := s.db.GetTx()
+	if err != nil {
+		log.Error("%v", err)
+		return nil, err
+	}
+	defer tx.Commit()
+
+	rows, err := tx.Query(builder.Build(), builder.Args()...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var rawEvent []byte
+		err = rows.Scan(&rawEvent)
+		if err != nil {
+			return nil, err
+		}
+		event, err := eve.NewEveEventFromBytes(rawEvent)
+		if err != nil {
+			return nil, err
+		}
+
+		wrapper := map[string]interface{}{
+			"_id":     id,
+			"_source": event,
+		}
+
+		return wrapper, nil
+	}
+
+	return nil, core.NotImplementedError
+}
+
 func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
 
 	query := `select
@@ -86,6 +128,8 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 	           json_extract(a.source, '$.src_ip'),
 	           json_extract(a.source, '$.dest_ip')
 	         order by json_extract(a.source, '$.timestamp') DESC`
+
+	log.Println(options.QueryString)
 
 	builder := SqlBuilder{}
 
@@ -390,7 +434,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 
 	if len(fts) > 0 {
 		sqlBuilder.From("events_fts")
-		sqlBuilder.Where("events.id == events_fts.id")
+		sqlBuilder.Where("events.id = events_fts.id")
 		sqlBuilder.Where(fmt.Sprintf("events_fts MATCH '%s'", strings.Join(fts, " AND ")))
 	}
 
@@ -400,16 +444,16 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		query += sqlBuilder.BuildWhere()
 	}
 
-	query += fmt.Sprintf(" ORDER BY timestamp DESC")
+	query += fmt.Sprintf(" ORDER BY events.timestamp DESC")
 	query += fmt.Sprintf(" LIMIT %d", size)
-
-	log.Println(query)
 
 	tx, err := s.db.GetTx()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Commit()
+
+	log.Info("query: %s", query)
 
 	rows, err := tx.Query(query, sqlBuilder.args...)
 	if err != nil {

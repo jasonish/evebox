@@ -356,6 +356,8 @@ export class ElasticSearchService {
                 let hostname = response.hits.hits[0]._source.dns.rrname;
                 return hostname;
             }
+        }, error => {
+            console.log("Failed to resolve hostname for IP: " + error)
         })
     }
 

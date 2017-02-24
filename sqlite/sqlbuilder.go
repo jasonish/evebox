@@ -28,14 +28,21 @@ package sqlite
 
 import (
 	"fmt"
-	"github.com/jasonish/evebox/log"
 )
 
 type SqlBuilder struct {
-	prefix string
-	from   map[string]bool
-	where  []string
-	args   []interface{}
+	selec map[string]bool
+	from  map[string]bool
+	where []string
+	args  []interface{}
+}
+
+func (b *SqlBuilder) Select(what string) (builder *SqlBuilder) {
+	if b.selec == nil {
+		b.selec = make(map[string]bool)
+	}
+	b.selec[what] = true
+	return b
 }
 
 func (b *SqlBuilder) From(table string) {
@@ -69,7 +76,19 @@ func (b *SqlBuilder) HasWhere() bool {
 }
 
 func (b *SqlBuilder) Build() string {
-	sql := b.prefix
+	sql := ""
+
+	if len(b.selec) > 0 {
+		sql += "SELECT "
+		idx := 0
+		for field, _ := range b.selec {
+			if idx > 0 {
+				sql += ", "
+			}
+			sql += field
+			idx++
+		}
+	}
 
 	sql += b.BuildFrom()
 
@@ -85,7 +104,6 @@ func (b *SqlBuilder) BuildFrom() string {
 
 	idx := 0
 	for table, _ := range b.from {
-		log.Println(table)
 		if idx > 0 {
 			sql += ", "
 		}
@@ -107,4 +125,8 @@ func (b *SqlBuilder) BuildWhere() string {
 	}
 
 	return sql
+}
+
+func (b *SqlBuilder) Args() []interface{} {
+	return b.args
 }
