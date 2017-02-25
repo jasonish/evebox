@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,59 +24,39 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package elasticsearch
+package server
 
 import (
-	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
+	"net/http"
 )
 
-type DataStore struct {
-	*AlertQueryService
-	*EventQueryService
-	*EventService
+// Find the flow matching the provided paramters, useful for finding
+// the flow for an event.
+func FindFlowHandler(appContext AppContext, r *http.Request) interface{} {
 
-	es *ElasticSearch
-}
+	request := struct {
+		FlowId    uint64 `json:"flowId"`
+		Proto     string `json:"proto"`
+		Timestamp string `json:"timestamp"`
+		SrcIp     string `json:"srcIp"`
+		DestIp    string `json:"destIp"`
+	}{}
 
-func NewDataStore(es *ElasticSearch) (*DataStore, error) {
-
-	alertQueryService := NewAlertQueryService(es)
-	eventQueryService := NewEventQueryService(es)
-	eventService := NewEventService(es)
-
-	datastore := DataStore{
-		AlertQueryService: alertQueryService,
-		EventQueryService: eventQueryService,
-		EventService:      eventService,
-		es:                es,
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
 	}
 
-	return &datastore, nil
-}
+	log.Println(util.ToJson(request))
 
-func (d *DataStore) GetEveEventConsumer() core.EveEventConsumer {
-	return NewIndexer(d.es)
-}
-
-func (d *DataStore) FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error) {
-
-	query := NewEventQuery()
-	query.Size = 1
-
-	query.EventType("flow")
-	query.AddFilter(TermQuery("flow_id", flowId))
-	query.AddFilter(TermQuery("proto", proto))
-	query.AddFilter(RangeLte("flow.start", timestamp))
-	query.AddFilter(RangeGte("flow.end", timestamp))
-	query.ShouldHaveIp(srcIp, d.es.keyword)
-	query.ShouldHaveIp(destIp, d.es.keyword)
-
-	response, err := d.es.Search(query)
+	result, err := appContext.DataStore.FindFlow(request.FlowId,
+		request.Proto, request.Timestamp, request.SrcIp, request.DestIp)
 	if err != nil {
-		log.Error("%v", err)
-		return nil, err
+		return err
 	}
 
-	return response.Hits.Hits, nil
+	return map[string]interface{}{
+		"flows": result,
+	}
 }

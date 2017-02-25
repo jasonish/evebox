@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
 	"time"
 )
 
@@ -81,7 +82,7 @@ func (s *ReportService) ReportDnsRequestRrnames(options core.ReportOptions) (int
 
 	data := make([]interface{}, 0)
 
-	results := JsonMap(response.Aggregations["topRrnames"].(map[string]interface{}))
+	results := util.JsonMap(response.Aggregations["topRrnames"].(map[string]interface{}))
 	for _, bucket := range results.GetMapList("buckets") {
 		data = append(data, map[string]interface{}{
 			"count": bucket.Get("doc_count"),
@@ -246,7 +247,7 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 	}
 
 	// Unwrap response.
-	buckets := JsonMap(response.Aggregations[agg].(map[string]interface{})).GetMapList("buckets")
+	buckets := util.JsonMap(response.Aggregations[agg].(map[string]interface{})).GetMapList("buckets")
 	data := []map[string]interface{}{}
 	for _, bucket := range buckets {
 		data = append(data, map[string]interface{}{

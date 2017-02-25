@@ -207,57 +207,30 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     findFlow(event:any) {
-
         if (!event._source.flow_id) {
             console.log("Unable to find flow for event, event does not have a flow id.");
             console.log(event);
             return;
         }
 
-        let query = {
-            query: {
-                bool: {
-                    filter: [
-                        {exists: {field: "event_type"}},
-                        {term: {"event_type": "flow"}},
-                        {term: {flow_id: event._source.flow_id}},
-                        {term: {"proto": event._source.proto.toLowerCase()}},
-                        {
-                            range: {
-                                "flow.start": {
-                                    lte: event._source.timestamp,
-                                }
-                            }
-                        },
-                        {
-                            range: {
-                                "flow.start": {
-                                    lte: event._source.timestamp,
-                                }
-                            }
-                        }
-                    ],
-                    should: [
-                        {term: {"src_ip": event._source.src_ip}},
-                        {term: {"src_ip": event._source.dest_ip}},
-                        {term: {"dest_ip": event._source.src_ip}},
-                        {term: {"dest_ip": event._source.dest_ip}},
-                    ],
-                    "minimum_should_match": 2,
-                }
-            }
-        };
-
-        this.elasticSearch.search(query).then((response:any) => {
-            if (response.hits.hits.length > 0) {
-                this.flows = response.hits.hits;
+        this.elasticSearch.findFlow({
+            flowId: event._source.flow_id,
+            proto: event._source.proto.toLowerCase(),
+            timestamp: event._source.timestamp,
+            srcIp: event._source.src_ip,
+            destIp: event._source.dest_ip,
+        }).then(response => {
+            console.log(response)
+            if (response.flows.length > 0) {
+                this.flows = response.flows;
             }
             else {
                 console.log("No flows found for event.");
             }
         }, error => {
-            console.log("Failed to find flows for event: " + error);
-        })
+            console.log("Failed to find flows for event:");
+            console.log(error);
+        });
     }
 
     refresh() {

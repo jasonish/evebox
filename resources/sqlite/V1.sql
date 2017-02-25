@@ -1,8 +1,8 @@
 CREATE TABLE events (
   id        TEXT PRIMARY KEY,
   timestamp DATETIME,
-  archived  INTEGER,
-  escalated INTEGER,
+  archived  INTEGER DEFAULT 0,
+  escalated INTEGER DEFAULT 0,
   source    JSON
 );
 

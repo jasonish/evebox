@@ -53,11 +53,6 @@ func NewSqliteIndexer(db *SqliteService) *SqliteIndexer {
 
 func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 
-	encoded, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
-
 	eventId := uuid.NewV1()
 
 	timestamp, err := eveTs2SqliteTs(event["timestamp"].(string))
@@ -65,8 +60,41 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 		return err
 	}
 
+	// Convert flow timestamps for UTC.
+	if event.GetString("event_type") == "flow" {
+		startTs, err := eveTs2SqliteTs(
+			event.GetMap("flow").GetString("start"))
+		if err == nil {
+			event.GetMap("flow")["start"] = startTs
+		}
+		endTs, err := eveTs2SqliteTs(
+			event.GetMap("flow").GetString("end"))
+		if err == nil {
+			event.GetMap("flow")["end"] = endTs
+		}
+	}
+
+	// Convert netflow timestamps to UTC.
+	if event.GetString("event_type") == "netflow" {
+		startTs, err := eveTs2SqliteTs(
+			event.GetMap("netflow").GetString("start"))
+		if err == nil {
+			event.GetMap("netflow")["start"] = startTs
+		}
+		endTs, err := eveTs2SqliteTs(
+			event.GetMap("netflow").GetString("end"))
+		if err == nil {
+			event.GetMap("netflow")["end"] = endTs
+		}
+	}
+
+	encoded, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
 	i.queue = append(i.queue, op{
-		query: "insert into events values ($1, $2, 0, 0, $3)",
+		query: "insert into events (id, timestamp, source) values ($1, $2, $3)",
 		args:  []interface{}{eventId, timestamp, encoded},
 	})
 	i.queue = append(i.queue, op{
@@ -81,7 +109,7 @@ func (i *SqliteIndexer) Commit() (interface{}, error) {
 	queue := i.queue
 	i.queue = nil
 
-	tx, err := i.db.Begin()
+	tx, err := i.db.GetTx()
 	if err != nil {
 		log.Error("%v", err)
 		return nil, err

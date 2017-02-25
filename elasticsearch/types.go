@@ -28,6 +28,7 @@ package elasticsearch
 
 import (
 	"encoding/json"
+	"github.com/jasonish/evebox/util"
 	"strconv"
 	"strings"
 )
@@ -88,7 +89,7 @@ type SearchResponse struct {
 	TimedOut     bool                   `json:"timed_out"`
 	Took         uint64                 `json:"took"`
 	Hits         Hits                   `json:"hits"`
-	Aggregations JsonMap                `json:"aggregations"`
+	Aggregations util.JsonMap           `json:"aggregations"`
 	ScrollId     string                 `json:"_scroll_id,omitempty"`
 }
 

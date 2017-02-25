@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/util"
 	"sort"
 	"time"
 )
@@ -191,7 +192,7 @@ func (s *AlertQueryService) AlertQuery(options core.AlertQueryOptions) (interfac
 
 	alertGroups := AlertGroupResultSet{}
 
-	aggs := JsonMap(results.Aggregations)
+	aggs := util.JsonMap(results.Aggregations)
 	signatures := aggs.GetMap("signatures")
 	for _, bucket0 := range signatures.GetMapList("buckets") {
 		sources := bucket0.GetMap("sources")

@@ -41,7 +41,7 @@ func bulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
 	bulk := make([]string, 0)
 
 	for _, item := range documents {
-		doc := JsonMap(item)
+		doc := util.JsonMap(item)
 
 		currentTags := doc.GetMap("_source").GetAsStrings("tags")
 		tags := make([]string, 0)

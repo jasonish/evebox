@@ -165,7 +165,7 @@ func (s *EventService) AddTagsToEvent(id string, addTags []string) error {
 		return err
 	}
 
-	event := JsonMap(raw)
+	event := util.JsonMap(raw)
 	tags := event.GetMap("_source").GetAsStrings("tags")
 
 	for _, tag := range addTags {
@@ -189,7 +189,7 @@ func (s *EventService) RemoveTagsFromEvent(id string, rmTags []string) error {
 		return err
 	}
 
-	event := JsonMap(raw)
+	event := util.JsonMap(raw)
 	currentTags := event.GetMap("_source").GetAsStrings("tags")
 	tags := make([]string, 0)
 

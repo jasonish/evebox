@@ -495,6 +495,69 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 	}, nil
 }
 
+func (d *DataStore) FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error) {
+
+	query := `select
+                    id, source
+                  from events
+                  where
+                    json_extract(source, '$.event_type') = 'flow'
+                    and json_extract(source, '$.flow_id') = ?
+                    and (
+                      (json_extract(source, '$.src_ip') = ?
+                       and json_extract(source, '$.dest_ip') = ?)
+                      or
+                      (json_extract(source, '$.dest_ip') = ?
+                       and json_extract(source, '$.src_ip') = ?)
+                    )
+                    and json_extract(source, '$.flow.start') <= ?
+                    and json_extract(source, '$.flow.end') >= ?`
+
+	timestamp, err := eveTs2SqliteTs(timestamp)
+	if err != nil {
+		log.Error("%v", err)
+		return nil, err
+	}
+
+	tx, err := d.db.GetTx()
+	if err != nil {
+		log.Error("%v", err)
+		return nil, err
+	}
+	defer tx.Commit()
+
+	rows, err := tx.Query(query, flowId, srcIp, destIp, srcIp, destIp, timestamp, timestamp)
+	if err != nil {
+		log.Error("%v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	events := []interface{}{}
+
+	for rows.Next() {
+		var id string
+		var source []byte
+		err := rows.Scan(&id, &source)
+		if err != nil {
+			log.Error("%v", err)
+			return nil, err
+		}
+		event, err := eve.NewEveEventFromBytes(source)
+		if err != nil {
+			log.Error("%v", err)
+			return nil, err
+		}
+
+		events = append(events, map[string]interface{}{
+			"_id":     id,
+			"_source": event,
+		})
+	}
+
+	return events, nil
+}
+
 // Parse the query string and populat the sqlbuilder with parsed data.
 //
 // eventTable is the column name to join against events_fts.id, as it may

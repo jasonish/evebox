@@ -266,6 +266,10 @@ export class ElasticSearchService {
         });
     }
 
+    findFlow(params:any):Promise<any> {
+        return this.api.post("api/1/find-flow", params)
+    }
+
     newGetAlerts(options:any = {}):Promise<any> {
 
         let tags:string[] = [];

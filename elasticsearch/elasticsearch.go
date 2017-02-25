@@ -128,7 +128,7 @@ func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
 	return exists, nil
 }
 
-func (es *ElasticSearch) GetTemplate(name string) (JsonMap, error) {
+func (es *ElasticSearch) GetTemplate(name string) (util.JsonMap, error) {
 	url := fmt.Sprintf("_template/%s", name)
 	log.Debug("Fetching template %s", url)
 	response, err := es.HttpClient.Get(url)
@@ -136,7 +136,7 @@ func (es *ElasticSearch) GetTemplate(name string) (JsonMap, error) {
 		return nil, err
 	}
 
-	template := JsonMap{}
+	template := util.JsonMap{}
 
 	if err := es.Decode(response, &template); err != nil {
 		return nil, err

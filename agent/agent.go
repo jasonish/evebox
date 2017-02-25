@@ -28,7 +28,7 @@ package agent
 
 import (
 	"encoding/json"
-	"github.com/jasonish/evebox/elasticsearch"
+	"github.com/jasonish/evebox/util"
 	"github.com/pkg/errors"
 )
 
@@ -46,7 +46,7 @@ func NewEventChannel(client *Client) *EventChannel {
 	return &eventChannel
 }
 
-func (ec *EventChannel) Commit() (*elasticsearch.JsonMap, error) {
+func (ec *EventChannel) Commit() (*util.JsonMap, error) {
 	response, err := ec.client.httpClient.PostBytes("api/1/submit",
 		"application/json", ec.buf)
 	if err != nil {
@@ -59,7 +59,7 @@ func (ec *EventChannel) Commit() (*elasticsearch.JsonMap, error) {
 
 	ec.buf = ec.buf[:0]
 
-	var jsonMap elasticsearch.JsonMap
+	var jsonMap util.JsonMap
 	decoder := json.NewDecoder(response.Body)
 	decoder.UseNumber()
 	if err := decoder.Decode(&jsonMap); err != nil {

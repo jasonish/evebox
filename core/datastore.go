@@ -54,6 +54,7 @@ type Datastore interface {
 	UnstarAlertGroup(p AlertGroupQueryParams) error
 
 	GetEventById(id string) (map[string]interface{}, error)
+	FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error)
 }
 
 type UnimplementedDatastore struct {
@@ -81,5 +82,9 @@ func (s *UnimplementedDatastore) UnstarAlertGroup(p AlertGroupQueryParams) error
 
 func (s *UnimplementedDatastore) GetEventById(id string) (map[string]interface{}, error) {
 	log.Warning("GetEventById not implement by this datastore")
+	return nil, NotImplementedError
+}
+
+func (s *UnimplementedDatastore) FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error) {
 	return nil, NotImplementedError
 }

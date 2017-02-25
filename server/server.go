@@ -122,6 +122,8 @@ func (s *Server) RegisterApiHandlers() {
 	apiRouter.GET("/api/1/alerts", AlertsHandler)
 	apiRouter.GET("/api/1/event-query", EventQueryHandler)
 
+	apiRouter.POST("/api/1/find-flow", FindFlowHandler)
+
 	apiRouter.Handle("/api/1/query", QueryHandler)
 
 	apiRouter.Handle("/api/1/_bulk", EsBulkHandler)

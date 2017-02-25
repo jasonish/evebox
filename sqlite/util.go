@@ -35,5 +35,5 @@ func eveTs2SqliteTs(timestamp string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return result.UTC().Format("2006-01-02T15:04:05.999999Z"), nil
+	return result.UTC().Format("2006-01-02T15:04:05.000000Z"), nil
 }

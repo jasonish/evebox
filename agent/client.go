@@ -28,8 +28,8 @@ package agent
 
 import (
 	"encoding/json"
-	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/httputil"
+	"github.com/jasonish/evebox/util"
 )
 
 type Client struct {
@@ -47,12 +47,12 @@ func (c *Client) SetBaseUrl(url string) {
 	c.httpClient.SetBaseUrl(url)
 }
 
-func (c *Client) GetVersion() (*elasticsearch.JsonMap, error) {
+func (c *Client) GetVersion() (*util.JsonMap, error) {
 	response, err := c.httpClient.Get("api/1/version")
 	if err != nil {
 		return nil, err
 	}
-	var version elasticsearch.JsonMap
+	var version util.JsonMap
 	decoder := json.NewDecoder(response.Body)
 	err = decoder.Decode(&version)
 	return &version, err
