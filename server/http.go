@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
 	"github.com/pkg/errors"
@@ -101,6 +102,7 @@ type ApiWrapper struct {
 
 func (h ApiWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	response := h.handler.ServeHTTP(h.appContext, r)
+	w.Header().Set("X-EveBox-Git-Revision", core.BuildRev)
 	if response != nil {
 		switch response := response.(type) {
 		case error:
