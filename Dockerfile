@@ -32,3 +32,6 @@ ENV PATH $PATH:/usr/local/node/bin:$GOPATH/bin:/usr/local/go/bin
 # normally I'd avoid install software this way.
 RUN mkdir -p $GOPATH/bin && \
     curl https://glide.sh/get | sh
+
+RUN go get github.com/cespare/reflex && \
+    go get github.com/jteeuwen/go-bindata/...

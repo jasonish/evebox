@@ -29,7 +29,7 @@ all: public evebox
 install-deps:
 # NPM
 	$(MAKE) -C webapp $@
-# Go
+# Go - may need to update Dockerfile if these change.
 	which glide > /dev/null 2>&1 || \
 		go get github.com/Masterminds/glide
 	which reflex > /dev/null 2>&1 || \
@@ -67,25 +67,12 @@ resources/bindata.go: $(RESOURCES) public
 # Build's EveBox for the host platform.
 evebox: Makefile $(GO_SRCS) resources/bindata.go
 	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" \
-		-ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
+		-ldflags "$(LDFLAGS)" \
+		-o ${APP} cmd/evebox.go
 
 # Format all go source code except in the vendor directory.
 gofmt:
 	@go fmt $(GO_PACKAGES)
-
-build-with-docker:
-	docker build --rm -t evebox/builder - < Dockerfile
-	docker run --rm -it \
-		-v `pwd`:/go/src/github.com/jasonish/evebox \
-		-w /go/src/github.com/jasonish/evebox \
-		evebox/builder make install-deps all
-
-release-with-docker:
-	docker build --rm -t evebox/builder - < Dockerfile
-	docker run --rm -it \
-		-v `pwd`:/go/src/github.com/jasonish/evebox \
-		-w /go/src/github.com/jasonish/evebox \
-		evebox/builder make install-deps release deb rpm
 
 dev-server: evebox
 	@if [ "${ELASTICSEARCH_URL}" = "" ]; then \
@@ -130,7 +117,7 @@ dist: resources/bindata.go
 		$(APP)$(DIST_SUFFIX)-latest-$(GOOS)-$(DISTARCH)
 
 release:
-	rm -rf dist
+	rm -rf dist/*
 	GOOS=linux GOARCH=amd64 $(MAKE) dist
 	WITH_SQLITE=1 DIST_SUFFIX="-sqlite" GOOS=linux GOARCH=amd64 $(MAKE) dist
 	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
