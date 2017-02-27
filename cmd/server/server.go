@@ -61,6 +61,10 @@ func setDefaults() {
 	viper.SetDefault("data-directory", DEFAULT_DATA_DIR)
 	viper.SetDefault("elasticsearch", DEFAULT_ELASTICSEARCH_URL)
 	viper.SetDefault("index", DEFAULT_ELASTICSEARCH_INDEX)
+
+	// Retention period in days.
+	viper.SetDefault("database.retention-period", 0)
+	viper.BindEnv("database.retention-period", "RETENTION_PERIOD")
 }
 
 func Main(args []string) {
@@ -158,13 +162,7 @@ func Main(args []string) {
 			log.Fatal(err)
 		}
 	case "sqlite":
-		log.Info("Configuring SQLite datastore")
-		if viper.GetString("data-directory") == "." {
-			log.Warning("Using current directory as the data directory, you may want to set the data-directory option")
-		}
-		appContext.DataStore, err = sqlite.NewDataStore(
-			viper.GetString("data-directory"))
-		if err != nil {
+		if err := sqlite.InitSqlite(&appContext); err != nil {
 			log.Fatal(err)
 		}
 	default:

@@ -28,12 +28,14 @@
 
 package sqlite
 
-import "database/sql"
 import (
+	"database/sql"
 	"fmt"
+	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/server"
 	_ "github.com/mattn/go-sqlite3"
-	"io/ioutil"
-	"os"
+	"github.com/spf13/viper"
+	"path"
 	"time"
 )
 
@@ -74,28 +76,36 @@ func (s *SqliteService) Migrate() error {
 	return migrator.Migrate()
 }
 
-func (s *SqliteService) LoadScript(filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	buf, err := ioutil.ReadAll(file)
-	if err != nil {
-		return err
-	}
-	_, err = s.Exec(string(buf))
-	return err
+func InitPurger(db *SqliteService) {
+	retentionPeriod := viper.GetInt64("database.retention-period")
+	log.Info("Retention period: %d days", retentionPeriod)
+
+	// Start the purge runner.
+	go (&SqlitePurger{
+		db:     db,
+		period: retentionPeriod,
+	}).Run()
 }
 
-func (s *SqliteService) TxLoadScript(tx *sql.Tx, filename string) error {
-	file, err := os.Open(filename)
+func InitSqlite(appContext *server.AppContext) (err error) {
+
+	log.Info("Configuring SQLite datastore")
+	if viper.GetString("data-directory") == "." {
+		log.Warning("Using current directory as the data directory, you may want to set the data-directory option")
+	}
+
+	db, err := NewSqliteService(path.Join(viper.GetString("data-directory"), DB_FILENAME))
 	if err != nil {
 		return err
 	}
-	buf, err := ioutil.ReadAll(file)
-	if err != nil {
+
+	if err := db.Migrate(); err != nil {
 		return err
 	}
-	_, err = tx.Exec(string(buf))
-	return err
+
+	appContext.DataStore = NewDataStore(db)
+
+	InitPurger(db)
+
+	return nil
 }

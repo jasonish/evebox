@@ -37,7 +37,6 @@ import (
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/satori/go.uuid"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -51,18 +50,10 @@ type DataStore struct {
 	db *SqliteService
 }
 
-func NewDataStore(dataDirectory string) (*DataStore, error) {
-	db, err := NewSqliteService(path.Join(dataDirectory, DB_FILENAME))
-	if err != nil {
-		return nil, err
-	}
-	if err := db.Migrate(); err != nil {
-		return nil, err
-	}
-
+func NewDataStore(db *SqliteService) *DataStore {
 	return &DataStore{
 		db: db,
-	}, nil
+	}
 }
 
 func (d *DataStore) GetEveEventConsumer() core.EveEventConsumer {
@@ -170,8 +161,6 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 
 	query = strings.Replace(query, "%FROM%", builder.BuildFrom(), 1)
 	query = strings.Replace(query, "%WHERE%", builder.BuildWhere(), 1)
-
-	log.Info("query: %s", query)
 
 	tx, err := s.db.GetTx()
 	if err != nil {
@@ -284,11 +273,18 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 	}
 	defer tx.Commit()
 
-	_, err = tx.Exec(query, b.args...)
+	start := time.Now()
+	r, err := tx.Exec(query, b.args...)
 	if err != nil {
 		log.Error("error archiving alerts: %v", err)
 		return err
 	}
+	duration := time.Now().Sub(start)
+	count, err := r.RowsAffected()
+	if err != nil {
+		log.Warning("Failed to get archived row count: %v", err)
+	}
+	log.Info("Archived %d events in %v", count, duration)
 
 	return err
 }

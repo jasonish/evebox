@@ -19,6 +19,9 @@ database:
     #username: username
     #password: password
 
+  # Retention period in days. 0 or comment out to disable.
+  retention-period: 3
+
 geoip:
   disabled: false
   # Path to the MaxMind database. This must be the version 2 database
