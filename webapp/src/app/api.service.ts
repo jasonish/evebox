@@ -78,7 +78,6 @@ export class ApiService {
     }
 
     post(path:string, body:any) {
-        console.log("post");
         return this.http.post(this.baseUrl + path, JSON.stringify(body))
             .map((res:Response) => res.json())
             .toPromise();
@@ -91,7 +90,6 @@ export class ApiService {
     }
 
     get(path:string, options = {}):Promise<any> {
-        console.log("get");
         return this.http.get(`${this.baseUrl}${path}`, options)
             .toPromise()
             .then((res:Response) => {
