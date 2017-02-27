@@ -1,6 +1,10 @@
 var webpack = require("webpack");
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 
+var childProcess = require('child_process');
+var GITREV = childProcess.execSync('git rev-parse --short HEAD')
+    .toString().trim();
+
 module.exports = {
 
     entry: {
@@ -50,6 +54,12 @@ module.exports = {
             //helpers.root('./src'), // location of your src
             {} // a map of your routes
         ),
+
+        new webpack.DefinePlugin({
+            "process.env": {
+                "GITREV": JSON.stringify(GITREV)
+            }
+        }),
 
         new HtmlWebpackPlugin({
             template: 'src/index.html'

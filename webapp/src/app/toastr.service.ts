@@ -32,15 +32,19 @@ import "toastr/build/toastr.css";
 export interface ToastrOptions {
     title?:string;
     closeButton?:boolean;
+
+    // How long the toast will be displayed until the user interacts with it.
+    // 0 to disable, however will still timeout after the user hovers over it.
     timeOut?:number;
+
+    // How to the toast will be displayed after user interaction, like hovering.
+    extendedTimeOut?:number;
+
     preventDuplicates?:boolean;
 }
 
 @Injectable()
 export class ToastrService {
-
-    constructor() {
-    }
 
     warning(msg:any, options:ToastrOptions = {}) {
         toastr.warning(msg, options.title, options);
