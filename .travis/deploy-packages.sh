@@ -108,6 +108,6 @@ if [ "${TRAVIS_BRANCH}" = "master" ]; then
     deploy_debian "unstable,jessie,stretch"
 fi
 
-if [ "${TRAVIS_BRANCH}" = "development" ]; then
+if [ "${TRAVIS_BRANCH}" = "develop" ]; then
     deploy_debian "development"
 fi
