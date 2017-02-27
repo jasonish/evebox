@@ -45,8 +45,6 @@ if (process.env.ENV === "production") {
     enableProdMode();
 }
 
-console.log(process.env);
-
 // Set theme.
 switch (localStorage.theme) {
     case "slate":
