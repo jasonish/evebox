@@ -171,7 +171,7 @@ export interface ReportHistogramOptions {
 export interface ReportAggOptions {
     size?:number
     queryString?:string
-    timeRange?:string
+    timeRange?:number
 
     // Event type.
     eventType?:string

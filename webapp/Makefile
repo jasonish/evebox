@@ -1,5 +1,7 @@
-all:
-	./node_modules/.bin/webpack
+all: build
+
+build:
+	./node_modules/.bin/webpack --config webpack.prod.js --progress --profile --bail
 
 install-deps:
 	npm install

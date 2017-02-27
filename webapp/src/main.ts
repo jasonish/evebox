@@ -28,13 +28,12 @@ import './polyfills.ts';
 
 import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
 import {enableProdMode} from '@angular/core';
-import {environment} from './environments/environment';
 import {AppModule} from './app/app.module';
 
 import "rxjs";
 
-require("!!script!jquery/dist/jquery.min.js");
-require("!!script!bootstrap/dist/js/bootstrap.min.js");
+require("!!script-loader!jquery/dist/jquery.min.js");
+require("!!script-loader!bootstrap/dist/js/bootstrap.min.js");
 require("chart.js");
 
 declare var jQuery:any;
@@ -42,7 +41,7 @@ declare var window:any;
 declare var localStorage:any;
 declare var Chart:any;
 
-if (environment.production) {
+if (process.env.ENV === "production") {
     enableProdMode();
 }
 

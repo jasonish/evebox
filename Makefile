@@ -23,12 +23,10 @@ APP :=		evebox
 GOOS ?=		$(shell go env GOOS)
 GOARCH ?=	$(shell go env GOARCH)
 
-WEBAPP_SRCS :=	$(shell find webapp/src -type f)
-GO_SRCS :=	$(shell find . -name \*.go)
-
-RESOURCES :=	$(shell find resources | grep -v bindata.go)
-
+GO_SRCS :=	$(shell find . -name \*.go | grep -v /vendor/)
 GO_PACKAGES :=	$(shell go list ./... | grep -v /vendor/)
+
+WEBAPP_SRCS :=	$(shell find webapp/src -type f)
 
 all: public evebox
 
@@ -36,16 +34,19 @@ install-deps:
 # NPM
 	$(MAKE) -C webapp $@
 # Go
-	which glide > /dev/null 2>&1 || go get github.com/Masterminds/glide
-	which gin > /dev/null 2>&1 || go get github.com/codegangsta/gin
-	which reflex > /dev/null 2>&1 || go get github.com/cespare/reflex
-	which go-bindata > /dev/null 2>&1 || go get github.com/jteeuwen/go-bindata/...
+	which glide > /dev/null 2>&1 || \
+		go get github.com/Masterminds/glide
+	which reflex > /dev/null 2>&1 || \
+		go get github.com/cespare/reflex
+	which go-bindata > /dev/null 2>&1 || \
+		go get github.com/jteeuwen/go-bindata/...
 	glide install
 
 clean:
 	rm -rf dist
 	rm -f evebox
-	rm -f public/*.js
+	rm -f resources/public/*
+	rm -f resources/bindata.go
 	find . -name \*~ -exec rm -f {} \;
 
 distclean: clean
@@ -54,17 +55,23 @@ distclean: clean
 
 .PHONY: dist rpm deb
 
-# Build the webapp bundle.
-resources/public/bundle.js: $(WEBAPP_SRCS)
+resources/public/app.js resources/public/index.html: $(WEBAPP_SRCS)
 	cd webapp && $(MAKE)
-public: resources/public/bundle.js
 
-resources/bindata.go: $(RESOURCES) resources/public/bundle.js
+resources/public/favicon.ico: resources/favicon.ico
+	cp $^ $@
+favicon: resources/public/favicon.ico
+
+public: resources/public/index.html resources/public/app.js favicon
+
+resources/bindata.go: RESOURCES := $(shell find resources | grep -v bindata.go)
+resources/bindata.go: $(RESOURCES) public
 	go generate ./resources/...
 
 # Build's EveBox for the host platform.
 evebox: Makefile $(GO_SRCS) resources/bindata.go
-	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" -ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
+	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" \
+		-ldflags "$(LDFLAGS)" -o ${APP} cmd/evebox.go
 
 # Format all go source code except in the vendor directory.
 gofmt:
@@ -95,7 +102,7 @@ dev-server: evebox
 
 # Helper for dev-server mode, watches evebox Go source and rebuilds and
 # restarts as needed.
-dev-server-reflex: evebox
+dev-server-reflex:
 	reflex -s -R 'bindata\.go' -r '\.go$$' -- \
 	sh -c "make evebox && ./evebox --dev http://localhost:58080 ${DEV_ARGS}"
 
@@ -114,7 +121,7 @@ endif
 dist: DISTNAME ?= ${APP}$(DIST_SUFFIX)-${VERSION}-${GOOS}-${DISTARCH}
 dist: LDFLAGS += -s -w
 dist: CGO_ENABLED ?= $(CGO_ENABLED)
-dist: resources/public/bundle.js resources/bindata.go
+dist: resources/bindata.go
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags "$(TAGS)" -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
