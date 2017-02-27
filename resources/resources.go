@@ -35,7 +35,7 @@ import (
 	"strings"
 )
 
-//go:generate go-bindata -pkg resources -ignore bindata\.go ./...
+//go:generate go-bindata -nometadata -pkg resources -ignore bindata\.go ./...
 
 // AssetString returns an asset as a string.
 func AssetString(name string) (string, error) {

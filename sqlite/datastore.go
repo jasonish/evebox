@@ -151,7 +151,6 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 	}
 
 	if options.TimeRange != "" {
-		log.Println(options.TimeRange)
 		duration := parseTimeRange(options.TimeRange)
 		if duration != "" {
 			builder.Where(fmt.Sprintf(

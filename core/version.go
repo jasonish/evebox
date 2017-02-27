@@ -26,6 +26,5 @@
 
 package core
 
-var BuildDate string
 var BuildVersion string
 var BuildRev string

@@ -53,8 +53,8 @@ var opts struct {
 }
 
 func VersionMain() {
-	fmt.Printf("EveBox Version %s (rev %s) [%s]\n",
-		core.BuildVersion, core.BuildRev, core.BuildDate)
+	fmt.Printf("EveBox Version %s (rev %s)\n",
+		core.BuildVersion, core.BuildRev)
 }
 
 func setDefaults() {

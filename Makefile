@@ -1,14 +1,10 @@
 # Version info.
 VERSION_SUFFIX	:=	dev
 VERSION		:=	0.6.0${VERSION_SUFFIX}
-BUILD_DATE	?=	$(shell TZ=UTC date)
 BUILD_DATE_ISO	?=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
-export BUILD_DATE
-export BUILD_DATE_ISO
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 
-LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildDate=$(BUILD_DATE)\" \
-		-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
+LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
 		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)\" \
 
 ifdef WITH_SQLITE

@@ -45,8 +45,6 @@ declare var $:any;
             <div style="padding: 12px;">
 
               <p>This is EveBox version {{versionInfo.version}} (Rev: {{versionInfo.revision}}).
-              <br/>
-              Build date: {{versionInfo.date}}.
               </p>
 
               <p>Github:
