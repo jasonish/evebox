@@ -2,8 +2,7 @@
 *.iml
 /.idea
 /vendor
-/resources/public/bundle.js
-/resources/public/bundle.js.map
+/resources/public
 /resources/bindata.go
 /evebox
 /dist
