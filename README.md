@@ -1,7 +1,4 @@
-[![Build Status](https://travis-ci.org/jasonish/evebox.svg?branch=master)](https://travis-ci.org/jasonish/evebox)
-[![Download](https://api.bintray.com/packages/jasonish/evebox-development/evebox/images/download.svg) ](https://bintray.com/jasonish/evebox-development/evebox/_latestVersion#files)
-
-# EveBox
+# EveBox [![Build Status](https://travis-ci.org/jasonish/evebox.svg?branch=master)](https://travis-ci.org/jasonish/evebox)[![Download](https://api.bintray.com/packages/jasonish/evebox-development/evebox/images/download.svg) ](https://bintray.com/jasonish/evebox-development/evebox/_latestVersion#files)
 
 EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
@@ -95,7 +92,7 @@ make release
 If you don't want to bother with the required development tools, but do have
 Docker installed, you can build a release with the following command:
 ```
-make release-with-docker`
+./docker.sh release`
 ```
 
 ## Run in Development Mode
@@ -103,6 +100,10 @@ make release-with-docker`
 ELASTICSEARCH_URL=http://localhost:9200 make dev-server
 
 Where the ELASTICSEARCH_URL is pointing to your Elastic Search server.
+
+## Change Log
+
+See https://github.com/jasonish/evebox/blob/master/CHANGELOG.md .
 
 ## License
 

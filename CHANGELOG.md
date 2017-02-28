@@ -1,0 +1,46 @@
+# Change Log
+
+## [Unreleased]
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.5.0...HEAD)
+- Reports:
+  - In addition to the event views, there are now some report views.
+- EveBox Agent:
+  - The EveBox agent is a replacement for Filebeat and/or Logstash. It
+    can read Suricata eve log files sending them to the EveBox server
+    which will then store them to the configured data store (Elastic
+    Search or SQLite).
+- SQLite Support:
+  - SQLite can now be used as a backend. This is suitable for smaller
+	installations where event load is light.
+  - Reports are currently not supported with SQLite.
+
+## 0.5.0 - 2016-06-17
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.4.0...0.5.0)
+- EveBox is now runs as a server instead of just some static files
+  that use the browser to connect directly to Elastic Search. This
+  will allow:
+  - Simple setup and dealing with CORS.
+  - A platform to provide new features and other database options
+    moving forward.
+
+## 0.4.0 - 2015-12-10
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.3.0...0.4.0)
+- Lots of UI updates.
+
+## 0.3.0 - 2014-07-30
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.2.0...0.3.0)
+- Depends on Elastic Search 1.3.0+.
+- Use Groovy for Elastic Search scripting.  Works with the default
+  configuration now (no need to enable dynamic scripting).
+- Use the new top hits aggregation in ES 1.3 to limit the number of
+  trips to the ES to build an aggregate view.
+- Display packet and payload data now available in Suricata eve logs
+  (Only in Suricata git builds as of now).
+
+## 0.2.0 - 2014-05-20
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.1.0...0.2.0)
+- Aggregate events.
+- First step at view non-alert events.
+
+## 0.1.0 - 2014-05-22
+- Initial release.
