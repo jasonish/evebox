@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.5.0...HEAD)
+- Fix Elastic Search keyword handling when Filebeat is used to send
+  eve logs directly to Elastic Search.
 - Reports:
   - In addition to the event views, there are now some report views.
 - EveBox Agent:

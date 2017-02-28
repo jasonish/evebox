@@ -59,6 +59,9 @@ type ElasticSearch struct {
 	// of the Logstash template used "raw", newer ones use "keyword".
 	keyword string
 
+	// Set to true if keyword checks should not be done.
+	noKeyword bool
+
 	HttpClient *httputil.HttpClient
 }
 
@@ -148,6 +151,13 @@ func (es *ElasticSearch) GetTemplate(name string) (util.JsonMap, error) {
 // GetKeywordType is a crude way of determining if the template is using
 // Logstash 5 keyword type, or Logstash 2 "raw" type.
 func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
+
+	// It appears as though Filebeat indexes don't need this.
+	if index == "filebeat" {
+		es.noKeyword = true
+		return "", nil
+	}
+
 	if index == "" {
 		index = es.EventBaseIndex
 	}
@@ -188,6 +198,14 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 	log.Warning("Failed to parse template, keyword resolution delayed.")
 	log.Warning("Template: %s", util.ToJson(template))
 	return "", nil
+}
+
+func (es *ElasticSearch) SetKeyword(keyword string) {
+	if keyword == "" {
+		es.noKeyword = true
+	} else {
+		es.keyword = keyword
+	}
 }
 
 func (es *ElasticSearch) InitKeyword() error {
@@ -257,8 +275,7 @@ func (e *DatastoreError) Error() string {
 }
 
 func (es *ElasticSearch) Search(query interface{}) (*SearchResponse, error) {
-
-	if es.keyword == "" {
+	if es.keyword == "" && !es.noKeyword {
 		log.Warning("Search keyword not known, trying again.")
 		es.InitKeyword()
 	}
@@ -334,6 +351,13 @@ func (es *ElasticSearch) Refresh() {
 		return
 	}
 	io.Copy(ioutil.Discard, response.Body)
+}
+
+func (es *ElasticSearch) FormatKeyword(keyword string) string {
+	if es.keyword == "" {
+		return keyword
+	}
+	return fmt.Sprintf("%s.%s", keyword, es.keyword)
 }
 
 func DecodeResponse(reader io.Reader, output interface{}) error {

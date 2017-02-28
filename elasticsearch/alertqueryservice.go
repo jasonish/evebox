@@ -28,7 +28,6 @@ package elasticsearch
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/util"
@@ -95,10 +94,6 @@ func NewAlertQueryService(es *ElasticSearch) *AlertQueryService {
 	return service
 }
 
-func (s *AlertQueryService) asKeyword(keyword string) string {
-	return fmt.Sprintf("%s.%s", keyword, s.es.keyword)
-}
-
 // Return a 3 tuple aggregation: signature, source, dest...
 func (s *AlertQueryService) get3TupleAggs() map[string]interface{} {
 
@@ -113,13 +108,13 @@ func (s *AlertQueryService) get3TupleAggs() map[string]interface{} {
 			"aggs": m{
 				"sources": m{
 					"terms": m{
-						"field": s.asKeyword("src_ip"),
+						"field": s.es.FormatKeyword("src_ip"),
 						"size":  size,
 					},
 					"aggs": m{
 						"destinations": m{
 							"terms": m{
-								"field": s.asKeyword("dest_ip"),
+								"field": s.es.FormatKeyword("dest_ip"),
 								"size":  size,
 							},
 							"aggs": m{

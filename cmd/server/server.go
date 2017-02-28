@@ -67,6 +67,19 @@ func setDefaults() {
 	viper.BindEnv("database.retention-period", "RETENTION_PERIOD")
 }
 
+func getElasticSearchKeyword(flagset *pflag.FlagSet) (bool, string) {
+	flag := flagset.Lookup("elasticsearch-keyword")
+	if flag.Changed {
+		return true, flag.Value.String()
+	}
+
+	if viper.IsSet("database.elasticsearch.keyword") {
+		return true, viper.GetString("database.elasticsearch.keyword")
+	}
+
+	return false, ""
+}
+
 func Main(args []string) {
 
 	log.SetLevel(log.INFO)
@@ -93,6 +106,10 @@ func Main(args []string) {
 	flagset.StringP("index", "i", DEFAULT_ELASTICSEARCH_INDEX, "Elastic Search Index (default: logstash)")
 	viper.BindPFlag("database.elasticsearch.index", flagset.Lookup("index"))
 	viper.BindEnv("index", "ELASTICSEARCH_INDEX")
+
+	// Elastic Search keyword. This is purposely not bound to viper as viper
+	// fails to tell us if it was set or not.
+	flagset.String("elasticsearch-keyword", "", "Elastic Search keyword")
 
 	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose (debug logging)")
 
@@ -146,7 +163,15 @@ func Main(args []string) {
 			viper.GetString("database.elasticsearch.url"))
 		elasticSearch.SetEventIndex(
 			viper.GetString("database.elasticsearch.index"))
-		elasticSearch.InitKeyword()
+
+		keywordSet, keyword := getElasticSearchKeyword(flagset)
+		if keywordSet {
+			log.Info("Forcing Elastic Search keyword to '%s'", keyword)
+			elasticSearch.SetKeyword(keyword)
+		} else {
+			elasticSearch.InitKeyword()
+		}
+
 		pingResponse, err := elasticSearch.Ping()
 		if err != nil {
 			log.Error("Failed to ping Elastic Search: %v", err)

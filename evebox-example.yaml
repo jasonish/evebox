@@ -16,6 +16,16 @@ database:
     url: http://10.16.1.10:9200
     index: logstash
     disable-certificate-check: false
+
+    # The keyword to use for terms query. EveBox will do its best to
+    # figure this out on its own, but if you need to override it, you
+    # can do so here. The usual values are:
+    #    raw     -> Logstash / Elastic Search < 5.
+    #    keyword -> Logstash / Elastic Search >= 5.
+    #    ""      -> Filebeat / Elastic Search >= 5.
+    # Note that a quoted empty string is required to force an empty string.
+    #keyword: ""
+
     #username: username
     #password: password
 

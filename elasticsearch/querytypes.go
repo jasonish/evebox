@@ -53,11 +53,19 @@ func PrefixQuery(field string, value interface{}) map[string]interface{} {
 }
 
 func KeywordTermQuery(field string, value string, suffix string) map[string]interface{} {
-	return TermQuery(fmt.Sprintf("%s.%s", field, suffix), value)
+	term := field
+	if suffix != "" {
+		term = fmt.Sprintf("%s.%s", field, suffix)
+	}
+	return TermQuery(term, value)
 }
 
 func KeywordPrefixQuery(field string, value string, suffix string) map[string]interface{} {
-	return PrefixQuery(fmt.Sprintf("%s.%s", field, suffix), value)
+	term := field
+	if suffix != "" {
+		term = fmt.Sprintf("%s.%s", field, suffix)
+	}
+	return PrefixQuery(term, value)
 }
 
 func QueryString(query string) map[string]interface{} {

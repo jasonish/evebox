@@ -280,7 +280,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             aggs: {
                 sourcesByBytes: {
                     terms: {
-                        field: `src_ip.${this.elasticsearch.keyword}`,
+                        field: this.elasticsearch.asKeyword("src_ip"),
                         order: {
                             "bytes": "desc"
                         },
@@ -295,7 +295,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 },
                 sourcesByPackets: {
                     terms: {
-                        field: `src_ip.${this.elasticsearch.keyword}`,
+                        field: this.elasticsearch.asKeyword("src_ip"),
                         order: {
                             "packets": "desc"
                         }
@@ -310,7 +310,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 },
                 topDestinationsByBytes: {
                     terms: {
-                        field: `dest_ip.${this.elasticsearch.keyword}`,
+                        field: this.elasticsearch.asKeyword("dest_ip"),
                         order: {
                             "bytes": "desc"
                         },
@@ -325,7 +325,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 },
                 topDestinationsByPackets: {
                     terms: {
-                        field: `dest_ip.${this.elasticsearch.keyword}`,
+                        field: this.elasticsearch.asKeyword("dest_ip"),
                         order: {
                             "packets": "desc"
                         },

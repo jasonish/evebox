@@ -114,7 +114,10 @@ export class ElasticSearchService {
     }
 
     asKeyword(keyword:string):string {
-        return `${keyword}.${this.keyword}`;
+        if (this.keyword != "") {
+            return `${keyword}.${this.keyword}`;
+        }
+        return keyword;
     }
 
     keywordTerm(keyword:string, value:any):any {

@@ -228,7 +228,7 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 	if aggType == "keyword" {
 		query.Aggs[agg] = map[string]interface{}{
 			"terms": map[string]interface{}{
-				"field": fmt.Sprintf("%s.%s", agg, s.es.keyword),
+				"field": s.es.FormatKeyword(agg),
 				"size":  size,
 			},
 		}
