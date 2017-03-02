@@ -101,7 +101,7 @@ func Main(args []string) {
 
 	flagset.StringP("elasticsearch", "e", DEFAULT_ELASTICSEARCH_URL, "Elastic Search URI (default: http://localhost:9200")
 	viper.BindPFlag("database.elasticsearch.url", flagset.Lookup("elasticsearch"))
-	viper.BindEnv("elasticsearch", "ELASTICSEARCH_URL")
+	viper.BindEnv("database.elasticsearch.url", "ELASTICSEARCH_URL")
 
 	flagset.StringP("index", "i", DEFAULT_ELASTICSEARCH_INDEX, "Elastic Search Index (default: logstash)")
 	viper.BindPFlag("database.elasticsearch.index", flagset.Lookup("index"))
