@@ -77,7 +77,7 @@ func (s *SqliteService) Migrate() error {
 }
 
 func InitPurger(db *SqliteService) {
-	retentionPeriod := viper.GetInt64("database.retention-period")
+	retentionPeriod := viper.GetInt("database.retention-period")
 	log.Info("Retention period: %d days", retentionPeriod)
 
 	// Start the purge runner.

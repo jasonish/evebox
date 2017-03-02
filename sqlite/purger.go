@@ -33,13 +33,11 @@ import (
 	"time"
 )
 
-const RETENTION_TIME = 2
-
 var LIMIT int64 = 1000
 
 type SqlitePurger struct {
 	db     *SqliteService
-	period int64
+	period int
 }
 
 func (p *SqlitePurger) Run() {
@@ -57,7 +55,7 @@ func (p *SqlitePurger) Run() {
 func (p *SqlitePurger) Purge() (int64, error) {
 
 	now := time.Now()
-	then := now.AddDate(0, 0, (RETENTION_TIME+1)*-1)
+	then := now.AddDate(0, 0, (p.period+1)*-1)
 	log.Info("Deleting events prior to %v", formatTime(then))
 
 	tx, err := p.db.GetTx()
