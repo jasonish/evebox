@@ -75,7 +75,8 @@ func (r *ReaderLoop) readFile(reader *evereader.EveReader) {
 				eof = true
 				eofs++
 			} else {
-				log.Fatal(err)
+				log.Error("Failed to read event: %v", err)
+				continue
 			}
 		}
 
