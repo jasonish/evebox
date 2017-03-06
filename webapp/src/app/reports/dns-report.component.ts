@@ -201,7 +201,6 @@ export class DNSReportComponent implements OnInit, OnDestroy {
             size: size,
         };
 
-
         this.load(() => {
             return this.api.reportAgg("dns.rcode", aggOptions)
                 .then((response:any) => {

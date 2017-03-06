@@ -342,16 +342,30 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         };
 
         if (this.queryString && this.queryString != "") {
-            query.query.filtered.query = {
+            query.query.bool.filter.push({
                 query_string: {
                     query: this.queryString
                 }
-            }
+            });
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
 
         this.elasticsearch.search(query).then((response:any) => {
+
+            if (response.error) {
+                console.log("Errors returned:");
+                console.log(response.error);
+                let error = response.error;
+                if (error.root_cause && error.root_cause.length > 0) {
+                    this.toastr.error(error.root_cause[0].reason);
+                }
+                this.loading--;
+                return;
+            }
+
+            console.log(response);
+            console.log(response.aggregations);
 
             this.topSourcesByBytes = response.aggregations.sourcesByBytes.buckets.map((bucket:any) => {
                 return {
@@ -383,6 +397,10 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
             this.loading--;
 
+        }, error => {
+            console.log("Search error:");
+            console.log(error);
+            this.loading--;
         });
     }
 
