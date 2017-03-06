@@ -118,8 +118,9 @@ dist: resources/bindata.go
 
 release:
 	rm -rf dist/*
-	GOOS=linux GOARCH=amd64 $(MAKE) dist
-	WITH_SQLITE=1 DIST_SUFFIX="-sqlite" GOOS=linux GOARCH=amd64 $(MAKE) dist
+	# GOOS=linux GOARCH=amd64 $(MAKE) dist
+	# WITH_SQLITE=1 DIST_SUFFIX="-sqlite" GOOS=linux GOARCH=amd64 $(MAKE) dist
+	WITH_SQLITE=1 GOOS=linux GOARCH=amd64 $(MAKE) dist
 	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
 
