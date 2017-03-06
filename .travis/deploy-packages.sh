@@ -43,13 +43,16 @@ deploy_development() {
 }
 
 deploy_development_rpm() {
+    repo="evebox-development-rpm-x86_64"
+
     # Deploy RPM to Bintray.
     for rpm in $(ls dist/evebox*.rpm); do
 	echo "Uploading ${rpm}."
 	version=`rpm -qp --queryformat '%{VERSION}%{RELEASE}' "${rpm}"`
 	curl -T ${rpm} -u jasonish:${BINTRAY_API_KEY} \
-	     "${REPO_ROOT}/evebox-development-rpm-x86_64/evebox/${version}/$(basename ${rpm})?publish=1&override=1"
-	
+	     -H "X-Bintray-Override: 1" \
+	     -H "X-Bintray-Publish: 1" \
+	     "${REPO_ROOT}/${repo}/evebox/${version}/$(basename ${rpm})"
 	echo
 	break
     done
