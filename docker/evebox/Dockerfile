@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM fedora:25
 MAINTAINER Jason Ish <ish@unx.ca>
 
 # Attempt multiple times to download evebox from bintray.
