@@ -40,24 +40,6 @@ deploy_development() {
 	     "${REPO_ROOT}/${repo}/evebox/latest/${dest_filename}"
 	echo
     done
-
-    # Deploy zip's to Bintray.
-    for zip in dist/evebox-*.zip; do
-
-	version=`echo $(basename ${zip}) | sed -n 's/.*-\([[:digit:]][^-]\+\).*/\1/p'`
-	if [ "${version}" = "" ]; then
-	    echo "No version found for $zip, skipping."
-	    continue
-	fi
-
-	echo "Uploading ${zip} with version ${version}."
-	curl -T ${zip} -u jasonish:${BINTRAY_API_KEY} \
-	     -H "X-Bintray-Override: 1" \
-	     -H "X-Bintray-Publish: 1" \
-	     "${REPO_ROOT}/${repo}/evebox/${version}/$(basename ${zip})"	 
-	echo
-
-    done
 }
 
 deploy_development_rpm() {
