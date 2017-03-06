@@ -145,6 +145,10 @@ func (er *EveReader) FileOffset() (int64, error) {
 	return er.file.Seek(0, 1)
 }
 
+func (er *EveReader) Seek(offset int64) {
+	er.file.Seek(offset, 0)
+}
+
 func (er *EveReader) FileSize() (int64, error) {
 	info, err := er.file.Stat()
 	if err != nil {
@@ -179,11 +183,23 @@ func (er *EveReader) Next() (eve.EveEvent, error) {
 	}
 	er.size = fileInfo.Size()
 
-	line, err := er.reader.ReadBytes('\n')
-	if len(line) > 0 && line[len(line)-1] != '\n' {
-		log.Warning("Line read without newline: err: %v; line: %s",
-			err, line)
+	offset, err := er.FileOffset()
+	if err != nil {
+		log.Warning("Failed to get current file offset: %v", err)
+		offset = -1
 	}
+
+	line, err := er.reader.ReadBytes('\n')
+
+	// If error is eof and we have data, reset the offset.
+	if err != nil && err == io.EOF && len(line) > 0 {
+		// But only do it if the seek above didn't fail...
+		if offset >= 0 {
+			er.Seek(offset)
+			return nil, nil
+		}
+	}
+
 	if err != nil {
 		if err == io.EOF {
 			// Check for rotation.

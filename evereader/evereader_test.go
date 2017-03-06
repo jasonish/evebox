@@ -37,28 +37,34 @@ import (
 
 var rawEvent string = `{"timestamp":"2016-09-15T11:23:20.197956-0600","flow_id":943590776193120,"event_type":"alert","src_ip":"82.165.177.154","src_port":80,"dest_ip":"10.16.1.11","dest_port":59852,"proto":"TCP","http":{"hostname":"www.testmyids.com","url":"\/","http_user_agent":"curl\/7.47.1","http_content_type":"text\/html","http_method":"GET","protocol":"HTTP\/1.1","status":200,"length":39},"payload":"SFRUUC8xLjEgMjAwIE9LDQpEYXRlOiBUaHUsIDE1IFNlcCAyMDE2IDE3OjIzOjIwIEdNVA0KU2VydmVyOiBBcGFjaGUNCkxhc3QtTW9kaWZpZWQ6IE1vbiwgMTUgSmFuIDIwMDcgMjM6MTE6NTUgR01UDQpFVGFnOiAiMjctNDI3MWM1ZjFhYzRjMCINCkFjY2VwdC1SYW5nZXM6IGJ5dGVzDQpDb250ZW50LUxlbmd0aDogMzkNCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sDQoNCnVpZD0wKHJvb3QpIGdpZD0wKHJvb3QpIGdyb3Vwcz0wKHJvb3QpCg==","payload_printable":"HTTP\/1.1 200 OK\r\nDate: Thu, 15 Sep 2016 17:23:20 GMT\r\nServer: Apache\r\nLast-Modified: Mon, 15 Jan 2007 23:11:55 GMT\r\nETag: \"27-4271c5f1ac4c0\"\r\nAccept-Ranges: bytes\r\nContent-Length: 39\r\nContent-Type: text\/html\r\n\r\nuid=0(root) gid=0(root) groups=0(root)\n","stream":1,"packet":"RQABLhOhQAAyBiTPUqWxmgoQAQsAUOnMrUcvtFca6JaAGAFU0FAAAAEBCAoXuzwUD2A3JkhUVFAvMS4xIDIwMCBPSw0KRGF0ZTogVGh1LCAxNSBTZXAgMjAxNiAxNzoyMzoyMCBHTVQNClNlcnZlcjogQXBhY2hlDQpMYXN0LU1vZGlmaWVkOiBNb24sIDE1IEphbiAyMDA3IDIzOjExOjU1IEdNVA0KRVRhZzogIjI3LTQyNzFjNWYxYWM0YzAiDQpBY2NlcHQtUmFuZ2VzOiBieXRlcw0KQ29udGVudC1MZW5ndGg6IDM5DQpDb250ZW50LVR5cGU6IHRleHQvaHRtbA0KDQp1aWQ9MChyb290KSBnaWQ9MChyb290KSBncm91cHM9MChyb290KQo=","packet_info":{"linktype":12},"host":"fw","alert":{"action":"allowed","gid":1,"signature_id":10000000,"rev":1,"signature":"","category":"Potentially Bad Traffic","severity":2}}`
 
-type TestEveWriter struct {
+type FileWriter struct {
 	filename string
 	file     *os.File
 }
 
-func OpenTestEveWriter(filename string) (*TestEveWriter, error) {
+func NewFileWriter(filename string) (*FileWriter, error) {
 
 	file, err := os.Create(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	return &TestEveWriter{filename: filename, file: file}, nil
+	return &FileWriter{filename: filename, file: file}, nil
 }
 
-func (w *TestEveWriter) WriteLine(line string) {
+func (w *FileWriter) Write(buf string) {
+	w.file.WriteString(buf)
+	w.file.Sync()
+}
+
+// Write out a complete line including the line feed.
+func (w *FileWriter) WriteLine(line string) {
 	w.file.WriteString(line)
 	w.file.WriteString("\n")
 	w.file.Sync()
 }
 
-func (w *TestEveWriter) Truncate() {
+func (w *FileWriter) Truncate() {
 
 	if err := w.file.Truncate(0); err != nil {
 		log.Fatal(err)
@@ -66,14 +72,14 @@ func (w *TestEveWriter) Truncate() {
 	w.file.Seek(0, 0)
 }
 
-func (w *TestEveWriter) Close() {
+func (w *FileWriter) Close() {
 	w.file.Close()
 }
 
 func TestEveReaderFollow(t *testing.T) {
 
 	filename := "TestEveReaderFollow.test.json"
-	writer, err := OpenTestEveWriter(filename)
+	writer, err := NewFileWriter(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +125,7 @@ func TestEveReaderFollow(t *testing.T) {
 func TestEveReaderFollowTruncate(t *testing.T) {
 
 	filename := "TestEveReaderFollowTruncate.test.json"
-	writer, err := OpenTestEveWriter(filename)
+	writer, err := NewFileWriter(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +177,7 @@ func TestEveReaderFollowRename(t *testing.T) {
 
 	filename := "TestEveReaderFollowRename.test.json"
 
-	writer, err := OpenTestEveWriter(filename)
+	writer, err := NewFileWriter(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +209,7 @@ func TestEveReaderFollowRename(t *testing.T) {
 	}
 
 	// Open a new writer, same filename and write an event.
-	writer, err = OpenTestEveWriter(filename)
+	writer, err = NewFileWriter(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +227,7 @@ func TestEveReader_SkipToEnd(t *testing.T) {
 	defer os.Remove(filename)
 
 	// Write out 100 events.
-	writer, err := OpenTestEveWriter(filename)
+	writer, err := NewFileWriter(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +272,7 @@ func TestEveReader_BadLine(t *testing.T) {
 	filename := "TestEveReader_BadLine.json"
 	defer os.Remove(filename)
 
-	writer, err := OpenTestEveWriter(filename)
+	writer, err := NewFileWriter(filename)
 	assert.Nil(t, err)
 
 	reader, err := New(filename)
@@ -288,6 +294,52 @@ func TestEveReader_BadLine(t *testing.T) {
 
 	// Make sure we recover by writing a new valid event and reading it.
 	writer.WriteLine(rawEvent)
+	event, err = reader.Next()
+	assert.Nil(t, err)
+	assert.NotNil(t, event)
+}
+
+func TestEveReader_PartialRead(t *testing.T) {
+
+	filename := "TestEveReader_PartialRead.json"
+	defer os.Remove(filename)
+
+	writer, err := NewFileWriter(filename)
+	assert.Nil(t, err)
+	defer writer.Close()
+
+	// Start by writing out a complete event.
+	writer.WriteLine(rawEvent)
+
+	// Now get a reader and read in the first event.
+	reader, err := New(filename)
+	assert.Nil(t, err)
+
+	event, err := reader.Next()
+	assert.Nil(t, err)
+	assert.NotNil(t, event)
+	defer reader.Close()
+
+	// Write out a partial event, then the remainder of it and read.
+	rawEventLen := len(rawEvent)
+	bytesToWrite := rawEventLen / 2
+	writer.Write(rawEvent[0:bytesToWrite])
+	writer.WriteLine(rawEvent[bytesToWrite:])
+
+	event, err = reader.Next()
+	assert.Nil(t, err)
+	assert.NotNil(t, event)
+
+	// Ok, now write out the partial event and read.
+	writer.Write(rawEvent[0:bytesToWrite])
+
+	event, err = reader.Next()
+	assert.Nil(t, err)
+	assert.Nil(t, event)
+
+	// Write out the rest of the event and read.
+	writer.WriteLine(rawEvent[bytesToWrite:])
+
 	event, err = reader.Next()
 	assert.Nil(t, err)
 	assert.NotNil(t, event)
