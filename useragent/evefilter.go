@@ -53,10 +53,6 @@ func (f *EveUserAgentFilter) setValue(ua map[string]string, name string, value s
 }
 
 func (f *EveUserAgentFilter) Filter(event eve.EveEvent) {
-	if event.EventType() != "http" {
-		return
-	}
-
 	httpUserAgent := event.GetMap("http").GetString("http_user_agent")
 	if httpUserAgent == "" {
 		return
