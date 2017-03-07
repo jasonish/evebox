@@ -27,10 +27,14 @@
 package geoip
 
 import (
+	"compress/gzip"
 	"fmt"
 	"github.com/oschwald/geoip2-golang"
+	"github.com/pkg/errors"
+	"io/ioutil"
 	"net"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -40,6 +44,7 @@ const (
 )
 
 var DbLocations = []string{
+	"/etc/evebox/GeoLite2-City.mmdb.gz",
 	"/etc/evebox/GeoLite2-City.mmdb",
 	"/usr/local/share/GeoIP/GeoLite2-City.mmdb",
 	"/usr/share/GeoIP/GeoLite2-City.mmdb",
@@ -52,6 +57,29 @@ func FindDbPath() string {
 		}
 	}
 	return ""
+}
+
+func OpenDb(path string) (*geoip2.Reader, error) {
+	if strings.HasSuffix(path, ".gz") {
+		file, err := os.Open(path)
+		if err != nil {
+			return nil, errors.Errorf(
+				"Failed to open geoip database: %s: %v", path, err)
+		}
+		gzipReader, err := gzip.NewReader(file)
+		if err != nil {
+			return nil, errors.Errorf(
+				"Failed to open geoip database: %s: %v", path, err)
+		}
+		bytes, err := ioutil.ReadAll(gzipReader)
+		if err != nil {
+			return nil, errors.Errorf(
+				"Failed to open geoip database: %s: %v", path, err)
+		}
+		return geoip2.FromBytes(bytes)
+	}
+
+	return geoip2.Open(path)
 }
 
 type GeoIp struct {
@@ -83,7 +111,7 @@ func NewGeoIpDb(path string) (*GeoIpDb, error) {
 		}
 	}
 
-	reader, err := geoip2.Open(path)
+	reader, err := OpenDb(path)
 	if err != nil {
 		return nil, err
 	}

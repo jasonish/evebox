@@ -39,7 +39,7 @@ func NewGeoIpService() *GeoIpService {
 	geoIpService := GeoIpService{}
 
 	if viper.GetBool("geoip.disabled") == false {
-		db, err := NewGeoIpDb(viper.GetString("geoip.database"))
+		db, err := NewGeoIpDb(viper.GetString("geoip.database-filename"))
 		if err != nil {
 			log.Warning("Failed to initialize geoip database: %v", err)
 		} else {
