@@ -52,7 +52,7 @@ var stdout = false
 var oneshot = false
 
 func usage() {
-	usage := `Usage: evebox import [options] /path/to/eve.json
+	usage := `Usage: evebox esimport [options] /path/to/eve.json
 
 Options:
 `
