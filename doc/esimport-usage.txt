@@ -1,4 +1,4 @@
-Usage: evebox import [options] /path/to/eve.json
+Usage: evebox esimport [options] /path/to/eve.json
 
 Options:
       --bookmark                Enable bookmarking
