@@ -5,7 +5,6 @@ Usage
 -----
 
 .. literalinclude:: esimport-usage.txt
-   :linenos:
 
 Configuration File
 ------------------
@@ -15,4 +14,3 @@ of the command line arguments.
 
 .. literalinclude:: esimport.yaml
    :language: yaml
-   :linenos:
