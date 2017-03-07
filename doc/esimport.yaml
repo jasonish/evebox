@@ -18,8 +18,13 @@ index: logstash
 # When no bookmark is present start reading at the end of the file.
 end: true
 
+# Enable bookmarking so esimport can continue reading from where it
+# left off after a restart.
 bookmark: true
-#bookmark-path: /var/tmp/eve.json.bookmark
+
+# Set a filename to keep the bookmark in case esimport cannot write to
+# the log directory.
+#bookmark-filename: /var/tmp/eve.json.bookmark
 
 # Change the amount of events to batch per bulk request.
 #batch-size: 1000
@@ -28,6 +33,15 @@ geoip:
   # GeoIP is enabled by default if a database can be found.
   disabled: false
 
-  # Path to the database, if not set some standard locations
-  # are checked.
-  #database: /some/path   
+  # Path to the database, if not set some standard locations are
+  # checked.
+  #
+  # The database used is the MaxMind GeoLite2 database. See:
+  #    http://dev.maxmind.com/geoip/geoip2/geolite2/
+  # Quick setup:
+  #    cd /etc/evebox
+  #    curl -OL http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
+  #
+  # The gzip'd file can be used directly but you may save a bit of
+  # memory by decompressing it first.
+  #database-filename: /etc/evebox/GeoLite2-City.mmdb.gz

@@ -96,11 +96,13 @@ func configure(args []string) {
 	flagset.Bool("bookmark", false, "Enable bookmarking")
 	viper.BindPFlag("bookmark", flagset.Lookup("bookmark"))
 
-	flagset.String("bookmark-path", "", "Path to bookmark file")
-	viper.BindPFlag("bookmark-path", flagset.Lookup("bookmark-path"))
+	bookmarkFilename := flagset.String("bookmark-filename", "", "Path to bookmark file")
+	flagset.StringVar(bookmarkFilename, "bookmark-path", "", "Path to bookmark file")
+	flagset.MarkHidden("bookmark-path")
+	viper.BindPFlag("bookmark-filename", flagset.Lookup("bookmark-filename"))
 
 	flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
-	viper.BindPFlag("geoip.database", flagset.Lookup("geoip-database"))
+	viper.BindPFlag("geoip.database-filename", flagset.Lookup("geoip-database"))
 
 	flagset.Parse(args[1:])
 
@@ -139,11 +141,11 @@ func Main(args []string) {
 	}
 
 	useBookmark := viper.GetBool("bookmark")
-	bookmarkPath := viper.GetString("bookmark-path")
+	bookmarkFilename := viper.GetString("bookmark-filename")
 
-	if useBookmark && bookmarkPath == "" {
-		bookmarkPath = fmt.Sprintf("%s.bookmark", viper.GetString("input"))
-		log.Info("Using bookmark file %s", bookmarkPath)
+	if useBookmark && bookmarkFilename == "" {
+		bookmarkFilename = fmt.Sprintf("%s.bookmark", viper.GetString("input"))
+		log.Info("Using bookmark file %s", bookmarkFilename)
 	}
 
 	es := elasticsearch.New(viper.GetString("elasticsearch"))
@@ -189,7 +191,7 @@ func Main(args []string) {
 	optEnd := viper.GetBool("end")
 	if useBookmark {
 		bookmarker = &evereader.Bookmarker{
-			Filename: bookmarkPath,
+			Filename: bookmarkFilename,
 			Reader:   reader,
 		}
 		err := bookmarker.Init(optEnd)
