@@ -42,6 +42,5 @@ geoip:
   #    cd /etc/evebox
   #    curl -OL http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
   #
-  # The gzip'd file can be used directly but you may save a bit of
-  # memory by decompressing it first.
   #database-filename: /etc/evebox/GeoLite2-City.mmdb.gz
+  #database-filename: /etc/evebox/GeoLite2-City.mmdb
