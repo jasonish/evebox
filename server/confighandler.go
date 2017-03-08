@@ -35,6 +35,7 @@ type ConfigResponse struct {
 	ElasticSearchIndex string                   `json:"ElasticSearchIndex"`
 	EventServices      []map[string]interface{} `json:"event-services"`
 	Extra              map[string]interface{}   `json:"extra"`
+	Features           map[string]bool          `json:"features"`
 }
 
 func ConfigHandler(appContext AppContext, r *http.Request) interface{} {
@@ -47,6 +48,13 @@ func ConfigHandler(appContext AppContext, r *http.Request) interface{} {
 
 	if appContext.ElasticSearch != nil {
 		esKeyword, _ = appContext.ElasticSearch.GetKeywordType("")
+	}
+
+	// Make sure features is at least an empty list.
+	response.Features = make(map[string]bool)
+
+	for feature, enabled := range appContext.Features {
+		response.Features[feature.String()] = enabled
 	}
 
 	response.Extra = map[string]interface{}{
