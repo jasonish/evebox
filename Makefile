@@ -60,8 +60,14 @@ favicon: resources/public/favicon.ico
 
 public: resources/public/index.html resources/public/app.js favicon
 
+ifdef NO_WEBAPP
+webapp:
+else
+webapp: public
+endif
+
 resources/bindata.go: RESOURCES := $(shell find resources | grep -v bindata.go)
-resources/bindata.go: $(RESOURCES) public
+resources/bindata.go: $(RESOURCES) webapp
 	go generate ./resources/...
 
 # Build's EveBox for the host platform.
@@ -75,10 +81,6 @@ gofmt:
 	@go fmt $(GO_PACKAGES)
 
 dev-server: evebox
-	@if [ "${ELASTICSEARCH_URL}" = "" ]; then \
-		echo "error: ELASTICSEARCH_URL not set."; \
-		exit 1; \
-	fi
 	./webapp/node_modules/.bin/concurrently -k \
 		"make -C webapp start" \
 		"make dev-server-reflex" \
@@ -87,7 +89,7 @@ dev-server: evebox
 # restarts as needed.
 dev-server-reflex:
 	reflex -s -R 'bindata\.go' -r '\.go$$' -- \
-	sh -c "make evebox && ./evebox --dev http://localhost:58080 ${DEV_ARGS}"
+	sh -c "NO_WEBAPP=1 make evebox && ./evebox --dev http://localhost:58080 ${DEV_ARGS}"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
