@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,38 +24,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package core
 
-import (
-	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/elasticsearch"
-	"github.com/jasonish/evebox/geoip"
+type Feature int
+
+// Enumeration of features supported by the server. These values aren't
+// particular important as they are only used internally, but the string
+// values returned should be considered static as the frontend will use them.
+const (
+	// Server supports reporting.
+	FEATURE_REPORTING Feature = iota
 )
 
-type AppContext struct {
-	DataStore core.Datastore
-
-	ElasticSearch *elasticsearch.ElasticSearch
-
-	EventService   core.EventService
-	EsEventService elasticsearch.EventService
-
-	ReportService core.ReportService
-
-	GeoIpService *geoip.GeoIpService
-
-	Features map[core.Feature]bool
-
-	Vars struct {
-
-		// URL to the frontend web application development server.
-		DevWebAppServerUrl string
+func (f Feature) String() string {
+	switch f {
+	case FEATURE_REPORTING:
+		return "reporting"
 	}
-}
-
-func (c *AppContext) SetFeature(feature core.Feature) {
-	if c.Features == nil {
-		c.Features = map[core.Feature]bool{}
-	}
-	c.Features[feature] = true
+	return ""
 }

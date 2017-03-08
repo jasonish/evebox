@@ -186,6 +186,7 @@ func Main(args []string) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		appContext.SetFeature(core.FEATURE_REPORTING)
 	case "sqlite":
 		if err := sqlite.InitSqlite(&appContext); err != nil {
 			log.Fatal(err)
