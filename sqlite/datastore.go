@@ -410,6 +410,8 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 
 	sqlBuilder.From("events")
 
+	sqlBuilder.Where("json_extract(events.source, '$.event_type') != 'stats'")
+
 	if options.EventType != "" {
 		sqlBuilder.WhereEquals("json_extract(events.source, '$.event_type')", options.EventType)
 	}
