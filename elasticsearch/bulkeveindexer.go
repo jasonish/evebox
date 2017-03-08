@@ -31,11 +31,15 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/pkg/errors"
 	"github.com/satori/go.uuid"
 	"net/http"
+	"sync"
 )
 
 const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
+
+var templateCheckLock sync.Mutex
 
 type BulkEveIndexer struct {
 	es     *ElasticSearch
@@ -96,6 +100,33 @@ func (i *BulkEveIndexer) Submit(event eve.EveEvent) error {
 }
 
 func (i *BulkEveIndexer) Commit() (interface{}, error) {
+
+	// Check if the template exists for the index before adding events.
+	// If not, try to install it.
+	//
+	// This is wrapped in lock so only on go-routine ends up doing this.
+	//
+	// Probably need to rethink this, perhaps do it on startup. But periodic
+	// checks are required in case Elastic Search was re-installed or something
+	// and the templates lost.
+	templateCheckLock.Lock()
+	exists, err := i.es.CheckTemplate(i.es.EventBaseIndex)
+	if err != nil {
+		log.Error("Failed to check if template %s exists: %v",
+			i.es.EventBaseIndex, err)
+		templateCheckLock.Unlock()
+		return nil, errors.Errorf("no template installed for configured index")
+	} else if !exists {
+		log.Warning("Template %s does not exist, will create.",
+			i.es.EventBaseIndex)
+		err := i.es.LoadTemplate(i.es.EventBaseIndex, 0)
+		if err != nil {
+			log.Error("Failed to install template: %v", err)
+		}
+		templateCheckLock.Unlock()
+		return nil, errors.Errorf("failed to install template for configured index")
+	}
+	templateCheckLock.Unlock()
 
 	if len(i.buf) > 0 {
 		response, err := i.es.HttpClient.PostBytes("_bulk",

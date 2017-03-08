@@ -222,6 +222,16 @@ func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 
 	var templateFilename string
 
+	if majorVersion == 0 {
+		// Version unknown, get it.
+		pingResponse, err := es.Ping()
+		if err != nil {
+			log.Warning("Failed to ping Elastic Search: %v", err)
+			return err
+		}
+		majorVersion = pingResponse.MajorVersion()
+	}
+
 	if majorVersion == 5 {
 		templateFilename = "template-es5x.json"
 	} else if majorVersion == 2 {
