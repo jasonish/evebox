@@ -30,6 +30,8 @@ import {MousetrapService} from "./mousetrap.service";
 
 declare var localStorage:any;
 
+export var FEATURE_REPORTING:string = "reporting";
+
 export enum AppEventCode {
     SHOW_HELP = 0,
     TIME_RANGE_CHANGED,

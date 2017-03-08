@@ -37,4 +37,10 @@ export class ConfigService {
         return this.config;
     }
 
+    hasFeature(feature:string):boolean {
+        if (this.config.features && this.config.features[feature] === true) {
+            return true;
+        }
+        return false;
+    }
 }

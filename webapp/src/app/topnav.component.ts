@@ -32,8 +32,9 @@ import {ElasticSearchService} from "./elasticsearch.service";
 import {Router, ActivatedRoute} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {TopNavService} from "./topnav.service";
-import {AppService, AppEventCode} from "./app.service";
+import {AppService, AppEventCode, FEATURE_REPORTING} from "./app.service";
 import {Subscription} from "rxjs/Rx";
+import {ConfigService} from "./config.service";
 
 declare var $:any;
 
@@ -65,7 +66,7 @@ declare var $:any;
         <li [ngClass]="{active: isActive('/events')}"><a
             href="#/events">Events</a></li>
 
-        <li [ngClass]="{active: isActive('/reports')}" class="dropdown">
+        <li *ngIf="features['reporting']" [ngClass]="{active: isActive('/reports')}" class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown"
              role="button" aria-haspopup="true" aria-expanded="false">Reports
             <span class="caret"></span></a>
@@ -122,14 +123,22 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     private routerSub:Subscription;
 
+    private features:any = {};
+
     constructor(private router:Router,
                 private elasticSearchService:ElasticSearchService,
                 private mousetrap:MousetrapService,
                 private topNavService:TopNavService,
-                private appService:AppService) {
+                private appService:AppService,
+                private configService:ConfigService) {
     }
 
     ngOnInit() {
+
+        if (this.configService.hasFeature(FEATURE_REPORTING)) {
+            this.features["reporting"] = true;
+        }
+
         this.mousetrap.bind(this, "g i", () => {
             this.gotoRoute("/inbox");
         });
