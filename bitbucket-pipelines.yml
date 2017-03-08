@@ -1,0 +1,15 @@
+image: fedora:25
+
+pipelines:
+  default:
+    - step:
+        script:
+          - dnf -y install golang nodejs make which git findutils zip
+          - PROJECT_PATH=${HOME}/go/src/github.com/jasonish/evebox
+          - export GOPATH=${HOME}/go
+          - export PATH=${GOPATH}/bin:${PATH}
+          - mkdir -p ${PROJECT_PATH}
+          - tar -cO . | tar -xv -C "${PROJECT_PATH}"
+          - cd ${PROJECT_PATH}
+          - make install-deps
+          - make release
