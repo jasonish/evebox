@@ -15,6 +15,10 @@
   - SQLite can now be used as a backend. This is suitable for smaller
 	installations where event load is light.
   - Reports are currently not supported with SQLite.
+- If the agent is being used to submit events and the datastore is
+  Elastic Search, create a template if one doesn't already index for
+  the configured index. For Elastic Search 2.x and Logstash 2 template
+  is used, for Elastic Search 5.x and Logstash 5 template is used.
 
 ## 0.5.0 - 2016-06-17
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.4.0...0.5.0)
