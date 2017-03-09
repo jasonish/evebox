@@ -25,27 +25,28 @@
  */
 
 import {Pipe, PipeTransform} from "@angular/core";
-import {Router} from "@angular/router";
+
+declare var window:any;
 
 let randomMap = {};
 
+/**
+ * IP address formatting pipe.
+ *
+ * To randomize IP addresses set "window.randomizeIp = true" on the window
+ * object.
+ */
 @Pipe({
     name: "eveboxFormatIpAddress"
 })
 export class EveboxFormatIpAddressPipe implements PipeTransform {
 
-    private randomize:boolean = false;
-
-    constructor(private router:Router) {
-    }
-
     transform(addr:string) {
-
         if (addr === undefined) {
             return "";
         }
 
-        if (this.randomize) {
+        if (window.randomizeIp) {
             return this.getRandomIp(addr);
         }
 
@@ -64,7 +65,7 @@ export class EveboxFormatIpAddressPipe implements PipeTransform {
             return randomMap[addr];
         }
 
-        let randomAddr = Math.round(Math.random() * 256) + "." +
+        let randomAddr = "10." +
                 Math.round(Math.random() * 256) + "." +
                 Math.round(Math.random() * 256) + "." +
                 Math.round(Math.random() * 256);
