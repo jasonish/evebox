@@ -1,4 +1,4 @@
-# EveBox [![Build Status](https://travis-ci.org/jasonish/evebox.svg?branch=master)](https://travis-ci.org/jasonish/evebox)[![Download](https://api.bintray.com/packages/jasonish/evebox-development/evebox/images/download.svg) ](https://bintray.com/jasonish/evebox-development/evebox/_latestVersion#files)
+# EveBox [![Documentation Status](https://readthedocs.org/projects/evebox/badge/?version=latest)](https://evebox.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/jasonish/evebox.svg?branch=master)](https://travis-ci.org/jasonish/evebox) [![Download](https://api.bintray.com/packages/jasonish/evebox-development/evebox/images/download.svg) ](https://bintray.com/jasonish/evebox-development/evebox/_latestVersion#files)
 
 EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
