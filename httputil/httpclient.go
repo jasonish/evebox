@@ -144,6 +144,20 @@ func (c *HttpClient) PostJson(path string, body interface{}) (*http.Response, er
 	return c.Post(path, "application/json", bytes.NewReader(buf))
 }
 
+func (c *HttpClient) PostJsonDecodeResponse(path string, body interface{}, response interface{}) error {
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	r, err := c.Post(path, "application/json", bytes.NewReader(buf))
+	if err != nil {
+		return err
+	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.UseNumber()
+	return decoder.Decode(response)
+}
+
 func (c *HttpClient) PostString(path string, contentType string, body string) (*http.Response, error) {
 	return c.Post(path, contentType, strings.NewReader(body))
 }
