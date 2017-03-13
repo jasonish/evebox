@@ -62,6 +62,25 @@ func (p PingResponse) MajorVersion() int64 {
 
 }
 
+func (p PingResponse) ParseVersion() (int64, int64) {
+	majorVersion := int64(0)
+	minorVersion := int64(0)
+	parts := strings.Split(p.Version.Number, ".")
+	if len(parts) > 0 {
+		version, err := strconv.ParseInt(parts[0], 10, 64)
+		if err == nil {
+			majorVersion = version
+		}
+	}
+	if len(parts) > 1 {
+		version, err := strconv.ParseInt(parts[1], 10, 64)
+		if err == nil {
+			minorVersion = version
+		}
+	}
+	return majorVersion, minorVersion
+}
+
 // BulkCreateHeader represents the JSON used to prefix a document to be indexed
 // in the bulk request.
 type BulkCreateHeader struct {

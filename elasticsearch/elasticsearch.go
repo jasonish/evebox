@@ -54,6 +54,7 @@ type ElasticSearch struct {
 	// instance of this object we should ping.
 	VersionString string
 	MajorVersion  int64
+	MinorVersion  int64
 
 	// The keyword to use for "keyword" type queries. Older versions
 	// of the Logstash template used "raw", newer ones use "keyword".
@@ -119,6 +120,7 @@ func (es *ElasticSearch) Ping() (*PingResponse, error) {
 	if err := es.Decode(response, &body); err != nil {
 		return nil, err
 	}
+	es.MajorVersion, es.MinorVersion = body.ParseVersion()
 	return &body, nil
 }
 

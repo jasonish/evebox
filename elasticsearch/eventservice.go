@@ -209,7 +209,7 @@ func (s *EventService) RemoveTagsFromEvent(id string, rmTags []string) error {
 
 // AddTagsToAlertGroup adds the provided tags to all alerts that match the
 // provided alert group parameters.
-func (s *EventService) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []string) error {
+func (s *DataStore) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []string) error {
 
 	mustNot := []interface{}{}
 	for _, tag := range tags {
@@ -300,23 +300,176 @@ func (s *EventService) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []
 	return nil
 }
 
+// ArchiveAlertGroupByQuery uses the Elastic Search update_by_query API to
+// archive events with a query instead of updating each document. This is
+// only available in Elastic Search v5+.
+func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, tags []string) error {
+	mustNot := []interface{}{}
+	for _, tag := range tags {
+		mustNot = append(mustNot, TermQuery("tags", tag))
+	}
+
+	query := m{
+		"query": m{
+			"bool": m{
+				"filter": l{
+					ExistsQuery("event_type"),
+					KeywordTermQuery("event_type", "alert", s.es.keyword),
+					RangeQuery{
+						Field: "timestamp",
+						Gte:   p.MinTimestamp,
+						Lte:   p.MaxTimestamp,
+					},
+					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
+					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
+					TermQuery("alert.signature_id", p.SignatureID),
+				},
+				"must_not": mustNot,
+			},
+		},
+		"script": map[string]interface{}{
+			"lang": "painless",
+			"inline": `
+			    for (tag in params.tags) {
+			        if (!ctx._source.tags.contains(tag)) {
+			            ctx._source.tags.add(tag);
+			        }
+			    }
+			`,
+			"params": map[string]interface{}{
+				"tags": tags,
+			},
+		},
+	}
+
+	tries := 0
+	for {
+		var response util.JsonMap
+		err := s.es.HttpClient.PostJsonDecodeResponse(
+			fmt.Sprintf("%s/_update_by_query?refresh=true",
+				s.es.EventSearchIndex), query, &response)
+		if err != nil {
+			log.Error("%v", err)
+		}
+
+		failures := len(response.GetMapList("failures")) > 0
+		updated := response.Get("updated")
+
+		log.Info("Updated %v events, failures = %v", updated, failures)
+
+		if !failures {
+			break
+		} else {
+			tries++
+			if tries > 99 {
+				log.Warning("Max failure hit, giving up: %v", err)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // ArchiveAlertGroup is a specialization of AddTagsToAlertGroup.
-func (s *EventService) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
-	return s.AddTagsToAlertGroup(p, []string{"archived", "evebox.archived"})
+func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
+	tags := []string{"archived", "evebox.archived"}
+	if s.es.MajorVersion >= 5 && s.es.MinorVersion >= 2 {
+		return s.AddTagsToAlertGroupsByQuery(p, tags)
+	} else {
+		return s.AddTagsToAlertGroup(p, tags)
+	}
 }
 
 // EscalateAlertGroup is a specialization of AddTagsToAlertGroup.
-func (s *EventService) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
-	return s.AddTagsToAlertGroup(p, []string{"escalated", "evebox.escalated"})
+func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
+	tags := []string{"escalated", "evebox.escalated"}
+	if s.es.MajorVersion >= 5 && s.es.MinorVersion >= 2 {
+		return s.AddTagsToAlertGroupsByQuery(p, tags)
+	} else {
+		return s.AddTagsToAlertGroup(p, tags)
+	}
 }
 
-func (s *EventService) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
-	return s.RemoveTagsFromAlertGroup(p, []string{"escalated", "evebox.escalated"})
+func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
+	tags := []string{"escalated", "evebox.escalated"}
+	if s.es.MajorVersion >= 5 && s.es.MinorVersion >= 2 {
+		return s.RemoveTagsFromAlertGroupsByQuery(p, tags)
+	}
+	return s.RemoveTagsFromAlertGroup(p, tags)
+}
+
+func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParams, tags []string) error {
+	should := []interface{}{}
+	for _, tag := range tags {
+		should = append(should, TermQuery("tags", tag))
+	}
+
+	query := m{
+		"query": m{
+			"bool": m{
+				"filter": l{
+					ExistsQuery("event_type"),
+					KeywordTermQuery("event_type", "alert", s.es.keyword),
+					RangeQuery{
+						Field: "timestamp",
+						Gte:   p.MinTimestamp,
+						Lte:   p.MaxTimestamp,
+					},
+					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
+					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
+					TermQuery("alert.signature_id", p.SignatureID),
+				},
+				"should": should,
+			},
+		},
+		"script": map[string]interface{}{
+			"lang": "painless",
+			"inline": `
+			    for (tag in params.tags) {
+			        ctx._source.tags.removeIf(entry -> entry == tag);
+			    }
+			`,
+			"params": map[string]interface{}{
+				"tags": tags,
+			},
+		},
+	}
+
+	tries := 0
+	for {
+		var response util.JsonMap
+		err := s.es.HttpClient.PostJsonDecodeResponse(
+			fmt.Sprintf("%s/_update_by_query?refresh=true",
+				s.es.EventSearchIndex), query, &response)
+		if err != nil {
+			log.Error("%v", err)
+		}
+
+		//log.Debug("%s", util.ToJson(response))
+
+		failures := len(response.GetMapList("failures")) > 0
+		updated := response.Get("updated")
+
+		log.Info("Updated %v events, failures = %v", updated, failures)
+
+		if !failures {
+			break
+		} else {
+			tries++
+			if tries > 99 {
+				log.Warning("Max failure hit, giving up: %v", err)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // RemoveTagsFromAlertGroup removes the given tags from all alerts matching
 // the provided parameters.
-func (s *EventService) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags []string) error {
+func (s *DataStore) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags []string) error {
 
 	filter := []interface{}{
 		ExistsQuery("event_type"),

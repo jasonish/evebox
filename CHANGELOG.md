@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.5.0...HEAD)
+- When using Elastic Search 5.2+, use the update_by_query API to
+  archive and escalate events. This should speed up archiving.
 - Fix Elastic Search keyword handling when Filebeat is used to send
   eve logs directly to Elastic Search.
 - Reports:
