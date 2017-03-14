@@ -2,7 +2,7 @@
 
 EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
-![EveBox](https://codemonkey.net/evebox/screens/escalated.png)
+![EveBox](https://evebox.org/screens/inbox.png)
 
 ## Requirements
 
