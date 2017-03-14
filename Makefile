@@ -1,8 +1,18 @@
+# EveBox Makefile
+#
+# Requirements:
+#    - GNU Make on Linux
+
 # Version info.
 VERSION_SUFFIX	:=	dev
 VERSION		:=	0.6.0${VERSION_SUFFIX}
-BUILD_DATE_ISO	?=	$(shell TZ=UTC date +%Y%m%d%H%M%S)
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
+# Convert the timestamp of the last commit into a date that can be
+# used as a version.
+# * Linux only I think!!!
+BUILD_DATE_ISO  ?=	$(shell TZ=UTC date \
+    -d @"$(shell git log --pretty=format:%at -1)" +%Y%m%d%H%M%S)
+export BUILD_DATE_ISO
 
 LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
 		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)\" \
@@ -101,7 +111,7 @@ ifeq ($(GOARCH),386)
 dist: DISTARCH := x32
 endif
 ifneq ($(VERSION_SUFFIX),)
-dist: VERSION := $(VERSION).$(BUILD_DATE_ISO)
+dist: VERSION := latest
 endif
 dist: DISTNAME ?= ${APP}$(DIST_SUFFIX)-${VERSION}-${GOOS}-${DISTARCH}
 dist: LDFLAGS += -s -w
@@ -112,16 +122,10 @@ dist: resources/bindata.go
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
 	cp agent.toml dist/$(DISTNAME)
 	cp evebox-example.yaml dist/$(DISTNAME)
-	cd dist && ln -s $(DISTNAME) \
-		$(APP)$(DIST_SUFFIX)-latest-$(GOOS)-$(DISTARCH)
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
-	cd dist && zip -r $(APP)$(DIST_SUFFIX)-latest-$(GOOS)-$(DISTARCH).zip \
-		$(APP)$(DIST_SUFFIX)-latest-$(GOOS)-$(DISTARCH)
 
 release:
 	rm -rf dist/*
-	# GOOS=linux GOARCH=amd64 $(MAKE) dist
-	# WITH_SQLITE=1 DIST_SUFFIX="-sqlite" GOOS=linux GOARCH=amd64 $(MAKE) dist
 	WITH_SQLITE=1 GOOS=linux GOARCH=amd64 $(MAKE) dist
 	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
@@ -130,6 +134,9 @@ release:
 deb: EPOCH := 1
 ifneq ($(VERSION_SUFFIX),)
 deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
+deb: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
+else
+deb: EVEBOX_BIN := dist/${APP}-${VERSION}-linux-x64/evebox
 endif
 deb:
 	fpm -s dir \
@@ -139,15 +146,19 @@ deb:
 		--epoch $(EPOCH) \
 		-v $(VERSION)$(TILDE) \
 		--after-upgrade=deb/after-upgrade.sh \
-		dist/${APP}-latest-linux-x64/evebox=/usr/bin/evebox \
+		${EVEBOX_BIN}=/usr/bin/evebox \
 		deb/evebox.default=/etc/default/evebox \
 		deb/evebox.service=/lib/systemd/system/evebox.service
 
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
+# Setup non-release versioning.
 rpm: RPM_ITERATION := 0.$(BUILD_DATE_ISO)
+rpm: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
 else
+# Setup release versioning.
 rpm: RPM_ITERATION := 1
+rpm: EVEBOX_BIN := dist/${APP}-${VERSION}-linux-x64/evebox
 endif
 rpm:
 	fpm -s dir \
@@ -159,7 +170,7 @@ rpm:
 		--iteration $(RPM_ITERATION) \
 		--config-files /etc/sysconfig/evebox \
 		--config-files /etc/evebox \
-		dist/${APP}-latest-linux-x64/evebox=/usr/bin/evebox \
+		${EVEBOX_BIN}=/usr/bin/evebox \
 	        evebox-example.yaml=/etc/evebox/evebox-example.yaml \
 		agent.toml=/etc/evebox/agent.toml \
 		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
