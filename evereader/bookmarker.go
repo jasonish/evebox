@@ -129,7 +129,8 @@ func (b *Bookmarker) BookmarkIsValid(bookmark *Bookmark) bool {
 		}
 
 		if !SameSys(bookmark.Sys, GetSys(fileInfo)) {
-			log.Error("Inodes don't match")
+			log.Debug("Current file does not matched bookmarked inode")
+			return false
 		}
 	}
 
@@ -138,6 +139,7 @@ func (b *Bookmarker) BookmarkIsValid(bookmark *Bookmark) bool {
 
 func (b *Bookmarker) Init(end bool) error {
 	bookmark, err := b.ReadBookmark()
+
 	if err == nil && b.BookmarkIsValid(bookmark) {
 		err = b.Reader.SkipTo(bookmark.Offset)
 		if err != nil {
@@ -145,7 +147,11 @@ func (b *Bookmarker) Init(end bool) error {
 			b.Reader.SkipToEnd()
 		}
 	} else {
-		log.Info("Failed to read bookmark: %s", err)
+		if err != nil {
+			log.Info("Failed to read bookmark: %s", err)
+		} else {
+			log.Info("Stale bookmark found")
+		}
 		if end {
 			log.Info("Will start reading at end of file.")
 			b.Reader.SkipToEnd()
