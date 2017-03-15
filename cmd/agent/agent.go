@@ -45,7 +45,7 @@ func setDefaults() {
 func configure(args []string) {
 	var configFilename string
 
-	flagset = pflag.NewFlagSet("import", pflag.ExitOnError)
+	flagset = pflag.NewFlagSet("agent", pflag.ExitOnError)
 
 	flagset.StringVarP(&configFilename, "config", "c", "", "Configuration file")
 	viper.BindPFlag("config", flagset.Lookup("config"))
