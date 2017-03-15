@@ -120,7 +120,7 @@ dist: resources/bindata.go
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags "$(TAGS)" -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
-	cp agent.toml dist/$(DISTNAME)
+	cp agent.yaml dist/$(DISTNAME)
 	cp evebox-example.yaml dist/$(DISTNAME)
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 
@@ -172,7 +172,7 @@ rpm:
 		--config-files /etc/evebox \
 		${EVEBOX_BIN}=/usr/bin/evebox \
 	        evebox-example.yaml=/etc/evebox/evebox-example.yaml \
-		agent.toml=/etc/evebox/agent.toml \
+		agent.yaml=/etc/evebox/agent.yaml \
 		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 		rpm/evebox.service=/lib/systemd/system/evebox.service \
 		rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service

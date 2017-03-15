@@ -66,7 +66,7 @@ func configure(args []string) {
 		viper.SetConfigFile(configFilename)
 	} else {
 		viper.SetConfigName("agent")
-		viper.SetConfigType("toml")
+		viper.SetConfigType("yaml")
 		viper.AddConfigPath(".")
 		viper.AddConfigPath("/etc/evebox")
 	}
