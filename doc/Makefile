@@ -21,3 +21,4 @@ help:
 
 update-usage:
 	@-../evebox esimport -h 2> esimport-usage.txt
+	@-../evebox agent -h 2> agent-usage.txt

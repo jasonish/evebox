@@ -10,6 +10,7 @@ EveBox
    :maxdepth: 2
    :caption: Contents:
 
+   agent
    esimport
 
 Indices and tables
