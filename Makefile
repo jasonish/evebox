@@ -5,7 +5,7 @@
 
 # Version info.
 VERSION_SUFFIX	:=	dev
-VERSION		:=	0.6.0${VERSION_SUFFIX}
+VERSION		:=	0.6.1
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 # Convert the timestamp of the last commit into a date that can be
 # used as a version.
@@ -15,7 +15,7 @@ BUILD_DATE_ISO  ?=	$(shell TZ=UTC date \
 export BUILD_DATE_ISO
 
 LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
-		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)\" \
+		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
 
 ifdef WITH_SQLITE
 CGO_ENABLED :=	1
@@ -131,6 +131,8 @@ release:
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
 
 # Debian packaging.
+# Due to a versioning screwup early on, we now need to set the epoch
+# to 1 for those updating with apt.
 deb: EPOCH := 1
 ifneq ($(VERSION_SUFFIX),)
 deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
@@ -139,13 +141,15 @@ else
 deb: EVEBOX_BIN := dist/${APP}-${VERSION}-linux-x64/evebox
 endif
 deb:
-	fpm -s dir \
+	fpm --force -s dir \
 		-t deb \
 		-p dist \
 		-n evebox \
 		--epoch $(EPOCH) \
 		-v $(VERSION)$(TILDE) \
 		--after-upgrade=deb/after-upgrade.sh \
+		--deb-no-default-config-files \
+		--config-files /etc/default/evebox \
 		${EVEBOX_BIN}=/usr/bin/evebox \
 		deb/evebox.default=/etc/default/evebox \
 		deb/evebox.service=/lib/systemd/system/evebox.service
@@ -153,7 +157,7 @@ deb:
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
 # Setup non-release versioning.
-rpm: RPM_ITERATION := 0.$(BUILD_DATE_ISO)
+rpm: RPM_ITERATION := 0.$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
 rpm: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
 else
 # Setup release versioning.
@@ -161,13 +165,13 @@ rpm: RPM_ITERATION := 1
 rpm: EVEBOX_BIN := dist/${APP}-${VERSION}-linux-x64/evebox
 endif
 rpm:
-	fpm -s dir \
+	fpm --force -s dir \
 		-t rpm \
 		-p dist \
 		-n evebox \
 		-v $(VERSION) \
-		--after-upgrade=rpm/after-upgrade.sh \
 		--iteration $(RPM_ITERATION) \
+		--after-upgrade=rpm/after-upgrade.sh \
 		--config-files /etc/sysconfig/evebox \
 		--config-files /etc/evebox \
 		${EVEBOX_BIN}=/usr/bin/evebox \
