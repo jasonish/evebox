@@ -2,12 +2,6 @@
 
 set -e
 
-# This is a development hack.
-if [ -e /evebox/backend/evebox ]; then
-    echo "Replacing /usr/local/bin/evebox."
-    cp /evebox/backend/evebox /usr/local/bin/evebox
-fi
-
 # Add evebox as command if needed
 if [ "${1:0:1}" = "-" ]; then
     set -- evebox server "$@"
