@@ -27,6 +27,7 @@
 package agent
 
 import (
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/log"
@@ -37,13 +38,15 @@ import (
 const BATCH_SIZE = 1000
 
 type ReaderLoop struct {
-	Path              string
-	BookmarkDirectory string
-	Bookmarker        *evereader.Bookmarker
-	EventSink         *EventChannel
-	CustomFields      map[string]interface{}
+	Path               string
+	BookmarkDirectory  string
+	EventSink          core.EveEventConsumer
+	CustomFields       map[string]interface{}
+	DisableBookmarking bool
+	Oneshot            bool
 
-	stop bool
+	bookmarker *evereader.Bookmarker
+	stop       bool
 }
 
 func (r *ReaderLoop) addCustomFields(event eve.EveEvent) {
@@ -98,7 +101,11 @@ func (r *ReaderLoop) readFile(reader *evereader.EveReader) {
 
 			if flushCount > 0 {
 
-				bookmark := r.Bookmarker.GetBookmark()
+				var bookmark *evereader.Bookmark
+
+				if r.bookmarker != nil {
+					bookmark = r.bookmarker.GetBookmark()
+				}
 
 				for {
 					_, err := r.EventSink.Commit()
@@ -111,7 +118,9 @@ func (r *ReaderLoop) readFile(reader *evereader.EveReader) {
 				}
 
 				log.Debug("Committed %d events", flushCount)
-				r.Bookmarker.WriteBookmark(bookmark)
+				if r.bookmarker != nil {
+					r.bookmarker.WriteBookmark(bookmark)
+				}
 
 			}
 			lastFlushCount = count
@@ -129,10 +138,14 @@ func (r *ReaderLoop) readFile(reader *evereader.EveReader) {
 		}
 
 		if eof {
+			if r.Oneshot {
+				break
+			}
 			time.Sleep(1 * time.Second)
 		}
 	}
 
+	log.Debug("Returning from reading file %s", r.Path)
 }
 
 func (r *ReaderLoop) Run() {
@@ -145,9 +158,11 @@ func (r *ReaderLoop) Run() {
 			continue
 		}
 
-		r.Bookmarker = evereader.ConfigureBookmarker(r.Path, r.BookmarkDirectory, reader)
-		if err := r.Bookmarker.Init(false); err != nil {
-			log.Fatal("Failed to initialize bookmarker: %v", err)
+		if !r.DisableBookmarking {
+			r.bookmarker = evereader.ConfigureBookmarker(r.Path, r.BookmarkDirectory, reader)
+			if err := r.bookmarker.Init(false); err != nil {
+				log.Fatalf("Failed to initialize bookmarker: %v", err)
+			}
 		}
 
 		log.Info("Reading %s", r.Path)

@@ -45,6 +45,7 @@ type SqliteService struct {
 
 func NewSqliteService(filename string) (*SqliteService, error) {
 
+	log.Debug("Opening SQLite database %s", filename)
 	dsn := fmt.Sprintf("file:%s?cache=shared&mode=rwc&_txlock=immediate",
 		filename)
 	db, err := sql.Open("sqlite3", dsn)
@@ -90,11 +91,20 @@ func InitPurger(db *SqliteService) {
 func InitSqlite(appContext *server.AppContext) (err error) {
 
 	log.Info("Configuring SQLite datastore")
-	if viper.GetString("data-directory") == "." {
-		log.Warning("Using current directory as the data directory, you may want to set the data-directory option")
+
+	filename := viper.GetString("database.sqlite.filename")
+	if filename == "" {
+		filename = DB_FILENAME
+	}
+	if filename != ":memory:" {
+		directory := viper.GetString("data-directory")
+		if directory == "." {
+			log.Warning("Using current directory as the data directory, you may want to set the data-directory option")
+		}
+		filename = path.Join(viper.GetString("data-directory"), filename)
 	}
 
-	db, err := NewSqliteService(path.Join(viper.GetString("data-directory"), DB_FILENAME))
+	db, err := NewSqliteService(filename)
 	if err != nil {
 		return err
 	}

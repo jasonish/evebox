@@ -28,6 +28,7 @@ package agent
 
 import (
 	"encoding/json"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/util"
 	"github.com/pkg/errors"
 )
@@ -46,7 +47,7 @@ func NewEventChannel(client *Client) *EventChannel {
 	return &eventChannel
 }
 
-func (ec *EventChannel) Commit() (*util.JsonMap, error) {
+func (ec *EventChannel) Commit() (interface{}, error) {
 	response, err := ec.client.httpClient.PostBytes("api/1/submit",
 		"application/json", ec.buf)
 	if err != nil {
@@ -68,7 +69,7 @@ func (ec *EventChannel) Commit() (*util.JsonMap, error) {
 	return &jsonMap, nil
 }
 
-func (ec *EventChannel) Submit(event interface{}) error {
+func (ec *EventChannel) Submit(event eve.EveEvent) error {
 	rawEvent, err := json.Marshal(event)
 	if err != nil {
 		return err

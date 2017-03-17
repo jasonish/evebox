@@ -31,6 +31,7 @@ import (
 	"github.com/jasonish/evebox/cmd/agent"
 	"github.com/jasonish/evebox/cmd/esimport"
 	"github.com/jasonish/evebox/cmd/evereader"
+	"github.com/jasonish/evebox/cmd/oneshot/oneshot"
 	"github.com/jasonish/evebox/cmd/pgimport"
 	"github.com/jasonish/evebox/cmd/server"
 	"github.com/jasonish/evebox/cmd/sqliteimport"
@@ -76,6 +77,9 @@ func main() {
 			return
 		case "server":
 			server.Main(os.Args[2:])
+			return
+		case "oneshot":
+			oneshot.Main(os.Args[2:])
 			return
 		case "pgimport":
 			pgimport.Main(os.Args[2:])
