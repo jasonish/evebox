@@ -10,8 +10,14 @@ BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 # Convert the timestamp of the last commit into a date that can be
 # used as a version.
 # * Linux only I think!!!
+UNAME_S		:=	$(shell uname -s)
+ifeq ($(UNAME_S),Linux)
 BUILD_DATE_ISO  ?=	$(shell TZ=UTC date \
     -d @"$(shell git log --pretty=format:%at -1)" +%Y%m%d%H%M%S)
+else
+BUILD_DATE_ISO  ?=	$(shell TZ=UTC date \
+    -r "$(shell git log --pretty=format:%at -1)" +%Y%m%d%H%M%S)
+endif
 export BUILD_DATE_ISO
 
 LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
