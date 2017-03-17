@@ -40,7 +40,7 @@ import (
 	"time"
 )
 
-func MainLoop(reader *evereader.EveReader, indexer core.EveEventConsumer,
+func MainLoop(reader *evereader.EveReader, indexer core.EveEventSink,
 	bookmarker *evereader.Bookmarker, oneshot bool) {
 
 	eofs := 0

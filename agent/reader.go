@@ -40,7 +40,7 @@ const BATCH_SIZE = 1000
 type ReaderLoop struct {
 	Path               string
 	BookmarkDirectory  string
-	EventSink          core.EveEventConsumer
+	EventSink          core.EveEventSink
 	CustomFields       map[string]interface{}
 	DisableBookmarking bool
 	Oneshot            bool

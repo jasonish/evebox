@@ -55,7 +55,7 @@ func NewDataStore(es *ElasticSearch) (*DataStore, error) {
 	return &datastore, nil
 }
 
-func (d *DataStore) GetEveEventConsumer() core.EveEventConsumer {
+func (d *DataStore) GetEveEventConsumer() core.EveEventSink {
 	return NewIndexer(d.es)
 }
 
