@@ -71,8 +71,6 @@ func (s FileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.SplitN(path, "?", 2)
 	path = parts[0]
 
-	log.Info("Static file request for %s.", path)
-
 	asset := fmt.Sprintf("public/%s", path)
 	bytes, err := Asset(asset)
 	if err != nil {

@@ -42,8 +42,11 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"sync"
+	"strconv"
+	"time"
 )
+
+const DEFAULT_PORT = 5636
 
 var opts struct {
 	Port             string
@@ -74,7 +77,7 @@ func Main(args []string) {
 
 	flagset := pflag.NewFlagSet("server", pflag.ExitOnError)
 
-	flagset.StringVarP(&opts.Port, "port", "p", "5636", "Port to bind to")
+	flagset.StringVarP(&opts.Port, "port", "p", "", "Port to bind to")
 	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
 
@@ -126,8 +129,10 @@ func Main(args []string) {
 		log.Fatal(err)
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	sigchan := make(chan os.Signal)
+	waitchan := make(chan int)
+	signal.Notify(sigchan, os.Interrupt)
+
 	go func() {
 		for _, filename := range flagset.Args() {
 			log.Println("Importing", filename)
@@ -140,31 +145,75 @@ func Main(args []string) {
 			readerLoop.Run()
 		}
 		log.Println("Import done.")
-		wg.Done()
+		waitchan <- 0
 	}()
 
-	sigchan := make(chan os.Signal)
-	signal.Notify(sigchan, os.Interrupt)
-	for sig := range sigchan {
-		log.Info("Caught signal %d.", sig)
+	select {
+	case <-sigchan:
 		return
+	case <-waitchan:
+		break
 	}
-	wg.Wait()
 
+	portChan := make(chan int64, 0xffff)
+
+	log.Info("Starting server.")
 	go func() {
+		port := int64(DEFAULT_PORT)
+		if opts.Port != "" {
+			port, err = strconv.ParseInt(opts.Port, 10, 16)
+			if err != nil {
+				log.Warning("Failed to parse port \"%s\", will use default of %d", DEFAULT_PORT)
+				port = DEFAULT_PORT
+			}
+		}
 		httpServer := server.NewServer(appContext)
-		err = httpServer.Start(opts.Host + ":" + opts.Port)
-		if err != nil {
-			log.Fatal(err)
+		for {
+			portChan <- port
+			err = httpServer.Start(fmt.Sprintf("%s:%d", opts.Host, port))
+			if err != nil {
+				log.Warning("Failed to bind to port %d: %v", port, err)
+				port++
+				if port > 0xffff {
+					log.Fatal("Exhausted all ports, exiting.")
+					break
+				}
+			} else {
+				break
+			}
 		}
 	}()
 
-	log.Println("Server is running.")
+	// What a hack to make sure we successfully bound to a port, and to
+	// get that port.
+	var port int64
+	var done bool
+	waitTime := 100
+	for {
+		if done {
+			break
+		}
+		select {
+		case port = <-portChan:
+			waitTime = 100
+		default:
+			if waitTime > 0 {
+				time.Sleep(time.Duration(waitTime) * time.Millisecond)
+				waitTime = 0
+			} else {
+				done = true
+			}
+		}
+	}
 
-	c := exec.Command("xdg-open", "http://localhost:"+opts.Port)
+	log.Info("Bound to port %d", port)
+	log.Println("Server is running.")
+	url := fmt.Sprintf("http://localhost:%d", port)
+	c := exec.Command("xdg-open", url)
 	c.Run()
 
-	signal.Notify(sigchan, os.Interrupt)
+	fmt.Printf("\n** Press CTRL-C to exit and cleanup.. ** \n\n")
+
 	<-sigchan
 	log.Info("Cleaning up and exiting...")
 }
