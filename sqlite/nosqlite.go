@@ -1,4 +1,4 @@
-// +build !linux !amd64 !cgo
+// +build !cgo
 
 /* Copyright (c) 2016 Jason Ish
  * All rights reserved.
@@ -32,16 +32,6 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 )
-
-//type DataStore struct {
-//	core.UnimplementedDatastore
-//	core.NotImplementedEventService
-//}
-//
-//func NewDataStore(dataDirectory string) (*DataStore, error) {
-//	log.Fatal("SQLite support not built in.")
-//	return &DataStore{}, nil
-//}
 
 func InitSqlite(appContext *server.AppContext) error {
 	log.Fatal("SQLite support not build in.")

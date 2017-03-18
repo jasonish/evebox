@@ -1,4 +1,4 @@
-// +build linux,amd64,cgo
+// +build cgo
 
 /* Copyright (c) 2016 Jason Ish
  * All rights reserved.
