@@ -29,6 +29,7 @@ package geoip
 import (
 	"compress/gzip"
 	"fmt"
+	"github.com/jasonish/evebox/log"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -110,6 +111,8 @@ func NewGeoIpDb(path string) (*GeoIpDb, error) {
 			return nil, fmt.Errorf("no database files found")
 		}
 	}
+
+	log.Debug("Loading geoip database %s", path)
 
 	reader, err := OpenDb(path)
 	if err != nil {

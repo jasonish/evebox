@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 Jason Ish
+/* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,35 +24,57 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package evereader
 
 import (
-	"net/http"
+	"github.com/stretchr/testify/assert"
+	"io"
+	"os"
+	"testing"
 )
 
-// Find the flow matching the provided paramters, useful for finding
-// the flow for an event.
-func FindFlowHandler(appContext AppContext, r *http.Request) interface{} {
+func TestBasicReader_PartialRead(t *testing.T) {
 
-	request := struct {
-		FlowId    uint64 `json:"flowId"`
-		Proto     string `json:"proto"`
-		Timestamp string `json:"timestamp"`
-		SrcIp     string `json:"srcIp"`
-		DestIp    string `json:"destIp"`
-	}{}
+	filename := "TestEveReader_PartialRead.json"
+	defer os.Remove(filename)
 
-	if err := DecodeRequestBody(r, &request); err != nil {
-		return err
-	}
+	writer, err := NewFileWriter(filename)
+	assert.Nil(t, err)
+	defer writer.Close()
 
-	result, err := appContext.DataStore.FindFlow(request.FlowId,
-		request.Proto, request.Timestamp, request.SrcIp, request.DestIp)
-	if err != nil {
-		return err
-	}
+	// Start by writing out a complete event.
+	writer.WriteLine(rawEvent)
 
-	return map[string]interface{}{
-		"flows": result,
-	}
+	// Now get a reader and read in the first event.
+	reader, err := NewBasicReader(filename)
+	assert.Nil(t, err)
+
+	event, err := reader.Next()
+	assert.Nil(t, err)
+	assert.NotNil(t, event)
+	defer reader.Close()
+
+	// Write out a partial event, then the remainder of it and read.
+	rawEventLen := len(rawEvent)
+	bytesToWrite := rawEventLen / 2
+	writer.Write(rawEvent[0:bytesToWrite])
+	writer.WriteLine(rawEvent[bytesToWrite:])
+
+	event, err = reader.Next()
+	assert.Nil(t, err)
+	assert.NotNil(t, event)
+
+	// Ok, now write out the partial event and read.
+	writer.Write(rawEvent[0:bytesToWrite])
+
+	event, err = reader.Next()
+	assert.Equal(t, io.EOF, err)
+	assert.Nil(t, event)
+
+	// Write out the rest of the event and read.
+	writer.WriteLine(rawEvent[bytesToWrite:])
+
+	event, err = reader.Next()
+	assert.Nil(t, err)
+	assert.NotNil(t, event)
 }

@@ -29,14 +29,16 @@ package oneshot
 import (
 	"fmt"
 
-	"github.com/jasonish/evebox/agent"
 	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -129,34 +131,85 @@ func Main(args []string) {
 		log.Fatal(err)
 	}
 
+	// Setup signal channel so signals can be caught for a clean exit with
+	// proper cleanup.
 	sigchan := make(chan os.Signal)
-	waitchan := make(chan int)
 	signal.Notify(sigchan, os.Interrupt)
 
-	go func() {
-		for _, filename := range flagset.Args() {
-			log.Println("Importing", filename)
-			readerLoop := agent.ReaderLoop{
-				Path:               filename,
-				DisableBookmarking: true,
-				EventSink:          appContext.DataStore.GetEveEventConsumer(),
-				Oneshot:            true,
-			}
-			readerLoop.Run()
-		}
-		log.Println("Import done.")
-		waitchan <- 0
-	}()
+	doneReading := make(chan int)
+	stopReading := make(chan int)
 
-	select {
-	case <-sigchan:
-		return
-	case <-waitchan:
-		break
+	eventSink := appContext.DataStore.GetEveEventConsumer()
+	count := uint64(0)
+	go func() {
+		tagsFilter := eve.TagsFilter{}
+		geoipFilter := eve.NewGeoipFilter(appContext.GeoIpService)
+	Loop:
+		for _, filename := range flagset.Args() {
+			reader, err := evereader.NewBasicReader(filename)
+			if err != nil {
+				log.Fatal(err)
+			}
+			size, _ := reader.FileSize()
+			log.Info("Reading %s (%d bytes)", filename, size)
+			lastPercent := 0
+			for {
+				select {
+				case <-stopReading:
+					break Loop
+				default:
+				}
+
+				event, err := reader.Next()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					log.Fatal(err)
+				}
+				tagsFilter.Filter(event)
+				geoipFilter.Filter(event)
+				if err := eventSink.Submit(event); err != nil {
+					log.Fatal(err)
+				}
+
+				// Commit every 10000 events...
+				if count > 0 && count%10000 == 0 {
+					if _, err := eventSink.Commit(); err != nil {
+						log.Fatal(err)
+					}
+				}
+
+				// But only log when the percentage goes up a full percent.
+				offset, _ := reader.FileOffset()
+				percent := int((float64(offset) / float64(size)) * 100.0)
+				if percent > lastPercent {
+					log.Info("%s: %d events (%d%%)", filename, count, percent)
+					lastPercent = percent
+				}
+
+				count++
+			}
+
+			log.Info("%s: %d events (100%%)", filename, count)
+			if _, err := eventSink.Commit(); err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		doneReading <- 1
+	}()
+Loop:
+	for {
+		select {
+		case <-sigchan:
+			stopReading <- 1
+		case <-doneReading:
+			break Loop
+		}
 	}
 
 	portChan := make(chan int64, 0xffff)
-
 	log.Info("Starting server.")
 	go func() {
 		port := int64(DEFAULT_PORT)
