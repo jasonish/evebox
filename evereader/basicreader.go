@@ -70,7 +70,7 @@ func (r *BasicReader) NextLine() ([]byte, error) {
 		if err == io.EOF && len(line) > 0 {
 			// Data was read but hit EOF before end of line. Reset
 			// the pointer and return EOF.
-			r.Seek(offset)
+			r.SetOffset(offset)
 		}
 		return nil, err
 	}
@@ -101,8 +101,12 @@ func (r *BasicReader) FileOffset() (int64, error) {
 	return r.file.Seek(0, 1)
 }
 
-// Seek sets the file pointer to the current offset from the beginning of the
+// SetOffset sets the file pointer to the current offset from the beginning of the
 // file.
-func (r *BasicReader) Seek(offset int64) {
+func (r *BasicReader) SetOffset(offset int64) {
 	r.file.Seek(offset, 0)
+}
+
+func (r *BasicReader) Stat() (os.FileInfo, error) {
+	return r.file.Stat()
 }

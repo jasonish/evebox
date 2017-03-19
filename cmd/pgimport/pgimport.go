@@ -68,7 +68,7 @@ func Main(args []string) {
 		bookmarkPath = fmt.Sprintf("%s.bookmark", inputFilename)
 	}
 
-	reader, err := evereader.New(flagset.Args()[0])
+	reader, err := evereader.NewFollowingReader(flagset.Args()[0])
 	if err != nil {
 		log.Fatal(err)
 	}

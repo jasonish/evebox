@@ -71,7 +71,7 @@ func Main(args []string) {
 
 	encoder := json.NewEncoder(os.Stdout)
 
-	reader, err := evereader.New(flagset.Args()[0])
+	reader, err := evereader.NewFollowingReader(flagset.Args()[0])
 	if err != nil {
 		log.Fatal(err)
 	}

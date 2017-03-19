@@ -27,7 +27,6 @@
 package evereader
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
@@ -45,81 +44,69 @@ func (e MalformedEventError) Error() string {
 	return fmt.Sprintf("Failed to parse event: %s: %s", e.Err.Error(), e.Event)
 }
 
-type EveReader struct {
+// FollowingReader is an EveReader built on top of the basic reader that
+// handles continuous (following) type reading that can handle rotation,
+// either truncation, or file rename.
+type FollowingReader struct {
+	*BasicReader
+
 	path   string
-	file   *os.File
-	reader *bufio.Reader
 	lineno uint64
 	size   int64
 }
 
-func New(path string) (*EveReader, error) {
-
-	eveReader := EveReader{
+func NewFollowingReader(path string) (*FollowingReader, error) {
+	eveReader := FollowingReader{
 		path: path,
 	}
-	err := eveReader.OpenFile()
-	if err != nil {
+	if err := eveReader.OpenFile(); err != nil {
 		return nil, err
 	}
 
 	return &eveReader, nil
 }
 
-func (er *EveReader) GetFileInfo() (os.FileInfo, error) {
-	return er.file.Stat()
+func (r *FollowingReader) GetFileInfo() (os.FileInfo, error) {
+	return r.file.Stat()
 }
 
-func (er *EveReader) OpenFile() error {
-	file, err := os.Open(er.path)
+func (r *FollowingReader) OpenFile() error {
+	br, err := NewBasicReader(r.path)
 	if err != nil {
 		return err
 	}
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return err
-	}
-
-	er.file = file
-	er.reader = bufio.NewReader(er.file)
-	er.size = fileInfo.Size()
-	er.lineno = 0
+	r.BasicReader = br
+	r.lineno = 0
 
 	return nil
 }
 
-func (er *EveReader) Close() {
-	er.file.Close()
-}
-
-func (er *EveReader) Reopen() error {
-	log.Debug("Reopening %s", er.path)
-	er.file.Close()
-	return er.OpenFile()
+func (r *FollowingReader) Reopen() error {
+	log.Debug("Reopening %s", r.path)
+	r.BasicReader.Close()
+	return r.OpenFile()
 }
 
 // Skip to a line number in the file. Must be called before any reading is
 // done.
-func (er *EveReader) SkipTo(lineno uint64) error {
-	if er.lineno != 0 {
+func (r *FollowingReader) SkipTo(lineno uint64) error {
+	if r.lineno != 0 {
 		return nil
 	}
 	for lineno > 0 {
-		_, err := er.reader.ReadBytes('\n')
+		_, err := r.BasicReader.NextLine()
 		if err != nil {
 			return err
 		}
 		lineno--
-		er.lineno++
+		r.lineno++
 	}
 	return nil
 }
 
-func (er *EveReader) SkipToEnd() error {
-
+func (r *FollowingReader) SkipToEnd() error {
 	for {
-		_, err := er.reader.ReadBytes('\n')
+		_, err := r.BasicReader.NextLine()
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -127,7 +114,7 @@ func (er *EveReader) SkipToEnd() error {
 				return err
 			}
 		} else {
-			er.lineno++
+			r.lineno++
 		}
 	}
 
@@ -137,78 +124,47 @@ func (er *EveReader) SkipToEnd() error {
 // Get the current position in the file. For EveReaders this is the line number
 // as the actual file offset is not useful due to buffering in the json
 // decoder as well as bufio.
-func (er *EveReader) Pos() uint64 {
-	return er.lineno
+func (r *FollowingReader) Pos() uint64 {
+	return r.lineno
 }
 
-func (er *EveReader) FileOffset() (int64, error) {
-	return er.file.Seek(0, 1)
-}
-
-func (er *EveReader) Seek(offset int64) {
-	er.file.Seek(offset, 0)
-}
-
-func (er *EveReader) FileSize() (int64, error) {
-	info, err := er.file.Stat()
-	if err != nil {
-		return 0, err
-	}
-	return info.Size(), nil
-}
-
-func (er *EveReader) IsNewFile() bool {
-	fileInfo1, err := er.file.Stat()
+func (r *FollowingReader) IsNewFile() bool {
+	fileInfo1, err := r.BasicReader.Stat()
 	if err != nil {
 		return false
 	}
-	fileInfo2, err := os.Stat(er.path)
+	fileInfo2, err := os.Stat(r.path)
 	if err != nil {
 		return false
 	}
 	return !os.SameFile(fileInfo1, fileInfo2)
 }
 
-func (er *EveReader) Next() (eve.EveEvent, error) {
+func (r *FollowingReader) Next() (eve.EveEvent, error) {
 
 	// Check for file truncation.
-	fileInfo, err := er.file.Stat()
+	size, err := r.FileSize()
 	if err != nil {
 		return nil, err
 	}
-	if fileInfo.Size() < er.size {
+	if size < r.size {
 		// Truncated, seek to 0.
-		er.file.Seek(0, 0)
-		er.lineno = 0
+		r.BasicReader.SetOffset(0)
+		r.lineno = 0
 	}
-	er.size = fileInfo.Size()
+	r.size = size
 
-	offset, err := er.FileOffset()
-	if err != nil {
-		log.Warning("Failed to get current file offset: %v", err)
-		offset = -1
-	}
-
-	line, err := er.reader.ReadBytes('\n')
-
-	// If error is eof and we have data, reset the offset.
-	if err != nil && err == io.EOF && len(line) > 0 {
-		// But only do it if the seek above didn't fail...
-		if offset >= 0 {
-			er.Seek(offset)
-			return nil, nil
-		}
-	}
+	line, err := r.NextLine()
 
 	if err != nil {
 		if err == io.EOF {
 			// Check for rotation.
-			if er.IsNewFile() {
-				err = er.Reopen()
+			if r.IsNewFile() {
+				err = r.Reopen()
 				if err != nil {
 					return nil, err
 				}
-				return er.Next()
+				return r.Next()
 			}
 		}
 		return nil, err
@@ -219,23 +175,23 @@ func (er *EveReader) Next() (eve.EveEvent, error) {
 		return nil, MalformedEventError{
 			Event:  string(line),
 			Err:    err,
-			LineNo: er.lineno,
+			LineNo: r.lineno,
 		}
 	}
 
-	er.lineno++
+	r.lineno++
 
 	return event, nil
 }
 
 // Return the "lag" in bytes, that is the number of bytes behind the reader is
 // from the end of the file.
-func (er *EveReader) Lag() (int64, error) {
-	fileSize, err := er.FileSize()
+func (r *FollowingReader) Lag() (int64, error) {
+	fileSize, err := r.FileSize()
 	if err != nil {
 		return 0, err
 	}
-	fileOffset, err := er.FileOffset()
+	fileOffset, err := r.FileOffset()
 	if err != nil {
 		return 0, err
 	}

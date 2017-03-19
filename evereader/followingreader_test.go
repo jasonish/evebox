@@ -86,7 +86,7 @@ func TestEveReaderFollow(t *testing.T) {
 	defer writer.Close()
 	defer os.Remove(filename)
 
-	reader, err := New(filename)
+	reader, err := NewFollowingReader(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestEveReaderFollowTruncate(t *testing.T) {
 	defer writer.Close()
 	defer os.Remove(filename)
 
-	reader, err := New(filename)
+	reader, err := NewFollowingReader(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestEveReaderFollowRename(t *testing.T) {
 	}
 	defer os.Remove(filename)
 
-	reader, err := New(filename)
+	reader, err := NewFollowingReader(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func TestEveReader_SkipToEnd(t *testing.T) {
 	}
 
 	// Create a reader and skip to the end.
-	reader, err := New(filename)
+	reader, err := NewFollowingReader(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestEveReader_BadLine(t *testing.T) {
 	writer, err := NewFileWriter(filename)
 	assert.Nil(t, err)
 
-	reader, err := New(filename)
+	reader, err := NewFollowingReader(filename)
 	assert.Nil(t, err)
 
 	writer.WriteLine(rawEvent)
@@ -312,7 +312,7 @@ func TestEveReader_PartialRead(t *testing.T) {
 	writer.WriteLine(rawEvent)
 
 	// Now get a reader and read in the first event.
-	reader, err := New(filename)
+	reader, err := NewFollowingReader(filename)
 	assert.Nil(t, err)
 
 	event, err := reader.Next()
@@ -334,7 +334,7 @@ func TestEveReader_PartialRead(t *testing.T) {
 	writer.Write(rawEvent[0:bytesToWrite])
 
 	event, err = reader.Next()
-	assert.Nil(t, err)
+	assert.Equal(t, io.EOF, err)
 	assert.Nil(t, event)
 
 	// Write out the rest of the event and read.

@@ -1,7 +1,7 @@
 # EveBox Agent configuration file - subject to change.
 
 # URL to the EveBox server.
-server: "http://localhost:5636"
+server: "http://10.16.1.10:5636"
 
 # Directory to store bookmark information. This is optional and not
 # required if the agent has write access to the directory of the log

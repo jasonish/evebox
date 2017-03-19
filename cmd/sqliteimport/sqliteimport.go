@@ -40,7 +40,7 @@ import (
 	"time"
 )
 
-func MainLoop(reader *evereader.EveReader, indexer core.EveEventSink,
+func MainLoop(reader *evereader.FollowingReader, indexer core.EveEventSink,
 	bookmarker *evereader.Bookmarker, oneshot bool) {
 
 	eofs := 0
@@ -152,7 +152,7 @@ func Main(args []string) {
 		bookmarkPath = fmt.Sprintf("%s.bookmark", inputFilename)
 	}
 
-	reader, err := evereader.New(flagset.Args()[0])
+	reader, err := evereader.NewFollowingReader(flagset.Args()[0])
 	if err != nil {
 		log.Fatal(err)
 	}

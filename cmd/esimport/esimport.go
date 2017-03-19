@@ -154,7 +154,7 @@ func Main(args []string) {
 	if viper.GetString("username") != "" || viper.GetString("password") != "" {
 		if err := es.SetUsernamePassword(viper.GetString("username"),
 			viper.GetString("password")); err != nil {
-			log.Fatal("Failed to set username and password: %v", err)
+			log.Fatalf("Failed to set username and password: %v", err)
 		}
 	}
 	response, err := es.Ping()
@@ -181,7 +181,7 @@ func Main(args []string) {
 
 	indexer := elasticsearch.NewIndexer(es)
 
-	reader, err := evereader.New(viper.GetString("input"))
+	reader, err := evereader.NewFollowingReader(viper.GetString("input"))
 	if err != nil {
 		log.Fatal(err)
 	}

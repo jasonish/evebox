@@ -49,10 +49,10 @@ type Bookmark struct {
 
 type Bookmarker struct {
 	Filename string
-	Reader   *EveReader
+	Reader   *FollowingReader
 }
 
-func ConfigureBookmarker(path string, bookmarkDirectory string, reader *EveReader) *Bookmarker {
+func ConfigureBookmarker(path string, bookmarkDirectory string, reader *FollowingReader) *Bookmarker {
 	var bookmarkPath string
 
 	if bookmarkDirectory == "" {

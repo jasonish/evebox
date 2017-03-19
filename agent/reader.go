@@ -55,7 +55,7 @@ func (r *ReaderLoop) addCustomFields(event eve.EveEvent) {
 	}
 }
 
-func (r *ReaderLoop) readFile(reader *evereader.EveReader) {
+func (r *ReaderLoop) readFile(reader *evereader.FollowingReader) {
 
 	count := 0
 	lastFlushCount := 0
@@ -151,7 +151,7 @@ func (r *ReaderLoop) readFile(reader *evereader.EveReader) {
 func (r *ReaderLoop) Run() {
 
 	for {
-		reader, err := evereader.New(r.Path)
+		reader, err := evereader.NewFollowingReader(r.Path)
 		if err != nil {
 			log.Warning("%v", err)
 			time.Sleep(1 * time.Second)
