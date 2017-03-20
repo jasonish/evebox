@@ -44,7 +44,7 @@ func SubmitHandler(appContext AppContext, r *http.Request) interface{} {
 
 	count := 0
 
-	eventSink := appContext.DataStore.GetEveEventConsumer()
+	eventSink := appContext.DataStore.GetEveEventSink()
 	geoFilter := eve.NewGeoipFilter(appContext.GeoIpService)
 	tagsFilter := eve.TagsFilter{}
 	uaFilter := useragent.EveUserAgentFilter{}

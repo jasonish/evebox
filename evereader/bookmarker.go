@@ -35,7 +35,7 @@ import (
 )
 
 type Bookmark struct {
-	// The filename.
+	// The Filename.
 	Path string `json:"path"`
 
 	// The offset, for Eve this is the line number.
@@ -52,31 +52,34 @@ type Bookmarker struct {
 	Reader   *FollowingReader
 }
 
-func ConfigureBookmarker(path string, bookmarkDirectory string, reader *FollowingReader) *Bookmarker {
-	var bookmarkPath string
+func NewBookmarker(reader *FollowingReader, directory string) (*Bookmarker, error) {
+	var bookmarkFilename string
 
-	if bookmarkDirectory == "" {
-		bookmarkPath = fmt.Sprintf("%s.bookmark", path)
+	if directory == "" {
+		bookmarkFilename = fmt.Sprintf("%s.bookmark", reader.filename)
 	} else {
-		hash := md5.Sum([]byte(path))
-		bookmarkPath = fmt.Sprintf("%s/%x.bookmark",
-			bookmarkDirectory, hash)
+		hash := md5.Sum([]byte(reader.filename))
+		bookmarkFilename = fmt.Sprintf("%s/%x.bookmark",
+			directory, hash)
 	}
 
-	log.Info("Using bookmark file %s", bookmarkPath)
-
-	return &Bookmarker{
-		Filename: bookmarkPath,
+	bookmarker := &Bookmarker{
+		Filename: bookmarkFilename,
 		Reader:   reader,
 	}
+	if err := bookmarker.Init(true); err != nil {
+		return nil, err
+	}
+	return bookmarker, nil
 }
 
+// GetBookmark returns a bookmark for the readers current location.
 func (b *Bookmarker) GetBookmark() *Bookmark {
 	bookmark := Bookmark{}
 	bookmark.Path = b.Reader.path
 	bookmark.Offset = b.Reader.Pos()
 
-	fileInfo, err := b.Reader.GetFileInfo()
+	fileInfo, err := b.Reader.Stat()
 	if err == nil {
 		bookmark.Sys = GetSys(fileInfo)
 		bookmark.Size = fileInfo.Size()
@@ -113,13 +116,18 @@ func (b *Bookmarker) ReadBookmark() (*Bookmark, error) {
 	return &bookmark, nil
 }
 
+func (b *Bookmarker) UpdateBookmark() error {
+	bookmark := b.GetBookmark()
+	return b.WriteBookmark(bookmark)
+}
+
 func (b *Bookmarker) BookmarkIsValid(bookmark *Bookmark) bool {
 
 	if bookmark.Path != b.Reader.path {
 		return false
 	}
 
-	fileInfo, err := b.Reader.GetFileInfo()
+	fileInfo, err := b.Reader.Stat()
 	if err == nil {
 
 		// If the current file size is less than the bookmark file

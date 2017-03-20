@@ -28,6 +28,8 @@ package agent
 
 import (
 	"github.com/jasonish/evebox/agent"
+	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/log"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -38,8 +40,10 @@ import (
 
 var flagset *pflag.FlagSet
 
-func setDefaults() {
+func initViper() {
 	viper.SetDefault("disable-certificate-check", false)
+
+	viper.BindEnv("bookmark-directory", "BOOKMARK_DIRECTORY")
 }
 
 func configure(args []string) {
@@ -84,7 +88,7 @@ func configure(args []string) {
 
 func Main(args []string) {
 
-	setDefaults()
+	initViper()
 	configure(args)
 
 	if viper.GetString("server") == "" {
@@ -105,19 +109,22 @@ func Main(args []string) {
 	}
 	path := viper.GetString("input.path")
 
-	readerRunner := agent.ReaderLoop{
-		Path:              path,
+	eveFileProcessor := evereader.EveFileProcessor{
+		Filename:          path,
 		BookmarkDirectory: viper.GetString("bookmark-directory"),
-		EventSink:         agent.NewEventChannel(client),
-		CustomFields:      viper.GetStringMap("input.custom-fields"),
+		Sink:              agent.NewEventChannel(client),
 	}
-	go readerRunner.Run()
+	eveFileProcessor.AddFilter(&eve.TagsFilter{})
+	for field, value := range viper.GetStringMap("input.custom-fields") {
+		eveFileProcessor.AddCustomField(field, value)
+	}
+	eveFileProcessor.Start()
 
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM)
 	for sig := range sigchan {
 		log.Info("Got signal %d, stopping.", sig)
-		readerRunner.Stop()
+		eveFileProcessor.Stop()
 		break
 	}
 }

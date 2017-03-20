@@ -33,6 +33,10 @@ import (
 	"os"
 )
 
+// BasicReader is a minimal eve file reader for reading a single eve file.
+//
+// No special support for rotation or truncation exists... Just read the file,
+// returning events or EOF.
 type BasicReader struct {
 	filename string
 	file     *os.File

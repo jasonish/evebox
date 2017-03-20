@@ -251,12 +251,6 @@ func Main(args []string) {
 		}
 
 		if eof || (count > 0 && count%BATCH_SIZE == 0) {
-			var bookmark *evereader.Bookmark = nil
-
-			if useBookmark {
-				bookmark = bookmarker.GetBookmark()
-			}
-
 			status, err := indexer.Commit()
 			if err != nil {
 				log.Fatal(err)
@@ -270,7 +264,7 @@ func Main(args []string) {
 			}
 
 			if useBookmark {
-				bookmarker.WriteBookmark(bookmark)
+				bookmarker.UpdateBookmark()
 			}
 		}
 

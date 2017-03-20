@@ -208,7 +208,7 @@ func TestEveReaderFollowRename(t *testing.T) {
 		t.Fatal("expected EOF")
 	}
 
-	// Open a new writer, same filename and write an event.
+	// Open a new writer, same Filename and write an event.
 	writer, err = NewFileWriter(filename)
 	if err != nil {
 		t.Fatal(err)

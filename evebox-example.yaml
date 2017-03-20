@@ -10,7 +10,7 @@
 database:
 
   # Database type: elasticsearch, sqlite.
-  type: sqlite
+  type: elasticsearch
 
   elasticsearch:
     url: http://10.16.1.10:9200
@@ -31,6 +31,27 @@ database:
 
   # Retention period in days. 0 or comment out to disable.
   retention-period: 3
+
+# The server can process a log file, eliminating the need for a
+# separate agent process if on the same machine.
+input:
+  # Toggle to disable the input without commenting it out.
+  enabled: true
+
+  # Filename to read.
+  filename: "/var/log/suricata/eve.json"
+
+  # Bookmark directory, as with the agent if the server can't write to
+  # the directory where the above log file is, you need to provide
+  # this.
+  #bookmark-directory: /var/lib/evebox
+
+  # Custom fields to add to the event. Only top level fields can be set,
+  # and only simple values (string, integer) can be set.
+  custom-fields:
+    # Set a host field. This will override the "host" field set by
+    # Suricata if the Suricata "sensor-name" option is set.
+    host: "desktop.unx.ca"
 
 geoip:
   disabled: false

@@ -6,7 +6,7 @@ server: "http://10.16.1.10:5636"
 # Directory to store bookmark information. This is optional and not
 # required if the agent has write access to the directory of the log
 # file being reader.
-bookmark-directory: "/var/tmp"
+#bookmark-directory: "/var/lib/evebox"
 
 # If the EveBox server is running behind TLS and the certificate is
 # self signed, certificate validation can be disabled.
@@ -21,4 +21,5 @@ input:
   custom-fields:
     # Set a host field. This will override the "host" field set by
     # Suricata if the Suricata "sensor-name" option is set.
-    #host = "some-name"
+    host: "evebox-agent"
+    some-other-field: testing

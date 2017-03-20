@@ -33,24 +33,24 @@ import (
 	"github.com/pkg/errors"
 )
 
-// EventSink is the event sink for the agent. It consumes events and sends
+// AgentEventSink is the event sink for the agent. It consumes events and sends
 // them to the EveBox server.
 //
 // Implements core.EveEventSink.
-type EventSink struct {
+type AgentEventSink struct {
 	client *Client
 
 	// Raw buffer that is sent to server on commit.
 	buf []byte
 }
 
-func NewEventChannel(client *Client) *EventSink {
-	eventChannel := EventSink{}
+func NewEventChannel(client *Client) *AgentEventSink {
+	eventChannel := AgentEventSink{}
 	eventChannel.client = client
 	return &eventChannel
 }
 
-func (ec *EventSink) Commit() (interface{}, error) {
+func (ec *AgentEventSink) Commit() (interface{}, error) {
 	response, err := ec.client.httpClient.PostBytes("api/1/submit",
 		"application/json", ec.buf)
 	if err != nil {
@@ -72,7 +72,7 @@ func (ec *EventSink) Commit() (interface{}, error) {
 	return &jsonMap, nil
 }
 
-func (ec *EventSink) Submit(event eve.EveEvent) error {
+func (ec *AgentEventSink) Submit(event eve.EveEvent) error {
 	rawEvent, err := json.Marshal(event)
 	if err != nil {
 		return err

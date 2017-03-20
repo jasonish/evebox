@@ -31,16 +31,18 @@ import (
 
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
+	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
+	"github.com/jasonish/evebox/useragent"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 const DEFAULT_DATA_DIR = "."
-
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
 const DEFAULT_ELASTICSEARCH_INDEX string = "logstash"
 
@@ -57,7 +59,7 @@ func VersionMain() {
 		core.BuildVersion, core.BuildRev)
 }
 
-func setDefaults() {
+func initViper() {
 	viper.SetDefault("data-directory", DEFAULT_DATA_DIR)
 	viper.SetDefault("elasticsearch", DEFAULT_ELASTICSEARCH_URL)
 	viper.SetDefault("index", DEFAULT_ELASTICSEARCH_INDEX)
@@ -65,6 +67,8 @@ func setDefaults() {
 	// Retention period in days.
 	viper.SetDefault("database.retention-period", 0)
 	viper.BindEnv("database.retention-period", "RETENTION_PERIOD")
+
+	viper.BindEnv("input.bookmark-directory", "BOOKMARK_DIRECTORY")
 }
 
 func getElasticSearchKeyword(flagset *pflag.FlagSet) (bool, string) {
@@ -90,7 +94,7 @@ func Main(args []string) {
 
 	log.Info("This is EveBox Server version %v (rev: %v)", core.BuildVersion, core.BuildRev)
 
-	setDefaults()
+	initViper()
 
 	flagset := pflag.NewFlagSet("server", pflag.ExitOnError)
 
@@ -196,9 +200,37 @@ func Main(args []string) {
 			viper.GetString("database.type"))
 	}
 
+	initInternalEveReader(&appContext)
+
 	httpServer := server.NewServer(appContext)
 	err = httpServer.Start(opts.Host + ":" + opts.Port)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func initInternalEveReader(appContext *server.AppContext) {
+	enabled := viper.GetBool("input.enabled")
+	if !enabled {
+		return
+	}
+	log.Info("Configuring internal eve log reader")
+	filename := viper.GetString("input.filename")
+	bookmarkDirectory := viper.GetString("input.bookmark-directory")
+
+	eveFileProcessor := &evereader.EveFileProcessor{
+		Filename:          filename,
+		BookmarkDirectory: bookmarkDirectory,
+		Sink:              appContext.DataStore.GetEveEventSink(),
+	}
+
+	eveFileProcessor.AddFilter(&eve.TagsFilter{})
+	eveFileProcessor.AddFilter(eve.NewGeoipFilter(appContext.GeoIpService))
+	eveFileProcessor.AddFilter(&useragent.EveUserAgentFilter{})
+
+	for field, value := range viper.GetStringMap("input.custom-fields") {
+		eveFileProcessor.AddCustomField(field, value)
+	}
+
+	eveFileProcessor.Start()
 }

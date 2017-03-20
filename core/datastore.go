@@ -33,7 +33,7 @@ import (
 type Datastore interface {
 	EventService
 
-	GetEveEventConsumer() EveEventSink
+	GetEveEventSink() EveEventSink
 
 	AlertQuery(options AlertQueryOptions) (interface{}, error)
 	EventQuery(options EventQueryOptions) (interface{}, error)

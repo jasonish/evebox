@@ -36,6 +36,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
+	"github.com/jasonish/evebox/useragent"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"io"
@@ -139,11 +140,14 @@ func Main(args []string) {
 	doneReading := make(chan int)
 	stopReading := make(chan int)
 
-	eventSink := appContext.DataStore.GetEveEventConsumer()
+	eventSink := appContext.DataStore.GetEveEventSink()
 	count := uint64(0)
 	go func() {
-		tagsFilter := eve.TagsFilter{}
-		geoipFilter := eve.NewGeoipFilter(appContext.GeoIpService)
+		filters := []eve.EveFilter{
+			&eve.TagsFilter{},
+			eve.NewGeoipFilter(appContext.GeoIpService),
+			&useragent.EveUserAgentFilter{},
+		}
 	Loop:
 		for _, filename := range flagset.Args() {
 			reader, err := evereader.NewBasicReader(filename)
@@ -167,8 +171,11 @@ func Main(args []string) {
 					}
 					log.Fatal(err)
 				}
-				tagsFilter.Filter(event)
-				geoipFilter.Filter(event)
+
+				for _, filter := range filters {
+					filter.Filter(event)
+				}
+
 				if err := eventSink.Submit(event); err != nil {
 					log.Fatal(err)
 				}

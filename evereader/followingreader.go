@@ -66,10 +66,6 @@ func NewFollowingReader(path string) (*FollowingReader, error) {
 	return &eveReader, nil
 }
 
-func (r *FollowingReader) GetFileInfo() (os.FileInfo, error) {
-	return r.file.Stat()
-}
-
 func (r *FollowingReader) OpenFile() error {
 	br, err := NewBasicReader(r.path)
 	if err != nil {

@@ -56,7 +56,7 @@ func NewDataStore(db *SqliteService) *DataStore {
 	}
 }
 
-func (d *DataStore) GetEveEventConsumer() core.EveEventSink {
+func (d *DataStore) GetEveEventSink() core.EveEventSink {
 	return NewSqliteIndexer(d.db)
 }
 
