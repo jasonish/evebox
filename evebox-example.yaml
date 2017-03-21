@@ -30,13 +30,13 @@ database:
     #password: password
 
   # Retention period in days. 0 or comment out to disable.
-  retention-period: 3
+  #retention-period: 3
 
 # The server can process a log file, eliminating the need for a
 # separate agent process if on the same machine.
 input:
   # Toggle to disable the input without commenting it out.
-  enabled: true
+  enabled: false
 
   # Filename to read.
   filename: "/var/log/suricata/eve.json"
@@ -51,7 +51,7 @@ input:
   custom-fields:
     # Set a host field. This will override the "host" field set by
     # Suricata if the Suricata "sensor-name" option is set.
-    host: "desktop.unx.ca"
+    #host: "evebox-server"
 
 geoip:
   disabled: false
