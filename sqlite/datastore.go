@@ -590,7 +590,7 @@ func parseQueryString(builder *SqlBuilder, queryString string, eventTable string
 
 	if len(fts) > 0 {
 		builder.From("events_fts")
-		builder.Where(fmt.Sprintf("%s.id = events_fts.id", eventTable))
+		builder.Where(fmt.Sprintf("%s.rowid = events_fts.rowid", eventTable))
 		builder.Where(fmt.Sprintf("events_fts MATCH '%s'", strings.Join(fts, " AND ")))
 	}
 }

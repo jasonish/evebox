@@ -149,8 +149,10 @@ func (p *EveFileProcessor) process(reader *FollowingReader, bookmarker *Bookmark
 
 		// On every EOF or batch size, commit.
 		if (eof && count > 0) || (count > 0 && count%BATCH_SIZE == 0) {
-			log.Debug("Committing %d events", count)
+			start := time.Now()
 			p.commit()
+			log.Debug("Committed %d events in %v", count,
+				time.Now().Sub(start))
 			bookmarker.UpdateBookmark()
 			p.count += count
 			count = 0

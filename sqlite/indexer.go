@@ -98,8 +98,8 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 		args:  []interface{}{eventId, timestamp, encoded},
 	})
 	i.queue = append(i.queue, op{
-		query: "insert into events_fts values ($1, $2, $3)",
-		args:  []interface{}{eventId, timestamp, encoded},
+		query: "insert into events_fts (rowid, source) values (last_insert_rowid(), $1)",
+		args:  []interface{}{encoded},
 	})
 
 	return nil

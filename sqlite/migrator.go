@@ -59,6 +59,7 @@ func (m *Migrator) Migrate() error {
 			}
 			nextVersion = currentVersion + 1
 		}
+		rows.Close()
 		log.Debug("Current database schema version: %d", currentVersion)
 	} else {
 		log.Debug("Initializing database.")
@@ -75,21 +76,24 @@ func (m *Migrator) Migrate() error {
 
 		tx, err := m.db.Begin()
 		if err != nil {
+			log.Error("Failed to start transaction: %v", err)
 			return err
 		}
 
 		_, err = tx.Exec(script)
 		if err != nil {
-			return err
+			log.Error("Failed to execute script: %v", err)
 		}
 
 		err = m.setVersion(tx, nextVersion)
 		if err != nil {
+			log.Error("Failed to update schema version: %v", err)
 			return err
 		}
 
 		err = tx.Commit()
 		if err != nil {
+			log.Error("Fail to commit transaction: %v", err)
 			return err
 		}
 

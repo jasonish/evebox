@@ -67,32 +67,13 @@ func (p *SqlitePurger) Purge() (int64, error) {
 
 	start := time.Now()
 
-	// Drop the table, it likely exists from the last run. We don't drop
-	// after we purge due to lock table errors when we try.
-	_, err = tx.Exec("drop table if exists temp_ids")
+	q := `delete from events where rowid in (select rowid from events where timestamp < ? and escalated = 0 limit ?)`
+	r, err := tx.Exec(q, formatTime(then), LIMIT)
 	if err != nil {
 		log.Error("%v", err)
 		return 0, err
 	}
 
-	q := `create temp table temp_ids as select id from events where timestamp < ? and escalated = 0 limit ?`
-	_, err = tx.Exec(q, formatTime(then), LIMIT)
-	if err != nil {
-		log.Error("%v", err)
-		return 0, err
-	}
-
-	_, err = tx.Exec("delete from events_fts where id in (select id from temp_ids)")
-	if err != nil {
-		log.Error("%v", err)
-		return 0, err
-	}
-
-	r, err := tx.Exec("delete from events where id in (select id from temp_ids)")
-	if err != nil {
-		log.Error("%v", err)
-		return 0, err
-	}
 	count, err := r.RowsAffected()
 	if err != nil {
 		log.Warning("Failed to get number of events purged")
