@@ -89,30 +89,32 @@ func (p *EveFileProcessor) Stop() {
 func (p *EveFileProcessor) Run() {
 	// Outer loop retries opening the file in case of failures...
 	for {
-		if p.stop {
-			break
-		}
+		var bookmarker *Bookmarker
 
 		reader, err := NewFollowingReader(p.Filename)
 		if err != nil {
 			log.Warning("Failed to open %s (will try again): %v",
 				p.Filename, err)
-			time.Sleep(1 * time.Second)
-			continue
+			goto Retry
 		}
 
-		bookmarker, err := NewBookmarker(reader, p.BookmarkDirectory)
+		bookmarker, err = NewBookmarker(reader, p.BookmarkDirectory)
 		if err != nil {
 			log.Warning("Failed to get bookmarker (will try again): %v", err)
 			reader.Close()
-			time.Sleep(1 * time.Second)
-			continue
+			goto Retry
 		}
 
 		if err := p.process(reader, bookmarker); err != nil {
 			log.Error("Processing error, will retry: %v", err)
-			time.Sleep(1 * time.Second)
+			goto Retry
 		}
+
+	Retry:
+		if p.stop {
+			break
+		}
+		time.Sleep(1 * time.Second)
 	}
 
 	p.wg.Done()
@@ -150,7 +152,10 @@ func (p *EveFileProcessor) process(reader *FollowingReader, bookmarker *Bookmark
 		// On every EOF or batch size, commit.
 		if (eof && count > 0) || (count > 0 && count%BATCH_SIZE == 0) {
 			start := time.Now()
-			p.commit()
+			if err := p.commit(); err != nil {
+				log.Error("Commit failed: %v", err)
+				return err
+			}
 			log.Debug("Committed %d events in %v", count,
 				time.Now().Sub(start))
 			bookmarker.UpdateBookmark()
@@ -183,11 +188,14 @@ func (p *EveFileProcessor) process(reader *FollowingReader, bookmarker *Bookmark
 	return nil
 }
 
-func (p *EveFileProcessor) commit() {
+func (p *EveFileProcessor) commit() error {
 	for {
 		_, err := p.Sink.Commit()
 		if err == nil {
-			return
+			return nil
+		}
+		if p.stop {
+			return err
 		}
 		log.Error("Failed to commit events, will try again: %v", err)
 		time.Sleep(1 * time.Second)
