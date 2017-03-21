@@ -128,6 +128,9 @@ func Main(args []string) {
 	viper.BindPFlag("data-directory", flagset.Lookup("data-directory"))
 	viper.BindEnv("data-directory", "DATA_DIRECTORY")
 
+	var input string
+	flagset.StringVar(&input, "input", "", "Input eve-log file (optional)")
+
 	flagset.Parse(args[0:])
 
 	if opts.Version {
@@ -150,6 +153,11 @@ func Main(args []string) {
 		if configFilename != "" {
 			log.Fatal(err)
 		}
+	}
+
+	if input != "" {
+		viper.Set("input.enabled", "true")
+		viper.Set("input.filename", input)
 	}
 
 	appContext := server.AppContext{}
