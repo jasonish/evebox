@@ -107,7 +107,7 @@ func Main(args []string) {
 	if !viper.InConfig("input") {
 		log.Fatal("No input configured.")
 	}
-	path := viper.GetString("input.path")
+	path := viper.GetString("input.filename")
 
 	eveFileProcessor := evereader.EveFileProcessor{
 		Filename:          path,
