@@ -69,7 +69,7 @@ event-services:
 
   # Custom service to link the rule in Scirius.
   - type: custom
-    enabled: true
+    enabled: false
     name: Scirius
 
     # Only make available for alert types.
@@ -83,7 +83,7 @@ event-services:
   #
   # This one has no event-types meaning its available for all event types.
   - type: custom
-    enabled: true
+    enabled: false
     name: Dumpy
 
     # The URL template, {{raw}} expands to the raw eve event as a JSON
