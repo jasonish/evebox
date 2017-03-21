@@ -170,7 +170,7 @@ func (p *EveFileProcessor) process(reader *FollowingReader, bookmarker *Bookmark
 				p.count,
 				p.count-p.lastStatCount,
 				p.eofs)
-			p.lastStatCount = count
+			p.lastStatCount = p.count
 			p.lastStatTime = now
 			p.eofs = 0
 		}
