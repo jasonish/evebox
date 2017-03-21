@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.5.0...HEAD)
+- New "oneshot" mode - a mode where EveBox directly reads in an
+  eve.log file into an SQLite database for one time viewing, then
+  cleans up after itself.
+- The EveBox server can now process an eve file without an agent
+  (basically an embedded agent), storing the events in Elastic Search
+  or SQLite
 - When using Elastic Search 5.2+, use the update_by_query API to
   archive and escalate events. This should speed up archiving.
 - Fix Elastic Search keyword handling when Filebeat is used to send
