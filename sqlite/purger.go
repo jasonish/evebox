@@ -67,7 +67,17 @@ func (p *SqlitePurger) Purge() (int64, error) {
 
 	start := time.Now()
 
-	q := `delete from events where rowid in (select rowid from events where timestamp < ? and escalated = 0 limit ?)`
+	// Wrapping in a subselect so we can limit the number of events
+	// deleted per run.
+	q := `
+delete
+from events
+where rowid in
+    (select rowid
+     from events
+     where timestamp < ?
+     and escalated = 0
+     limit ?)`
 	r, err := tx.Exec(q, formatTime(then), LIMIT)
 	if err != nil {
 		log.Error("%v", err)

@@ -32,6 +32,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/jasonish/evebox/.glide/cache/src/https-github.com-pkg-errors"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/eve"
@@ -103,63 +104,70 @@ func (s *DataStore) GetEventById(id string) (map[string]interface{}, error) {
 
 func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
 
-	query := `select
-	            count(*) as count,
-                    b.id as id,
-                    sum(a.escalated),
-                    b.archived,
-                    min(a.timestamp) as mints,
-                    max(a.timestamp) as maxts,
-                    json_extract(a.source, '$.alert.signature') as signature,
-                    json_extract(a.source, '$.src_ip') as src_ip,
-                    json_extract(a.source, '$.dest_ip') as dest_ip,
-                    b.source
-                  %FROM%
-                  join events b on
-                    signature = json_extract(b.source, '$.alert.signature')
-                    AND src_ip = json_extract(b.source, '$.src_ip')
-                    AND dest_ip = json_extract(b.source, '$.dest_ip')
-                  %WHERE%
-                  group by
-                    signature,
-                    src_ip,
-                    dest_ip
-                  order by maxts desc`
+	query := `
+SELECT b.count,
+  a.id,
+  b.escalated_count,
+  a.archived,
+  a.timestamp,
+  a.source
+FROM events a
+  INNER JOIN
+  (
+    SELECT
+      events.rowid,
+      count(json_extract(events.source, '$.alert.signature_id')) as count,
+      max(timestamp) AS maxts,
+      sum(escalated) as escalated_count
+    %FROM%
+    %WHERE%
+    GROUP BY
+      json_extract(events.source, '$.alert.signature_id'),
+      json_extract(events.source, '$.src_ip'),
+      json_extract(events.source, '$.dest_ip')
+  ) AS b
+WHERE a.rowid = b.rowid AND a.timestamp = b.maxts
+ORDER BY timestamp DESC`
 
 	builder := SqlBuilder{}
+	builder.From("events")
 
-	builder.From("events a")
-
-	builder.Where("a.id = b.id")
-
-	builder.WhereEquals("json_extract(a.source, '$.event_type')", "alert")
+	builder.WhereEquals("json_extract(events.source, '$.event_type')", "alert")
 
 	if elasticsearch.StringSliceContains(options.MustHaveTags, "archived") {
-		builder.WhereEquals("a.archived", 1)
+		builder.WhereEquals("archived", 1)
 	}
 
 	if elasticsearch.StringSliceContains(options.MustNotHaveTags, "archived") {
-		builder.WhereEquals("a.archived", 0)
+		builder.WhereEquals("archived", 0)
 	}
 
 	if elasticsearch.StringSliceContains(options.MustHaveTags, "escalated") {
-		builder.WhereEquals("b.escalated", 1)
+		builder.WhereEquals("escalated", 1)
 	}
 
 	if options.QueryString != "" {
-		parseQueryString(&builder, options.QueryString, "a")
+		parseQueryString(&builder, options.QueryString, "events")
 	}
+
+	now := time.Now()
+	minTs := formatTime(time.Time{})
 
 	if options.TimeRange != "" {
-		duration := parseTimeRange(options.TimeRange)
-		if duration != "" {
-			builder.Where(fmt.Sprintf(
-				"a.timestamp >= strftime('%%Y-%%m-%%dT%%H:%%M:%%S.000000Z', 'now', '-%s seconds')", duration))
+
+		duration, err := time.ParseDuration(options.TimeRange)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse duration string)")
 		}
+
+		minTs = formatTime(now.Add(duration * -1))
+		builder.WhereGte("timestamp", minTs)
 	}
 
-	query = strings.Replace(query, "%FROM%", builder.BuildFrom(), 1)
+	log.Debug("Time range: %s -> %s", minTs, now)
+
 	query = strings.Replace(query, "%WHERE%", builder.BuildWhere(), 1)
+	query = strings.Replace(query, "%FROM%", builder.BuildFrom(), 1)
 
 	tx, err := s.db.GetTx()
 	if err != nil {
@@ -167,6 +175,7 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 		return nil, err
 	}
 	defer tx.Commit()
+	queryStart := time.Now()
 	rows, err := tx.Query(query, builder.args...)
 	if err != nil {
 		log.Error("%v", err)
@@ -177,27 +186,18 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 	alerts := []interface{}{}
 
 	for rows.Next() {
-
 		var count int64
 		var id string
 		var escalated int64
 		var archived int8
-		var minTs string
 		var maxTs string
-		var signature string
-		var srcIp string
-		var destIp string
 		var rawEvent []byte
 
 		err = rows.Scan(&count,
 			&id,
 			&escalated,
 			&archived,
-			&minTs,
 			&maxTs,
-			&signature,
-			&srcIp,
-			&destIp,
 			&rawEvent)
 		if err != nil {
 			log.Error("%v", err)
@@ -227,6 +227,7 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 
 		alerts = append(alerts, alert)
 	}
+	log.Debug("Alert query execution time: %v", time.Now().Sub(queryStart))
 
 	return map[string]interface{}{
 		"alerts": alerts,
@@ -237,7 +238,7 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 
 	b := SqlBuilder{}
 
-	b.Select("id")
+	b.Select("rowid")
 	b.From("events")
 	b.WhereEquals("archived", 0)
 	b.WhereEquals(
@@ -264,7 +265,7 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 		b.WhereLte("timestamp", ts)
 	}
 
-	query := fmt.Sprintf("UPDATE events SET archived = 1 WHERE id IN (%s)", b.Build())
+	query := fmt.Sprintf("UPDATE events SET archived = 1 WHERE rowid IN (%s)", b.Build())
 
 	tx, err := s.db.GetTx()
 	if err != nil {
@@ -555,7 +556,7 @@ func (d *DataStore) FindFlow(flowId uint64, proto string, timestamp string, srcI
 	return events, nil
 }
 
-// Parse the query string and populat the sqlbuilder with parsed data.
+// Parse the query string and populate the sqlbuilder with parsed data.
 //
 // eventTable is the column name to join against events_fts.id, as it may
 //   not always be the events table in case of aliasing.
@@ -593,13 +594,4 @@ func parseQueryString(builder *SqlBuilder, queryString string, eventTable string
 		builder.Where(fmt.Sprintf("%s.rowid = events_fts.rowid", eventTable))
 		builder.Where(fmt.Sprintf("events_fts MATCH '%s'", strings.Join(fts, " AND ")))
 	}
-}
-
-func parseTimeRange(timeRange string) string {
-	duration, err := time.ParseDuration(timeRange)
-	if err != nil {
-		log.Error("Failed to parse duration: %v", err)
-		return ""
-	}
-	return strconv.FormatUint(uint64(duration.Seconds()), 10)
 }
