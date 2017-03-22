@@ -74,11 +74,20 @@ func Main(args []string) {
 
 	var err error
 
-	log.Info("This is EveBox Server version %v (rev: %v)", core.BuildVersion, core.BuildRev)
-
 	setDefaults()
 
-	flagset := pflag.NewFlagSet("server", pflag.ExitOnError)
+	flagset := pflag.NewFlagSet("evebox oneshot", pflag.ExitOnError)
+	flagset.Usage = func() {
+		fmt.Fprintf(os.Stderr,
+			"Usage: evebox oneshot [options] </path/to.eve.json>\n")
+		flagset.PrintDefaults()
+		fmt.Fprintf(os.Stderr, `
+Example:
+
+    ./evebox oneshot /var/log/suricata/eve.json
+
+`)
+	}
 
 	flagset.StringVarP(&opts.Port, "port", "p", "", "Port to bind to")
 	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
@@ -265,12 +274,16 @@ Loop:
 			}
 		}
 	}
-
 	log.Info("Bound to port %d", port)
-	log.Println("Server is running.")
+
+	log.Info("Attempting to start browser.")
 	url := fmt.Sprintf("http://localhost:%d", port)
-	c := exec.Command("xdg-open", url)
-	c.Run()
+	go func() {
+		c := exec.Command("xdg-open", url)
+		c.Run()
+	}()
+
+	fmt.Printf("\nIf your browser didn't open, go to %s\n", url)
 
 	fmt.Printf("\n** Press CTRL-C to exit and cleanup.. ** \n\n")
 
