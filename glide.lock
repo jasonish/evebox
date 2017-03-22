@@ -1,5 +1,5 @@
-hash: 06fe791c7c5f513012d640f957f7db21e09b5e4e6eb684845986fa1707b861e1
-updated: 2017-02-24T13:35:43.906666784-06:00
+hash: 380cc418539ab937049202617cfc012655f13aa34e8ca14c68f13ccc52863851
+updated: 2017-03-22T00:27:01.264391632-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -32,7 +32,9 @@ imports:
 - name: github.com/magiconair/properties
   version: b3b15ef068fd0b17ddf408a23669f20811d194d2
 - name: github.com/mattn/go-sqlite3
-  version: 3fb7a0e792edd47bf0cf1e919dfc14e2be412e15
+  version: 866c3293d9a76aa491e56cc978d0d7fb0e63e121
+  repo: git@github.com:mattn/go-sqlite3.git
+  vcs: git
 - name: github.com/mitchellh/mapstructure
   version: db1efb556f84b25a0a13a04aad883943538ad2e0
 - name: github.com/oschwald/geoip2-golang

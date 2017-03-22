@@ -13,6 +13,9 @@ import:
 - package: github.com/satori/go.uuid
 - package: github.com/lib/pq
 - package: github.com/mattn/go-sqlite3
+  vcs: git
+  version: master
+  repo: git@github.com:mattn/go-sqlite3.git
 - package: github.com/pkg/errors
 - package: github.com/spf13/viper
 - package: golang.org/x/sys
