@@ -46,6 +46,14 @@ func ParseTimestamp(timestamp string) (time.Time, error) {
 	return time.Parse(EveTimestampFormat, timestamp)
 }
 
+func FormatTimestamp(timestamp time.Time) string {
+	return timestamp.Format("2006-01-02T15:04:05.000000-0700")
+}
+
+func FormatTimestampUTC(timestamp time.Time) string {
+	return timestamp.UTC().Format("2006-01-02T15:04:05.000000Z")
+}
+
 // Given a protocol name as a string (could be a number), return the
 // IPProtocol for that protocol.
 func ProtoNumber(proto string) (layers.IPProtocol, error) {

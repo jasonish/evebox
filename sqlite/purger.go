@@ -29,6 +29,7 @@
 package sqlite
 
 import (
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"time"
 )
@@ -58,7 +59,7 @@ func (p *SqlitePurger) Purge() (int64, error) {
 
 	now := time.Now()
 	then := now.AddDate(0, 0, (p.period+1)*-1)
-	log.Info("Deleting events prior to %v", formatTime(then))
+	log.Info("Deleting events prior to %v", eve.FormatTimestamp(then))
 
 	tx, err := p.db.GetTx()
 	if err != nil {
@@ -80,7 +81,7 @@ where rowid in
      where timestamp < ?
      and escalated = 0
      limit ?)`
-	r, err := tx.Exec(q, formatTime(then), LIMIT)
+	r, err := tx.Exec(q, then.UnixNano(), LIMIT)
 	if err != nil {
 		log.Error("%v", err)
 		return 0, err

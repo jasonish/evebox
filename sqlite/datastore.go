@@ -107,7 +107,6 @@ SELECT b.count,
   a.id,
   b.escalated_count,
   a.archived,
-  a.timestamp,
   a.source
 FROM events a
   INNER JOIN
@@ -149,7 +148,7 @@ ORDER BY timestamp DESC`
 	}
 
 	now := time.Now()
-	minTs := formatTime(time.Time{})
+	minTs := time.Time{}
 
 	if options.TimeRange != "" {
 
@@ -158,11 +157,11 @@ ORDER BY timestamp DESC`
 			return nil, errors.Wrap(err, "failed to parse duration string)")
 		}
 
-		minTs = formatTime(now.Add(duration * -1))
-		builder.WhereGte("timestamp", minTs)
+		minTs = now.Add(duration * -1)
+		builder.WhereGte("timestamp", minTs.UnixNano())
 	}
 
-	log.Debug("Time range: %s -> %s", minTs, now)
+	log.Debug("Time range: %s -> %s", minTs.UTC(), now.UTC())
 
 	query = strings.Replace(query, "%WHERE%", builder.BuildWhere(), 1)
 	query = strings.Replace(query, "%FROM%", builder.BuildFrom(), 1)
@@ -188,14 +187,12 @@ ORDER BY timestamp DESC`
 		var id string
 		var escalated int64
 		var archived int8
-		var maxTs string
 		var rawEvent []byte
 
 		err = rows.Scan(&count,
 			&id,
 			&escalated,
 			&archived,
-			&maxTs,
 			&rawEvent)
 		if err != nil {
 			log.Error("%v", err)
@@ -215,8 +212,8 @@ ORDER BY timestamp DESC`
 		alert := map[string]interface{}{
 			"count":          count,
 			"escalatedCount": escalated,
-			"minTs":          minTs,
-			"maxTs":          maxTs,
+			"minTs":          eve.FormatTimestampUTC(minTs),
+			"maxTs":          eve.FormatTimestampUTC(event.Timestamp()),
 			"event": map[string]interface{}{
 				"_id":     id,
 				"_source": event,
@@ -249,19 +246,21 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
 	if p.MinTimestamp != "" {
-		ts, err := eveTs2SqliteTs(p.MinTimestamp)
+		ts, err := eve.ParseTimestamp(p.MinTimestamp)
 		if err != nil {
 			return err
 		}
-		b.WhereGte("timestamp", ts)
+		b.WhereGte("timestamp", ts.UnixNano())
 	}
 	if p.MaxTimestamp != "" {
-		ts, err := eveTs2SqliteTs(p.MaxTimestamp)
+		ts, err := eve.ParseTimestamp(p.MaxTimestamp)
 		if err != nil {
 			return err
 		}
-		b.WhereLte("timestamp", ts)
+		b.WhereLte("timestamp", ts.UnixNano())
 	}
+
+	// TODO - query string
 
 	query := fmt.Sprintf("UPDATE events SET archived = 1 WHERE rowid IN (%s)", b.Build())
 
@@ -306,19 +305,19 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 		p.DstIP)
 
 	if p.MinTimestamp != "" {
-		ts, err := eveTs2SqliteTs(p.MinTimestamp)
+		ts, err := eve.ParseTimestamp(p.MinTimestamp)
 		if err != nil {
 			return err
 		}
-		builder.WhereGte("timestamp", ts)
+		builder.WhereGte("timestamp", ts.UnixNano())
 	}
 
 	if p.MaxTimestamp != "" {
-		ts, err := eveTs2SqliteTs(p.MaxTimestamp)
+		ts, err := eve.ParseTimestamp(p.MaxTimestamp)
 		if err != nil {
 			return err
 		}
-		builder.WhereLte("timestamp", ts)
+		builder.WhereLte("timestamp", ts.UnixNano())
 	}
 
 	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
@@ -334,7 +333,7 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 	defer tx.Commit()
 	result, err := tx.Exec(query, builder.args...)
 	if err != nil {
-		log.Error("error archiving alerts: %v", err)
+		log.Error("error starring alerts: %v", err)
 		return err
 	}
 	count, _ := result.RowsAffected()
@@ -364,19 +363,19 @@ func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
 		p.DstIP)
 
 	if p.MinTimestamp != "" {
-		ts, err := eveTs2SqliteTs(p.MinTimestamp)
+		ts, err := eve.ParseTimestamp(p.MinTimestamp)
 		if err != nil {
 			return err
 		}
-		builder.WhereGte("timestamp", ts)
+		builder.WhereGte("timestamp", ts.UnixNano())
 	}
 
 	if p.MaxTimestamp != "" {
-		ts, err := eveTs2SqliteTs(p.MaxTimestamp)
+		ts, err := eve.ParseTimestamp(p.MaxTimestamp)
 		if err != nil {
 			return err
 		}
-		builder.WhereLte("timestamp", ts)
+		builder.WhereLte("timestamp", ts.UnixNano())
 	}
 
 	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
@@ -403,7 +402,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		size = options.Size
 	}
 
-	query := `select events.id, events.timestamp, events.archived, events.source`
+	query := `select events.id, events.archived, events.source`
 
 	sqlBuilder := SqlBuilder{}
 
@@ -420,19 +419,23 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 	}
 
 	if options.MaxTs != "" {
-		maxTs, err := time.Parse("2006-01-02T15:04:05.999999", options.MaxTs)
+		ts, err := eve.ParseTimestamp(options.MaxTs)
 		if err != nil {
-			return nil, fmt.Errorf("Bad timestamp: %s", options.MaxTs)
+			log.Error("Failed to parse timestamp: %s: %v", options.MaxTs, err)
+			return nil, err
 		}
-		sqlBuilder.WhereLte("datetime(events.timestamp)", maxTs)
+		log.Debug("Parsed %s -> %v", options.MaxTs, ts)
+		sqlBuilder.WhereLte("events.timestamp", ts.UnixNano())
 	}
 
 	if options.MinTs != "" {
-		minTs, err := time.Parse("2006-01-02T15:04:05.999999", options.MinTs)
+		ts, err := eve.ParseTimestamp(options.MinTs)
 		if err != nil {
-			return nil, fmt.Errorf("Bad timestamp: %s", options.MinTs)
+			log.Error("Failed to parse min timestamp: %s: %v", options.MinTs, err)
+			return nil, err
 		}
-		sqlBuilder.WhereGte("datetime(events.timestamp)", minTs)
+		log.Debug("Parsed mints %s -> %v", options.MinTs, ts)
+		sqlBuilder.WhereGte("events.timestamp", ts.UnixNano())
 	}
 
 	query += sqlBuilder.BuildFrom()
@@ -462,10 +465,9 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 
 	for rows.Next() {
 		var id uuid.UUID
-		var timestamp string
 		var archived int8
 		var rawSource []byte
-		err = rows.Scan(&id, &timestamp, &archived, &rawSource)
+		err = rows.Scan(&id, &archived, &rawSource)
 		if err != nil {
 			return nil, err
 		}
@@ -480,7 +482,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 			source.AddTag("archived")
 		}
 
-		source["@timestamp"] = timestamp
+		source["@timestamp"] = source["timestamp"]
 
 		events = append(events, map[string]interface{}{
 			"_id":     id.String(),

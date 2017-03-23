@@ -26,18 +26,15 @@
 
 package sqlite
 
-import "time"
+import (
+	"github.com/jasonish/evebox/eve"
+)
 
 // Format an Eve timestamp as an SQLite timestamp.
 func eveTs2SqliteTs(timestamp string) (string, error) {
-	var RFC3339Nano_Modified string = "2006-01-02T15:04:05.999999999Z0700"
-	result, err := time.Parse(RFC3339Nano_Modified, timestamp)
+	t, err := eve.ParseTimestamp(timestamp)
 	if err != nil {
 		return "", err
 	}
-	return formatTime(result), nil
-}
-
-func formatTime(t time.Time) string {
-	return t.UTC().Format("2006-01-02T15:04:05.000000Z")
+	return eve.FormatTimestampUTC(t), nil
 }

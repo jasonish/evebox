@@ -113,6 +113,8 @@ func InitSqlite(appContext *server.AppContext) (err error) {
 		return err
 	}
 
+	db.Exec("pragma synchronous = off")
+
 	appContext.DataStore = NewDataStore(db)
 
 	InitPurger(db)

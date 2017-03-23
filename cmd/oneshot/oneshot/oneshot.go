@@ -96,6 +96,9 @@ Example:
 	flagset.StringVarP(&opts.DatabaseFilename, "database-filename", "D", "", "Database filename")
 	flagset.BoolVar(&opts.InMemory, "in-memory", false, "Use in-memory database")
 
+	var nowait bool
+	flagset.BoolVar(&nowait, "no-wait", false, "Do not wait for all events to load")
+
 	flagset.Parse(args[0:])
 
 	if opts.Version {
@@ -213,15 +216,19 @@ Example:
 			}
 		}
 
-		doneReading <- 1
+		if !nowait {
+			doneReading <- 1
+		}
 	}()
-Loop:
-	for {
-		select {
-		case <-sigchan:
-			stopReading <- 1
-		case <-doneReading:
-			break Loop
+	if !nowait {
+	Loop:
+		for {
+			select {
+			case <-sigchan:
+				stopReading <- 1
+			case <-doneReading:
+				break Loop
+			}
 		}
 	}
 

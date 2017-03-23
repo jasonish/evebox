@@ -55,11 +55,6 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 
 	eventId := uuid.NewV1()
 
-	timestamp, err := eveTs2SqliteTs(event["timestamp"].(string))
-	if err != nil {
-		return err
-	}
-
 	// Convert flow timestamps for UTC.
 	if event.GetString("event_type") == "flow" {
 		startTs, err := eveTs2SqliteTs(
@@ -95,7 +90,7 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 
 	i.queue = append(i.queue, op{
 		query: "insert into events (id, timestamp, source) values ($1, $2, $3)",
-		args:  []interface{}{eventId, timestamp, encoded},
+		args:  []interface{}{eventId, event.Timestamp().UnixNano(), encoded},
 	})
 	i.queue = append(i.queue, op{
 		query: "insert into events_fts (rowid, source) values (last_insert_rowid(), $1)",
