@@ -57,9 +57,7 @@ func ConfigHandler(appContext AppContext, r *http.Request) interface{} {
 		response.Features[feature.String()] = enabled
 	}
 
-	response.Extra = map[string]interface{}{
-		"elasticSearchKeyword": esKeyword,
-	}
+	response.Extra = map[string]interface{}{}
 
 	if esKeyword != "" {
 		response.Extra["elasticSearchKeywordSuffix"] = "." + esKeyword

@@ -24,14 +24,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 import {Injectable} from "@angular/core";
-import {Http} from "@angular/http";
 import {TopNavService} from "./topnav.service";
 import {AppService} from "./app.service";
 import {ConfigService} from "./config.service";
 import {ToastrService} from "./toastr.service";
 import {ApiService} from "./api.service";
 
-//import moment = require("moment");
 import * as moment from "moment";
 var queue = require("queue");
 
@@ -58,10 +56,6 @@ export class ElasticSearchService {
     private index:string;
     private jobs = queue({concurrency: 4});
 
-    // Default to Logstash/ES 2 template unless we can detect Logstash/ES 5
-    // usage.
-    public keyword:string = "raw";
-
     public keywordSuffix:string = "";
 
     constructor(private api:ApiService,
@@ -72,18 +66,12 @@ export class ElasticSearchService {
         this.index = config.getConfig().ElasticSearchIndex;
 
         try {
-            this.keyword = config.getConfig()["extra"]["elasticSearchKeyword"];
-        }
-        catch (err) {
-        }
-
-        try {
             this.keywordSuffix = config.getConfig()["extra"]["elasticSearchKeywordSuffix"];
         }
         catch (err) {
         }
 
-        console.log("Use Elastic Search keyword " + this.keyword);
+        console.log("Use Elastic Search keyword suffix: " + this.keywordSuffix);
     }
 
     /**
@@ -123,10 +111,7 @@ export class ElasticSearchService {
     }
 
     asKeyword(keyword:string):string {
-        if (this.keyword != "") {
-            return `${keyword}.${this.keyword}`;
-        }
-        return keyword;
+        return `${keyword}${this.keywordSuffix}`;
     }
 
     keywordTerm(keyword:string, value:any):any {
@@ -345,7 +330,7 @@ export class ElasticSearchService {
 
     addSensorNameFilter(query:any, sensor:string) {
         let term = {};
-        term[`host.${this.keyword}`] = sensor;
+        term[`host${this.keywordSuffix}`] = sensor;
         query.query.bool.filter.push({
             "term": term,
         });
