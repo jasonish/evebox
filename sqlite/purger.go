@@ -48,6 +48,8 @@ func (p *SqlitePurger) Run() {
 		count, _ := p.Purge()
 		if count < LIMIT {
 			time.Sleep(1 * time.Minute)
+		} else {
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
