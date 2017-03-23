@@ -1,7 +1,9 @@
-# The URL to Elastic Search
-ELASTICSEARCH_URL="-e http://localhost:9200"
+# The URL to Elastic Search. Setting it here will override the URL in
+# the config file if used.
+#ELASTICSEARCH_URL="-e http://localhost:9200"
 
 # Config file.
-# CONFIG="-c /etc/evebox.yaml"
+#CONFIG="-c /etc/evebox/evebox.yaml"
 
+# Other command line options like "-v" for verbose output.
 EVEBOX_OPTS=""

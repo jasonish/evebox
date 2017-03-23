@@ -1,5 +1,5 @@
 [Unit]
-Description=EveBox
+Description=EveBox Server
 
 [Service]
 ExecStart=/usr/bin/evebox server $ELASTICSEARCH_URL $CONFIG $EVEBOX_OPTS
