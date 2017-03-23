@@ -29,8 +29,6 @@
 package sqlite
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/jasonish/evebox/.glide/cache/src/https-github.com-pkg-errors"
 	"github.com/jasonish/evebox/core"
@@ -405,7 +403,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		size = options.Size
 	}
 
-	query := `select events.id, events.timestamp, events.source`
+	query := `select events.id, events.timestamp, events.archived, events.source`
 
 	sqlBuilder := SqlBuilder{}
 
@@ -463,21 +461,23 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 	events := []interface{}{}
 
 	for rows.Next() {
-		var rawSource []byte
 		var id uuid.UUID
 		var timestamp string
-		err = rows.Scan(&id, &timestamp, &rawSource)
+		var archived int8
+		var rawSource []byte
+		err = rows.Scan(&id, &timestamp, &archived, &rawSource)
 		if err != nil {
 			return nil, err
 		}
 
-		source := map[string]interface{}{}
-
-		decoder := json.NewDecoder(bytes.NewReader(rawSource))
-		decoder.UseNumber()
-		err = decoder.Decode(&source)
+		source, err := eve.NewEveEventFromBytes(rawSource)
 		if err != nil {
 			return nil, err
+		}
+
+		if archived > 0 {
+			source.AddTag("evebox.archived")
+			source.AddTag("archived")
 		}
 
 		source["@timestamp"] = timestamp
@@ -578,9 +578,19 @@ func parseQueryString(builder *SqlBuilder, queryString string, eventTable string
 				arg = val
 			}
 
-			builder.WhereEquals(
-				fmt.Sprintf(" json_extract(%s.source, '$.%s')", eventTable, key),
-				arg)
+			log.Debug("Parsed keyword: %s : %v", key, arg)
+
+			switch {
+			case key == "-tags" && arg == "archived":
+				builder.WhereEquals("archived", 0)
+			case (key == "tags" || key == "+tags") && arg == "archived":
+				builder.WhereEquals("archived", 1)
+			default:
+				builder.WhereEquals(
+					fmt.Sprintf(" json_extract(%s.source, '$.%s')", eventTable, key),
+					arg)
+			}
+
 		} else if val != "" {
 			fts = append(fts, fmt.Sprintf("\"%s\"", val))
 		}

@@ -31,6 +31,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/util"
 	"strings"
 	"time"
@@ -160,4 +161,23 @@ func (e EveEvent) GetMap(key string) util.JsonMap {
 
 func (e EveEvent) GetString(key string) string {
 	return util.JsonMap(e).GetString(key)
+}
+
+func (e EveEvent) AddTag(tag string) {
+	if e["tags"] == nil {
+		log.Info("Creating empty tags.")
+		e["tags"] = make([]interface{}, 1)
+	}
+	tags, ok := e["tags"].([]interface{})
+	if !ok {
+		log.Warning("Failed to convert tags to []string")
+		return
+	}
+	for _, existing := range tags {
+		if existing.(string) == tag {
+			return
+		}
+	}
+	tags = append(tags, tag)
+	e["tags"] = tags
 }
