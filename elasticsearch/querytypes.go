@@ -71,7 +71,8 @@ func KeywordPrefixQuery(field string, value string, suffix string) map[string]in
 func QueryString(query string) map[string]interface{} {
 	return map[string]interface{}{
 		"query_string": map[string]interface{}{
-			"query": query,
+			"query":            query,
+			"default_operator": "AND",
 		},
 	}
 }

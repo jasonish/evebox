@@ -62,6 +62,8 @@ export class ElasticSearchService {
     // usage.
     public keyword:string = "raw";
 
+    public keywordSuffix:string = "";
+
     constructor(private api:ApiService,
                 private topNavService:TopNavService,
                 private appService:AppService,
@@ -74,6 +76,13 @@ export class ElasticSearchService {
         }
         catch (err) {
         }
+
+        try {
+            this.keywordSuffix = config.getConfig()["extra"]["elasticSearchKeywordSuffix"];
+        }
+        catch (err) {
+        }
+
         console.log("Use Elastic Search keyword " + this.keyword);
     }
 

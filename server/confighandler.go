@@ -61,5 +61,11 @@ func ConfigHandler(appContext AppContext, r *http.Request) interface{} {
 		"elasticSearchKeyword": esKeyword,
 	}
 
+	if esKeyword != "" {
+		response.Extra["elasticSearchKeywordSuffix"] = "." + esKeyword
+	} else {
+		response.Extra["elasticSearchKeywordSuffix"] = ""
+	}
+
 	return response
 }

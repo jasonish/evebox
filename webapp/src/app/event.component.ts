@@ -137,9 +137,12 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     sessionSearch() {
-        let q = `+alert.signature_id:${this.event._source.alert.signature_id}`;
-        q += ` +src_ip.${this.elasticSearch.keyword}:"${this.event._source.src_ip}"`;
-        q += ` +dest_ip.${this.elasticSearch.keyword}:"${this.event._source.dest_ip}"`;
+        let q = `alert.signature_id:${this.event._source.alert.signature_id}`;
+        q += ` src_ip${this.elasticSearch.keywordSuffix}:"${this.event._source.src_ip}"`;
+        q += ` dest_ip${this.elasticSearch.keywordSuffix}:"${this.event._source.dest_ip}"`;
+
+        // This is only for alerts right now.
+        q += ` event_type${this.elasticSearch.keywordSuffix}:"alert"`;
 
         if (this.params && this.params.referer == "/inbox") {
             q += ` -tags:archived`;
