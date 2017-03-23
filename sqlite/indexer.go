@@ -32,7 +32,6 @@ import (
 	"encoding/json"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
-	"github.com/satori/go.uuid"
 )
 
 type op struct {
@@ -52,8 +51,6 @@ func NewSqliteIndexer(db *SqliteService) *SqliteIndexer {
 }
 
 func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
-
-	eventId := uuid.NewV1()
 
 	// Convert flow timestamps for UTC.
 	if event.GetString("event_type") == "flow" {
@@ -89,8 +86,8 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 	}
 
 	i.queue = append(i.queue, op{
-		query: "insert into events (id, timestamp, source) values ($1, $2, $3)",
-		args:  []interface{}{eventId, event.Timestamp().UnixNano(), encoded},
+		query: "insert into events (timestamp, source) values ($1, $2)",
+		args:  []interface{}{event.Timestamp().UnixNano(), encoded},
 	})
 	i.queue = append(i.queue, op{
 		query: "insert into events_fts (rowid, source) values (last_insert_rowid(), $1)",

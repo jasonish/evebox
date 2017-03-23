@@ -1,15 +1,17 @@
 CREATE TABLE events (
-
-  -- Implicit rowid column that is used for joins.
-
-  -- Textual ID.
-  id        TEXT PRIMARY KEY,
+  -- Implicit rowid column is the event id and primary key.
 
   -- Timestamp in nanoseconds since the epoch.
   timestamp INTEGER NOT NULL,
 
+  -- The archived flag is stored as a column as I don't think you can update
+  -- json fields with an update statement.
   archived  INTEGER DEFAULT 0,
+
+  -- Escalated/starred is also a column for the same reason as archived.
   escalated INTEGER DEFAULT 0,
+
+  -- The actual event.
   source    JSON
 );
 
@@ -49,37 +51,3 @@ AFTER DELETE ON events
 BEGIN
   INSERT INTO events_fts (events_fts, rowid) VALUES ('delete', old.rowid);
 END;
-
---CREATE VIRTUAL TABLE events_fts USING fts5(id, timestamp, source);
-
--- Example inbox search...
--- SELECT
---   b.count,
---   a.id,
---   b.escalated_count,
---   a.archived,
---   a.timestamp,
---   a.source
--- FROM events a
---   INNER JOIN
---   (
---     SELECT
---       events.rowid,
---       count(json_extract(events.source, '$.alert.signature_id')) AS count,
---       max(timestamp)                                             AS maxts,
---       sum(
---           escalated)                                             AS escalated_count
---     FROM events, events_fts
---     WHERE json_extract(events.source, '$.event_type') = 'alert'
---           AND archived = 0
---           AND events_fts MATCH '"zero"'
---           AND events.rowid = events_fts.rowid
---     GROUP BY
---       json_extract(events.source, '$.alert.signature_id'),
---       json_extract(events.source, '$.src_ip'),
---       json_extract(events.source, '$.dest_ip')
---   ) AS b
--- WHERE a.rowid = b.rowid
---       AND a.timestamp = b.maxts
--- ORDER BY timestamp
---   DESC

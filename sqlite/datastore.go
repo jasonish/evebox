@@ -35,7 +35,6 @@ import (
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
-	"github.com/satori/go.uuid"
 	"strconv"
 	"strings"
 	"time"
@@ -63,7 +62,7 @@ func (s *DataStore) GetEventById(id string) (map[string]interface{}, error) {
 	builder := SqlBuilder{}
 	builder.Select("source")
 	builder.From("events")
-	builder.WhereEquals("id", id)
+	builder.WhereEquals("rowid", id)
 
 	tx, err := s.db.GetTx()
 	if err != nil {
@@ -97,14 +96,14 @@ func (s *DataStore) GetEventById(id string) (map[string]interface{}, error) {
 		return wrapper, nil
 	}
 
-	return nil, core.NotImplementedError
+	return nil, nil
 }
 
 func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
 
 	query := `
 SELECT b.count,
-  a.id,
+  a.rowid as id,
   b.escalated_count,
   a.archived,
   a.source
@@ -184,7 +183,7 @@ ORDER BY timestamp DESC`
 
 	for rows.Next() {
 		var count int64
-		var id string
+		var id int64
 		var escalated int64
 		var archived int8
 		var rawEvent []byte
@@ -402,7 +401,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		size = options.Size
 	}
 
-	query := `select events.id, events.archived, events.source`
+	query := `select events.rowid as id, events.archived, events.source`
 
 	sqlBuilder := SqlBuilder{}
 
@@ -464,7 +463,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 	events := []interface{}{}
 
 	for rows.Next() {
-		var id uuid.UUID
+		var id int64
 		var archived int8
 		var rawSource []byte
 		err = rows.Scan(&id, &archived, &rawSource)
@@ -485,7 +484,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		source["@timestamp"] = source["timestamp"]
 
 		events = append(events, map[string]interface{}{
-			"_id":     id.String(),
+			"_id":     id,
 			"_source": source,
 		})
 	}
@@ -498,7 +497,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 func (d *DataStore) FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error) {
 
 	query := `select
-                    id, source
+                    rowid as id, source
                   from events
                   where
                     json_extract(source, '$.event_type') = 'flow'
