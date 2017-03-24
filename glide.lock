@@ -1,5 +1,5 @@
-hash: 380cc418539ab937049202617cfc012655f13aa34e8ca14c68f13ccc52863851
-updated: 2017-03-22T00:27:01.264391632-06:00
+hash: b36caa1f871f539f833f7d035abcc791ec9f4b4dd0f05e1faef159b491dbca98
+updated: 2017-03-24T14:18:43.213064835-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -10,6 +10,8 @@ imports:
   - pcapgo
 - name: github.com/gorilla/context
   version: 1ea25387ff6f684839d82767c1733ff4d4d15d0a
+- name: github.com/gorilla/handlers
+  version: 13d73096a474cac93275c679c7b8a2dc17ddba82
 - name: github.com/gorilla/mux
   version: 0eeaf8392f5b04950925b8a69fe70f110fa7cbfc
 - name: github.com/hashicorp/hcl
@@ -32,7 +34,7 @@ imports:
 - name: github.com/magiconair/properties
   version: b3b15ef068fd0b17ddf408a23669f20811d194d2
 - name: github.com/mattn/go-sqlite3
-  version: 866c3293d9a76aa491e56cc978d0d7fb0e63e121
+  version: b2e464529e88db676302aa63a4ce36711633950e
   repo: git@github.com:mattn/go-sqlite3.git
   vcs: git
 - name: github.com/mitchellh/mapstructure

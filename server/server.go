@@ -31,6 +31,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox/log"
+	"github.com/gorilla/handlers"
 )
 
 type Router struct {
@@ -98,7 +99,8 @@ func NewServer(appContext AppContext) *Server {
 
 func (s *Server) Start(addr string) error {
 	log.Printf("Listening on %s", addr)
-	return http.ListenAndServe(addr, s.router.router)
+	return http.ListenAndServe(addr,
+		handlers.CompressHandler(s.router.router))
 }
 
 func (s *Server) RegisterApiHandlers() {
