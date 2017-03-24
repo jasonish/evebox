@@ -105,7 +105,8 @@ dev-server: evebox
 # restarts as needed.
 dev-server-reflex:
 	reflex -s -R 'bindata\.go' -r '\.go$$' -- \
-	sh -c "NO_WEBAPP=1 make evebox && ./evebox --dev http://localhost:58080 ${DEV_ARGS}"
+	sh -c "NO_WEBAPP=1 make evebox && ./evebox \
+	          --dev http://localhost:58080 ${ARGS}"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)

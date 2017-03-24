@@ -97,9 +97,16 @@ Docker installed, you can build a release with the following command:
 
 ## Run in Development Mode
 
-ELASTICSEARCH_URL=http://localhost:9200 make dev-server
+```
+ARGS="-e http://localhost:9200" make dev-server
+```
 
-Where the ELASTICSEARCH_URL is pointing to your Elastic Search server.
+to run in development mode using an Elastic Search datastore at
+http://localhost:9200.
+
+In development mode changes to Go files will trigger a
+recompile/restart, and changes to the web app will trigger a recompile
+of the javascript and a browser refresh.
 
 ## Change Log
 
