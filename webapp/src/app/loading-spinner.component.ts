@@ -54,8 +54,8 @@ import {
 })
 export class EveboxLoadingSpinnerComponent {
 
-    @Input("loading") private loading:boolean = false;
-    @Input("fontSize") private fontSize:number = 300;
+    @Input("loading") loading:boolean = false;
+    @Input("fontSize") fontSize:number = 300;
 
     constructor(private element:ElementRef) {
     }

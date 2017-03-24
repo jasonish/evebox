@@ -120,17 +120,22 @@ declare var $:any;
 </nav>`,
 })
 export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
+    appService:AppService;
 
-    private routerSub:Subscription;
+    routerSub:Subscription;
 
-    private features:any = {};
+    features:any = {};
+
+    elasticSearchService: ElasticSearchService;
 
     constructor(private router:Router,
-                private elasticSearchService:ElasticSearchService,
+                elasticSearchService:ElasticSearchService,
                 private mousetrap:MousetrapService,
                 private topNavService:TopNavService,
-                private appService:AppService,
+                appService:AppService,
                 private configService:ConfigService) {
+        this.elasticSearchService = elasticSearchService;
+        this.appService = appService;
     }
 
     ngOnInit() {

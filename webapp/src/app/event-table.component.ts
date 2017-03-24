@@ -98,8 +98,8 @@ export interface EveboxEventTableConfig {
 })
 export class EveboxEventTableComponent implements OnInit, OnDestroy {
 
-    @Input() private config:EveboxEventTableConfig;
-    private activeRow:number = 0;
+    @Input() config:EveboxEventTableConfig;
+    activeRow:number = 0;
 
     constructor(private router:Router,
                 private mousetrap:MousetrapService,

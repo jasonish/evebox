@@ -110,20 +110,20 @@ import * as moment from "moment";
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
 
-    private eventsOverTime:any[];
+    eventsOverTime:any[];
 
-    private topRrnames:any[];
-    private topRdata:any[];
-    private topRrtypes:any[];
-    private topRcodes:any[];
-    private topServers:any[];
-    private topClients:any[];
+    topRrnames:any[];
+    topRdata:any[];
+    topRrtypes:any[];
+    topRcodes:any[];
+    topServers:any[];
+    topClients:any[];
 
-    private loading:number = 0;
+    loading:number = 0;
 
-    private queryString:string = "";
+    queryString:string = "";
 
-    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
     constructor(private route:ActivatedRoute,
                 private reports:ReportsService,

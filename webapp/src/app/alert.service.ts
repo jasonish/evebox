@@ -27,7 +27,6 @@
 import {Injectable} from "@angular/core";
 import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
 
-//import moment = require("moment");
 import * as moment from "moment";
 
 /**

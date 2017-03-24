@@ -109,13 +109,13 @@ import {loadingAnimation} from "./animations";
 })
 export class EventsComponent implements OnInit, OnDestroy {
 
-    private resultSet:ResultSet;
+    resultSet:ResultSet;
 
-    private loading:boolean = false;
+    loading:boolean = false;
 
-    private queryString:string = "";
+    queryString:string = "";
 
-    private eventTypeFilterValues:string[] = [
+    eventTypeFilterValues:string[] = [
         "All",
         "Alert",
         "HTTP",
@@ -128,12 +128,12 @@ export class EventsComponent implements OnInit, OnDestroy {
         "SSH",
     ];
 
-    private eventTypeFilter:string = this.eventTypeFilterValues[0];
+    eventTypeFilter:string = this.eventTypeFilterValues[0];
 
-    private timeStart:string;
-    private timeEnd:string;
+    timeStart:string;
+    timeEnd:string;
 
-    private eveboxEventTableConfig:EveboxEventTableConfig = {
+    eveboxEventTableConfig:EveboxEventTableConfig = {
         showCount: false,
         rows: []
     };

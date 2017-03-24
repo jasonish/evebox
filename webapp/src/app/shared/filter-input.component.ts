@@ -48,7 +48,7 @@ import {AppService} from "../app.service";
 })
 export class EveboxFilterInputComponent {
 
-    @Input() private queryString:string;
+    @Input() queryString:string;
 
     constructor(private route:ActivatedRoute,
                 private appService:AppService) {

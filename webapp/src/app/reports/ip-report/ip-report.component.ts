@@ -50,13 +50,13 @@ function termQuery(type:string, field:string, value:string) {
 })
 export class IpReportComponent implements OnInit, OnDestroy {
 
-    private ip:string;
+    ip:string;
 
-    private loading:number = 0;
+    loading:number = 0;
 
-    private alertsOverTime:any[];
+    alertsOverTime:any[];
 
-    private flow:any = {
+    flow:any = {
 
         ready: false,
 
@@ -69,30 +69,30 @@ export class IpReportComponent implements OnInit, OnDestroy {
     };
 
     // DNS hostname lookups returning this IP.
-    private dnsHostnamesForAddress:any[];
+    dnsHostnamesForAddress:any[];
 
     // Top requested hostnames.
-    private dnsRequestedHostnames:any[];
+    dnsRequestedHostnames:any[];
 
-    private userAgents:any[];
+    userAgents:any[];
 
-    private topHttpHostnames:any[];
+    topHttpHostnames:any[];
 
-    private tlsSni:any[];
+    tlsSni:any[];
 
-    private topTlsSniRequests:any[];
+    topTlsSniRequests:any[];
 
-    private tlsClientVersions:any[];
+    tlsClientVersions:any[];
 
-    private tlsServerVersions:any[];
+    tlsServerVersions:any[];
 
-    private topTlsSubjectRequests:any[];
+    topTlsSubjectRequests:any[];
 
-    private topDestinationHttpHostnames:any[];
+    topDestinationHttpHostnames:any[];
 
-    private topSignatures:any[];
+    topSignatures:any[];
 
-    private ssh:any = {
+    ssh:any = {
         sshInboundClientVersions: [],
         sshOutboundClientVersions: [],
         sshOutboundServerVersions: [],
@@ -103,12 +103,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
         sshInboundServerProtoVersions: [],
     };
 
-    private sensors:Set<string> = new Set<string>();
+    sensors:Set<string> = new Set<string>();
 
     // Empty string defaults to all sensors.
-    private sensorFilter:string = "";
+    sensorFilter:string = "";
 
-    private queryString:string = "";
+    queryString:string = "";
 
     constructor(private route:ActivatedRoute,
                 private elasticsearch:ElasticSearchService,
@@ -134,7 +134,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
         });
     }
 
-    private relatedAddresses:any[] = []
+    relatedAddresses:any[] = []
 
     buildRelated(ip:any) {
 
@@ -676,7 +676,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
      * Helper function to map terms aggregations into the common format used
      * by Evebox.
      */
-    private mapTerms(buckets:any):any[] {
+    mapTerms(buckets:any):any[] {
         return buckets.map((bucket:any) => {
             return {
                 key: bucket.key,

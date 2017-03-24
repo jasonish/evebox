@@ -32,13 +32,13 @@ import {Component, Input, OnInit} from "@angular/core";
 })
 export class EveboxSearchLinkComponent implements OnInit {
 
-    @Input() private field:string;
-    @Input() private value:string;
-    @Input() private searchParams:any;
-    @Input() private route:string = "/events";
-    @Input() private search:string;
+    @Input() field:string;
+    @Input() value:string;
+    @Input() searchParams:any;
+    @Input() route:string = "/events";
+    @Input() search:string;
 
-    private queryString:string;
+    queryString:string;
 
     ngOnInit() {
         let queryString = "";

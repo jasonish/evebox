@@ -36,7 +36,6 @@ import {loadingAnimation} from "../animations";
 import {humanizeFileSize} from "../humanize.service";
 import {ApiService} from "../api.service";
 
-//import moment = require("moment");
 import * as moment from "moment";
 
 @Component({
@@ -127,25 +126,25 @@ import * as moment from "moment";
 })
 export class NetflowReportComponent implements OnInit, OnDestroy {
 
-    private eventsOverTime:any[];
+    eventsOverTime:any[];
 
-    private topSourcesByBytes:any[];
-    private topSourcesByPackets:any[];
+    topSourcesByBytes:any[];
+    topSourcesByPackets:any[];
 
-    private topDestinationsByBytes:any[];
-    private topDestinationsByPackets:any[];
+    topDestinationsByBytes:any[];
+    topDestinationsByPackets:any[];
 
-    private topByBytes:any[];
-    private topFlowsByPackets:any[];
+    topByBytes:any[];
+    topFlowsByPackets:any[];
 
-    private loading:number = 0;
+    loading:number = 0;
 
-    private queryString:string = "";
+    queryString:string = "";
 
     // A flag that will be set to true if not events to report on were found.
-    private noEvents:boolean = false;
+    noEvents:boolean = false;
 
-    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
     constructor(private reportsService:ReportsService,
                 private elasticsearch:ElasticSearchService,

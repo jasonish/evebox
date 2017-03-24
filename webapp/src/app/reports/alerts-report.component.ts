@@ -113,21 +113,21 @@ import {ElasticSearchService} from "../elasticsearch.service";
 })
 export class AlertReportComponent implements OnInit, OnDestroy {
 
-    private eventsOverTime:any[] = [];
+    eventsOverTime:any[] = [];
 
-    private sourceRows:any[];
-    private destinationRows:any[];
-    private signatureRows:any[];
-    private categoryRows:any[];
+    sourceRows:any[];
+    destinationRows:any[];
+    signatureRows:any[];
+    categoryRows:any[];
 
-    private srcPorts:any[];
-    private destPorts:any[];
+    srcPorts:any[];
+    destPorts:any[];
 
-    private loading:number = 0;
+    loading:number = 0;
 
-    private queryString:string = "";
+    queryString:string = "";
 
-    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
     constructor(private appService:AppService,
                 private ss:EveboxSubscriptionService,

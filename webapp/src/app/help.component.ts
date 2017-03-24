@@ -68,7 +68,7 @@ declare var $:any;
 })
 export class EveboxHelpComponent implements OnInit, OnDestroy {
 
-    private shortcuts:any[] = [
+    shortcuts:any[] = [
         {
             shortcut: "?",
             help: "Show help."
@@ -135,9 +135,9 @@ export class EveboxHelpComponent implements OnInit, OnDestroy {
         }
     ];
 
-    private versionInfo:any = {};
+    versionInfo:any = {};
 
-    private appServiceSubscription:any;
+    appServiceSubscription:any;
 
     constructor(private appService:AppService, private api:ApiService) {
     }

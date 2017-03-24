@@ -93,11 +93,11 @@ import {ElasticSearchService} from "./elasticsearch.service";
 })
 export class EveboxEventTable2Component {
 
-    @Input() private rows:any[];
+    @Input() rows:any[];
 
-    @Input() private showEventType:boolean = true;
+    @Input() showEventType:boolean = true;
 
-    @Input() private showActiveEvent:boolean = true;
+    @Input() showActiveEvent:boolean = true;
 
     constructor(private router:Router,
                 private mousetrap:MousetrapService,

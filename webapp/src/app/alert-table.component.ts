@@ -46,8 +46,8 @@ declare var $:any;
 })
 export class AlertTableComponent implements OnInit, OnDestroy {
 
-    @Input() private rows:any[] = [];
-    @Output() private rowClicked:EventEmitter<any> = new EventEmitter<any>();
+    @Input() rows:any[] = [];
+    @Output() rowClicked:EventEmitter<any> = new EventEmitter<any>();
     @Input() activeRow:number = 0;
     @Output() activeRowChange:EventEmitter<number> = new EventEmitter<number>();
     @Output() toggleEscalation:EventEmitter<any> = new EventEmitter<any>();
@@ -55,7 +55,7 @@ export class AlertTableComponent implements OnInit, OnDestroy {
 
     @Output() escalateAndArchiveEvent:EventEmitter<any> = new EventEmitter<any>();
 
-    private sortBy:string = "timestampDesc";
+    sortBy:string = "timestampDesc";
 
     constructor(private appService:AppService,
                 private mousetrap:MousetrapService,

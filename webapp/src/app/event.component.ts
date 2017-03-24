@@ -46,15 +46,15 @@ import {loadingAnimation} from "./animations";
 })
 export class EventComponent implements OnInit, OnDestroy {
 
-    private loading:boolean = false;
+    loading:boolean = false;
 
-    private eventId:string;
-    private alertGroup:AlertGroup;
-    private event:any = {};
-    private params:any = {};
-    private flows:any[] = [];
+    eventId:string;
+    alertGroup:AlertGroup;
+    public event:any = {};
+    params:any = {};
+    flows:any[] = [];
 
-    private servicesForEvent:any[] = []
+    servicesForEvent:any[] = []
 
     constructor(private route:ActivatedRoute,
                 private router:Router,

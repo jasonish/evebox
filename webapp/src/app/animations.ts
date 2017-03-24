@@ -1,4 +1,4 @@
-import {style, animate, state, transition, trigger} from "@angular/core";
+import { trigger, state, style, transition, animate } from '@angular/animations';
 
 export var loadingAnimation = trigger('loadingState', [
         state('false', style({

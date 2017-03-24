@@ -94,18 +94,18 @@ import * as moment from "moment";
 })
 export class FlowReportComponent implements OnInit, OnDestroy {
 
-    private eventsOverTime:any[];
+    eventsOverTime:any[];
 
-    private topClientsByFlows:any[];
-    private topServersByFlows:any[];
+    topClientsByFlows:any[];
+    topServersByFlows:any[];
 
-    private topFlowsByAge:any[];
+    topFlowsByAge:any[];
 
-    private loading:number = 0;
+    loading:number = 0;
 
-    private queryString:string = "";
+    queryString:string = "";
 
-    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
     constructor(private appService:AppService,
                 private route:ActivatedRoute,

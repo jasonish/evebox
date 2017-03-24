@@ -35,8 +35,8 @@ import * as moment from "moment";
 export class EveboxDurationComponent implements OnInit, OnDestroy {
 
     @Input("timestamp") private timestamp:any;
-    private duration:any;
-    private interval:any = null;
+    duration:any;
+    interval:any = null;
 
     constructor(private ngZone:NgZone) {
     }

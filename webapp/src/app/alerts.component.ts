@@ -55,18 +55,18 @@ export interface AlertsState {
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 
-    private windowSize:number = 100;
-    private offset:number = 0;
+    windowSize:number = 100;
+    offset:number = 0;
 
-    private rows:any[] = [];
-    private allRows:any[] = [];
+    rows:any[] = [];
+    allRows:any[] = [];
 
-    private activeRow:number = 0;
-    private queryString:string = "";
-    private loading:boolean = false;
-    private dispatcherSubscription:any;
+    activeRow:number = 0;
+    queryString:string = "";
+    loading:boolean = false;
+    dispatcherSubscription:any;
 
-    private silentRefresh:boolean = false;
+    silentRefresh:boolean = false;
 
     constructor(private alertService:AlertService,
                 private elasticSearchService:ElasticSearchService,

@@ -62,10 +62,10 @@ import {Component, Input} from "@angular/core";
 })
 export class EveboxReportDataTable {
 
-    @Input() private title:string;
-    @Input() private headers:string[] = [];
-    @Input() private rows:any[];
-    @Input() private loading:number = 0;
+    @Input() title:string;
+    @Input() headers:string[] = [];
+    @Input() rows:any[];
+    @Input() loading:number = 0;
 
     q(row:any) {
         if (row.searchKey) {

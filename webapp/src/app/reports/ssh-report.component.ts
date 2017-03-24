@@ -51,7 +51,7 @@ export class SshTopClientsComponent implements OnInit, OnChanges {
 
     @Input() queryString:string = "";
 
-    private results:any[] = [];
+    results:any[] = [];
 
     constructor(private api:ApiService, private topNavService:TopNavService) {
     }
@@ -96,7 +96,7 @@ export class SshTopServersComponent implements OnInit, OnChanges {
 
     @Input() queryString:string = "";
 
-    private results:any[] = [];
+    results:any[] = [];
 
     constructor(private api:ApiService, private topNavService:TopNavService,
                 private elasticSearch:ElasticSearchService) {
@@ -254,18 +254,18 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
 })
 export class SshReportComponent implements OnInit, OnDestroy {
 
-    private eventsOverTime:any[] = [];
+    eventsOverTime:any[] = [];
 
-    private serverSoftware:any[] = [];
-    private clientSoftware:any[] = [];
+    serverSoftware:any[] = [];
+    clientSoftware:any[] = [];
 
-    private loading:number = 0;
+    loading:number = 0;
 
-    private queryString:string = "";
+    queryString:string = "";
 
-    private subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    private charts:any = {};
+    charts:any = {};
 
     constructor(private appService:AppService,
                 private ss:EveboxSubscriptionService,
