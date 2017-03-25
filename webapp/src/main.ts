@@ -29,6 +29,7 @@ import './polyfills.ts';
 import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
 import {enableProdMode} from '@angular/core';
 import {AppModule} from './app/app.module';
+import {environment} from "./environments/environment";
 
 import "rxjs";
 
@@ -45,13 +46,26 @@ if (process.env.ENV === "production") {
     enableProdMode();
 }
 
+if (environment.production) {
+    console.log("Enabling production mode from ng cli environment.");
+    enableProdMode();
+}
+
+function applyStyle(style:string) {
+    let node = document.createElement("style");
+    node.innerHTML = style;
+    document.body.appendChild(node);
+}
+
 // Set theme.
 switch (localStorage.theme) {
     case "slate":
-        require("./styles/evebox-slate.scss");
+        console.log("Setting theme to slate.");
+        applyStyle(require("./styles/evebox-slate.scss"));
         break;
     default:
-        require("./styles/evebox-default.scss");
+        console.log("Setting theme to default.");
+        applyStyle(require("./styles/evebox-default.scss"));
         break;
 }
 

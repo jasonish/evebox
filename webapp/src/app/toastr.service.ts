@@ -27,7 +27,6 @@
 import {Injectable} from "@angular/core";
 
 let toastr = require("toastr");
-import "toastr/build/toastr.css";
 
 export interface ToastrOptions {
     title?:string;

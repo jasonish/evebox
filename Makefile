@@ -67,14 +67,11 @@ distclean: clean
 
 .PHONY: dist rpm deb
 
-resources/public/app.js resources/public/index.html: $(WEBAPP_SRCS)
+resources/public/_done: $(WEBAPP_SRCS)
 	cd webapp && $(MAKE)
+	touch $@
 
-resources/public/favicon.ico: resources/favicon.ico
-	cp $^ $@
-favicon: resources/public/favicon.ico
-
-public: resources/public/index.html resources/public/app.js favicon
+public: resources/public/_done
 
 ifdef NO_WEBAPP
 webapp:
@@ -106,7 +103,7 @@ dev-server: evebox
 dev-server-reflex:
 	reflex -s -R 'bindata\.go' -r '\.go$$' -- \
 	sh -c "NO_WEBAPP=1 make evebox && ./evebox \
-	          --dev http://localhost:58080 ${ARGS}"
+	          --dev http://localhost:4200 ${ARGS}"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)

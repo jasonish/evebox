@@ -27,6 +27,7 @@
 import {Injectable} from "@angular/core";
 import {Http, Response} from "@angular/http";
 import {ToastrService} from "./toastr.service";
+import {GITREV} from "../environments/gitrev";
 
 export class QueryStringBuilder {
 
@@ -61,7 +62,7 @@ export class ApiService {
         if (this.versionWarned) {
             return;
         }
-        let webappRev:string = process.env.GITREV;
+        let webappRev:string = GITREV;
         let serverRev:string = response.headers.get("x-evebox-git-revision");
         if (webappRev != serverRev) {
             this.toastr.warning(
