@@ -9,6 +9,7 @@ docker_run() {
 	   -v $(pwd):/go/src/github.com/jasonish/evebox \
 	   -w /go/src/github.com/jasonish/evebox \
 	   -e WITH_SQLITE=${WITH_SQLITE} \
+	   --privileged \
 	   evebox/builder $@
 }
 
@@ -17,6 +18,7 @@ release() {
     docker run --rm -it \
 	   -v $(pwd):/go/src/github.com/jasonish/evebox \
 	   -w /go/src/github.com/jasonish/evebox \
+	   --privileged \
 	   evebox/builder \
 	   make install-deps release deb rpm
 }
