@@ -606,8 +606,6 @@ func (s *EventService) FindNetflow(options core.EventQueryOptions, sortBy string
 		query.Size = size
 	}
 
-	log.Println(util.ToJsonPretty(query))
-
 	response, err := s.es.Search(query)
 	if err != nil {
 		return nil, err
