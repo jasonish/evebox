@@ -26,5 +26,5 @@ distclean:
 	rm -rf typings
 
 start: gitrev
-	ng server $(BUILD_ARGS)
+	$(NG) server $(BUILD_ARGS)
 

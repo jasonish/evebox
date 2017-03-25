@@ -25,7 +25,6 @@
  */
 
 import {Component, Input, OnChanges} from "@angular/core";
-import "metrics-graphics/dist/metricsgraphics.css";
 import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
 
 let MG = require("metrics-graphics");
