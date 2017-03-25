@@ -10,11 +10,12 @@ NG :=		./node_modules/.bin/ng
 
 all: build
 
-src/environments/gitrev.ts:
-	echo "export const GITREV = \"$(GITREV)\";" > src/environments/gitrev.ts
-gitrev: src/environments/gitrev.ts
+gitrev:
+	@echo "Exporting GITREV = $(GITREV)."
+	@echo "export const GITREV = \"$(GITREV)\";" > src/environments/gitrev.ts
 
 build: gitrev
+	@echo "Building EveBox webapp rev $(GITREV)."
 	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH)
 
 install-deps:

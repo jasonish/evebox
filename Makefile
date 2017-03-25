@@ -63,6 +63,7 @@ clean:
 
 distclean: clean
 	rm -rf vendor
+	rm -rf .glide
 	$(MAKE) -C webapp $@
 
 .PHONY: dist rpm deb
@@ -121,6 +122,7 @@ dist: DISTNAME ?= ${APP}$(DIST_SUFFIX)-${VERSION}-${GOOS}-${DISTARCH}
 dist: LDFLAGS += -s -w
 dist: CGO_ENABLED ?= $(CGO_ENABLED)
 dist: resources/bindata.go
+	@echo "Building EveBox rev $(BUILD_REV)."
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags "$(TAGS)" -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP} cmd/evebox.go

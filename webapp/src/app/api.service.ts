@@ -65,6 +65,7 @@ export class ApiService {
         let webappRev:string = GITREV;
         let serverRev:string = response.headers.get("x-evebox-git-revision");
         if (webappRev != serverRev) {
+            console.log(`Server version: ${serverRev}; webapp version: ${webappRev}`);
             this.toastr.warning(
                 `The EveBox server has been updated.
              Please reload</a>.
