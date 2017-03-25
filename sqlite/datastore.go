@@ -30,11 +30,11 @@ package sqlite
 
 import (
 	"fmt"
-	"github.com/jasonish/evebox/.glide/cache/src/https-github.com-pkg-errors"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/pkg/errors"
 	"strconv"
 	"strings"
 	"time"
