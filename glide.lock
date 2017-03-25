@@ -1,5 +1,5 @@
-hash: b36caa1f871f539f833f7d035abcc791ec9f4b4dd0f05e1faef159b491dbca98
-updated: 2017-03-24T14:18:43.213064835-06:00
+hash: 40ebb7a8c999f42b4f6071394c67730d26f5f5c028abc48cb9d800893af3017d
+updated: 2017-03-25T00:25:12.365686154-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -35,7 +35,7 @@ imports:
   version: b3b15ef068fd0b17ddf408a23669f20811d194d2
 - name: github.com/mattn/go-sqlite3
   version: b2e464529e88db676302aa63a4ce36711633950e
-  repo: git@github.com:mattn/go-sqlite3.git
+  repo: https://github.com/mattn/go-sqlite3.git
   vcs: git
 - name: github.com/mitchellh/mapstructure
   version: db1efb556f84b25a0a13a04aad883943538ad2e0

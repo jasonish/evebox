@@ -14,7 +14,7 @@ import:
 - package: github.com/lib/pq
 - package: github.com/mattn/go-sqlite3
   version: master
-  repo: git@github.com:mattn/go-sqlite3.git
+  repo: https://github.com/mattn/go-sqlite3.git
   vcs: git
 - package: github.com/pkg/errors
 - package: github.com/spf13/viper
