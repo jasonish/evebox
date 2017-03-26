@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.5.0...HEAD)
+- Upgrade to Angular 4 and Angular CLI 1.0 and use its AOT compilation
+  feature reducing the Javascript size even further. Combined with
+  response compression, initial data loaded by the browser is about
+  7-8x less.
+- Compress HTTP responses speeding up initial load times.
 - New "oneshot" mode - a mode where EveBox directly reads in an
   eve.log file into an SQLite database for one time viewing, then
   cleans up after itself.
