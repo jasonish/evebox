@@ -39,6 +39,11 @@ import (
 	"time"
 )
 
+func init() {
+	viper.SetDefault("database.sqlite.disable-fsync", false)
+	viper.BindEnv("database.sqlite.disable-fsync", "DISABLE_FSYNC")
+}
+
 type SqliteService struct {
 	*sql.DB
 }
@@ -113,7 +118,10 @@ func InitSqlite(appContext *server.AppContext) (err error) {
 		return err
 	}
 
-	db.Exec("pragma synchronous = off")
+	if viper.GetBool("database.sqlite.disable-fsync") {
+		log.Info("Disabling fsync")
+		db.Exec("pragma synchronous = off")
+	}
 
 	appContext.DataStore = NewDataStore(db)
 

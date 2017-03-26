@@ -35,7 +35,7 @@ import (
 	"time"
 )
 
-const BATCH_SIZE = 10000
+const BATCH_SIZE = 1000
 
 // EveFileProcessor processes eve files by reading events from reader, applying
 // any filters then sending the events to an event sink.
