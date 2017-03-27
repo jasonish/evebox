@@ -104,6 +104,7 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 	query := `
 SELECT b.count,
   a.rowid as id,
+  b.mints as mints,
   b.escalated_count,
   a.archived,
   a.source
@@ -113,6 +114,7 @@ FROM events a
     SELECT
       events.rowid,
       count(json_extract(events.source, '$.alert.signature_id')) as count,
+      min(timestamp) as mints,
       max(timestamp) AS maxts,
       sum(escalated) as escalated_count
     %FROM%
@@ -147,7 +149,6 @@ ORDER BY timestamp DESC`
 	}
 
 	now := time.Now()
-	minTs := time.Time{}
 
 	if options.TimeRange != "" {
 
@@ -156,11 +157,9 @@ ORDER BY timestamp DESC`
 			return nil, errors.Wrap(err, "failed to parse duration string)")
 		}
 
-		minTs = now.Add(duration * -1)
+		minTs := now.Add(duration * -1)
 		builder.WhereGte("timestamp", minTs.UnixNano())
 	}
-
-	log.Debug("Time range: %s -> %s", minTs.UTC(), now.UTC())
 
 	query = strings.Replace(query, "%WHERE%", builder.BuildWhere(), 1)
 	query = strings.Replace(query, "%FROM%", builder.BuildFrom(), 1)
@@ -183,6 +182,7 @@ ORDER BY timestamp DESC`
 
 	for rows.Next() {
 		var count int64
+		var minTsNanos int64
 		var id int64
 		var escalated int64
 		var archived int8
@@ -190,6 +190,7 @@ ORDER BY timestamp DESC`
 
 		err = rows.Scan(&count,
 			&id,
+			&minTsNanos,
 			&escalated,
 			&archived,
 			&rawEvent)
@@ -211,7 +212,7 @@ ORDER BY timestamp DESC`
 		alert := map[string]interface{}{
 			"count":          count,
 			"escalatedCount": escalated,
-			"minTs":          eve.FormatTimestampUTC(minTs),
+			"minTs":          eve.FormatTimestampUTC(time.Unix(0, minTsNanos)),
 			"maxTs":          eve.FormatTimestampUTC(event.Timestamp()),
 			"event": map[string]interface{}{
 				"_id":     id,
@@ -304,6 +305,7 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 		p.DstIP)
 
 	if p.MinTimestamp != "" {
+		log.Debug("MinTimestamp: %s", p.MinTimestamp)
 		ts, err := eve.ParseTimestamp(p.MinTimestamp)
 		if err != nil {
 			return err
@@ -312,6 +314,7 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 	}
 
 	if p.MaxTimestamp != "" {
+		log.Debug("MaxTimestamp: %s", p.MaxTimestamp)
 		ts, err := eve.ParseTimestamp(p.MaxTimestamp)
 		if err != nil {
 			return err
@@ -323,7 +326,7 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 
 	start := time.Now()
 
-	log.Println(query)
+	log.Debug("Query: |%s|; Args: %v", query, builder.args)
 
 	tx, err := s.db.GetTx()
 	if err != nil {
@@ -337,8 +340,8 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 	}
 	count, _ := result.RowsAffected()
 
-	duration := time.Now().Sub(start).Seconds()
-	log.Info("Archived %d alerts, duration=%v", count, duration)
+	duration := time.Now().Sub(start)
+	log.Debug("Escalated/starred %d alerts in %v", count, duration)
 
 	return err
 }
@@ -384,10 +387,17 @@ func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
 		log.Error("%v", err)
 	}
 	defer tx.Commit()
-	_, err = tx.Exec(query, builder.args...)
+	r, err := tx.Exec(query, builder.args...)
 	if err != nil {
 		log.Error("error archiving alerts: %v", err)
 		return err
+	}
+	count, err := r.RowsAffected()
+	if err != nil {
+		log.Error("Failed to de-escalate/unstarred events: %v", err)
+		return err
+	} else {
+		log.Debug("De-escalated/unstarred %d events", count)
 	}
 
 	return err
