@@ -12,6 +12,7 @@ EveBox
 
    agent
    esimport
+   api
 
 Indices and tables
 ==================

@@ -32,6 +32,18 @@ import (
 	"strings"
 )
 
+// AlertsHandler handles GET requests to /api/1/alerts.
+//
+// Accepted query parameters:
+//
+//     tags: a list of tags alerts must have, or must not have; must have tags
+//         are prefixed with a "-".
+//
+//     query_string: a query string alerts must match, exact format depends
+//         on the database used.
+//
+//     time_range: a duration strings (ie: 60s) representing the time before now,
+//         until now that alerts must match.
 func AlertsHandler(appContext AppContext, r *http.Request) interface{} {
 
 	options := core.AlertQueryOptions{}
@@ -48,8 +60,15 @@ func AlertsHandler(appContext AppContext, r *http.Request) interface{} {
 		}
 	}
 
-	options.QueryString = r.FormValue("queryString")
-	options.TimeRange = r.FormValue("timeRange")
+	options.QueryString = r.FormValue("query_string")
+	if options.QueryString == "" {
+		options.QueryString = r.FormValue("queryString")
+	}
+
+	options.TimeRange = r.FormValue("time_range")
+	if options.TimeRange == "" {
+		options.TimeRange = r.FormValue("timeRange")
+	}
 
 	results, err := appContext.DataStore.AlertQuery(options)
 	if err != nil {
