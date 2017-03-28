@@ -30,118 +30,60 @@ import (
 	"net/http"
 
 	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox/appcontext"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/resources"
+	"github.com/jasonish/evebox/server/api"
+	"github.com/jasonish/evebox/server/router"
+	"net/http/httputil"
+	"net/url"
 )
 
-type Router struct {
-	router *mux.Router
-}
-
-func NewRouter() *Router {
-	return &Router{
-		router: mux.NewRouter(),
-	}
-}
-
-func (r *Router) Handle(path string, handler http.Handler) *mux.Route {
-	return r.router.Handle(path, handler)
-}
-
-func (r *Router) Prefix(path string, handler http.Handler) {
-	r.router.PathPrefix(path).Handler(handler)
-}
-
-func (r *Router) GET(path string, handler http.Handler) {
-	log.Debug("Adding GET route: %s", path)
-	r.router.Handle(path, handler).Methods("GET")
-}
-
-func (r *Router) POST(path string, handler http.Handler) {
-	r.router.Handle(path, handler).Methods("POST")
-}
-
-type ApiRouter struct {
-	appContext appcontext.AppContext
-	router     *Router
-}
-
-func (r *ApiRouter) Handle(path string, handler ApiHandlerFunc) {
-	r.router.Handle(path, ApiF(r.appContext, handler))
-}
-
-func (r *ApiRouter) GET(path string, handler ApiHandlerFunc) {
-	r.router.GET(path, ApiF(r.appContext, handler))
-}
-
-func (r *ApiRouter) POST(path string, handler ApiHandlerFunc) {
-	r.router.POST(path, ApiF(r.appContext, handler))
-}
-
 type Server struct {
-	appContext appcontext.AppContext
-	router     *Router
+	router *router.Router
 }
 
 func NewServer(appContext appcontext.AppContext) *Server {
 
-	router := NewRouter()
+	router := router.NewRouter()
 
 	server := &Server{
-		appContext: appContext,
-		router:     router,
+		router: router,
 	}
 
-	server.RegisterApiHandlers()
+	apiContext := api.NewApiContext(&appContext)
+	apiContext.InitRoutes(router.Subrouter("/api/1"))
+
+	// Static file server, must be last as it serves as the fallback.
+	router.Prefix("/", StaticHandlerFactory(appContext))
 
 	return server
 }
 
 func (s *Server) Start(addr string) error {
-	log.Printf("Listening on %s", addr)
+	log.Info("Listening on %s", addr)
 	return http.ListenAndServe(addr,
-		handlers.CompressHandler(s.router.router))
+		handlers.CompressHandler(
+			VersionHeaderWrapper(s.router.Router)))
 }
 
-func (s *Server) RegisterApiHandlers() {
+func StaticHandlerFactory(appContext appcontext.AppContext) http.Handler {
+	if appContext.Vars.DevWebAppServerUrl != "" {
+		log.Notice("Proxying static files to %v.",
+			appContext.Vars.DevWebAppServerUrl)
+		devServerProxyUrl, err := url.Parse(appContext.Vars.DevWebAppServerUrl)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return httputil.NewSingleHostReverseProxy(devServerProxyUrl)
+	}
+	return resources.FileServer{}
+}
 
-	apiRouter := ApiRouter{s.appContext, s.router}
-
-	apiRouter.Handle("/api/1/alert-group/archive", AlertGroupArchiveHandler)
-	apiRouter.Handle("/api/1/alert-group/star", StarAlertGroupHandler)
-	apiRouter.POST("/api/1/alert-group/unstar", UnstarAlertGroupHandler)
-
-	apiRouter.Handle("/api/1/event/{id}", GetEventByIdHandler)
-
-	apiRouter.POST("/api/1/event/{id}/archive", ArchiveEventHandler)
-	apiRouter.POST("/api/1/event/{id}/escalate", EscalateEventHandler)
-	apiRouter.POST("/api/1/event/{id}/de-escalate", DeEscalateEventHandler)
-
-	apiRouter.Handle("/api/1/config", ConfigHandler)
-	apiRouter.Handle("/api/1/version", VersionHandler)
-	apiRouter.Handle("/api/1/eve2pcap", Eve2PcapHandler)
-
-	apiRouter.GET("/api/1/alerts", AlertsHandler)
-	apiRouter.GET("/api/1/event-query", EventQueryHandler)
-
-	apiRouter.POST("/api/1/find-flow", FindFlowHandler)
-
-	apiRouter.Handle("/api/1/query", QueryHandler)
-
-	apiRouter.Handle("/api/1/_bulk", EsBulkHandler)
-
-	apiRouter.GET("/api/1/report/dns/requests/rrnames", ReportDnsRequestRrnames)
-	apiRouter.POST("/api/1/report/dns/requests/rrnames", ReportDnsRequestRrnames)
-
-	apiRouter.GET("/api/1/netflow", NetflowHandler)
-
-	apiRouter.GET("/api/1/report/agg", ReportAggs)
-	apiRouter.GET("/api/1/report/histogram", ReportHistogram)
-
-	apiRouter.POST("/api/1/submit", SubmitHandler)
-
-	// Static file server, must be last as it serves as the fallback.
-	s.router.Prefix("/", StaticHandlerFactory(s.appContext))
-
+func VersionHeaderWrapper(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-EveBox-Git-Revision", core.BuildRev)
+		handler.ServeHTTP(w, r)
+	})
 }

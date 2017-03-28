@@ -24,16 +24,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
 	"fmt"
-	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/eve"
 	"net/http"
 )
 
-func Eve2PcapHandler(_ appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) Eve2PcapHandler(w *ResponseWriter, r *http.Request) error {
 	var event eve.EveEvent
 	var err error
 	var pcap []byte
@@ -83,11 +82,8 @@ func Eve2PcapHandler(_ appcontext.AppContext, r *http.Request) interface{} {
 		}
 	}
 
-	return HttpResponse{
-		contentType: "application/vnc.tcpdump.pcap",
-		headers: map[string]string{
-			"Content-Disposition": "attachment; filename=event.pcap",
-		},
-		body: pcap,
-	}
+	w.Header().Set("content-type", "application/vnc.tcpdump.pcap")
+	w.Header().Set("content-disposition", "attachment; filename=event.pcap")
+	_, err = w.Write(pcap)
+	return err
 }

@@ -24,30 +24,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
-	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"net/http"
-	"strconv"
 )
 
-func EventQueryHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
+type VersionResponse struct {
+	Version  string `json:"version"`
+	Revision string `json:"revision"`
+}
 
-	var options core.EventQueryOptions
-
-	options.QueryString = r.FormValue("queryString")
-	options.MaxTs = r.FormValue("maxTs")
-	options.MinTs = r.FormValue("minTs")
-	options.EventType = r.FormValue("eventType")
-	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 0, 64)
-
-	response, err := appContext.DataStore.EventQuery(options)
-	//response, err := appContext.EventQueryService.EventQuery(options)
-	if err != nil {
-		return err
+func (c *ApiContext) VersionHandler(w *ResponseWriter, r *http.Request) error {
+	response := VersionResponse{
+		core.BuildVersion,
+		core.BuildRev,
 	}
-
-	return response
+	return w.OkJSON(response)
 }

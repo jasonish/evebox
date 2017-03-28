@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2016-2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,16 +24,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
-	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/log"
 	"net/http"
 	"strings"
 )
 
-// AlertsHandler handles GET requests to /api/1/alerts.
+// AlertsHandler handles GET requests to /api/1/alerts. This is the handler
+// for the Inbox, Escalated and Alerts view queries.
 //
 // Accepted query parameters:
 //
@@ -45,7 +46,7 @@ import (
 //
 //     time_range: a duration strings (ie: 60s) representing the time before now,
 //         until now that alerts must match.
-func AlertsHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) AlertsHandler(w *ResponseWriter, r *http.Request) error {
 
 	options := core.AlertQueryOptions{}
 
@@ -71,9 +72,73 @@ func AlertsHandler(appContext appcontext.AppContext, r *http.Request) interface{
 		options.TimeRange = r.FormValue("timeRange")
 	}
 
-	results, err := appContext.DataStore.AlertQuery(options)
+	results, err := c.appContext.DataStore.AlertQuery(options)
 	if err != nil {
 		return err
 	}
-	return results
+	return w.OkJSON(results)
+}
+
+type AlertGroupQueryParameters struct {
+	SignatureId  uint64 `json:"signature_id"`
+	SrcIp        string `json:"src_ip"`
+	DestIp       string `json:"dest_ip"`
+	MinTimestamp string `json:"min_timestamp"`
+	MaxTimestamp string `json:"max_timestamp"`
+}
+
+func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() core.AlertGroupQueryParams {
+	return core.AlertGroupQueryParams{
+		SignatureID:  a.SignatureId,
+		SrcIP:        a.SrcIp,
+		DstIP:        a.DestIp,
+		MinTimestamp: a.MinTimestamp,
+		MaxTimestamp: a.MaxTimestamp,
+	}
+}
+
+// /api/1/alert-group/archive
+func (c *ApiContext) AlertGroupArchiveHandler(w *ResponseWriter, r *http.Request) error {
+	var request AlertGroupQueryParameters
+
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
+
+	err := c.appContext.DataStore.ArchiveAlertGroup(request.ToCoreAlertGroupQueryParams())
+	if err != nil {
+		log.Error("%v", err)
+		return err
+	}
+	return w.Ok()
+}
+
+func (c *ApiContext) StarAlertGroupHandler(w *ResponseWriter, r *http.Request) error {
+	var request AlertGroupQueryParameters
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
+
+	err := c.appContext.DataStore.EscalateAlertGroup(
+		request.ToCoreAlertGroupQueryParams())
+	if err != nil {
+		log.Error("%v", err)
+		return err
+	}
+	return w.Ok()
+}
+
+func (c *ApiContext) UnstarAlertGroupHandler(w *ResponseWriter, r *http.Request) error {
+	var request AlertGroupQueryParameters
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
+
+	err := c.appContext.DataStore.UnstarAlertGroup(
+		request.ToCoreAlertGroupQueryParams())
+	if err != nil {
+		log.Error("%v", err)
+		return err
+	}
+	return w.Ok()
 }

@@ -24,16 +24,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
-	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"net/http"
 	"strconv"
 )
 
-func ReportDnsRequestRrnames(appContext appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) ReportDnsRequestRrnames(w *ResponseWriter, r *http.Request) error {
 
 	options := core.ReportOptions{}
 
@@ -53,18 +52,18 @@ func ReportDnsRequestRrnames(appContext appcontext.AppContext, r *http.Request) 
 		options.QueryString = r.FormValue("queryString")
 	}
 
-	data, err := appContext.ReportService.ReportDnsRequestRrnames(options)
+	data, err := c.appContext.ReportService.ReportDnsRequestRrnames(options)
 	if err != nil {
 		return err
 	}
 
-	return map[string]interface{}{
+	response := map[string]interface{}{
 		"data": data,
 	}
-
+	return w.OkJSON(response)
 }
 
-func ReportAggs(appContext appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) ReportAggs(w *ResponseWriter, r *http.Request) error {
 	options := core.ReportOptions{}
 
 	agg := r.FormValue("agg")
@@ -77,14 +76,14 @@ func ReportAggs(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	options.DnsType = r.FormValue("dnsType")
 
-	response, err := appContext.ReportService.ReportAggs(agg, options)
+	response, err := c.appContext.ReportService.ReportAggs(agg, options)
 	if err != nil {
 		return err
 	}
-	return response
+	return w.OkJSON(response)
 }
 
-func ReportHistogram(appContext appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) ReportHistogram(w *ResponseWriter, r *http.Request) error {
 	options := core.ReportOptions{}
 
 	options.TimeRange = r.FormValue("timeRange")
@@ -96,9 +95,22 @@ func ReportHistogram(appContext appcontext.AppContext, r *http.Request) interfac
 
 	interval := r.FormValue("interval")
 
-	response, err := appContext.ReportService.ReportHistogram(interval, options)
+	response, err := c.appContext.ReportService.ReportHistogram(interval, options)
 	if err != nil {
 		return err
 	}
-	return response
+	return w.OkJSON(response)
+}
+
+func (c *ApiContext) NetflowHandler(w *ResponseWriter, r *http.Request) error {
+
+	options := core.EventQueryOptionsFromHttpRequest(r)
+
+	sortBy := r.FormValue("sortBy")
+
+	response, err := c.appContext.EventService.FindNetflow(options, sortBy, "")
+	if err != nil {
+		return err
+	}
+	return w.OkJSON(response)
 }

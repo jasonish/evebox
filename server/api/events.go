@@ -24,50 +24,86 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
+	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/jasonish/evebox/appcontext"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"net/http"
+	"strconv"
 )
 
-func ArchiveEventHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) GetEventByIdHandler(w *ResponseWriter, r *http.Request) error {
+	eventId := mux.Vars(r)["id"]
+	event, err := c.appContext.DataStore.GetEventById(eventId)
+	if err != nil {
+		log.Error("%v", err)
+		return err
+	}
+	if event == nil {
+		//return HttpNotFoundResponse(fmt.Sprintf("No event with ID %s", eventId))
+		//return errors.New(fmt.Sprintf("No event with ID %s", eventId))
+		return httpNotFoundResponse(fmt.Sprintf("No event with ID %s", eventId))
+	}
+	return w.OkJSON(event)
+}
+
+// Archive a single event.
+func (c *ApiContext) ArchiveEventHandler(w *ResponseWriter, r *http.Request) error {
 	eventId := mux.Vars(r)["id"]
 
-	err := appContext.EventService.AddTagsToEvent(eventId,
+	err := c.appContext.EventService.AddTagsToEvent(eventId,
 		[]string{"archived", "evebox.archived"})
 	if err != nil {
 		log.Error("%v", err)
 		return err
 	}
 
-	return HttpOkResponse()
+	return w.Ok()
 }
 
-func EscalateEventHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) EscalateEventHandler(w *ResponseWriter, r *http.Request) error {
 	eventId := mux.Vars(r)["id"]
 
-	err := appContext.EventService.AddTagsToEvent(eventId,
+	err := c.appContext.EventService.AddTagsToEvent(eventId,
 		[]string{"escalated", "evebox.escalated"})
 	if err != nil {
 		log.Error("%v", err)
 		return err
 	}
 
-	return HttpOkResponse()
+	return w.Ok()
 }
 
-func DeEscalateEventHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) DeEscalateEventHandler(w *ResponseWriter, r *http.Request) error {
 	eventId := mux.Vars(r)["id"]
 
-	err := appContext.EventService.RemoveTagsFromEvent(eventId,
+	err := c.appContext.EventService.RemoveTagsFromEvent(eventId,
 		[]string{"escalated", "evebox.escalated"})
 	if err != nil {
 		log.Error("%v", err)
 		return err
 	}
 
-	return HttpOkResponse()
+	return w.Ok()
+}
+
+func (c *ApiContext) EventQueryHandler(w *ResponseWriter, r *http.Request) error {
+
+	var options core.EventQueryOptions
+
+	options.QueryString = r.FormValue("queryString")
+	options.MaxTs = r.FormValue("maxTs")
+	options.MinTs = r.FormValue("minTs")
+	options.EventType = r.FormValue("eventType")
+	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 0, 64)
+
+	response, err := c.appContext.DataStore.EventQuery(options)
+	if err != nil {
+		return err
+	}
+
+	return w.OkJSON(response)
 }

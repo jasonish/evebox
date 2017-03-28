@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 Jason Ish
+/* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,36 +24,40 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package router
 
 import (
-	"github.com/jasonish/evebox/appcontext"
+	"github.com/gorilla/mux"
 	"net/http"
 )
 
-// Find the flow matching the provided paramters, useful for finding
-// the flow for an event.
-func FindFlowHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
+type Router struct {
+	Router *mux.Router
+}
 
-	request := struct {
-		FlowId    uint64 `json:"flowId"`
-		Proto     string `json:"proto"`
-		Timestamp string `json:"timestamp"`
-		SrcIp     string `json:"srcIp"`
-		DestIp    string `json:"destIp"`
-	}{}
-
-	if err := DecodeRequestBody(r, &request); err != nil {
-		return err
+func NewRouter() *Router {
+	return &Router{
+		Router: mux.NewRouter(),
 	}
+}
 
-	result, err := appContext.DataStore.FindFlow(request.FlowId,
-		request.Proto, request.Timestamp, request.SrcIp, request.DestIp)
-	if err != nil {
-		return err
-	}
+func (r *Router) Handle(path string, handler http.Handler) *mux.Route {
+	return r.Router.Handle(path, handler)
+}
 
-	return map[string]interface{}{
-		"flows": result,
-	}
+func (r *Router) Prefix(path string, handler http.Handler) {
+	r.Router.PathPrefix(path).Handler(handler)
+}
+
+func (r *Router) GET(path string, handler http.Handler) {
+	r.Router.Handle(path, handler).Methods("GET")
+}
+
+func (r *Router) POST(path string, handler http.Handler) {
+	r.Router.Handle(path, handler).Methods("POST")
+}
+
+func (r *Router) Subrouter(prefix string) *Router {
+	router := r.Router.PathPrefix(prefix).Subrouter()
+	return &Router{router}
 }

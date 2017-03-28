@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,29 +24,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
-	"fmt"
-	"github.com/jasonish/evebox/appcontext"
-	"io/ioutil"
 	"net/http"
 )
 
-// Elastic Search adapter handlers.
+// Find the flow matching the provided paramters, useful for finding
+// the flow for an event.
+func (c *ApiContext) FindFlowHandler(w *ResponseWriter, r *http.Request) error {
 
-func EsBulkHandler(appcontent appcontext.AppContext, r *http.Request) interface{} {
-	response, err := appcontent.ElasticSearch.HttpClient.Post(
-		fmt.Sprintf("_bulk?%s", r.URL.RawQuery),
-		"application/json",
-		r.Body)
+	request := struct {
+		FlowId    uint64 `json:"flowId"`
+		Proto     string `json:"proto"`
+		Timestamp string `json:"timestamp"`
+		SrcIp     string `json:"srcIp"`
+		DestIp    string `json:"destIp"`
+	}{}
+
+	if err := DecodeRequestBody(r, &request); err != nil {
+		return err
+	}
+
+	result, err := c.appContext.DataStore.FindFlow(request.FlowId,
+		request.Proto, request.Timestamp, request.SrcIp, request.DestIp)
 	if err != nil {
 		return err
 	}
 
-	bytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
+	response := map[string]interface{}{
+		"flows": result,
 	}
-	return bytes
+	return w.OkJSON(response)
 }

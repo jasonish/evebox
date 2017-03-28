@@ -24,23 +24,35 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
-	"github.com/jasonish/evebox/appcontext"
-	"github.com/jasonish/evebox/core"
+	"encoding/json"
 	"net/http"
 )
 
-type VersionResponse struct {
-	Version  string `json:"version"`
-	Revision string `json:"revision"`
+type ResponseWriter struct {
+	http.ResponseWriter
 }
 
-func VersionHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
-	response := VersionResponse{
-		core.BuildVersion,
-		core.BuildRev,
+func NewResponseWriter(w http.ResponseWriter) *ResponseWriter {
+	return &ResponseWriter{w}
+}
+
+// Ok writes an Ok status to the client.
+func (w *ResponseWriter) Ok() error {
+	return w.OkJSON(map[string]interface{}{
+		"status": http.StatusOK,
+	})
+}
+
+func (w *ResponseWriter) OkJSON(response interface{}) error {
+	bytes, err := json.Marshal(response)
+	if err != nil {
+		return err
 	}
-	return response
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(bytes)
+	return nil
 }

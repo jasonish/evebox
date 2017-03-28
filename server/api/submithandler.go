@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,26 +24,74 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
-	"github.com/jasonish/evebox/appcontext"
+	"bufio"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/resources"
+	"github.com/jasonish/evebox/useragent"
+	"io"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 )
 
-func StaticHandlerFactory(appContext appcontext.AppContext) http.Handler {
-	if appContext.Vars.DevWebAppServerUrl != "" {
-		log.Notice("Proxying static files to %v.",
-			appContext.Vars.DevWebAppServerUrl)
-		devServerProxyUrl, err := url.Parse(appContext.Vars.DevWebAppServerUrl)
+type SubmitResponse struct {
+	Count int
+}
+
+// Consumes events from agents and adds them to the database.
+func (c *ApiContext) SubmitHandler(w *ResponseWriter, r *http.Request) error {
+
+	count := 0
+
+	eventSink := c.appContext.DataStore.GetEveEventSink()
+	geoFilter := eve.NewGeoipFilter(c.appContext.GeoIpService)
+	tagsFilter := eve.TagsFilter{}
+	uaFilter := useragent.EveUserAgentFilter{}
+
+	reader := bufio.NewReader(r.Body)
+	for {
+		eof := false
+		line, err := reader.ReadBytes('\n')
 		if err != nil {
-			log.Fatal(err)
+			if err == io.EOF {
+				eof = true
+			} else {
+				log.Error("read error: %v", err)
+				return err
+			}
 		}
-		return httputil.NewSingleHostReverseProxy(devServerProxyUrl)
+
+		if eof && len(line) == 0 {
+			break
+		}
+
+		event, err := eve.NewEveEventFromBytes(line)
+		if err != nil {
+			log.Error("failed to decode event: %v", err)
+			return err
+		}
+
+		tagsFilter.Filter(event)
+		geoFilter.Filter(event)
+		uaFilter.Filter(event)
+
+		eventSink.Submit(event)
+
+		count++
+
+		if eof {
+			break
+		}
 	}
-	return resources.FileServer{}
+
+	_, err := eventSink.Commit()
+	if err != nil {
+		log.Error("Failed to commit events: %v", err)
+		return err
+	}
+
+	log.Debug("Committed %d events from %v", count, r.RemoteAddr)
+
+	return w.OkJSON(SubmitResponse{Count: count})
 }

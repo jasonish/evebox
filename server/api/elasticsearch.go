@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 Jason Ish
+/* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,77 +24,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
-	"bufio"
-	"github.com/jasonish/evebox/appcontext"
-	"github.com/jasonish/evebox/eve"
-	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/useragent"
-	"io"
 	"net/http"
 )
 
-type SubmitResponse struct {
-	Count int
-}
+// QueryHandler passes the request to an Elastic Search search and
+// returns the raw result.
+func (c *ApiContext) QueryHandler(w *ResponseWriter, r *http.Request) error {
 
-// Consumes events from agents and adds them to the database.
-func SubmitHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
-
-	count := 0
-
-	eventSink := appContext.DataStore.GetEveEventSink()
-	geoFilter := eve.NewGeoipFilter(appContext.GeoIpService)
-	tagsFilter := eve.TagsFilter{}
-	uaFilter := useragent.EveUserAgentFilter{}
-
-	reader := bufio.NewReader(r.Body)
-	for {
-		eof := false
-		line, err := reader.ReadBytes('\n')
-		if err != nil {
-			if err == io.EOF {
-				eof = true
-			} else {
-				log.Error("read error: %v", err)
-				return err
-			}
-		}
-
-		if eof && len(line) == 0 {
-			break
-		}
-
-		event, err := eve.NewEveEventFromBytes(line)
-		if err != nil {
-			log.Error("failed to decode event: %v", err)
-			return err
-		}
-
-		tagsFilter.Filter(event)
-		geoFilter.Filter(event)
-		uaFilter.Filter(event)
-
-		eventSink.Submit(event)
-
-		count++
-
-		if eof {
-			break
-		}
-	}
-
-	_, err := eventSink.Commit()
-	if err != nil {
-		log.Error("Failed to commit events: %v", err)
+	var query interface{}
+	if err := DecodeRequestBody(r, &query); err != nil {
 		return err
 	}
 
-	log.Debug("Committed %d events from %v", count, r.RemoteAddr)
-
-	return SubmitResponse{
-		Count: count,
+	response, err := c.appContext.ElasticSearch.Search(query)
+	if err != nil {
+		return err
 	}
+	return w.OkJSON(response)
 }

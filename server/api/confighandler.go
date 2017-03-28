@@ -24,10 +24,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package api
 
 import (
-	"github.com/jasonish/evebox/appcontext"
 	"github.com/spf13/viper"
 	"net/http"
 )
@@ -39,7 +38,7 @@ type ConfigResponse struct {
 	Features           map[string]bool          `json:"features"`
 }
 
-func ConfigHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
+func (c *ApiContext) ConfigHandler(w *ResponseWriter, r *http.Request) error {
 
 	response := &ConfigResponse{}
 	response.ElasticSearchIndex = viper.GetString("index")
@@ -47,14 +46,14 @@ func ConfigHandler(appContext appcontext.AppContext, r *http.Request) interface{
 
 	esKeyword := ""
 
-	if appContext.ElasticSearch != nil {
-		esKeyword, _ = appContext.ElasticSearch.GetKeywordType("")
+	if c.appContext.ElasticSearch != nil {
+		esKeyword, _ = c.appContext.ElasticSearch.GetKeywordType("")
 	}
 
 	// Make sure features is at least an empty list.
 	response.Features = make(map[string]bool)
 
-	for feature, enabled := range appContext.Features {
+	for feature, enabled := range c.appContext.Features {
 		response.Features[feature.String()] = enabled
 	}
 
@@ -66,5 +65,5 @@ func ConfigHandler(appContext appcontext.AppContext, r *http.Request) interface{
 		response.Extra["elasticSearchKeywordSuffix"] = ""
 	}
 
-	return response
+	return w.OkJSON(response)
 }
