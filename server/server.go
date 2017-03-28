@@ -29,9 +29,10 @@ package server
 import (
 	"net/http"
 
-	"github.com/gorilla/mux"
-	"github.com/jasonish/evebox/log"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/jasonish/evebox/appcontext"
+	"github.com/jasonish/evebox/log"
 )
 
 type Router struct {
@@ -62,7 +63,7 @@ func (r *Router) POST(path string, handler http.Handler) {
 }
 
 type ApiRouter struct {
-	appContext AppContext
+	appContext appcontext.AppContext
 	router     *Router
 }
 
@@ -79,11 +80,11 @@ func (r *ApiRouter) POST(path string, handler ApiHandlerFunc) {
 }
 
 type Server struct {
-	appContext AppContext
+	appContext appcontext.AppContext
 	router     *Router
 }
 
-func NewServer(appContext AppContext) *Server {
+func NewServer(appContext appcontext.AppContext) *Server {
 
 	router := NewRouter()
 

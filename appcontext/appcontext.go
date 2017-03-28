@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package server
+package appcontext
 
 import (
 	"github.com/jasonish/evebox/core"

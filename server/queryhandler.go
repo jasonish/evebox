@@ -27,12 +27,13 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"net/http"
 )
 
 // QueryHandler passes the request to an Elastic Search search and
 // returns the raw result.
-func QueryHandler(appContext AppContext, r *http.Request) interface{} {
+func QueryHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	var query interface{}
 	if err := DecodeRequestBody(r, &query); err != nil {

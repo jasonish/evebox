@@ -28,11 +28,12 @@ package server
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/log"
 	"net/http"
 )
 
-func ArchiveEventHandler(appContext AppContext, r *http.Request) interface{} {
+func ArchiveEventHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 	eventId := mux.Vars(r)["id"]
 
 	err := appContext.EventService.AddTagsToEvent(eventId,
@@ -45,7 +46,7 @@ func ArchiveEventHandler(appContext AppContext, r *http.Request) interface{} {
 	return HttpOkResponse()
 }
 
-func EscalateEventHandler(appContext AppContext, r *http.Request) interface{} {
+func EscalateEventHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 	eventId := mux.Vars(r)["id"]
 
 	err := appContext.EventService.AddTagsToEvent(eventId,
@@ -58,7 +59,7 @@ func EscalateEventHandler(appContext AppContext, r *http.Request) interface{} {
 	return HttpOkResponse()
 }
 
-func DeEscalateEventHandler(appContext AppContext, r *http.Request) interface{} {
+func DeEscalateEventHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 	eventId := mux.Vars(r)["id"]
 
 	err := appContext.EventService.RemoveTagsFromEvent(eventId,

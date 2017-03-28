@@ -27,6 +27,7 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"net/http"
 )
@@ -36,7 +37,7 @@ type VersionResponse struct {
 	Revision string `json:"revision"`
 }
 
-func VersionHandler(appContext AppContext, r *http.Request) interface{} {
+func VersionHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 	response := VersionResponse{
 		core.BuildVersion,
 		core.BuildRev,

@@ -27,12 +27,13 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"net/http"
 	"strconv"
 )
 
-func EventQueryHandler(appContext AppContext, r *http.Request) interface{} {
+func EventQueryHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	var options core.EventQueryOptions
 

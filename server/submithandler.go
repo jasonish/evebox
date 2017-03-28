@@ -28,6 +28,7 @@ package server
 
 import (
 	"bufio"
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/useragent"
@@ -40,7 +41,7 @@ type SubmitResponse struct {
 }
 
 // Consumes events from agents and adds them to the database.
-func SubmitHandler(appContext AppContext, r *http.Request) interface{} {
+func SubmitHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	count := 0
 

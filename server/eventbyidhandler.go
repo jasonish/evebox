@@ -29,11 +29,12 @@ package server
 import (
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/log"
 	"net/http"
 )
 
-func GetEventByIdHandler(appContext AppContext, r *http.Request) interface{} {
+func GetEventByIdHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 	eventId := mux.Vars(r)["id"]
 	log.Debug("Event requested by ID: %s", eventId)
 	event, err := appContext.DataStore.GetEventById(eventId)

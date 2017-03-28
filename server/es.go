@@ -28,13 +28,14 @@ package server
 
 import (
 	"fmt"
+	"github.com/jasonish/evebox/appcontext"
 	"io/ioutil"
 	"net/http"
 )
 
 // Elastic Search adapter handlers.
 
-func EsBulkHandler(appcontent AppContext, r *http.Request) interface{} {
+func EsBulkHandler(appcontent appcontext.AppContext, r *http.Request) interface{} {
 	response, err := appcontent.ElasticSearch.HttpClient.Post(
 		fmt.Sprintf("_bulk?%s", r.URL.RawQuery),
 		"application/json",

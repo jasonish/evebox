@@ -29,6 +29,7 @@ package server
 import (
 	"fmt"
 
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/eve"
@@ -160,7 +161,7 @@ func Main(args []string) {
 		viper.Set("input.filename", input)
 	}
 
-	appContext := server.AppContext{}
+	appContext := appcontext.AppContext{}
 	appContext.GeoIpService = geoip.NewGeoIpService()
 	appContext.Vars.DevWebAppServerUrl = opts.DevServerUri
 
@@ -217,7 +218,7 @@ func Main(args []string) {
 	}
 }
 
-func initInternalEveReader(appContext *server.AppContext) {
+func initInternalEveReader(appContext *appcontext.AppContext) {
 	enabled := viper.GetBool("input.enabled")
 	if !enabled {
 		return

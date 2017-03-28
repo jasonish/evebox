@@ -27,6 +27,7 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/spf13/viper"
 	"net/http"
 )
@@ -38,7 +39,7 @@ type ConfigResponse struct {
 	Features           map[string]bool          `json:"features"`
 }
 
-func ConfigHandler(appContext AppContext, r *http.Request) interface{} {
+func ConfigHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	response := &ConfigResponse{}
 	response.ElasticSearchIndex = viper.GetString("index")

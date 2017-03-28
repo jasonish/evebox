@@ -27,6 +27,7 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"net/http"
 	"strings"
@@ -44,7 +45,7 @@ import (
 //
 //     time_range: a duration strings (ie: 60s) representing the time before now,
 //         until now that alerts must match.
-func AlertsHandler(appContext AppContext, r *http.Request) interface{} {
+func AlertsHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	options := core.AlertQueryOptions{}
 

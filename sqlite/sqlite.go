@@ -31,8 +31,8 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/server"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper"
 	"path"
@@ -93,7 +93,7 @@ func InitPurger(db *SqliteService) {
 	}).Run()
 }
 
-func InitSqlite(appContext *server.AppContext) (err error) {
+func InitSqlite(appContext *appcontext.AppContext) (err error) {
 
 	log.Info("Configuring SQLite datastore")
 

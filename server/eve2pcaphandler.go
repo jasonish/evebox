@@ -28,11 +28,12 @@ package server
 
 import (
 	"fmt"
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/eve"
 	"net/http"
 )
 
-func Eve2PcapHandler(_ AppContext, r *http.Request) interface{} {
+func Eve2PcapHandler(_ appcontext.AppContext, r *http.Request) interface{} {
 	var event eve.EveEvent
 	var err error
 	var pcap []byte

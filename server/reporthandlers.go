@@ -27,12 +27,13 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"net/http"
 	"strconv"
 )
 
-func ReportDnsRequestRrnames(appContext AppContext, r *http.Request) interface{} {
+func ReportDnsRequestRrnames(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	options := core.ReportOptions{}
 
@@ -63,7 +64,7 @@ func ReportDnsRequestRrnames(appContext AppContext, r *http.Request) interface{}
 
 }
 
-func ReportAggs(appContext AppContext, r *http.Request) interface{} {
+func ReportAggs(appContext appcontext.AppContext, r *http.Request) interface{} {
 	options := core.ReportOptions{}
 
 	agg := r.FormValue("agg")
@@ -83,7 +84,7 @@ func ReportAggs(appContext AppContext, r *http.Request) interface{} {
 	return response
 }
 
-func ReportHistogram(appContext AppContext, r *http.Request) interface{} {
+func ReportHistogram(appContext appcontext.AppContext, r *http.Request) interface{} {
 	options := core.ReportOptions{}
 
 	options.TimeRange = r.FormValue("timeRange")

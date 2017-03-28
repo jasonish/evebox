@@ -29,6 +29,7 @@ package oneshot
 import (
 	"fmt"
 
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
@@ -106,7 +107,7 @@ Example:
 		return
 	}
 
-	appContext := server.AppContext{}
+	appContext := appcontext.AppContext{}
 	appContext.GeoIpService = geoip.NewGeoIpService()
 
 	if opts.InMemory {

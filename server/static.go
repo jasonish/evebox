@@ -27,6 +27,7 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/resources"
 	"net/http"
@@ -34,7 +35,7 @@ import (
 	"net/url"
 )
 
-func StaticHandlerFactory(appContext AppContext) http.Handler {
+func StaticHandlerFactory(appContext appcontext.AppContext) http.Handler {
 	if appContext.Vars.DevWebAppServerUrl != "" {
 		log.Notice("Proxying static files to %v.",
 			appContext.Vars.DevWebAppServerUrl)

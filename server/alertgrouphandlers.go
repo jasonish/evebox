@@ -29,6 +29,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 )
@@ -51,7 +52,7 @@ func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() core.AlertGrou
 	}
 }
 
-func AlertGroupArchiveHandler(appContext AppContext, r *http.Request) interface{} {
+func AlertGroupArchiveHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 	var request AlertGroupQueryParameters
 
 	if err := DecodeRequestBody(r, &request); err != nil {
@@ -66,7 +67,7 @@ func AlertGroupArchiveHandler(appContext AppContext, r *http.Request) interface{
 	return HttpOkResponse()
 }
 
-func StarAlertGroupHandler(appContext AppContext, r *http.Request) interface{} {
+func StarAlertGroupHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 	var request AlertGroupQueryParameters
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err
@@ -81,7 +82,7 @@ func StarAlertGroupHandler(appContext AppContext, r *http.Request) interface{} {
 	return HttpOkResponse()
 }
 
-func UnstarAlertGroupHandler(appContext AppContext, r *http.Request) interface{} {
+func UnstarAlertGroupHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 	var request AlertGroupQueryParameters
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err

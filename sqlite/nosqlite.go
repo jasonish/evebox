@@ -29,11 +29,11 @@
 package sqlite
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/server"
 )
 
-func InitSqlite(appContext *server.AppContext) error {
+func InitSqlite(appContext *appcontext.AppContext) error {
 	log.Fatal("SQLite support not build in.")
 	return nil
 }

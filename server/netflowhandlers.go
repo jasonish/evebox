@@ -29,10 +29,11 @@ package server
 import (
 	"net/http"
 
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 )
 
-func NetflowHandler(appContext AppContext, r *http.Request) interface{} {
+func NetflowHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	options := core.EventQueryOptionsFromHttpRequest(r)
 

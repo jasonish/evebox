@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/log"
@@ -85,17 +86,17 @@ func HttpOkResponse() HttpResponse {
 }
 
 type ApiHandler interface {
-	ServeHTTP(appContext AppContext, r *http.Request) interface{}
+	ServeHTTP(appContext appcontext.AppContext, r *http.Request) interface{}
 }
 
-type ApiHandlerFunc func(AppContext, *http.Request) interface{}
+type ApiHandlerFunc func(appcontext.AppContext, *http.Request) interface{}
 
-func (h ApiHandlerFunc) ServeHTTP(appContext AppContext, r *http.Request) interface{} {
+func (h ApiHandlerFunc) ServeHTTP(appContext appcontext.AppContext, r *http.Request) interface{} {
 	return h(appContext, r)
 }
 
 type ApiWrapper struct {
-	appContext AppContext
+	appContext appcontext.AppContext
 	//handler    func(appContent AppContext, r *http.Request) interface{}
 	handler ApiHandler
 }
@@ -169,14 +170,14 @@ func (h ApiWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ApiH(appContext AppContext, handler ApiHandler) http.Handler {
+func ApiH(appContext appcontext.AppContext, handler ApiHandler) http.Handler {
 	return ApiWrapper{
 		appContext,
 		handler,
 	}
 }
 
-func ApiF(appContext AppContext, handler func(AppContext, *http.Request) interface{}) http.Handler {
+func ApiF(appContext appcontext.AppContext, handler func(appcontext.AppContext, *http.Request) interface{}) http.Handler {
 	return ApiH(appContext, ApiHandlerFunc(handler))
 }
 

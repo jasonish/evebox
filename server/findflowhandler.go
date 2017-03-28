@@ -27,12 +27,13 @@
 package server
 
 import (
+	"github.com/jasonish/evebox/appcontext"
 	"net/http"
 )
 
 // Find the flow matching the provided paramters, useful for finding
 // the flow for an event.
-func FindFlowHandler(appContext AppContext, r *http.Request) interface{} {
+func FindFlowHandler(appContext appcontext.AppContext, r *http.Request) interface{} {
 
 	request := struct {
 		FlowId    uint64 `json:"flowId"`
