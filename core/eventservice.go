@@ -29,6 +29,7 @@ package core
 import (
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // AlertGroupQueryParams holds the parameters for querying a specific
@@ -57,6 +58,9 @@ type AlertQueryOptions struct {
 	// to log for events (eg. 24h, 1m). Must be parsable by
 	// https://golang.org/pkg/time/#ParseDuration
 	TimeRange string
+
+	MinTs time.Time
+	MaxTs time.Time
 }
 
 type EventQueryOptions struct {

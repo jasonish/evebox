@@ -175,6 +175,15 @@ func (s *AlertQueryService) AlertQuery(options core.AlertQueryOptions) (interfac
 
 	if options.TimeRange != "" {
 		query.AddTimeRangeFilter(options.TimeRange)
+	} else {
+		if !options.MaxTs.IsZero() {
+			query.AddFilter(RangeLte("timestamp",
+				eve.FormatTimestampUTC(options.MaxTs)))
+		}
+		if !options.MinTs.IsZero() {
+			query.AddFilter(RangeGte("timestamp",
+				eve.FormatTimestampUTC(options.MinTs)))
+		}
 	}
 
 	// Set the aggs for grouping by sig, source, then dest...

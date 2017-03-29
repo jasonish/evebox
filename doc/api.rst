@@ -35,6 +35,18 @@ Query Parameters
 
    At this time only the 's' unit is support for seconds.
 
+   This paramet is not allowed with ``min_ts`` or ``max_ts``.
+
+.. option:: min_ts
+
+   Specify the minimum timestamp for the range of the query. Alerts
+   occurence on this or after will be included.
+
+.. option:: max_ts
+
+   Specify the maximum timestamp for the range of the query. Alerts
+   occurring before or on this time will be included.
+
 .. option:: tags
 
    A list of tags that events must, or must not have. Tags are

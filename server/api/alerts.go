@@ -28,7 +28,9 @@ package api
 
 import (
 	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/pkg/errors"
 	"net/http"
 	"strings"
 )
@@ -46,6 +48,14 @@ import (
 //
 //     time_range: a duration strings (ie: 60s) representing the time before now,
 //         until now that alerts must match.
+//
+//     min_ts: specify the earliest timestamp for the range of the query,
+//         format: YYYY-MM-DDTHH:MM:SS.UUUUUUZ
+//                 YYYY-MM-DDTHH:MM:SS.UUUUUU-0600
+//
+//     max_ts: specify the latest timestamp for the range of the query.
+//         format: YYYY-MM-DDTHH:MM:SS.UUUUUUZ
+//                 YYYY-MM-DDTHH:MM:SS.UUUUUU-0600
 func (c *ApiContext) AlertsHandler(w *ResponseWriter, r *http.Request) error {
 
 	options := core.AlertQueryOptions{}
@@ -67,9 +77,40 @@ func (c *ApiContext) AlertsHandler(w *ResponseWriter, r *http.Request) error {
 		options.QueryString = r.FormValue("queryString")
 	}
 
+	timeRange := r.FormValue("time_range")
+	if timeRange == "" {
+		timeRange = r.FormValue("timeRange")
+	}
+	minTs := r.FormValue("min_ts")
+	maxTs := r.FormValue("max_ts")
+	if timeRange != "" && (minTs != "" || maxTs != "") {
+		return newHttpErrorResponse(http.StatusBadRequest,
+			errors.Errorf("time_range not allowed with min_ts or max_ts"))
+	}
+
 	options.TimeRange = r.FormValue("time_range")
 	if options.TimeRange == "" {
 		options.TimeRange = r.FormValue("timeRange")
+	}
+
+	if minTs != "" {
+		ts, err := eve.ParseTimestamp(minTs)
+		if err != nil {
+			return newHttpErrorResponse(http.StatusBadRequest,
+				errors.Errorf("Failed to parse '%s' as timestamp", minTs))
+		}
+		log.Debug("Parsed %s as %v", minTs, ts)
+		options.MinTs = ts
+	}
+
+	if maxTs != "" {
+		ts, err := eve.ParseTimestamp(maxTs)
+		if err != nil {
+			return newHttpErrorResponse(http.StatusBadRequest,
+				errors.Errorf("Failed to parse '%s' as timestamp", minTs))
+		}
+		log.Debug("Parsed %s as %v", minTs, ts)
+		options.MaxTs = ts
 	}
 
 	results, err := c.appContext.DataStore.AlertQuery(options)

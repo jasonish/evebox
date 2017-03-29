@@ -151,14 +151,19 @@ ORDER BY timestamp DESC`
 	now := time.Now()
 
 	if options.TimeRange != "" {
-
 		duration, err := time.ParseDuration(options.TimeRange)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to parse duration string)")
 		}
-
 		minTs := now.Add(duration * -1)
 		builder.WhereGte("timestamp", minTs.UnixNano())
+	} else {
+		if !options.MinTs.IsZero() {
+			builder.WhereGte("timestamp", options.MinTs.UnixNano())
+		}
+		if !options.MaxTs.IsZero() {
+			builder.WhereLte("timestamp", options.MaxTs.UnixNano())
+		}
 	}
 
 	query = strings.Replace(query, "%WHERE%", builder.BuildWhere(), 1)

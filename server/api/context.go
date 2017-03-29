@@ -55,6 +55,13 @@ func httpNotFoundResponse(message string) *httpErrorResponse {
 	}
 }
 
+func newHttpErrorResponse(statusCode int, err error) *httpErrorResponse {
+	return &httpErrorResponse{
+		error:  err,
+		status: statusCode,
+	}
+}
+
 type apiHandlerFunc func(w *ResponseWriter, r *http.Request) error
 
 func apiFuncWrapper(handler apiHandlerFunc) http.Handler {
