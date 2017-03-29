@@ -32,6 +32,8 @@
   Elastic Search, create a template if one doesn't already index for
   the configured index. For Elastic Search 2.x and Logstash 2 template
   is used, for Elastic Search 5.x and Logstash 5 template is used.
+- A start on some documentation:
+  http://evebox.readthedocs.io/en/latest/index.html
 
 ## 0.5.0 - 2016-06-17
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.4.0...0.5.0)
