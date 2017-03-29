@@ -35,11 +35,13 @@ import (
 
 	"github.com/jasonish/evebox/httputil"
 
+	"bytes"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/resources"
 	"github.com/jasonish/evebox/util"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"math"
 )
 
 type ElasticSearch struct {
@@ -100,7 +102,13 @@ func (es *ElasticSearch) SetEventIndex(index string) {
 }
 
 func (es *ElasticSearch) Decode(response *http.Response, v interface{}) error {
-	decoder := json.NewDecoder(response.Body)
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	log.Debug("Decoding response (truncated at 1024 bytes): %s",
+		string(body)[:int(math.Min(1024, float64(len(body))))])
+	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
 	return decoder.Decode(v)
 }

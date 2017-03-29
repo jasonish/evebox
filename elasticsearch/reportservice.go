@@ -31,6 +31,7 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/util"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -244,6 +245,14 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 	response, err := s.es.Search(query)
 	if err != nil {
 		return nil, err
+	}
+	if response.Error != nil {
+		if response.Aggregations != nil {
+			log.Warning("Elastic Search errors occurred, but will continue: %s",
+				util.ToJson(response.Error))
+		} else {
+			return nil, errors.New(util.ToJson(response.Error))
+		}
 	}
 
 	// Unwrap response.

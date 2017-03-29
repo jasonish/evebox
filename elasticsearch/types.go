@@ -110,6 +110,10 @@ type SearchResponse struct {
 	Hits         Hits                   `json:"hits"`
 	Aggregations util.JsonMap           `json:"aggregations"`
 	ScrollId     string                 `json:"_scroll_id,omitempty"`
+
+	// A search may result in an error.
+	Error  map[string]interface{} `json:"error"`
+	Status int                    `json:"status"`
 }
 
 type RangeQuery struct {
