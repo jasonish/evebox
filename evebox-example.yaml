@@ -30,6 +30,7 @@ database:
     #password: password
 
   # Retention period in days. 0 or comment out to disable.
+  # Currently only applies to SQLite, not Elastic Search.
   #retention-period: 3
 
 # The server can process a log file, eliminating the need for a
