@@ -33,6 +33,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func (c *ApiContext) GetEventByIdHandler(w *ResponseWriter, r *http.Request) error {
@@ -94,9 +95,13 @@ func (c *ApiContext) EventQueryHandler(w *ResponseWriter, r *http.Request) error
 
 	var options core.EventQueryOptions
 
+	if err := r.ParseForm(); err != nil {
+		return newHttpErrorResponse(http.StatusBadRequest, err)
+	}
+
 	options.QueryString = r.FormValue("queryString")
-	options.MaxTs = r.FormValue("maxTs")
-	options.MinTs = r.FormValue("minTs")
+	options.MaxTs = FormTimestamp(r, "maxTs")
+	options.MinTs = FormTimestamp(r, "minTs")
 	options.EventType = r.FormValue("eventType")
 	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 0, 64)
 
@@ -106,4 +111,16 @@ func (c *ApiContext) EventQueryHandler(w *ResponseWriter, r *http.Request) error
 	}
 
 	return w.OkJSON(response)
+}
+
+// FormTimestamp is a wrapper for r.FormValue(timestampKey) as properly
+// formatted timestamps may contain a "+" as part of the time zone. Angular
+// does not URL encode that plus, but Golang will decode it as a space. So
+// after getting the form value replace all spaces with "+".
+func FormTimestamp(r *http.Request, key string) string {
+	timestamp := r.FormValue(key)
+	if timestamp != "" {
+		timestamp = strings.Replace(timestamp, " ", "+", 1)
+	}
+	return timestamp
 }

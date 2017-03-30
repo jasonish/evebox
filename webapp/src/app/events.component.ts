@@ -222,7 +222,6 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.resultSet = resultSet;
             this.eveboxEventTableConfig.rows = resultSet.events;
             this.loading = false;
-
         }, (error:any) => {
 
             console.log("Error fetching alerts:");

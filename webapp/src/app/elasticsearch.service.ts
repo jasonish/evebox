@@ -29,6 +29,8 @@ import {AppService} from "./app.service";
 import {ConfigService} from "./config.service";
 import {ToastrService} from "./toastr.service";
 import {ApiService} from "./api.service";
+import {URLSearchParams} from '@angular/http';
+import {RequestOptions} from "@angular/http";
 
 import * as moment from "moment";
 var queue = require("queue");
@@ -152,7 +154,7 @@ export class ElasticSearchService {
         });
     }
 
-    escalateAlertGroup(alertGroup:AlertGroup):Promise < string > {
+    escalateAlertGroup(alertGroup:AlertGroup):Promise<string> {
         return this.submit(() => {
             let request = {
                 signature_id: alertGroup.event._source.alert.signature_id,
@@ -179,7 +181,7 @@ export class ElasticSearchService {
         });
     }
 
-    removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise < string > {
+    removeEscalatedStateFromAlertGroup(alertGroup:AlertGroup):Promise<string> {
         return this.submit(() => {
             let request = {
                 signature_id: alertGroup.event._source.alert.signature_id,
@@ -210,28 +212,24 @@ export class ElasticSearchService {
     /**
      * Find events - all events, not just alerts.
      */
-    findEvents(options:any = {}):Promise < ResultSet > {
+    findEvents(options:any = {}):Promise<ResultSet> {
 
-        let queryParts:string[] = [];
+        let params = new URLSearchParams();
 
         if (options.queryString) {
-            queryParts.push(`queryString=${options.queryString}`)
+            params.set("queryString", options.queryString);
         }
         if (options.timeEnd) {
-            queryParts.push(`maxTs=${options.timeEnd}`);
+            params.set("maxTs", options.timeEnd);
         }
         if (options.timeStart) {
-            queryParts.push(`minTs=${options.timeStart}`);
+            params.set("minTs", options.timeStart);
         }
         if (options.eventType && options.eventType != "all") {
-            queryParts.push(`eventType=${options.eventType}`)
+            params.set("eventType", options.eventType);
         }
 
-        let requestOptions:any = {
-            search: queryParts.join("&"),
-        };
-
-        return this.api.get("api/1/event-query", requestOptions).then((response:any) => {
+        return this.api.get("api/1/event-query", {search: params}).then((response:any) => {
 
             let events = response.data;
 
