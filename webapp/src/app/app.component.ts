@@ -24,14 +24,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit} from "@angular/core";
-import {AppService} from "./app.service";
+import {Component, OnInit} from '@angular/core';
+import {AppService} from './app.service';
 
-declare var document:any;
-declare var window:any;
+declare var document: any;
+declare var window: any;
 
 @Component({
-    selector: "app-root",
+    selector: 'app-root',
     template: `
 <evebox-help></evebox-help>
 <evebox-top-nav></evebox-top-nav>
@@ -42,11 +42,11 @@ declare var window:any;
 })
 export class AppComponent implements OnInit {
 
-    constructor(private appService:AppService) {
+    constructor(private appService: AppService) {
     }
 
     ngOnInit() {
-        window.addEventListener("click", () => {
+        window.addEventListener('click', () => {
             this.appService.resetIdleTime();
         }, true);
     }

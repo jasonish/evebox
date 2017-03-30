@@ -24,46 +24,46 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from "@angular/core";
-import {Http, Response} from "@angular/http";
-import {ToastrService} from "./toastr.service";
-import {GITREV} from "../environments/gitrev";
+import {Injectable} from '@angular/core';
+import {Http, Response} from '@angular/http';
+import {ToastrService} from './toastr.service';
+import {GITREV} from '../environments/gitrev';
 
 export class QueryStringBuilder {
 
-    keys:any = {};
+    keys: any = {};
 
-    set(key:string, value:any) {
+    set(key: string, value: any) {
         this.keys[key] = value;
     }
 
     build() {
-        let parts:any = [];
+        let parts: any = [];
 
         for (let key in this.keys) {
             parts.push(`${key}=${this.keys[key]}`);
         }
 
-        return parts.join("&")
+        return parts.join('&');
     }
 }
 
 @Injectable()
 export class ApiService {
 
-    private baseUrl:string = window.location.pathname;
+    private baseUrl: string = window.location.pathname;
 
-    private versionWarned:boolean = false;
+    private versionWarned = false;
 
-    constructor(private http:Http, private toastr:ToastrService) {
+    constructor(private http: Http, private toastr: ToastrService) {
     }
 
-    checkVersion(response:Response) {
+    checkVersion(response: Response) {
         if (this.versionWarned) {
             return;
         }
-        let webappRev:string = GITREV;
-        let serverRev:string = response.headers.get("x-evebox-git-revision");
+        let webappRev: string = GITREV;
+        let serverRev: string = response.headers.get('x-evebox-git-revision');
         if (webappRev != serverRev) {
             console.log(`Server version: ${serverRev}; webapp version: ${webappRev}`);
             this.toastr.warning(
@@ -79,33 +79,33 @@ export class ApiService {
         }
     }
 
-    post(path:string, body:any) {
+    post(path: string, body: any) {
         return this.http.post(this.baseUrl + path, JSON.stringify(body))
-            .map((res:Response) => res.json())
+            .map((res: Response) => res.json())
             .toPromise();
     }
 
-    postRaw(path:string, body:any) {
+    postRaw(path: string, body: any) {
         return this.http.post(this.baseUrl + path, body)
-            .map((res:Response) => res.json())
+            .map((res: Response) => res.json())
             .toPromise();
     }
 
-    get(path:string, options = {}):Promise<any> {
+    get(path: string, options = {}): Promise<any> {
         return this.http.get(`${this.baseUrl}${path}`, options)
             .toPromise()
-            .then((res:Response) => {
+            .then((res: Response) => {
                 this.checkVersion(res);
                 return res.json();
             })
-            .then((response:any) => {
+            .then((response: any) => {
                 return response;
-            }, (response:any) => {
-                let error:any;
+            }, (response: any) => {
+                let error: any;
                 try {
                     error = JSON.parse(response._body);
                 } catch (err) {
-                    console.log("Failed to parse response body.");
+                    console.log('Failed to parse response body.');
                     console.log(err);
                     error = response;
                 }
@@ -113,48 +113,48 @@ export class ApiService {
             });
     }
 
-    getWithParams(path:string, params = {}):Promise<any> {
+    getWithParams(path: string, params = {}): Promise<any> {
 
-        let qsb:any = [];
+        let qsb: any = [];
 
         for (let param in params) {
             qsb.push(`${param}=${params[param]}`);
         }
 
-        return this.get(`${path}?${qsb.join("&")}`);
+        return this.get(`${path}?${qsb.join('&')}`);
 
     }
 
     getVersion() {
-        return this.http.get(this.baseUrl + "api/1/version")
-            .map((res:Response) => res.json())
+        return this.http.get(this.baseUrl + 'api/1/version')
+            .map((res: Response) => res.json())
             .toPromise();
     }
 
-    eventToPcap(what:any, event:any) {
+    eventToPcap(what: any, event: any) {
 
-        let form = document.createElement("form");
-        form.setAttribute("method", "post");
-        form.setAttribute("action", "api/1/eve2pcap");
+        let form = document.createElement('form');
+        form.setAttribute('method', 'post');
+        form.setAttribute('action', 'api/1/eve2pcap');
 
-        let whatField = document.createElement("input");
-        whatField.setAttribute("type", "hidden");
-        whatField.setAttribute("name", "what");
-        whatField.setAttribute("value", what);
+        let whatField = document.createElement('input');
+        whatField.setAttribute('type', 'hidden');
+        whatField.setAttribute('name', 'what');
+        whatField.setAttribute('value', what);
         form.appendChild(whatField);
 
-        let eventField = document.createElement("input");
-        eventField.setAttribute("type", "hidden");
-        eventField.setAttribute("name", "event");
-        eventField.setAttribute("value", JSON.stringify(event));
+        let eventField = document.createElement('input');
+        eventField.setAttribute('type', 'hidden');
+        eventField.setAttribute('name', 'event');
+        eventField.setAttribute('value', JSON.stringify(event));
         form.appendChild(eventField);
 
         document.body.appendChild(form);
         form.submit();
     }
 
-    reportHistogram(options:ReportHistogramOptions = {}) {
-        let query:any = [];
+    reportHistogram(options: ReportHistogramOptions = {}) {
+        let query: any = [];
 
         if (options.timeRange && options.timeRange > 0) {
             query.push(`timeRange=${options.timeRange}s`);
@@ -184,18 +184,18 @@ export class ApiService {
             query.push(`eventType=${options.eventType}`);
         }
 
-        return this.get(`api/1/report/histogram?${query.join("&")}`);
+        return this.get(`api/1/report/histogram?${query.join('&')}`);
     }
 
-    reportAgg(agg:string, options:ReportAggOptions = {}) {
+    reportAgg(agg: string, options: ReportAggOptions = {}) {
 
-        let qsb:any = [];
+        let qsb: any = [];
 
         qsb.push(`agg=${agg}`);
 
         for (let option in options) {
             switch (option) {
-                case "timeRange":
+                case 'timeRange':
                     if (options[option] > 0) {
                         qsb.push(`timeRange=${options[option]}s`);
                     }
@@ -206,31 +206,31 @@ export class ApiService {
             }
         }
 
-        return this.get(`api/1/report/agg?${qsb.join("&")}`);
+        return this.get(`api/1/report/agg?${qsb.join('&')}`);
     }
 
 }
 
 export interface ReportHistogramOptions {
-    timeRange?:number
-    interval?:string
-    addressFilter?:string
-    queryString?:string
-    sensorFilter?:string
-    eventType?:string
-    dnsType?:string
+    timeRange?: number;
+    interval?: string;
+    addressFilter?: string;
+    queryString?: string;
+    sensorFilter?: string;
+    eventType?: string;
+    dnsType?: string;
 }
 
 // Options for an aggregation report.
 export interface ReportAggOptions {
-    size?:number
-    queryString?:string
-    timeRange?:number
+    size?: number;
+    queryString?: string;
+    timeRange?: number;
 
     // Event type.
-    eventType?:string
+    eventType?: string;
 
     // Subtype info.
-    dnsType?:string
+    dnsType?: string;
 
 }

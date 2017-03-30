@@ -24,15 +24,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from "@angular/core";
+import {Injectable} from '@angular/core';
 
-require("!!script-loader!humanize-plus/dist/humanize.js");
-declare let Humanize:any;
+require('!!script-loader!humanize-plus/dist/humanize.js');
+declare let Humanize: any;
 
-export function humanizeFileSize(value:any) {
+export function humanizeFileSize(value: any) {
     return Humanize.fileSize(value);
 }
 
-export function humanizeCompactInteger(value:any) {
+export function humanizeCompactInteger(value: any) {
     return Humanize.compactInteger(value);
 }

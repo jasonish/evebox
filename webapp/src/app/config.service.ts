@@ -24,20 +24,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from "@angular/core";
+import {Injectable} from '@angular/core';
 
-declare var window:any;
+declare var window: any;
 
 @Injectable()
 export class ConfigService {
 
-    private config:any = window.config;
+    private config: any = window.config;
 
     getConfig() {
         return this.config;
     }
 
-    hasFeature(feature:string):boolean {
+    hasFeature(feature: string): boolean {
         if (this.config.features && this.config.features[feature] === true) {
             return true;
         }

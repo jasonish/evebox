@@ -1,6 +1,6 @@
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
-export var loadingAnimation = trigger('loadingState', [
+export let loadingAnimation = trigger('loadingState', [
         state('false', style({
             opacity: '1.0',
         })),

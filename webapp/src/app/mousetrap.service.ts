@@ -24,19 +24,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable, NgZone} from "@angular/core";
+import {Injectable, NgZone} from '@angular/core';
 
-var mousetrap = require("mousetrap/mousetrap");
+let mousetrap = require('mousetrap/mousetrap');
 
-declare var Mousetrap:any;
+declare var Mousetrap: any;
 
 @Injectable()
 export class MousetrapService {
 
-    private bindings:any[] = [];
-    private anyBindings:any[] = [];
+    private bindings: any[] = [];
+    private anyBindings: any[] = [];
 
-    constructor(private ngZone:NgZone) {
+    constructor(private ngZone: NgZone) {
 
         let mouseTrapService = this;
 
@@ -47,18 +47,18 @@ export class MousetrapService {
             mouseTrapService.anyBindings.forEach(binding => {
                 binding.handler();
             });
-        }
+        };
     }
 
-    bindAny(component:any, handler:any) {
+    bindAny(component: any, handler: any) {
         this.anyBindings.push({
             component: component,
             handler: handler,
         });
     }
 
-    bind(component:any, key:string, handler:any) {
-        mousetrap.bind(key, (e:any) => {
+    bind(component: any, key: string, handler: any) {
+        mousetrap.bind(key, (e: any) => {
             this.ngZone.run(() => {
                 e.preventDefault();
                 handler();
@@ -76,16 +76,16 @@ export class MousetrapService {
     rebind() {
         this.bindings.forEach((binding) => {
             mousetrap.unbind(binding.key);
-            mousetrap.bind(binding.key, (e:any) => {
+            mousetrap.bind(binding.key, (e: any) => {
                 this.ngZone.run(() => {
                     e.preventDefault();
                     binding.handler();
-                })
-            })
-        })
+                });
+            });
+        });
     }
 
-    unbind(component:any) {
+    unbind(component: any) {
         this.bindings.forEach(binding => {
             if (binding.component == component) {
                 mousetrap.unbind(binding.key);
@@ -93,6 +93,6 @@ export class MousetrapService {
         });
         this.bindings = this.bindings.filter(binding => {
             return binding.component != component;
-        })
+        });
     }
 }

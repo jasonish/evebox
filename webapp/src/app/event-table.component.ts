@@ -24,24 +24,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnInit, OnDestroy} from "@angular/core";
-import {Router} from "@angular/router";
-import {EveboxFormatTimestampPipe} from "./pipes/format-timestamp.pipe";
-import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
-import {KeyTableDirective} from "./keytable.directive";
-import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
-import {EveboxDurationComponent} from "./duration.component";
-import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
-import {MousetrapService} from "./mousetrap.service";
-import {ElasticSearchService} from "./elasticsearch.service";
+import {Component, Input, OnInit, OnDestroy} from '@angular/core';
+import {Router} from '@angular/router';
+import {EveboxFormatTimestampPipe} from './pipes/format-timestamp.pipe';
+import {EveboxFormatIpAddressPipe} from './pipes/format-ipaddress.pipe';
+import {KeyTableDirective} from './keytable.directive';
+import {EveBoxEventDescriptionPrinterPipe} from './pipes/eventdescription.pipe';
+import {EveboxDurationComponent} from './duration.component';
+import {EventSeverityToBootstrapClass} from './pipes/event-severity-to-bootstrap-class.pipe';
+import {MousetrapService} from './mousetrap.service';
+import {ElasticSearchService} from './elasticsearch.service';
 
 export interface EveboxEventTableConfig {
-    showCount:boolean,
-    rows:any[]
+    showCount: boolean;
+    rows: any[];
 }
 
 @Component({
-    selector: "eveboxEventTable",
+    selector: 'eveboxEventTable',
     template: `<div *ngIf="config.rows && config.rows.length > 0" class="table-responsive">
   <table class="table table-condensed table-hover evebox-event-table"
          eveboxKeyTable [rows]="config.rows" [(activeRow)]="activeRow">
@@ -98,16 +98,16 @@ export interface EveboxEventTableConfig {
 })
 export class EveboxEventTableComponent implements OnInit, OnDestroy {
 
-    @Input() config:EveboxEventTableConfig;
-    activeRow:number = 0;
+    @Input() config: EveboxEventTableConfig;
+    activeRow = 0;
 
-    constructor(private router:Router,
-                private mousetrap:MousetrapService,
-                private elasticSearchService:ElasticSearchService) {
+    constructor(private router: Router,
+                private mousetrap: MousetrapService,
+                private elasticSearchService: ElasticSearchService) {
     }
 
     ngOnInit() {
-        this.mousetrap.bind(this, "o", ()=> {
+        this.mousetrap.bind(this, 'o', () => {
             this.openActiveRow();
         });
     }
@@ -125,30 +125,30 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
         this.openRow(this.getActiveRow());
     }
 
-    openRow(row:any) {
+    openRow(row: any) {
         this.router.navigate(['/event', row._id]);
     }
 
-    getEventType(row:any) {
+    getEventType(row: any) {
         return row._source.event_type;
     }
 
-    isArchived(row:any) {
+    isArchived(row: any) {
         try {
-            return row._source.tags.indexOf("archived") > -1;
+            return row._source.tags.indexOf('archived') > -1;
         }
         catch (e) {
             return false;
         }
     }
 
-    archive(row:any, $event?:any) {
+    archive(row: any, $event?: any) {
         if ($event) {
             $event.stopPropagation();
         }
-        this.elasticSearchService.archiveEvent(row).then((response:any) => {
-            row._source.tags.push("archived");
-            row._source.tags.push("evebox.archived");
-        })
+        this.elasticSearchService.archiveEvent(row).then((response: any) => {
+            row._source.tags.push('archived');
+            row._source.tags.push('evebox.archived');
+        });
     }
 }

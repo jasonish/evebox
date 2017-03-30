@@ -24,38 +24,38 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, Input} from "@angular/core";
+import {Component, OnInit, Input} from '@angular/core';
 
-import "brace";
-import "brace/mode/json";
+import 'brace';
+import 'brace/mode/json';
 
-declare var ace:any;
-declare var $:any;
+declare var ace: any;
+declare var $: any;
 
 @Component({
-    selector: "ace-editor",
+    selector: 'ace-editor',
     template: `<div id="ace-editor"></div>`
 })
 export class AceEditor implements OnInit {
 
     // The text to show in the editor.
-    @Input() private value:string;
+    @Input() private value: string;
 
     // Read only.
-    private readOnly:boolean = false;
+    private readOnly = false;
 
     // Mode (json, etc.)
-    @Input() private mode:string;
+    @Input() private mode: string;
 
     // Wrap text or not.
-    @Input("wrap") private wrap:boolean = true;
+    @Input('wrap') private wrap = true;
 
     // The Ace editor instace.
-    private editor:any;
+    private editor: any;
 
     ngOnInit() {
 
-        this.editor = ace.edit("ace-editor");
+        this.editor = ace.edit('ace-editor');
 
         // Suppresses a deprecation warning.
         this.editor.$blockScrolling = Infinity;
@@ -64,7 +64,7 @@ export class AceEditor implements OnInit {
         this.editor.getSession().setUseWrapMode(this.wrap);
 
         if (this.mode) {
-            this.editor.getSession().setMode("ace/mode/" + this.mode);
+            this.editor.getSession().setMode('ace/mode/' + this.mode);
         }
 
         this.editor.setValue(this.value, -1);
@@ -73,11 +73,11 @@ export class AceEditor implements OnInit {
     }
 
     resize() {
-        var height = this.editor.getSession().getScreenLength()
+        let height = this.editor.getSession().getScreenLength()
             * this.editor.renderer.lineHeight
             + this.editor.renderer.scrollBar.getWidth()
             + 30; // For some extra bottom buffer.
-        $("#ace-editor").height(height.toString() + "px");
+        $('#ace-editor').height(height.toString() + 'px');
         this.editor.resize();
     };
 }

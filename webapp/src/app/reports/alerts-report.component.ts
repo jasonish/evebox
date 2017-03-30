@@ -24,19 +24,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {ReportsService} from "./reports.service";
-import {AppService, AppEventCode} from "../app.service";
-import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
-import {ActivatedRoute, Params} from "@angular/router";
-import {EveboxSubscriptionService} from "../subscription.service";
-import {loadingAnimation} from "../animations";
-import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {ApiService, QueryStringBuilder, ReportAggOptions} from "../api.service";
-import {TopNavService} from "../topnav.service";
+import {Component, OnInit, OnDestroy} from '@angular/core';
+import {ReportsService} from './reports.service';
+import {AppService, AppEventCode} from '../app.service';
+import {EveboxFormatIpAddressPipe} from '../pipes/format-ipaddress.pipe';
+import {ActivatedRoute, Params} from '@angular/router';
+import {EveboxSubscriptionService} from '../subscription.service';
+import {loadingAnimation} from '../animations';
+import {EveboxSubscriptionTracker} from '../subscription-tracker';
+import {ApiService, QueryStringBuilder, ReportAggOptions} from '../api.service';
+import {TopNavService} from '../topnav.service';
 //import moment = require("moment");
-import * as moment from "moment";
-import {ElasticSearchService} from "../elasticsearch.service";
+import * as moment from 'moment';
+import {ElasticSearchService} from '../elasticsearch.service';
 
 @Component({
     template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
@@ -113,44 +113,44 @@ import {ElasticSearchService} from "../elasticsearch.service";
 })
 export class AlertReportComponent implements OnInit, OnDestroy {
 
-    eventsOverTime:any[] = [];
+    eventsOverTime: any[] = [];
 
-    sourceRows:any[];
-    destinationRows:any[];
-    signatureRows:any[];
-    categoryRows:any[];
+    sourceRows: any[];
+    destinationRows: any[];
+    signatureRows: any[];
+    categoryRows: any[];
 
-    srcPorts:any[];
-    destPorts:any[];
+    srcPorts: any[];
+    destPorts: any[];
 
-    loading:number = 0;
+    loading = 0;
 
-    queryString:string = "";
+    queryString = '';
 
-    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    constructor(private appService:AppService,
-                private ss:EveboxSubscriptionService,
-                private route:ActivatedRoute,
-                private reports:ReportsService,
-                private api:ApiService,
-                private topNavService:TopNavService,
-                private elasticSearch:ElasticSearchService,
-                private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
+    constructor(private appService: AppService,
+                private ss: EveboxSubscriptionService,
+                private route: ActivatedRoute,
+                private reports: ReportsService,
+                private api: ApiService,
+                private topNavService: TopNavService,
+                private elasticSearch: ElasticSearchService,
+                private formatIpAddressPipe: EveboxFormatIpAddressPipe) {
     }
 
     ngOnInit() {
 
-        if (this.route.snapshot.queryParams["q"]) {
-            this.queryString = this.route.snapshot.queryParams["q"];
+        if (this.route.snapshot.queryParams['q']) {
+            this.queryString = this.route.snapshot.queryParams['q'];
         }
 
-        this.subTracker.subscribe(this.route.params, (params:Params) => {
-            this.queryString = params["q"] || "";
+        this.subTracker.subscribe(this.route.params, (params: Params) => {
+            this.queryString = params['q'] || '';
             this.refresh();
         });
 
-        this.subTracker.subscribe(this.appService, (event:any) => {
+        this.subTracker.subscribe(this.appService, (event: any) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -162,16 +162,16 @@ export class AlertReportComponent implements OnInit, OnDestroy {
         this.subTracker.unsubscribe();
     }
 
-    load(fn:any) {
+    load(fn: any) {
         this.loading++;
         fn().then(() => {
             this.loading--;
-        })
+        });
     }
 
     refresh() {
 
-        let size:number = 10;
+        let size = 10;
 
         this.sourceRows = undefined;
         this.destinationRows = undefined;
@@ -179,70 +179,70 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
         let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
 
-        let aggOptions:ReportAggOptions = {
+        let aggOptions: ReportAggOptions = {
             queryString: this.queryString,
             timeRange: timeRangeSeconds,
             size: size,
-            eventType: "alert",
+            eventType: 'alert',
         };
 
         this.load(() => {
-            return this.api.reportAgg("alert.signature", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('alert.signature', aggOptions)
+                .then((response: any) => {
                     this.signatureRows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("alert.category", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('alert.category', aggOptions)
+                .then((response: any) => {
                     this.categoryRows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("src_ip", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('src_ip', aggOptions)
+                .then((response: any) => {
                     this.sourceRows = response.data;
 
-                    this.sourceRows.forEach((row:any) => {
-                        this.elasticSearch.resolveHostnameForIp(row.key).then((hostname:string) => {
+                    this.sourceRows.forEach((row: any) => {
+                        this.elasticSearch.resolveHostnameForIp(row.key).then((hostname: string) => {
                             if (hostname) {
                                 row.searchKey = row.key;
                                 row.key = `${row.key} (${hostname})`;
                             }
-                        })
-                    })
+                        });
+                    });
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dest_ip", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('dest_ip', aggOptions)
+                .then((response: any) => {
                     this.destinationRows = response.data;
 
-                    this.destinationRows.forEach((row:any) => {
-                        this.elasticSearch.resolveHostnameForIp(row.key).then((hostname:string) => {
+                    this.destinationRows.forEach((row: any) => {
+                        this.elasticSearch.resolveHostnameForIp(row.key).then((hostname: string) => {
                             if (hostname) {
                                 row.searchKey = row.key;
                                 row.key = `${row.key} (${hostname})`;
                             }
-                        })
-                    })
+                        });
+                    });
 
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("src_port", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('src_port', aggOptions)
+                .then((response: any) => {
                     this.srcPorts = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dest_port", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('dest_port', aggOptions)
+                .then((response: any) => {
                     this.destPorts = response.data;
                 });
         });
@@ -251,16 +251,16 @@ export class AlertReportComponent implements OnInit, OnDestroy {
             return this.api.reportHistogram({
                 timeRange: timeRangeSeconds,
                 interval: this.reports.histogramTimeInterval(timeRangeSeconds),
-                eventType: "alert",
+                eventType: 'alert',
                 queryString: this.queryString,
-            }).then((response:any) => {
-                this.eventsOverTime = response.data.map((x:any) => {
+            }).then((response: any) => {
+                this.eventsOverTime = response.data.map((x: any) => {
                     return {
                         date: moment(x.key).toDate(),
                         value: x.count,
-                    }
-                })
-            })
+                    };
+                });
+            });
         });
 
     }

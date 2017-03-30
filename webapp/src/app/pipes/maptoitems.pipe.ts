@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from "@angular/core";
+import {Pipe, PipeTransform} from '@angular/core';
 
 /**
  * Example usage:
@@ -34,11 +34,11 @@ import {Pipe, PipeTransform} from "@angular/core";
  *     </div>
  */
 @Pipe({
-    name: "mapToItems"
+    name: 'mapToItems'
 })
 export class EveboxMapToItemsPipe implements PipeTransform {
 
-    flatten(object:any) {
+    flatten(object: any) {
 
         let result = {};
 
@@ -61,7 +61,7 @@ export class EveboxMapToItemsPipe implements PipeTransform {
         return result;
     }
 
-    transform(value:any, args:any):any {
+    transform(value: any, args: any): any {
 
         // Should make optional.
         value = this.flatten(value);

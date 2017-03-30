@@ -24,32 +24,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from "@angular/core";
+import {Injectable} from '@angular/core';
 
-let toastr = require("toastr");
+let toastr = require('toastr');
 
 export interface ToastrOptions {
-    title?:string;
-    closeButton?:boolean;
+    title?: string;
+    closeButton?: boolean;
 
     // How long the toast will be displayed until the user interacts with it.
     // 0 to disable, however will still timeout after the user hovers over it.
-    timeOut?:number;
+    timeOut?: number;
 
     // How to the toast will be displayed after user interaction, like hovering.
-    extendedTimeOut?:number;
+    extendedTimeOut?: number;
 
-    preventDuplicates?:boolean;
+    preventDuplicates?: boolean;
 }
 
 @Injectable()
 export class ToastrService {
 
-    warning(msg:any, options:ToastrOptions = {}) {
+    warning(msg: any, options: ToastrOptions = {}) {
         toastr.warning(msg, options.title, options);
     }
 
-    error(msg:any, options:ToastrOptions = {}) {
+    error(msg: any, options: ToastrOptions = {}) {
         toastr.error(msg, options.title, options);
     }
 

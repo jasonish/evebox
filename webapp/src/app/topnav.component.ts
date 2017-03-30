@@ -27,19 +27,19 @@
 import {
     Component, OnInit, OnDestroy, OnChanges,
     AfterViewChecked
-} from "@angular/core";
-import {ElasticSearchService} from "./elasticsearch.service";
-import {Router, ActivatedRoute} from "@angular/router";
-import {MousetrapService} from "./mousetrap.service";
-import {TopNavService} from "./topnav.service";
-import {AppService, AppEventCode, FEATURE_REPORTING} from "./app.service";
-import {Subscription} from "rxjs/Rx";
-import {ConfigService} from "./config.service";
+} from '@angular/core';
+import {ElasticSearchService} from './elasticsearch.service';
+import {Router, ActivatedRoute} from '@angular/router';
+import {MousetrapService} from './mousetrap.service';
+import {TopNavService} from './topnav.service';
+import {AppService, AppEventCode, FEATURE_REPORTING} from './app.service';
+import {Subscription} from 'rxjs/Rx';
+import {ConfigService} from './config.service';
 
-declare var $:any;
+declare var $: any;
 
 @Component({
-    selector: "evebox-top-nav",
+    selector: 'evebox-top-nav',
     template: `<nav class="navbar navbar-default navbar-fixed-top">
   <div class="container-fluid">
     <div class="navbar-header">
@@ -120,20 +120,20 @@ declare var $:any;
 </nav>`,
 })
 export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
-    appService:AppService;
+    appService: AppService;
 
-    routerSub:Subscription;
+    routerSub: Subscription;
 
-    features:any = {};
+    features: any = {};
 
     elasticSearchService: ElasticSearchService;
 
-    constructor(private router:Router,
-                elasticSearchService:ElasticSearchService,
-                private mousetrap:MousetrapService,
-                private topNavService:TopNavService,
-                appService:AppService,
-                private configService:ConfigService) {
+    constructor(private router: Router,
+                elasticSearchService: ElasticSearchService,
+                private mousetrap: MousetrapService,
+                private topNavService: TopNavService,
+                appService: AppService,
+                private configService: ConfigService) {
         this.elasticSearchService = elasticSearchService;
         this.appService = appService;
     }
@@ -141,22 +141,22 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     ngOnInit() {
 
         if (this.configService.hasFeature(FEATURE_REPORTING)) {
-            this.features["reporting"] = true;
+            this.features['reporting'] = true;
         }
 
-        this.mousetrap.bind(this, "g i", () => {
-            this.gotoRoute("/inbox");
+        this.mousetrap.bind(this, 'g i', () => {
+            this.gotoRoute('/inbox');
         });
-        this.mousetrap.bind(this, "g x", () => {
-            this.gotoRoute("/escalated");
+        this.mousetrap.bind(this, 'g x', () => {
+            this.gotoRoute('/escalated');
         });
-        this.mousetrap.bind(this, "g a", () => {
-            this.gotoRoute("/alerts");
+        this.mousetrap.bind(this, 'g a', () => {
+            this.gotoRoute('/alerts');
         });
-        this.mousetrap.bind(this, "g e", () => {
-            this.gotoRoute("/events");
+        this.mousetrap.bind(this, 'g e', () => {
+            this.gotoRoute('/events');
         });
-        this.mousetrap.bind(this, "?", () => {
+        this.mousetrap.bind(this, '?', () => {
             this.showHelp();
         });
 
@@ -164,8 +164,8 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.routerSub = this.router.events.subscribe((event) => {
 
             switch (this.appService.getRoute()) {
-                case "/escalated":
-                case "/event":
+                case '/escalated':
+                case '/event':
                     this.appService.disableTimeRange();
                     break;
                 default:
@@ -176,20 +176,20 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
     }
 
-    ngOnDestroy():any {
+    ngOnDestroy(): any {
         this.mousetrap.unbind(this);
         this.routerSub.unsubscribe();
     }
 
     ngAfterViewChecked() {
-        $(".dropdown-toggle").dropdown();
+        $('.dropdown-toggle').dropdown();
     }
 
-    gotoRoute(route:string) {
+    gotoRoute(route: string) {
         this.router.navigate([route], {queryParams: {}});
     }
 
-    timeRangeChanged($event:any) {
+    timeRangeChanged($event: any) {
         this.topNavService.setTimeRange($event.target.value);
         this.appService.dispatch({
             event: AppEventCode.TIME_RANGE_CHANGED,
@@ -197,7 +197,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
     }
 
-    isActive(route:any) {
+    isActive(route: any) {
         return route == this.appService.getRoute();
     }
 
@@ -207,7 +207,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
     }
 
-    setTheme(name:string) {
+    setTheme(name: string) {
         // Pass off to appService.
         this.appService.setTheme(name);
     }

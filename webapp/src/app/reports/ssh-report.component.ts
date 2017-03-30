@@ -24,23 +24,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy, Input, OnChanges} from "@angular/core";
-import {ReportsService} from "./reports.service";
-import {AppService, AppEventCode} from "../app.service";
-import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
-import {ActivatedRoute, Params} from "@angular/router";
-import {EveboxSubscriptionService} from "../subscription.service";
-import {loadingAnimation} from "../animations";
-import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {ApiService, ReportAggOptions} from "../api.service";
-import {TopNavService} from "../topnav.service";
-import * as moment from "moment";
-import {ElasticSearchService} from "../elasticsearch.service";
+import {Component, OnInit, OnDestroy, Input, OnChanges} from '@angular/core';
+import {ReportsService} from './reports.service';
+import {AppService, AppEventCode} from '../app.service';
+import {EveboxFormatIpAddressPipe} from '../pipes/format-ipaddress.pipe';
+import {ActivatedRoute, Params} from '@angular/router';
+import {EveboxSubscriptionService} from '../subscription.service';
+import {loadingAnimation} from '../animations';
+import {EveboxSubscriptionTracker} from '../subscription-tracker';
+import {ApiService, ReportAggOptions} from '../api.service';
+import {TopNavService} from '../topnav.service';
+import * as moment from 'moment';
+import {ElasticSearchService} from '../elasticsearch.service';
 
-declare var Chart:any;
+declare var Chart: any;
 
 @Component({
-    selector: "evebox-ssh-top-client-hosts",
+    selector: 'evebox-ssh-top-client-hosts',
     template: `<evebox-ip-addr-data-table *ngIf="results"
                    title="Top SSH Client Hosts"
                    [rows]="results"
@@ -49,43 +49,43 @@ declare var Chart:any;
 })
 export class SshTopClientsComponent implements OnInit, OnChanges {
 
-    @Input() queryString:string = "";
+    @Input() queryString = '';
 
-    results:any[] = [];
+    results: any[] = [];
 
-    constructor(private api:ApiService, private topNavService:TopNavService) {
+    constructor(private api: ApiService, private topNavService: TopNavService) {
     }
 
-    ngOnInit():void {
+    ngOnInit(): void {
         this.refresh();
     }
 
-    ngOnChanges():void {
+    ngOnChanges(): void {
         this.refresh();
     }
 
-    refresh():any {
+    refresh(): any {
 
-        let size:number = 10;
+        let size = 10;
 
         let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
 
-        let aggOptions:ReportAggOptions = {
+        let aggOptions: ReportAggOptions = {
             queryString: this.queryString,
             timeRange: timeRangeSeconds,
             size: size,
-            eventType: "ssh",
+            eventType: 'ssh',
         };
 
-        return this.api.reportAgg("src_ip", aggOptions)
-            .then((response:any) => {
+        return this.api.reportAgg('src_ip', aggOptions)
+            .then((response: any) => {
                 this.results = response.data;
             });
     }
 }
 
 @Component({
-    selector: "evebox-ssh-top-server-hosts",
+    selector: 'evebox-ssh-top-server-hosts',
     template: `<evebox-ip-addr-data-table *ngIf="results"
                    title="Top SSH Server Hosts"
                    [rows]="results"
@@ -94,37 +94,37 @@ export class SshTopClientsComponent implements OnInit, OnChanges {
 })
 export class SshTopServersComponent implements OnInit, OnChanges {
 
-    @Input() queryString:string = "";
+    @Input() queryString = '';
 
-    results:any[] = [];
+    results: any[] = [];
 
-    constructor(private api:ApiService, private topNavService:TopNavService,
-                private elasticSearch:ElasticSearchService) {
+    constructor(private api: ApiService, private topNavService: TopNavService,
+                private elasticSearch: ElasticSearchService) {
     }
 
-    ngOnInit():void {
+    ngOnInit(): void {
         this.refresh();
     }
 
-    ngOnChanges():void {
+    ngOnChanges(): void {
         this.refresh();
     }
 
-    refresh():any {
+    refresh(): any {
 
-        let size:number = 10;
+        let size = 10;
 
         let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
 
-        let aggOptions:ReportAggOptions = {
+        let aggOptions: ReportAggOptions = {
             queryString: this.queryString,
             timeRange: timeRangeSeconds,
             size: size,
-            eventType: "ssh",
+            eventType: 'ssh',
         };
 
-        return this.api.reportAgg("dest_ip", aggOptions)
-            .then((response:any) => {
+        return this.api.reportAgg('dest_ip', aggOptions)
+            .then((response: any) => {
                 this.results = response.data;
             });
     }
@@ -132,7 +132,7 @@ export class SshTopServersComponent implements OnInit, OnChanges {
 }
 
 @Component({
-    selector: "evebox-ip-addr-data-table",
+    selector: 'evebox-ip-addr-data-table',
     template: `<report-data-table *ngIf="rows"
                    [title]="title"
                    [rows]="rows"
@@ -141,18 +141,18 @@ export class SshTopServersComponent implements OnInit, OnChanges {
 })
 export class IpAddrDataTableComponent implements OnInit, OnChanges {
 
-    @Input() rows:any[] = [];
-    @Input() headers:string[] = [];
-    @Input() title:string;
+    @Input() rows: any[] = [];
+    @Input() headers: string[] = [];
+    @Input() title: string;
 
-    constructor(private elasticSearch:ElasticSearchService) {
+    constructor(private elasticSearch: ElasticSearchService) {
     }
 
-    ngOnInit():void {
+    ngOnInit(): void {
         this.resolveHostnames();
     }
 
-    ngOnChanges():void {
+    ngOnChanges(): void {
         this.resolveHostnames();
     }
 
@@ -162,14 +162,14 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
         }
 
         console.log(`Resolving hostnames for data table ${this.title}.`);
-        this.rows.forEach((result:any) => {
-            this.elasticSearch.resolveHostnameForIp(result.key).then((hostname:string) => {
+        this.rows.forEach((result: any) => {
+            this.elasticSearch.resolveHostnameForIp(result.key).then((hostname: string) => {
                 if (hostname) {
                     result.searchKey = result.key;
                     result.key = `${result.key} (${hostname})`;
                 }
-            })
-        })
+            });
+        });
     }
 
 }
@@ -254,40 +254,40 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
 })
 export class SshReportComponent implements OnInit, OnDestroy {
 
-    eventsOverTime:any[] = [];
+    eventsOverTime: any[] = [];
 
-    serverSoftware:any[] = [];
-    clientSoftware:any[] = [];
+    serverSoftware: any[] = [];
+    clientSoftware: any[] = [];
 
-    loading:number = 0;
+    loading = 0;
 
-    queryString:string = "";
+    queryString = '';
 
-    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    charts:any = {};
+    charts: any = {};
 
-    constructor(private appService:AppService,
-                private ss:EveboxSubscriptionService,
-                private route:ActivatedRoute,
-                private reports:ReportsService,
-                private api:ApiService,
-                private topNavService:TopNavService,
-                private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
+    constructor(private appService: AppService,
+                private ss: EveboxSubscriptionService,
+                private route: ActivatedRoute,
+                private reports: ReportsService,
+                private api: ApiService,
+                private topNavService: TopNavService,
+                private formatIpAddressPipe: EveboxFormatIpAddressPipe) {
     }
 
     ngOnInit() {
 
-        if (this.route.snapshot.queryParams["q"]) {
-            this.queryString = this.route.snapshot.queryParams["q"];
+        if (this.route.snapshot.queryParams['q']) {
+            this.queryString = this.route.snapshot.queryParams['q'];
         }
 
-        this.subTracker.subscribe(this.route.params, (params:Params) => {
-            this.queryString = params["q"] || "";
+        this.subTracker.subscribe(this.route.params, (params: Params) => {
+            this.queryString = params['q'] || '';
             this.refresh();
         });
 
-        this.subTracker.subscribe(this.appService, (event:any) => {
+        this.subTracker.subscribe(this.appService, (event: any) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -299,75 +299,75 @@ export class SshReportComponent implements OnInit, OnDestroy {
         this.subTracker.unsubscribe();
     }
 
-    load(fn:any) {
+    load(fn: any) {
         this.loading++;
         fn().then(() => {
             this.loading--;
-        })
+        });
     }
 
     refresh() {
 
-        let size:number = 100;
+        let size = 100;
 
         let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
 
-        let aggOptions:ReportAggOptions = {
+        let aggOptions: ReportAggOptions = {
             queryString: this.queryString,
             timeRange: timeRangeSeconds,
             size: size,
-            eventType: "ssh",
+            eventType: 'ssh',
         };
 
         this.load(() => {
             return this.api.reportHistogram({
                 timeRange: timeRangeSeconds,
                 interval: this.reports.histogramTimeInterval(timeRangeSeconds),
-                eventType: "ssh",
+                eventType: 'ssh',
                 queryString: this.queryString,
-            }).then((response:any) => {
-                this.eventsOverTime = response.data.map((x:any) => {
+            }).then((response: any) => {
+                this.eventsOverTime = response.data.map((x: any) => {
                     return {
                         date: moment(x.key).toDate(),
                         value: x.count,
-                    }
+                    };
                 });
 
-                let ctx = document.getElementById("eventsOverTimeChart");
+                let ctx = document.getElementById('eventsOverTimeChart');
 
-                let values:any[] = response.data.map((x:any) => {
+                let values: any[] = response.data.map((x: any) => {
                     return x.count;
                 });
 
-                let labels:any[] = response.data.map((x:any) => {
+                let labels: any[] = response.data.map((x: any) => {
                     return moment(x.key).format();
                 });
 
-                if (this.charts["eventsOverTimeChart"]) {
-                    this.charts["eventsOverTimeChart"].destroy();
+                if (this.charts['eventsOverTimeChart']) {
+                    this.charts['eventsOverTimeChart'].destroy();
                 }
 
-                this.charts["eventsOverTimeChart"] = new Chart(ctx, {
-                    type: "line",
+                this.charts['eventsOverTimeChart'] = new Chart(ctx, {
+                    type: 'line',
                     data: {
                         labels: labels,
                         datasets: [
                             {
                                 backgroundColor: randomColour(),
                                 data: values,
-                                pointStyle: "line",
+                                pointStyle: 'line',
                             }
                         ]
                     },
                     options: {
                         title: {
                             display: true,
-                            text: "SSH Connections Over Time",
+                            text: 'SSH Connections Over Time',
                         },
                         scales: {
                             xAxes: [
                                 {
-                                    type: "time",
+                                    type: 'time',
                                     ticks: {
                                         maxRotation: 0,
                                     }
@@ -379,70 +379,70 @@ export class SshReportComponent implements OnInit, OnDestroy {
                         },
                         maintainAspectRatio: false,
                     },
-                })
+                });
 
-            })
+            });
         });
 
         this.load(() => {
-            return this.api.reportAgg("ssh.client.software_version", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('ssh.client.software_version', aggOptions)
+                .then((response: any) => {
 
                     this.clientSoftware = response.data;
 
                     // Only graph the top 10 then sum up the rest under "Other".
-                    let versions:any = [];
+                    let versions: any = [];
 
                     for (let i = 0; i < response.data.length; i++) {
                         if (i < 10) {
                             versions.push(response.data[i]);
                         }
                         if (i == 10) {
-                            versions.push({key: "Other", count: 0});
+                            versions.push({key: 'Other', count: 0});
                         }
                         if (i >= 10) {
                             versions[10].count += response.data[i].count;
                         }
                     }
 
-                    this.renderPieChart("clientVersionsPie", versions);
-                })
+                    this.renderPieChart('clientVersionsPie', versions);
+                });
         });
 
         this.load(() => {
-            return this.api.reportAgg("ssh.server.software_version", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('ssh.server.software_version', aggOptions)
+                .then((response: any) => {
 
                     this.serverSoftware = response.data;
 
                     // Only graph the top 10 then sum up the rest under "Other".
-                    let versions:any = [];
+                    let versions: any = [];
 
                     for (let i = 0; i < response.data.length; i++) {
                         if (i < 10) {
                             versions.push(response.data[i]);
                         }
                         if (i == 10) {
-                            versions.push({key: "Other", count: 0});
+                            versions.push({key: 'Other', count: 0});
                         }
                         if (i >= 10) {
                             versions[10].count += response.data[i].count;
                         }
                     }
 
-                    this.renderPieChart("serverVersionsPie", versions);
-                })
+                    this.renderPieChart('serverVersionsPie', versions);
+                });
         });
 
     }
 
-    renderPieChart(canvasId:string, data:any[]) {
+    renderPieChart(canvasId: string, data: any[]) {
 
-        let labels:string[] = [];
-        let values:number[] = [];
-        let colours:string[] = [];
+        let labels: string[] = [];
+        let values: number[] = [];
+        let colours: string[] = [];
 
-        data.forEach((version:any) => {
+        data.forEach((version: any) => {
             labels.push(version.key);
             values.push(version.count);
             colours.push(randomColour());
@@ -455,7 +455,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
         }
 
         this.charts[canvasId] = new Chart(ctx, {
-            type: "pie",
+            type: 'pie',
             data: {
                 labels: labels,
                 datasets: [
@@ -468,7 +468,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
             options: {
                 legend: {
                     display: true,
-                    position: "right",
+                    position: 'right',
                 }
             }
         });

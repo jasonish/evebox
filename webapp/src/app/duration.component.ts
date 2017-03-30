@@ -24,21 +24,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnInit, OnDestroy, NgZone} from "@angular/core";
+import {Component, Input, OnInit, OnDestroy, NgZone} from '@angular/core';
 //import moment = require("moment");
-import * as moment from "moment";
+import * as moment from 'moment';
 
 @Component({
-    selector: "evebox-duration",
-    template: "{{duration}} ago"
+    selector: 'evebox-duration',
+    template: '{{duration}} ago'
 })
 export class EveboxDurationComponent implements OnInit, OnDestroy {
 
-    @Input("timestamp") private timestamp:any;
-    duration:any;
-    interval:any = null;
+    @Input('timestamp') private timestamp: any;
+    duration: any;
+    interval: any = null;
 
-    constructor(private ngZone:NgZone) {
+    constructor(private ngZone: NgZone) {
     }
 
     refresh() {
@@ -60,7 +60,7 @@ export class EveboxDurationComponent implements OnInit, OnDestroy {
         }, 60000);
     }
 
-    ngOnDestroy():any {
+    ngOnDestroy(): any {
         if (this.interval != null) {
             clearInterval(this.interval);
         }

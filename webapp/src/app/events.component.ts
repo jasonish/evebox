@@ -24,15 +24,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {ActivatedRoute} from "@angular/router";
-import {ElasticSearchService, ResultSet} from "./elasticsearch.service";
-import {EveboxEventTableConfig} from "./event-table.component";
-import {MousetrapService} from "./mousetrap.service";
-import {AppService} from "./app.service";
-import {ToastrService} from "./toastr.service";
-import {EveboxSubscriptionService} from "./subscription.service";
-import {loadingAnimation} from "./animations";
+import {Component, OnInit, OnDestroy} from '@angular/core';
+import {ActivatedRoute} from '@angular/router';
+import {ElasticSearchService, ResultSet} from './elasticsearch.service';
+import {EveboxEventTableConfig} from './event-table.component';
+import {MousetrapService} from './mousetrap.service';
+import {AppService} from './app.service';
+import {ToastrService} from './toastr.service';
+import {EveboxSubscriptionService} from './subscription.service';
+import {loadingAnimation} from './animations';
 
 @Component({
     template: `<div class="content" [@loadingState]="(!resultSet || loading) ? 'true' : 'false'">
@@ -109,50 +109,50 @@ import {loadingAnimation} from "./animations";
 })
 export class EventsComponent implements OnInit, OnDestroy {
 
-    resultSet:ResultSet;
+    resultSet: ResultSet;
 
-    loading:boolean = false;
+    loading = false;
 
-    queryString:string = "";
+    queryString = '';
 
-    eventTypeFilterValues:string[] = [
-        "All",
-        "Alert",
-        "HTTP",
-        "Flow",
-        "NetFlow",
-        "DNS",
-        "TLS",
-        "Drop",
-        "FileInfo",
-        "SSH",
+    eventTypeFilterValues: string[] = [
+        'All',
+        'Alert',
+        'HTTP',
+        'Flow',
+        'NetFlow',
+        'DNS',
+        'TLS',
+        'Drop',
+        'FileInfo',
+        'SSH',
     ];
 
-    eventTypeFilter:string = this.eventTypeFilterValues[0];
+    eventTypeFilter: string = this.eventTypeFilterValues[0];
 
-    timeStart:string;
-    timeEnd:string;
+    timeStart: string;
+    timeEnd: string;
 
-    eveboxEventTableConfig:EveboxEventTableConfig = {
+    eveboxEventTableConfig: EveboxEventTableConfig = {
         showCount: false,
         rows: []
     };
 
-    constructor(private route:ActivatedRoute,
-                private elasticsearch:ElasticSearchService,
-                private mousetrap:MousetrapService,
-                private appService:AppService,
-                private toastr:ToastrService,
-                private ss:EveboxSubscriptionService) {
+    constructor(private route: ActivatedRoute,
+                private elasticsearch: ElasticSearchService,
+                private mousetrap: MousetrapService,
+                private appService: AppService,
+                private toastr: ToastrService,
+                private ss: EveboxSubscriptionService) {
     }
 
-    ngOnInit():any {
+    ngOnInit(): any {
 
-        this.ss.subscribe(this, this.route.params, (params:any) => {
+        this.ss.subscribe(this, this.route.params, (params: any) => {
 
-            let qp:any = this.route.snapshot.queryParams;
+            let qp: any = this.route.snapshot.queryParams;
 
-            this.queryString = params.q || qp.q || "";
+            this.queryString = params.q || qp.q || '';
             this.timeStart = params.timeStart || qp.timeStart;
             this.timeEnd = params.timeEnd || qp.timeEnd;
             this.eventTypeFilter = params.eventType || this.eventTypeFilterValues[0];
@@ -161,8 +161,8 @@ export class EventsComponent implements OnInit, OnDestroy {
 
         this.appService.disableTimeRange();
 
-        this.mousetrap.bind(this, "/", () => this.focusFilterInput());
-        this.mousetrap.bind(this, "r", () => this.refresh());
+        this.mousetrap.bind(this, '/', () => this.focusFilterInput());
+        this.mousetrap.bind(this, 'r', () => this.refresh());
     }
 
     ngOnDestroy() {
@@ -171,22 +171,22 @@ export class EventsComponent implements OnInit, OnDestroy {
     }
 
     focusFilterInput() {
-        document.getElementById("filter-input").focus();
+        document.getElementById('filter-input').focus();
     }
 
     submitFilter() {
-        document.getElementById("filter-input").blur();
+        document.getElementById('filter-input').blur();
         this.appService.updateParams(this.route, {
             q: this.queryString
         });
     }
 
     clearFilter() {
-        this.queryString = "";
+        this.queryString = '';
         this.submitFilter();
     }
 
-    setEventTypeFilter(type:string) {
+    setEventTypeFilter(type: string) {
         this.eventTypeFilter = type;
         this.appService.updateParams(this.route, {eventType: this.eventTypeFilter});
     }
@@ -218,13 +218,13 @@ export class EventsComponent implements OnInit, OnDestroy {
             timeEnd: this.timeEnd,
             timeStart: this.timeStart,
             eventType: this.eventTypeFilter.toLowerCase(),
-        }).then((resultSet:ResultSet) => {
+        }).then((resultSet: ResultSet) => {
             this.resultSet = resultSet;
             this.eveboxEventTableConfig.rows = resultSet.events;
             this.loading = false;
-        }, (error:any) => {
+        }, (error: any) => {
 
-            console.log("Error fetching alerts:");
+            console.log('Error fetching alerts:');
             console.log(error);
 
             // Check for a reason.
@@ -232,7 +232,7 @@ export class EventsComponent implements OnInit, OnDestroy {
                 this.toastr.error(error.error.root_cause[0].reason);
             }
             catch (err) {
-                this.toastr.error("An error occurred while executing query.");
+                this.toastr.error('An error occurred while executing query.');
             }
 
             this.resultSet = undefined;

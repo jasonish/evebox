@@ -24,10 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input} from "@angular/core";
+import {Component, Input} from '@angular/core';
 
 @Component({
-    selector: "report-data-table",
+    selector: 'report-data-table',
     template: `<div class="panel panel-default" [ngClass]="{'evebox-opacity-50': loading > 0}">
   <div class="panel-heading">
     <b>{{title}}</b>
@@ -62,12 +62,12 @@ import {Component, Input} from "@angular/core";
 })
 export class EveboxReportDataTable {
 
-    @Input() title:string;
-    @Input() headers:string[] = [];
-    @Input() rows:any[];
-    @Input() loading:number = 0;
+    @Input() title: string;
+    @Input() headers: string[] = [];
+    @Input() rows: any[];
+    @Input() loading = 0;
 
-    q(row:any) {
+    q(row: any) {
         if (row.searchKey) {
             return `+"${row.searchKey}"`;
         }

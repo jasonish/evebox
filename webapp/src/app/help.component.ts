@@ -1,11 +1,11 @@
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {AppService, AppEvent, AppEventCode} from "./app.service";
-import {ApiService} from "./api.service";
+import {Component, OnInit, OnDestroy} from '@angular/core';
+import {AppService, AppEvent, AppEventCode} from './app.service';
+import {ApiService} from './api.service';
 
-declare var $:any;
+declare var $: any;
 
 @Component({
-    selector: "evebox-help",
+    selector: 'evebox-help',
     template: `<div class="modal fade" id="help-modal" tabindex="-1" role="dialog"
      aria-labelledby="help-modal-label">
   <div class="modal-dialog modal-lg" role="document">
@@ -68,83 +68,83 @@ declare var $:any;
 })
 export class EveboxHelpComponent implements OnInit, OnDestroy {
 
-    shortcuts:any[] = [
+    shortcuts: any[] = [
         {
-            shortcut: "?",
-            help: "Show help."
+            shortcut: '?',
+            help: 'Show help.'
         },
 
         {
-            shortcut: "g i",
-            help: "Goto inbox."
+            shortcut: 'g i',
+            help: 'Goto inbox.'
         },
         {
-            shortcut: "g x",
-            help: "Goto escalated."
+            shortcut: 'g x',
+            help: 'Goto escalated.'
         },
         {
-            shortcut: "g a",
-            help: "Goto alerts."
+            shortcut: 'g a',
+            help: 'Goto alerts.'
         },
         {
-            shortcut: "g e",
-            help: "Goto events."
-        },
-
-        {
-            shortcut: "F8",
-            help: "In inbox, archives active alert."
+            shortcut: 'g e',
+            help: 'Goto events.'
         },
 
         {
-            shortcut: "F9",
-            help: "In inbox, escalate and archive active alert."
+            shortcut: 'F8',
+            help: 'In inbox, archives active alert.'
         },
 
         {
-            shortcut: "e",
-            help: "Archive selected alerts."
+            shortcut: 'F9',
+            help: 'In inbox, escalate and archive active alert.'
+        },
+
+        {
+            shortcut: 'e',
+            help: 'Archive selected alerts.'
         },
         {
-            shortcut: "s",
-            help: "Toggles escalated status of alert."
+            shortcut: 's',
+            help: 'Toggles escalated status of alert.'
         },
         {
-            shortcut: "x",
-            help: "Select highlighted event."
+            shortcut: 'x',
+            help: 'Select highlighted event.'
         },
         {
-            shortcut: "/",
-            help: "Focus search input."
+            shortcut: '/',
+            help: 'Focus search input.'
         },
         {
-            shortcut: "j",
-            help: "Next event."
+            shortcut: 'j',
+            help: 'Next event.'
         },
         {
-            shortcut: "k",
-            help: "Previous event."
+            shortcut: 'k',
+            help: 'Previous event.'
         },
         {
-            shortcut: "o",
-            help: "Open event."
+            shortcut: 'o',
+            help: 'Open event.'
         },
         {
-            shortcut: "u",
-            help: "When in event view, go back to event listing."
+            shortcut: 'u',
+            help: 'When in event view, go back to event listing.'
         }
     ];
 
-    versionInfo:any = {};
+    versionInfo: any = {};
 
-    appServiceSubscription:any;
+    appServiceSubscription: any;
 
-    constructor(private appService:AppService, private api:ApiService) {
+    constructor(private appService: AppService, private api: ApiService) {
     }
 
     ngOnInit() {
         this.appServiceSubscription = this.appService.subscribe(
-            (event:AppEvent) => this.eventHandler(event));
+            (event: AppEvent) => this.eventHandler(event));
 
         this.api.getVersion().then((response) => {
             this.versionInfo = response;
@@ -156,10 +156,10 @@ export class EveboxHelpComponent implements OnInit, OnDestroy {
     }
 
     showHelp() {
-        $("#help-modal").modal();
+        $('#help-modal').modal();
     }
 
-    eventHandler(appEvent:AppEvent) {
+    eventHandler(appEvent: AppEvent) {
         if (appEvent.event === AppEventCode.SHOW_HELP) {
             this.showHelp();
         }

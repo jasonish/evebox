@@ -24,19 +24,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnInit, OnDestroy} from "@angular/core";
-import {Router} from "@angular/router";
-import {EveboxFormatTimestampPipe} from "./pipes/format-timestamp.pipe";
-import {EveboxFormatIpAddressPipe} from "./pipes/format-ipaddress.pipe";
-import {KeyTableDirective} from "./keytable.directive";
-import {EveBoxEventDescriptionPrinterPipe} from "./pipes/eventdescription.pipe";
-import {EveboxDurationComponent} from "./duration.component";
-import {EventSeverityToBootstrapClass} from "./pipes/event-severity-to-bootstrap-class.pipe";
-import {MousetrapService} from "./mousetrap.service";
-import {ElasticSearchService} from "./elasticsearch.service";
+import {Component, Input, OnInit, OnDestroy} from '@angular/core';
+import {Router} from '@angular/router';
+import {EveboxFormatTimestampPipe} from './pipes/format-timestamp.pipe';
+import {EveboxFormatIpAddressPipe} from './pipes/format-ipaddress.pipe';
+import {KeyTableDirective} from './keytable.directive';
+import {EveBoxEventDescriptionPrinterPipe} from './pipes/eventdescription.pipe';
+import {EveboxDurationComponent} from './duration.component';
+import {EventSeverityToBootstrapClass} from './pipes/event-severity-to-bootstrap-class.pipe';
+import {MousetrapService} from './mousetrap.service';
+import {ElasticSearchService} from './elasticsearch.service';
 
 @Component({
-    selector: "eveboxEventTable2",
+    selector: 'eveboxEventTable2',
     template: `<div *ngIf="rows && rows.length > 0" class="table-responsive">
   <table class="table table-condensed table-hover evebox-event-table"
          style="padding-bottom: 0px !important; margin-bottom: 0px !important;">
@@ -93,35 +93,35 @@ import {ElasticSearchService} from "./elasticsearch.service";
 })
 export class EveboxEventTable2Component {
 
-    @Input() rows:any[];
+    @Input() rows: any[];
 
-    @Input() showEventType:boolean = true;
+    @Input() showEventType = true;
 
-    @Input() showActiveEvent:boolean = true;
+    @Input() showActiveEvent = true;
 
-    constructor(private router:Router,
-                private mousetrap:MousetrapService,
-                private elasticSearchService:ElasticSearchService) {
+    constructor(private router: Router,
+                private mousetrap: MousetrapService,
+                private elasticSearchService: ElasticSearchService) {
     }
 
-    openRow(row:any) {
+    openRow(row: any) {
         this.router.navigate(['/event', row._id]);
     }
 
-    getEventType(row:any) {
+    getEventType(row: any) {
         return row._source.event_type;
     }
 
-    isArchived(row:any) {
+    isArchived(row: any) {
         try {
-            return row._source.tags.indexOf("archived") > -1;
+            return row._source.tags.indexOf('archived') > -1;
         }
         catch (e) {
             return false;
         }
     }
 
-    archive(row:any, $event?:any) {
+    archive(row: any, $event?: any) {
         if ($event) {
             $event.stopPropagation();
         }

@@ -24,47 +24,47 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {Location} from "@angular/common";
-import {ActivatedRoute, Router} from "@angular/router";
-import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
-import {ApiService} from "./api.service";
-import {EventServices} from "./eventservices.service";
-import {EventService} from "./event.service";
-import {MousetrapService} from "./mousetrap.service";
-import {EveboxSubscriptionService} from "./subscription.service";
-import {loadingAnimation} from "./animations";
+import {Component, OnInit, OnDestroy} from '@angular/core';
+import {Location} from '@angular/common';
+import {ActivatedRoute, Router} from '@angular/router';
+import {ElasticSearchService, AlertGroup} from './elasticsearch.service';
+import {ApiService} from './api.service';
+import {EventServices} from './eventservices.service';
+import {EventService} from './event.service';
+import {MousetrapService} from './mousetrap.service';
+import {EveboxSubscriptionService} from './subscription.service';
+import {loadingAnimation} from './animations';
 
 /**
  * Component to show a single event.
  */
 @Component({
-    templateUrl: "./event.component.html",
+    templateUrl: './event.component.html',
     animations: [
         loadingAnimation,
     ]
 })
 export class EventComponent implements OnInit, OnDestroy {
 
-    loading:boolean = false;
+    loading = false;
 
-    eventId:string;
-    alertGroup:AlertGroup;
-    public event:any = {};
-    params:any = {};
-    flows:any[] = [];
+    eventId: string;
+    alertGroup: AlertGroup;
+    public event: any = {};
+    params: any = {};
+    flows: any[] = [];
 
-    servicesForEvent:any[] = []
+    servicesForEvent: any[] = [];
 
-    constructor(private route:ActivatedRoute,
-                private router:Router,
-                private elasticSearch:ElasticSearchService,
-                private api:ApiService,
-                private eventServices:EventServices,
-                private location:Location,
-                private eventService:EventService,
-                private mousetrap:MousetrapService,
-                private ss:EveboxSubscriptionService) {
+    constructor(private route: ActivatedRoute,
+                private router: Router,
+                private elasticSearch: ElasticSearchService,
+                private api: ApiService,
+                private eventServices: EventServices,
+                private location: Location,
+                private eventService: EventService,
+                private mousetrap: MousetrapService,
+                private ss: EveboxSubscriptionService) {
     }
 
     reset() {
@@ -83,7 +83,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
         let alertGroup = this.eventService.popAlertGroup();
 
-        this.ss.subscribe(this, this.route.params, (params:any) => {
+        this.ss.subscribe(this, this.route.params, (params: any) => {
 
             this.reset();
 
@@ -93,7 +93,7 @@ export class EventComponent implements OnInit, OnDestroy {
             if (alertGroup && this.eventId == alertGroup.event._id) {
                 this.alertGroup = alertGroup;
                 this.event = this.alertGroup.event;
-                if (this.event._source.event_type != "flow") {
+                if (this.event._source.event_type != 'flow') {
                     this.findFlow(this.event);
                 }
                 this.setup();
@@ -104,9 +104,9 @@ export class EventComponent implements OnInit, OnDestroy {
 
         });
 
-        this.mousetrap.bind(this, "u", () => this.goBack());
-        this.mousetrap.bind(this, "e", () => this.archiveEvent());
-        this.mousetrap.bind(this, "f8", () => this.archiveEvent());
+        this.mousetrap.bind(this, 'u', () => this.goBack());
+        this.mousetrap.bind(this, 'e', () => this.archiveEvent());
+        this.mousetrap.bind(this, 'f8', () => this.archiveEvent());
 
     }
 
@@ -115,7 +115,7 @@ export class EventComponent implements OnInit, OnDestroy {
         this.mousetrap.unbind(this);
     }
 
-    eventToPcap(what:any) {
+    eventToPcap(what: any) {
         this.api.eventToPcap(what, this.event._source);
     }
 
@@ -124,11 +124,11 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     showArchiveButton() {
-        return this.event._source.event_type == "alert" &&
-            this.event._source.tags.indexOf("archived") == -1;
+        return this.event._source.event_type == 'alert' &&
+            this.event._source.tags.indexOf('archived') == -1;
     }
 
-    hasGeoip():boolean {
+    hasGeoip(): boolean {
         if (this.event._source.geoip &&
             Object.keys(this.event._source.geoip).length > 0) {
             return true;
@@ -144,19 +144,19 @@ export class EventComponent implements OnInit, OnDestroy {
         // This is only for alerts right now.
         q += ` event_type${this.elasticSearch.keywordSuffix}:"alert"`;
 
-        if (this.params && this.params.referer == "/inbox") {
+        if (this.params && this.params.referer == '/inbox') {
             q += ` -tags:archived`;
         }
 
         console.log(q);
 
-        this.router.navigate(["/events", {q: q}]);
+        this.router.navigate(['/events', {q: q}]);
     }
 
     archiveEvent() {
         if (this.alertGroup) {
             this.elasticSearch.archiveAlertGroup(this.alertGroup);
-            this.alertGroup.event._source.tags.push("archived");
+            this.alertGroup.event._source.tags.push('archived');
         }
         else {
             this.elasticSearch.archiveEvent(this.event);
@@ -170,7 +170,7 @@ export class EventComponent implements OnInit, OnDestroy {
             this.alertGroup.escalatedCount = this.alertGroup.count;
         }
         else {
-            console.log("Escalating single event.");
+            console.log('Escalating single event.');
             this.elasticSearch.escalateEvent(this.event);
         }
     }
@@ -198,20 +198,20 @@ export class EventComponent implements OnInit, OnDestroy {
             return false;
         }
 
-        if (this.event._source.tags.indexOf("escalated") > -1) {
+        if (this.event._source.tags.indexOf('escalated') > -1) {
             return true;
         }
 
-        if (this.event._source.tags.indexOf("evebox.escalated") > -1) {
+        if (this.event._source.tags.indexOf('evebox.escalated') > -1) {
             return true;
         }
 
         return false;
     }
 
-    findFlow(event:any) {
+    findFlow(event: any) {
         if (!event._source.flow_id) {
-            console.log("Unable to find flow for event, event does not have a flow id.");
+            console.log('Unable to find flow for event, event does not have a flow id.');
             console.log(event);
             return;
         }
@@ -223,15 +223,15 @@ export class EventComponent implements OnInit, OnDestroy {
             srcIp: event._source.src_ip,
             destIp: event._source.dest_ip,
         }).then(response => {
-            console.log(response)
+            console.log(response);
             if (response.flows.length > 0) {
                 this.flows = response.flows;
             }
             else {
-                console.log("No flows found for event.");
+                console.log('No flows found for event.');
             }
         }, error => {
-            console.log("Failed to find flows for event:");
+            console.log('Failed to find flows for event:');
             console.log(error);
         });
     }
@@ -241,9 +241,9 @@ export class EventComponent implements OnInit, OnDestroy {
         this.loading = true;
 
         this.elasticSearch.getEventById(this.eventId)
-            .then((response:any) => {
+            .then((response: any) => {
                 this.event = response;
-                if (this.event._source.event_type != "flow") {
+                if (this.event._source.event_type != 'flow') {
                     this.findFlow(response);
                 }
                 this.setup();

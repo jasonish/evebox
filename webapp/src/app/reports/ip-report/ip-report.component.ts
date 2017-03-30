@@ -23,19 +23,19 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {ActivatedRoute} from "@angular/router";
-import {EveboxSubscriptionService} from "../../subscription.service";
-import {ElasticSearchService} from "../../elasticsearch.service";
-import {TopNavService} from "../../topnav.service";
-import {ReportsService} from "../reports.service";
-import {AppService, AppEvent, AppEventCode} from "../../app.service";
-import {loadingAnimation} from "../../animations";
-import * as moment from "moment";
-import {humanizeFileSize} from "../../humanize.service";
-import {ApiService} from "../../api.service";
+import {Component, OnInit, OnDestroy} from '@angular/core';
+import {ActivatedRoute} from '@angular/router';
+import {EveboxSubscriptionService} from '../../subscription.service';
+import {ElasticSearchService} from '../../elasticsearch.service';
+import {TopNavService} from '../../topnav.service';
+import {ReportsService} from '../reports.service';
+import {AppService, AppEvent, AppEventCode} from '../../app.service';
+import {loadingAnimation} from '../../animations';
+import * as moment from 'moment';
+import {humanizeFileSize} from '../../humanize.service';
+import {ApiService} from '../../api.service';
 
-function termQuery(type:string, field:string, value:string) {
+function termQuery(type: string, field: string, value: string) {
     let term = {};
     term[type] = {};
     term[type][field] = value;
@@ -43,20 +43,20 @@ function termQuery(type:string, field:string, value:string) {
 }
 
 @Component({
-    templateUrl: "./ip-report.component.html",
+    templateUrl: './ip-report.component.html',
     animations: [
         loadingAnimation,
     ]
 })
 export class IpReportComponent implements OnInit, OnDestroy {
 
-    ip:string;
+    ip: string;
 
-    loading:number = 0;
+    loading = 0;
 
-    alertsOverTime:any[];
+    alertsOverTime: any[];
 
-    flow:any = {
+    flow: any = {
 
         ready: false,
 
@@ -69,30 +69,30 @@ export class IpReportComponent implements OnInit, OnDestroy {
     };
 
     // DNS hostname lookups returning this IP.
-    dnsHostnamesForAddress:any[];
+    dnsHostnamesForAddress: any[];
 
     // Top requested hostnames.
-    dnsRequestedHostnames:any[];
+    dnsRequestedHostnames: any[];
 
-    userAgents:any[];
+    userAgents: any[];
 
-    topHttpHostnames:any[];
+    topHttpHostnames: any[];
 
-    tlsSni:any[];
+    tlsSni: any[];
 
-    topTlsSniRequests:any[];
+    topTlsSniRequests: any[];
 
-    tlsClientVersions:any[];
+    tlsClientVersions: any[];
 
-    tlsServerVersions:any[];
+    tlsServerVersions: any[];
 
-    topTlsSubjectRequests:any[];
+    topTlsSubjectRequests: any[];
 
-    topDestinationHttpHostnames:any[];
+    topDestinationHttpHostnames: any[];
 
-    topSignatures:any[];
+    topSignatures: any[];
 
-    ssh:any = {
+    ssh: any = {
         sshInboundClientVersions: [],
         sshOutboundClientVersions: [],
         sshOutboundServerVersions: [],
@@ -103,55 +103,55 @@ export class IpReportComponent implements OnInit, OnDestroy {
         sshInboundServerProtoVersions: [],
     };
 
-    sensors:Set<string> = new Set<string>();
+    sensors: Set<string> = new Set<string>();
 
     // Empty string defaults to all sensors.
-    sensorFilter:string = "";
+    sensorFilter = '';
 
-    queryString:string = "";
+    queryString = '';
 
-    constructor(private route:ActivatedRoute,
-                private elasticsearch:ElasticSearchService,
-                private appService:AppService,
-                private topNavService:TopNavService,
-                private reportsService:ReportsService,
-                private api:ApiService,
-                private ss:EveboxSubscriptionService) {
+    constructor(private route: ActivatedRoute,
+                private elasticsearch: ElasticSearchService,
+                private appService: AppService,
+                private topNavService: TopNavService,
+                private reportsService: ReportsService,
+                private api: ApiService,
+                private ss: EveboxSubscriptionService) {
     }
 
     ngOnInit() {
-        this.ss.subscribe(this, this.route.params, (params:any) => {
+        this.ss.subscribe(this, this.route.params, (params: any) => {
             this.ip = params.ip;
             this.queryString = params.q;
             this.refresh();
             this.buildRelated(this.ip);
         });
 
-        this.ss.subscribe(this, this.appService, (event:AppEvent) => {
+        this.ss.subscribe(this, this.appService, (event: AppEvent) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
         });
     }
 
-    relatedAddresses:any[] = []
+    relatedAddresses: any[] = [];
 
-    buildRelated(ip:any) {
+    buildRelated(ip: any) {
 
         this.relatedAddresses = [];
 
-        let sep = ".";
+        let sep = '.';
 
-        if (ip.indexOf(":") > -1) {
+        if (ip.indexOf(':') > -1) {
             // Looks like IPv6.
-            sep = ":";
+            sep = ':';
         }
 
-        let parts = ip.split(sep).filter((part:any) => {
-            return part != "";
+        let parts = ip.split(sep).filter((part: any) => {
+            return part != '';
         });
 
-        if (sep == ":") {
+        if (sep == ':') {
             while (parts.length > 1) {
                 parts.splice(parts.length - 1, 1);
                 this.relatedAddresses.push({
@@ -167,21 +167,21 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 this.relatedAddresses.push({
                     value: `${parts[0]}.${parts[1]}.${parts[2]}.`,
                     name: `${parts[0]}.${parts[1]}.${parts[2]}/24`
-                })
+                });
             }
 
             if (parts.length > 2) {
                 this.relatedAddresses.push({
                     value: `${parts[0]}.${parts[1]}.`,
                     name: `${parts[0]}.${parts[1]}/16`
-                })
+                });
             }
 
             if (parts.length > 1) {
                 this.relatedAddresses.push({
                     value: `${parts[0]}.`,
                     name: `${parts[0]}/8`
-                })
+                });
             }
 
         }
@@ -191,39 +191,39 @@ export class IpReportComponent implements OnInit, OnDestroy {
         this.ss.unsubscribe(this);
     }
 
-    keywordTermQuery(keyword:string, value:any):any {
+    keywordTermQuery(keyword: string, value: any): any {
         return this.elasticsearch.keywordTerm(keyword, value);
     }
 
-    asKeyword(keyword:string):string {
+    asKeyword(keyword: string): string {
         return this.elasticsearch.asKeyword(keyword);
     }
 
-    termQuery(type:string, field:string, value:string) {
+    termQuery(type: string, field: string, value: string) {
         let term = {};
         term[type] = {};
         term[type][field] = value;
         return term;
     }
 
-    queryDnsHostnamesForAddress(range:any, now:any) {
+    queryDnsHostnamesForAddress(range: any, now: any) {
 
         this.loading++;
 
-        let ipTermType = "term";
+        let ipTermType = 'term';
 
         if (this.ip[this.ip.length - 1] == '.') {
-            ipTermType = "prefix";
+            ipTermType = 'prefix';
         }
 
         let query = {
             query: {
                 bool: {
                     filter: [
-                        {exists: {field: "event_type"}},
-                        {term: {"event_type": "dns"}},
-                        this.keywordTermQuery("dns.type", "answer"),
-                        termQuery(ipTermType, "dns.rdata", this.ip),
+                        {exists: {field: 'event_type'}},
+                        {term: {'event_type': 'dns'}},
+                        this.keywordTermQuery('dns.type', 'answer'),
+                        termQuery(ipTermType, 'dns.rdata', this.ip),
                     ]
                 }
             },
@@ -231,26 +231,26 @@ export class IpReportComponent implements OnInit, OnDestroy {
             aggs: {
                 uniqueHostnames: {
                     terms: {
-                        field: this.asKeyword("dns.rrname"),
+                        field: this.asKeyword('dns.rrname'),
                         size: 100,
                     }
                 }
             }
         };
 
-        if (this.sensorFilter != "") {
+        if (this.sensorFilter != '') {
             this.elasticsearch.addSensorNameFilter(query, this.sensorFilter);
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
 
-        this.elasticsearch.search(query).then((response:any) => {
+        this.elasticsearch.search(query).then((response: any) => {
 
-            this.dnsHostnamesForAddress = response.aggregations.uniqueHostnames.buckets.map((bucket:any) => {
+            this.dnsHostnamesForAddress = response.aggregations.uniqueHostnames.buckets.map((bucket: any) => {
                 return {
                     key: bucket.key,
                     count: bucket.doc_count,
-                }
+                };
             });
 
             this.loading--;
@@ -267,10 +267,10 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
         this.loading++;
 
-        let ipTermType = "term";
+        let ipTermType = 'term';
 
         if (this.ip[this.ip.length - 1] == '.') {
-            ipTermType = "prefix";
+            ipTermType = 'prefix';
         }
 
         // Alert histogram.
@@ -279,14 +279,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
             interval: this.reportsService.histogramTimeInterval(range),
             addressFilter: this.ip,
             queryString: this.queryString,
-            eventType: "alert",
+            eventType: 'alert',
             sensorFilter: this.sensorFilter,
-        }).then((response:any) => {
-            this.alertsOverTime = response.data.map((x:any) => {
+        }).then((response: any) => {
+            this.alertsOverTime = response.data.map((x: any) => {
                 return {
                     date: moment(x.key).toDate(),
                     value: x.count,
-                }
+                };
             });
         });
 
@@ -294,36 +294,36 @@ export class IpReportComponent implements OnInit, OnDestroy {
             query: {
                 bool: {
                     filter: [
-                        {exists: {field: "event_type"}},
+                        {exists: {field: 'event_type'}},
                     ],
                     should: [
-                        termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
-                        termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
+                        termQuery(ipTermType, this.asKeyword('src_ip'), this.ip),
+                        termQuery(ipTermType, this.asKeyword('dest_ip'), this.ip),
                     ],
-                    "minimum_should_match": 1
+                    'minimum_should_match': 1
                 }
             },
             size: 0,
             sort: [
-                {"@timestamp": {order: "desc"}}
+                {'@timestamp': {order: 'desc'}}
             ],
             aggs: {
 
                 sensors: {
                     terms: {
-                        field: this.asKeyword("host"),
+                        field: this.asKeyword('host'),
                         size: 1000,
                     },
                 },
 
                 alerts: {
                     filter: {
-                        term: {event_type: "alert"}
+                        term: {event_type: 'alert'}
                     },
                     aggs: {
                         signatures: {
                             terms: {
-                                field: this.asKeyword("alert.signature"),
+                                field: this.asKeyword('alert.signature'),
                                 size: 10,
                             }
                         }
@@ -335,16 +335,16 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         bool: {
                             filter: [
-                                {term: {"event_type": "dns"}},
-                                {term: {"dns.type": "query"}},
-                                termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
+                                {term: {'event_type': 'dns'}},
+                                {term: {'dns.type': 'query'}},
+                                termQuery(ipTermType, this.asKeyword('src_ip'), this.ip),
                             ]
                         },
                     },
                     aggs: {
                         rrnames: {
                             terms: {
-                                field: this.asKeyword("dns.rrname"),
+                                field: this.asKeyword('dns.rrname'),
                                 size: 10,
                             }
                         }
@@ -356,21 +356,21 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         bool: {
                             filter: [
-                                {term: {"event_type": "http"}},
-                                termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
+                                {term: {'event_type': 'http'}},
+                                termQuery(ipTermType, this.asKeyword('src_ip'), this.ip),
                             ]
                         }
                     },
                     aggs: {
                         userAgents: {
                             terms: {
-                                field: this.asKeyword("http.http_user_agent"),
+                                field: this.asKeyword('http.http_user_agent'),
                                 size: 10,
                             }
                         },
                         hostnames: {
                             terms: {
-                                field: this.asKeyword("http.hostname"),
+                                field: this.asKeyword('http.hostname'),
                                 size: 10,
                             }
                         }
@@ -379,15 +379,15 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
                 http: {
                     filter: {
-                        term: {event_type: "http"},
+                        term: {event_type: 'http'},
                     },
                     aggs: {
                         dest: {
-                            filter: termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword('dest_ip'), this.ip),
                             aggs: {
                                 hostnames: {
                                     terms: {
-                                        field: this.asKeyword("http.hostname"),
+                                        field: this.asKeyword('http.hostname'),
                                         size: 10,
                                     },
                                 }
@@ -401,15 +401,15 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         bool: {
                             filter: [
-                                {term: {"event_type": "tls"}},
-                                termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
+                                {term: {'event_type': 'tls'}},
+                                termQuery(ipTermType, this.asKeyword('dest_ip'), this.ip),
                             ]
                         }
                     },
                     aggs: {
                         sni: {
                             terms: {
-                                field: this.asKeyword("tls.sni"),
+                                field: this.asKeyword('tls.sni'),
                                 size: 100,
                             }
                         }
@@ -419,38 +419,38 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 // TLS (Versions)...
                 tls: {
                     filter: {
-                        term: {event_type: "tls"}
+                        term: {event_type: 'tls'}
                     },
                     aggs: {
                         asSource: {
-                            filter: termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword('src_ip'), this.ip),
                             aggs: {
                                 versions: {
                                     terms: {
-                                        field: this.asKeyword("tls.version"),
+                                        field: this.asKeyword('tls.version'),
                                         size: 10,
                                     }
                                 },
                                 sni: {
                                     terms: {
-                                        field: this.asKeyword("tls.sni"),
+                                        field: this.asKeyword('tls.sni'),
                                         size: 10,
                                     }
                                 },
                                 subjects: {
                                     terms: {
-                                        field: this.asKeyword("tls.subject"),
+                                        field: this.asKeyword('tls.subject'),
                                         size: 10,
                                     }
                                 }
                             }
                         },
                         asDest: {
-                            filter: termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword('dest_ip'), this.ip),
                             aggs: {
                                 versions: {
                                     terms: {
-                                        field: this.asKeyword("tls.version"),
+                                        field: this.asKeyword('tls.version'),
                                         size: 10,
                                     }
                                 }
@@ -461,22 +461,22 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
                 ssh: {
                     filter: {
-                        term: {event_type: "ssh"},
+                        term: {event_type: 'ssh'},
                     },
                     aggs: {
                         // SSH connections as client.
                         sources: {
-                            filter: termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword('src_ip'), this.ip),
                             aggs: {
                                 outboundClientProtoVersions: {
                                     terms: {
-                                        field: this.asKeyword("ssh.client.proto_version"),
+                                        field: this.asKeyword('ssh.client.proto_version'),
                                         size: 10,
                                     }
                                 },
                                 outboundServerProtoVersions: {
                                     terms: {
-                                        field: this.asKeyword("ssh.server.proto_version"),
+                                        field: this.asKeyword('ssh.server.proto_version'),
                                         size: 10,
                                     }
                                 },
@@ -484,14 +484,14 @@ export class IpReportComponent implements OnInit, OnDestroy {
                                 // versions connected to by this host.
                                 outboundServerVersions: {
                                     terms: {
-                                        field: this.asKeyword("ssh.server.software_version"),
+                                        field: this.asKeyword('ssh.server.software_version'),
                                         size: 10,
                                     }
                                 },
                                 // Outbound client versions.
                                 outboundClientVersions: {
                                     terms: {
-                                        field: this.asKeyword("ssh.client.software_version"),
+                                        field: this.asKeyword('ssh.client.software_version'),
                                         size: 10,
                                     }
                                 }
@@ -499,31 +499,31 @@ export class IpReportComponent implements OnInit, OnDestroy {
                         },
                         // SSH connections as server.
                         dests: {
-                            filter: termQuery(ipTermType, this.asKeyword("dest_ip"), this.ip),
+                            filter: termQuery(ipTermType, this.asKeyword('dest_ip'), this.ip),
                             aggs: {
                                 inboundClientProtoVersions: {
                                     terms: {
-                                        field: this.asKeyword("ssh.client.proto_version"),
+                                        field: this.asKeyword('ssh.client.proto_version'),
                                         size: 10,
                                     }
                                 },
                                 inboundServerProtoVersions: {
                                     terms: {
-                                        field: this.asKeyword("ssh.server.proto_version"),
+                                        field: this.asKeyword('ssh.server.proto_version'),
                                         size: 10,
                                     }
                                 },
                                 // Inbound client versions.
                                 inboundClientVersions: {
                                     terms: {
-                                        field: this.asKeyword("ssh.client.software_version"),
+                                        field: this.asKeyword('ssh.client.software_version'),
                                         size: 10,
                                     }
                                 },
                                 // Inbound server versions.
                                 inboundServerVersions: {
                                     terms: {
-                                        field: this.asKeyword("ssh.server.software_version"),
+                                        field: this.asKeyword('ssh.server.software_version'),
                                         size: 10,
                                     }
                                 }
@@ -537,30 +537,30 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         bool: {
                             filter: [
-                                {term: {"event_type": "flow"}},
-                                termQuery(ipTermType, this.asKeyword("src_ip"), this.ip),
+                                {term: {'event_type': 'flow'}},
+                                termQuery(ipTermType, this.asKeyword('src_ip'), this.ip),
                             ]
                         }
                     },
                     aggs: {
                         bytesToClient: {
                             sum: {
-                                field: "flow.bytes_toclient",
+                                field: 'flow.bytes_toclient',
                             }
                         },
                         bytesToServer: {
                             sum: {
-                                field: "flow.bytes_toserver",
+                                field: 'flow.bytes_toserver',
                             }
                         },
                         packetsToClient: {
                             sum: {
-                                field: "flow.pkts_toclient",
+                                field: 'flow.pkts_toclient',
                             }
                         },
                         packetsToServer: {
                             sum: {
-                                field: "flow.pkts_toserver",
+                                field: 'flow.pkts_toserver',
                             }
                         },
                     }
@@ -571,30 +571,30 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     filter: {
                         bool: {
                             filter: [
-                                {term: {"event_type": "flow"}},
-                                termQuery(ipTermType, "dest_ip", this.ip),
+                                {term: {'event_type': 'flow'}},
+                                termQuery(ipTermType, 'dest_ip', this.ip),
                             ]
                         }
                     },
                     aggs: {
                         bytesToClient: {
                             sum: {
-                                field: "flow.bytes_toclient",
+                                field: 'flow.bytes_toclient',
                             }
                         },
                         bytesToServer: {
                             sum: {
-                                field: "flow.bytes_toserver",
+                                field: 'flow.bytes_toserver',
                             }
                         },
                         packetsToClient: {
                             sum: {
-                                field: "flow.pkts_toclient",
+                                field: 'flow.pkts_toclient',
                             }
                         },
                         packetsToServer: {
                             sum: {
-                                field: "flow.pkts_toserver",
+                                field: 'flow.pkts_toserver',
                             }
                         }
                     }
@@ -603,7 +603,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
             }
         };
 
-        if (this.sensorFilter != "") {
+        if (this.sensorFilter != '') {
             this.elasticsearch.addSensorNameFilter(query, this.sensorFilter);
         }
 
@@ -660,7 +660,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
             this.ssh.sshOutboundServerProtoVersions = this.mapTerms(
                 response.aggregations.ssh.sources.outboundServerProtoVersions.buckets);
 
-            response.aggregations.sensors.buckets.forEach((bucket:any) => {
+            response.aggregations.sensors.buckets.forEach((bucket: any) => {
                 this.sensors.add(bucket.key);
             });
 
@@ -676,12 +676,12 @@ export class IpReportComponent implements OnInit, OnDestroy {
      * Helper function to map terms aggregations into the common format used
      * by Evebox.
      */
-    mapTerms(buckets:any):any[] {
-        return buckets.map((bucket:any) => {
+    mapTerms(buckets: any): any[] {
+        return buckets.map((bucket: any) => {
             return {
                 key: bucket.key,
                 count: bucket.doc_count,
-            }
+            };
         });
     }
 }

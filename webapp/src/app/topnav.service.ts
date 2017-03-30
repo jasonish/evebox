@@ -24,15 +24,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from "@angular/core";
-import * as moment from "moment";
+import {Injectable} from '@angular/core';
+import * as moment from 'moment';
 
-declare var localStorage:any;
+declare var localStorage: any;
 
 @Injectable()
 export class TopNavService  {
 
-    timeRange:string = "24h";
+    timeRange = '24h';
 
     constructor() {
         if (localStorage.timeRange !== undefined) {
@@ -40,7 +40,7 @@ export class TopNavService  {
         }
     }
 
-    setTimeRange(timeRange:string) {
+    setTimeRange(timeRange: string) {
         this.timeRange = timeRange;
         localStorage.timeRange = timeRange;
     }
@@ -48,14 +48,14 @@ export class TopNavService  {
     /**
      * Get the time range in seconds.
      */
-    getTimeRangeAsSeconds():any {
-        if (this.timeRange == "") {
+    getTimeRangeAsSeconds(): any {
+        if (this.timeRange == '') {
             // Everything...
             return 0;
         }
-        let parts:any[] = <any[]>this.timeRange.match(/(\d+)(\w+)/);
-        let value:number = parseInt(parts[1]);
-        let unit:string = parts[2];
+        let parts: any[] = <any[]>this.timeRange.match(/(\d+)(\w+)/);
+        let value: number = parseInt(parts[1]);
+        let unit: string = parts[2];
         return moment.duration(value, <any>unit).asSeconds();
     }
 }

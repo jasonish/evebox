@@ -24,14 +24,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from "@angular/core";
+import {Pipe, PipeTransform} from '@angular/core';
 
 @Pipe({
-    name: "eveboxJsonPretty"
+    name: 'eveboxJsonPretty'
 })
 export class EveboxJsonPrettyPipe implements PipeTransform {
 
-    transform(object:any) {
+    transform(object: any) {
 
         return JSON.stringify(object, null, 2);
 

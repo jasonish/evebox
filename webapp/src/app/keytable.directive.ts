@@ -34,49 +34,49 @@ import {
     Output,
     EventEmitter,
     AfterViewChecked
-} from "@angular/core";
-import {MousetrapService} from "./mousetrap.service";
+} from '@angular/core';
+import {MousetrapService} from './mousetrap.service';
 
-declare var jQuery:any;
-declare var window:any;
+declare var jQuery: any;
+declare var window: any;
 
 @Directive({
-    selector: "[eveboxKeyTable]"
+    selector: '[eveboxKeyTable]'
 })
 export class KeyTableDirective implements OnInit, OnDestroy {
 
-    @Input() private rows:any[] = [];
-    @Input() activeRow:number = 0;
-    @Output() activeRowChange:EventEmitter<number> = new EventEmitter<number>();
+    @Input() private rows: any[] = [];
+    @Input() activeRow = 0;
+    @Output() activeRowChange: EventEmitter<number> = new EventEmitter<number>();
 
-    constructor(private el:ElementRef, private mousetrap:MousetrapService) {
+    constructor(private el: ElementRef, private mousetrap: MousetrapService) {
     }
 
-    ngOnInit():any {
+    ngOnInit(): any {
 
-        this.mousetrap.bind(this, "j", () => {
+        this.mousetrap.bind(this, 'j', () => {
             if (this.getActiveRow() < this.getRowCount() - 1) {
                 this.setActiveRow(this.getActiveRow() + 1);
             }
         });
 
-        this.mousetrap.bind(this, "k", () => {
+        this.mousetrap.bind(this, 'k', () => {
             if (this.getActiveRow() > 0) {
                 this.setActiveRow(this.getActiveRow() - 1);
             }
         });
 
-        this.mousetrap.bind(this, "G", () => {
+        this.mousetrap.bind(this, 'G', () => {
             this.setActiveRow(this.getRowCount() - 1);
         });
 
-        this.mousetrap.bind(this, "H", () => {
+        this.mousetrap.bind(this, 'H', () => {
             this.setActiveRow(0);
 
         });
     }
 
-    ngOnDestroy():any {
+    ngOnDestroy(): any {
         this.mousetrap.unbind(this);
     }
 
@@ -84,7 +84,7 @@ export class KeyTableDirective implements OnInit, OnDestroy {
 
         let error = 175;
 
-        let el = this.el.nativeElement.getElementsByTagName("tbody")[0]
+        let el = this.el.nativeElement.getElementsByTagName('tbody')[0]
             .children[this.activeRow];
 
         let elOffset = el.offsetTop;
@@ -118,17 +118,17 @@ export class KeyTableDirective implements OnInit, OnDestroy {
         }
     }
 
-    getActiveRow():number {
+    getActiveRow(): number {
         return this.activeRow;
     }
 
-    setActiveRow(activeRow:number) {
+    setActiveRow(activeRow: number) {
         this.activeRow = activeRow;
         this.activeRowChange.emit(this.activeRow);
         this.scrollToActive();
     }
 
-    getRowCount():number {
+    getRowCount(): number {
         return this.rows.length;
     }
 

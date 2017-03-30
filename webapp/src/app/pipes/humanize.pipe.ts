@@ -24,25 +24,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from "@angular/core";
+import {Pipe, PipeTransform} from '@angular/core';
 import {
     humanizeCompactInteger,
     humanizeFileSize
-} from "../humanize.service";
+} from '../humanize.service';
 
 @Pipe({
-    name: "eveboxHumanize"
+    name: 'eveboxHumanize'
 })
 export class EveboxHumanizePipe implements PipeTransform {
 
-    transform(value:string, func:string) {
+    transform(value: string, func: string) {
         switch (func) {
-            case "compactInteger":
+            case 'compactInteger':
                 return humanizeCompactInteger(value);
-            case "fileSize":
+            case 'fileSize':
                 return humanizeFileSize(value);
             default:
-                console.log("EveboxHumanizePipe: Unknown func: " + func);
+                console.log('EveboxHumanizePipe: Unknown func: ' + func);
                 return value;
         }
     }

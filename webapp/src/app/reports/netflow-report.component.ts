@@ -24,19 +24,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {Params, ActivatedRoute} from "@angular/router";
-import {ReportsService} from "./reports.service";
-import {AppService, AppEvent, AppEventCode} from "../app.service";
-import {ToastrService} from "../toastr.service";
-import {TopNavService} from "../topnav.service";
-import {ElasticSearchService} from "../elasticsearch.service";
-import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {loadingAnimation} from "../animations";
-import {humanizeFileSize} from "../humanize.service";
-import {ApiService} from "../api.service";
+import {Component, OnInit, OnDestroy} from '@angular/core';
+import {Params, ActivatedRoute} from '@angular/router';
+import {ReportsService} from './reports.service';
+import {AppService, AppEvent, AppEventCode} from '../app.service';
+import {ToastrService} from '../toastr.service';
+import {TopNavService} from '../topnav.service';
+import {ElasticSearchService} from '../elasticsearch.service';
+import {EveboxSubscriptionTracker} from '../subscription-tracker';
+import {loadingAnimation} from '../animations';
+import {humanizeFileSize} from '../humanize.service';
+import {ApiService} from '../api.service';
 
-import * as moment from "moment";
+import * as moment from 'moment';
 
 @Component({
     template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
@@ -126,43 +126,43 @@ import * as moment from "moment";
 })
 export class NetflowReportComponent implements OnInit, OnDestroy {
 
-    eventsOverTime:any[];
+    eventsOverTime: any[];
 
-    topSourcesByBytes:any[];
-    topSourcesByPackets:any[];
+    topSourcesByBytes: any[];
+    topSourcesByPackets: any[];
 
-    topDestinationsByBytes:any[];
-    topDestinationsByPackets:any[];
+    topDestinationsByBytes: any[];
+    topDestinationsByPackets: any[];
 
-    topByBytes:any[];
-    topFlowsByPackets:any[];
+    topByBytes: any[];
+    topFlowsByPackets: any[];
 
-    loading:number = 0;
+    loading = 0;
 
-    queryString:string = "";
+    queryString = '';
 
     // A flag that will be set to true if not events to report on were found.
-    noEvents:boolean = false;
+    noEvents = false;
 
-    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    constructor(private reportsService:ReportsService,
-                private elasticsearch:ElasticSearchService,
-                private appService:AppService,
-                private route:ActivatedRoute,
-                private toastr:ToastrService,
-                private api:ApiService,
-                private topNavService:TopNavService) {
+    constructor(private reportsService: ReportsService,
+                private elasticsearch: ElasticSearchService,
+                private appService: AppService,
+                private route: ActivatedRoute,
+                private toastr: ToastrService,
+                private api: ApiService,
+                private topNavService: TopNavService) {
     }
 
     ngOnInit() {
 
-        this.subTracker.subscribe(this.route.params, (params:Params) => {
-            this.queryString = params["q"] || "";
+        this.subTracker.subscribe(this.route.params, (params: Params) => {
+            this.queryString = params['q'] || '';
             this.refresh();
         });
 
-        this.subTracker.subscribe(this.appService, (event:AppEvent) => {
+        this.subTracker.subscribe(this.appService, (event: AppEvent) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -176,13 +176,13 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     refresh() {
 
-        this.checkForEvents().then((hasEvents:boolean) => {
+        this.checkForEvents().then((hasEvents: boolean) => {
             if (hasEvents) {
                 this.load();
             }
             else {
                 this.noEvents = true;
-                this.toastr.warning("No netflow events found.");
+                this.toastr.warning('No netflow events found.');
             }
         });
 
@@ -190,29 +190,29 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     checkForEvents() {
 
-        let query:any = {
+        let query: any = {
             query: {
                 bool: {
                     filter: [
                         // Somewhat limit to eve events of netflow only.
-                        {exists: {field: "event_type"}},
-                        {term: {event_type: "netflow"}}
+                        {exists: {field: 'event_type'}},
+                        {term: {event_type: 'netflow'}}
                     ]
                 }
             },
             size: 0,
         };
 
-        return this.elasticsearch.search(query).then((response:any) => {
+        return this.elasticsearch.search(query).then((response: any) => {
             return response.hits.total > 0;
         });
     }
 
-    wrapLoad(fn:any) {
+    wrapLoad(fn: any) {
         this.loading++;
         fn().then(() => {
             this.loading--;
-        })
+        });
     }
 
     load() {
@@ -226,19 +226,19 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             return this.api.reportHistogram({
                 timeRange: range,
                 interval: this.reportsService.histogramTimeInterval(range),
-                eventType: "netflow",
+                eventType: 'netflow',
                 queryString: this.queryString,
-            }).then((response:any) => {
-                this.eventsOverTime = response.data.map((x:any) => {
+            }).then((response: any) => {
+                this.eventsOverTime = response.data.map((x: any) => {
                     return {
                         date: moment(x.key).toDate(),
                         value: x.count
-                    }
+                    };
                 });
             });
         });
 
-        let params:any = {
+        let params: any = {
             queryString: this.queryString,
         };
 
@@ -247,92 +247,92 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         }
 
         this.wrapLoad(() => {
-            params.sortBy = "netflow.pkts";
-            return this.api.getWithParams("api/1/netflow", params)
-                .then((response:any) => {
+            params.sortBy = 'netflow.pkts';
+            return this.api.getWithParams('api/1/netflow', params)
+                .then((response: any) => {
                     this.topFlowsByPackets = response.data;
                 });
         });
 
         this.wrapLoad(() => {
-            params.sortBy = "netflow.bytes";
-            return this.api.getWithParams("api/1/netflow", params)
-                .then((response:any) => {
+            params.sortBy = 'netflow.bytes';
+            return this.api.getWithParams('api/1/netflow', params)
+                .then((response: any) => {
                     this.topByBytes = response.data;
                 });
         });
 
-        let query:any = {
+        let query: any = {
             query: {
                 bool: {
                     filter: [
                         // Somewhat limit to eve events of netflow only.
-                        {exists: {field: "event_type"}},
-                        {term: {event_type: "netflow"}}
+                        {exists: {field: 'event_type'}},
+                        {term: {event_type: 'netflow'}}
                     ]
                 }
             },
             size: 0,
             sort: [
-                {"@timestamp": {order: "desc"}}
+                {'@timestamp': {order: 'desc'}}
             ],
             aggs: {
                 sourcesByBytes: {
                     terms: {
-                        field: this.elasticsearch.asKeyword("src_ip"),
+                        field: this.elasticsearch.asKeyword('src_ip'),
                         order: {
-                            "bytes": "desc"
+                            'bytes': 'desc'
                         },
                     },
                     aggs: {
                         bytes: {
                             sum: {
-                                field: "netflow.bytes"
+                                field: 'netflow.bytes'
                             }
                         }
                     }
                 },
                 sourcesByPackets: {
                     terms: {
-                        field: this.elasticsearch.asKeyword("src_ip"),
+                        field: this.elasticsearch.asKeyword('src_ip'),
                         order: {
-                            "packets": "desc"
+                            'packets': 'desc'
                         }
                     },
                     aggs: {
                         packets: {
                             sum: {
-                                field: "netflow.pkts"
+                                field: 'netflow.pkts'
                             }
                         }
                     }
                 },
                 topDestinationsByBytes: {
                     terms: {
-                        field: this.elasticsearch.asKeyword("dest_ip"),
+                        field: this.elasticsearch.asKeyword('dest_ip'),
                         order: {
-                            "bytes": "desc"
+                            'bytes': 'desc'
                         },
                     },
                     aggs: {
                         bytes: {
                             sum: {
-                                field: "netflow.bytes"
+                                field: 'netflow.bytes'
                             }
                         }
                     }
                 },
                 topDestinationsByPackets: {
                     terms: {
-                        field: this.elasticsearch.asKeyword("dest_ip"),
+                        field: this.elasticsearch.asKeyword('dest_ip'),
                         order: {
-                            "packets": "desc"
+                            'packets': 'desc'
                         },
                     },
                     aggs: {
                         packets: {
                             sum: {
-                                field: "netflow.pkts"
+                                field: 'netflow.pkts'
                             }
                         }
                     }
@@ -340,7 +340,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             }
         };
 
-        if (this.queryString && this.queryString != "") {
+        if (this.queryString && this.queryString != '') {
             query.query.bool.filter.push({
                 query_string: {
                     query: this.queryString
@@ -350,10 +350,10 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
 
-        this.elasticsearch.search(query).then((response:any) => {
+        this.elasticsearch.search(query).then((response: any) => {
 
             if (response.error) {
-                console.log("Errors returned:");
+                console.log('Errors returned:');
                 console.log(response.error);
                 let error = response.error;
                 if (error.root_cause && error.root_cause.length > 0) {
@@ -366,28 +366,28 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             console.log(response);
             console.log(response.aggregations);
 
-            this.topSourcesByBytes = response.aggregations.sourcesByBytes.buckets.map((bucket:any) => {
+            this.topSourcesByBytes = response.aggregations.sourcesByBytes.buckets.map((bucket: any) => {
                 return {
                     key: bucket.key,
                     count: humanizeFileSize(bucket.bytes.value),
                 };
             });
 
-            this.topDestinationsByBytes = response.aggregations.topDestinationsByBytes.buckets.map((bucket:any) => {
+            this.topDestinationsByBytes = response.aggregations.topDestinationsByBytes.buckets.map((bucket: any) => {
                 return {
                     key: bucket.key,
                     count: humanizeFileSize(bucket.bytes.value),
                 };
             });
 
-            this.topSourcesByPackets = response.aggregations.sourcesByPackets.buckets.map((bucket:any) => {
+            this.topSourcesByPackets = response.aggregations.sourcesByPackets.buckets.map((bucket: any) => {
                 return {
                     key: bucket.key,
                     count: bucket.packets.value,
                 };
             });
 
-            this.topDestinationsByPackets = response.aggregations.topDestinationsByPackets.buckets.map((bucket:any) => {
+            this.topDestinationsByPackets = response.aggregations.topDestinationsByPackets.buckets.map((bucket: any) => {
                 return {
                     key: bucket.key,
                     count: bucket.packets.value,
@@ -397,7 +397,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             this.loading--;
 
         }, error => {
-            console.log("Search error:");
+            console.log('Search error:');
             console.log(error);
             this.loading--;
         });

@@ -26,15 +26,15 @@
 
 export class EveboxSubscriptionTracker {
 
-    private subscriptions:any = [];
+    private subscriptions: any = [];
 
-    subscribe(subscribable:any, handler:any) {
+    subscribe(subscribable: any, handler: any) {
         let subscription = subscribable.subscribe(handler);
         this.subscriptions.push(subscription);
     }
 
     unsubscribe() {
-        this.subscriptions.forEach((subscription:any) => {
+        this.subscriptions.forEach((subscription: any) => {
             subscription.unsubscribe();
         });
     }

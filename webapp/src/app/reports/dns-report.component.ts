@@ -24,16 +24,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnDestroy, OnInit} from "@angular/core";
-import {ReportsService} from "./reports.service";
-import {AppService, AppEventCode} from "../app.service";
-import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
-import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {ActivatedRoute, Params} from "@angular/router";
-import {ApiService, ReportAggOptions} from "../api.service";
-import {TopNavService} from "../topnav.service";
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {ReportsService} from './reports.service';
+import {AppService, AppEventCode} from '../app.service';
+import {EveboxFormatIpAddressPipe} from '../pipes/format-ipaddress.pipe';
+import {EveboxSubscriptionTracker} from '../subscription-tracker';
+import {ActivatedRoute, Params} from '@angular/router';
+import {ApiService, ReportAggOptions} from '../api.service';
+import {TopNavService} from '../topnav.service';
 
-import * as moment from "moment";
+import * as moment from 'moment';
 
 @Component({
     template: `<div class="content" [ngClass]="{'evebox-opacity-50': loading > 0}">
@@ -110,38 +110,38 @@ import * as moment from "moment";
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
 
-    eventsOverTime:any[];
+    eventsOverTime: any[];
 
-    topRrnames:any[];
-    topRdata:any[];
-    topRrtypes:any[];
-    topRcodes:any[];
-    topServers:any[];
-    topClients:any[];
+    topRrnames: any[];
+    topRdata: any[];
+    topRrtypes: any[];
+    topRcodes: any[];
+    topServers: any[];
+    topClients: any[];
 
-    loading:number = 0;
+    loading = 0;
 
-    queryString:string = "";
+    queryString = '';
 
-    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    constructor(private route:ActivatedRoute,
-                private reports:ReportsService,
-                private appService:AppService,
-                private api:ApiService,
-                private topNavService:TopNavService,
-                private reportsService:ReportsService,
-                private formatIpAddressPipe:EveboxFormatIpAddressPipe) {
+    constructor(private route: ActivatedRoute,
+                private reports: ReportsService,
+                private appService: AppService,
+                private api: ApiService,
+                private topNavService: TopNavService,
+                private reportsService: ReportsService,
+                private formatIpAddressPipe: EveboxFormatIpAddressPipe) {
     }
 
     ngOnInit() {
 
-        this.subTracker.subscribe(this.route.params, (params:Params) => {
-            this.queryString = params["q"] || "";
+        this.subTracker.subscribe(this.route.params, (params: Params) => {
+            this.queryString = params['q'] || '';
             this.refresh();
         });
 
-        this.subTracker.subscribe(this.appService, (event:any) => {
+        this.subTracker.subscribe(this.appService, (event: any) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -153,8 +153,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         this.subTracker.unsubscribe();
     }
 
-    mapAddressAggregation(items:any[]) {
-        return items.map((item:any) => {
+    mapAddressAggregation(items: any[]) {
+        return items.map((item: any) => {
 
             let key = item.key;
 
@@ -166,13 +166,13 @@ export class DNSReportComponent implements OnInit, OnDestroy {
             return {
                 key: key,
                 count: item.doc_count,
-            }
+            };
 
         });
     }
 
-    mapAggregation(items:any[]) {
-        return items.map((item:any) => {
+    mapAggregation(items: any[]) {
+        return items.map((item: any) => {
             return {
                 key: item.key,
                 count: item.doc_count,
@@ -181,11 +181,11 @@ export class DNSReportComponent implements OnInit, OnDestroy {
     }
 
 
-    load(fn:any) {
+    load(fn: any) {
         this.loading++;
         fn().then(() => {
             this.loading--;
-        })
+        });
     }
 
     refresh() {
@@ -193,57 +193,57 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         let size = 20;
         let range = this.topNavService.getTimeRangeAsSeconds();
 
-        let aggOptions:ReportAggOptions = {
-            eventType: "dns",
-            dnsType: "answer",
+        let aggOptions: ReportAggOptions = {
+            eventType: 'dns',
+            dnsType: 'answer',
             timeRange: range,
             queryString: this.queryString,
             size: size,
         };
 
         this.load(() => {
-            return this.api.reportAgg("dns.rcode", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('dns.rcode', aggOptions)
+                .then((response: any) => {
                     this.topRcodes = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dns.rdata", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('dns.rdata', aggOptions)
+                .then((response: any) => {
                     this.topRdata = response.data;
                 });
         });
 
         // Switch to request queries.
-        aggOptions.dnsType = "query";
+        aggOptions.dnsType = 'query';
 
         this.load(() => {
-            return this.api.reportAgg("dns.rrname", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('dns.rrname', aggOptions)
+                .then((response: any) => {
                     this.topRrnames = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dns.rrtype", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('dns.rrtype', aggOptions)
+                .then((response: any) => {
                     this.topRrtypes = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("src_ip", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('src_ip', aggOptions)
+                .then((response: any) => {
                     this.topClients = response.data;
-                })
+                });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dest_ip", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('dest_ip', aggOptions)
+                .then((response: any) => {
                     this.topServers = response.data;
-                })
+                });
         });
 
         // Queries over time histogram.
@@ -251,15 +251,15 @@ export class DNSReportComponent implements OnInit, OnDestroy {
             return this.api.reportHistogram({
                 timeRange: range,
                 interval: this.reportsService.histogramTimeInterval(range),
-                eventType: "dns",
-                dnsType: "query",
+                eventType: 'dns',
+                dnsType: 'query',
                 queryString: this.queryString,
-            }).then((response:any) => {
-                this.eventsOverTime = response.data.map((x:any) => {
+            }).then((response: any) => {
+                this.eventsOverTime = response.data.map((x: any) => {
                     return {
                         date: moment(x.key).toDate(),
                         value: x.count
-                    }
+                    };
                 });
             });
         });

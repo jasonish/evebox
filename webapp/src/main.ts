@@ -29,55 +29,55 @@ import './polyfills.ts';
 import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
 import {enableProdMode} from '@angular/core';
 import {AppModule} from './app/app.module';
-import {environment} from "./environments/environment";
+import {environment} from './environments/environment';
 
-import "rxjs";
+import 'rxjs';
 
-require("!!script-loader!jquery/dist/jquery.min.js");
-require("!!script-loader!bootstrap/dist/js/bootstrap.min.js");
-require("chart.js");
+require('!!script-loader!jquery/dist/jquery.min.js');
+require('!!script-loader!bootstrap/dist/js/bootstrap.min.js');
+require('chart.js');
 
-declare var jQuery:any;
-declare var window:any;
-declare var localStorage:any;
-declare var Chart:any;
+declare var jQuery: any;
+declare var window: any;
+declare var localStorage: any;
+declare var Chart: any;
 
-if (process.env.ENV === "production") {
+if (process.env.ENV === 'production') {
     enableProdMode();
 }
 
 if (environment.production) {
-    console.log("Enabling production mode from ng cli environment.");
+    console.log('Enabling production mode from ng cli environment.');
     enableProdMode();
 }
 
-function applyStyle(style:string) {
-    let node = document.createElement("style");
+function applyStyle(style: string) {
+    let node = document.createElement('style');
     node.innerHTML = style;
     document.body.appendChild(node);
 }
 
 // Set theme.
 switch (localStorage.theme) {
-    case "slate":
-        console.log("Setting theme to slate.");
-        applyStyle(require("./styles/evebox-slate.scss"));
+    case 'slate':
+        console.log('Setting theme to slate.');
+        applyStyle(require('./styles/evebox-slate.scss'));
         break;
     default:
-        console.log("Setting theme to default.");
-        applyStyle(require("./styles/evebox-default.scss"));
+        console.log('Setting theme to default.');
+        applyStyle(require('./styles/evebox-default.scss'));
         break;
 }
 
 // Some chart configuration.
 switch (localStorage.theme) {
-    case "slate":
-        Chart.defaults.global.defaultFontColor = "#fff";
+    case 'slate':
+        Chart.defaults.global.defaultFontColor = '#fff';
         break;
 }
 
-jQuery.getJSON("api/1/config", (config:any) => {
-    console.log("Setting config object on root window:");
+jQuery.getJSON('api/1/config', (config: any) => {
+    console.log('Setting config object on root window:');
     console.log(config);
     window.config = config;
     platformBrowserDynamic().bootstrapModule(AppModule);

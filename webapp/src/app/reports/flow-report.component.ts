@@ -24,18 +24,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {ActivatedRoute, Params} from "@angular/router";
-import {ReportsService} from "./reports.service";
-import {AppService, AppEvent, AppEventCode} from "../app.service";
-import {TopNavService} from "../topnav.service";
-import {ElasticSearchService} from "../elasticsearch.service";
-import {loadingAnimation} from "../animations";
-import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {ApiService, ReportAggOptions} from "../api.service";
+import {Component, OnInit, OnDestroy} from '@angular/core';
+import {ActivatedRoute, Params} from '@angular/router';
+import {ReportsService} from './reports.service';
+import {AppService, AppEvent, AppEventCode} from '../app.service';
+import {TopNavService} from '../topnav.service';
+import {ElasticSearchService} from '../elasticsearch.service';
+import {loadingAnimation} from '../animations';
+import {EveboxSubscriptionTracker} from '../subscription-tracker';
+import {ApiService, ReportAggOptions} from '../api.service';
 
 //import moment = require("moment");
-import * as moment from "moment";
+import * as moment from 'moment';
 
 @Component({
     template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
@@ -94,35 +94,35 @@ import * as moment from "moment";
 })
 export class FlowReportComponent implements OnInit, OnDestroy {
 
-    eventsOverTime:any[];
+    eventsOverTime: any[];
 
-    topClientsByFlows:any[];
-    topServersByFlows:any[];
+    topClientsByFlows: any[];
+    topServersByFlows: any[];
 
-    topFlowsByAge:any[];
+    topFlowsByAge: any[];
 
-    loading:number = 0;
+    loading = 0;
 
-    queryString:string = "";
+    queryString = '';
 
-    subTracker:EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+    subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    constructor(private appService:AppService,
-                private route:ActivatedRoute,
-                private reportsService:ReportsService,
-                private topNavService:TopNavService,
-                private api:ApiService,
-                private elasticsearch:ElasticSearchService) {
+    constructor(private appService: AppService,
+                private route: ActivatedRoute,
+                private reportsService: ReportsService,
+                private topNavService: TopNavService,
+                private api: ApiService,
+                private elasticsearch: ElasticSearchService) {
     }
 
     ngOnInit() {
 
-        this.subTracker.subscribe(this.route.params, (params:Params) => {
-            this.queryString = params["q"] || "";
+        this.subTracker.subscribe(this.route.params, (params: Params) => {
+            this.queryString = params['q'] || '';
             this.refresh();
         });
 
-        this.subTracker.subscribe(this.appService, (event:AppEvent) => {
+        this.subTracker.subscribe(this.appService, (event: AppEvent) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
@@ -134,11 +134,11 @@ export class FlowReportComponent implements OnInit, OnDestroy {
         this.subTracker.unsubscribe();
     }
 
-    load(fn:any) {
+    load(fn: any) {
         this.loading++;
         fn().then(() => {
             this.loading--;
-        })
+        });
     }
 
     refresh() {
@@ -150,58 +150,58 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             return this.api.reportHistogram({
                 timeRange: range,
                 interval: this.reportsService.histogramTimeInterval(range),
-                eventType: "flow",
+                eventType: 'flow',
                 queryString: this.queryString,
-            }).then((response:any) => {
-                this.eventsOverTime = response.data.map((x:any) => {
+            }).then((response: any) => {
+                this.eventsOverTime = response.data.map((x: any) => {
                     return {
                         date: moment(x.key).toDate(),
                         value: x.count
-                    }
+                    };
                 });
             });
         });
 
-        let aggOptions:ReportAggOptions = {
+        let aggOptions: ReportAggOptions = {
             timeRange: range,
-            eventType: "flow",
+            eventType: 'flow',
             size: 10,
             queryString: this.queryString,
         };
 
         this.load(() => {
-            return this.api.reportAgg("src_ip", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('src_ip', aggOptions)
+                .then((response: any) => {
                     this.topClientsByFlows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dest_ip", aggOptions)
-                .then((response:any) => {
+            return this.api.reportAgg('dest_ip', aggOptions)
+                .then((response: any) => {
                     this.topServersByFlows = response.data;
                 });
         });
 
-        let query:any = {
+        let query: any = {
             query: {
                 bool: {
                     filter: [
                         // Somewhat limit to eve events only.
-                        {exists: {field: "event_type"}},
-                        {term: {event_type: "flow"}}
+                        {exists: {field: 'event_type'}},
+                        {term: {event_type: 'flow'}}
                     ]
                 }
             },
             size: 0,
             sort: [
-                {"@timestamp": {order: "desc"}}
+                {'@timestamp': {order: 'desc'}}
             ],
             aggs: {
                 topFlowsByAge: {
                     top_hits: {
                         sort: [
-                            {"flow.age": {order: "desc"}}
+                            {'flow.age': {order: 'desc'}}
                         ],
                         size: 10,
                     }
@@ -209,22 +209,22 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             }
         };
 
-        if (this.queryString && this.queryString != "") {
+        if (this.queryString && this.queryString != '') {
             query.query.filtered.query = {
                 query_string: {
                     query: this.queryString
                 }
-            }
+            };
         }
 
         this.elasticsearch.addTimeRangeFilter(query, now, range);
 
         this.load(() => {
-            return this.elasticsearch.search(query).then((response:any) => {
+            return this.elasticsearch.search(query).then((response: any) => {
                 this.topFlowsByAge = response.aggregations.topFlowsByAge.hits.hits;
                 this.loading--;
             });
-        })
+        });
 
     }
 }

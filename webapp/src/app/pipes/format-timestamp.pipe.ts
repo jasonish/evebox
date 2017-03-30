@@ -24,18 +24,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from "@angular/core";
+import {Pipe, PipeTransform} from '@angular/core';
 
 //import moment = require("moment");
-import * as moment from "moment";
+import * as moment from 'moment';
 
 @Pipe({
-    name: "eveboxFormatTimestamp"
+    name: 'eveboxFormatTimestamp'
 })
 export class EveboxFormatTimestampPipe implements PipeTransform {
 
-    transform(timestamp:string) {
-        return moment(timestamp).format("YYYY-MM-DD HH:mm:ss");
+    transform(timestamp: string) {
+        return moment(timestamp).format('YYYY-MM-DD HH:mm:ss');
     }
 
 }

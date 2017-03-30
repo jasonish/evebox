@@ -24,13 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable, EventEmitter} from "@angular/core";
-import {Router, Params, ActivatedRoute} from "@angular/router";
-import {MousetrapService} from "./mousetrap.service";
+import {Injectable, EventEmitter} from '@angular/core';
+import {Router, Params, ActivatedRoute} from '@angular/router';
+import {MousetrapService} from './mousetrap.service';
 
-declare var localStorage:any;
+declare var localStorage: any;
 
-export var FEATURE_REPORTING:string = "reporting";
+export let FEATURE_REPORTING = 'reporting';
 
 export enum AppEventCode {
     SHOW_HELP = 0,
@@ -39,22 +39,22 @@ export enum AppEventCode {
 }
 
 export interface AppEvent {
-    event:AppEventCode,
-    data?:any
+    event: AppEventCode;
+    data?: any;
 }
 
 @Injectable()
 export class AppService {
 
-    private eventEmitter:EventEmitter<AppEvent> = new EventEmitter<AppEvent>();
+    private eventEmitter: EventEmitter<AppEvent> = new EventEmitter<AppEvent>();
 
-    private timeRangeDisabled:boolean = false;
+    private timeRangeDisabled = false;
 
-    private lastRouteEvent:number = new Date().getTime() / 1000;
+    private lastRouteEvent: number = new Date().getTime() / 1000;
 
-    constructor(private router:Router,
-                private route:ActivatedRoute,
-                private mousetrap:MousetrapService) {
+    constructor(private router: Router,
+                private route: ActivatedRoute,
+                private mousetrap: MousetrapService) {
 
         mousetrap.bindAny(this, () => {
             this.resetIdleTime();
@@ -67,14 +67,14 @@ export class AppService {
     dispatchIdleEvent() {
         let now = new Date().getTime() / 1000;
         let idleTime = now - this.lastRouteEvent;
-        this.dispatch({event: AppEventCode.IDLE, data: idleTime})
+        this.dispatch({event: AppEventCode.IDLE, data: idleTime});
     }
 
     resetIdleTime() {
         this.lastRouteEvent = new Date().getTime() / 1000;
     }
 
-    setTheme(name:string) {
+    setTheme(name: string) {
         let current = localStorage.theme || 'default';
         if (name == current) {
             return;
@@ -88,20 +88,20 @@ export class AppService {
     }
 
     enableTimeRange() {
-        console.log("Enabling time range.");
+        console.log('Enabling time range.');
         this.timeRangeDisabled = false;
     }
 
     disableTimeRange() {
-        console.log("Disabling time range.");
+        console.log('Disabling time range.');
         this.timeRangeDisabled = true;
     }
 
-    subscribe(handler:any) {
+    subscribe(handler: any) {
         return this.eventEmitter.subscribe(handler);
     }
 
-    dispatch(event:AppEvent) {
+    dispatch(event: AppEvent) {
         this.eventEmitter.emit(event);
     }
 
@@ -112,33 +112,33 @@ export class AppService {
 
         // Return the route with a leading / as that is what is expected right
         // now.
-        return "/" + route;
+        return '/' + route;
     }
 
-    updateQueryParameters(params:any) {
+    updateQueryParameters(params: any) {
 
         //let oldParams:Params = this.router.routerState.snapshot.queryParams;
-        let oldParams:Params = this.route.snapshot.queryParams;
+        let oldParams: Params = this.route.snapshot.queryParams;
 
-        let newParams:Params = {};
+        let newParams: Params = {};
 
-        Object.keys(oldParams).forEach((key:any) => {
+        Object.keys(oldParams).forEach((key: any) => {
             newParams[key] = oldParams[key];
         });
 
-        Object.keys(params).forEach((key:any) => {
+        Object.keys(params).forEach((key: any) => {
             newParams[key] = params[key];
         });
 
         this.router.navigate([this.getRoute()], {queryParams: newParams});
     }
 
-    updateParams(activatedRoute:ActivatedRoute, params:any = {}, queryParams:any = {}) {
+    updateParams(activatedRoute: ActivatedRoute, params: any = {}, queryParams: any = {}) {
 
         let newParams = JSON.parse(JSON.stringify(activatedRoute.snapshot.params));
         let newQueryParams = JSON.parse(JSON.stringify(activatedRoute.snapshot.queryParams));
 
-        Object.keys(params).forEach((key:any) => {
+        Object.keys(params).forEach((key: any) => {
             let value = params[key];
             if (value == undefined || value == null) {
                 delete(newParams[key]);
@@ -148,7 +148,7 @@ export class AppService {
             }
         });
 
-        Object.keys(queryParams).forEach((key:any) => {
+        Object.keys(queryParams).forEach((key: any) => {
             let value = queryParams[key];
             if (value == undefined || value == null) {
                 delete(newQueryParams[key]);

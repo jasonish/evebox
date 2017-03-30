@@ -24,120 +24,120 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {AlertService} from "./alert.service";
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {ElasticSearchService, AlertGroup} from "./elasticsearch.service";
-import {Router, ActivatedRoute} from "@angular/router";
-import {MousetrapService} from "./mousetrap.service";
-import {AppService, AppEvent, AppEventCode} from "./app.service";
-import {EventService} from "./event.service";
-import {ToastrService} from "./toastr.service";
-import {TopNavService} from "./topnav.service";
-import {EveboxSubscriptionService} from "./subscription.service";
-import {loadingAnimation} from "./animations";
+import {AlertService} from './alert.service';
+import {Component, OnInit, OnDestroy} from '@angular/core';
+import {ElasticSearchService, AlertGroup} from './elasticsearch.service';
+import {Router, ActivatedRoute} from '@angular/router';
+import {MousetrapService} from './mousetrap.service';
+import {AppService, AppEvent, AppEventCode} from './app.service';
+import {EventService} from './event.service';
+import {ToastrService} from './toastr.service';
+import {TopNavService} from './topnav.service';
+import {EveboxSubscriptionService} from './subscription.service';
+import {loadingAnimation} from './animations';
 
-declare var window:any;
+declare var window: any;
 
 export interface AlertsState {
-    rows:any[];
-    allRows:any[];
-    activeRow:number;
-    route:string,
-    queryString:string;
-    scrollOffset:number;
+    rows: any[];
+    allRows: any[];
+    activeRow: number;
+    route: string;
+    queryString: string;
+    scrollOffset: number;
 }
 
 @Component({
-    templateUrl: "./alerts.component.html",
+    templateUrl: './alerts.component.html',
     animations: [
         loadingAnimation,
     ]
 })
 export class AlertsComponent implements OnInit, OnDestroy {
 
-    windowSize:number = 100;
-    offset:number = 0;
+    windowSize = 100;
+    offset = 0;
 
-    rows:any[] = [];
-    allRows:any[] = [];
+    rows: any[] = [];
+    allRows: any[] = [];
 
-    activeRow:number = 0;
-    queryString:string = "";
-    loading:boolean = false;
-    dispatcherSubscription:any;
+    activeRow = 0;
+    queryString = '';
+    loading = false;
+    dispatcherSubscription: any;
 
-    silentRefresh:boolean = false;
+    silentRefresh = false;
 
-    constructor(private alertService:AlertService,
-                private elasticSearchService:ElasticSearchService,
-                private router:Router,
-                private route:ActivatedRoute,
-                private mousetrap:MousetrapService,
-                private appService:AppService,
-                private eventService:EventService,
-                private toastr:ToastrService,
-                private ss:EveboxSubscriptionService,
-                private topNavService:TopNavService) {
+    constructor(private alertService: AlertService,
+                private elasticSearchService: ElasticSearchService,
+                private router: Router,
+                private route: ActivatedRoute,
+                private mousetrap: MousetrapService,
+                private appService: AppService,
+                private eventService: EventService,
+                private toastr: ToastrService,
+                private ss: EveboxSubscriptionService,
+                private topNavService: TopNavService) {
     }
 
-    ngOnInit():any {
+    ngOnInit(): any {
 
-        this.ss.subscribe(this, this.route.params, (params:any) => {
-            this.queryString = params.q || "";
+        this.ss.subscribe(this, this.route.params, (params: any) => {
+            this.queryString = params.q || '';
             if (!this.restoreState()) {
                 this.refresh();
             }
         });
 
-        this.mousetrap.bind(this, "/", () => this.focusFilterInput());
-        this.mousetrap.bind(this, "* a", () => this.selectAllRows());
-        this.mousetrap.bind(this, "* n", () => this.deselectAllRows());
-        this.mousetrap.bind(this, "r", () => this.refresh());
-        this.mousetrap.bind(this, "o", () => this.openActiveEvent());
-        this.mousetrap.bind(this, "f8", () => this.archiveActiveEvent());
-        this.mousetrap.bind(this, "s", () =>
+        this.mousetrap.bind(this, '/', () => this.focusFilterInput());
+        this.mousetrap.bind(this, '* a', () => this.selectAllRows());
+        this.mousetrap.bind(this, '* n', () => this.deselectAllRows());
+        this.mousetrap.bind(this, 'r', () => this.refresh());
+        this.mousetrap.bind(this, 'o', () => this.openActiveEvent());
+        this.mousetrap.bind(this, 'f8', () => this.archiveActiveEvent());
+        this.mousetrap.bind(this, 's', () =>
             this.toggleEscalatedState(this.getActiveRow()));
 
         // Escalate then archive event.
-        this.mousetrap.bind(this, "f9", () => {
+        this.mousetrap.bind(this, 'f9', () => {
             this.escalateAndArchiveEvent(this.getActiveRow());
         });
 
-        this.mousetrap.bind(this, "x", () =>
+        this.mousetrap.bind(this, 'x', () =>
             this.toggleSelectedState(this.getActiveRow()));
-        this.mousetrap.bind(this, "e", () => this.archiveEvents());
+        this.mousetrap.bind(this, 'e', () => this.archiveEvents());
 
-        this.mousetrap.bind(this, ">", () => {
+        this.mousetrap.bind(this, '>', () => {
             this.older();
         });
 
-        this.mousetrap.bind(this, "<", () => {
+        this.mousetrap.bind(this, '<', () => {
             this.newer();
         });
 
         // CTRL >
-        this.mousetrap.bind(this, "ctrl+shift+.", () => {
+        this.mousetrap.bind(this, 'ctrl+shift+.', () => {
             this.oldest();
         });
 
         // CTRL <
-        this.mousetrap.bind(this, "ctrl+shift+,", () => {
+        this.mousetrap.bind(this, 'ctrl+shift+,', () => {
             this.newest();
         });
 
-        this.dispatcherSubscription = this.appService.subscribe((event:any) => {
+        this.dispatcherSubscription = this.appService.subscribe((event: any) => {
             this.appEventHandler(event);
         });
     }
 
-    ngOnDestroy():any {
+    ngOnDestroy(): any {
         this.mousetrap.unbind(this);
         this.ss.unsubscribe(this);
         this.dispatcherSubscription.unsubscribe();
     }
 
-    buildState():any {
-        let state:AlertsState = {
+    buildState(): any {
+        let state: AlertsState = {
             rows: this.rows,
             allRows: this.allRows,
             activeRow: this.activeRow,
@@ -148,21 +148,21 @@ export class AlertsComponent implements OnInit, OnDestroy {
         return state;
     }
 
-    restoreState():boolean {
+    restoreState(): boolean {
 
-        let state:AlertsState = this.alertService.popState();
+        let state: AlertsState = this.alertService.popState();
         if (!state) {
             return false;
         }
 
-        console.log("Restoring previous state.");
+        console.log('Restoring previous state.');
 
         if (state.route != this.appService.getRoute()) {
-            console.log("Saved state route differs.");
+            console.log('Saved state route differs.');
             return false;
         }
         if (state.queryString != this.queryString) {
-            console.log("Query strings differ, previous state not being restored.");
+            console.log('Query strings differ, previous state not being restored.');
             return false;
         }
 
@@ -172,15 +172,15 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         // If in inbox, remove any archived events.
         if (this.isInbox()) {
-            let archived = this.rows.filter((row:any) => {
-                return row.event.event._source.tags.indexOf("archived") > -1;
+            let archived = this.rows.filter((row: any) => {
+                return row.event.event._source.tags.indexOf('archived') > -1;
             });
 
-            archived.forEach((row:any) => {
+            archived.forEach((row: any) => {
                 this.removeRow(row);
             });
         }
-        else if (this.appService.getRoute() == "/escalated") {
+        else if (this.appService.getRoute() == '/escalated') {
             let deEscalated = this.rows.filter(row => {
                 return row.event.escalatedCount == 0;
             });
@@ -191,14 +191,14 @@ export class AlertsComponent implements OnInit, OnDestroy {
         }
 
         setTimeout(() => {
-            window.scrollTo(0, state.scrollOffset)
+            window.scrollTo(0, state.scrollOffset);
         }, 0);
 
         return true;
     }
 
     isInbox() {
-        return this.appService.getRoute() == "/inbox";
+        return this.appService.getRoute() == '/inbox';
     }
 
     older() {
@@ -232,18 +232,18 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.rows = this.allRows;
     }
 
-    min(a:number, b:number):number {
+    min(a: number, b: number): number {
         return Math.min(a, b);
     }
 
 
-    escalateAndArchiveEvent(row:any) {
+    escalateAndArchiveEvent(row: any) {
         this.archiveAlertGroup(row).then(() => {
             this.escalateAlertGroup(row);
         });
     }
 
-    appEventHandler(event:AppEvent) {
+    appEventHandler(event: AppEvent) {
 
         switch (event.event) {
             case AppEventCode.TIME_RANGE_CHANGED:
@@ -266,7 +266,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 // could result in reloading events waiting to be archived.
                 // TODO: Limit to archive jobs only.
                 if (this.elasticSearchService.jobSize() > 0) {
-                    console.log("Elastic Search jobs active, not refreshing.");
+                    console.log('Elastic Search jobs active, not refreshing.');
                     return;
                 }
 
@@ -302,44 +302,44 @@ export class AlertsComponent implements OnInit, OnDestroy {
         return this.activeRow;
     }
 
-    toggleSelectedState(row:any) {
+    toggleSelectedState(row: any) {
         row.selected = !row.selected;
     }
 
     escalateSelected() {
-        let selected = this.rows.filter((row:any) => {
+        let selected = this.rows.filter((row: any) => {
             return row.selected;
         });
-        selected.forEach((row:any) => {
+        selected.forEach((row: any) => {
 
             // Optimistically mark as all escalated.
             row.event.escalatedCount = row.event.count;
 
             this.elasticSearchService.escalateAlertGroup(row.event);
-        })
+        });
     }
 
     archiveSelected() {
-        let selected = this.rows.filter((row:any) => {
+        let selected = this.rows.filter((row: any) => {
             return row.selected &&
-                row.event.event._source.tags.indexOf("archived") < 0;
+                row.event.event._source.tags.indexOf('archived') < 0;
         });
-        selected.forEach((row:any) => {
+        selected.forEach((row: any) => {
             this.archiveAlertGroup(row);
         });
     }
 
-    archiveAlertGroup(row:any) {
+    archiveAlertGroup(row: any) {
 
         if (!row) {
             return;
         }
 
         // Optimistically mark the event as archived.
-        row.event.event._source.tags.push("archived");
+        row.event.event._source.tags.push('archived');
 
         // If in inbox, also remove it from view.
-        if (this.appService.getRoute() == "/inbox") {
+        if (this.appService.getRoute() == '/inbox') {
             this.removeRow(row);
         }
 
@@ -357,10 +357,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
         }
     }
 
-    removeRow(row:any) {
+    removeRow(row: any) {
 
         // Remove the event from the visible events.
-        this.rows = this.rows.filter((_row:any) => {
+        this.rows = this.rows.filter((_row: any) => {
             if (_row == row) {
                 return false;
             }
@@ -368,7 +368,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
         });
 
         // Remove from the all event store as well.
-        this.allRows = this.allRows.filter((_row:any) => {
+        this.allRows = this.allRows.filter((_row: any) => {
             if (_row == row) {
                 return false;
             }
@@ -397,20 +397,20 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     focusFilterInput() {
-        document.getElementById("filter-input").focus();
+        document.getElementById('filter-input').focus();
     }
 
     /**
      * Return true if all rows are selected.
      */
     allSelected() {
-        return this.rows.every((row:any) => {
+        return this.rows.every((row: any) => {
             return row.selected;
-        })
+        });
     }
 
     getSelectedRows() {
-        return this.rows.filter((row:any) => {
+        return this.rows.filter((row: any) => {
             return row.selected;
         });
     }
@@ -420,13 +420,13 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     selectAllRows() {
-        this.rows.forEach((row:any) => {
+        this.rows.forEach((row: any) => {
             row.selected = true;
         });
     }
 
     deselectAllRows() {
-        this.rows.forEach((row:any) => {
+        this.rows.forEach((row: any) => {
             row.selected = false;
         });
     }
@@ -434,11 +434,11 @@ export class AlertsComponent implements OnInit, OnDestroy {
     submitFilter() {
         //this.appService.updateQueryParameters({q: this.queryString});
         this.appService.updateParams(this.route, {q: this.queryString});
-        document.getElementById("filter-input").blur();
+        document.getElementById('filter-input').blur();
         this.refresh();
     }
 
-    openEvent(event:AlertGroup) {
+    openEvent(event: AlertGroup) {
 
         // Save the current state of this.
         this.alertService.pushState(this.buildState());
@@ -446,25 +446,25 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.eventService.pushAlertGroup(event);
         this.router.navigate(['/event', event.event._id, {
             referer: this.appService.getRoute()
-        }])
+        }]);
     }
 
-    rowClicked(row:any) {
+    rowClicked(row: any) {
         this.openEvent(row.event);
     }
 
     clearFilter() {
-        this.queryString = "";
+        this.queryString = '';
         this.submitFilter();
     }
 
-    toggleEscalatedState(row:any, event?:any) {
+    toggleEscalatedState(row: any, event?: any) {
 
         if (event) {
             event.stopPropagation();
         }
 
-        let alertGroup:AlertGroup = row.event;
+        let alertGroup: AlertGroup = row.event;
 
         if (alertGroup.escalatedCount < alertGroup.count) {
 
@@ -483,9 +483,9 @@ export class AlertsComponent implements OnInit, OnDestroy {
         }
     }
 
-    escalateAlertGroup(row:any) {
+    escalateAlertGroup(row: any) {
 
-        let alertGroup:any = row.event;
+        let alertGroup: any = row.event;
 
         // Optimistically mark as all escalated.
         alertGroup.escalatedCount = alertGroup.count;
@@ -497,32 +497,32 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         this.loading = true;
 
-        let queryOptions:any = {
+        let queryOptions: any = {
             mustHaveTags: [],
             mustNotHaveTags: [],
-            timeRange: "",
+            timeRange: '',
             queryString: this.queryString,
         };
 
         // Add filters depending on view.
         switch (this.appService.getRoute()) {
-            case "/inbox":
+            case '/inbox':
                 // Limit to non-archived events.
-                queryOptions.mustNotHaveTags.push("archived");
+                queryOptions.mustNotHaveTags.push('archived');
                 break;
-            case "/escalated":
+            case '/escalated':
                 // Limit to escalated events only, no time range applied.
-                queryOptions.mustHaveTags.push("escalated");
+                queryOptions.mustHaveTags.push('escalated');
                 break;
             default:
                 break;
         }
 
-        let range:number = 0;
+        let range = 0;
 
         // Set a time range on all but escalated.
         switch (this.appService.getRoute()) {
-            case "/escalated":
+            case '/escalated':
                 break;
             default:
                 //queryOptions.timeRange = this.topNavService.timeRange;
@@ -532,22 +532,22 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 break;
         }
 
-        return this.elasticSearchService.newGetAlerts(queryOptions).then((rows:any) => {
+        return this.elasticSearchService.newGetAlerts(queryOptions).then((rows: any) => {
             this.allRows = rows;
             this.offset = 0;
             this.rows = this.allRows.slice(this.offset, this.windowSize);
-        }, (error:any) => {
+        }, (error: any) => {
 
             this.rows = [];
 
-            if (typeof error === "object") {
+            if (typeof error === 'object') {
                 if (error.message) {
                     this.toastr.error(error.message);
                     return;
                 }
             }
 
-            console.log("Error fetching alerts:");
+            console.log('Error fetching alerts:');
             console.log(error);
 
             // Check for a reason.
@@ -555,7 +555,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 this.toastr.error(error.error.root_cause[0].reason);
             }
             catch (err) {
-                this.toastr.error("An error occurred while executing query.");
+                this.toastr.error('An error occurred while executing query.');
             }
 
 

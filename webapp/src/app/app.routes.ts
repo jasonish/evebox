@@ -24,49 +24,49 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {RouterModule, Routes} from "@angular/router";
-import {EventsComponent} from "./events.component";
-import {EventComponent} from "./event.component";
-import {AlertsComponent} from "./alerts.component";
-import {AlertReportComponent} from "./reports/alerts-report.component";
-import {DNSReportComponent} from "./reports/dns-report.component";
-import {FlowReportComponent} from "./reports/flow-report.component";
-import {NetflowReportComponent} from "./reports/netflow-report.component";
-import {ModuleWithProviders} from "@angular/core";
-import {IpReportComponent} from "./reports/ip-report/ip-report.component";
-import {SshReportComponent} from "./reports/ssh-report.component";
+import {RouterModule, Routes} from '@angular/router';
+import {EventsComponent} from './events.component';
+import {EventComponent} from './event.component';
+import {AlertsComponent} from './alerts.component';
+import {AlertReportComponent} from './reports/alerts-report.component';
+import {DNSReportComponent} from './reports/dns-report.component';
+import {FlowReportComponent} from './reports/flow-report.component';
+import {NetflowReportComponent} from './reports/netflow-report.component';
+import {ModuleWithProviders} from '@angular/core';
+import {IpReportComponent} from './reports/ip-report/ip-report.component';
+import {SshReportComponent} from './reports/ssh-report.component';
 
-const routes:Routes = [
+const routes: Routes = [
     {
-        path: "inbox", component: AlertsComponent, pathMatch: "prefix",
+        path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
     }
     ,
     {
-        path: "escalated", component: AlertsComponent, pathMatch: "prefix",
+        path: 'escalated', component: AlertsComponent, pathMatch: 'prefix',
     }
     ,
     {
-        path: "alerts", component: AlertsComponent, pathMatch: "prefix",
+        path: 'alerts', component: AlertsComponent, pathMatch: 'prefix',
     }
     ,
     {
-        path: "event/:id", component: EventComponent, pathMatch: "prefix",
+        path: 'event/:id', component: EventComponent, pathMatch: 'prefix',
     }
     ,
     {
-        path: "events", component: EventsComponent, pathMatch: "prefix",
+        path: 'events', component: EventsComponent, pathMatch: 'prefix',
     }
     ,
-    {path: "reports/alerts", component: AlertReportComponent},
-    {path: "reports/dns", component: DNSReportComponent},
-    {path: "reports/flow", component: FlowReportComponent},
-    {path: "reports/netflow", component: NetflowReportComponent},
-    {path: "reports/ssh", component: SshReportComponent},
-    {path: "reports/ip", component: IpReportComponent, pathMatch: "prefix",},
+    {path: 'reports/alerts', component: AlertReportComponent},
+    {path: 'reports/dns', component: DNSReportComponent},
+    {path: 'reports/flow', component: FlowReportComponent},
+    {path: 'reports/netflow', component: NetflowReportComponent},
+    {path: 'reports/ssh', component: SshReportComponent},
+    {path: 'reports/ip', component: IpReportComponent, pathMatch: 'prefix', },
     // Let the inbox by the default route.
     {
-        path: "", redirectTo: "inbox", pathMatch: "prefix"
+        path: '', redirectTo: 'inbox', pathMatch: 'prefix'
     }
 ];
 
-export const routing:ModuleWithProviders = RouterModule.forRoot(routes, {useHash: true});
+export const routing: ModuleWithProviders = RouterModule.forRoot(routes, {useHash: true});

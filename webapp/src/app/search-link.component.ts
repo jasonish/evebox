@@ -24,31 +24,31 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnInit} from "@angular/core";
+import {Component, Input, OnInit} from '@angular/core';
 
 @Component({
-    selector: "search-link",
+    selector: 'search-link',
     template: `<a [routerLink]="[route, {q: queryString}]" style="word-break: break-all">{{value}}</a>`
 })
 export class EveboxSearchLinkComponent implements OnInit {
 
-    @Input() field:string;
-    @Input() value:string;
-    @Input() searchParams:any;
-    @Input() route:string = "/events";
-    @Input() search:string;
+    @Input() field: string;
+    @Input() value: string;
+    @Input() searchParams: any;
+    @Input() route = '/events';
+    @Input() search: string;
 
-    queryString:string;
+    queryString: string;
 
     ngOnInit() {
-        let queryString = "";
+        let queryString = '';
 
         if (!this.search) {
             this.search = this.value;
         }
 
         if (this.searchParams) {
-            Object.keys(this.searchParams).map((key:any) => {
+            Object.keys(this.searchParams).map((key: any) => {
                 queryString += `+${key}:"${this.searchParams[key]}" `;
             });
         }

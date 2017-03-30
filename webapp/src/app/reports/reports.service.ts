@@ -23,30 +23,30 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-import {Injectable} from "@angular/core";
+import {Injectable} from '@angular/core';
 //import moment = require("moment");
-import * as moment from "moment";
+import * as moment from 'moment';
 
 @Injectable()
 export class ReportsService {
 
-    histogramTimeInterval(range:number):string {
-        let interval:string = "day";
+    histogramTimeInterval(range: number): string {
+        let interval = 'day';
 
         if (range == 0) {
-            return "day";
+            return 'day';
         }
         else if (range <= 60) {
             // Minute or less.
-            interval = "second";
+            interval = 'second';
         }
         else if (range <= 3600 * 6) {
             // 6 hours or or less.
-            interval = "minute";
+            interval = 'minute';
         }
         else if (range <= 86400) {
             // Day or less.
-            interval = "hour";
+            interval = 'hour';
         }
 
         console.log(`Returning interval: ${interval}.`);

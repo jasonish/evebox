@@ -24,32 +24,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from "@angular/core";
+import {Pipe, PipeTransform} from '@angular/core';
 
 @Pipe({
-    name: "eventSeverityToBootstrapClass"
+    name: 'eventSeverityToBootstrapClass'
 })
 export class EventSeverityToBootstrapClass implements PipeTransform {
 
-    transform(event:any, prefix?:string, defaultClass?:string) {
+    transform(event: any, prefix?: string, defaultClass?: string) {
 
-        prefix = prefix || "";
-        let className = "default";
+        prefix = prefix || '';
+        let className = 'default';
 
         if (defaultClass) {
             className = defaultClass;
         }
 
-        if (event._source.event_type == "alert") {
+        if (event._source.event_type === 'alert') {
             switch (event._source.alert.severity) {
                 case 1:
-                    className = "danger";
+                    className = 'danger';
                     break;
                 case 2:
-                    className = "warning";
+                    className = 'warning';
                     break;
                 case 3:
-                    className = "info";
+                    className = 'info';
                     break;
             }
         }

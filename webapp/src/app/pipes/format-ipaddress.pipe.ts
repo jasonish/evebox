@@ -24,9 +24,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from "@angular/core";
+import {Pipe, PipeTransform} from '@angular/core';
 
-declare var window:any;
+declare var window: any;
 
 let randomMap = {};
 
@@ -37,37 +37,37 @@ let randomMap = {};
  * object.
  */
 @Pipe({
-    name: "eveboxFormatIpAddress"
+    name: 'eveboxFormatIpAddress'
 })
 export class EveboxFormatIpAddressPipe implements PipeTransform {
 
-    transform(addr:string) {
+    transform(addr: string) {
         if (addr === undefined) {
-            return "";
+            return '';
         }
 
         if (window.randomizeIp) {
             return this.getRandomIp(addr);
         }
 
-        addr = addr.replace(/0000/g, "");
-        while (addr.indexOf(":0:") > -1) {
-            addr = addr.replace(/:0:/g, "::");
+        addr = addr.replace(/0000/g, '');
+        while (addr.indexOf(':0:') > -1) {
+            addr = addr.replace(/:0:/g, '::');
         }
-        addr = addr.replace(/:::+/g, "::");
-        while (addr != (addr = addr.replace(/:0+/g, ":")))
+        addr = addr.replace(/:::+/g, '::');
+        while (addr != (addr = addr.replace(/:0+/g, ':')))
             ;
         return addr;
     }
 
-    getRandomIp(addr:string) {
+    getRandomIp(addr: string) {
         if (randomMap[addr]) {
             return randomMap[addr];
         }
 
-        let randomAddr = "10." +
-                Math.round(Math.random() * 256) + "." +
-                Math.round(Math.random() * 256) + "." +
+        let randomAddr = '10.' +
+                Math.round(Math.random() * 256) + '.' +
+                Math.round(Math.random() * 256) + '.' +
                 Math.round(Math.random() * 256);
 
         randomMap[addr] = randomAddr;

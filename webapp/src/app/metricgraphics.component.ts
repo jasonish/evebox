@@ -24,13 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnChanges} from "@angular/core";
-import {EveboxLoadingSpinnerComponent} from "./loading-spinner.component";
+import {Component, Input, OnChanges} from '@angular/core';
+import {EveboxLoadingSpinnerComponent} from './loading-spinner.component';
 
-let MG = require("metrics-graphics");
+let MG = require('metrics-graphics');
 
 @Component({
-    selector: "metrics-graphic",
+    selector: 'metrics-graphic',
     template: `<div *ngIf="hasData()" class="evebox-metrics-graphic" [id]="graphId"></div>
 <div *ngIf="!hasData()" style="text-align: center;">
   <hr/>
@@ -41,11 +41,11 @@ let MG = require("metrics-graphics");
 })
 export class EveboxMetricsGraphicComponent implements OnChanges {
 
-    @Input() private graphId:string;
-    @Input() private title:string;
-    @Input() private data:any[] = [];
+    @Input() private graphId: string;
+    @Input() private title: string;
+    @Input() private data: any[] = [];
 
-    private redraw:boolean = false;
+    private redraw = false;
 
     ngOnChanges() {
         this.redraw = true;
@@ -66,7 +66,7 @@ export class EveboxMetricsGraphicComponent implements OnChanges {
         if (this.data && this.data.length > 0) {
             try {
                 MG.data_graphic({
-                    target: "#" + this.graphId,
+                    target: '#' + this.graphId,
                     title: this.title,
                     data: this.data,
                     full_width: true,
@@ -75,7 +75,7 @@ export class EveboxMetricsGraphicComponent implements OnChanges {
                 });
             }
             catch (err) {
-                console.log("Failed to draw metrics graphic: " + err);
+                console.log('Failed to draw metrics graphic: ' + err);
             }
         }
     }

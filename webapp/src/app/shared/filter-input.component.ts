@@ -24,12 +24,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input} from "@angular/core";
-import {ActivatedRoute} from "@angular/router";
-import {AppService} from "../app.service";
+import {Component, Input} from '@angular/core';
+import {ActivatedRoute} from '@angular/router';
+import {AppService} from '../app.service';
 
 @Component({
-    selector: "evebox-filter-input",
+    selector: 'evebox-filter-input',
     template: `
       <form (ngSubmit)="submitFilter()">
         <div class="input-group">
@@ -48,18 +48,18 @@ import {AppService} from "../app.service";
 })
 export class EveboxFilterInputComponent {
 
-    @Input() queryString:string;
+    @Input() queryString: string;
 
-    constructor(private route:ActivatedRoute,
-                private appService:AppService) {
+    constructor(private route: ActivatedRoute,
+                private appService: AppService) {
     }
 
     submitFilter() {
-        this.appService.updateParams(this.route, {q: this.queryString})
+        this.appService.updateParams(this.route, {q: this.queryString});
     }
 
     clearFilter() {
-        this.queryString = "";
+        this.queryString = '';
         this.submitFilter();
     }
 
