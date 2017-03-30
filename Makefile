@@ -88,7 +88,7 @@ resources/bindata.go: $(RESOURCES) webapp
 evebox: Makefile $(GO_SRCS) resources/bindata.go
 	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" \
 		-ldflags "$(LDFLAGS)" \
-		-o ${APP} cmd/evebox.go
+		cmd/evebox.go
 
 # Format all go source code except in the vendor directory.
 gofmt:
@@ -121,11 +121,14 @@ endif
 dist: DISTNAME ?= ${APP}$(DIST_SUFFIX)-${VERSION}-${GOOS}-${DISTARCH}
 dist: LDFLAGS += -s -w
 dist: CGO_ENABLED ?= $(CGO_ENABLED)
+ifeq ($(GOOS),windows)
+dist: APP_EXT := .exe
+endif
 dist: resources/bindata.go
 	@echo "Building EveBox rev $(BUILD_REV)."
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags "$(TAGS)" -ldflags "$(LDFLAGS)" \
-		-o dist/$(DISTNAME)/${APP} cmd/evebox.go
+		-o dist/$(DISTNAME)/${APP}${APP_EXT} cmd/evebox.go
 	cp agent.yaml dist/$(DISTNAME)
 	cp evebox-example.yaml dist/$(DISTNAME)
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
