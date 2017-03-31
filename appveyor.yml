@@ -10,6 +10,7 @@ branches:
   only:
     - develop
     - master
+    - release-staging
 
 clone_folder: c:\gopath\src\github.com\jasonish\evebox
 
@@ -23,11 +24,56 @@ install:
       -P make -P curl -P unzip -P zip
   - ps: Install-Product node LTS
   - '%BASH% -lc "cd $APPVEYOR_BUILD_FOLDER && ./.appveyor/build.sh"'
+  # We copy the zip and exe into the main project folder for the S3
+  # deployment. If they were in a directory, AppVeyor would create
+  # that directory on S3.
+  - '%BASH% -lc "cd $APPVEYOR_BUILD_FOLDER && cp dist/*.zip ."'
+  - '%BASH% -lc "cd $APPVEYOR_BUILD_FOLDER && cp dist/*/*.exe ."'
 
 artifacts:
   - path: evebox.exe
-  - path: dist/*
+    name: exe
+  - path: "*.zip"
+    name: zip
 
 cache:
   - webapp\node_modules -> webapp\npm-shrinkwrap.json
-  - windows-amd64/glide.exe
+  - windows-amd64\glide.exe
+
+deploy:
+  - provider: S3
+    on:
+      branch: master
+    access_key_id:
+      secure: RMx2M8soV0vKMwKamqYnAa2pIT3fYgxNp5NHYbW0cVI=
+    secret_access_key:
+      secure: jhwtnwWxs0bvrwesGgEtCym7bVFFjlgFlm67LRsLBs2P7glz0Zh40Knq6KRs4WIt
+    bucket: ci-artifacts.evebox.org
+    region: us-west-1
+    set_public: true
+    artifact: zip
+    folder: master
+  - provider: S3
+    on:
+      branch: develop
+    access_key_id:
+      secure: RMx2M8soV0vKMwKamqYnAa2pIT3fYgxNp5NHYbW0cVI=
+    secret_access_key:
+      secure: jhwtnwWxs0bvrwesGgEtCym7bVFFjlgFlm67LRsLBs2P7glz0Zh40Knq6KRs4WIt
+    bucket: ci-artifacts.evebox.org
+    region: us-west-1
+    set_public: true
+    artifact: zip
+    folder: develop
+  - provider: S3
+    on:
+      branch: release-staging
+    access_key_id:
+      secure: RMx2M8soV0vKMwKamqYnAa2pIT3fYgxNp5NHYbW0cVI=
+    secret_access_key:
+      secure: jhwtnwWxs0bvrwesGgEtCym7bVFFjlgFlm67LRsLBs2P7glz0Zh40Knq6KRs4WIt
+    bucket: ci-artifacts.evebox.org
+    region: us-west-1
+    set_public: true
+    artifact: zip
+    folder: release-staging

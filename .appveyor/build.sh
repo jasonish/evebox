@@ -16,7 +16,8 @@ else
     GLIDE_VERSION=0.12.3
     GLIDE_FILENAME=glide-v${GLIDE_VERSION}-windows-amd64.zip
     curl -OL ${GLIDE_BASE_URL}/v${GLIDE_VERSION}/${GLIDE_FILENAME}
-    unzip glide-v${GLIDE_VERSION}-windows-amd64.zip
+    unzip ${GLIDE_FILENAME}
+    rm -f ${GLIDE_FILENAME}
 fi
 
 if [ -e ./vendor ]; then
@@ -37,6 +38,5 @@ else
 fi
 
 BUILD_DATE_ISO=$(TZ=UTC date +%Y%m%d%H%M%S)
-BUILD_DATE_ISO=${BUILD_DATE_ISO} NO_PROGRESS=1 WITH_SQLITE=1 make
 BUILD_DATE_ISO=${BUILD_DATE_ISO} WITH_SQLITE=1 GOOS=windows GOARCH=amd64 \
 	      make dist

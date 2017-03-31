@@ -1,34 +1,108 @@
-sudo: true
-language: go
-go: 1.7
+sudo: false
+
 env:
   global:
-    - PATH:$PATH:~/gopath/bin
+    - GOPATH=~/gopath
+    - PATH=${GOPATH}/bin:$PATH
     - NODE_VERSION=6.9.4
     - RUBY_VERSION=2.1.1
-    # Docker trigger token.
     - secure: RL1Ku0ikl6GBlsri8WSMOnCDFjQsMg/nDFZguq/xr0cNNNc1uYeTMxxd7yqXtKj4hhzu1K5jR5VywvN8pLj6KprjnTtXhtrlziwGWm/UoyZVs4Clo6pExsMue8FYNxyk7uqh1/IHpUokEksK26XHv/nes44OZTFsRT4/BszPLhk=
-    # Only do deploy stuff if building from this repo.
     - DEPLOY_REPO=jasonish/evebox
-    # Only do deploy stuff if building from this branch.
     - DEPLOY_BRANCH=master
-    # BINTRAY_API_KEY
-    - secure: "l57DadGF9BMue8hCFnUWDk/wXuCBS30PLAYx+wRhq7YUdW1m3srXj7AdlPr4f5uO2dRXYh/sFXEt2eWB1XqNMS+4PSMnc0fS9EtqA8ff4iQo48ig8BvzB0nBXp8BTDTYvP0PHVGM36UcM1r6ndstcBhnSq9Z5EOMWDo0tbEYrpw="
+    - secure: l57DadGF9BMue8hCFnUWDk/wXuCBS30PLAYx+wRhq7YUdW1m3srXj7AdlPr4f5uO2dRXYh/sFXEt2eWB1XqNMS+4PSMnc0fS9EtqA8ff4iQo48ig8BvzB0nBXp8BTDTYvP0PHVGM36UcM1r6ndstcBhnSq9Z5EOMWDo0tbEYrpw=
+
+matrix:
+  include:
+  - os: linux
+    addons:
+      apt:
+        packages: rpm
+    language: go
+    go: 1.8
+  - os: osx
+    osx_image: xcode8.1
+    language: go
+    go: 1.8
+
 before_install:
-- nvm install $NODE_VERSION
-- nvm use $NODE_VERSION
+- |
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      nvm install $NODE_VERSION
+      nvm use $NODE_VERSION
+  fi
+  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew unlink node || true
+      brew unlink go || true
+      brew unlink glide || true
+      brew install node
+      brew install go
+      brew install glide
+      brew link node
+      brew link go
+      brew link glide
+  fi
+
 script:
-- mkdir /home/travis/gopath/bin
-- curl https://glide.sh/get | sh
-- make install-deps
-- make
-- make release
-after_success:
-- rvm install $RUBY_VERSION
-- rvm use $RUBY_VERSION
-- gem install fpm
-- sudo apt-get -y install rpm
-- make deb
-- make rpm
-- .travis/deploy-packages.sh
-- .travis/docker.sh
+- |
+  make install-deps
+  WITH_SQLITE=1 make dist
+  mkdir -p deploy
+
+  # Copy just what we want to deploy to S3 into a deploy directory, as
+  # the S3 deployment step will copy everything in the directory
+  # pointed at.
+  cp dist/*.zip deploy/
+
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    rvm install $RUBY_VERSION
+    rvm use $RUBY_VERSION
+    gem install fpm
+    sudo apt-get -y install rpm
+    make deb
+    make rpm
+    cp dist/*.deb deploy/
+    cp dist/*.rpm deploy/
+    ".travis/deploy-packages.sh"
+    ".travis/docker.sh"
+  fi
+
+deploy:
+  - provider: s3
+    access_key_id:
+      secure: c9kbS3NW5xLKDkwxYeWLIi3ViTQTwsLLAFEQ6i+o4/2AbvYPP7V1ZGVkBNtdyEXFl9WcDRYYHnZ5CnxmjRUhrDo0/8qvtKd5j/PaidAmKH1l4cxN5mXcjmxpuw5sc8qG4wWwcDSWfcSiaOi5jbSToGERwvVp+/NnyXu6QZnb4Pg=
+    secret_access_key:
+      secure: c13Dhchou1/E8TpZ6X4HuQyhA++hoKinf2Z/AVOQ+yGsEr6vphwu0MpP8TwoSXmMuhUPqv0r5Ajk+vKLX064Cxfb2GpQ2KZSgyROxrBoed6l2mKLe0r1+L7ozoyr9wNeGM4x3d/JiKZJJ18DF687wv2PhDPZISM6MEEUguuueSE=
+    bucket: ci-artifacts.evebox.org
+    skip_cleanup: true
+    region: us-west-1
+    local_dir: deploy
+    on:
+      branch: master
+    acl: public_read
+    upload-dir: master
+  - provider: s3
+    access_key_id:
+      secure: c9kbS3NW5xLKDkwxYeWLIi3ViTQTwsLLAFEQ6i+o4/2AbvYPP7V1ZGVkBNtdyEXFl9WcDRYYHnZ5CnxmjRUhrDo0/8qvtKd5j/PaidAmKH1l4cxN5mXcjmxpuw5sc8qG4wWwcDSWfcSiaOi5jbSToGERwvVp+/NnyXu6QZnb4Pg=
+    secret_access_key:
+      secure: c13Dhchou1/E8TpZ6X4HuQyhA++hoKinf2Z/AVOQ+yGsEr6vphwu0MpP8TwoSXmMuhUPqv0r5Ajk+vKLX064Cxfb2GpQ2KZSgyROxrBoed6l2mKLe0r1+L7ozoyr9wNeGM4x3d/JiKZJJ18DF687wv2PhDPZISM6MEEUguuueSE=
+    bucket: ci-artifacts.evebox.org
+    skip_cleanup: true
+    region: us-west-1
+    local_dir: deploy
+    on:
+      branch: develop
+    acl: public_read
+    upload-dir: develop
+  - provider: s3
+    access_key_id:
+      secure: c9kbS3NW5xLKDkwxYeWLIi3ViTQTwsLLAFEQ6i+o4/2AbvYPP7V1ZGVkBNtdyEXFl9WcDRYYHnZ5CnxmjRUhrDo0/8qvtKd5j/PaidAmKH1l4cxN5mXcjmxpuw5sc8qG4wWwcDSWfcSiaOi5jbSToGERwvVp+/NnyXu6QZnb4Pg=
+    secret_access_key:
+      secure: c13Dhchou1/E8TpZ6X4HuQyhA++hoKinf2Z/AVOQ+yGsEr6vphwu0MpP8TwoSXmMuhUPqv0r5Ajk+vKLX064Cxfb2GpQ2KZSgyROxrBoed6l2mKLe0r1+L7ozoyr9wNeGM4x3d/JiKZJJ18DF687wv2PhDPZISM6MEEUguuueSE=
+    bucket: ci-artifacts.evebox.org
+    skip_cleanup: true
+    region: us-west-1
+    local_dir: deploy
+    on:
+      branch: release-staging
+    acl: public_read
+    upload-dir: release-staging

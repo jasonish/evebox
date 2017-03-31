@@ -13,10 +13,10 @@ BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 UNAME_S		:=	$(shell uname -s)
 ifeq ($(UNAME_S),Linux)
 BUILD_DATE_ISO  ?=	$(shell TZ=UTC date \
-    -d @"$(shell git log --pretty=format:%at -1)" +%Y%m%d%H%M%S)
+    -d @"$(shell git log --pretty=format:%ct -1)" +%Y%m%d%H%M%S)
 else
 BUILD_DATE_ISO  ?=	$(shell TZ=UTC date \
-    -r "$(shell git log --pretty=format:%at -1)" +%Y%m%d%H%M%S)
+    -r "$(shell git log --pretty=format:%ct -1)" +%Y%m%d%H%M%S)
 endif
 export BUILD_DATE_ISO
 
@@ -146,13 +146,15 @@ deb: EPOCH := 1
 ifneq ($(VERSION_SUFFIX),)
 deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
 deb: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
+deb: OUTPUT := dist/evebox-latest-amd64.deb
 else
 deb: EVEBOX_BIN := dist/${APP}-${VERSION}-linux-x64/evebox
+deb: OUTPUT := dist/
 endif
 deb:
 	fpm --force -s dir \
 		-t deb \
-		-p dist \
+		-p $(OUTPUT) \
 		-n evebox \
 		--epoch $(EPOCH) \
 		-v $(VERSION)$(TILDE) \
@@ -168,15 +170,17 @@ ifneq ($(VERSION_SUFFIX),)
 # Setup non-release versioning.
 rpm: RPM_ITERATION := 0.$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
 rpm: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
+rpm: OUTPUT := dist/evebox-latest-x86_64.rpm
 else
 # Setup release versioning.
 rpm: RPM_ITERATION := 1
 rpm: EVEBOX_BIN := dist/${APP}-${VERSION}-linux-x64/evebox
+rpm: OUTPUT := dist/
 endif
 rpm:
 	fpm --force -s dir \
 		-t rpm \
-		-p dist \
+		-p $(OUTPUT) \
 		-n evebox \
 		-v $(VERSION) \
 		--iteration $(RPM_ITERATION) \
