@@ -1,5 +1,5 @@
-hash: 40ebb7a8c999f42b4f6071394c67730d26f5f5c028abc48cb9d800893af3017d
-updated: 2017-03-25T00:25:12.365686154-06:00
+hash: fef4820fb99328ef416f4e214a7b35a7c8a16c63aba18796ddd631077fac8b6c
+updated: 2017-03-31T14:07:47.169761713-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -33,6 +33,8 @@ imports:
   - oid
 - name: github.com/magiconair/properties
   version: b3b15ef068fd0b17ddf408a23669f20811d194d2
+- name: github.com/mattn/go-isatty
+  version: fc9e8d8ef48496124e79ae0df75490096eccf6fe
 - name: github.com/mattn/go-sqlite3
   version: b2e464529e88db676302aa63a4ce36711633950e
   repo: https://github.com/mattn/go-sqlite3.git

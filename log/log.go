@@ -32,12 +32,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+	"github.com/mattn/go-isatty"
 )
 
 type LogLevel int
 
 const (
-	ERROR LogLevel = iota
+	ERROR   LogLevel = iota
 	WARNING
 	NOTICE
 	INFO
@@ -49,35 +50,69 @@ var logLevel LogLevel = INFO
 const (
 	GREEN   = "\x1b[32m"
 	BLUE    = "\x1b[34m"
-	REDB    = "\x1b[1;31m"
 	YELLOW  = "\x1b[33m"
-	RED     = "\x1b[31m"
 	YELLOWB = "\x1b[1;33m"
-	ORANGE  = "\x1b[38;5;208m"
-	RESET   = "\x1b[0m"
+	RED     = "\x1b[31m"
+	//REDB    = "\x1b[1;31m"
+	ORANGE = "\x1b[38;5;208m"
+	RESET  = "\x1b[0m"
 )
 
-func Green(v interface{}) string {
+type ColorPrinter func(v interface{}) string
+
+var Green ColorPrinter = noColorPrinter
+var Blue ColorPrinter = noColorPrinter
+var Red ColorPrinter = noColorPrinter
+var Yellow ColorPrinter = noColorPrinter
+var YellowB ColorPrinter = noColorPrinter
+var Orange ColorPrinter = noColorPrinter
+
+func init() {
+	doColor := false
+	if runtime.GOOS == "windows" {
+		if isatty.IsCygwinTerminal(os.Stdout.Fd()) {
+			doColor = true
+		}
+	} else if isatty.IsTerminal(os.Stdout.Fd()) {
+		doColor = true
+	}
+
+	if doColor {
+		// Register color printers.
+		Green = _Green
+		Blue = _Blue
+		Yellow = _Yellow
+		YellowB = _YellowB
+		Red = _Red
+		Orange = _Orange
+	}
+}
+
+func noColorPrinter(v interface{}) string {
+	return fmt.Sprintf("%v", v)
+}
+
+func _Green(v interface{}) string {
 	return fmt.Sprintf("%s%v%s", GREEN, v, RESET)
 }
 
-func Blue(v interface{}) string {
+func _Blue(v interface{}) string {
 	return fmt.Sprintf("%s%v%s", BLUE, v, RESET)
 }
 
-func Yellow(v interface{}) string {
+func _Yellow(v interface{}) string {
 	return fmt.Sprintf("%s%v%s", YELLOW, v, RESET)
 }
 
-func YellowB(v interface{}) string {
+func _YellowB(v interface{}) string {
 	return fmt.Sprintf("%s%v%s", YELLOWB, v, RESET)
 }
 
-func Red(v interface{}) string {
+func _Red(v interface{}) string {
 	return fmt.Sprintf("%s%v%s", RED, v, RESET)
 }
 
-func Orange(v interface{}) string {
+func _Orange(v interface{}) string {
 	return fmt.Sprintf("%s%v%s", ORANGE, v, RESET)
 }
 
