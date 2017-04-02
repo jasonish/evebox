@@ -108,6 +108,13 @@ In development mode changes to Go files will trigger a
 recompile/restart, and changes to the web app will trigger a recompile
 of the javascript and a browser refresh.
 
+## A Note on Authentication
+
+Currently EveBox provides no authentication as I have not been happy
+with some basic attempts, and I want to get it right. Also, its
+trivial to host behind an authenticating reverse proxy, like you might
+do for Elastic Search.
+
 ## Change Log
 
 See https://github.com/jasonish/evebox/blob/master/CHANGELOG.md .
