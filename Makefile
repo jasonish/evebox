@@ -129,8 +129,8 @@ dist: resources/bindata.go
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags "$(TAGS)" -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP}${APP_EXT} cmd/evebox.go
-	cp agent.yaml dist/$(DISTNAME)
-	cp evebox-example.yaml dist/$(DISTNAME)
+	cp agent.yaml.example dist/$(DISTNAME)
+	cp evebox.yaml.example dist/$(DISTNAME)
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 
 release:
@@ -162,8 +162,11 @@ deb:
 		--deb-no-default-config-files \
 		--config-files /etc/default/evebox \
 		${EVEBOX_BIN}=/usr/bin/evebox \
+	        evebox.yaml.example=/etc/evebox/evebox.yaml.example \
+		agent.yaml.example=/etc/evebox/agent.yaml.example \
 		deb/evebox.default=/etc/default/evebox \
-		deb/evebox.service=/lib/systemd/system/evebox.service
+		deb/evebox.service=/lib/systemd/system/evebox.service \
+		deb/evebox-agent.service=/lib/systemd/system/evebox-agent.service
 
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
@@ -186,10 +189,9 @@ rpm:
 		--iteration $(RPM_ITERATION) \
 		--after-upgrade=rpm/after-upgrade.sh \
 		--config-files /etc/sysconfig/evebox \
-		--config-files /etc/evebox \
 		${EVEBOX_BIN}=/usr/bin/evebox \
-	        evebox-example.yaml=/etc/evebox/evebox-example.yaml \
-		agent.yaml=/etc/evebox/agent.yaml \
+	        evebox.yaml.example=/etc/evebox/evebox.yaml.example \
+		agent.yaml.example=/etc/evebox/agent.yaml.example \
 		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 		rpm/evebox.service=/lib/systemd/system/evebox.service \
 		rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
