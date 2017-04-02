@@ -27,3 +27,4 @@ import:
 - package: github.com/stretchr/testify
 - package: github.com/gorilla/handlers
 - package: github.com/mattn/go-isatty
+- package: github.com/oklog/ulid

@@ -1,5 +1,5 @@
-hash: fef4820fb99328ef416f4e214a7b35a7c8a16c63aba18796ddd631077fac8b6c
-updated: 2017-03-31T14:07:47.169761713-06:00
+hash: aad2dc705ea268b2f3e1120e87ee1fac89227a853371936a051137104c4e3ba0
+updated: 2017-04-02T14:27:54.586624522-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -36,11 +36,13 @@ imports:
 - name: github.com/mattn/go-isatty
   version: fc9e8d8ef48496124e79ae0df75490096eccf6fe
 - name: github.com/mattn/go-sqlite3
-  version: b2e464529e88db676302aa63a4ce36711633950e
+  version: 46e826d22aebbfda29523e86e3114c2beb4dab43
   repo: https://github.com/mattn/go-sqlite3.git
   vcs: git
 - name: github.com/mitchellh/mapstructure
   version: db1efb556f84b25a0a13a04aad883943538ad2e0
+- name: github.com/oklog/ulid
+  version: 66bb6560562feca7045b23db1ae85b01260f87c5
 - name: github.com/oschwald/geoip2-golang
   version: ccee6e9d9b1ee5cee16ac664bc1982952edfb13d
 - name: github.com/oschwald/maxminddb-golang

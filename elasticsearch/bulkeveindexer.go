@@ -31,27 +31,50 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
+	"math/rand"
 	"net/http"
 	"sync"
+	"time"
 )
 
 const AtTimestampFormat = "2006-01-02T15:04:05.999Z"
 
 var templateCheckLock sync.Mutex
 
+var entropyLock sync.Mutex
+var lastSeed int64 = 0
+
 type BulkEveIndexer struct {
 	es     *ElasticSearch
 	queued uint
 	buf    []byte
+
+	// The entropy source for ulid generation.
+	entropy *rand.Rand
 }
 
 func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
 	indexer := BulkEveIndexer{
 		es: es,
 	}
+	indexer.initEntropy()
 	return &indexer
+}
+
+func (i *BulkEveIndexer) initEntropy() {
+	entropyLock.Lock()
+	defer entropyLock.Unlock()
+
+	seed := lastSeed
+
+	for seed == lastSeed {
+		seed = time.Now().UnixNano()
+	}
+	lastSeed = seed
+
+	i.entropy = rand.New(rand.NewSource(seed))
 }
 
 func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse, error) {
@@ -84,7 +107,9 @@ func (i *BulkEveIndexer) Submit(event eve.EveEvent) error {
 	header := BulkCreateHeader{}
 	header.Create.Index = index
 	header.Create.Type = "log"
-	header.Create.Id = uuid.NewV1().String()
+
+	id := ulid.MustNew(ulid.Timestamp(timestamp), i.entropy).String()
+	header.Create.Id = id
 
 	rheader, _ := json.Marshal(header)
 	revent, _ := json.Marshal(event)
