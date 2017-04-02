@@ -48,6 +48,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+	"runtime"
 )
 
 const DEFAULT_PORT = 5636
@@ -287,8 +288,16 @@ Example:
 	log.Info("Attempting to start browser.")
 	url := fmt.Sprintf("http://localhost:%d", port)
 	go func() {
-		c := exec.Command("xdg-open", url)
-		c.Run()
+		if runtime.GOOS == "linux" {
+			c := exec.Command("xdg-open", url)
+			c.Run()
+		} else if runtime.GOOS == "darwin" {
+			c := exec.Command("open", url)
+			c.Run()
+		} else if runtime.GOOS == "windows" {
+			c := exec.Command("start", url)
+			c.Run()
+		}
 	}()
 
 	fmt.Printf("\nIf your browser didn't open, go to %s\n", url)
