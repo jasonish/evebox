@@ -1,27 +1,19 @@
 # EveBox Makefile
 #
 # Requirements:
-#    - GNU Make on Linux
+#    - GNU Make
 
 # Version info.
-#VERSION_SUFFIX	:=	dev
-VERSION		:=	0.6.1
+VERSION_SUFFIX	:=	dev
+VERSION		:=	0.6.2
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
-# Convert the timestamp of the last commit into a date that can be
-# used as a version.
-# * Linux only I think!!!
-UNAME_S		:=	$(shell uname -s)
-ifeq ($(UNAME_S),Linux)
-BUILD_DATE_ISO  ?=	$(shell TZ=UTC date \
-    -d @"$(shell git log --pretty=format:%ct -1)" +%Y%m%d%H%M%S)
-else
-BUILD_DATE_ISO  ?=	$(shell TZ=UTC date \
-    -r "$(shell git log --pretty=format:%ct -1)" +%Y%m%d%H%M%S)
-endif
-export BUILD_DATE_ISO
+BUILD_DATE	?=	$(shell git log --pretty=format:%at -1)
+export BUILD_DATE
 
-LDFLAGS :=	-X \"github.com/jasonish/evebox/core.BuildRev=$(BUILD_REV)\" \
-		-X \"github.com/jasonish/evebox/core.BuildVersion=$(VERSION)$(VERSION_SUFFIX)\" \
+BUILD_REV_VAR :=	github.com/jasonish/evebox/core.BuildRev
+BUILD_VER_VAR :=	github.com/jasonish/evebox/core.BuildVersion
+LDFLAGS :=	-X \"$(BUILD_REV_VAR)=$(BUILD_REV)\" \
+		-X \"$(BUILD_VER_VAR)=$(VERSION)$(VERSION_SUFFIX)\" \
 
 ifdef WITH_SQLITE
 CGO_ENABLED :=	1
@@ -139,12 +131,11 @@ release:
 	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
 	GOOS=darwin GOARCH=amd64 $(MAKE) dist
 
-# Debian packaging.
-# Due to a versioning screwup early on, we now need to set the epoch
-# to 1 for those updating with apt.
+# Debian packaging. Due to a versioning screwup early on, we now need
+# to set the epoch to 1 for those updating with apt.
 deb: EPOCH := 1
 ifneq ($(VERSION_SUFFIX),)
-deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
+deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE)
 deb: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
 deb: OUTPUT := dist/evebox-latest-amd64.deb
 else
@@ -171,7 +162,7 @@ deb:
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
 # Setup non-release versioning.
-rpm: RPM_ITERATION := 0.$(VERSION_SUFFIX)$(BUILD_DATE_ISO)
+rpm: RPM_ITERATION := 0.$(VERSION_SUFFIX)$(BUILD_DATE)
 rpm: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
 rpm: OUTPUT := dist/evebox-latest-x86_64.rpm
 else
