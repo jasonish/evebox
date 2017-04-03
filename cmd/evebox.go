@@ -31,7 +31,7 @@ import (
 	"github.com/jasonish/evebox/cmd/agent"
 	"github.com/jasonish/evebox/cmd/esimport"
 	"github.com/jasonish/evebox/cmd/evereader"
-	"github.com/jasonish/evebox/cmd/oneshot/oneshot"
+	"github.com/jasonish/evebox/cmd/oneshot"
 	"github.com/jasonish/evebox/cmd/pgimport"
 	"github.com/jasonish/evebox/cmd/server"
 	"github.com/jasonish/evebox/cmd/sqliteimport"
