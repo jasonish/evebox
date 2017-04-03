@@ -53,6 +53,7 @@ Commands:
 	version			Print the EveBox version
 	esimport		Run the Elastic Search Eve import tool
 	evereader		Run the Eve log reader tool
+	oneshot                 Run one time with an eve.json file
 
 `, os.Args[0])
 	fmt.Fprint(os.Stderr, usage)
