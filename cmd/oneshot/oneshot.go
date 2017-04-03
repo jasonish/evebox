@@ -92,7 +92,7 @@ Example:
 	}
 
 	flagset.StringVarP(&opts.Port, "port", "p", "", "Port to bind to")
-	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
+	flagset.StringVarP(&opts.Host, "host", "", "127.0.0.1", "Host to bind to")
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
 
 	flagset.StringVarP(&opts.DatabaseFilename, "database-filename", "D", "", "Database filename")
