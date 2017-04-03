@@ -54,6 +54,31 @@ This should not require any modification to your Elastic Search
 configuration. Unlike previous versions of Evebox, you do not need to
 enable dynamic scripting and CORS.
 
+## Usage
+
+EveBox runs as a server exposing a web interface on port 5636 by
+default.
+
+### With an Existing Elastic Search Server With Events
+
+The basic mode where `eve` events are being sent to Elastic Search
+with Logstash and or Filebeat.
+
+```
+evebox server -e http://elasticsearch:9200
+```
+
+### With the Embedded SQLite Database
+
+This is useful if you don't have Elastic Search and running EveBox on
+the same machine as Suricata. It uses an embedded SQLite database for
+events and is suitable for ligher loads. Currently SQLite does not
+support reporting.
+
+```
+evebox server --datastore sqlite --input /var/log/suricata/eve.json
+```
+
 ## Building EveBox
 
 EveBox consists of a JavaScript frontend, and a very minimal backend
