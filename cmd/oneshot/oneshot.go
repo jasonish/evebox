@@ -46,9 +46,9 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
-	"runtime"
 )
 
 const DEFAULT_PORT = 5636

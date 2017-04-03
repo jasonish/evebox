@@ -28,17 +28,17 @@ package log
 
 import (
 	"fmt"
+	"github.com/mattn/go-isatty"
 	"os"
 	"path/filepath"
 	"runtime"
 	"time"
-	"github.com/mattn/go-isatty"
 )
 
 type LogLevel int
 
 const (
-	ERROR   LogLevel = iota
+	ERROR LogLevel = iota
 	WARNING
 	NOTICE
 	INFO
