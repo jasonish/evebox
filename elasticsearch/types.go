@@ -62,6 +62,8 @@ func (p PingResponse) MajorVersion() int64 {
 
 }
 
+// ParseVersion parses the Elastic Search version in the ping response
+// returning the major and minor versions.
 func (p PingResponse) ParseVersion() (int64, int64) {
 	majorVersion := int64(0)
 	minorVersion := int64(0)

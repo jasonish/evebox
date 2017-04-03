@@ -191,6 +191,10 @@ func Main(args []string) {
 		} else {
 			log.Info("Connected to Elastic Search (version: %s)",
 				pingResponse.Version.Number)
+			major, _ := pingResponse.ParseVersion()
+			if major < 5 {
+				log.Warning("Elastic Search versions less than 5 will be unsupported in a future release")
+			}
 		}
 		appContext.ElasticSearch = elasticSearch
 		appContext.EventService = elasticsearch.NewEventService(elasticSearch)
