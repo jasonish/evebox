@@ -106,3 +106,16 @@ deploy:
       branch: release-staging
     acl: public_read
     upload-dir: release-staging
+  - provider: s3
+    access_key_id:
+      secure: c9kbS3NW5xLKDkwxYeWLIi3ViTQTwsLLAFEQ6i+o4/2AbvYPP7V1ZGVkBNtdyEXFl9WcDRYYHnZ5CnxmjRUhrDo0/8qvtKd5j/PaidAmKH1l4cxN5mXcjmxpuw5sc8qG4wWwcDSWfcSiaOi5jbSToGERwvVp+/NnyXu6QZnb4Pg=
+    secret_access_key:
+      secure: c13Dhchou1/E8TpZ6X4HuQyhA++hoKinf2Z/AVOQ+yGsEr6vphwu0MpP8TwoSXmMuhUPqv0r5Ajk+vKLX064Cxfb2GpQ2KZSgyROxrBoed6l2mKLe0r1+L7ozoyr9wNeGM4x3d/JiKZJJ18DF687wv2PhDPZISM6MEEUguuueSE=
+    bucket: ci-artifacts.evebox.org
+    skip_cleanup: true
+    region: us-west-1
+    local_dir: deploy
+    on:
+      branch: release
+    acl: public_read
+    upload-dir: release
