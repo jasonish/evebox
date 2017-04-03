@@ -24,8 +24,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 import {Injectable} from '@angular/core';
-//import moment = require("moment");
-import * as moment from 'moment';
 
 @Injectable()
 export class ReportsService {
@@ -47,6 +45,14 @@ export class ReportsService {
         else if (range <= 86400) {
             // Day or less.
             interval = 'hour';
+        }
+        else if (range <= (86400 * 3)) {
+            // 3 days or less.
+            interval = 'hour';
+        }
+        else if (range <= (86400 * 7)) {
+            // 7 days or less.
+            interval = '6h';
         }
 
         console.log(`Returning interval: ${interval}.`);
