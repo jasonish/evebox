@@ -4,7 +4,7 @@
 #    - GNU Make on Linux
 
 # Version info.
-VERSION_SUFFIX	:=	dev
+#VERSION_SUFFIX	:=	dev
 VERSION		:=	0.6.1
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 # Convert the timestamp of the last commit into a date that can be

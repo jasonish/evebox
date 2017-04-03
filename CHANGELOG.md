@@ -1,7 +1,7 @@
 # Change Log
 
-## [Unreleased]
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.5.0...HEAD)
+## 0.6.1 - 2017-04-02
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.5.0...0.6.1)
 - Upgrade to Angular 4 and Angular CLI 1.0 and use its AOT compilation
   feature reducing the Javascript size even further. Combined with
   response compression, initial data loaded by the browser is about
