@@ -11,6 +11,7 @@ branches:
     - develop
     - master
     - release-staging
+    - release
 
 clone_folder: c:\gopath\src\github.com\jasonish\evebox
 
