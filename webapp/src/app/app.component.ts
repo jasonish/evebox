@@ -25,7 +25,7 @@
  */
 
 import {Component, OnInit} from '@angular/core';
-import {AppService} from './app.service';
+import {AppEvent, AppEventCode, AppService} from './app.service';
 
 declare var document: any;
 declare var window: any;
@@ -33,8 +33,8 @@ declare var window: any;
 @Component({
     selector: 'app-root',
     template: `
-<evebox-help></evebox-help>
-<evebox-top-nav></evebox-top-nav>
+<evebox-help *ngIf="isAuthenticated"></evebox-help>
+<evebox-top-nav *ngIf="isAuthenticated"></evebox-top-nav>
 <div class="container-fluid">
 <router-outlet></router-outlet>
 </div>
@@ -42,10 +42,19 @@ declare var window: any;
 })
 export class AppComponent implements OnInit {
 
+    isAuthenticated: boolean = false;
+
     constructor(private appService: AppService) {
+        this.isAuthenticated = appService.isAuthenticated();
     }
 
     ngOnInit() {
+        this.appService.subscribe((event: AppEvent) => {
+            if (event.event == AppEventCode.AUTHENTICATED) {
+                this.isAuthenticated = this.appService.isAuthenticated();
+            }
+        });
+
         window.addEventListener('click', () => {
             this.appService.resetIdleTime();
         }, true);

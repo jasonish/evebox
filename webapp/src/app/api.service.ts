@@ -25,9 +25,14 @@
  */
 
 import {Injectable} from '@angular/core';
-import {Http, Response} from '@angular/http';
+import {Headers, Http, RequestOptionsArgs, Response} from '@angular/http';
 import {ToastrService} from './toastr.service';
 import {GITREV} from '../environments/gitrev';
+import {Router} from '@angular/router';
+
+import {Observable} from 'rxjs/Rx';
+import 'rxjs/add/operator/catch';
+import 'rxjs/add/operator/map';
 
 export class QueryStringBuilder {
 
@@ -55,7 +60,22 @@ export class ApiService {
 
     private versionWarned = false;
 
-    constructor(private http: Http, private toastr: ToastrService) {
+    private sessionId: string;
+
+    constructor(private http: Http, private toastr: ToastrService, private router: Router) {
+    }
+
+    setSessionId(sessionId: string) {
+        this.sessionId = sessionId;
+    }
+
+    hasSessionId(): boolean {
+        return this.sessionId !== undefined &&
+            this.sessionId !== "";
+    }
+
+    getSessionId(): string {
+        return this.sessionId;
     }
 
     checkVersion(response: Response) {
@@ -64,7 +84,7 @@ export class ApiService {
         }
         let webappRev: string = GITREV;
         let serverRev: string = response.headers.get('x-evebox-git-revision');
-        if (webappRev != serverRev) {
+        if (webappRev !== serverRev) {
             console.log(`Server version: ${serverRev}; webapp version: ${webappRev}`);
             this.toastr.warning(
                 `The EveBox server has been updated.
@@ -79,20 +99,57 @@ export class ApiService {
         }
     }
 
-    post(path: string, body: any) {
-        return this.http.post(this.baseUrl + path, JSON.stringify(body))
+    applySessionHeader(options: RequestOptionsArgs) {
+        if (this.sessionId) {
+            let headers = options.headers || new Headers();
+            headers.append('x-evebox-session-id', this.sessionId);
+            options.headers = headers;
+        }
+    }
+
+    request(method: string, path: string, options: RequestOptionsArgs = {}) {
+        let url = `${this.baseUrl}${path.replace(/^\//, '')}`;
+        options.method = method;
+        this.applySessionHeader(options);
+        return this.http.request(url, options)
+            .map((res: Response) => {
+                let sessionId = res.headers.get("x-evebox-session-id");
+                if (sessionId && sessionId != this.sessionId) {
+                    console.log("Updating session ID from response header.");
+                    this.setSessionId(sessionId);
+                }
+                return res;
+            });
+    }
+
+    post(path: string, body: any, options: RequestOptionsArgs = {}) {
+        options.body = JSON.stringify(body);
+        return this.request("POST", path, options)
             .map((res: Response) => res.json())
             .toPromise();
     }
 
-    postRaw(path: string, body: any) {
-        return this.http.post(this.baseUrl + path, body)
+    postForm(path: string, form: URLSearchParams, options: RequestOptionsArgs = {}) {
+        options.body = form.toString();
+        this.applySessionHeader(options);
+        let headers = options.headers || new Headers();
+        headers.append('Content-Type',
+            'application/x-www-form-urlencoded');
+        options.headers = headers;
+        return this.request("POST", path, options)
             .map((res: Response) => res.json())
             .toPromise();
     }
 
-    get(path: string, options = {}): Promise<any> {
-        return this.http.get(`${this.baseUrl}${path}`, options)
+    get(path: string, options: RequestOptionsArgs = {}): Promise<any> {
+        return this.request("GET", path, options)
+            .catch((err: any) => {
+                if (err.status == 401) {
+                    console.log("got 401, redirecting to login page");
+                    this.router.navigate(['/login']);
+                }
+                return Observable.throw(err);
+            })
             .toPromise()
             .then((res: Response) => {
                 this.checkVersion(res);
@@ -104,12 +161,23 @@ export class ApiService {
                 let error: any;
                 try {
                     error = JSON.parse(response._body);
+                    console.log("parsed error ersponse");
                 } catch (err) {
                     console.log('Failed to parse response body.');
                     console.log(err);
                     error = response;
                 }
                 throw error;
+            });
+    }
+
+    login(username: string, password?: string) {
+        let params = new URLSearchParams();
+        params.set("username", username);
+        return this.postForm("/api/1/login", params)
+            .then(response => {
+                this.setSessionId(response.session_id);
+                return true;
             });
     }
 
@@ -122,13 +190,10 @@ export class ApiService {
         }
 
         return this.get(`${path}?${qsb.join('&')}`);
-
     }
 
     getVersion() {
-        return this.http.get(this.baseUrl + 'api/1/version')
-            .map((res: Response) => res.json())
-            .toPromise();
+        return this.get('api/1/version');
     }
 
     eventToPcap(what: any, event: any) {

@@ -140,6 +140,8 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     ngOnInit() {
 
+        console.log("TopNavService.ngOnInit");
+
         if (this.configService.hasFeature(FEATURE_REPORTING)) {
             this.features['reporting'] = true;
         }

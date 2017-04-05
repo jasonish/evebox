@@ -24,7 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {RouterModule, Routes} from '@angular/router';
+import {
+    CanActivate,
+    Resolve,
+    Router,
+    RouterModule,
+    Routes
+} from '@angular/router';
 import {EventsComponent} from './events.component';
 import {EventComponent} from './event.component';
 import {AlertsComponent} from './alerts.component';
@@ -32,41 +38,109 @@ import {AlertReportComponent} from './reports/alerts-report.component';
 import {DNSReportComponent} from './reports/dns-report.component';
 import {FlowReportComponent} from './reports/flow-report.component';
 import {NetflowReportComponent} from './reports/netflow-report.component';
-import {ModuleWithProviders} from '@angular/core';
+import {Injectable, ModuleWithProviders} from '@angular/core';
 import {IpReportComponent} from './reports/ip-report/ip-report.component';
 import {SshReportComponent} from './reports/ssh-report.component';
+import {LoginComponent} from './login.component';
+import {ApiService} from "app/api.service";
+import {AppService} from './app.service';
+import {ConfigService} from './config.service';
+
+declare var window: any;
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+
+    constructor(private router: Router,
+                private app: AppService) {
+    }
+
+    canActivate() {
+        console.log("AuthGuard.canActivate");
+        return this.app.checkAuthenticated().then((yes) => {
+            console.log(yes);
+            console.log("AuthGuard.canActivate: returning true");
+            return true;
+        }, (no) => {
+            console.log(no);
+            this.router.navigate(['/login']);
+        });
+    }
+}
+
+@Injectable()
+export class ConfigResolver implements CanActivate {
+
+    constructor(private configService: ConfigService) {
+    }
+
+    canActivate(): Promise<boolean> {
+        console.log("ConfigService.canActivate");
+        return this.configService.updateConfig()
+            .then((config) => {
+                console.log("ConfigService.canActivate: returning true");
+                return true;
+            });
+    }
+}
 
 const routes: Routes = [
+
     {
-        path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
-    }
-    ,
+        path: 'login',
+        pathMatch: 'prefix',
+        component: LoginComponent,
+    },
     {
-        path: 'escalated', component: AlertsComponent, pathMatch: 'prefix',
-    }
-    ,
-    {
-        path: 'alerts', component: AlertsComponent, pathMatch: 'prefix',
-    }
-    ,
-    {
-        path: 'event/:id', component: EventComponent, pathMatch: 'prefix',
-    }
-    ,
-    {
-        path: 'events', component: EventsComponent, pathMatch: 'prefix',
-    }
-    ,
-    {path: 'reports/alerts', component: AlertReportComponent},
-    {path: 'reports/dns', component: DNSReportComponent},
-    {path: 'reports/flow', component: FlowReportComponent},
-    {path: 'reports/netflow', component: NetflowReportComponent},
-    {path: 'reports/ssh', component: SshReportComponent},
-    {path: 'reports/ip', component: IpReportComponent, pathMatch: 'prefix', },
-    // Let the inbox by the default route.
-    {
-        path: '', redirectTo: 'inbox', pathMatch: 'prefix'
-    }
+        path: '',
+        pathMatch: 'prefix',
+        //canActivate: [AuthGuard, ConfigResolver],
+        canActivate: [AuthGuard],
+        children: [
+            {
+                path: '',
+                redirectTo: 'inbox',
+                pathMatch: 'prefix',
+            },
+            {
+                path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
+            },
+            {
+                path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
+            }
+            ,
+            {
+                path: 'escalated',
+                component: AlertsComponent,
+                pathMatch: 'prefix',
+            }
+            ,
+            {
+                path: 'alerts', component: AlertsComponent, pathMatch: 'prefix',
+            }
+            ,
+            {
+                path: 'event/:id',
+                component: EventComponent,
+                pathMatch: 'prefix',
+            }
+            ,
+            {
+                path: 'events', component: EventsComponent, pathMatch: 'prefix',
+            }
+            ,
+            {path: 'reports/alerts', component: AlertReportComponent},
+            {path: 'reports/dns', component: DNSReportComponent},
+            {path: 'reports/flow', component: FlowReportComponent},
+            {path: 'reports/netflow', component: NetflowReportComponent},
+            {path: 'reports/ssh', component: SshReportComponent},
+            {
+                path: 'reports/ip',
+                component: IpReportComponent,
+                pathMatch: 'prefix',
+            },
+        ]
+    },
 ];
 
 export const routing: ModuleWithProviders = RouterModule.forRoot(routes, {useHash: true});

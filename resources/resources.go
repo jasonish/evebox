@@ -28,7 +28,6 @@ package resources
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/jasonish/evebox/log"
 	"io"
 	"net/http"
@@ -71,8 +70,7 @@ func (s FileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.SplitN(path, "?", 2)
 	path = parts[0]
 
-	asset := fmt.Sprintf("public/%s", path)
-	bytes, err := Asset(asset)
+	bytes, err := Asset(path)
 	if err != nil {
 		log.Error("Public file not found: %s", path)
 		w.WriteHeader(http.StatusNotFound)

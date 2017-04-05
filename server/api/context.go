@@ -29,7 +29,9 @@ package api
 import (
 	"encoding/json"
 	"github.com/jasonish/evebox/appcontext"
+	"github.com/jasonish/evebox/server/auth"
 	"github.com/jasonish/evebox/server/router"
+	"github.com/jasonish/evebox/server/sessions"
 	"github.com/pkg/errors"
 	"net/http"
 )
@@ -103,17 +105,24 @@ func (r *apiRouter) POST(path string, handler apiHandlerFunc) {
 }
 
 type ApiContext struct {
-	appContext *appcontext.AppContext
+	appContext    *appcontext.AppContext
+	sessionStore  *sessions.SessionStore
+	authenticator auth.Authenticator
 }
 
-func NewApiContext(appContext *appcontext.AppContext) *ApiContext {
+func NewApiContext(appContext *appcontext.AppContext,
+	sessionStore *sessions.SessionStore, authenticator auth.Authenticator) *ApiContext {
 	return &ApiContext{
-		appContext: appContext,
+		appContext:    appContext,
+		sessionStore:  sessionStore,
+		authenticator: authenticator,
 	}
 }
 
 func (c *ApiContext) InitRoutes(router *router.Router) {
 	r := apiRouter{router}
+
+	r.POST("/login", c.LoginHandler)
 
 	r.GET("/alerts", c.AlertsHandler)
 	r.POST("/alert-group/archive", c.AlertGroupArchiveHandler)

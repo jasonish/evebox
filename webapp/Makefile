@@ -20,7 +20,7 @@ gitrev:
 
 build: gitrev
 	@echo "Building EveBox webapp rev $(GITREV)."
-	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH)
+	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH) --deploy-url "public/"
 
 install-deps:
 	npm install
@@ -30,5 +30,5 @@ distclean:
 	rm -rf typings
 
 start: gitrev
-	$(NG) server $(BUILD_ARGS)
+	$(NG) server --sourcemaps --deploy-url "public/"
 

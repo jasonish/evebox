@@ -24,9 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable, EventEmitter} from '@angular/core';
-import {Router, Params, ActivatedRoute} from '@angular/router';
+import {EventEmitter, Injectable} from '@angular/core';
+import {ActivatedRoute, Params, Router} from '@angular/router';
 import {MousetrapService} from './mousetrap.service';
+import {ApiService} from './api.service';
+import {ConfigService} from './config.service';
 
 declare var localStorage: any;
 
@@ -36,6 +38,7 @@ export enum AppEventCode {
     SHOW_HELP = 0,
     TIME_RANGE_CHANGED,
     IDLE,
+    AUTHENTICATED,
 }
 
 export interface AppEvent {
@@ -52,9 +55,13 @@ export class AppService {
 
     private lastRouteEvent: number = new Date().getTime() / 1000;
 
+    private authenticated = false;
+
     constructor(private router: Router,
                 private route: ActivatedRoute,
-                private mousetrap: MousetrapService) {
+                private mousetrap: MousetrapService,
+                private api: ApiService,
+                private configService: ConfigService) {
 
         mousetrap.bindAny(this, () => {
             this.resetIdleTime();
@@ -62,6 +69,18 @@ export class AppService {
 
         // Setup idle check interval.
         setInterval(() => this.dispatchIdleEvent(), 1000);
+    }
+
+    isAuthenticated(): boolean {
+        return this.authenticated;
+    }
+
+    setAuthenticated(authenticated: boolean) {
+        this.authenticated = authenticated;
+        this.dispatch({
+            event: AppEventCode.AUTHENTICATED,
+            data: this.authenticated
+        });
     }
 
     dispatchIdleEvent() {
@@ -161,6 +180,40 @@ export class AppService {
         this.router.navigate([activatedRoute.routeConfig.path, newParams], {
             queryParams: newQueryParams
         });
+    }
+
+    /**
+     * Check if already authenticated.
+     */
+    checkAuthenticated(): Promise<boolean> {
+        if (localStorage["sessionId"]) {
+            console.log("Found saved session ID, will try.");
+            this.api.setSessionId(localStorage["sessionId"]);
+        }
+
+        // Login anonymously, if authentication is disabled it doesn't really
+        // matter what the username is.
+        return this.login("anonymous");
+    }
+
+    login(username: string, password?: string) {
+        return this.api.login(username, password)
+            .then((success: boolean) => {
+                if (success) {
+                    return this.configService.updateConfig().then((config) => {
+                        this.saveSessionId();
+                        this.setAuthenticated(true);
+                    }).then(() => true);
+                } else {
+                    return success;
+                }
+            });
+    }
+
+    saveSessionId() {
+        if (this.api.hasSessionId()) {
+            localStorage["sessionId"] = this.api.getSessionId();
+        }
     }
 
 }

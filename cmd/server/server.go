@@ -70,6 +70,17 @@ func initViper() {
 	viper.BindEnv("database.retention-period", "RETENTION_PERIOD")
 
 	viper.BindEnv("input.bookmark-directory", "BOOKMARK_DIRECTORY")
+
+	viper.SetDefault("authentication.required", false)
+	viper.BindEnv("authentication.required",
+		"EVEBOX_AUTHENTICATION_REQUIRED")
+
+	viper.SetDefault("authentication.type", "username")
+	viper.BindEnv("authentication.type",
+		"EVEBOX_AUTHENTICATION_TYPE")
+
+	viper.BindEnv("authentication.login-message",
+		"EVEBOX_AUTHENTICATION_LOGIN_MESSAGE")
 }
 
 func getElasticSearchKeyword(flagset *pflag.FlagSet) (bool, string) {

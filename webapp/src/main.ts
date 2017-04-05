@@ -76,9 +76,9 @@ switch (localStorage.theme) {
         break;
 }
 
-jQuery.getJSON('api/1/config', (config: any) => {
-    console.log('Setting config object on root window:');
-    console.log(config);
-    window.config = config;
+// jQuery.getJSON('api/1/config', (config: any) => {
+//     console.log('Setting config object on root window:');
+//     console.log(config);
+//     window.config = config;
     platformBrowserDynamic().bootstrapModule(AppModule);
-});
+// });

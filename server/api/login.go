@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,35 +24,35 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
-import {ApiService} from './api.service';
+package api
 
-@Injectable()
-export class ConfigService {
+import (
+	"fmt"
+	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/server/sessions"
+	"net/http"
+)
 
-    private config: any;
+func (c *ApiContext) LoginHandler(w *ResponseWriter, r *http.Request) error {
+	session := c.authenticator.Login(w, r)
+	if session == nil {
+		return nil
+	}
 
-    constructor(private api: ApiService) {
-    }
+	return w.OkJSON(map[string]interface{}{
+		"session_id": session.Id,
+	})
+}
 
-    updateConfig() {
-        return this.api.get("/api/1/config")
-            .then((res) => {
-                this.config = res;
-                return res;
-            }, (error) => {
-                throw error;
-            });
-    }
+func (c *ApiContext) LogoutHandler(w *ResponseWriter, r *http.Request) error {
 
-    getConfig() {
-        return this.config;
-    }
+	session, ok := r.Context().Value("session").(*sessions.Session)
+	if !ok {
+		log.Error("Logout request has no session")
+		return newHttpErrorResponse(http.StatusBadRequest,
+			fmt.Errorf("no session"))
+	}
 
-    hasFeature(feature: string): boolean {
-        if (this.config.features && this.config.features[feature] === true) {
-            return true;
-        }
-        return false;
-    }
+	log.Println(session)
+	return w.Ok()
 }

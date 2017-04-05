@@ -33,6 +33,18 @@ database:
   # Currently only applies to SQLite, not Elastic Search.
   #retention-period: 3
 
+authentication:
+
+  required: no
+
+  # Type of login required:
+  # - username         -- just a username...
+  # - usernamepassword -- username and password
+  type: username
+
+  # A little message that is displayed in the login dialog.
+  #login-message:
+
 # The server can process a log file, eliminating the need for a
 # separate agent process if on the same machine.
 input:

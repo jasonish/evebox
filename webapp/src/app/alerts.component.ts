@@ -82,6 +82,8 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     ngOnInit(): any {
 
+        console.log("AlertService.ngOnInit");
+
         this.ss.subscribe(this, this.route.params, (params: any) => {
             this.queryString = params.q || '';
             if (!this.restoreState()) {
