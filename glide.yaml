@@ -28,4 +28,8 @@ import:
 - package: github.com/gorilla/handlers
 - package: github.com/mattn/go-isatty
 - package: github.com/oklog/ulid
-- package: github.com/gorilla/sessions
+- package: golang.org/x/oauth2
+- package: golang.org/x/crypto
+  subpackages:
+  - bcrypt
+  - ssh/terminal

@@ -24,13 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {
-    CanActivate,
-    Resolve,
-    Router,
-    RouterModule,
-    Routes
-} from '@angular/router';
+import {CanActivate, Router, RouterModule, Routes} from '@angular/router';
 import {EventsComponent} from './events.component';
 import {EventComponent} from './event.component';
 import {AlertsComponent} from './alerts.component';
@@ -41,10 +35,11 @@ import {NetflowReportComponent} from './reports/netflow-report.component';
 import {Injectable, ModuleWithProviders} from '@angular/core';
 import {IpReportComponent} from './reports/ip-report/ip-report.component';
 import {SshReportComponent} from './reports/ssh-report.component';
-import {LoginComponent} from './login.component';
-import {ApiService} from "app/api.service";
+import {LoginComponent} from './login/login.component';
 import {AppService} from './app.service';
 import {ConfigService} from './config.service';
+import {AdminComponent} from './admin/admin.component';
+import {UsersComponent} from './admin/users/users.component';
 
 declare var window: any;
 
@@ -84,6 +79,19 @@ export class ConfigResolver implements CanActivate {
     }
 }
 
+const adminRoutes: Routes = [
+    {
+        path: "",
+        pathMatch: "prefix",
+        component: AdminComponent,
+    },
+    {
+        path: "users",
+        pathMatch: "prefix",
+        component: UsersComponent,
+    }
+];
+
 const routes: Routes = [
 
     {
@@ -94,9 +102,13 @@ const routes: Routes = [
     {
         path: '',
         pathMatch: 'prefix',
-        //canActivate: [AuthGuard, ConfigResolver],
         canActivate: [AuthGuard],
         children: [
+            {
+                path: "admin",
+                pathMatch: "prefix",
+                children: adminRoutes,
+            },
             {
                 path: '',
                 redirectTo: 'inbox',

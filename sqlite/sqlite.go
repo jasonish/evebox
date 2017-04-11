@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/sqlite/sqlcommon"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper"
 	"path"
@@ -78,7 +79,7 @@ func (s *SqliteService) GetTx() (tx *sql.Tx, err error) {
 }
 
 func (s *SqliteService) Migrate() error {
-	migrator := NewMigrator(s)
+	migrator := sqlcommon.NewSqlMigrator(s.DB, "sqlite")
 	return migrator.Migrate()
 }
 

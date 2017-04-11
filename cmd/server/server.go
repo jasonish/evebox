@@ -38,6 +38,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
+	"github.com/jasonish/evebox/sqlite/configdb"
 	"github.com/jasonish/evebox/useragent"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -175,6 +176,13 @@ func Main(args []string) {
 	appContext := appcontext.AppContext{}
 	appContext.GeoIpService = geoip.NewGeoIpService()
 	appContext.Vars.DevWebAppServerUrl = opts.DevServerUri
+
+	appContext.ConfigDB, err = configdb.NewConfigDB(
+		viper.GetString("data-directory"))
+	if err != nil {
+		log.Fatalf("Failed to create configuration database: %v", err)
+	}
+	appContext.Userstore = configdb.NewUserStore(appContext.ConfigDB.DB)
 
 	switch viper.GetString("database.type") {
 	case "elasticsearch":

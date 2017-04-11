@@ -132,6 +132,16 @@ func NewServer(appContext appcontext.AppContext) *Server {
 		router: router,
 	}
 
+	githubAuth := auth.NewGithub()
+
+	router.Handle("/auth/github", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		githubAuth.Handler(w, r)
+	}))
+
+	router.Handle("/auth/github/callback", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		githubAuth.Callback(w, r)
+	}))
+
 	apiContext := api.NewApiContext(&appContext, sessionStore, authenticator)
 	apiContext.InitRoutes(router.Subrouter("/api/1"))
 

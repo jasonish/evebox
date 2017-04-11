@@ -26,7 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package sqlite
+package sqlcommon
 
 import (
 	"database/sql"
@@ -34,19 +34,22 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/resources"
 	"os"
+	"path"
 )
 
-type Migrator struct {
-	db *SqliteService
+type SqlMigrator struct {
+	db        *sql.DB
+	directory string
 }
 
-func NewMigrator(db *SqliteService) *Migrator {
-	return &Migrator{
-		db: db,
+func NewSqlMigrator(db *sql.DB, directory string) *SqlMigrator {
+	return &SqlMigrator{
+		db:        db,
+		directory: directory,
 	}
 }
 
-func (m *Migrator) Migrate() error {
+func (m *SqlMigrator) Migrate() error {
 
 	var currentVersion int
 	nextVersion := 0
@@ -66,8 +69,9 @@ func (m *Migrator) Migrate() error {
 	}
 
 	for {
-
-		script, err := resources.AssetString(fmt.Sprintf("sqlite/V%d.sql", nextVersion))
+		scriptName := path.Join(m.directory,
+			fmt.Sprintf("V%d.sql", nextVersion))
+		script, err := resources.AssetString(scriptName)
 		if err != nil {
 			break
 		}
@@ -103,13 +107,13 @@ func (m *Migrator) Migrate() error {
 	return nil
 }
 
-func (m *Migrator) setVersion(tx *sql.Tx, version int) error {
+func (m *SqlMigrator) setVersion(tx *sql.Tx, version int) error {
 	_, err := tx.Exec(`insert into schema (version, timestamp)
 	                     values ($1, datetime('now'))`, version)
 	return err
 }
 
-func (m *Migrator) fileExists(path string) bool {
+func (m *SqlMigrator) fileExists(path string) bool {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true

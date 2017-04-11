@@ -40,10 +40,17 @@ authentication:
   # Type of login required:
   # - username         -- just a username...
   # - usernamepassword -- username and password
+  # - github           -- oauth2 with github
   type: username
 
   # A little message that is displayed in the login dialog.
   #login-message:
+
+  # github:
+  #   client-id:
+  #   client-secret:
+  #   # User must be a member of the organization to be authenticated.
+  #   org:
 
 # The server can process a log file, eliminating the need for a
 # separate agent process if on the same machine.

@@ -90,6 +90,8 @@ declare var $: any;
           <ul class="dropdown-menu">
             <li><a href="javascript:void(0)" (click)="setTheme('default')">Light (Default)</a></li>
             <li><a href="javascript:void(0)" (click)="setTheme('slate')">Slate</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a href="#/admin">Admin</a></li>
           </ul>
         </li>
 

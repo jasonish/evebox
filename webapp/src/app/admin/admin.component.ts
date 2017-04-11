@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2014-2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,42 +24,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package appcontext
+import {Component, OnInit} from '@angular/core';
 
-import (
-	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/elasticsearch"
-	"github.com/jasonish/evebox/geoip"
-	"github.com/jasonish/evebox/sqlite/configdb"
-)
+@Component({
+    selector: 'app-admin',
+    templateUrl: './admin.component.html',
+    styleUrls: ['./admin.component.scss']
+})
+export class AdminComponent implements OnInit {
 
-type AppContext struct {
-	ConfigDB  *configdb.ConfigDB
-	Userstore core.UserStore
+    constructor() {
+    }
 
-	DataStore core.Datastore
+    ngOnInit() {
+    }
 
-	ElasticSearch *elasticsearch.ElasticSearch
-
-	EventService   core.EventService
-	EsEventService elasticsearch.EventService
-
-	ReportService core.ReportService
-
-	GeoIpService *geoip.GeoIpService
-
-	Features map[core.Feature]bool
-
-	Vars struct {
-
-		// URL to the frontend web application development server.
-		DevWebAppServerUrl string
-	}
-}
-
-func (c *AppContext) SetFeature(feature core.Feature) {
-	if c.Features == nil {
-		c.Features = map[core.Feature]bool{}
-	}
-	c.Features[feature] = true
 }

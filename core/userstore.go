@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,42 +24,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package appcontext
+package core
 
-import (
-	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/elasticsearch"
-	"github.com/jasonish/evebox/geoip"
-	"github.com/jasonish/evebox/sqlite/configdb"
-)
+import "github.com/satori/go.uuid"
 
-type AppContext struct {
-	ConfigDB  *configdb.ConfigDB
-	Userstore core.UserStore
+type User struct {
+	Uuid     uuid.UUID `json:"uuid,omitempty"`
+	Username string    `json:"username,omitempty"`
+	FullName string    `json:"full_name,omitempty"`
+	Email    string    `json:"email,omitempty"`
 
-	DataStore core.Datastore
-
-	ElasticSearch *elasticsearch.ElasticSearch
-
-	EventService   core.EventService
-	EsEventService elasticsearch.EventService
-
-	ReportService core.ReportService
-
-	GeoIpService *geoip.GeoIpService
-
-	Features map[core.Feature]bool
-
-	Vars struct {
-
-		// URL to the frontend web application development server.
-		DevWebAppServerUrl string
-	}
+	GithubID int64 `json:"github_id,omitempty"`
 }
 
-func (c *AppContext) SetFeature(feature core.Feature) {
-	if c.Features == nil {
-		c.Features = map[core.Feature]bool{}
-	}
-	c.Features[feature] = true
+type UserStore interface {
+	AddUser(user User, password string) (uuid.UUID, error)
+	FindByUsername(username string) (User, error)
+	FindByUsernamePassword(username string, password string) (User, error)
+	FindAll() ([]User, error)
 }

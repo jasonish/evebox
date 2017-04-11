@@ -26,38 +26,16 @@
 
 import {Component, OnInit} from '@angular/core';
 import {Router} from '@angular/router';
-import {AppService} from './app.service';
+import {AppService} from '../app.service';
 
 @Component({
-    template: `<div class="row">
-    <div class="col-md-4"></div>
-    <div class="col-md-4">
-        <h3 style="text-align: center;">EveBox Login</h3>
-        <div class="jumbotron">
-            <form>
-                <div *ngIf="loginMessage">
-                    {{loginMessage}}
-                    <br/>
-                    <br/>
-                </div>
-
-                <input type="text" autofocus class="form-control"
-                       [(ngModel)]="username" name="username"
-                       placeholder="Username">
-                <br/>
-                <button type="submit" class="btn btn-primary btn-block"
-                        (click)="login()">Login
-                </button>
-            </form>
-        </div>
-    </div>
-    <div class="col-md-4"></div>
-</div>
-`,
+    templateUrl: "login.component.html",
 })
 export class LoginComponent implements OnInit {
 
     username: string = "";
+
+    password: string = "";
 
     loginMessage: string;
 
@@ -81,7 +59,7 @@ export class LoginComponent implements OnInit {
 
     login() {
         console.log("Logging in user " + this.username);
-        this.appService.login(this.username).then(response => {
+        this.appService.login(this.username, this.password).then(response => {
             console.log("Login successful, navigating to /");
             this.router.navigate(['/']);
         }, (error) => {

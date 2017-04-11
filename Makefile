@@ -15,17 +15,20 @@ BUILD_VER_VAR :=	github.com/jasonish/evebox/core.BuildVersion
 LDFLAGS :=	-X \"$(BUILD_REV_VAR)=$(BUILD_REV)\" \
 		-X \"$(BUILD_VER_VAR)=$(VERSION)$(VERSION_SUFFIX)\" \
 
-ifdef WITH_SQLITE
-CGO_ENABLED :=	1
-TAGS +=		fts5 json1
-else
-CGO_ENABLED ?= 	0
-endif
-
-APP :=		evebox
+HOST_GOOS :=	$(shell go env GOOS)
+HOST_GOARCH :=	$(shell go env GOARCH)
+HOST_DIST :=	$(HOST_GOOS)/$(HOST_GOARCH)
 
 GOOS ?=		$(shell go env GOOS)
 GOARCH ?=	$(shell go env GOARCH)
+DIST :=		$(GOOS)/$(GOARCH)
+
+ifeq ($(HOST_DIST),$(DIST))
+CGO_ENABLED :=	1
+TAGS +=		fts5 json1
+endif
+
+APP :=		evebox
 
 GO_SRCS :=	$(shell find . -name \*.go | grep -v /vendor/)
 GO_PACKAGES :=	$(shell go list ./... | grep -v /vendor/)

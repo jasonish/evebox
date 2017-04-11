@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,42 +24,50 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package appcontext
+package auth
 
 import (
-	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/elasticsearch"
-	"github.com/jasonish/evebox/geoip"
-	"github.com/jasonish/evebox/sqlite/configdb"
+	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/server/sessions"
+	"net/http"
 )
 
-type AppContext struct {
-	ConfigDB  *configdb.ConfigDB
-	Userstore core.UserStore
+// The anonymous authenticator is used when no authentication is desired. Each
+// http request will be authenticated with a session without having to login.
+type AnonymousAuthenticator struct {
+	sessionStore *sessions.SessionStore
+}
 
-	DataStore core.Datastore
-
-	ElasticSearch *elasticsearch.ElasticSearch
-
-	EventService   core.EventService
-	EsEventService elasticsearch.EventService
-
-	ReportService core.ReportService
-
-	GeoIpService *geoip.GeoIpService
-
-	Features map[core.Feature]bool
-
-	Vars struct {
-
-		// URL to the frontend web application development server.
-		DevWebAppServerUrl string
+func NewAnonymousAuthenticator(sessionStore *sessions.SessionStore) *AnonymousAuthenticator {
+	return &AnonymousAuthenticator{
+		sessionStore: sessionStore,
 	}
 }
 
-func (c *AppContext) SetFeature(feature core.Feature) {
-	if c.Features == nil {
-		c.Features = map[core.Feature]bool{}
+func (a *AnonymousAuthenticator) Login(w http.ResponseWriter, r *http.Request) *sessions.Session {
+	session := &sessions.Session{
+		Id:       generateSessionId(),
+		Username: "anonymous",
 	}
-	c.Features[feature] = true
+	a.sessionStore.Put(session)
+	return session
+}
+
+func (a *AnonymousAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) *sessions.Session {
+
+	// Look for an existing session.
+	session := findSession(a.sessionStore, r)
+
+	if session == nil {
+		log.Info("Logging in new anonymous user from %v", r.RemoteAddr)
+		session = &sessions.Session{
+			Id:       generateSessionId(),
+			Username: "anonymous",
+		}
+		a.sessionStore.Put(session)
+	}
+
+	w.Header().Set(SESSION_KEY, session.Id)
+
+	return session
 }

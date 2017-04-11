@@ -29,6 +29,7 @@ package main
 import (
 	"fmt"
 	"github.com/jasonish/evebox/cmd/agent"
+	"github.com/jasonish/evebox/cmd/config"
 	"github.com/jasonish/evebox/cmd/esimport"
 	"github.com/jasonish/evebox/cmd/evereader"
 	"github.com/jasonish/evebox/cmd/oneshot"
@@ -50,6 +51,7 @@ func Usage() {
 
 Commands:
 	server			Start the EveBox server
+	config                  Server configuration tool
 	version			Print the EveBox version
 	esimport		Run the Elastic Search Eve import tool
 	evereader		Run the Eve log reader tool
@@ -87,6 +89,9 @@ func main() {
 			return
 		case "sqliteimport":
 			sqliteimport.Main(os.Args[2:])
+			return
+		case "config":
+			config.Main(os.Args[2:])
 			return
 		default:
 			log.Fatalf("Unknown command: %s", os.Args[1])

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,42 +24,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package appcontext
+package configdb
 
 import (
-	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/elasticsearch"
-	"github.com/jasonish/evebox/geoip"
-	"github.com/jasonish/evebox/sqlite/configdb"
+	"database/sql"
+	"github.com/jasonish/evebox/sqlite/sqlcommon"
+	_ "github.com/mattn/go-sqlite3"
+	"path"
 )
 
-type AppContext struct {
-	ConfigDB  *configdb.ConfigDB
-	Userstore core.UserStore
+const driver = "sqlite3"
+const filename = "config.db"
 
-	DataStore core.Datastore
-
-	ElasticSearch *elasticsearch.ElasticSearch
-
-	EventService   core.EventService
-	EsEventService elasticsearch.EventService
-
-	ReportService core.ReportService
-
-	GeoIpService *geoip.GeoIpService
-
-	Features map[core.Feature]bool
-
-	Vars struct {
-
-		// URL to the frontend web application development server.
-		DevWebAppServerUrl string
-	}
+type ConfigDB struct {
+	DB *sql.DB
 }
 
-func (c *AppContext) SetFeature(feature core.Feature) {
-	if c.Features == nil {
-		c.Features = map[core.Feature]bool{}
+func NewConfigDB(directory string) (*ConfigDB, error) {
+
+	var dsn string
+
+	if directory == ":memory:" {
+		dsn = ":memory:"
+	} else {
+		dsn = path.Join(directory, filename)
 	}
-	c.Features[feature] = true
+
+	db, err := sql.Open(driver, dsn)
+	if err != nil {
+		return nil, err
+	}
+	configDB := &ConfigDB{
+		db,
+	}
+
+	if err := configDB.migrate(); err != nil {
+		return nil, err
+	}
+
+	return configDB, nil
+}
+
+func (db *ConfigDB) migrate() error {
+	migrator := sqlcommon.NewSqlMigrator(db.DB, "configdb")
+	return migrator.Migrate()
 }

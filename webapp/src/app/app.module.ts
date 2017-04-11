@@ -32,7 +32,7 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 
 import {AppComponent} from './app.component';
 import {RouterModule} from '@angular/router';
-import {AuthGuard, routing, ConfigResolver} from './app.routes';
+import {AuthGuard, ConfigResolver, routing} from './app.routes';
 import {AlertsComponent} from './alerts.component';
 import {EventComponent} from './event.component';
 import {EventsComponent} from './events.component';
@@ -77,10 +77,14 @@ import {ApiService} from './api.service';
 import {ReportsService} from './reports/reports.service';
 import {EveboxSubscriptionService} from './subscription.service';
 import {
+    IpAddrDataTableComponent,
     SshReportComponent,
-    SshTopClientsComponent, SshTopServersComponent, IpAddrDataTableComponent
+    SshTopClientsComponent,
+    SshTopServersComponent
 } from './reports/ssh-report.component';
-import {LoginComponent} from "app/login.component";
+import {LoginComponent} from 'app/login/login.component';
+import {AdminComponent} from './admin/admin.component';
+import {UsersComponent} from './admin/users/users.component';
 
 @NgModule({
     declarations: [
@@ -128,6 +132,10 @@ import {LoginComponent} from "app/login.component";
         EveboxFormatTimestampPipe,
 
         LoginComponent,
+
+        AdminComponent,
+
+        UsersComponent,
     ],
     imports: [
         // Angular modules.

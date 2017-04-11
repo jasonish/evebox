@@ -1,0 +1,39 @@
+<div class="row">
+    <div class="col-md-4"></div>
+    <div class="col-md-4">
+        <h3 style="text-align: center;">EveBox Login</h3>
+        <div class="jumbotron">
+            <form>
+                <div *ngIf="loginMessage">
+                    {{loginMessage}}
+                    <br/>
+                    <br/>
+                </div>
+
+                <a href="/auth/github" type="button"
+                   class="btn btn-default btn-block">
+                    <i class="fa fa-github" style="text-align: left"></i>
+                    Login with Github
+                </a>
+
+                <hr style="border-color: darkgray !important;"/>
+
+                <input type="text" autofocus class="form-control"
+                       [(ngModel)]="username" name="username"
+                       placeholder="Username">
+                <br/>
+
+                <input type="password" autofocus class="form-control"
+                       [(ngModel)]="password" name="password"
+                       placeholder="Password">
+                <br/>
+
+                <button type="submit" class="btn btn-primary btn-block"
+                        (click)="login()">Login
+                </button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-4"></div>
+</div>
+`
