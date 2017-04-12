@@ -3,18 +3,25 @@
 
     <div class="row">
       <div class="col-md-12">
-        <button type="button" class="btn btn-default" (click)="goBack()">Back
+        <button type="button" class="btn btn-default"
+                (click)="goBack()">Back
         </button>
         <button type="button" class="btn btn-default"
                 *ngIf="showArchiveButton()"
                 (click)="archiveEvent()">Archive
         </button>
-        <button *ngIf="!isEscalated()" type="button" class="btn btn-default"
-                (click)="escalateEvent()">Escalate
-        </button>
-        <button *ngIf="isEscalated()" type="button" class="btn btn-default"
-                (click)="deEscalateEvent()">De-escalate
-        </button>
+
+        <!-- For now, escalation is only for alerts. -->
+        <div *ngIf="eventType() == 'alert'">
+          <button *ngIf="!isEscalated()" type="button"
+                  class="btn btn-default"
+                  (click)="escalateEvent()">Escalate
+          </button>
+          <button *ngIf="isEscalated()" type="button"
+                  class="btn btn-default"
+                  (click)="deEscalateEvent()">De-escalate
+          </button>
+        </div>
       </div>
     </div>
 
@@ -61,7 +68,8 @@
                 <search-link field="src_ip"
                              [search]="event._source.src_ip"
                              value="{{event._source.src_ip | eveboxFormatIpAddress}}">
-                </search-link><span
+                </search-link>
+                <span
                     *ngIf="event._source.src_port"
                     style="color: dimgray">:{{event._source.src_port}}</span>
                 <!-- @formatter:on -->
@@ -83,7 +91,8 @@
                 <search-link field="dest_ip"
                              [search]="event._source.dest_ip"
                              value="{{event._source.dest_ip | eveboxFormatIpAddress}}">
-                </search-link><span *ngIf="event._source.dest_port"
+                </search-link>
+                <span *ngIf="event._source.dest_port"
                       style="color: dimgray">:{{event._source.dest_port}}</span>
                 <!-- @formatter:on -->
                 <span class="dropdown">
@@ -125,19 +134,22 @@
                 <dl class="dl-horizontal">
                   <dt>Signature</dt>
                   <dd>
-                    <search-link field="alert.signature" route="/alerts"
+                    <search-link field="alert.signature"
+                                 route="/alerts"
                                  value="{{event._source.alert.signature}}"></search-link>
                   </dd>
                   <dt>Category</dt>
                   <dd>
-                    <search-link field="alert.category" route="/alerts"
+                    <search-link field="alert.category"
+                                 route="/alerts"
                                  value="{{event._source.alert.category}}"></search-link>
                   </dd>
                   <dt>Signature ID</dt>
                   <dd>
                     {{event._source.alert.gid}}:
                     <search-link
-                        field="alert.signature_id" router="/alerts"
+                        field="alert.signature_id"
+                        router="/alerts"
                         value="{{event._source.alert.signature_id}}">
                     </search-link>
                     :{{event._source.alert.rev}}
@@ -170,9 +182,12 @@
                 <dl class="dl-horizontal">
                   <div
                       *ngFor="let item of event._source[event._source.event_type] | mapToItems">
-                    <dt>{{item.key | genericPrettyPrinter}}</dt>
+                    <dt>{{item.key |
+                      genericPrettyPrinter}}
+                    </dt>
                     <dd>
-                      <search-link [value]="item.val"></search-link>
+                      <search-link
+                          [value]="item.val"></search-link>
                     </dd>
                   </div>
                 </dl>

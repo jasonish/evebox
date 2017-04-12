@@ -128,6 +128,10 @@ export class EventComponent implements OnInit, OnDestroy {
             this.event._source.tags.indexOf('archived') == -1;
     }
 
+    eventType():string {
+        return this.event._source.event_type;
+    }
+
     hasGeoip(): boolean {
         if (this.event._source.geoip &&
             Object.keys(this.event._source.geoip).length > 0) {
