@@ -31,21 +31,25 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server/sessions"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"net/http"
 )
 
-type UsernameAuthenticator struct {
+type UsernamePasswordAuthenticator struct {
 	sessionStore *sessions.SessionStore
+	userStore    core.UserStore
 }
 
-func NewUsernameAuthenticator(sessionStore *sessions.SessionStore) *UsernameAuthenticator {
-	return &UsernameAuthenticator{
+func NewUsernamePasswordAuthenticator(sessionStore *sessions.SessionStore,
+	userStore core.UserStore) *UsernamePasswordAuthenticator {
+	return &UsernamePasswordAuthenticator{
 		sessionStore: sessionStore,
+		userStore:    userStore,
 	}
 }
 
-func (a *UsernameAuthenticator) WriteStatusUnauthorized(w http.ResponseWriter) {
+func (a *UsernamePasswordAuthenticator) WriteStatusUnauthorized(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
 	encoder := json.NewEncoder(w)
 
@@ -55,7 +59,7 @@ func (a *UsernameAuthenticator) WriteStatusUnauthorized(w http.ResponseWriter) {
 		"status": http.StatusUnauthorized,
 		"authentication": AuthenticationRequiredResponse{
 			Types: []string{
-				"username",
+				"usernamepassword",
 			},
 		},
 	}
@@ -66,38 +70,56 @@ func (a *UsernameAuthenticator) WriteStatusUnauthorized(w http.ResponseWriter) {
 	encoder.Encode(response)
 }
 
-func (a *UsernameAuthenticator) Login(r *http.Request) (*sessions.Session, error) {
+func (a *UsernamePasswordAuthenticator) Login(r *http.Request) (*sessions.Session, error) {
 	username := r.FormValue("username")
 	if username == "" {
 		return nil, ErrNoUsername
 	}
 
-	log.Info("Logging in anonymous user with username %s", username)
+	password := r.FormValue("password")
+	if password == "" {
+		return nil, ErrNoPassword
+	}
+
+	user, err := a.userStore.FindByUsernamePassword(username, password)
+	if err != nil {
+		return nil, errors.Wrap(err, "bad username or password")
+	}
 
 	session := &sessions.Session{
 		Id:       a.sessionStore.GenerateID(),
-		Username: username,
-		User: core.User{
-			Username: username,
-		},
+		Username: user.Username,
+		User:     user,
 	}
 	a.sessionStore.Put(session)
+
 	return session, nil
 }
 
-func (a *UsernameAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) *sessions.Session {
+func (a *UsernamePasswordAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) *sessions.Session {
+
+	log.Debug("UsernamePasswordAuthenticator.Authenticate")
 
 	session := a.sessionStore.FindSession(r)
 	if session != nil {
-		log.Debug("Found session: %v", session)
 		return session
 	}
 
-	username, _, ok := r.BasicAuth()
-	if ok && username != "" {
+	username, password, ok := r.BasicAuth()
+	if ok && username != "" && password != "" {
+		log.Debug("Authenticating user [%s] with basic auth",
+			username)
+		user, err := a.userStore.FindByUsernamePassword(username,
+			password)
+		if err != nil {
+			log.Error("User %s failed to login: %v", err)
+			a.WriteStatusUnauthorized(w)
+			return nil
+		}
 		session := &sessions.Session{
 			Id:       a.sessionStore.GenerateID(),
 			Username: username,
+			User:     user,
 		}
 		a.sessionStore.Put(session)
 		return session

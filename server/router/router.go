@@ -57,6 +57,10 @@ func (r *Router) POST(path string, handler http.Handler) {
 	r.Router.Handle(path, handler).Methods("POST")
 }
 
+func (r *Router) OPTIONS(path string, handler http.Handler) {
+	r.Router.Handle(path, handler).Methods("OPTIONS")
+}
+
 func (r *Router) Subrouter(prefix string) *Router {
 	router := r.Router.PathPrefix(prefix).Subrouter()
 	return &Router{router}

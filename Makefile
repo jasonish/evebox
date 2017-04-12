@@ -91,7 +91,7 @@ gofmt:
 
 dev-server: evebox
 	./webapp/node_modules/.bin/concurrently -k \
-		"make -C webapp start" \
+		"make -C webapp serve" \
 		"make dev-server-reflex" \
 
 # Helper for dev-server mode, watches evebox Go source and rebuilds and

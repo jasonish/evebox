@@ -24,46 +24,87 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit} from '@angular/core';
+import {AfterViewInit, Component, OnInit} from '@angular/core';
 import {Router} from '@angular/router';
-import {AppService} from '../app.service';
+import {ApiService} from '../api.service';
+import {Http} from '@angular/http';
 
 @Component({
     templateUrl: "login.component.html",
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, AfterViewInit {
 
-    username: string = "";
+    model: any = {
+        username: "",
+        password: "",
+    };
 
-    password: string = "";
+    username = false;
+    password = false;
+    github = false;
+
+    error: string;
 
     loginMessage: string;
 
-    constructor(private appService: AppService,
-                private router: Router) {
+    constructor(private api: ApiService,
+                private router: Router,
+                private http: Http) {
     }
 
     ngOnInit() {
-        if (true == true) {
-            return;
+        // Get the login types.
+        this.http.options("/api/1/login")
+            .map(res => res.json())
+            .toPromise()
+            .then((options) => {
+                console.log("Login options:");
+                console.log(options);
+                if (options.authentication.required) {
+                    for (let authType of options.authentication.types) {
+                        switch (authType) {
+                            case "username":
+                                this.username = true;
+                                break;
+                            case "usernamepassword":
+                                this.username = true;
+                                this.password = true;
+                                break;
+                        }
+                    }
+                }
+                if (options.login_message) {
+                    this.loginMessage = options.login_message;
+                }
+            });
+
+        this.focus();
+    }
+
+    ngAfterViewInit() {
+        this.focus();
+    }
+
+    focus() {
+        let em = document.getElementById("username");
+        if (em) {
+            em.focus();
+            document.execCommand("selectall", null, false);
         }
-        this.appService.checkAuthenticated().then((response) => {
-            console.log("LoginComponent.ngOnInit: Already authenticated, redirecting to /.");
-            this.router.navigate(['/']);
-        }, (error) => {
-            this.loginMessage = error["login_message"];
-            console.log("failed to get config");
-            console.log(error);
-        })
     }
 
     login() {
-        console.log("Logging in user " + this.username);
-        this.appService.login(this.username, this.password).then(response => {
-            console.log("Login successful, navigating to /");
-            this.router.navigate(['/']);
-        }, (error) => {
-            console.log("Failed to login...");
-        });
+        this.api.login(this.model.username, this.model.password)
+            .then(() => {
+                this.router.navigate(['/']);
+            })
+            .catch(error => {
+                if (error.status === 401) {
+                    this.error = "Login failed";
+                }
+                else {
+                    this.error = "Login failed: " + JSON.stringify(error);
+                }
+            })
     }
 }

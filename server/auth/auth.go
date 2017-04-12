@@ -27,39 +27,21 @@
 package auth
 
 import (
-	"encoding/base64"
-	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server/sessions"
-	"github.com/satori/go.uuid"
+	"github.com/pkg/errors"
 	"net/http"
-	"strings"
 )
 
 const SESSION_KEY = "x-evebox-session-id"
+
+var ErrNoUsername = errors.New("no username provided")
+var ErrNoPassword = errors.New("no password provided")
 
 type AuthenticationRequiredResponse struct {
 	Types []string `json:"types"`
 }
 
 type Authenticator interface {
-	Login(w http.ResponseWriter, r *http.Request) *sessions.Session
+	Login(r *http.Request) (*sessions.Session, error)
 	Authenticate(w http.ResponseWriter, r *http.Request) *sessions.Session
-}
-
-func findSession(sessionStore *sessions.SessionStore, r *http.Request) *sessions.Session {
-	sessionId := r.Header.Get(SESSION_KEY)
-	if sessionId != "" {
-		session, err := sessionStore.Get(sessionId)
-		if err == nil && session != nil {
-			return session
-		}
-		log.Info("Did not find session for ID %s", sessionId)
-	}
-	return nil
-}
-
-func generateSessionId() string {
-	id := base64.StdEncoding.EncodeToString(uuid.NewV4().Bytes())
-	id = strings.Replace(id, "=", "", -1)
-	return id
 }

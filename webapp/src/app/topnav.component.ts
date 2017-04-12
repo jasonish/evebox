@@ -35,6 +35,7 @@ import {TopNavService} from './topnav.service';
 import {AppService, AppEventCode, FEATURE_REPORTING} from './app.service';
 import {Subscription} from 'rxjs/Rx';
 import {ConfigService} from './config.service';
+import {ApiService} from './api.service';
 
 declare var $: any;
 
@@ -92,6 +93,8 @@ declare var $: any;
             <li><a href="javascript:void(0)" (click)="setTheme('slate')">Slate</a></li>
             <li role="separator" class="divider"></li>
             <li><a href="#/admin">Admin</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a href="javascript:void(0)" (click)="logout()">Logout</a></li>
           </ul>
         </li>
 
@@ -135,6 +138,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
                 private mousetrap: MousetrapService,
                 private topNavService: TopNavService,
                 appService: AppService,
+                private api:ApiService,
                 private configService: ConfigService) {
         this.elasticSearchService = elasticSearchService;
         this.appService = appService;
@@ -214,5 +218,9 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     setTheme(name: string) {
         // Pass off to appService.
         this.appService.setTheme(name);
+    }
+
+    logout() {
+        this.api.logout()
     }
 }

@@ -1,10 +1,11 @@
 # EveBox Server configuration file.
 
-# Path to the data directory. This directory holds data for EveBox such as the
-# authentication database (not yet implemented), and SQLite database files if
-# the sqlite database is being used. It needs to be writable by the user
-# EveBox is running as. If not set it will default to the current directory.
-#data-directory:
+# Path to the data directory. This directory holds data for EveBox
+# such as the configuration/user/authentication database, and SQLite
+# database files if the sqlite database is being used. It needs to be
+# writable by the user EveBox is running as. If not set it will
+# default to the current directory.
+data-directory:
 
 # Database configuration.
 database:
@@ -35,22 +36,16 @@ database:
 
 authentication:
 
-  required: no
+  required: yes
 
   # Type of login required:
   # - username         -- just a username...
   # - usernamepassword -- username and password
-  # - github           -- oauth2 with github
   type: username
+  #type: usernamepassword
 
   # A little message that is displayed in the login dialog.
-  #login-message:
-
-  # github:
-  #   client-id:
-  #   client-secret:
-  #   # User must be a member of the organization to be authenticated.
-  #   org:
+  login-message: "Use a non-identifying username..."
 
 # The server can process a log file, eliminating the need for a
 # separate agent process if on the same machine.

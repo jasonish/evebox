@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,39 +24,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package api
+import {Injectable, EventEmitter} from '@angular/core';
 
-import (
-	"encoding/json"
-	"net/http"
-)
-
-type ResponseWriter struct {
-	http.ResponseWriter
+export enum AppEventType {
+    AUTHENTICATION_STATUS,
 }
 
-func NewResponseWriter(w http.ResponseWriter) *ResponseWriter {
-	return &ResponseWriter{w}
+export interface AuthenticationStatusEvent {
+    authenticated:boolean;
 }
 
-// Ok writes an Ok status to the client.
-func (w *ResponseWriter) Ok() error {
-	return w.OkJSON(map[string]interface{}{
-		"status": http.StatusOK,
-	})
+export interface AppEvent {
+    type: AppEventType,
+    data?: AuthenticationStatusEvent | any,
 }
 
-func (w *ResponseWriter) OkJSON(response interface{}) error {
-	return w.StatusJSON(http.StatusOK, response)
-}
+@Injectable()
+export class AppEventService {
 
-func (w *ResponseWriter) StatusJSON(status int, response interface{}) error {
-	bytes, err := json.Marshal(response)
-	if err != nil {
-		return err
-	}
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(status)
-	w.Write(bytes)
-	return nil
+    private emitter: EventEmitter<AppEvent> = new EventEmitter<AppEvent>();
+
+    dispatch(event: AppEvent) {
+        this.emitter.emit(event);
+    }
+
+    subscribe(handler:any) {
+        return this.emitter.subscribe(handler)
+    }
+
 }

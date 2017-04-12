@@ -40,41 +40,46 @@ import {AppService} from './app.service';
 import {ConfigService} from './config.service';
 import {AdminComponent} from './admin/admin.component';
 import {UsersComponent} from './admin/users/users.component';
+import {ApiService} from "app/api.service";
 
 declare var window: any;
 
 @Injectable()
 export class AuthGuard implements CanActivate {
 
-    constructor(private router: Router,
-                private app: AppService) {
+    constructor(private api: ApiService) {
     }
 
     canActivate() {
-        console.log("AuthGuard.canActivate");
-        return this.app.checkAuthenticated().then((yes) => {
-            console.log(yes);
-            console.log("AuthGuard.canActivate: returning true");
-            return true;
-        }, (no) => {
-            console.log(no);
-            this.router.navigate(['/login']);
-        });
+        if (this.api.isAuthenticated()) {
+            return Promise.resolve(true);
+        }
+        return this.api.login()
+            .then(() => true)
+            .catch(() => false);
     }
 }
 
 @Injectable()
 export class ConfigResolver implements CanActivate {
 
-    constructor(private configService: ConfigService) {
+    constructor(private api: ApiService,
+                private configService: ConfigService) {
     }
 
     canActivate(): Promise<boolean> {
-        console.log("ConfigService.canActivate");
-        return this.configService.updateConfig()
+        if (this.configService.hasConfig()) {
+            return Promise.resolve(true);
+        }
+
+        return this.api.get("/api/1/config")
             .then((config) => {
-                console.log("ConfigService.canActivate: returning true");
+                console.log(config);
+                this.configService.setConfig(config);
                 return true;
+            })
+            .catch(() => {
+                return false;
             });
     }
 }

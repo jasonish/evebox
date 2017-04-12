@@ -45,6 +45,8 @@ import (
 	"strings"
 )
 
+const SESSION_HEADER = "x-evebox-session-id"
+
 var sessionStore = sessions.NewSessionStore()
 
 func isPublic(r *http.Request) bool {
@@ -88,13 +90,19 @@ func SessionHandler(handler http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		ctx := r.Context()
+		session := sessionStore.FindSession(r)
+		if session != nil {
+			ctx = context.WithValue(ctx, "session", session)
+		}
+
 		// If public, pass through.
 		if isPublic(r) {
-			handler.ServeHTTP(w, r)
+			handler.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 
-		session := authenticator.Authenticate(w, r)
+		session = authenticator.Authenticate(w, r)
 		if session != nil {
 			context := context.WithValue(r.Context(),
 				"session", session)
@@ -109,6 +117,8 @@ type Server struct {
 
 func NewServer(appContext appcontext.AppContext) *Server {
 
+	sessionStore.Header = SESSION_HEADER
+
 	authenticationRequired := viper.GetBool("authentication.required")
 	if authenticationRequired {
 		authenticationType := viper.GetString("authentication.type")
@@ -117,6 +127,12 @@ func NewServer(appContext appcontext.AppContext) *Server {
 			log.Fatal("Authentication requested but no type set.")
 		case "username":
 			authenticator = auth.NewUsernameAuthenticator(sessionStore)
+		case "usernamepassword":
+			if appContext.ConfigDB.InMemory {
+				log.Fatal("Username/password authentication not supported with in-memory configuration database.")
+			}
+			authenticator = auth.NewUsernamePasswordAuthenticator(sessionStore,
+				appContext.Userstore)
 		default:
 			log.Fatalf("Unsupported authentication type: %s",
 				authenticationType)

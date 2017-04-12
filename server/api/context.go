@@ -36,6 +36,15 @@ import (
 	"net/http"
 )
 
+type ApiError struct {
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+}
+
+func (e ApiError) Error() string {
+	return e.Message
+}
+
 type httpErrorResponse struct {
 	error
 	status int
@@ -77,6 +86,9 @@ func apiFuncWrapper(handler apiHandlerFunc) http.Handler {
 		encoder := json.NewEncoder(w)
 
 		switch err := err.(type) {
+		case ApiError:
+			w.WriteHeader(err.Status)
+			encoder.Encode(err)
 		case *httpErrorResponse:
 			w.WriteHeader(err.status)
 			encoder.Encode(err)
@@ -104,6 +116,10 @@ func (r *apiRouter) POST(path string, handler apiHandlerFunc) {
 	r.router.POST(path, apiFuncWrapper(handler))
 }
 
+func (r *apiRouter) OPTIONS(path string, handler apiHandlerFunc) {
+	r.router.OPTIONS(path, apiFuncWrapper(handler))
+}
+
 type ApiContext struct {
 	appContext    *appcontext.AppContext
 	sessionStore  *sessions.SessionStore
@@ -123,6 +139,8 @@ func (c *ApiContext) InitRoutes(router *router.Router) {
 	r := apiRouter{router}
 
 	r.POST("/login", c.LoginHandler)
+	r.OPTIONS("/login", c.LoginOptions)
+	r.GET("/logout", c.LogoutHandler)
 
 	r.GET("/alerts", c.AlertsHandler)
 	r.POST("/alert-group/archive", c.AlertGroupArchiveHandler)
@@ -145,7 +163,6 @@ func (c *ApiContext) InitRoutes(router *router.Router) {
 	r.GET("/report/agg", c.ReportAggs)
 	r.GET("/report/histogram", c.ReportHistogram)
 	r.POST("/find-flow", c.FindFlowHandler)
-
 }
 
 // DecodeRequestBody is a helper functio to decoder request bodies into a

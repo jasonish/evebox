@@ -42,9 +42,10 @@ import (
 	"github.com/jasonish/evebox/useragent"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"strings"
 )
 
-const DEFAULT_DATA_DIR = "."
+const DEFAULT_DATA_DIR = ""
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
 const DEFAULT_ELASTICSEARCH_INDEX string = "logstash"
 
@@ -157,6 +158,9 @@ func Main(args []string) {
 
 	if configFilename != "" {
 		viper.SetConfigFile(configFilename)
+		if strings.HasSuffix(configFilename, ".yaml.example") {
+			viper.SetConfigType("yaml")
+		}
 	} else {
 		viper.SetConfigName("evebox")
 		viper.SetConfigType("yaml")
@@ -177,11 +181,27 @@ func Main(args []string) {
 	appContext.GeoIpService = geoip.NewGeoIpService()
 	appContext.Vars.DevWebAppServerUrl = opts.DevServerUri
 
-	appContext.ConfigDB, err = configdb.NewConfigDB(
-		viper.GetString("data-directory"))
-	if err != nil {
-		log.Fatalf("Failed to create configuration database: %v", err)
+	datadir := viper.GetString("data-directory")
+	if datadir == "" {
+		appContext.ConfigDB, err = configdb.NewConfigDB(":memory:")
+	} else {
+		appContext.ConfigDB, err = configdb.NewConfigDB(datadir)
 	}
+	if err != nil {
+		log.Fatal("Failed to initialize configuration database: %v", err)
+	}
+
+	// Authentication is not possible with an in-memory configuration
+	// database.
+	if appContext.ConfigDB.InMemory {
+		required := viper.GetBool("authentication.required")
+		authType := viper.GetString("authentication.type")
+		if required && authType == "usernamepassword" {
+			log.Fatal("Authentication requires a data-directory.")
+		}
+	}
+
+	// Not sure about doing this with an in-memory store right now.
 	appContext.Userstore = configdb.NewUserStore(appContext.ConfigDB.DB)
 
 	switch viper.GetString("database.type") {
@@ -224,6 +244,10 @@ func Main(args []string) {
 		}
 		appContext.SetFeature(core.FEATURE_REPORTING)
 	case "sqlite":
+		// Requires data directory.
+		if viper.GetString("data-directory") == "" {
+			log.Fatalf("SQLite datastore requires a data-directory")
+		}
 		if err := sqlite.InitSqlite(&appContext); err != nil {
 			log.Fatal(err)
 		}

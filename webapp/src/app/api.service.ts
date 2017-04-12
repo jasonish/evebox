@@ -33,49 +33,37 @@ import {Router} from '@angular/router';
 import {Observable} from 'rxjs/Rx';
 import 'rxjs/add/operator/catch';
 import 'rxjs/add/operator/map';
+import {AppEventService, AppEventType} from './appevent.service';
+import {ConfigService} from './config.service';
 
-export class QueryStringBuilder {
-
-    keys: any = {};
-
-    set(key: string, value: any) {
-        this.keys[key] = value;
-    }
-
-    build() {
-        let parts: any = [];
-
-        for (let key in this.keys) {
-            parts.push(`${key}=${this.keys[key]}`);
-        }
-
-        return parts.join('&');
-    }
-}
-
+/**
+ * The API service exposes the server side API to the rest of the server,
+ * and acts as the "client" to the server.
+ */
 @Injectable()
 export class ApiService {
 
     private baseUrl: string = window.location.pathname;
 
+    private authenticated = false;
+
     private versionWarned = false;
 
     private sessionId: string;
 
-    constructor(private http: Http, private toastr: ToastrService, private router: Router) {
+    constructor(private http: Http,
+                private toastr: ToastrService,
+                private router: Router,
+                private configService: ConfigService,
+                private appEventService: AppEventService) {
+    }
+
+    isAuthenticated(): boolean {
+        return this.authenticated;
     }
 
     setSessionId(sessionId: string) {
         this.sessionId = sessionId;
-    }
-
-    hasSessionId(): boolean {
-        return this.sessionId !== undefined &&
-            this.sessionId !== "";
-    }
-
-    getSessionId(): string {
-        return this.sessionId;
     }
 
     checkVersion(response: Response) {
@@ -107,18 +95,55 @@ export class ApiService {
         }
     }
 
+    setAuthenticated(authenticated: boolean) {
+        this.authenticated = authenticated;
+
+        this.appEventService.dispatch({
+            type: AppEventType.AUTHENTICATION_STATUS,
+            data: {
+                authenticated: this.authenticated,
+            }
+        });
+
+        if (!authenticated) {
+            this.router.navigate(['/login']);
+        }
+    }
+
+    private updateSessionId(response: Response) {
+        let sessionId = response.headers.get("x-evebox-session-id");
+        if (sessionId && sessionId != this.sessionId) {
+            console.log("Updating session ID from response header.");
+            this.setSessionId(sessionId);
+        }
+    }
+
+    private handle401(response: Response) {
+        this.setAuthenticated(false);
+    }
+
     request(method: string, path: string, options: RequestOptionsArgs = {}) {
         let url = `${this.baseUrl}${path.replace(/^\//, '')}`;
         options.method = method;
         this.applySessionHeader(options);
         return this.http.request(url, options)
             .map((res: Response) => {
-                let sessionId = res.headers.get("x-evebox-session-id");
-                if (sessionId && sessionId != this.sessionId) {
-                    console.log("Updating session ID from response header.");
-                    this.setSessionId(sessionId);
-                }
+                this.updateSessionId(res);
+                this.checkVersion(res);
                 return res;
+            })
+            .catch((err: any) => {
+                if (err.status === 401) {
+                    this.handle401(err);
+                }
+
+                // Attempt to map the error to json.
+                try {
+                    return Observable.throw(err.json())
+                }
+                catch (e) {
+                    return Observable.throw(err);
+                }
             });
     }
 
@@ -143,41 +168,40 @@ export class ApiService {
 
     get(path: string, options: RequestOptionsArgs = {}): Promise<any> {
         return this.request("GET", path, options)
-            .catch((err: any) => {
-                if (err.status == 401) {
-                    console.log("got 401, redirecting to login page");
-                    this.router.navigate(['/login']);
-                }
-                return Observable.throw(err);
-            })
-            .toPromise()
-            .then((res: Response) => {
-                this.checkVersion(res);
-                return res.json();
-            })
-            .then((response: any) => {
-                return response;
-            }, (response: any) => {
-                let error: any;
-                try {
-                    error = JSON.parse(response._body);
-                    console.log("parsed error ersponse");
-                } catch (err) {
-                    console.log('Failed to parse response body.');
-                    console.log(err);
-                    error = response;
-                }
-                throw error;
-            });
+            .map(res => res.json())
+            .toPromise();
     }
 
-    login(username: string, password?: string) {
+    updateConfig() {
+        return this.get("/api/1/config")
+            .then((config) => {
+                this.configService.setConfig(config);
+                return config;
+            })
+    }
+
+    login(username: string = "", password: string = "") {
         let params = new URLSearchParams();
         params.set("username", username);
+        params.set("password", password);
         return this.postForm("/api/1/login", params)
             .then(response => {
                 this.setSessionId(response.session_id);
-                return true;
+                return this.updateConfig()
+                    .then(() => {
+                        this.setSessionId(response.session_id);
+                        this.setAuthenticated(true);
+                        return true;
+                    });
+            });
+    }
+
+    logout() {
+        return this.get("/api/1/logout")
+            .catch(() => {
+            })
+            .then(() => {
+                this.setAuthenticated(false)
             });
     }
 

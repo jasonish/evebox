@@ -26,19 +26,17 @@
 
 package core
 
-import "github.com/satori/go.uuid"
-
 type User struct {
-	Uuid     uuid.UUID `json:"uuid,omitempty"`
-	Username string    `json:"username,omitempty"`
-	FullName string    `json:"full_name,omitempty"`
-	Email    string    `json:"email,omitempty"`
+	Id       string `json:"id,omitempty"`
+	Username string `json:"username,omitempty"`
+	FullName string `json:"full_name,omitempty"`
+	Email    string `json:"email,omitempty"`
 
 	GithubID int64 `json:"github_id,omitempty"`
 }
 
 type UserStore interface {
-	AddUser(user User, password string) (uuid.UUID, error)
+	AddUser(user User, password string) (string, error)
 	FindByUsername(username string) (User, error)
 	FindByUsernamePassword(username string, password string) (User, error)
 	FindAll() ([]User, error)

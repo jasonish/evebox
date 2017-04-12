@@ -29,6 +29,6 @@ distclean:
 	rm -rf node_modules
 	rm -rf typings
 
-start: gitrev
+serve: gitrev
 	$(NG) server --sourcemaps --deploy-url "public/"
 

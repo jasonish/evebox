@@ -25,7 +25,9 @@
  */
 
 import {Component, OnInit} from '@angular/core';
-import {AppEvent, AppEventCode, AppService} from './app.service';
+import {AppService} from './app.service';
+import {AppEvent, AppEventService, AppEventType} from './appevent.service';
+import {ApiService} from './api.service';
 
 declare var document: any;
 declare var window: any;
@@ -44,14 +46,19 @@ export class AppComponent implements OnInit {
 
     isAuthenticated: boolean = false;
 
-    constructor(private appService: AppService) {
-        this.isAuthenticated = appService.isAuthenticated();
+    constructor(private appService: AppService,
+                private api: ApiService,
+                private appEventService: AppEventService) {
+        this.isAuthenticated = this.api.isAuthenticated();
     }
 
     ngOnInit() {
-        this.appService.subscribe((event: AppEvent) => {
-            if (event.event == AppEventCode.AUTHENTICATED) {
-                this.isAuthenticated = this.appService.isAuthenticated();
+        this.appEventService.subscribe((event: AppEvent) => {
+            console.log("AppComponent: got event:");
+            console.log(event);
+            if (event.type == AppEventType.AUTHENTICATION_STATUS) {
+                this.isAuthenticated = event.data.authenticated;
+                console.log(`AppComponent.isAuthenticated: ${this.isAuthenticated}`);
             }
         });
 

@@ -40,8 +40,6 @@ import (
 	"time"
 )
 
-const DB_FILENAME = "evebox.sqlite"
-
 type DataStore struct {
 	core.NotImplementedEventService
 	core.UnimplementedDatastore

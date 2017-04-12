@@ -25,24 +25,21 @@
  */
 
 import {Injectable} from '@angular/core';
-import {ApiService} from './api.service';
 
 @Injectable()
 export class ConfigService {
 
     private config: any;
 
-    constructor(private api: ApiService) {
+    hasConfig(): boolean {
+        if (this.config) {
+            return true;
+        }
+        return false;
     }
 
-    updateConfig() {
-        return this.api.get("/api/1/config")
-            .then((res) => {
-                this.config = res;
-                return res;
-            }, (error) => {
-                throw error;
-            });
+    setConfig(config: any) {
+        this.config = config;
     }
 
     getConfig() {

@@ -85,6 +85,7 @@ import {
 import {LoginComponent} from 'app/login/login.component';
 import {AdminComponent} from './admin/admin.component';
 import {UsersComponent} from './admin/users/users.component';
+import {AppEventService} from './appevent.service';
 
 @NgModule({
     declarations: [
@@ -155,6 +156,7 @@ import {UsersComponent} from './admin/users/users.component';
         TopNavService,
         AlertService,
         AppService,
+        AppEventService,
         ApiService,
         EventServices,
         EventService,

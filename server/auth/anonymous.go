@@ -27,10 +27,13 @@
 package auth
 
 import (
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server/sessions"
 	"net/http"
 )
+
+const username = "anonymous"
 
 // The anonymous authenticator is used when no authentication is desired. Each
 // http request will be authenticated with a session without having to login.
@@ -44,29 +47,33 @@ func NewAnonymousAuthenticator(sessionStore *sessions.SessionStore) *AnonymousAu
 	}
 }
 
-func (a *AnonymousAuthenticator) Login(w http.ResponseWriter, r *http.Request) *sessions.Session {
+func (a *AnonymousAuthenticator) login(username string) *sessions.Session {
 	session := &sessions.Session{
-		Id:       generateSessionId(),
-		Username: "anonymous",
+		Id:       a.sessionStore.GenerateID(),
+		Username: username,
+		User: core.User{
+			Username: username,
+			Id:       username,
+		},
 	}
 	a.sessionStore.Put(session)
 	return session
 }
 
+func (a *AnonymousAuthenticator) Login(r *http.Request) (*sessions.Session, error) {
+	log.Info("Logging in anonymous user from %v", r.RemoteAddr)
+	return a.login(username), nil
+}
+
 func (a *AnonymousAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) *sessions.Session {
 
 	// Look for an existing session.
-	session := findSession(a.sessionStore, r)
-
-	if session == nil {
-		log.Info("Logging in new anonymous user from %v", r.RemoteAddr)
-		session = &sessions.Session{
-			Id:       generateSessionId(),
-			Username: "anonymous",
-		}
-		a.sessionStore.Put(session)
+	session := a.sessionStore.FindSession(r)
+	if session != nil {
+		return session
 	}
 
+	session, _ = a.Login(r)
 	w.Header().Set(SESSION_KEY, session.Id)
 
 	return session

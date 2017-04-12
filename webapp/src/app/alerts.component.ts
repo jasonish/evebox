@@ -539,6 +539,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
             this.offset = 0;
             this.rows = this.allRows.slice(this.offset, this.windowSize);
         }, (error: any) => {
+            if (error === false) {
+                console.log("Got error 'false', ignoring.");
+                return;
+            }
 
             this.rows = [];
 

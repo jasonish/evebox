@@ -27,32 +27,65 @@
 package api
 
 import (
-	"fmt"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server/sessions"
+	"github.com/spf13/viper"
 	"net/http"
 )
 
-func (c *ApiContext) LoginHandler(w *ResponseWriter, r *http.Request) error {
-	session := c.authenticator.Login(w, r)
-	if session == nil {
-		return nil
+type LoginOptionsResponse struct {
+	Authentication struct {
+		Required bool     `json:"required"`
+		Types    []string `json:"types,omitempty"`
+	} `json:"authentication"`
+	Message string `json:"login_message"`
+}
+
+func (c *ApiContext) LoginOptions(w *ResponseWriter, r *http.Request) error {
+	response := LoginOptionsResponse{}
+
+	required := viper.GetBool("authentication.required")
+	if required {
+		response.Authentication.Required = required
+
+		authType := viper.GetString("authentication.type")
+		if authType != "" {
+			response.Authentication.Types =
+				append(response.Authentication.Types, authType)
+		}
+
+		response.Message = viper.GetString("authentication.login-message")
 	}
 
-	return w.OkJSON(map[string]interface{}{
-		"session_id": session.Id,
+	return w.OkJSON(response)
+}
+
+type LoginSuccessResponse struct {
+	SessionID string `json:"session_id"`
+}
+
+func (c *ApiContext) LoginHandler(w *ResponseWriter, r *http.Request) error {
+	session, err := c.authenticator.Login(r)
+	if err != nil {
+		return ApiError{
+			Status:  http.StatusUnauthorized,
+			Message: "authentication failed",
+		}
+	}
+	return w.OkJSON(LoginSuccessResponse{
+		SessionID: session.Id,
 	})
 }
 
 func (c *ApiContext) LogoutHandler(w *ResponseWriter, r *http.Request) error {
-
 	session, ok := r.Context().Value("session").(*sessions.Session)
 	if !ok {
-		log.Error("Logout request has no session")
-		return newHttpErrorResponse(http.StatusBadRequest,
-			fmt.Errorf("no session"))
+		log.Debug("Logout request has no session")
+	} else {
+		c.sessionStore.Delete(session)
+		log.Info("User %s from [%v] logged out", session.Username,
+			r.RemoteAddr)
 	}
 
-	log.Println(session)
 	return w.Ok()
 }

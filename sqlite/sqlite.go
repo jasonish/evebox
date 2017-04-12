@@ -35,10 +35,16 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/sqlite/sqlcommon"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"os"
 	"path"
+	"strings"
 	"time"
 )
+
+const OLD_DB_FILENAME = "evebox.sqlite"
+const DB_FILENAME = "events.sqlite"
 
 func init() {
 	viper.SetDefault("database.sqlite.disable-fsync", false)
@@ -94,21 +100,50 @@ func InitPurger(db *SqliteService) {
 	}).Run()
 }
 
+func getFilename() (string, error) {
+	basename := viper.GetString("database.sqlite.filename")
+
+	// In memory database.
+	if basename == ":memory:" {
+		return basename, nil
+	}
+
+	// Database file has absolute filename, use as-is.
+	if strings.HasPrefix(basename, "/") {
+		return basename, nil
+	}
+
+	datadir := viper.GetString("data-directory")
+	if datadir == "" {
+		return "", errors.New("data-directory required")
+	}
+
+	// If set, and not an absolute filename, return a full path relative
+	// to the data directory.
+	if basename != "" {
+		return path.Join(datadir, basename), nil
+	}
+
+	// Check for the old filename.
+	filename := path.Join(datadir, OLD_DB_FILENAME)
+	_, err := os.Stat(filename)
+	if err == nil {
+		return filename, nil
+	}
+
+	// Return the new filename.
+	return path.Join(datadir, DB_FILENAME), nil
+}
+
 func InitSqlite(appContext *appcontext.AppContext) (err error) {
 
 	log.Info("Configuring SQLite datastore")
 
-	filename := viper.GetString("database.sqlite.filename")
-	if filename == "" {
-		filename = DB_FILENAME
+	filename, err := getFilename()
+	if err != nil {
+		return err
 	}
-	if filename != ":memory:" {
-		directory := viper.GetString("data-directory")
-		if directory == "." {
-			log.Warning("Using current directory as the data directory, you may want to set the data-directory option")
-		}
-		filename = path.Join(viper.GetString("data-directory"), filename)
-	}
+	log.Info("SQLite event store using file %s", filename)
 
 	db, err := NewSqliteService(filename)
 	if err != nil {

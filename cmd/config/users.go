@@ -6,6 +6,7 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/sqlite/configdb"
 	"github.com/jasonish/evebox/util"
+	"github.com/ogier/pflag"
 	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	"strings"
@@ -72,4 +73,25 @@ func UserList(db *configdb.ConfigDB, args []string) {
 	for _, user := range users {
 		println("%s", util.ToJson(user))
 	}
+}
+
+func UserRemove(db *configdb.ConfigDB, args []string) {
+	var username string
+
+	flagset := pflag.NewFlagSet("user-rm", pflag.ExitOnError)
+	flagset.StringVarP(&username, "username", "u", "",
+		"Username to remove")
+	flagset.Parse(args)
+
+	if username == "" {
+		username = readString("Username to remove")
+	}
+
+	userstore := configdb.NewUserStore(db.DB)
+	err := userstore.DeleteByUsername(username)
+	if err != nil {
+		printerr("Failed to delete user: %v", err)
+		return
+	}
+	println("OK")
 }

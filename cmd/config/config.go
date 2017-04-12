@@ -32,6 +32,7 @@ func Main(args []string) {
 	flagset.Usage = func() {
 		usage(flagset)
 	}
+	flagset.SetInterspersed(false)
 	flagset.StringVarP(&dataDirectory, "data-directory", "D",
 		"", "Data directory")
 	flagset.Parse(args)
@@ -58,6 +59,8 @@ func Main(args []string) {
 		UserAdd(db, args)
 	case "user-list":
 		UserList(db, args)
+	case "user-rm":
+		UserRemove(db, args)
 	default:
 		fmt.Fprintf(os.Stderr, "error: unknown command: %s", command)
 		os.Exit(1)

@@ -24,17 +24,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 import {ReportsService} from './reports.service';
-import {AppService, AppEventCode} from '../app.service';
+import {AppEventCode, AppService} from '../app.service';
 import {EveboxFormatIpAddressPipe} from '../pipes/format-ipaddress.pipe';
 import {ActivatedRoute, Params} from '@angular/router';
 import {EveboxSubscriptionService} from '../subscription.service';
 import {loadingAnimation} from '../animations';
 import {EveboxSubscriptionTracker} from '../subscription-tracker';
-import {ApiService, QueryStringBuilder, ReportAggOptions} from '../api.service';
+import {ApiService, ReportAggOptions} from '../api.service';
 import {TopNavService} from '../topnav.service';
-//import moment = require("moment");
 import * as moment from 'moment';
 import {ElasticSearchService} from '../elasticsearch.service';
 

@@ -28,26 +28,38 @@ package configdb
 
 import (
 	"database/sql"
+	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/sqlite/sqlcommon"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
 	"path"
 )
 
 const driver = "sqlite3"
-const filename = "config.db"
+const filename = "config.sqlite"
 
 type ConfigDB struct {
-	DB *sql.DB
+	DB       *sql.DB
+	InMemory bool
 }
 
 func NewConfigDB(directory string) (*ConfigDB, error) {
 
 	var dsn string
+	var inMemory bool
 
 	if directory == ":memory:" {
+		log.Info("Using in-memory configuration DB.")
 		dsn = ":memory:"
+		inMemory = true
 	} else {
 		dsn = path.Join(directory, filename)
+		_, err := os.Stat(dsn)
+		if err == nil {
+			log.Info("Using configuration database file %s", dsn)
+		} else {
+			log.Info("Creating new configuration database %s", dsn)
+		}
 	}
 
 	db, err := sql.Open(driver, dsn)
@@ -55,7 +67,8 @@ func NewConfigDB(directory string) (*ConfigDB, error) {
 		return nil, err
 	}
 	configDB := &ConfigDB{
-		db,
+		DB:       db,
+		InMemory: inMemory,
 	}
 
 	if err := configDB.migrate(); err != nil {

@@ -66,9 +66,9 @@ func toNullInt64(value int64) sql.NullInt64 {
 	return sql.NullInt64{0, false}
 }
 
-func (s *UserStore) AddUser(user core.User, password string) (uuid.UUID, error) {
+func (s *UserStore) AddUser(user core.User, password string) (string, error) {
 
-	noid := uuid.UUID{}
+	noid := ""
 
 	// Validate.
 	username := user.Username
@@ -94,7 +94,7 @@ func (s *UserStore) AddUser(user core.User, password string) (uuid.UUID, error) 
 
 	tx, err := s.db.Begin()
 	if err != nil {
-		return uuid.UUID{}, errors.Wrap(err,
+		return noid, errors.Wrap(err,
 			"failed to create transaction")
 	}
 	defer tx.Commit()
@@ -118,7 +118,7 @@ func (s *UserStore) AddUser(user core.User, password string) (uuid.UUID, error) 
 		return noid, errors.Wrap(err, "failed to insert user")
 	}
 
-	return id, nil
+	return id.String(), nil
 }
 
 // Given a username and password, return a user only if the user exists
@@ -177,6 +177,22 @@ func (s *UserStore) FindByUsername(username string) (core.User, error) {
 	return user, errors.New("username does not exist")
 }
 
+func (s *UserStore) DeleteByUsername(username string) error {
+	r, err := s.db.Exec("delete from users where username = ?",
+		username)
+	if err != nil {
+		return err
+	}
+	n, err := r.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNoUsername
+	}
+	return nil
+}
+
 func mapUser(rows *sql.Rows) (core.User, error) {
 	user := core.User{}
 
@@ -197,10 +213,8 @@ func mapUser(rows *sql.Rows) (core.User, error) {
 		return user, err
 	}
 
-	user.Uuid, err = uuid.FromString(id)
-	if err != nil {
-		return user, errors.Wrap(err, "invalid user uuid")
-	}
+	user.Id = id
+
 	if sqlUsername.Valid {
 		user.Username = sqlUsername.String
 	}
