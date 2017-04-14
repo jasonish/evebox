@@ -2,6 +2,8 @@
 Description=EveBox Server
 
 [Service]
+User=evebox
+Group=evebox
 ExecStart=/usr/bin/evebox $ELASTICSEARCH_URL $CONFIG $EVEBOX_OPTS
 EnvironmentFile=-/etc/default/evebox
 

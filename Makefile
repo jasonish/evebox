@@ -152,6 +152,7 @@ deb:
 		-n evebox \
 		--epoch $(EPOCH) \
 		-v $(VERSION)$(TILDE) \
+		--after-install=deb/after-install.sh \
 		--after-upgrade=deb/after-upgrade.sh \
 		--deb-no-default-config-files \
 		--config-files /etc/default/evebox \

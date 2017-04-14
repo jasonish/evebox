@@ -2,6 +2,11 @@
 
 set -e
 
+USERNAME=evebox
+HOMEDIR=/var/lib/evebox
+
+adduser --system --home ${HOMEDIR} --group --disabled-login ${USERNAME}
+
 if ! /bin/systemctl daemon-reload > /dev/null 2>&1; then
     # Exit now if this failed. May be running in a container.
     exit 0
