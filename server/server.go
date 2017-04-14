@@ -112,7 +112,9 @@ func SessionHandler(handler http.Handler) http.Handler {
 }
 
 type Server struct {
-	router *router.Router
+	router  *router.Router
+	proxied bool
+	context appcontext.AppContext
 }
 
 func NewServer(appContext appcontext.AppContext) *Server {
@@ -145,7 +147,9 @@ func NewServer(appContext appcontext.AppContext) *Server {
 	router := router.NewRouter()
 
 	server := &Server{
-		router: router,
+		router:  router,
+		proxied: appContext.Config.Http.ReverseProxy,
+		context: appContext,
 	}
 
 	if appContext.Config.Authentication.Github.Enabled {
@@ -171,13 +175,34 @@ func NewServer(appContext appcontext.AppContext) *Server {
 	return server
 }
 
+type RequestLogWrapper struct {
+}
+
+func (w RequestLogWrapper) Write(b []byte) (n int, err error) {
+	log.Info("HTTP: %s", strings.TrimSpace(string(b)))
+	return len(b), nil
+}
+
 func (s *Server) Start(addr string) error {
 	log.Info("Listening on %s", addr)
-	return http.ListenAndServe(addr,
-		handlers.CompressHandler(
-			Redirector(
-				VersionHeaderWrapper(
-					SessionHandler(s.router.Router)))))
+
+	root := http.Handler(s.router.Router)
+	root = SessionHandler(root)
+	root = VersionHeaderWrapper(root)
+	root = Redirector(root)
+
+	if s.context.Config.Http.RequestLogging {
+		root = handlers.LoggingHandler(RequestLogWrapper{}, root)
+	}
+
+	if s.proxied {
+		log.Debug("Apply reverse proxy handler")
+		root = handlers.ProxyHeaders(root)
+	}
+
+	root = handlers.CompressHandler(root)
+
+	return http.ListenAndServe(addr, root)
 }
 
 func StaticHandlerFactory(appContext appcontext.AppContext) http.Handler {

@@ -41,6 +41,11 @@ type GithubAuthConfig struct {
 }
 
 type Config struct {
+	Http struct {
+		ReverseProxy   bool
+		RequestLogging bool
+	}
+
 	Authentication struct {
 		Required bool
 

@@ -72,7 +72,8 @@ func (a *UsernameAuthenticator) Login(r *http.Request) (*sessions.Session, error
 		return nil, ErrNoUsername
 	}
 
-	log.Info("Logging in anonymous user with username %s", username)
+	log.Info("Logging in anonymous user with username %s from %s",
+		username, r.RemoteAddr)
 
 	session := &sessions.Session{
 		Id:       a.sessionStore.GenerateID(),

@@ -7,6 +7,13 @@
 # default to the current directory.
 data-directory:
 
+http:
+  # If behind a reverse proxy set to true so the proper IP address of
+  # clients can be logged. (env: EVEBOX_PROXIED)
+  #reverse-proxy: true
+
+  #request-logging: true
+
 # Database configuration.
 database:
 

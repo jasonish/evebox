@@ -60,10 +60,10 @@ type FileServer struct {
 func (s FileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var path string
 
-	if r.URL.String() == "/" {
+	if r.URL.Path == "/" {
 		path = "index.html"
 	} else {
-		path = strings.TrimPrefix(r.URL.String(), "/")
+		path = strings.TrimPrefix(r.URL.Path, "/")
 	}
 
 	// Remove any query string parameters...

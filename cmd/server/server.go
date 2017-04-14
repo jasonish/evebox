@@ -64,6 +64,13 @@ func VersionMain() {
 
 func initViper() {
 	viper.SetDefault("data-directory", DEFAULT_DATA_DIR)
+
+	viper.SetDefault("http.reverse-proxy", false)
+	viper.BindEnv("http.reverse-proxy", "EVEBOX_HTTP_REVERSE_PROXY")
+
+	viper.SetDefault("http.request-logging", false)
+	viper.BindEnv("http.request-logging", "EVEBOX_HTTP_REQUEST_LOGGING")
+
 	viper.SetDefault("elasticsearch", DEFAULT_ELASTICSEARCH_URL)
 	viper.SetDefault("index", DEFAULT_ELASTICSEARCH_INDEX)
 
@@ -99,6 +106,10 @@ func getElasticSearchKeyword(flagset *pflag.FlagSet) (bool, string) {
 }
 
 func configure(config *appcontext.Config) {
+
+	config.Http.ReverseProxy = viper.GetBool("http.reverse-proxy")
+	config.Http.RequestLogging = viper.GetBool("http.request-logging")
+
 	config.Authentication.Required = viper.GetBool("authentication.required")
 	if config.Authentication.Required {
 
