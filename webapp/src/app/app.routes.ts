@@ -54,9 +54,7 @@ export class AuthGuard implements CanActivate {
         if (this.api.isAuthenticated()) {
             return Promise.resolve(true);
         }
-        return this.api.login()
-            .then(() => true)
-            .catch(() => false);
+        return this.api.checkAuth();
     }
 }
 

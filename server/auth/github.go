@@ -28,65 +28,143 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/server/sessions"
+	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
-	"io/ioutil"
 	"net/http"
 )
 
-type Github struct {
-	config *oauth2.Config
+const userUrl = "https://api.github.com/user"
+const orgsUrl = "https://api.github.com/user/orgs"
+
+type GitHubAuthenticator struct {
+	oauthConfig  *oauth2.Config
+	SessionStore *sessions.SessionStore
 }
 
-func NewGithub() *Github {
-	config := &oauth2.Config{
-		ClientID:     "23df7c7bd97d345d6001",
-		ClientSecret: "c4dc3cbefb80c44d0f93a7a0a181ef0ea82937cb",
-		RedirectURL:  "http://localhost:5636/auth/github/callback",
+type GitHubUser struct {
+	Login            string `json:"login"`
+	Id               int64  `json:"id"`
+	OrganizationsUrl string `json:"organizations_url"`
+	Name             string `json:"name"`
+	Email            string `json:"email"`
+}
+
+type GitHubOrg struct {
+	Login string `json:"login"`
+}
+
+func NewGithub(config appcontext.GithubAuthConfig) *GitHubAuthenticator {
+	if config.ClientID == "" {
+		log.Fatal("GitHub client ID required")
+	}
+	if config.ClientSecret == "" {
+		log.Fatal("GitHub client secret required")
+	}
+	if config.Callback == "" {
+		log.Fatal("GitHub callback URL required")
+	}
+	oauthConfig := &oauth2.Config{
+		ClientID:     config.ClientID,
+		ClientSecret: config.ClientSecret,
+		RedirectURL:  config.Callback,
 		Endpoint:     github.Endpoint,
 		Scopes:       []string{"read:org"},
 	}
-	return &Github{
-		config: config,
+	return &GitHubAuthenticator{
+		oauthConfig: oauthConfig,
 	}
 }
 
-func (g *Github) Handler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, g.config.AuthCodeURL("secret"),
-		http.StatusTemporaryRedirect)
+func (g *GitHubAuthenticator) Handler(w http.ResponseWriter, r *http.Request) {
+	session := g.SessionStore.FindSession(r)
+	if session == nil {
+		log.Info("Creating session for GitHub authentication request.")
+		session = &sessions.Session{
+			Id: g.SessionStore.GenerateID(),
+		}
+		g.SessionStore.Put(session)
+		w.Header().Set(g.SessionStore.Header, session.Id)
+	}
+	log.Info("GitHubAuthenticator.Handler: session: %s", session.String())
+
+	encoder := json.NewEncoder(w)
+	encoder.Encode(map[string]interface{}{
+		"redirect": g.oauthConfig.AuthCodeURL(session.Id),
+	})
 }
 
-func (g *Github) Callback(w http.ResponseWriter, r *http.Request) {
+func (g *GitHubAuthenticator) Callback(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
-	secret := r.FormValue("state")
-	log.Info("Code: %s; state: %s", code, secret)
+	state := r.FormValue("state")
+	log.Info("Code: %s; state: %s", code, state)
 
-	token, err := g.config.Exchange(context.Background(), code)
+	// Find session by the state parameter.
+	session, _ := g.SessionStore.Get(state)
+	if session == nil {
+		log.Warning("Did not find session for oauth callback.")
+		return
+	}
+	log.Info("Found session for GitHub callback: %s", session)
+
+	token, err := g.oauthConfig.Exchange(context.Background(), code)
 	if err != nil {
 		log.Error("exchange failed: %v", err)
 		return
 	}
-	log.Info("Token: %v", token)
 
-	client := g.config.Client(context.Background(), token)
-
-	response, err := client.Get("https://api.github.com/user")
-	if err != nil {
-		log.Error("Failed to get client info: %v", err)
+	if !token.Valid() {
+		log.Warning("Received invalid GitHub token: %s",
+			token.TokenType)
+		w.Write([]byte("Github login failed."))
+		w.WriteHeader(http.StatusUnauthorized)
+		g.SessionStore.DeleteById(state)
 		return
 	}
-	defer response.Body.Close()
-	data, _ := ioutil.ReadAll(response.Body)
-	log.Info("User: %s", string(data))
 
-	response, err = client.Get("https://api.github.com/user/orgs")
+	client := g.oauthConfig.Client(context.Background(), token)
+
+	githubUser, err := g.GetUser(client)
 	if err != nil {
-		log.Error("Failed to get client info: %v", err)
-		return
+		log.Error("Failed to get user details: %v", err)
 	}
-	defer response.Body.Close()
-	data, _ = ioutil.ReadAll(response.Body)
-	log.Info("Orgs: %s", string(data))
+	log.Println(githubUser)
 
+	orgs, err := g.GetOrgs(client)
+	if err != nil {
+		log.Error("Failed to get user organizations: %v", err)
+	}
+	log.Println(orgs)
+
+	// Looks like a successful login. Will redirect.
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	return
+}
+
+func (g *GitHubAuthenticator) GetOrgs(client *http.Client) ([]GitHubOrg, error) {
+	orgs := make([]GitHubOrg, 0)
+	return orgs, g.fetchAndDecode(client, orgsUrl, &orgs)
+}
+
+func (g *GitHubAuthenticator) GetUser(client *http.Client) (GitHubUser, error) {
+	var githubUser GitHubUser
+	return githubUser, g.fetchAndDecode(client, userUrl, &githubUser)
+}
+
+func (g *GitHubAuthenticator) fetchAndDecode(client *http.Client, url string, result interface{}) error {
+	response, err := client.Get(url)
+	if err != nil {
+		return errors.Wrap(err, "request failed")
+	}
+	decoder := json.NewDecoder(response.Body)
+	decoder.UseNumber()
+	err = decoder.Decode(result)
+	if err != nil {
+		return errors.Wrap(err, "failed to decode response")
+	}
+	return nil
 }

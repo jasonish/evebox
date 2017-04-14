@@ -37,7 +37,6 @@ require('!!script-loader!jquery/dist/jquery.min.js');
 require('!!script-loader!bootstrap/dist/js/bootstrap.min.js');
 require('chart.js');
 
-declare var jQuery: any;
 declare var window: any;
 declare var localStorage: any;
 declare var Chart: any;
@@ -52,7 +51,7 @@ if (environment.production) {
 }
 
 function applyStyle(style: string) {
-    let node = document.createElement('style');
+    let node = <HTMLElement>document.createElement('style');
     node.innerHTML = style;
     document.body.appendChild(node);
 }
@@ -76,9 +75,4 @@ switch (localStorage.theme) {
         break;
 }
 
-// jQuery.getJSON('api/1/config', (config: any) => {
-//     console.log('Setting config object on root window:');
-//     console.log(config);
-//     window.config = config;
-    platformBrowserDynamic().bootstrapModule(AppModule);
-// });
+platformBrowserDynamic().bootstrapModule(AppModule);

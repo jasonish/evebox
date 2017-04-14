@@ -33,7 +33,31 @@ import (
 	"github.com/jasonish/evebox/sqlite/configdb"
 )
 
+type GithubAuthConfig struct {
+	Enabled      bool
+	ClientID     string
+	ClientSecret string
+	Callback     string
+}
+
+type Config struct {
+	Authentication struct {
+		Required bool
+
+		// Username or Usernamepassword.
+		Type string
+
+		LoginMessage string
+
+		// GitHub Oauth2.
+		Github GithubAuthConfig
+	}
+}
+
 type AppContext struct {
+	// Configuration data that is not held in the configuration database.
+	Config Config
+
 	ConfigDB  *configdb.ConfigDB
 	Userstore core.UserStore
 
@@ -51,7 +75,6 @@ type AppContext struct {
 	Features map[core.Feature]bool
 
 	Vars struct {
-
 		// URL to the frontend web application development server.
 		DevWebAppServerUrl string
 	}

@@ -47,6 +47,32 @@ authentication:
   # A little message that is displayed in the login dialog.
   login-message: "Use a non-identifying username..."
 
+  # GitHub Oauth2 authentication. More of a proof of concept for Oauth
+  # in EveBox. Configuration will likely move into the UI at some
+  # point.
+  github:
+    enabled: yes
+
+    # GitHub Client ID (env: GITHUB_CLIENT_ID)
+    client-id: 23df7c7bd97d345d6001
+
+    # GitHub Client Secret (env: GITHUB_CLIENT_SECRET)
+    client-secret: c4dc3cbefb80c44d0f93a7a0a181ef0ea82937cb
+
+    # Callback URL. The EveBox portion of the callback URL is:
+    #     /auth/github/callback
+    callback: http://localhost:5636/auth/github/callback
+
+    # Allowed organizations.
+    #orgs:
+    #  - my-organization-login
+
+    # Allowed users. If users and organizations is set, then the user
+    # must belong to one of the listed organizations.
+    #users:
+    #  - jasonish
+    
+
 # The server can process a log file, eliminating the need for a
 # separate agent process if on the same machine.
 input:

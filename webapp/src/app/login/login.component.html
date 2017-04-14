@@ -16,13 +16,14 @@
 
       <form #loginForm="ngForm">
 
-        <a href="/auth/github" type="button"
-           class="btn btn-default btn-block">
-          <i class="fa fa-github" style="text-align: left"></i>
-          Login with Github
-        </a>
-
-        <hr style="border-color: darkgray !important;"/>
+        <div *ngIf="github">
+          <button type="button" (click)="loginGithub()"
+                  class="btn btn-default btn-block">
+            <i class="fa fa-github" style="text-align: left"></i>
+            Login with Github
+          </button>
+          <hr style="border-color: darkgray !important;"/>
+        </div>
 
         <div *ngIf="username">
           <input type="text" autofocus class="form-control"

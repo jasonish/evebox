@@ -148,15 +148,19 @@ func NewServer(appContext appcontext.AppContext) *Server {
 		router: router,
 	}
 
-	githubAuth := auth.NewGithub()
+	if appContext.Config.Authentication.Github.Enabled {
+		githubAuthenticator := auth.NewGithub(appContext.Config.Authentication.Github)
+		githubAuthenticator.SessionStore = sessionStore
 
-	router.Handle("/auth/github", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		githubAuth.Handler(w, r)
-	}))
+		router.Handle("/auth/github", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			githubAuthenticator.Handler(w, r)
+		}))
 
-	router.Handle("/auth/github/callback", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		githubAuth.Callback(w, r)
-	}))
+		router.Handle("/auth/github/callback", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			githubAuthenticator.Callback(w, r)
+		}))
+		log.Info("GitHub Oauth2 authentication configured")
+	}
 
 	apiContext := api.NewApiContext(&appContext, sessionStore, authenticator)
 	apiContext.InitRoutes(router.Subrouter("/api/1"))

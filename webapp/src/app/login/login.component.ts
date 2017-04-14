@@ -29,6 +29,8 @@ import {Router} from '@angular/router';
 import {ApiService} from '../api.service';
 import {Http} from '@angular/http';
 
+declare var window:any;
+
 @Component({
     templateUrl: "login.component.html",
 })
@@ -70,6 +72,9 @@ export class LoginComponent implements OnInit, AfterViewInit {
                                 this.username = true;
                                 this.password = true;
                                 break;
+                            case "github":
+                                this.github = true;
+                                break;
                         }
                     }
                 }
@@ -106,5 +111,11 @@ export class LoginComponent implements OnInit, AfterViewInit {
                     this.error = "Login failed: " + JSON.stringify(error);
                 }
             })
+    }
+
+    loginGithub() {
+        this.api.get("/auth/github").then((response) => {
+            window.location = response.redirect;
+        })
     }
 }

@@ -29,7 +29,6 @@ package api
 import (
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server/sessions"
-	"github.com/spf13/viper"
 	"net/http"
 )
 
@@ -43,18 +42,20 @@ type LoginOptionsResponse struct {
 
 func (c *ApiContext) LoginOptions(w *ResponseWriter, r *http.Request) error {
 	response := LoginOptionsResponse{}
+	config := c.appContext.Config
 
-	required := viper.GetBool("authentication.required")
-	if required {
-		response.Authentication.Required = required
+	if config.Authentication.Required {
+		response.Authentication.Required = true
 
-		authType := viper.GetString("authentication.type")
-		if authType != "" {
+		response.Authentication.Types = append(response.Authentication.Types,
+			config.Authentication.Type)
+
+		response.Message = config.Authentication.LoginMessage
+
+		if c.appContext.Config.Authentication.Github.Enabled {
 			response.Authentication.Types =
-				append(response.Authentication.Types, authType)
+				append(response.Authentication.Types, "github")
 		}
-
-		response.Message = viper.GetString("authentication.login-message")
 	}
 
 	return w.OkJSON(response)

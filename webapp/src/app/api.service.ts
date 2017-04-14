@@ -36,6 +36,8 @@ import 'rxjs/add/operator/map';
 import {AppEventService, AppEventType} from './appevent.service';
 import {ConfigService} from './config.service';
 
+declare var localStorage: any;
+
 /**
  * The API service exposes the server side API to the rest of the server,
  * and acts as the "client" to the server.
@@ -56,6 +58,7 @@ export class ApiService {
                 private router: Router,
                 private configService: ConfigService,
                 private appEventService: AppEventService) {
+        this.sessionId = localStorage.sessionId;
     }
 
     isAuthenticated(): boolean {
@@ -64,6 +67,7 @@ export class ApiService {
 
     setSessionId(sessionId: string) {
         this.sessionId = sessionId;
+        localStorage.sessionId = sessionId;
     }
 
     checkVersion(response: Response) {
@@ -180,6 +184,15 @@ export class ApiService {
             })
     }
 
+    checkAuth() {
+        return this.updateConfig()
+            .then(config => {
+                this.setAuthenticated(true);
+                return true;
+            })
+            .catch(() => false);
+    }
+
     login(username: string = "", password: string = "") {
         let params = new URLSearchParams();
         params.set("username", username);
@@ -222,17 +235,17 @@ export class ApiService {
 
     eventToPcap(what: any, event: any) {
 
-        let form = document.createElement('form');
+        let form = <HTMLFormElement>document.createElement('form');
         form.setAttribute('method', 'post');
         form.setAttribute('action', 'api/1/eve2pcap');
 
-        let whatField = document.createElement('input');
+        let whatField = <HTMLElement>document.createElement('input');
         whatField.setAttribute('type', 'hidden');
         whatField.setAttribute('name', 'what');
         whatField.setAttribute('value', what);
         form.appendChild(whatField);
 
-        let eventField = document.createElement('input');
+        let eventField = <HTMLElement>document.createElement('input');
         eventField.setAttribute('type', 'hidden');
         eventField.setAttribute('name', 'event');
         eventField.setAttribute('value', JSON.stringify(event));

@@ -98,6 +98,28 @@ func getElasticSearchKeyword(flagset *pflag.FlagSet) (bool, string) {
 	return false, ""
 }
 
+func configure(config *appcontext.Config) {
+	config.Authentication.Required = viper.GetBool("authentication.required")
+	if config.Authentication.Required {
+
+		config.Authentication.Type =
+			viper.GetString("authentication.type")
+		config.Authentication.LoginMessage =
+			viper.GetString("authentication.login-message")
+
+		// GitHub.
+		github := &config.Authentication.Github
+		github.Enabled = viper.GetBool("authentication.github.enabled")
+		if config.Authentication.Github.Enabled {
+			github.ClientSecret =
+				viper.GetString("authentication.github.client-secret")
+			github.ClientID =
+				viper.GetString("authentication.github.client-id")
+			github.Callback = viper.GetString("authentication.github.callback")
+		}
+	}
+}
+
 func Main(args []string) {
 
 	log.SetLevel(log.INFO)
@@ -178,6 +200,7 @@ func Main(args []string) {
 	}
 
 	appContext := appcontext.AppContext{}
+	configure(&appContext.Config)
 	appContext.GeoIpService = geoip.NewGeoIpService()
 	appContext.Vars.DevWebAppServerUrl = opts.DevServerUri
 

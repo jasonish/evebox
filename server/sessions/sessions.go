@@ -48,6 +48,10 @@ type Session struct {
 	User     core.User
 }
 
+func (s *Session) String() string {
+	return fmt.Sprintf("{Id: %s; Username: %s}", s.Id, s.Username)
+}
+
 type SessionStore struct {
 	Header   string
 	sessions map[string]*Session
@@ -73,6 +77,10 @@ func (s *SessionStore) Put(session *Session) {
 
 func (s *SessionStore) Delete(session *Session) {
 	delete(s.sessions, session.Id)
+}
+
+func (s *SessionStore) DeleteById(id string) {
+	delete(s.sessions, id)
 }
 
 func (s *SessionStore) GenerateID() string {
