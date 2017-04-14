@@ -22,8 +22,6 @@ needs_privilege() {
 }
 
 release() {
-    #docker_build
-
     privileged=""
     if needs_privilege; then
 	privileged="--privileged"
