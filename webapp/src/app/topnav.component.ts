@@ -41,88 +41,7 @@ declare var $: any;
 
 @Component({
     selector: 'evebox-top-nav',
-    template: `<nav class="navbar navbar-default navbar-fixed-top">
-  <div class="container-fluid">
-    <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed"
-              data-toggle="collapse" data-target="#bs-example-navbar-collapse-1"
-              aria-expanded="false">
-        <span class="sr-only">Toggle navigation</span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-      </button>
-      <a class="navbar-brand" href="#/">EveBox</a>
-    </div>
-
-    <div class="collapse navbar-collapse">
-      <ul class="nav navbar-nav">
-        <li [ngClass]="{active: isActive('/inbox')}"><a
-            href="#/inbox">Inbox</a></li>
-        <li [ngClass]="{active: isActive('/escalated')}"><a
-            href="#/escalated">Escalated</a></li>
-        <li [ngClass]="{active: isActive('/alerts')}"><a
-            href="#/alerts">Alerts</a></li>
-        <li [ngClass]="{active: isActive('/events')}"><a
-            href="#/events">Events</a></li>
-
-        <li *ngIf="features['reporting']" [ngClass]="{active: isActive('/reports')}" class="dropdown">
-          <a href="#" class="dropdown-toggle" data-toggle="dropdown"
-             role="button" aria-haspopup="true" aria-expanded="false">Reports
-            <span class="caret"></span></a>
-          <ul class="dropdown-menu">
-            <li><a href="#/reports/alerts">Alerts</a></li>
-            <li><a href="#/reports/dns">DNS</a></li>
-            <li><a href="#/reports/netflow">Netflow</a></li>
-            <li><a href="#/reports/flow">Flow</a></li>
-            <li><a href="#/reports/ssh">SSH</a></li>
-          </ul>
-        </li>
-
-      </ul>
-
-      <ul class="nav navbar-nav navbar-right">
-        <li><a href="javascript:void(0);" (click)="showHelp()">Help</a></li>
-
-        <li>
-          <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span
-              class="glyphicon glyphicon-cog"></span></a>
-          <ul class="dropdown-menu">
-            <li><a href="javascript:void(0)" (click)="setTheme('default')">Light (Default)</a></li>
-            <li><a href="javascript:void(0)" (click)="setTheme('slate')">Slate</a></li>
-            <li role="separator" class="divider"></li>
-            <li><a href="#/admin">Admin</a></li>
-            <li role="separator" class="divider"></li>
-            <li><a href="javascript:void(0)" (click)="logout()">Logout</a></li>
-          </ul>
-        </li>
-
-        <li>
-          <a><span class="badge">{{elasticSearchService.jobSize()}}</span></a>
-        </li>
-      </ul>
-
-      <form name="dateSelectorForm" class="navbar-form navbar-right">
-        <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control"
-                [ngModel]="topNavService.timeRange" name="timeRange"
-                (change)="timeRangeChanged($event)">
-          <option value="1m">Last minute</option>
-          <option value="1h">Last hour</option>
-          <option value="3h">Last 3 hours</option>
-          <option value="6h">Last 6 hours</option>
-          <option value="12h">Last 12 hours</option>
-          <option value="24h">Last 24 hours</option>
-          <option value="3d">Last 3 days</option>
-          <option value="7d">Last week</option>
-          <option value="">All</option>
-        </select>
-      </form>
-
-    </div>
-
-  </div>
-</nav>`,
+    templateUrl: "topnav.component.html",
 })
 export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     appService: AppService;
@@ -138,7 +57,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
                 private mousetrap: MousetrapService,
                 private topNavService: TopNavService,
                 appService: AppService,
-                private api:ApiService,
+                private api: ApiService,
                 private configService: ConfigService) {
         this.elasticSearchService = elasticSearchService;
         this.appService = appService;
@@ -191,6 +110,13 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     ngAfterViewChecked() {
         $('.dropdown-toggle').dropdown();
+
+        // This makes the navbar collapse when a link is clicked. Only applies
+        // when the viewport is narrow enough to make it collapse.
+        $('#evebox-topnav-collapse-1 a:not(.no-collapse)').on('click', (e: any) => {
+            $('.navbar-toggle').click();
+        });
+
     }
 
     gotoRoute(route: string) {
