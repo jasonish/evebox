@@ -2,6 +2,17 @@
 
 set -e
 
+USERNAME=evebox
+GROUPNAME=evebox
+HOMEDIR=/var/lib/evebox
+
+getent group ${GROUPNAME} >/dev/null || groupadd -r ${GROUPNAME}
+getent passwd ${USERNAME} >/dev/null || \
+    useradd -r -g ${GROUPNAME} -d ${HOMEDIR} -s /sbin/nologin \
+    -c "EveBox Server" ${USERNAME}
+
+/bin/install -o ${USERNAME} -g ${GROUPNAME} -d /var/lib/evebox
+
 if ! /bin/systemctl daemon-reload > /dev/null 2>&1; then
     # Exit now if this failed. May be running in a container.
     exit 0

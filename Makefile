@@ -176,16 +176,17 @@ rpm: OUTPUT := dist/
 endif
 rpm:
 	fpm --force -s dir \
-		-t rpm \
-		-p $(OUTPUT) \
-		-n evebox \
-		-v $(VERSION) \
-		--iteration $(RPM_ITERATION) \
-		--after-upgrade=rpm/after-upgrade.sh \
-		--config-files /etc/sysconfig/evebox \
-		${EVEBOX_BIN}=/usr/bin/evebox \
-	        evebox.yaml.example=/etc/evebox/evebox.yaml.example \
-		agent.yaml.example=/etc/evebox/agent.yaml.example \
-		rpm/evebox.sysconfig=/etc/sysconfig/evebox \
-		rpm/evebox.service=/lib/systemd/system/evebox.service \
-		rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+	    -t rpm \
+	    -p $(OUTPUT) \
+	    -n evebox \
+	    -v $(VERSION) \
+	    --iteration $(RPM_ITERATION) \
+	    --before-install=rpm/before-install.sh \
+	    --after-upgrade=rpm/after-upgrade.sh \
+	    --config-files /etc/sysconfig/evebox \
+	    ${EVEBOX_BIN}=/usr/bin/evebox \
+	    evebox.yaml.example=/etc/evebox/evebox.yaml.example \
+	    agent.yaml.example=/etc/evebox/agent.yaml.example \
+	    rpm/evebox.sysconfig=/etc/sysconfig/evebox \
+	    rpm/evebox.service=/lib/systemd/system/evebox.service \
+	    rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
