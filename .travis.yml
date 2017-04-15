@@ -6,10 +6,6 @@ env:
     - PATH=${GOPATH}/bin:$PATH
     - NODE_VERSION=6.9.4
     - RUBY_VERSION=2.1.1
-    - secure: RL1Ku0ikl6GBlsri8WSMOnCDFjQsMg/nDFZguq/xr0cNNNc1uYeTMxxd7yqXtKj4hhzu1K5jR5VywvN8pLj6KprjnTtXhtrlziwGWm/UoyZVs4Clo6pExsMue8FYNxyk7uqh1/IHpUokEksK26XHv/nes44OZTFsRT4/BszPLhk=
-    - DEPLOY_REPO=jasonish/evebox
-    - DEPLOY_BRANCH=master
-    - secure: l57DadGF9BMue8hCFnUWDk/wXuCBS30PLAYx+wRhq7YUdW1m3srXj7AdlPr4f5uO2dRXYh/sFXEt2eWB1XqNMS+4PSMnc0fS9EtqA8ff4iQo48ig8BvzB0nBXp8BTDTYvP0PHVGM36UcM1r6ndstcBhnSq9Z5EOMWDo0tbEYrpw=
 
 matrix:
   include:
@@ -46,12 +42,13 @@ script:
 - |
   make install-deps
   WITH_SQLITE=1 make dist
-  mkdir -p deploy
 
   # Copy just what we want to deploy to S3 into a deploy directory, as
   # the S3 deployment step will copy everything in the directory
   # pointed at.
+  mkdir -p deploy
   cp dist/*.zip deploy/
+
 
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     rvm install $RUBY_VERSION
@@ -62,8 +59,6 @@ script:
     make rpm
     cp dist/*.deb deploy/
     cp dist/*.rpm deploy/
-    ".travis/deploy-packages.sh"
-    ".travis/docker.sh"
   fi
 
 deploy:
@@ -77,6 +72,7 @@ deploy:
     region: us-west-1
     local_dir: deploy
     on:
+      repo: jasonish/evebox
       branch: master
     acl: public_read
     upload-dir: master
@@ -90,6 +86,7 @@ deploy:
     region: us-west-1
     local_dir: deploy
     on:
+      repo: jasonish/evebox
       branch: develop
     acl: public_read
     upload-dir: develop
@@ -103,6 +100,7 @@ deploy:
     region: us-west-1
     local_dir: deploy
     on:
+      repo: jasonish/evebox
       branch: release-staging
     acl: public_read
     upload-dir: release-staging
@@ -116,6 +114,7 @@ deploy:
     region: us-west-1
     local_dir: deploy
     on:
+      repo: jasonish/evebox
       branch: release
     acl: public_read
     upload-dir: release

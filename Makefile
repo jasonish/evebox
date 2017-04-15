@@ -140,7 +140,8 @@ deb: EPOCH := 1
 ifneq ($(VERSION_SUFFIX),)
 deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE)
 deb: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
-deb: OUTPUT := dist/evebox-latest-amd64.deb
+#deb: OUTPUT := dist/evebox-latest-amd64.deb
+deb: OUTPUT := dist/
 else
 deb: EVEBOX_BIN := dist/${APP}-${VERSION}-linux-x64/evebox
 deb: OUTPUT := dist/
@@ -162,13 +163,17 @@ deb:
 		deb/evebox.default=/etc/default/evebox \
 		deb/evebox.service=/lib/systemd/system/evebox.service \
 		deb/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+ifneq ($(VERSION_SUFFIX),)
+	cp dist/evebox*$(VERSION_SUFFIX)*_amd64.deb dist/event-latest-amd64.deb
+endif
 
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
 # Setup non-release versioning.
 rpm: RPM_ITERATION := 0.$(VERSION_SUFFIX)$(BUILD_DATE)
 rpm: EVEBOX_BIN := dist/${APP}-latest-linux-x64/evebox
-rpm: OUTPUT := dist/evebox-latest-x86_64.rpm
+#rpm: OUTPUT := dist/evebox-latest-x86_64.rpm
+rpm: OUTPUT := dist/
 else
 # Setup release versioning.
 rpm: RPM_ITERATION := 1
@@ -191,3 +196,7 @@ rpm:
 	    rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 	    rpm/evebox.service=/lib/systemd/system/evebox.service \
 	    rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+ifneq ($(VERSION_SUFFIX),)
+	cp dist/evebox*$(VERSION_SUFFIX)*.x86_64.rpm \
+		dist/evebox-latest-x86_64.rpm
+endif
