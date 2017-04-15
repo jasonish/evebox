@@ -39,7 +39,6 @@ import (
 	"github.com/jasonish/evebox/server/auth"
 	"github.com/jasonish/evebox/server/router"
 	"github.com/jasonish/evebox/server/sessions"
-	"github.com/spf13/viper"
 	"net/http/httputil"
 	"net/url"
 	"strings"
@@ -121,9 +120,9 @@ func NewServer(appContext appcontext.AppContext) *Server {
 
 	sessionStore.Header = SESSION_HEADER
 
-	authenticationRequired := viper.GetBool("authentication.required")
-	if authenticationRequired {
-		authenticationType := viper.GetString("authentication.type")
+	authRequired := appContext.Config.Authentication.Required
+	if authRequired {
+		authenticationType := appContext.Config.Authentication.Type
 		switch authenticationType {
 		case "":
 			log.Fatal("Authentication requested but no type set.")
@@ -192,6 +191,7 @@ func (s *Server) Start(addr string) error {
 	root = Redirector(root)
 
 	if s.context.Config.Http.RequestLogging {
+		log.Debug("Enabling HTTP request logging")
 		root = handlers.LoggingHandler(RequestLogWrapper{}, root)
 	}
 

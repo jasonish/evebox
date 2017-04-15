@@ -90,6 +90,9 @@ func initViper() {
 
 	viper.BindEnv("authentication.login-message",
 		"EVEBOX_AUTHENTICATION_LOGIN_MESSAGE")
+
+	viper.BindEnv("authentication.github.client-id", "GITHUB_CLIENT_ID")
+	viper.BindEnv("authentication.github.client-securet", "GITHUB_CLIENT_SECRET")
 }
 
 func getElasticSearchKeyword(flagset *pflag.FlagSet) (bool, string) {

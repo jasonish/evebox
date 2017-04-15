@@ -9,9 +9,14 @@ data-directory:
 
 http:
   # If behind a reverse proxy set to true so the proper IP address of
-  # clients can be logged. (env: EVEBOX_PROXIED)
+  # clients can be logged.
+  # Default: false
+  # env: EVEBOX_HTTP_REVERSE_PROXY
   #reverse-proxy: true
 
+  # Enable HTTP request logging. This can be very verbose.
+  # Default: false
+  # env: EVEBOX_HTTP_REQUEST_LOGGING
   #request-logging: true
 
 # Database configuration.
@@ -43,39 +48,47 @@ database:
 
 authentication:
 
-  required: yes
+  # Default: false
+  # env: EVEBOX_AUTHENTICATION_REQUIRED
+  required: no
 
   # Type of login required:
   # - username         -- just a username...
   # - usernamepassword -- username and password
-  type: username
-  #type: usernamepassword
+  # env: EVEBOX_AUTHENTICATION_TYPE
+  type: usernamepassword
 
   # A little message that is displayed in the login dialog.
-  login-message: "Use a non-identifying username..."
+  #login-message: Some message here...
 
   # GitHub Oauth2 authentication. More of a proof of concept for Oauth
   # in EveBox. Configuration will likely move into the UI at some
   # point.
   github:
-    enabled: yes
 
-    # GitHub Client ID (env: GITHUB_CLIENT_ID)
-    client-id: 23df7c7bd97d345d6001
+    enabled: no
 
-    # GitHub Client Secret (env: GITHUB_CLIENT_SECRET)
-    client-secret: c4dc3cbefb80c44d0f93a7a0a181ef0ea82937cb
+    # GitHub Client ID
+    # env: GITHUB_CLIENT_ID
+    client-id: my-github-client-id
+
+    # GitHub Client Secret
+    # env: GITHUB_CLIENT_SECRET
+    client-secret: my-github-client-secret
 
     # Callback URL. The EveBox portion of the callback URL is:
     #     /auth/github/callback
     callback: http://localhost:5636/auth/github/callback
 
     # Allowed organizations.
+    # NOT IMPLEMENTED
     #orgs:
     #  - my-organization-login
 
     # Allowed users. If users and organizations is set, then the user
     # must belong to one of the listed organizations.
+    #
+    # NOT IMPLEMENTED
     #users:
     #  - jasonish
     
