@@ -114,7 +114,12 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         // This makes the navbar collapse when a link is clicked. Only applies
         // when the viewport is narrow enough to make it collapse.
         $('#evebox-topnav-collapse-1 a:not(.no-collapse)').on('click', (e: any) => {
-            $('.navbar-toggle').click();
+            var clickover = $(e.target);
+            var $navbar = $(".navbar-collapse");
+            var _opened = $navbar.hasClass("in");
+            if (_opened === true && !clickover.hasClass("navbar-toggle")) {
+                $navbar.collapse('hide');
+            }
         });
 
     }
