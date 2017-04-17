@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {CanActivate, Router, RouterModule, Routes} from '@angular/router';
+import {CanActivate, RouterModule, Routes} from '@angular/router';
 import {EventsComponent} from './events.component';
 import {EventComponent} from './event.component';
 import {AlertsComponent} from './alerts.component';
@@ -36,126 +36,105 @@ import {Injectable, ModuleWithProviders} from '@angular/core';
 import {IpReportComponent} from './reports/ip-report/ip-report.component';
 import {SshReportComponent} from './reports/ssh-report.component';
 import {LoginComponent} from './login/login.component';
-import {AppService} from './app.service';
 import {ConfigService} from './config.service';
-import {AdminComponent} from './admin/admin.component';
-import {UsersComponent} from './admin/users/users.component';
-import {ApiService} from "app/api.service";
+import {ApiService} from 'app/api.service';
 
 declare var window: any;
 
 @Injectable()
 export class AuthGuard implements CanActivate {
 
-    constructor(private api: ApiService) {
-    }
+  constructor(private api: ApiService) {
+  }
 
-    canActivate() {
-        if (this.api.isAuthenticated()) {
-            return Promise.resolve(true);
-        }
-        return this.api.checkAuth();
+  canActivate() {
+    if (this.api.isAuthenticated()) {
+      return Promise.resolve(true);
     }
+    return this.api.checkAuth();
+  }
 }
 
 @Injectable()
 export class ConfigResolver implements CanActivate {
 
-    constructor(private api: ApiService,
-                private configService: ConfigService) {
+  constructor(private api: ApiService,
+              private configService: ConfigService) {
+  }
+
+  canActivate(): Promise<boolean> {
+    if (this.configService.hasConfig()) {
+      return Promise.resolve(true);
     }
 
-    canActivate(): Promise<boolean> {
-        if (this.configService.hasConfig()) {
-            return Promise.resolve(true);
-        }
-
-        return this.api.get("/api/1/config")
-            .then((config) => {
-                console.log(config);
-                this.configService.setConfig(config);
-                return true;
-            })
-            .catch(() => {
-                return false;
-            });
-    }
+    return this.api.get("/api/1/config")
+      .then((config) => {
+        console.log(config);
+        this.configService.setConfig(config);
+        return true;
+      })
+      .catch(() => {
+        return false;
+      });
+  }
 }
-
-const adminRoutes: Routes = [
-    {
-        path: "",
-        pathMatch: "prefix",
-        component: AdminComponent,
-    },
-    {
-        path: "users",
-        pathMatch: "prefix",
-        component: UsersComponent,
-    }
-];
 
 const routes: Routes = [
 
-    {
-        path: 'login',
-        pathMatch: 'prefix',
-        component: LoginComponent,
-    },
-    {
+  {
+    path: 'login',
+    pathMatch: 'prefix',
+    component: LoginComponent,
+  },
+  {
+    path: '',
+    pathMatch: 'prefix',
+    canActivate: [AuthGuard],
+    children: [
+      {
         path: '',
+        redirectTo: 'inbox',
         pathMatch: 'prefix',
-        canActivate: [AuthGuard],
-        children: [
-            {
-                path: "admin",
-                pathMatch: "prefix",
-                children: adminRoutes,
-            },
-            {
-                path: '',
-                redirectTo: 'inbox',
-                pathMatch: 'prefix',
-            },
-            {
-                path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
-            },
-            {
-                path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
-            }
-            ,
-            {
-                path: 'escalated',
-                component: AlertsComponent,
-                pathMatch: 'prefix',
-            }
-            ,
-            {
-                path: 'alerts', component: AlertsComponent, pathMatch: 'prefix',
-            }
-            ,
-            {
-                path: 'event/:id',
-                component: EventComponent,
-                pathMatch: 'prefix',
-            }
-            ,
-            {
-                path: 'events', component: EventsComponent, pathMatch: 'prefix',
-            }
-            ,
-            {path: 'reports/alerts', component: AlertReportComponent},
-            {path: 'reports/dns', component: DNSReportComponent},
-            {path: 'reports/flow', component: FlowReportComponent},
-            {path: 'reports/netflow', component: NetflowReportComponent},
-            {path: 'reports/ssh', component: SshReportComponent},
-            {
-                path: 'reports/ip',
-                component: IpReportComponent,
-                pathMatch: 'prefix',
-            },
-        ]
-    },
+      },
+      {
+        path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
+      },
+      {
+        path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
+      }
+      ,
+      {
+        path: 'escalated',
+        component: AlertsComponent,
+        pathMatch: 'prefix',
+      }
+      ,
+      {
+        path: 'alerts', component: AlertsComponent, pathMatch: 'prefix',
+      }
+      ,
+      {
+        path: 'event/:id',
+        component: EventComponent,
+        pathMatch: 'prefix',
+      }
+      ,
+      {
+        path: 'events', component: EventsComponent, pathMatch: 'prefix',
+      }
+      ,
+      {path: 'reports/alerts', component: AlertReportComponent},
+      {path: 'reports/dns', component: DNSReportComponent},
+      {path: 'reports/flow', component: FlowReportComponent},
+      {path: 'reports/netflow', component: NetflowReportComponent},
+      {path: 'reports/ssh', component: SshReportComponent},
+      {
+        path: 'reports/ip',
+        component: IpReportComponent,
+        pathMatch: 'prefix',
+      },
+    ]
+  },
 ];
 
 export const routing: ModuleWithProviders = RouterModule.forRoot(routes, {useHash: true});

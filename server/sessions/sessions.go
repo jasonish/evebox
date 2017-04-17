@@ -46,6 +46,14 @@ type Session struct {
 	Id       string
 	Username string
 	User     core.User
+
+	Other map[string]interface{}
+}
+
+func NewSession() *Session {
+	session := &Session{}
+	session.Other = make(map[string]interface{})
+	return session
 }
 
 func (s *Session) String() string {
@@ -95,6 +103,14 @@ func (s *SessionStore) GenerateID() string {
 	sessionId = strings.Replace(sessionId, "=", "", -1)
 
 	return sessionId
+}
+
+// NewSession creates a new session with a session ID. It DOES NOT add the
+// session to the session store.
+func (s *SessionStore) NewSession() *Session {
+	session := NewSession()
+	session.Id = s.GenerateID()
+	return session
 }
 
 func (s *SessionStore) FindSession(r *http.Request) *Session {

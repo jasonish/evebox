@@ -89,7 +89,7 @@ evebox: Makefile $(GO_SRCS) resources/bindata.go
 gofmt:
 	@go fmt $(GO_PACKAGES)
 
-dev-server: evebox
+dev-server:
 	./webapp/node_modules/.bin/concurrently -k \
 		"make -C webapp serve" \
 		"make dev-server-reflex" \

@@ -1,15 +1,16 @@
 DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
-  uuid      string UNIQUE NOT NULL,
-  username  string UNIQUE NOT NULL,
-  fullname  string,
-  email     string UNIQUE,
+  uuid            string UNIQUE NOT NULL,
+  username        string UNIQUE NOT NULL,
+  fullname        string,
+  email           string UNIQUE,
 
   -- Password hash.
-  password  string,
+  password        string,
 
-  github_id INTEGER UNIQUE
+  github_username string UNIQUE,
+  github_id       INTEGER UNIQUE
 );
 
 CREATE INDEX users_username_index

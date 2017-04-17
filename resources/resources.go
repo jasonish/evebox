@@ -28,17 +28,30 @@ package resources
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/jasonish/evebox/log"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 )
 
 //go:generate go-bindata -nometadata -pkg resources -ignore bindata\.go ./...
 
+func GetAsset(name string) ([]byte, error) {
+	realName := fmt.Sprintf("./resources/%s", name)
+	realAsset, err := os.Open(realName)
+	if err == nil {
+		log.Info("Using filesystem asset %s", realName)
+		return ioutil.ReadAll(realAsset)
+	}
+	return Asset(name)
+}
+
 // AssetString returns an asset as a string.
 func AssetString(name string) (string, error) {
-	bytes, err := Asset(name)
+	bytes, err := GetAsset(name)
 	if err != nil {
 		return "", err
 	}
@@ -47,7 +60,7 @@ func AssetString(name string) (string, error) {
 
 // GetReader returns an asset as a reader.
 func GetReader(name string) (io.Reader, error) {
-	data, err := Asset(name)
+	data, err := GetAsset(name)
 	if err != nil {
 		return nil, err
 	}

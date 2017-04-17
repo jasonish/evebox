@@ -32,12 +32,21 @@ type User struct {
 	FullName string `json:"full_name,omitempty"`
 	Email    string `json:"email,omitempty"`
 
-	GithubID int64 `json:"github_id,omitempty"`
+	GitHubUsername string `json:"github_username,omitempty"`
+	GitHubID       int64  `json:"github_id,omitempty"`
+}
+
+func (u User) IsValid() bool {
+	if u.Id != "" && u.Username != "" {
+		return true
+	}
+	return false
 }
 
 type UserStore interface {
 	AddUser(user User, password string) (string, error)
 	FindByUsername(username string) (User, error)
 	FindByUsernamePassword(username string, password string) (User, error)
+	FindByGitHubUsername(username string) (User, error)
 	FindAll() ([]User, error)
 }

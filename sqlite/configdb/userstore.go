@@ -36,6 +36,15 @@ import (
 	"strings"
 )
 
+var userFields = []string{
+	"uuid",
+	"username",
+	"fullname",
+	"email",
+	"github_id",
+	"github_username",
+}
+
 var ErrNoUsername = errors.New("username does not exist")
 var ErrNoPassword = errors.New("user has no password")
 var ErrBadPassword = errors.New("bad password")
@@ -77,7 +86,8 @@ func (s *UserStore) AddUser(user core.User, password string) (string, error) {
 	}
 	fullname := toNullString(user.FullName)
 	email := toNullString(user.Email)
-	githubId := toNullInt64(user.GithubID)
+	githubId := toNullInt64(user.GitHubID)
+	githubUsername := toNullString(user.GitHubUsername)
 
 	var sqlPassword sql.NullString
 	if password != "" {
@@ -102,8 +112,14 @@ func (s *UserStore) AddUser(user core.User, password string) (string, error) {
 	id := uuid.NewV4()
 
 	st, err := tx.Prepare(`insert into users (
-	    uuid, username, fullname, email, password, github_id
-	    ) values (?, ?, ?, ?, ?, ?)`)
+	      uuid,
+	      username,
+	      fullname,
+	      email,
+	      password,
+	      github_id,
+	      github_username
+	    ) values (?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return noid, errors.Wrap(err,
 			"failed to prepare user insert statement")
@@ -113,7 +129,8 @@ func (s *UserStore) AddUser(user core.User, password string) (string, error) {
 		fullname,
 		email,
 		sqlPassword,
-		githubId)
+		githubId,
+		githubUsername)
 	if err != nil {
 		return noid, errors.Wrap(err, "failed to insert user")
 	}
@@ -148,20 +165,31 @@ func (s *UserStore) FindByUsernamePassword(username string, password string) (co
 	return s.FindByUsername(username)
 }
 
-func (s *UserStore) FindByUsername(username string) (core.User, error) {
-	fields := []string{
-		"uuid",
-		"username",
-		"fullname",
-		"email",
-		"github_id",
+func (s *UserStore) FindByGitHubUsername(username string) (user core.User, err error) {
+	rows, err := s.db.Query(fmt.Sprintf(
+		"select %s from users where github_username = ?",
+		strings.Join(userFields, ", ")),
+		username)
+	if err != nil {
+		return user, errors.Wrap(err, "failed to query for user")
 	}
+	defer rows.Close()
+	for rows.Next() {
+		user, err := mapUser(rows)
+		if err != nil {
+			return user, errors.Wrap(err, "failed to read user")
+		}
+		return user, nil
+	}
+	return user, errors.New("username does not exist")
+}
 
+func (s *UserStore) FindByUsername(username string) (core.User, error) {
 	user := core.User{}
 
 	rows, err := s.db.Query(fmt.Sprintf(
 		"select %s from users where username = ?",
-		strings.Join(fields, ", ")),
+		strings.Join(userFields, ", ")),
 		username)
 	if err != nil {
 		return user, errors.Wrap(err, "failed to query for user")
@@ -201,6 +229,7 @@ func mapUser(rows *sql.Rows) (core.User, error) {
 	var fullname sql.NullString
 	var email sql.NullString
 	var githubId sql.NullInt64
+	var githubUsername sql.NullString
 
 	err := rows.Scan(
 		&id,
@@ -208,6 +237,7 @@ func mapUser(rows *sql.Rows) (core.User, error) {
 		&fullname,
 		&email,
 		&githubId,
+		&githubUsername,
 	)
 	if err != nil {
 		return user, err
@@ -225,24 +255,18 @@ func mapUser(rows *sql.Rows) (core.User, error) {
 		user.Email = email.String
 	}
 	if githubId.Valid {
-		user.GithubID = githubId.Int64
+		user.GitHubID = githubId.Int64
+	}
+	if githubUsername.Valid {
+		user.GitHubUsername = githubUsername.String
 	}
 
 	return user, nil
 }
 
 func (s *UserStore) FindAll() ([]core.User, error) {
-
-	fields := []string{
-		"uuid",
-		"username",
-		"fullname",
-		"email",
-		"github_id",
-	}
-
 	rows, err := s.db.Query(fmt.Sprintf("select %s from users",
-		strings.Join(fields, ", ")))
+		strings.Join(userFields, ", ")))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to query database")
 	}

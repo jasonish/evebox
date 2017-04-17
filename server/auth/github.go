@@ -29,7 +29,9 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/jasonish/evebox/appcontext"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/server/sessions"
 	"github.com/pkg/errors"
@@ -38,12 +40,12 @@ import (
 	"net/http"
 )
 
-const userUrl = "https://api.github.com/user"
-const orgsUrl = "https://api.github.com/user/orgs"
+const gitHubUserUrl = "https://api.github.com/user"
 
 type GitHubAuthenticator struct {
 	oauthConfig  *oauth2.Config
 	SessionStore *sessions.SessionStore
+	userStore    core.UserStore
 }
 
 type GitHubUser struct {
@@ -54,11 +56,7 @@ type GitHubUser struct {
 	Email            string `json:"email"`
 }
 
-type GitHubOrg struct {
-	Login string `json:"login"`
-}
-
-func NewGithub(config appcontext.GithubAuthConfig) *GitHubAuthenticator {
+func NewGithub(config appcontext.GithubAuthConfig, userstore core.UserStore) *GitHubAuthenticator {
 	if config.ClientID == "" {
 		log.Fatal("GitHub client ID required")
 	}
@@ -73,10 +71,10 @@ func NewGithub(config appcontext.GithubAuthConfig) *GitHubAuthenticator {
 		ClientSecret: config.ClientSecret,
 		RedirectURL:  config.Callback,
 		Endpoint:     github.Endpoint,
-		Scopes:       []string{"read:org"},
 	}
 	return &GitHubAuthenticator{
 		oauthConfig: oauthConfig,
+		userStore:   userstore,
 	}
 }
 
@@ -84,13 +82,20 @@ func (g *GitHubAuthenticator) Handler(w http.ResponseWriter, r *http.Request) {
 	session := g.SessionStore.FindSession(r)
 	if session == nil {
 		log.Info("Creating session for GitHub authentication request.")
-		session = &sessions.Session{
-			Id: g.SessionStore.GenerateID(),
-		}
+		session = g.SessionStore.NewSession()
 		g.SessionStore.Put(session)
 		w.Header().Set(g.SessionStore.Header, session.Id)
 	}
-	log.Info("GitHubAuthenticator.Handler: session: %s", session.String())
+
+	if r.FormValue("fail-redirect") != "" {
+		session.Other["github-fail-redirect"] =
+			r.FormValue("fail-redirect")
+	}
+
+	if r.FormValue("success-redirect") != "" {
+		session.Other["github-success-redirect"] =
+			r.FormValue("success-redirect")
+	}
 
 	encoder := json.NewEncoder(w)
 	encoder.Encode(map[string]interface{}{
@@ -98,31 +103,46 @@ func (g *GitHubAuthenticator) Handler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func handleError(w http.ResponseWriter, r *http.Request, session *sessions.Session, status int, message string) {
+	if session != nil {
+		redirectUrl, ok := session.Other["github-fail-redirect"].(string)
+		if ok {
+			redirectUrl = fmt.Sprintf("%s;error=%s", redirectUrl,
+				message)
+			http.Redirect(w, r, redirectUrl, http.StatusTemporaryRedirect)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(status)
+	w.Write([]byte(message))
+}
+
 func (g *GitHubAuthenticator) Callback(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
 	state := r.FormValue("state")
-	log.Info("Code: %s; state: %s", code, state)
 
 	// Find session by the state parameter.
 	session, _ := g.SessionStore.Get(state)
 	if session == nil {
-		log.Warning("Did not find session for oauth callback.")
+		log.Error("Did not find session for oauth callback.")
+		handleError(w, r, nil, http.StatusUnauthorized, "No session for GitHub authentication.")
 		return
 	}
-	log.Info("Found session for GitHub callback: %s", session)
 
 	token, err := g.oauthConfig.Exchange(context.Background(), code)
 	if err != nil {
-		log.Error("exchange failed: %v", err)
+		log.Error("GitHub exchange failed: %v", err)
+		handleError(w, r, session, http.StatusUnauthorized, "GitHub exchange failed.")
+		g.SessionStore.Delete(session)
 		return
 	}
 
 	if !token.Valid() {
-		log.Warning("Received invalid GitHub token: %s",
-			token.TokenType)
-		w.Write([]byte("Github login failed."))
-		w.WriteHeader(http.StatusUnauthorized)
-		g.SessionStore.DeleteById(state)
+		log.Error("Invalid GitHub Oauth2 token: %v", token)
+		handleError(w, r, session, http.StatusBadRequest, "Login failed: Received bad token from GitHub.")
+		g.SessionStore.Delete(session)
 		return
 	}
 
@@ -130,29 +150,38 @@ func (g *GitHubAuthenticator) Callback(w http.ResponseWriter, r *http.Request) {
 
 	githubUser, err := g.GetUser(client)
 	if err != nil {
-		log.Error("Failed to get user details: %v", err)
+		log.Error("Failed to fetch user details from GitHub: %v", err)
+		handleError(w, r, session, http.StatusBadRequest,
+			"Failed to fetch user details from GitHub")
+		return
 	}
-	log.Println(githubUser)
 
-	orgs, err := g.GetOrgs(client)
+	user, err := g.userStore.FindByGitHubUsername(githubUser.Login)
 	if err != nil {
-		log.Error("Failed to get user organizations: %v", err)
+		log.Error("GitHub user %s does not exist in local database", githubUser.Login)
+		handleError(w, r, session, http.StatusUnauthorized,
+			"Access denied - GitHub user does not exist in local database.")
+		return
 	}
-	log.Println(orgs)
+	session.User = user
+	session.Username = user.Username
 
-	// Looks like a successful login. Will redirect.
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-	return
-}
+	log.Info("User %s logged in (via GitHub) from %s", user.Username,
+		r.RemoteAddr)
 
-func (g *GitHubAuthenticator) GetOrgs(client *http.Client) ([]GitHubOrg, error) {
-	orgs := make([]GitHubOrg, 0)
-	return orgs, g.fetchAndDecode(client, orgsUrl, &orgs)
+	redirectUrl, ok := session.Other["github-success-redirect"].(string)
+	if ok {
+		http.Redirect(w, r, redirectUrl, http.StatusTemporaryRedirect)
+		return
+	}
+
+	log.Warning("GitHub login successful, but not success redirect URL.")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (g *GitHubAuthenticator) GetUser(client *http.Client) (GitHubUser, error) {
 	var githubUser GitHubUser
-	return githubUser, g.fetchAndDecode(client, userUrl, &githubUser)
+	return githubUser, g.fetchAndDecode(client, gitHubUserUrl, &githubUser)
 }
 
 func (g *GitHubAuthenticator) fetchAndDecode(client *http.Client, url string, result interface{}) error {

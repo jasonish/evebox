@@ -152,7 +152,9 @@ func NewServer(appContext appcontext.AppContext) *Server {
 	}
 
 	if appContext.Config.Authentication.Github.Enabled {
-		githubAuthenticator := auth.NewGithub(appContext.Config.Authentication.Github)
+		githubAuthenticator := auth.NewGithub(
+			appContext.Config.Authentication.Github,
+			appContext.Userstore)
 		githubAuthenticator.SessionStore = sessionStore
 
 		router.Handle("/auth/github", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

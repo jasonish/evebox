@@ -64,34 +64,23 @@ authentication:
   # GitHub Oauth2 authentication. More of a proof of concept for Oauth
   # in EveBox. Configuration will likely move into the UI at some
   # point.
+  #
+  # Users must still be added with the EveBox config tool.
   github:
 
     enabled: no
 
     # GitHub Client ID
     # env: GITHUB_CLIENT_ID
-    client-id: my-github-client-id
+    client-id: GITHUB_CLIENT_ID
 
     # GitHub Client Secret
     # env: GITHUB_CLIENT_SECRET
-    client-secret: my-github-client-secret
+    client-secret: GITHUB_CLIENT_SECRET
 
     # Callback URL. The EveBox portion of the callback URL is:
     #     /auth/github/callback
     callback: http://localhost:5636/auth/github/callback
-
-    # Allowed organizations.
-    # NOT IMPLEMENTED
-    #orgs:
-    #  - my-organization-login
-
-    # Allowed users. If users and organizations is set, then the user
-    # must belong to one of the listed organizations.
-    #
-    # NOT IMPLEMENTED
-    #users:
-    #  - jasonish
-    
 
 # The server can process a log file, eliminating the need for a
 # separate agent process if on the same machine.

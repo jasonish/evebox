@@ -97,12 +97,12 @@ func (a *UsernamePasswordAuthenticator) Login(r *http.Request) (*sessions.Sessio
 }
 
 func (a *UsernamePasswordAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) *sessions.Session {
-
-	log.Debug("UsernamePasswordAuthenticator.Authenticate")
-
 	session := a.sessionStore.FindSession(r)
 	if session != nil {
-		return session
+		if session.User.IsValid() {
+			return session
+		}
+		log.Warning("Found session, but user is invalid.")
 	}
 
 	username, password, ok := r.BasicAuth()

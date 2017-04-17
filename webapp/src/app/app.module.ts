@@ -83,8 +83,6 @@ import {
     SshTopServersComponent
 } from './reports/ssh-report.component';
 import {LoginComponent} from 'app/login/login.component';
-import {AdminComponent} from './admin/admin.component';
-import {UsersComponent} from './admin/users/users.component';
 import {AppEventService} from './appevent.service';
 
 @NgModule({
@@ -133,10 +131,6 @@ import {AppEventService} from './appevent.service';
         EveboxFormatTimestampPipe,
 
         LoginComponent,
-
-        AdminComponent,
-
-        UsersComponent,
     ],
     imports: [
         // Angular modules.
