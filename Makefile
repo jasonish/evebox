@@ -164,7 +164,7 @@ deb:
 		deb/evebox.service=/lib/systemd/system/evebox.service \
 		deb/evebox-agent.service=/lib/systemd/system/evebox-agent.service
 ifneq ($(VERSION_SUFFIX),)
-	cp dist/evebox*$(VERSION_SUFFIX)*_amd64.deb dist/event-latest-amd64.deb
+	cp dist/evebox*$(VERSION_SUFFIX)*_amd64.deb dist/evebox-latest-amd64.deb
 endif
 
 # RPM packaging.
