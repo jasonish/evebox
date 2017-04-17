@@ -6,6 +6,7 @@ User=evebox
 Group=evebox
 ExecStart=/usr/bin/evebox server $ELASTICSEARCH_URL $CONFIG $EVEBOX_OPTS
 EnvironmentFile=-/etc/sysconfig/evebox
+Environment=EVEBOX_DATA_DIRECTORY=/var/lib/evebox
 
 [Install]
 WantedBy=multi-user.target
