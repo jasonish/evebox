@@ -64,6 +64,7 @@ func VersionMain() {
 
 func initViper() {
 	viper.SetDefault("data-directory", DEFAULT_DATA_DIR)
+	viper.BindEnv("data-directory", "EVEBOX_DATA_DIRECTORY")
 
 	viper.SetDefault("http.reverse-proxy", false)
 	viper.BindEnv("http.reverse-proxy", "EVEBOX_HTTP_REVERSE_PROXY")
@@ -176,7 +177,6 @@ func Main(args []string) {
 
 	flagset.StringP("data-directory", "D", DEFAULT_DATA_DIR, "Data directory")
 	viper.BindPFlag("data-directory", flagset.Lookup("data-directory"))
-	viper.BindEnv("data-directory", "DATA_DIRECTORY")
 
 	var input string
 	flagset.StringVar(&input, "input", "", "Input eve-log file (optional)")

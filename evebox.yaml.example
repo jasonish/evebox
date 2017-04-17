@@ -5,7 +5,7 @@
 # database files if the sqlite database is being used. It needs to be
 # writable by the user EveBox is running as. If not set it will
 # default to the current directory.
-data-directory:
+#data-directory: /var/lib/evebox
 
 http:
   # If behind a reverse proxy set to true so the proper IP address of
