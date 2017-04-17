@@ -4,14 +4,31 @@ EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
 ![EveBox](https://evebox.org/screens/inbox.png)
 
+## Features
+
+- A web based event viewer with an "Inbox" approach to alert
+  management.
+- Event search.
+- An agent for sending Suricata events to the EveBox server (but you
+  can use Filebeat/Logstash instead).
+- Embedded SQLite for self-contained installations.
+
 ## Requirements
 
-- Suricata, Logstash and Elastic Search (Elastic Search 2.0 or newer).
-- A modern browser.
+- Suricata - to generate alerts and events.
+
+And one of...
+
+- An existing ELK setup already handling Suricata events.
+- Just Elastic Search as an event store.
+- Nothing - EveBox can use an embedded SQLite database suitable for
+  lower load installations (note: not all features supported yet).
+- A modern web browser.
 
 ## Installation.
 
-Download a package and run the evebox application.
+Download a package and run the evebox application against your
+existing Elastic Search server.
 
 Example:
 
@@ -19,14 +36,24 @@ Example:
 
 Then visit http://localhost:5636 with your browser.
 
-Up to date builds can be found here:
+The latest release builds can be found at
+https://evebox.org/files/release/latest/.
+
+The latest development builds (from git master) can be found at
 https://evebox.org/files/development/
 
-This should not require any modification to your Elastic Search
-configuration. Unlike previous versions of Evebox, you do not need to
-enable dynamic scripting and CORS.
+A [RPM](https://github.com/jasonish/evebox/wiki/EveBox-RPM-Repository)
+and
+[Debian](https://github.com/jasonish/evebox/wiki/EveBox-Debian-Repository) package
+repository are also available.
 
-## Docker
+### SELKS
+
+EveBox is also included
+in [SELKS](https://www.stamus-networks.com/open-source/) which
+provides Suricata and an ELK stack configured and ready to go.
+
+### Docker
 
 If you wish to install EveBox with Docker an up to date image is
 hosted on Docker hub.
