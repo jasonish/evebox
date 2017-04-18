@@ -1,7 +1,16 @@
 # EveBox Agent configuration file - subject to change.
 
-# URL to the EveBox server.
-server: "http://localhost:5636"
+# Server information.
+server:
+  url: http://localhost:5636
+
+  # Username and password. Note that at this time even with
+  # authentication enabled on the EveBox server, agents can still
+  # submit events without authenticating. You will need to supply and
+  # username and password if running behind a reverse proxy
+  # implementing authentication.
+  #username: username
+  #password: password
 
 # Directory to store bookmark information. This is optional and not
 # required if the agent has write access to the directory of the log

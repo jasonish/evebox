@@ -36,6 +36,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"strings"
 )
 
 var flagset *pflag.FlagSet
@@ -44,6 +45,10 @@ func initViper() {
 	viper.SetDefault("disable-certificate-check", false)
 
 	viper.BindEnv("bookmark-directory", "BOOKMARK_DIRECTORY")
+
+	viper.BindEnv("server.url", "EVEBOX_AGENT_SERVER")
+	viper.BindEnv("server.username", "EVEBOX_AGENT_USERNAME")
+	viper.BindEnv("server.password", "EVEBOX_AGENT_PASSWORD")
 }
 
 func configure(args []string) {
@@ -68,6 +73,9 @@ func configure(args []string) {
 	if configFilename != "" {
 		log.Info("Using configuration file %s", configFilename)
 		viper.SetConfigFile(configFilename)
+		if strings.Index(configFilename, "yaml") > -1 {
+			viper.SetConfigType("yaml")
+		}
 	} else {
 		viper.SetConfigName("agent")
 		viper.SetConfigType("yaml")
@@ -91,12 +99,33 @@ func Main(args []string) {
 	initViper()
 	configure(args)
 
-	if viper.GetString("server") == "" {
+	var serverUrl string
+	var serverUsername string
+	var serverPassword string
+
+	serverNode := viper.Get("server")
+	switch serverNode.(type) {
+	case string:
+		serverUrl = viper.GetString("server")
+	case map[string]interface{}:
+		serverUrl = viper.GetString("server.url")
+		serverUsername = viper.GetString("server.username")
+		serverPassword = viper.GetString("server.password")
+	}
+
+	if serverUrl == "" {
 		log.Fatal("error: no server url provided")
 	}
 
 	client := agent.NewClient()
-	client.SetBaseUrl(viper.GetString("server"))
+	client.SetBaseUrl(serverUrl)
+
+	log.Info("Username: %s; password: %s", serverUsername, serverPassword)
+
+	if serverUsername != "" || serverPassword != "" {
+		client.SetUsernamePassword(serverUsername, serverPassword)
+	}
+
 	version, err := client.GetVersion()
 	if err != nil {
 		log.Error("Failed to query server for version, will continue: %v", err)

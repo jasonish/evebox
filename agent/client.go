@@ -47,6 +47,10 @@ func (c *Client) SetBaseUrl(url string) {
 	c.httpClient.SetBaseUrl(url)
 }
 
+func (c *Client) SetUsernamePassword(username string, password string) {
+	c.httpClient.SetUsernamePassword(username, password)
+}
+
 func (c *Client) GetVersion() (*util.JsonMap, error) {
 	response, err := c.httpClient.Get("api/1/version")
 	if err != nil {
