@@ -162,10 +162,9 @@ of the javascript and a browser refresh.
 
 ## A Note on Authentication
 
-Currently EveBox provides no authentication as I have not been happy
-with some basic attempts, and I want to get it right. Also, its
-trivial to host behind an authenticating reverse proxy, like you might
-do for Elastic Search.
+While the latest development versions of EveBox support
+authentication, TLS support is not included. Therefore it is advised
+to run EveBox behind a reverse proxy that terminals TLS/SSL.
 
 ## Change Log
 
