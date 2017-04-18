@@ -10,8 +10,7 @@ EveBox
    :maxdepth: 2
    :caption: Contents:
 
-   authentication
-   letsencrypt
+   server
    agent
    esimport
    api
