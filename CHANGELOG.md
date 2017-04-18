@@ -1,6 +1,26 @@
 # Change Log
 
 ## Unreleased
+
+**Added**
+- Optional authentication. Authentication can now be enabled with
+  simple usernames and passwords. GitHub can also be used for
+  authentication using Oauth2, however, the user must first be created
+  in EveBox.
+- New command, _evebox config users_, to create users.
+- Create and use a "configdb". This is a database separate from event
+  databases for storing data such as users. Will contain more
+  configuration data in the future.
+
+**Breaking Changes**
+- RPM and Debian package installs started with systemd now run as the
+  user _evebox_. This really only matters if using an SQLite database,
+  and the database file will need to have its permissions updated so
+  the _evebox_ user will have read and write access to it.
+- All binary builds are now linked with SQLite as SQLite is used for
+  the configuration database. This really only matters when trying to
+  cross compile EveBox, which may or may not work going forward.
+
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.6.1...HEAD)
 
 ## 0.6.1 - 2017-04-02
