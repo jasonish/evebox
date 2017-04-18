@@ -30,6 +30,8 @@ import (
 	"net/http"
 
 	"context"
+	"crypto/tls"
+	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
@@ -39,10 +41,13 @@ import (
 	"github.com/jasonish/evebox/server/auth"
 	"github.com/jasonish/evebox/server/router"
 	"github.com/jasonish/evebox/server/sessions"
+	"golang.org/x/crypto/acme/autocert"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 )
+
+const DEFAULT_PORT = 5636
 
 const SESSION_HEADER = "x-evebox-session-id"
 
@@ -187,9 +192,7 @@ func (w RequestLogWrapper) Write(b []byte) (n int, err error) {
 	return len(b), nil
 }
 
-func (s *Server) Start(addr string) error {
-	log.Info("Listening on %s", addr)
-
+func (s *Server) setupHandlers() http.Handler {
 	root := http.Handler(s.router.Router)
 	root = SessionHandler(root)
 	root = VersionHeaderWrapper(root)
@@ -207,7 +210,44 @@ func (s *Server) Start(addr string) error {
 
 	root = handlers.CompressHandler(root)
 
-	return http.ListenAndServe(addr, root)
+	return root
+}
+
+func (s *Server) startWithAutoCert(host string, port uint16) error {
+	if port != 443 && port != DEFAULT_PORT {
+		log.Fatal("Letsencrypt support requires running on port 443.")
+	}
+
+	certManager := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(s.context.Config.LetsEncryptHostname),
+	}
+
+	server := &http.Server{
+		Addr: fmt.Sprintf("%s:443", host),
+		TLSConfig: &tls.Config{
+			GetCertificate: certManager.GetCertificate,
+		},
+		Handler: s.setupHandlers(),
+	}
+
+	log.Info("Starting server on %s:%d with Letsencrypt support for hostname %s",
+		host, 443, s.context.Config.LetsEncryptHostname)
+
+	return server.ListenAndServeTLS("", "")
+}
+
+func (s *Server) Start(host string, port uint16) error {
+
+	if s.context.Config.LetsEncryptHostname != "" {
+		return s.startWithAutoCert(host, port)
+	}
+
+	root := s.setupHandlers()
+
+	log.Info("Listening on %s:%d", host, port)
+
+	return http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), root)
 }
 
 func StaticHandlerFactory(appContext appcontext.AppContext) http.Handler {

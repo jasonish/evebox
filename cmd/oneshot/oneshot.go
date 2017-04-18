@@ -248,7 +248,7 @@ Example:
 		httpServer := server.NewServer(appContext)
 		for {
 			portChan <- port
-			err = httpServer.Start(fmt.Sprintf("%s:%d", opts.Host, port))
+			err = httpServer.Start(opts.Host, uint16(port))
 			if err != nil {
 				log.Warning("Failed to bind to port %d: %v", port, err)
 				port++

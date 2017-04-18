@@ -50,7 +50,7 @@ const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
 const DEFAULT_ELASTICSEARCH_INDEX string = "logstash"
 
 var opts struct {
-	Port               string
+	Port               uint16
 	Host               string
 	DevServerUri       string
 	Version            bool
@@ -114,6 +114,8 @@ func configure(config *appcontext.Config) {
 	config.Http.ReverseProxy = viper.GetBool("http.reverse-proxy")
 	config.Http.RequestLogging = viper.GetBool("http.request-logging")
 
+	config.LetsEncryptHostname = viper.GetString("letsencrypt.hostname")
+
 	config.Authentication.Required = viper.GetBool("authentication.required")
 	if config.Authentication.Required {
 
@@ -168,7 +170,7 @@ func Main(args []string) {
 
 	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose (debug logging)")
 
-	flagset.StringVarP(&opts.Port, "port", "p", "5636", "Port to bind to")
+	flagset.Uint16VarP(&opts.Port, "port", "p", server.DEFAULT_PORT, "Port to bind to")
 	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
 	flagset.StringVarP(&opts.DevServerUri, "dev", "", "", "Frontend development server URI")
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
@@ -177,6 +179,9 @@ func Main(args []string) {
 
 	flagset.StringP("data-directory", "D", DEFAULT_DATA_DIR, "Data directory")
 	viper.BindPFlag("data-directory", flagset.Lookup("data-directory"))
+
+	flagset.String("letsencrypt", "", "Letsencrypt hostname")
+	viper.BindPFlag("letsencrypt.hostname", flagset.Lookup("letsencrypt"))
 
 	var input string
 	flagset.StringVar(&input, "input", "", "Input eve-log file (optional)")
@@ -296,7 +301,7 @@ func Main(args []string) {
 	initInternalEveReader(&appContext)
 
 	httpServer := server.NewServer(appContext)
-	err = httpServer.Start(opts.Host + ":" + opts.Port)
+	err = httpServer.Start(opts.Host, opts.Port)
 	if err != nil {
 		log.Fatal(err)
 	}

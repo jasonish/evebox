@@ -1,5 +1,5 @@
-hash: 5ca057668860ab5a9564e5ee0d062480145550f6bdae53950391413abe6d5b7f
-updated: 2017-04-11T07:47:48.362112541-06:00
+hash: bf2a616ff1ccfc8e282ca1ca5c0aad3be6370a7f546feb4123c29915f8d4cd13
+updated: 2017-04-18T13:32:50.107844425-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -84,6 +84,7 @@ imports:
 - name: golang.org/x/crypto
   version: 351dc6a5bf92a5f2ae22fadeee08eb6a45aa2d93
   subpackages:
+  - acme/autocert
   - bcrypt
   - blowfish
   - ssh/terminal

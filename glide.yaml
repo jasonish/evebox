@@ -33,3 +33,4 @@ import:
   subpackages:
   - bcrypt
   - ssh/terminal
+  - acme/autocert

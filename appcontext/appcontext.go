@@ -46,6 +46,8 @@ type Config struct {
 		RequestLogging bool
 	}
 
+	LetsEncryptHostname string
+
 	Authentication struct {
 		Required bool
 
