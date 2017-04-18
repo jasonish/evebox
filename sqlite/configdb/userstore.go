@@ -75,6 +75,15 @@ func toNullInt64(value int64) sql.NullInt64 {
 	return sql.NullInt64{0, false}
 }
 
+func encryptPassword(password string) (string, error) {
+	hashBytes, err := bcrypt.GenerateFromPassword([]byte(password),
+		bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashBytes), nil
+}
+
 func (s *UserStore) AddUser(user core.User, password string) (string, error) {
 
 	noid := ""
@@ -91,13 +100,12 @@ func (s *UserStore) AddUser(user core.User, password string) (string, error) {
 
 	var sqlPassword sql.NullString
 	if password != "" {
-		hashBytes, err := bcrypt.GenerateFromPassword(
-			[]byte(password), bcrypt.DefaultCost)
+		hash, err := encryptPassword(password)
 		if err != nil {
 			return noid, errors.Wrap(err,
 				"failed to hash password")
 		}
-		sqlPassword = sql.NullString{string(hashBytes), true}
+		sqlPassword = sql.NullString{hash, true}
 	} else {
 		sqlPassword = sql.NullString{"", false}
 	}
@@ -283,4 +291,32 @@ func (s *UserStore) FindAll() ([]core.User, error) {
 	}
 
 	return users, nil
+}
+
+func (s *UserStore) UpdatePassword(username string, password string) error {
+	hash, err := encryptPassword(password)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	r, err := tx.Exec(`update users set password = ? where username = ?`,
+		hash, username)
+	if err != nil {
+		return err
+	}
+	n, err := r.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNoUsername
+	}
+
+	return nil
 }

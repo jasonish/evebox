@@ -51,6 +51,7 @@ Commands:
     list
     add
     rm
+    passwd
 
 `)
 	}
@@ -67,6 +68,8 @@ Commands:
 		UsersAdd(db, args[1:])
 	case "rm":
 		usersRemove(db, args[1:])
+	case "passwd":
+		usersPasswd(db, args[1:])
 	default:
 		usage()
 	}
@@ -234,4 +237,40 @@ func getGitHubUser(username string) (user auth.GitHubUser, err error) {
 		return user, errors.Wrap(err, "failed to decode GitHub response")
 	}
 	return user, nil
+}
+
+func usersPasswd(db *configdb.ConfigDB, args []string) {
+	var username string
+	var password string
+
+	var err error
+
+	if len(args) > 0 {
+		username = args[0]
+	}
+	if len(args) > 1 {
+		password = args[1]
+	}
+
+	if username == "" {
+		username = readString("Username")
+	}
+
+	if password == "" {
+		for {
+			password = readPassword("Password")
+			confirm := readPassword("Confirm password")
+			if password == confirm {
+				break
+			}
+			println("Passwords don't match, try again.")
+		}
+	}
+
+	userStore := configdb.NewUserStore(db.DB)
+
+	err = userStore.UpdatePassword(username, password)
+	if err != nil {
+		fatal("Failed to update password: %v", err)
+	}
 }

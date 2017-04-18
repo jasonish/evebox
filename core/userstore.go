@@ -48,5 +48,6 @@ type UserStore interface {
 	FindByUsername(username string) (User, error)
 	FindByUsernamePassword(username string, password string) (User, error)
 	FindByGitHubUsername(username string) (User, error)
+	UpdatePassword(username string, password string) error
 	FindAll() ([]User, error)
 }
