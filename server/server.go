@@ -52,12 +52,15 @@ func isPublic(r *http.Request) bool {
 	path := r.URL.Path
 
 	prefixes := []string{
-		"/login",
 		"/auth",
 		"/public",
+		"/api/1/version",
 		"/api/1/login",
 		"/api/1/logout",
 		"/favicon.ico",
+
+		// Agent's do not require authentication at this time.
+		"/api/1/submit",
 	}
 
 	for _, prefix := range prefixes {
