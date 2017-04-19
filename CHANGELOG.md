@@ -11,6 +11,10 @@
 - Create and use a "configdb". This is a database separate from event
   databases for storing data such as users. Will contain more
   configuration data in the future.
+- TLS support. The server can be provided with a certificate and key
+  to enable TLS. The "gencert" subcommand has been added to help
+  generate self signed certificates. Or, if the server is publically
+  accessible, Letsencrypt can be used.
 
 **Breaking Changes**
 - RPM and Debian package installs started with systemd now run as the

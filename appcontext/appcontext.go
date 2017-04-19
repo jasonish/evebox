@@ -42,6 +42,9 @@ type GithubAuthConfig struct {
 
 type Config struct {
 	Http struct {
+		TlsEnabled     bool
+		TlsCertificate string
+		TlsKey         string
 		ReverseProxy   bool
 		RequestLogging bool
 	}

@@ -49,6 +49,10 @@ const DEFAULT_DATA_DIR = ""
 const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
 const DEFAULT_ELASTICSEARCH_INDEX string = "logstash"
 
+const HTTP_TLS_ENABLED_KEY = "http.tls.enabled"
+const HTTP_TLS_CERT_KEY = "http.tls.certificate"
+const HTTP_TLS_KEY_KEY = "http.tls.key"
+
 var opts struct {
 	Port               uint16
 	Host               string
@@ -110,6 +114,10 @@ func getElasticSearchKeyword(flagset *pflag.FlagSet) (bool, string) {
 }
 
 func configure(config *appcontext.Config) {
+
+	config.Http.TlsEnabled = viper.GetBool(HTTP_TLS_ENABLED_KEY)
+	config.Http.TlsCertificate = viper.GetString(HTTP_TLS_CERT_KEY)
+	config.Http.TlsKey = viper.GetString(HTTP_TLS_KEY_KEY)
 
 	config.Http.ReverseProxy = viper.GetBool("http.reverse-proxy")
 	config.Http.RequestLogging = viper.GetBool("http.request-logging")
@@ -179,6 +187,18 @@ func Main(args []string) {
 
 	flagset.StringP("data-directory", "D", DEFAULT_DATA_DIR, "Data directory")
 	viper.BindPFlag("data-directory", flagset.Lookup("data-directory"))
+
+	flagset.Bool("tls", false, "Enable TLS")
+	viper.BindPFlag(HTTP_TLS_ENABLED_KEY, flagset.Lookup("tls"))
+	viper.BindEnv(HTTP_TLS_ENABLED_KEY, "EVEBOX_TLS_ENABLED")
+
+	flagset.String("tls-cert", "", "TLS certificate filename")
+	viper.BindPFlag(HTTP_TLS_CERT_KEY, flagset.Lookup("tls-cert"))
+	viper.BindEnv(HTTP_TLS_CERT_KEY, "EVEBOX_TLS_CERT")
+
+	flagset.String("tls-key", "", "TLS key filename")
+	viper.BindPFlag(HTTP_TLS_KEY_KEY, flagset.Lookup("tls-key"))
+	viper.BindEnv(HTTP_TLS_KEY_KEY, "EVEBOX_TLS_KEY")
 
 	flagset.String("letsencrypt", "", "Letsencrypt hostname")
 	viper.BindPFlag("letsencrypt.hostname", flagset.Lookup("letsencrypt"))

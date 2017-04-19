@@ -20,5 +20,7 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 update-usage:
-	@-../evebox esimport -h 2> esimport-usage.txt
-	@-../evebox agent -h 2> agent-usage.txt
+	../evebox esimport -h 2> esimport-usage.txt
+	../evebox agent -h 2> agent-usage.txt
+	../evebox gencert -h 2> gencert-usage.txt
+

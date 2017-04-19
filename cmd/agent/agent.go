@@ -54,7 +54,7 @@ func initViper() {
 func configure(args []string) {
 	var configFilename string
 
-	flagset = pflag.NewFlagSet("agent", pflag.ExitOnError)
+	flagset = pflag.NewFlagSet("agent", 0)
 
 	flagset.StringVarP(&configFilename, "config", "c", "", "Configuration file")
 	viper.BindPFlag("config", flagset.Lookup("config"))
@@ -68,7 +68,12 @@ func configure(args []string) {
 	flagset.String("server", "", "EveBox server URL")
 	viper.BindPFlag("server", flagset.Lookup("server"))
 
-	flagset.Parse(args)
+	if err := flagset.Parse(args); err != nil {
+		if err == pflag.ErrHelp {
+			os.Exit(0)
+		}
+		os.Exit(1)
+	}
 
 	if configFilename != "" {
 		log.Info("Using configuration file %s", configFilename)

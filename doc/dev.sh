@@ -10,4 +10,4 @@ make html
 reflex -- make html &
 
 # Now start devd.
-devd -l _build/html
+devd --open -l _build/html

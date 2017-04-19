@@ -239,15 +239,31 @@ func (s *Server) startWithAutoCert(host string, port uint16) error {
 
 func (s *Server) Start(host string, port uint16) error {
 
-	if s.context.Config.LetsEncryptHostname != "" {
+	config := s.context.Config
+
+	if config.LetsEncryptHostname != "" {
 		return s.startWithAutoCert(host, port)
 	}
 
 	root := s.setupHandlers()
+	listenAddr := fmt.Sprintf("%s:%d", host, port)
 
-	log.Info("Listening on %s:%d", host, port)
-
-	return http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), root)
+	if !config.Http.TlsEnabled {
+		log.Info("Listening on %s", listenAddr)
+		return http.ListenAndServe(listenAddr, root)
+	} else {
+		log.Info("Listening with TLS on %s", listenAddr)
+		if config.Http.TlsCertificate == "" {
+			log.Fatalf("TLS requested but certificate file not provided.")
+		}
+		keyFile := config.Http.TlsKey
+		if keyFile == "" {
+			keyFile = config.Http.TlsCertificate
+		}
+		return http.ListenAndServeTLS(listenAddr,
+			config.Http.TlsCertificate,
+			keyFile, root)
+	}
 }
 
 func StaticHandlerFactory(appContext appcontext.AppContext) http.Handler {

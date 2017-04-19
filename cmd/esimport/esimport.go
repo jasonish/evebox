@@ -66,7 +66,7 @@ func configure(args []string) {
 	viper.SetDefault("disable-certificate-check", false)
 	viper.SetDefault("geoip-enabled", true)
 
-	flagset = pflag.NewFlagSet("esimport", pflag.ExitOnError)
+	flagset = pflag.NewFlagSet("esimport", 0)
 	flagset.Usage = usage
 
 	configFilename := flagset.StringP("config", "c", "", "Configuration file")
@@ -104,7 +104,12 @@ func configure(args []string) {
 	flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
 	viper.BindPFlag("geoip.database-filename", flagset.Lookup("geoip-database"))
 
-	flagset.Parse(args[1:])
+	if err := flagset.Parse(args[1:]); err != nil {
+		if err == pflag.ErrHelp {
+			os.Exit(0)
+		}
+		os.Exit(1)
+	}
 
 	if *configFilename != "" {
 		log.Info("Using configuration file %s", *configFilename)

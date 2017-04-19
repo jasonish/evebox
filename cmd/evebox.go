@@ -32,6 +32,7 @@ import (
 	"github.com/jasonish/evebox/cmd/config"
 	"github.com/jasonish/evebox/cmd/esimport"
 	"github.com/jasonish/evebox/cmd/evereader"
+	"github.com/jasonish/evebox/cmd/gencert"
 	"github.com/jasonish/evebox/cmd/oneshot"
 	"github.com/jasonish/evebox/cmd/pgimport"
 	"github.com/jasonish/evebox/cmd/server"
@@ -56,6 +57,7 @@ Commands:
 	esimport		Run the Elastic Search Eve import tool
 	evereader		Run the Eve log reader tool
 	oneshot                 Run one time with an eve.json file
+	gencert                 Generate TLS certificate
 
 `, os.Args[0])
 	fmt.Fprint(os.Stderr, usage)
@@ -92,6 +94,9 @@ func main() {
 			return
 		case "config":
 			config.Main(os.Args[2:])
+			return
+		case "gencert":
+			gencert.Main(os.Args[2:])
 			return
 		default:
 			log.Fatalf("Unknown command: %s", os.Args[1])

@@ -8,6 +8,20 @@
 #data-directory: /var/lib/evebox
 
 http:
+
+  tls:
+    # Enable or disable TLS.
+    # env: EVEBOX_TLS_ENABLED
+    enabled: false
+
+    # Path to certificate PEM file.
+    # env: EVEBOX_TLS_CERT
+    #certificate: /path/to/cert.pem
+
+    # Path to key PEM file.
+    # env: EVEBOX_TLS_KEY
+    #key: /path/to/key.pem
+
   # If behind a reverse proxy set to true so the proper IP address of
   # clients can be logged.
   # Default: false
