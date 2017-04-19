@@ -7,7 +7,7 @@
 VERSION_SUFFIX	:=	dev
 VERSION		:=	0.6.2
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
-BUILD_DATE	?=	$(shell git log --pretty=format:%at -1)
+BUILD_DATE	?=	$(shell git log --pretty=format:%ct -1)
 export BUILD_DATE
 
 BUILD_REV_VAR :=	github.com/jasonish/evebox/core.BuildRev
