@@ -106,6 +106,8 @@ support reporting.
 evebox server --datastore sqlite --input /var/log/suricata/eve.json
 ```
 
+More documentation can be found at http://evebox.readthedocs.io/en/latest/.
+
 ## Building EveBox
 
 EveBox consists of a JavaScript frontend, and a very minimal backend
