@@ -32,6 +32,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -44,6 +45,8 @@ const (
 	INFO
 	DEBUG
 )
+
+type Fields map[string]interface{}
 
 var logLevel LogLevel = INFO
 
@@ -183,6 +186,14 @@ func doLog(calldepth int, level LogLevel, format string, v ...interface{}) {
 	}
 }
 
+func doLogWithFields(calldepth int, level LogLevel, fields Fields, format string, v ...interface{}) {
+	if level > logLevel {
+		return
+	}
+	msg := fmt.Sprintf(format, v...)
+	doLog(calldepth, level, "%s -- %s", msg, formatFields(fields))
+}
+
 func Error(format string, v ...interface{}) {
 	doLog(2, ERROR, format, v...)
 }
@@ -197,6 +208,25 @@ func Notice(format string, v ...interface{}) {
 
 func Info(format string, v ...interface{}) {
 	doLog(2, INFO, format, v...)
+}
+
+func InfoWithFields(fields Fields, format string, v ...interface{}) {
+	doLogWithFields(3, INFO, fields, format, v...)
+}
+
+func formatFields(fields Fields) string {
+	parts := []string{}
+	for key, val := range fields {
+		valstr := fmt.Sprintf("%v", val)
+		if strings.Index(valstr, " ") > -1 {
+			parts = append(parts,
+				fmt.Sprintf("%s=\"%s\"", key, val))
+		} else {
+			parts = append(parts,
+				fmt.Sprintf("%s=%s", key, val))
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 func Debug(format string, v ...interface{}) {
