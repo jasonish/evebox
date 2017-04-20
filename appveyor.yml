@@ -46,9 +46,9 @@ deploy:
     on:
       branch: master
     access_key_id:
-      secure: RMx2M8soV0vKMwKamqYnAa2pIT3fYgxNp5NHYbW0cVI=
+      secure: c5UFKeig6yuBsd6EzdmPTvcFXOxa6n2g6kAl27cBGeE=
     secret_access_key:
-      secure: jhwtnwWxs0bvrwesGgEtCym7bVFFjlgFlm67LRsLBs2P7glz0Zh40Knq6KRs4WIt
+      secure: GWkVM5XKPqkXOXdHrikmKmJxlSBsruhFPIzmSZOdvO+ygekhTvSiHBrvu+LYYP7v
     bucket: ci-artifacts.evebox.org
     region: us-west-1
     set_public: true
@@ -58,9 +58,9 @@ deploy:
     on:
       branch: develop
     access_key_id:
-      secure: RMx2M8soV0vKMwKamqYnAa2pIT3fYgxNp5NHYbW0cVI=
+      secure: c5UFKeig6yuBsd6EzdmPTvcFXOxa6n2g6kAl27cBGeE=
     secret_access_key:
-      secure: jhwtnwWxs0bvrwesGgEtCym7bVFFjlgFlm67LRsLBs2P7glz0Zh40Knq6KRs4WIt
+      secure: GWkVM5XKPqkXOXdHrikmKmJxlSBsruhFPIzmSZOdvO+ygekhTvSiHBrvu+LYYP7v
     bucket: ci-artifacts.evebox.org
     region: us-west-1
     set_public: true
@@ -70,9 +70,9 @@ deploy:
     on:
       branch: release-staging
     access_key_id:
-      secure: RMx2M8soV0vKMwKamqYnAa2pIT3fYgxNp5NHYbW0cVI=
+      secure: c5UFKeig6yuBsd6EzdmPTvcFXOxa6n2g6kAl27cBGeE=
     secret_access_key:
-      secure: jhwtnwWxs0bvrwesGgEtCym7bVFFjlgFlm67LRsLBs2P7glz0Zh40Knq6KRs4WIt
+      secure: GWkVM5XKPqkXOXdHrikmKmJxlSBsruhFPIzmSZOdvO+ygekhTvSiHBrvu+LYYP7v
     bucket: ci-artifacts.evebox.org
     region: us-west-1
     set_public: true
@@ -82,9 +82,9 @@ deploy:
     on:
       branch: release
     access_key_id:
-      secure: RMx2M8soV0vKMwKamqYnAa2pIT3fYgxNp5NHYbW0cVI=
+      secure: c5UFKeig6yuBsd6EzdmPTvcFXOxa6n2g6kAl27cBGeE=
     secret_access_key:
-      secure: jhwtnwWxs0bvrwesGgEtCym7bVFFjlgFlm67LRsLBs2P7glz0Zh40Knq6KRs4WIt
+      secure: GWkVM5XKPqkXOXdHrikmKmJxlSBsruhFPIzmSZOdvO+ygekhTvSiHBrvu+LYYP7v
     bucket: ci-artifacts.evebox.org
     region: us-west-1
     set_public: true
