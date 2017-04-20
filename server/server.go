@@ -45,6 +45,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const DEFAULT_PORT = 5636
@@ -118,6 +119,18 @@ func SessionHandler(handler http.Handler) http.Handler {
 	})
 }
 
+func sessionReaper(sessionStore *sessions.SessionStore) {
+	ticker := time.NewTicker(60 * time.Second)
+	go func() {
+		for {
+			<-ticker.C
+			log.Debug("Reaping sessions.")
+			sessionStore.Reap()
+		}
+	}()
+	log.Info("Session reaper started")
+}
+
 type Server struct {
 	router  *router.Router
 	proxied bool
@@ -125,6 +138,8 @@ type Server struct {
 }
 
 func NewServer(appContext appcontext.AppContext) *Server {
+
+	sessionReaper(sessionStore)
 
 	sessionStore.Header = SESSION_HEADER
 

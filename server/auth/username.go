@@ -81,6 +81,7 @@ func (a *UsernameAuthenticator) Login(r *http.Request) (*sessions.Session, error
 		User: core.User{
 			Username: username,
 		},
+		RemoteAddr: r.RemoteAddr,
 	}
 	a.sessionStore.Put(session)
 	return session, nil

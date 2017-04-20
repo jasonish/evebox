@@ -87,9 +87,10 @@ func (a *UsernamePasswordAuthenticator) Login(r *http.Request) (*sessions.Sessio
 	}
 
 	session := &sessions.Session{
-		Id:       a.sessionStore.GenerateID(),
-		Username: user.Username,
-		User:     user,
+		Id:         a.sessionStore.GenerateID(),
+		Username:   user.Username,
+		User:       user,
+		RemoteAddr: r.RemoteAddr,
 	}
 	a.sessionStore.Put(session)
 
@@ -117,9 +118,10 @@ func (a *UsernamePasswordAuthenticator) Authenticate(w http.ResponseWriter, r *h
 			return nil
 		}
 		session := &sessions.Session{
-			Id:       a.sessionStore.GenerateID(),
-			Username: username,
-			User:     user,
+			Id:         a.sessionStore.GenerateID(),
+			Username:   username,
+			User:       user,
+			RemoteAddr: r.RemoteAddr,
 		}
 		a.sessionStore.Put(session)
 		return session

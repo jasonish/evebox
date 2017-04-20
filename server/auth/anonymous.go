@@ -74,6 +74,7 @@ func (a *AnonymousAuthenticator) Authenticate(w http.ResponseWriter, r *http.Req
 	}
 
 	session, _ = a.Login(r)
+	session.RemoteAddr = r.RemoteAddr
 	w.Header().Set(SESSION_KEY, session.Id)
 
 	return session

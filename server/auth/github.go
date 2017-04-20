@@ -124,7 +124,7 @@ func (g *GitHubAuthenticator) Callback(w http.ResponseWriter, r *http.Request) {
 	state := r.FormValue("state")
 
 	// Find session by the state parameter.
-	session, _ := g.SessionStore.Get(state)
+	session := g.SessionStore.Get(state)
 	if session == nil {
 		log.Error("Did not find session for oauth callback.")
 		handleError(w, r, nil, http.StatusUnauthorized, "No session for GitHub authentication.")
@@ -165,6 +165,7 @@ func (g *GitHubAuthenticator) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	session.User = user
 	session.Username = user.Username
+	session.RemoteAddr = r.RemoteAddr
 
 	log.Info("User %s logged in (via GitHub) from %s", user.Username,
 		r.RemoteAddr)
@@ -175,7 +176,7 @@ func (g *GitHubAuthenticator) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Warning("GitHub login successful, but not success redirect URL.")
+	log.Warning("GitHub login successful, but no success redirect URL.")
 	w.WriteHeader(http.StatusOK)
 }
 

@@ -1,5 +1,5 @@
-hash: bf2a616ff1ccfc8e282ca1ca5c0aad3be6370a7f546feb4123c29915f8d4cd13
-updated: 2017-04-18T13:32:50.107844425-06:00
+hash: f59a05ea6ef2a660e1dfe0f261d124cd8667592a45f3921f56e7bc2e51349326
+updated: 2017-04-19T21:57:35.219130936-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -77,6 +77,7 @@ imports:
   version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
   subpackages:
   - assert
+  - require
 - name: github.com/ua-parser/uap-go
   version: 08c9ab17c54f06ccfe5256695a9f715a47404cfe
   subpackages:
@@ -85,6 +86,7 @@ imports:
   version: 351dc6a5bf92a5f2ae22fadeee08eb6a45aa2d93
   subpackages:
   - acme/autocert
+  - acme/internal/acme
   - bcrypt
   - blowfish
   - ssh/terminal
@@ -92,11 +94,16 @@ imports:
   version: f841c39de738b1d0df95b5a7187744f0e03d8112
   subpackages:
   - context
+  - context/ctxhttp
 - name: golang.org/x/oauth2
   version: 7fdf09982454086d5570c7db3e11f360194830ca
   subpackages:
   - github
   - internal
+- name: golang.org/x/sync
+  version: de49d9dcd27d4f764488181bea099dfe6179bcf0
+  subpackages:
+  - syncmap
 - name: golang.org/x/sys
   version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
   subpackages:

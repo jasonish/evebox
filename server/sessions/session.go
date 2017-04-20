@@ -27,25 +27,18 @@
 package sessions
 
 import (
-	"encoding/base64"
 	"fmt"
 	"github.com/jasonish/evebox/core"
-	"math/rand"
-	"net/http"
-	"strings"
 	"time"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-var UnknownSessionIdError = fmt.Errorf("unknown session ID")
-
 type Session struct {
-	Id       string
-	Username string
-	User     core.User
+	Id         string
+	Username   string
+	User       core.User
+	RemoteAddr string
+
+	Expires time.Time
 
 	Other map[string]interface{}
 }
@@ -58,68 +51,4 @@ func NewSession() *Session {
 
 func (s *Session) String() string {
 	return fmt.Sprintf("{Id: %s; Username: %s}", s.Id, s.Username)
-}
-
-type SessionStore struct {
-	Header   string
-	sessions map[string]*Session
-}
-
-func NewSessionStore() *SessionStore {
-	sessionStore := &SessionStore{
-		sessions: make(map[string]*Session),
-	}
-	return sessionStore
-}
-
-func (s *SessionStore) Get(id string) (*Session, error) {
-	if session, ok := s.sessions[id]; ok {
-		return session, nil
-	}
-	return nil, UnknownSessionIdError
-}
-
-func (s *SessionStore) Put(session *Session) {
-	s.sessions[session.Id] = session
-}
-
-func (s *SessionStore) Delete(session *Session) {
-	delete(s.sessions, session.Id)
-}
-
-func (s *SessionStore) DeleteById(id string) {
-	delete(s.sessions, id)
-}
-
-func (s *SessionStore) GenerateID() string {
-	bytes := make([]byte, 64)
-	for i := 0; i < cap(bytes); i++ {
-		bytes[i] = byte(rand.Intn(255))
-	}
-	sessionId := base64.StdEncoding.EncodeToString(bytes)
-
-	// We're not converting this back, so we really don't need the
-	// padding.
-	sessionId = strings.Replace(sessionId, "=", "", -1)
-
-	return sessionId
-}
-
-// NewSession creates a new session with a session ID. It DOES NOT add the
-// session to the session store.
-func (s *SessionStore) NewSession() *Session {
-	session := NewSession()
-	session.Id = s.GenerateID()
-	return session
-}
-
-func (s *SessionStore) FindSession(r *http.Request) *Session {
-	sessionId := r.Header.Get(s.Header)
-	if sessionId != "" {
-		session, err := s.Get(sessionId)
-		if err == nil && session != nil {
-			return session
-		}
-	}
-	return nil
 }

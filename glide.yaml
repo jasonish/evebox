@@ -34,3 +34,6 @@ import:
   - bcrypt
   - ssh/terminal
   - acme/autocert
+- package: golang.org/x/sync
+  subpackages:
+  - syncmap
