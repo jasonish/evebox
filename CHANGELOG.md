@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.7.0 - 2017-04-22
 
 **Added**
 - Optional authentication. Authentication can now be enabled with
@@ -25,7 +25,7 @@
   the configuration database. This really only matters when trying to
   cross compile EveBox, which may or may not work going forward.
 
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.6.1...HEAD)
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.6.1...0.7.0)
 
 ## 0.6.1 - 2017-04-02
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.5.0...0.6.1)
