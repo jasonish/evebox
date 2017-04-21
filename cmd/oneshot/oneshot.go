@@ -95,7 +95,7 @@ Example:
 	flagset.StringVarP(&opts.Host, "host", "", "127.0.0.1", "Host to bind to")
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
 
-	flagset.StringVarP(&opts.DatabaseFilename, "database-filename", "D", "", "Database filename")
+	flagset.StringVar(&opts.DatabaseFilename, "database-filename", "", "Database filename")
 	flagset.BoolVar(&opts.InMemory, "in-memory", false, "Use in-memory database")
 
 	var nowait bool
@@ -116,7 +116,7 @@ Example:
 		viper.Set("database.sqlite.filename", ":memory:")
 	} else {
 		if opts.DatabaseFilename == "" {
-			tmp, err := ioutil.TempFile(".", "evebox-oneshot")
+			tmp, err := ioutil.TempFile("", "evebox-oneshot")
 			if err != nil {
 				log.Fatal(err)
 			}
