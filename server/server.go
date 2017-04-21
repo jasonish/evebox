@@ -229,8 +229,9 @@ func (s *Server) setupHandlers() http.Handler {
 }
 
 func (s *Server) startWithAutoCert(host string, port uint16) error {
-	if port != 443 && port != DEFAULT_PORT {
-		log.Fatal("Letsencrypt support requires running on port 443.")
+
+	if port != 443 {
+		log.Warning("Server not running on port 443; Letsencrypt may not work.")
 	}
 
 	certManager := autocert.Manager{
@@ -239,7 +240,7 @@ func (s *Server) startWithAutoCert(host string, port uint16) error {
 	}
 
 	server := &http.Server{
-		Addr: fmt.Sprintf("%s:443", host),
+		Addr: fmt.Sprintf("%s:%d", host, port),
 		TLSConfig: &tls.Config{
 			GetCertificate: certManager.GetCertificate,
 		},
@@ -247,7 +248,7 @@ func (s *Server) startWithAutoCert(host string, port uint16) error {
 	}
 
 	log.Info("Starting server on %s:%d with Letsencrypt support for hostname %s",
-		host, 443, s.context.Config.LetsEncryptHostname)
+		host, port, s.context.Config.LetsEncryptHostname)
 
 	return server.ListenAndServeTLS("", "")
 }
