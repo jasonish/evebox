@@ -147,9 +147,9 @@ func (i *BulkEveIndexer) Commit() (interface{}, error) {
 		err := i.es.LoadTemplate(i.es.EventBaseIndex, 0)
 		if err != nil {
 			log.Error("Failed to install template: %v", err)
+			templateCheckLock.Unlock()
+			return nil, errors.Errorf("failed to install template for configured index")
 		}
-		templateCheckLock.Unlock()
-		return nil, errors.Errorf("failed to install template for configured index")
 	}
 	templateCheckLock.Unlock()
 
