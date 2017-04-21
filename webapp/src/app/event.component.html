@@ -12,7 +12,7 @@
         </button>
 
         <!-- For now, escalation is only for alerts. -->
-        <div *ngIf="eventType() == 'alert'">
+        <div *ngIf="eventType() == 'alert'" style="display: inline;">
           <button *ngIf="!isEscalated()" type="button"
                   class="btn btn-default"
                   (click)="escalateEvent()">Escalate
