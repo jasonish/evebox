@@ -52,7 +52,7 @@ func (a *AnonymousAuthenticator) login(username string) *sessions.Session {
 	session.Username = username
 	session.User = core.User{
 		Username: username,
-		Id: username,
+		Id:       username,
 	}
 
 	a.sessionStore.Put(session)
