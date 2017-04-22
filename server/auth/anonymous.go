@@ -48,21 +48,23 @@ func NewAnonymousAuthenticator(sessionStore *sessions.SessionStore) *AnonymousAu
 }
 
 func (a *AnonymousAuthenticator) login(username string) *sessions.Session {
-	session := &sessions.Session{
-		Id:       a.sessionStore.GenerateID(),
+	session := a.sessionStore.NewSession()
+	session.Username = username
+	session.User = core.User{
 		Username: username,
-		User: core.User{
-			Username: username,
-			Id:       username,
-		},
+		Id: username,
 	}
+
 	a.sessionStore.Put(session)
+
 	return session
 }
 
 func (a *AnonymousAuthenticator) Login(r *http.Request) (*sessions.Session, error) {
 	log.Info("Logging in anonymous user from %v", r.RemoteAddr)
-	return a.login(username), nil
+	session := a.login(username)
+	session.RemoteAddr = r.RemoteAddr
+	return session, nil
 }
 
 func (a *AnonymousAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) *sessions.Session {

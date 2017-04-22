@@ -75,15 +75,15 @@ func (a *UsernameAuthenticator) Login(r *http.Request) (*sessions.Session, error
 	log.Info("Logging in anonymous user with username %s from %s",
 		username, r.RemoteAddr)
 
-	session := &sessions.Session{
-		Id:       a.sessionStore.GenerateID(),
+	session := a.sessionStore.NewSession()
+	session.Username = username
+	session.User = core.User{
 		Username: username,
-		User: core.User{
-			Username: username,
-		},
-		RemoteAddr: r.RemoteAddr,
 	}
+	session.RemoteAddr = r.RemoteAddr
+
 	a.sessionStore.Put(session)
+
 	return session, nil
 }
 

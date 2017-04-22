@@ -86,12 +86,11 @@ func (a *UsernamePasswordAuthenticator) Login(r *http.Request) (*sessions.Sessio
 		return nil, errors.Wrap(err, "bad username or password")
 	}
 
-	session := &sessions.Session{
-		Id:         a.sessionStore.GenerateID(),
-		Username:   user.Username,
-		User:       user,
-		RemoteAddr: r.RemoteAddr,
-	}
+	session := a.sessionStore.NewSession()
+	session.Username = user.Username
+	session.User = user
+	session.RemoteAddr = r.RemoteAddr
+
 	a.sessionStore.Put(session)
 
 	return session, nil
