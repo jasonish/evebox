@@ -1,5 +1,7 @@
 # Change Log
 
+## Unreleased
+
 ## 0.7.0 - 2017-04-22
 
 **Added**

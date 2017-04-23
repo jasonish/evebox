@@ -4,8 +4,8 @@
 #    - GNU Make
 
 # Version info.
-#VERSION_SUFFIX	:=	dev
-VERSION		:=	0.7.0
+VERSION_SUFFIX	:=	dev
+VERSION		:=	0.7.1
 BUILD_REV	:=	$(shell git rev-parse --short HEAD)
 BUILD_DATE	?=	$(shell git log --pretty=format:%ct -1)
 export BUILD_DATE
