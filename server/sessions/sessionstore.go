@@ -78,6 +78,8 @@ func (s *SessionStore) Reap() {
 func (s *SessionStore) Get(id string) *Session {
 	val, ok := s.sessions.Load(id)
 	if ok {
+		session := val.(*Session)
+		s.setSessionTimeout(session)
 		return val.(*Session)
 	}
 	return nil
@@ -109,12 +111,16 @@ func (s *SessionStore) GenerateID() string {
 	return sessionId
 }
 
+func (s *SessionStore) setSessionTimeout(session *Session) {
+	session.Expires = time.Now().Add(TIMEOUT * time.Second)
+}
+
 // NewSession creates a new session with a session ID. It DOES NOT add the
 // session to the session store.
 func (s *SessionStore) NewSession() *Session {
 	session := NewSession()
 	session.Id = s.GenerateID()
-	session.Expires = time.Now().Add(TIMEOUT * time.Second)
+	s.setSessionTimeout(session)
 	return session
 }
 

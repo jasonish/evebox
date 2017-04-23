@@ -41,9 +41,11 @@ import (
 	"github.com/jasonish/evebox/server/auth"
 	"github.com/jasonish/evebox/server/router"
 	"github.com/jasonish/evebox/server/sessions"
+	"github.com/spf13/viper"
 	"golang.org/x/crypto/acme/autocert"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 )
@@ -234,9 +236,17 @@ func (s *Server) startWithAutoCert(host string, port uint16) error {
 		log.Warning("Server not running on port 443; Letsencrypt may not work.")
 	}
 
+	dataDirectory := viper.GetString("data-directory")
+	if dataDirectory == "" {
+		log.Fatal("A data directory must be configured to use Lets Encrypt!")
+	}
+
+	cacheDir := path.Join(dataDirectory, "certs")
+
 	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(s.context.Config.LetsEncryptHostname),
+		Cache:      autocert.DirCache(cacheDir),
 	}
 
 	server := &http.Server{

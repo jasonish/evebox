@@ -24,3 +24,23 @@ func TestSessionExpire(t *testing.T) {
 	store.Reap()
 	r.Nil(store.Get(session.Id), "session should be nil")
 }
+
+func TestSessionExpireUpdate(t *testing.T) {
+	r := require.New(t)
+	store := NewSessionStore()
+
+	// Create a session, the expiration will be sometime in the future.
+	now := time.Now()
+	session := store.NewSession()
+	expiration := session.Expires
+	r.True(expiration.After(now))
+
+	// Store the session. The expiration should not be updated.
+	store.Put(session)
+	r.Equal(expiration, session.Expires)
+
+	// Get the session, this should update the expiration time.
+	session = store.Get(session.Id)
+	r.NotNil(session)
+	r.NotEqual(expiration, session.Expires)
+}
