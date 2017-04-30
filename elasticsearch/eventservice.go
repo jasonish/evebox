@@ -345,9 +345,14 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 	tries := 0
 	for {
 		var response util.JsonMap
-		err := s.es.HttpClient.PostJsonDecodeResponse(
+
+		httpResponse, err := s.es.HttpClient.PostJson(
 			fmt.Sprintf("%s/_update_by_query?refresh=true",
-				s.es.EventSearchIndex), query, &response)
+				s.es.EventSearchIndex), query)
+		if err != nil {
+			log.Error("%v", err)
+		}
+		err = s.es.Decode(httpResponse, &response)
 		if err != nil {
 			log.Error("%v", err)
 		}
