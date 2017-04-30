@@ -330,6 +330,9 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 		"script": map[string]interface{}{
 			"lang": "painless",
 			"inline": `
+			    if (ctx._source.tags == null) {
+			        ctx._source.tags = new ArrayList();
+			    }
 			    for (tag in params.tags) {
 			        if (!ctx._source.tags.contains(tag)) {
 			            ctx._source.tags.add(tag);
