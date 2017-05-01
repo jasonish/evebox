@@ -361,33 +361,44 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
     removeRow(row: any) {
 
-        // Remove the event from the visible events.
-        this.rows = this.rows.filter((_row: any) => {
-            if (_row == row) {
-                return false;
-            }
-            return true;
-        });
+        let rowIndex = this.rows.indexOf(row);
+        console.log("Row index: " + rowIndex);
 
-        // Remove from the all event store as well.
-        this.allRows = this.allRows.filter((_row: any) => {
-            if (_row == row) {
-                return false;
-            }
-            return true;
-        });
+        if (this.rows === this.allRows) {
+            this.allRows = this.allRows.filter((_row: any) => {
+                if (_row == row) {
+                    return false;
+                }
+                return true;
+            });
+            this.rows = this.allRows;
+        } else {
+            // Remove the list of all alerts.
+            this.allRows = this.allRows.filter((_row: any) => {
+                if (_row == row) {
+                    return false;
+                }
+                return true;
+            });
 
-        // Attempt to slide in an event from the next page.
-        this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+            // Remove the event from the visible alerts.
+            this.rows = this.rows.filter((_row: any) => {
+                if (_row == row) {
+                    return false;
+                }
+                return true;
+            });
+
+            // Attempt to slide in an event from the next page.
+            this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
+        }
 
         if (this.activeRow >= this.rows.length) {
             this.activeRow--;
         }
 
         if (this.rows.length == 0) {
-            if (this.offset < this.allRows.length) {
-            }
-            else if (this.offset > 0) {
+            if (this.offset > 0) {
                 this.offset -= this.windowSize;
             }
             this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
