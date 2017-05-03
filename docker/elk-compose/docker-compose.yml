@@ -1,0 +1,13 @@
+version: '2'
+
+services:
+  logstash:
+    image: logstash
+    volumes:
+      - /var/log/suricata:/var/log/suricata
+      - ./etc/logstash/conf.d:/etc/logstash/conf.d
+    command: /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/suricata.conf
+  elasticsearch:
+    image: elasticsearch
+    ports:
+      - 9200:9200
