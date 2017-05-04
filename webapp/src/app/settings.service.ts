@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 Jason Ish
+/* Copyright (c) 2014-2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,43 +24,47 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit} from '@angular/core';
-import {ThemeService} from '../shared/theme.service';
-import {
-    SETTING_ALERTS_PER_PAGE, SETTING_THEME,
-    SettingsService
-} from '../settings.service';
+import {Injectable} from '@angular/core';
 
-@Component({
-    selector: 'app-settings',
-    templateUrl: './settings.component.html',
-    styleUrls: ['./settings.component.scss']
-})
-export class SettingsComponent implements OnInit {
+declare var localStorage: any;
 
-    model = {
-        theme: "",
-        alertsPerPage: 100,
-    };
+export const SETTING_THEME = "theme";
+export const SETTING_ALERTS_PER_PAGE = "alerts-per-page";
 
-    constructor(private theme: ThemeService,
-                private settings: SettingsService) {
-        this.model.theme = settings.get(SETTING_THEME, "default");
-        this.model.alertsPerPage = settings.getInt(SETTING_ALERTS_PER_PAGE, 100);
+@Injectable()
+export class SettingsService {
+
+    private settings: any;
+
+    constructor() {
+        try {
+            this.settings = JSON.parse(localStorage.settings);
+        }
+        catch (err) {
+            this.settings = {};
+        }
     }
 
-    ngOnInit() {
+    save() {
+        localStorage.settings = JSON.stringify(this.settings);
     }
 
-    currentTheme(): string {
-        return this.theme.currentTheme();
+    get(key: string, def?:any) {
+        return this.settings[key] || def;
     }
 
-    setTheme() {
-        this.theme.setTheme(this.model.theme);
+    getInt(key: string, def: number = 0): number {
+        try {
+            return parseInt(this.get(key));
+        }
+        catch (err) {
+            return def;
+        }
     }
 
-    updateAlertsPerPage() {
-        this.settings.set(SETTING_ALERTS_PER_PAGE, this.model.alertsPerPage)
+    set(key: string, value: any) {
+        this.settings[key] = value;
+        this.save();
     }
+
 }

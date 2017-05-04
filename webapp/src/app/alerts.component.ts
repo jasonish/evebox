@@ -35,6 +35,7 @@ import {ToastrService} from './toastr.service';
 import {TopNavService} from './topnav.service';
 import {EveboxSubscriptionService} from './subscription.service';
 import {loadingAnimation} from './animations';
+import {SETTING_ALERTS_PER_PAGE, SettingsService} from './settings.service';
 
 declare var window: any;
 
@@ -77,12 +78,15 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 private eventService: EventService,
                 private toastr: ToastrService,
                 private ss: EveboxSubscriptionService,
-                private topNavService: TopNavService) {
+                private topNavService: TopNavService,
+                private settings: SettingsService) {
     }
 
     ngOnInit(): any {
 
         console.log("AlertService.ngOnInit");
+
+        this.windowSize = this.settings.getInt(SETTING_ALERTS_PER_PAGE, 100);
 
         this.ss.subscribe(this, this.route.params, (params: any) => {
             this.queryString = params.q || '';
@@ -98,7 +102,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.mousetrap.bind(this, 'o', () => this.openActiveEvent());
         this.mousetrap.bind(this, 'f8', () => this.archiveActiveEvent());
         this.mousetrap.bind(this, 's', () =>
-            this.toggleEscalatedState(this.getActiveRow()));
+                this.toggleEscalatedState(this.getActiveRow()));
 
         // Escalate then archive event.
         this.mousetrap.bind(this, 'f9', () => {
@@ -106,7 +110,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
         });
 
         this.mousetrap.bind(this, 'x', () =>
-            this.toggleSelectedState(this.getActiveRow()));
+                this.toggleSelectedState(this.getActiveRow()));
         this.mousetrap.bind(this, 'e', () => this.archiveEvents());
 
         this.mousetrap.bind(this, '>', () => {
@@ -324,7 +328,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     archiveSelected() {
         let selected = this.rows.filter((row: any) => {
             return row.selected &&
-                row.event.event._source.tags.indexOf('archived') < 0;
+                    row.event.event._source.tags.indexOf('archived') < 0;
         });
         selected.forEach((row: any) => {
             this.archiveAlertGroup(row);

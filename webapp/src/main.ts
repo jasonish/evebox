@@ -30,17 +30,13 @@ import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
 import {enableProdMode} from '@angular/core';
 import {AppModule} from './app/app.module';
 import {environment} from './environments/environment';
-
-import 'rxjs';
 import {ThemeService} from './app/shared/theme.service';
+import {SettingsService} from './app/settings.service';
+import 'rxjs';
 
 require('!!script-loader!jquery/dist/jquery.min.js');
 require('!!script-loader!bootstrap/dist/js/bootstrap.min.js');
 require('chart.js');
-
-declare var window: any;
-declare var localStorage: any;
-declare var Chart: any;
 
 if (process.env.ENV === 'production') {
     enableProdMode();
@@ -51,37 +47,6 @@ if (environment.production) {
     enableProdMode();
 }
 
-function applyStyle(style: string) {
-    let node = <HTMLElement>document.createElement('style');
-    node.id = "theme";
-    node.innerHTML = style;
-    document.body.appendChild(node);
-}
-
-function setTheme() {
-    let themeService = new ThemeService();
-    themeService.setTheme(localStorage.theme);
-}
-
-setTheme();
-
-// Set theme.
-// switch (localStorage.theme) {
-//     case 'slate':
-//         console.log('Setting theme to slate.');
-//         applyStyle(require('./styles/evebox-slate.scss'));
-//         break;
-//     default:
-//         console.log('Setting theme to default.');
-//         applyStyle(require('./styles/evebox-default.scss'));
-//         break;
-// }
-
-// Some chart configuration.
-switch (localStorage.theme) {
-    case 'slate':
-        Chart.defaults.global.defaultFontColor = '#fff';
-        break;
-}
+new ThemeService(new SettingsService()).init();
 
 platformBrowserDynamic().bootstrapModule(AppModule);

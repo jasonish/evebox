@@ -86,6 +86,7 @@ import {LoginComponent} from 'app/login/login.component';
 import {AppEventService} from './appevent.service';
 import {SettingsComponent} from './settings/settings.component';
 import {ThemeService} from './shared/theme.service';
+import {SettingsService} from './settings.service';
 
 @NgModule({
     declarations: [
@@ -163,7 +164,7 @@ import {ThemeService} from './shared/theme.service';
         EveboxSubscriptionService,
         EveboxFormatIpAddressPipe,
         ThemeService,
-
+        SettingsService,
         AuthGuard,
         ConfigResolver,
     ],

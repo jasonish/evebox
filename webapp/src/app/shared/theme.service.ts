@@ -25,8 +25,10 @@
  */
 
 import {Injectable} from '@angular/core';
+import {SETTING_THEME, SettingsService} from '../settings.service';
 
-declare var localStorage:any;
+declare var localStorage: any;
+declare var Chart: any;
 
 function applyTheme(style: string) {
     // Remove the current theme.
@@ -45,27 +47,47 @@ function applyTheme(style: string) {
 @Injectable()
 export class ThemeService {
 
-    currentTheme() {
-        let theme = localStorage.theme;
+    constructor(private settings?: SettingsService) {
+    }
+
+    init() {
+        this.applyTheme(this.currentTheme());
+    }
+
+    currentTheme(): string {
+        let theme = this.settings.get(SETTING_THEME);
         if (!theme) {
             theme = "default";
         }
         return theme;
     }
 
-    setTheme(theme:string) {
+    loadTheme(theme: string) {
         switch (theme) {
-            case 'slate':
-                console.log('Setting theme to slate.');
-                applyTheme(require('../../styles/evebox-slate.scss'));
-                localStorage.theme = theme;
+            case "dark":
+                return require("../../styles/evebox-slate.scss");
+            default:
+                return require("../../styles/evebox-default.scss");
+        }
+    }
+
+    applyTheme(theme: string) {
+        applyTheme(this.loadTheme(theme));
+
+        // Fixup colors for "Chart" based on theme.
+        switch (theme) {
+            case "dark":
+                Chart.defaults.global.defaultFontColor = "#fff";
                 break;
             default:
-                console.log('Setting theme to default.');
-                applyTheme(require('../../styles/evebox-default.scss'));
-                localStorage.theme = "default";
+                Chart.defaults.global.defaultFontColor = "#666";
                 break;
         }
+    }
+
+    setTheme(theme: string) {
+        this.applyTheme(theme);
+        this.settings.set(SETTING_THEME, theme);
     }
 
 }
