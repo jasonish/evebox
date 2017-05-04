@@ -24,64 +24,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import './polyfills.ts';
+import {Injectable} from '@angular/core';
 
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
-import {enableProdMode} from '@angular/core';
-import {AppModule} from './app/app.module';
-import {environment} from './environments/environment';
+declare var localStorage:any;
 
-import 'rxjs';
-import {ThemeService} from './app/shared/theme.service';
+function applyTheme(style: string) {
+    // Remove the current theme.
+    try {
+        document.body.removeChild(document.getElementById("theme"));
+    }
+    catch (e) {
+    }
 
-require('!!script-loader!jquery/dist/jquery.min.js');
-require('!!script-loader!bootstrap/dist/js/bootstrap.min.js');
-require('chart.js');
-
-declare var window: any;
-declare var localStorage: any;
-declare var Chart: any;
-
-if (process.env.ENV === 'production') {
-    enableProdMode();
-}
-
-if (environment.production) {
-    console.log('Enabling production mode from ng cli environment.');
-    enableProdMode();
-}
-
-function applyStyle(style: string) {
     let node = <HTMLElement>document.createElement('style');
     node.id = "theme";
     node.innerHTML = style;
     document.body.appendChild(node);
 }
 
-function setTheme() {
-    let themeService = new ThemeService();
-    themeService.setTheme(localStorage.theme);
+@Injectable()
+export class ThemeService {
+
+    currentTheme() {
+        let theme = localStorage.theme;
+        if (!theme) {
+            theme = "default";
+        }
+        return theme;
+    }
+
+    setTheme(theme:string) {
+        switch (theme) {
+            case 'slate':
+                console.log('Setting theme to slate.');
+                applyTheme(require('../../styles/evebox-slate.scss'));
+                localStorage.theme = theme;
+                break;
+            default:
+                console.log('Setting theme to default.');
+                applyTheme(require('../../styles/evebox-default.scss'));
+                localStorage.theme = "default";
+                break;
+        }
+    }
+
 }
-
-setTheme();
-
-// Set theme.
-// switch (localStorage.theme) {
-//     case 'slate':
-//         console.log('Setting theme to slate.');
-//         applyStyle(require('./styles/evebox-slate.scss'));
-//         break;
-//     default:
-//         console.log('Setting theme to default.');
-//         applyStyle(require('./styles/evebox-default.scss'));
-//         break;
-// }
-
-// Some chart configuration.
-switch (localStorage.theme) {
-    case 'slate':
-        Chart.defaults.global.defaultFontColor = '#fff';
-        break;
-}
-
-platformBrowserDynamic().bootstrapModule(AppModule);

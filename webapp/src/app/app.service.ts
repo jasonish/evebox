@@ -80,15 +80,6 @@ export class AppService {
         this.lastRouteEvent = new Date().getTime() / 1000;
     }
 
-    setTheme(name: string) {
-        let current = localStorage.theme || 'default';
-        if (name == current) {
-            return;
-        }
-        localStorage.theme = name;
-        window.location.reload();
-    }
-
     isTimeRangeDisabled() {
         return this.timeRangeDisabled;
     }

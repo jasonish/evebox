@@ -84,6 +84,8 @@ import {
 } from './reports/ssh-report.component';
 import {LoginComponent} from 'app/login/login.component';
 import {AppEventService} from './appevent.service';
+import {SettingsComponent} from './settings/settings.component';
+import {ThemeService} from './shared/theme.service';
 
 @NgModule({
     declarations: [
@@ -131,6 +133,8 @@ import {AppEventService} from './appevent.service';
         EveboxFormatTimestampPipe,
 
         LoginComponent,
+
+        SettingsComponent,
     ],
     imports: [
         // Angular modules.
@@ -158,6 +162,7 @@ import {AppEventService} from './appevent.service';
         ReportsService,
         EveboxSubscriptionService,
         EveboxFormatIpAddressPipe,
+        ThemeService,
 
         AuthGuard,
         ConfigResolver,

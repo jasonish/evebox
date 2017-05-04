@@ -146,11 +146,6 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
     }
 
-    setTheme(name: string) {
-        // Pass off to appService.
-        this.appService.setTheme(name);
-    }
-
     logout() {
         this.api.logout()
     }
