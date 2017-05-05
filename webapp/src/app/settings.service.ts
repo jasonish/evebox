@@ -54,12 +54,7 @@ export class SettingsService {
     }
 
     getInt(key: string, def: number = 0): number {
-        try {
-            return parseInt(this.get(key));
-        }
-        catch (err) {
-            return def;
-        }
+        return parseInt(this.get(key)) || def;
     }
 
     set(key: string, value: any) {
