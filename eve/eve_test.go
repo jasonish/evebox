@@ -26,10 +26,24 @@
 
 package eve
 
-import "testing"
+import (
+	"github.com/stretchr/testify/require"
+	"testing"
+)
 
 var tcp4EventAlert string = `{"timestamp":"2016-02-11T08:07:42.815726-0600","flow_id":140467580480416,"in_iface":"eth1","event_type":"alert","src_ip":"72.20.52.30","src_port":25565,"dest_ip":"10.16.1.236","dest_port":58686,"proto":"TCP","alert":{"action":"allowed","gid":1,"signature_id":2021701,"rev":1,"signature":"ET GAMES MINECRAFT Server response inbound","category":"Potential Corporate Privacy Violation","severity":1},"payload":"9qWANL1DeyKyeauJP7XSOBN+Wicwljhbo1b3CggiJQ7NyXWekHge","payload_printable":"...4.C{\".y..?..8.~Z'0.8[.V.\n.\"%...u..x.","stream":0,"packet":"rLwye+0ZABUXDQb3CABFGABbIh9AADQGnDhIFDQeChAB7GPd5T4vIjw6OmylI4AYAPY3ngAAAQEICiuX0AUzPUOu9qWANL1DeyKyeauJP7XSOBN+Wicwljhbo1b3CggiJQ7NyXWekHge","host":"home-firewall"}
 `
+
+func TestEveEvent_AddTag(t *testing.T) {
+	r := require.New(t)
+	event, err := NewEveEventFromString(`
+{
+  "timestamp":"2016-02-11T08:07:42.815726-0600"
+}`)
+	r.Nil(err)
+	event.AddTag("archived")
+	r.NotNil(event["tags"])
+}
 
 func TestEvePacketToPcapTCP4(t *testing.T) {
 	event, err := NewEveEventFromJson(tcp4EventAlert)

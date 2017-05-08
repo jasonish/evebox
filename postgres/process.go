@@ -28,37 +28,96 @@ package postgres
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/jasonish/evebox/log"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
 )
 
-func GetVersion() (string, error) {
+func GetVersion() (*PostgresVersion, error) {
 	command := exec.Command("postgres", "--version")
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	err = command.Start()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	output, err := ioutil.ReadAll(stdout)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	versionString := string(output)
 	command.Wait()
-	return strings.TrimSpace(versionString), nil
+
+	return ParseVersion(versionString)
 }
 
-func Init(directory string) error {
+type PostgresManager struct {
+	directory string
+	command   *exec.Cmd
+	running   bool
+	onReady   chan bool
+}
+
+func NewPostgresManager(directory string) (*PostgresManager, error) {
+	version, err := GetVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	absDataDirectory, err := filepath.Abs(directory)
+	if err != nil {
+		return nil, err
+	}
+
+	path := path.Join(absDataDirectory,
+		fmt.Sprintf("pgdata%s", version.MajorMinor))
+	return &PostgresManager{
+		directory: path,
+	}, nil
+}
+
+func (p *PostgresManager) pipeReader(pipe io.ReadCloser, logPrefix string) error {
+	reader := bufio.NewReader(pipe)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err != nil && err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		if !p.running {
+			if strings.Index(string(line), "database system is ready") > -1 {
+				p.running = true
+				p.onReady <- true
+			}
+		}
+		log.Info("%s: %s", logPrefix, strings.TrimSpace(string(line)))
+	}
+	return nil
+}
+
+func (p *PostgresManager) IsInitialized() bool {
+	_, err := os.Stat(p.directory)
+	if err == nil {
+		return true
+	}
+	return false
+}
+
+func (p *PostgresManager) Init() error {
 	command := exec.Command("initdb",
-		"-D", directory,
+		"-D", p.directory,
+		fmt.Sprintf("--username=%s", PGUSER),
 		"--encoding=UTF8")
 
 	stdout, err := command.StdoutPipe()
@@ -79,94 +138,104 @@ func Init(directory string) error {
 		return err
 	}
 
-	if stdout != nil {
-		go func() {
-			if err := ReadPipe(stdout, true, "initdb stdout"); err != nil {
-				log.Error("Failed to read from stdout: %v", err)
-			}
-		}()
+	go p.pipeReader(stdout, "initdb stdout")
+	go p.pipeReader(stderr, "initdb stderr")
+
+	if err := command.Wait(); err != nil {
+		return err
 	}
 
-	if stderr != nil {
-		go func() {
-			if err := ReadPipe(stderr, true, "initdb stderr"); err != nil {
-				log.Error("Failed to read from stderr: %v", err)
-			}
-		}()
+	if err := p.Start(); err != nil {
+		return errors.Wrap(err, "failed to start")
+	}
+	defer p.StopFast()
+
+	pgConfig := PgConfig{
+		User:     PGUSER,
+		Password: PGPASS,
+		Database: "postgres",
+		Host:     p.directory,
+	}
+	db, err := NewPgDatabase(pgConfig)
+	if err != nil {
+		return nil
+	}
+	defer db.Close()
+
+	_, err = db.Exec(fmt.Sprintf("create database %s", PGDATABASE))
+	if err != nil {
+		return errors.Wrap(err, "failed to execute create database command")
 	}
 
-	return command.Wait()
-}
-
-func ReadPipe(pipe io.ReadCloser, doLog bool, logPrefix string) error {
-	reader := bufio.NewReader(pipe)
-	for {
-		line, err := reader.ReadBytes('\n')
-		if err != nil && err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-		log.Info("%s: %s", logPrefix, strings.TrimSpace(string(line)))
-	}
 	return nil
 }
 
-func Start(directory string) (*exec.Cmd, error) {
+func (p *PostgresManager) Start() error {
 
-	// Get the absolute path if the data directory.
-	path, err := filepath.Abs(directory)
+	if p.running {
+		return errors.New("already running")
+	}
+
+	// Get the absolute path of the data directory.
+	path, err := filepath.Abs(p.directory)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	log.Info("Using postgres data directory %s", path)
 
-	command := exec.Command("postgres",
+	p.command = exec.Command("postgres",
 		"-D", path,
 		"-c", "log_destination=stderr",
 		"-c", "logging_collector=off",
+		"-c", "listen_addresses=127.0.0.1",
 		"-k", path)
 
-	stdout, err := command.StdoutPipe()
+	stdout, err := p.command.StdoutPipe()
 	if err != nil {
 		log.Error("Failed to open postgres stdout, will not be logged.")
 		stdout = nil
 	}
 
-	stderr, err := command.StderrPipe()
+	stderr, err := p.command.StderrPipe()
 	if err != nil {
 		log.Error("Failed to open postgres stderr, will not be logged.")
 		stderr = nil
 	}
 
-	err = command.Start()
+	err = p.command.Start()
 	if err != nil {
 		log.Error("Failed to start postgres: %v", err)
-		return nil, err
+		return err
 	}
 
-	if stdout != nil {
-		go func() {
-			if err := ReadPipe(stdout, true, "postgres stdout"); err != nil {
-				log.Error("Failed to read postgres stdout: %v", err)
-			}
-		}()
-	}
+	p.onReady = make(chan bool)
 
-	if stderr != nil {
-		go func() {
-			if err := ReadPipe(stderr, true, "postgres stderr"); err != nil {
-				log.Error("Failed to read postgres stderr: %v", err)
-			}
-		}()
-	}
+	go p.pipeReader(stdout, "postgres stdout")
+	go p.pipeReader(stderr, "postgres stderr")
 
-	return command, nil
+	log.Info("Waiting for PostgreSQL to be running...")
+	<-p.onReady
+
+	return nil
 }
 
-func Stop(command *exec.Cmd) {
-	err := command.Process.Signal(syscall.SIGTERM)
-	if err != nil {
-		log.Error("Failed to stop postgres: %v", err)
+func (p *PostgresManager) stop(sig syscall.Signal) {
+	if p.command == nil {
+		return
 	}
+	p.command.Process.Signal(sig)
+	p.command.Wait()
+	p.running = false
+}
+
+func (p *PostgresManager) StopSmart() {
+	p.stop(syscall.SIGTERM)
+}
+
+func (p *PostgresManager) StopFast() {
+	p.stop(syscall.SIGINT)
+}
+
+func (p *PostgresManager) StopImmediate() {
+	p.stop(syscall.SIGQUIT)
 }

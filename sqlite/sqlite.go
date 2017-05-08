@@ -33,7 +33,7 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/sqlite/sqlcommon"
+	"github.com/jasonish/evebox/sqlite/common"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -85,7 +85,7 @@ func (s *SqliteService) GetTx() (tx *sql.Tx, err error) {
 }
 
 func (s *SqliteService) Migrate() error {
-	migrator := sqlcommon.NewSqlMigrator(s.DB, "sqlite")
+	migrator := common.NewSqlMigrator(s.DB, "sqlite")
 	return migrator.Migrate()
 }
 
@@ -156,7 +156,7 @@ func InitSqlite(appContext *appcontext.AppContext) (err error) {
 
 	if viper.GetBool("database.sqlite.disable-fsync") {
 		log.Info("Disabling fsync")
-		db.Exec("pragma synchronous = off")
+		db.Exec("PRAGMA synchronous = OFF")
 	}
 
 	appContext.DataStore = NewDataStore(db)

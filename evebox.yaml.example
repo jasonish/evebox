@@ -37,7 +37,7 @@ http:
 database:
 
   # Database type: elasticsearch, sqlite.
-  type: elasticsearch
+  type: postgresql
 
   elasticsearch:
     url: http://10.16.1.10:9200
@@ -55,6 +55,28 @@ database:
 
     #username: username
     #password: password
+
+  postgresql:
+
+    # If managed, EveBox will manage its own PostgreSQL instance using
+    # PostgreSQL found on the path.
+    managed: true
+
+    # If not managed...
+    # PostgreSQL hostname (default: localhost; env: PGHOST)
+    #host:
+
+    # PostgreSQL port (default: 5432; env: PGPORT)
+    #port:
+
+    # Database name (default: eveobox; env: PGDATABASE)
+    #database:
+
+    # Database user (default: evebox; env: PGUSER)
+    #user:
+
+    # Password (default: ""; env: PGPASSWORD)
+    #password:
 
   # Retention period in days. 0 or comment out to disable.
   # Currently only applies to SQLite, not Elastic Search.

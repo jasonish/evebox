@@ -29,7 +29,12 @@ package elasticsearch
 import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
+	"time"
 )
+
+func FormatTimestampUTC(timestamp time.Time) string {
+	return timestamp.UTC().Format("2006-01-02T15:04:05.000Z")
+}
 
 type EventQueryService struct {
 	es *ElasticSearch
@@ -57,12 +62,14 @@ func (s *EventQueryService) EventQuery(options core.EventQueryOptions) (interfac
 		query.AddFilter(QueryString(options.QueryString))
 	}
 
-	if options.MinTs != "" {
-		query.AddFilter(RangeGte("@timestamp", options.MinTs))
+	if !options.MinTs.IsZero() {
+		query.AddFilter(RangeGte("@timestamp",
+			FormatTimestampUTC(options.MinTs)))
 	}
 
-	if options.MaxTs != "" {
-		query.AddFilter(RangeLte("@timestamp", options.MaxTs))
+	if !options.MaxTs.IsZero() {
+		query.AddFilter(RangeLte("@timestamp",
+			FormatTimestampUTC(options.MaxTs)))
 	}
 
 	if options.EventType != "" {

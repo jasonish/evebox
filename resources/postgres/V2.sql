@@ -1,0 +1,9 @@
+-- Undo...
+ALTER TABLE events
+  DROP COLUMN IF EXISTS metadata;
+
+ALTER TABLE events
+  ADD COLUMN metadata JSONB DEFAULT '{}' :: JSONB;
+
+INSERT INTO schema (VERSION, TIMESTAMP) VALUES (
+  2, NOW());

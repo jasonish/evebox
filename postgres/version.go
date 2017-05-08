@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 Jason Ish
+/* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,61 +24,50 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package configdb
+package postgres
 
 import (
-	"database/sql"
-	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/sqlite/common"
-	_ "github.com/mattn/go-sqlite3"
-	"os"
-	"path"
+	"fmt"
+	"github.com/pkg/errors"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
-const driver = "sqlite3"
-const filename = "config.sqlite"
-
-type ConfigDB struct {
-	DB       *sql.DB
-	InMemory bool
+type PostgresVersion struct {
+	Raw        string
+	Full       string
+	MajorMinor string
+	Major      int64
+	Minor      int64
 }
 
-func NewConfigDB(directory string) (*ConfigDB, error) {
+func (v *PostgresVersion) String() string {
+	return v.Raw
+}
 
-	var dsn string
-	var inMemory bool
-
-	if directory == ":memory:" {
-		log.Info("Using in-memory configuration DB.")
-		dsn = ":memory:"
-		inMemory = true
-	} else {
-		dsn = path.Join(directory, filename)
-		_, err := os.Stat(dsn)
-		if err == nil {
-			log.Info("Using configuration database file %s", dsn)
-		} else {
-			log.Info("Creating new configuration database %s", dsn)
-		}
+func ParseVersion(versionString string) (*PostgresVersion, error) {
+	re := regexp.MustCompile("(\\d+)\\.(\\d+)\\.\\d+")
+	parts := re.FindStringSubmatch(versionString)
+	if parts == nil || len(parts) != 3 {
+		return nil, errors.Errorf("failed to parse PostgreSQL version: %s", versionString)
 	}
 
-	db, err := sql.Open(driver, dsn)
+	major, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
-		return nil, err
-	}
-	configDB := &ConfigDB{
-		DB:       db,
-		InMemory: inMemory,
+		return nil, errors.Errorf("failed to parse PostgreSQL version: %s", versionString)
 	}
 
-	if err := configDB.migrate(); err != nil {
-		return nil, err
+	minor, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		return nil, errors.Errorf("failed to parse PostgreSQL version: %s", versionString)
 	}
 
-	return configDB, nil
-}
-
-func (db *ConfigDB) migrate() error {
-	migrator := common.NewSqlMigrator(db.DB, "configdb")
-	return migrator.Migrate()
+	return &PostgresVersion{
+		Raw:        strings.TrimSpace(versionString),
+		Full:       parts[0],
+		MajorMinor: fmt.Sprintf("%d.%d", major, minor),
+		Major:      major,
+		Minor:      minor,
+	}, nil
 }

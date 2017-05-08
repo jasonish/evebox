@@ -34,8 +34,10 @@ import (
 	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
+	"github.com/jasonish/evebox/exiter"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/postgres"
 	"github.com/jasonish/evebox/rules"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
@@ -99,6 +101,22 @@ func initViper() {
 
 	viper.BindEnv("authentication.github.client-id", "GITHUB_CLIENT_ID")
 	viper.BindEnv("authentication.github.client-secret", "GITHUB_CLIENT_SECRET")
+
+	// Defaults for PostgreSQL database.
+	viper.SetDefault("database.postgresql.managed", true)
+	viper.BindEnv("database.postgresql.managed", "PGMANAGED")
+
+	viper.SetDefault("database.postgresql.host", "localhost")
+	viper.BindEnv("database.postgresql.host", "PGHOST")
+
+	viper.SetDefault("database.postgresql.database", "evebox")
+	viper.BindEnv("database.postgresql.database", "PGDATABASE")
+
+	viper.SetDefault("database.postgresql.user", "evebox")
+	viper.BindEnv("database.postgresql.user", "PGUSER")
+
+	viper.SetDefault("database.postgresql.password", "")
+	viper.BindEnv("database.postgresql.password", "PGPASSWORD")
 }
 
 func getElasticSearchKeyword(flagset *pflag.FlagSet) (bool, string) {
@@ -308,7 +326,6 @@ func Main(args []string) {
 			}
 		}
 		appContext.ElasticSearch = elasticSearch
-		appContext.EventService = elasticsearch.NewEventService(elasticSearch)
 		appContext.ReportService = elasticsearch.NewReportService(elasticSearch)
 		appContext.DataStore, err = elasticsearch.NewDataStore(elasticSearch)
 		if err != nil {
@@ -323,6 +340,49 @@ func Main(args []string) {
 		if err := sqlite.InitSqlite(&appContext); err != nil {
 			log.Fatal(err)
 		}
+	case "postgresql":
+
+		var pgConfig postgres.PgConfig
+
+		dataDirectory := viper.GetString("data-directory")
+
+		managed := viper.GetBool("database.postgresql.managed")
+		if !managed {
+			//log.Fatal("Unmanaged PostgreSQL not yet supported.")
+			pgConfig = postgres.PgConfig{
+				User:     viper.GetString("database.postgresql.user"),
+				Password: viper.GetString("database.postgresql.password"),
+				Host:     viper.GetString("database.postgresql.host"),
+				Database: viper.GetString("database.postgresql.database"),
+			}
+		} else {
+			// Requires data directory.
+			if dataDirectory == "" {
+				log.Fatalf("Managed PostgreSQL datastore requires a data-directory")
+			}
+
+			manager, err := postgres.ConfigureManaged(dataDirectory)
+			if err != nil {
+				log.Fatal(err)
+			}
+			manager.Start()
+			exiter.AtExit(manager.StopFast)
+
+			pgConfig, err = postgres.ManagedConfig(dataDirectory)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		pg, err := postgres.NewPgDatabase(pgConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		pgMigrator := postgres.NewSqlMigrator(pg, "postgres")
+		pgMigrator.Migrate()
+
+		appContext.DataStore = postgres.NewPgDatastore(pg)
 	default:
 		log.Fatal("unsupported datastore: ",
 			viper.GetString("database.type"))
@@ -335,6 +395,8 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	exiter.Exit(0)
 }
 
 func initInternalEveReader(appContext *appcontext.AppContext) {
@@ -346,10 +408,15 @@ func initInternalEveReader(appContext *appcontext.AppContext) {
 	filename := viper.GetString("input.filename")
 	bookmarkDirectory := viper.GetString("input.bookmark-directory")
 
+	eventSink := appContext.DataStore.GetEveEventSink()
+	if eventSink == nil {
+		log.Fatal("Selected datastore does not provide an event sink.")
+	}
+
 	eveFileProcessor := &evereader.EveFileProcessor{
 		Filename:          filename,
 		BookmarkDirectory: bookmarkDirectory,
-		Sink:              appContext.DataStore.GetEveEventSink(),
+		Sink:              eventSink,
 	}
 
 	eveFileProcessor.AddFilter(&eve.TagsFilter{})

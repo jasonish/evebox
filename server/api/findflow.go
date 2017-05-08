@@ -52,6 +52,10 @@ func (c *ApiContext) FindFlowHandler(w *ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	if result == nil {
+		result = []interface{}{}
+	}
+
 	response := map[string]interface{}{
 		"flows": result,
 	}

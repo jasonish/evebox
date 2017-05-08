@@ -1,10 +1,13 @@
 package postgres
 
 import (
-	"log"
+	"github.com/jasonish/evebox/log"
+	_ "github.com/lib/pq"
+	"github.com/stretchr/testify/require"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 )
 
 func TestPostgresGetVersion(t *testing.T) {
@@ -16,24 +19,42 @@ func TestPostgresGetVersion(t *testing.T) {
 }
 
 func TestPostgresInitStartStop(t *testing.T) {
-	datadir := "TestPostgresStartStop.pgdata"
+	r := require.New(t)
 
-	os.RemoveAll(datadir)
-	err := Init(datadir)
-	defer os.RemoveAll(datadir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	directory, err := filepath.Abs("TestPostgresStartStop.pgdata")
+	r.Nil(err)
+	defer os.RemoveAll(directory)
 
-	command, err := Start(datadir)
+	manager, err := NewPostgresManager(directory)
+	r.Nil(err)
+	r.NotNil(manager)
+	r.False(manager.IsInitialized())
 
-	time.Sleep(100 * time.Millisecond)
+	err = manager.Init()
+	r.Nil(err)
+	r.True(manager.IsInitialized())
 
-	// Kill...
-	Stop(command)
+	err = manager.Start()
+	r.Nil(err)
+	defer manager.StopFast()
 
-	err = command.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Attempt to connect.
+	pgConfig, err := ManagedConfig(directory)
+	r.Nil(err)
+
+	db, err := NewPgDatabase(pgConfig)
+	r.Nil(err)
+	defer db.Close()
+
+	rows, err := db.Query("SELECT version()")
+	r.Nil(err)
+	defer rows.Close()
+	r.True(rows.Next())
+	var version string
+	r.Nil(rows.Scan(&version))
+	r.Equal(0, strings.Index(version, "PostgreSQL"))
+
+	migrator := NewSqlMigrator(db, "postgres")
+	err = migrator.Migrate()
+	r.Nil(err)
 }

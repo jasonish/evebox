@@ -30,10 +30,13 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (c *ApiContext) GetEventByIdHandler(w *ResponseWriter, r *http.Request) error {
@@ -55,7 +58,7 @@ func (c *ApiContext) GetEventByIdHandler(w *ResponseWriter, r *http.Request) err
 func (c *ApiContext) ArchiveEventHandler(w *ResponseWriter, r *http.Request) error {
 	eventId := mux.Vars(r)["id"]
 
-	err := c.appContext.EventService.AddTagsToEvent(eventId,
+	err := c.appContext.DataStore.AddTagsToEvent(eventId,
 		[]string{"archived", "evebox.archived"})
 	if err != nil {
 		log.Error("%v", err)
@@ -68,7 +71,7 @@ func (c *ApiContext) ArchiveEventHandler(w *ResponseWriter, r *http.Request) err
 func (c *ApiContext) EscalateEventHandler(w *ResponseWriter, r *http.Request) error {
 	eventId := mux.Vars(r)["id"]
 
-	err := c.appContext.EventService.AddTagsToEvent(eventId,
+	err := c.appContext.DataStore.AddTagsToEvent(eventId,
 		[]string{"escalated", "evebox.escalated"})
 	if err != nil {
 		log.Error("%v", err)
@@ -81,7 +84,7 @@ func (c *ApiContext) EscalateEventHandler(w *ResponseWriter, r *http.Request) er
 func (c *ApiContext) DeEscalateEventHandler(w *ResponseWriter, r *http.Request) error {
 	eventId := mux.Vars(r)["id"]
 
-	err := c.appContext.EventService.RemoveTagsFromEvent(eventId,
+	err := c.appContext.DataStore.RemoveTagsFromEvent(eventId,
 		[]string{"escalated", "evebox.escalated"})
 	if err != nil {
 		log.Error("%v", err)
@@ -100,8 +103,19 @@ func (c *ApiContext) EventQueryHandler(w *ResponseWriter, r *http.Request) error
 	}
 
 	options.QueryString = r.FormValue("queryString")
-	options.MaxTs = FormTimestamp(r, "maxTs")
-	options.MinTs = FormTimestamp(r, "minTs")
+
+	maxTs, err := parseFormTimestamp(r, "maxTs")
+	if err != nil {
+		return errors.Wrap(err, "failed to parse maxTs")
+	}
+	options.MaxTs = maxTs
+
+	minTs, err := parseFormTimestamp(r, "minTs")
+	if err != nil {
+		return errors.Wrap(err, "failed to parse maxTs")
+	}
+	options.MinTs = minTs
+
 	options.EventType = r.FormValue("eventType")
 	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 0, 64)
 
@@ -111,6 +125,25 @@ func (c *ApiContext) EventQueryHandler(w *ResponseWriter, r *http.Request) error
 	}
 
 	return w.OkJSON(response)
+}
+
+func parseFormTimestamp(request *http.Request, key string) (time.Time, error) {
+	timestamp := request.FormValue(key)
+	if timestamp == "" {
+		return time.Time{}, nil
+	}
+
+	// Properly formatted timestamp may contain a "+" as part of the
+	// time zone. Angular does not URL encode the plus sign, and Go will
+	// decode it as a space. So after getting the form value replace all
+	// spaces with "+"
+	timestamp = strings.Replace(timestamp, " ", "+", 1)
+
+	ts, err := eve.ParseTimestamp(timestamp)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return ts, nil
 }
 
 // FormTimestamp is a wrapper for r.FormValue(timestampKey) as properly

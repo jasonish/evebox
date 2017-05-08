@@ -24,16 +24,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 import {Location} from '@angular/common';
 import {ActivatedRoute, Router} from '@angular/router';
-import {ElasticSearchService, AlertGroup} from './elasticsearch.service';
+import {AlertGroup, ElasticSearchService} from './elasticsearch.service';
 import {ApiService} from './api.service';
 import {EventServices} from './eventservices.service';
 import {EventService} from './event.service';
 import {MousetrapService} from './mousetrap.service';
 import {EveboxSubscriptionService} from './subscription.service';
 import {loadingAnimation} from './animations';
+import {ToastrService} from './toastr.service';
 
 /**
  * Component to show a single event.
@@ -64,7 +65,8 @@ export class EventComponent implements OnInit, OnDestroy {
                 private location: Location,
                 private eventService: EventService,
                 private mousetrap: MousetrapService,
-                private ss: EveboxSubscriptionService) {
+                private ss: EveboxSubscriptionService,
+                private toastr: ToastrService) {
     }
 
     reset() {
@@ -123,18 +125,18 @@ export class EventComponent implements OnInit, OnDestroy {
         this.location.back();
     }
 
-    showArchiveButton() {
+    showArchiveButton(): boolean {
         return this.event._source.event_type == 'alert' &&
-            this.event._source.tags.indexOf('archived') == -1;
+                this.event._source.tags.indexOf('archived') == -1;
     }
 
-    eventType():string {
+    eventType(): string {
         return this.event._source.event_type;
     }
 
     hasGeoip(): boolean {
         if (this.event._source.geoip &&
-            Object.keys(this.event._source.geoip).length > 0) {
+                Object.keys(this.event._source.geoip).length > 0) {
             return true;
         }
         return false;
@@ -245,13 +247,28 @@ export class EventComponent implements OnInit, OnDestroy {
         this.loading = true;
 
         this.elasticSearch.getEventById(this.eventId)
-            .then((response: any) => {
-                this.event = response;
-                if (this.event._source.event_type != 'flow') {
-                    this.findFlow(response);
-                }
-                this.setup();
-                this.loading = false;
-            });
+                .then((response: any) => {
+                    this.event = response;
+                    if (this.event._source.event_type != 'flow') {
+                        this.findFlow(response);
+                    }
+                    this.setup();
+                    this.loading = false;
+                })
+                .catch((error: any) => {
+                    this.notifyError(error)
+                    this.loading = false;
+                });
+    }
+
+    notifyError(error: any) {
+        try {
+            this.toastr.error(error.error.message);
+            return
+        }
+        catch (e) {
+        }
+
+        this.toastr.error("Unhandled error: " + JSON.stringify(error))
     }
 }

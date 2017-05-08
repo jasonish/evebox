@@ -27,12 +27,17 @@
 package core
 
 import (
+	"fmt"
 	"github.com/jasonish/evebox/log"
 )
 
-type Datastore interface {
-	EventService
+var NotImplementedError error
 
+func init() {
+	NotImplementedError = fmt.Errorf("Not implemented.")
+}
+
+type Datastore interface {
 	GetEveEventSink() EveEventSink
 
 	AlertQuery(options AlertQueryOptions) ([]AlertGroup, error)
@@ -44,17 +49,21 @@ type Datastore interface {
 
 	GetEventById(id string) (map[string]interface{}, error)
 	FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error)
+
+	AddTagsToEvent(id string, tags []string) error
+	RemoveTagsFromEvent(id string, tags []string) error
+	FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error)
 }
 
 type UnimplementedDatastore struct {
 }
 
-func (d *UnimplementedDatastore) GetEveEventConsumer() EveEventSink {
-	log.Warning("GetEventConsumer not implemented in this datastore")
+func (d *UnimplementedDatastore) GetEveEventSink() EveEventSink {
+	log.Warning("GetEveEventSink not implemented by this datastore.")
 	return nil
 }
 
-func (s *UnimplementedDatastore) AlertQuery(options AlertQueryOptions) (interface{}, error) {
+func (s *UnimplementedDatastore) AlertQuery(options AlertQueryOptions) ([]AlertGroup, error) {
 	log.Warning("AlertQuery not implemented in this datastore")
 	return nil, NotImplementedError
 }
@@ -75,5 +84,33 @@ func (s *UnimplementedDatastore) GetEventById(id string) (map[string]interface{}
 }
 
 func (s *UnimplementedDatastore) FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error) {
+	return nil, NotImplementedError
+}
+
+func (s *UnimplementedDatastore) AddTagsToEvent(id string, tags []string) error {
+	return NotImplementedError
+}
+
+func (s *UnimplementedDatastore) AddTagsToAlertGroup(p AlertGroupQueryParams, tags []string) error {
+	return NotImplementedError
+}
+
+func (s *UnimplementedDatastore) RemoveTagsFromAlertGroup(p AlertGroupQueryParams, tags []string) error {
+	return NotImplementedError
+}
+
+func (s *UnimplementedDatastore) RemoveTagsFromEvent(id string, tags []string) error {
+	return NotImplementedError
+}
+
+func (s *UnimplementedDatastore) ArchiveAlertGroup(p AlertGroupQueryParams) error {
+	return NotImplementedError
+}
+
+func (s *UnimplementedDatastore) EscalateAlertGroup(p AlertGroupQueryParams) error {
+	return NotImplementedError
+}
+
+func (s *UnimplementedDatastore) FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error) {
 	return nil, NotImplementedError
 }

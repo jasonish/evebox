@@ -29,6 +29,7 @@ package elasticsearch
 import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/util"
 	"io"
@@ -224,8 +225,8 @@ func (s *DataStore) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []str
 					KeywordTermQuery("event_type", "alert", s.es.keyword),
 					RangeQuery{
 						Field: "@timestamp",
-						Gte:   p.MinTimestamp,
-						Lte:   p.MaxTimestamp,
+						Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
+						Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
 					},
 					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
 					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
@@ -317,8 +318,8 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 					KeywordTermQuery("event_type", "alert", s.es.keyword),
 					RangeQuery{
 						Field: "@timestamp",
-						Gte:   p.MinTimestamp,
-						Lte:   p.MaxTimestamp,
+						Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
+						Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
 					},
 					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
 					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
@@ -421,8 +422,8 @@ func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParam
 					KeywordTermQuery("event_type", "alert", s.es.keyword),
 					RangeQuery{
 						Field: "@timestamp",
-						Gte:   p.MinTimestamp,
-						Lte:   p.MaxTimestamp,
+						Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
+						Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
 					},
 					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
 					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
@@ -484,8 +485,8 @@ func (s *DataStore) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags 
 		KeywordTermQuery("event_type", "alert", s.es.keyword),
 		RangeQuery{
 			Field: "@timestamp",
-			Gte:   p.MinTimestamp,
-			Lte:   p.MaxTimestamp,
+			Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
+			Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
 		},
 		KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
 		KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),

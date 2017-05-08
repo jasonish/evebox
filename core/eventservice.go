@@ -27,6 +27,8 @@
 package core
 
 import (
+	"github.com/jasonish/evebox/eve"
+	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -38,8 +40,8 @@ type AlertGroupQueryParams struct {
 	SignatureID  uint64
 	SrcIP        string
 	DstIP        string
-	MinTimestamp string
-	MaxTimestamp string
+	MinTimestamp time.Time
+	MaxTimestamp time.Time
 }
 
 // AlertQueryOptions includes the options for querying alerts which are then
@@ -72,34 +74,41 @@ type EventQueryOptions struct {
 	Size int64
 
 	// Maximum timestamp to include in result set.
-	MaxTs string
+	MaxTs time.Time
 
 	// Minimum timestamp to include in result set.
-	MinTs string
+	MinTs time.Time
 
 	// Event type to limit results to.
 	EventType string
 }
 
-func EventQueryOptionsFromHttpRequest(r *http.Request) EventQueryOptions {
+func EventQueryOptionsFromHttpRequest(r *http.Request) (EventQueryOptions, error) {
 	options := EventQueryOptions{}
 
 	options.QueryString = r.FormValue("queryString")
 	options.TimeRange = r.FormValue("timeRange")
 	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 10, 64)
-	options.MaxTs = r.FormValue("maxTs")
-	options.MinTs = r.FormValue("minTs")
+
+	if r.FormValue("maxTs") != "" {
+		ts, err := eve.ParseTimestamp(r.FormValue("maxTs"))
+		if err != nil {
+			return options, errors.WithStack(err)
+		}
+		options.MaxTs = ts
+	}
+
+	if r.FormValue("minTs") != "" {
+		ts, err := eve.ParseTimestamp(r.FormValue("minTs"))
+		if err != nil {
+			return options, errors.WithStack(err)
+		}
+		options.MinTs = ts
+	}
+
 	options.EventType = r.FormValue("eventType")
 
-	return options
-}
-
-type EventService interface {
-	AddTagsToEvent(id string, tags []string) error
-
-	RemoveTagsFromEvent(id string, tags []string) error
-
-	FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error)
+	return options, nil
 }
 
 type ReportOptions struct {

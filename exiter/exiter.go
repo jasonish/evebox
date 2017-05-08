@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2014-2015 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,45 +24,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package core
+package exiter
 
-import "fmt"
+import "os"
 
-var NotImplementedError error
+var handlers []func()
 
 func init() {
-	NotImplementedError = fmt.Errorf("Not implemented.")
+	handlers = []func(){}
 }
 
-// NotImplementedEventService is an implementation of core.EventService with
-// every function created but returning an not implemented error.
-type NotImplementedEventService struct {
+func AtExit(fn func()) {
+	handlers = append(handlers, fn)
 }
 
-func (s *NotImplementedEventService) AddTagsToEvent(id string, tags []string) error {
-	return NotImplementedError
-}
-
-func (s *NotImplementedEventService) AddTagsToAlertGroup(p AlertGroupQueryParams, tags []string) error {
-	return NotImplementedError
-}
-
-func (s *NotImplementedEventService) RemoveTagsFromAlertGroup(p AlertGroupQueryParams, tags []string) error {
-	return NotImplementedError
-}
-
-func (s *NotImplementedEventService) RemoveTagsFromEvent(id string, tags []string) error {
-	return NotImplementedError
-}
-
-func (s *NotImplementedEventService) ArchiveAlertGroup(p AlertGroupQueryParams) error {
-	return NotImplementedError
-}
-
-func (s *NotImplementedEventService) EscalateAlertGroup(p AlertGroupQueryParams) error {
-	return NotImplementedError
-}
-
-func (s *NotImplementedEventService) FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error) {
-	return nil, NotImplementedError
+func Exit(code int) {
+	for _, handler := range handlers {
+		handler()
+	}
+	os.Exit(code)
 }

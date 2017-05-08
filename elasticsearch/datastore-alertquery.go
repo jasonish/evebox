@@ -30,8 +30,10 @@ import (
 	"encoding/json"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
+	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/util"
 	"sort"
+	"time"
 )
 
 // AlertGroupList is a list of AlertGroup's including an
@@ -145,10 +147,12 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) ([]core.AlertGrou
 	// Set the aggs for grouping by sig, source, then dest...
 	query.Aggs = s.get3TupleAggs()
 
+	qStart := time.Now()
 	results, err := s.es.Search(query)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("Query elapsed time: %v", time.Now().Sub(qStart))
 
 	alertGroups := AlertGroupList{}
 

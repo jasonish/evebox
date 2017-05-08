@@ -29,44 +29,100 @@ package postgres
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/satori/go.uuid"
 )
 
-type Indexer struct {
-	db   *sql.DB
-	tx   *sql.Tx
-	stmt *sql.Stmt
+type PgEventIndexer struct {
+	pg     *PgDB
+	tables map[string]bool
+	tx     *sql.Tx
 }
 
-func NewIndexer(service *Service) (*Indexer, error) {
-	tx, err := service.db.Begin()
-	if err != nil {
-		return nil, err
-	}
-
-	stmt, err := tx.Prepare("insert into events_master (uuid, timestamp, source) values ($1, $2, $3)")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return &Indexer{
-		db:   service.db,
-		tx:   tx,
-		stmt: stmt,
-	}, nil
+func NewPgEventIndexer(pg *PgDB) *PgEventIndexer {
+	indexer := &PgEventIndexer{}
+	indexer.pg = pg
+	indexer.tables = make(map[string]bool)
+	return indexer
 }
 
-func (i *Indexer) AddEvent(event eve.EveEvent) error {
-	uuid := uuid.NewV1()
+func (i *PgEventIndexer) CreateTable(timestamp string) {
+	tx, err := i.pg.Begin()
+	if err != nil {
+		log.Warning("Failed to begin transaction to create event table %s", timestamp)
+		return
+	}
+
+	_, err = tx.Exec("select evebox_create_events_table($1)", timestamp)
+	if err != nil {
+		log.Warning("Failed to create event table %s: %v", timestamp, err)
+		tx.Rollback()
+		return
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Warning("Failed to commit create table %s.", timestamp)
+	}
+	i.tables[timestamp] = true
+}
+
+func (i *PgEventIndexer) Submit(event eve.EveEvent) error {
+
 	timestamp := event.Timestamp()
-	encoded, err := json.Marshal(&event)
-	if err != nil {
-		log.Error("Failed to encode event.")
+	yyyymmdd := timestamp.UTC().Format("20060102")
+
+	if !i.tables[yyyymmdd] {
+		i.CreateTable(yyyymmdd)
 	}
 
-	_, err = i.stmt.Exec(uuid, timestamp, string(encoded))
+	if i.tx == nil {
+		var err error
+		i.tx, err = i.pg.Begin()
+		if err != nil {
+			return err
+		}
+	}
+
+	encoded, err := json.Marshal(event)
+	if err != nil {
+		log.Error("Failed to marshal event to JSON: %v", err)
+		return err
+	}
+
+	id := uuid.NewV1()
+
+	var archived bool
+
+	if event.EventType() == "alert" {
+		archived = false
+	} else {
+		archived = true
+	}
+
+	eventsSql := fmt.Sprintf(`insert into events_%s
+	    (uuid, timestamp, archived)
+	    values ($1, $2, $3)`,
+		yyyymmdd)
+
+	_, err = i.tx.Exec(eventsSql,
+		id,
+		timestamp,
+		archived)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sourceSql := fmt.Sprintf(`insert into events_source_%s
+	    (uuid, timestamp, source)
+	    values ($1, $2, $3)`,
+		yyyymmdd)
+
+	_, err = i.tx.Exec(sourceSql,
+		id,
+		timestamp,
+		encoded)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,21 +130,8 @@ func (i *Indexer) AddEvent(event eve.EveEvent) error {
 	return nil
 }
 
-func (i *Indexer) Flush() error {
-
+func (i *PgEventIndexer) Commit() (interface{}, error) {
 	err := i.tx.Commit()
-	if err != nil {
-		return err
-	}
-	i.tx, err = i.db.Begin()
-	if err != nil {
-		return err
-	}
-
-	i.stmt, err = i.tx.Prepare("insert into events_master (uuid, timestamp, source) values ($1, $2, $3)")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return nil
+	i.tx = nil
+	return nil, err
 }

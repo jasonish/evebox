@@ -28,6 +28,7 @@ package log
 
 import (
 	"fmt"
+	"github.com/jasonish/evebox/exiter"
 	"github.com/mattn/go-isatty"
 	"os"
 	"path/filepath"
@@ -245,10 +246,10 @@ func Printf(format string, v ...interface{}) {
 
 func Fatal(v ...interface{}) {
 	doLog(2, ERROR, "%s", fmt.Sprint(v...))
-	os.Exit(1)
+	exiter.Exit(1)
 }
 
 func Fatalf(format string, v ...interface{}) {
 	doLog(2, ERROR, format, v...)
-	os.Exit(1)
+	exiter.Exit(1)
 }

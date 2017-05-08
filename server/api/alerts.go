@@ -32,98 +32,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"github.com/pkg/errors"
 	"net/http"
-	"strings"
 )
-
-// AlertsHandler handles GET requests to /api/1/alerts. This is the handler
-// for the Inbox, Escalated and Alerts view queries.
-//
-// Accepted query parameters:
-//
-//     tags: a list of tags alerts must have, or must not have; must have tags
-//         are prefixed with a "-".
-//
-//     query_string: a query string alerts must match, exact format depends
-//         on the database used.
-//
-//     time_range: a duration strings (ie: 60s) representing the time before now,
-//         until now that alerts must match.
-//
-//     min_ts: specify the earliest timestamp for the range of the query,
-//         format: YYYY-MM-DDTHH:MM:SS.UUUUUUZ
-//                 YYYY-MM-DDTHH:MM:SS.UUUUUU-0600
-//
-//     max_ts: specify the latest timestamp for the range of the query.
-//         format: YYYY-MM-DDTHH:MM:SS.UUUUUUZ
-//                 YYYY-MM-DDTHH:MM:SS.UUUUUU-0600
-func (c *ApiContext) AlertsHandler(w *ResponseWriter, r *http.Request) error {
-
-	options := core.AlertQueryOptions{}
-
-	tags := r.FormValue("tags")
-	if tags != "" {
-		for _, tag := range strings.Split(tags, ",") {
-			if strings.HasPrefix(tag, "-") {
-				options.MustNotHaveTags = append(options.MustNotHaveTags,
-					strings.TrimPrefix(tag, "-"))
-			} else {
-				options.MustHaveTags = append(options.MustHaveTags, tag)
-			}
-		}
-	}
-
-	options.QueryString = r.FormValue("query_string")
-	if options.QueryString == "" {
-		options.QueryString = r.FormValue("queryString")
-	}
-
-	timeRange := r.FormValue("time_range")
-	if timeRange == "" {
-		timeRange = r.FormValue("timeRange")
-	}
-	minTs := r.FormValue("min_ts")
-	maxTs := r.FormValue("max_ts")
-	if timeRange != "" && (minTs != "" || maxTs != "") {
-		return newHttpErrorResponse(http.StatusBadRequest,
-			errors.Errorf("time_range not allowed with min_ts or max_ts"))
-	}
-
-	options.TimeRange = r.FormValue("time_range")
-	if options.TimeRange == "" {
-		options.TimeRange = r.FormValue("timeRange")
-	}
-
-	if minTs != "" {
-		ts, err := eve.ParseTimestamp(minTs)
-		if err != nil {
-			return newHttpErrorResponse(http.StatusBadRequest,
-				errors.Errorf("Failed to parse '%s' as timestamp", minTs))
-		}
-		log.Debug("Parsed %s as %v", minTs, ts)
-		options.MinTs = ts
-	}
-
-	if maxTs != "" {
-		ts, err := eve.ParseTimestamp(maxTs)
-		if err != nil {
-			return newHttpErrorResponse(http.StatusBadRequest,
-				errors.Errorf("Failed to parse '%s' as timestamp", minTs))
-		}
-		log.Debug("Parsed %s as %v", minTs, ts)
-		options.MaxTs = ts
-	}
-
-	alerts, err := c.appContext.DataStore.AlertQuery(options)
-	if err != nil {
-		return err
-	}
-
-	response := map[string]interface{}{
-		"alerts": alerts,
-	}
-
-	return w.OkJSON(response)
-}
 
 type AlertGroupQueryParameters struct {
 	SignatureId  uint64 `json:"signature_id"`
@@ -133,14 +42,31 @@ type AlertGroupQueryParameters struct {
 	MaxTimestamp string `json:"max_timestamp"`
 }
 
-func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() core.AlertGroupQueryParams {
-	return core.AlertGroupQueryParams{
-		SignatureID:  a.SignatureId,
-		SrcIP:        a.SrcIp,
-		DstIP:        a.DestIp,
-		MinTimestamp: a.MinTimestamp,
-		MaxTimestamp: a.MaxTimestamp,
+func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() (core.AlertGroupQueryParams, error) {
+
+	params := core.AlertGroupQueryParams{}
+
+	if a.MinTimestamp != "" {
+		minTimestamp, err := eve.ParseTimestamp(a.MinTimestamp)
+		if err != nil {
+			return params, errors.Wrap(err, "bad min_timestamp format")
+		}
+		params.MinTimestamp = minTimestamp
 	}
+
+	if a.MaxTimestamp != "" {
+		maxTimestamp, err := eve.ParseTimestamp(a.MaxTimestamp)
+		if err != nil {
+			return params, errors.Wrap(err, "bad max_timestamp format")
+		}
+		params.MaxTimestamp = maxTimestamp
+	}
+
+	params.SignatureID = a.SignatureId
+	params.SrcIP = a.SrcIp
+	params.DstIP = a.DestIp
+
+	return params, nil
 }
 
 // /api/1/alert-group/archive
@@ -151,7 +77,12 @@ func (c *ApiContext) AlertGroupArchiveHandler(w *ResponseWriter, r *http.Request
 		return err
 	}
 
-	err := c.appContext.DataStore.ArchiveAlertGroup(request.ToCoreAlertGroupQueryParams())
+	params, err := request.ToCoreAlertGroupQueryParams()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = c.appContext.DataStore.ArchiveAlertGroup(params)
 	if err != nil {
 		log.Error("%v", err)
 		return err
@@ -165,11 +96,14 @@ func (c *ApiContext) StarAlertGroupHandler(w *ResponseWriter, r *http.Request) e
 		return err
 	}
 
-	err := c.appContext.DataStore.EscalateAlertGroup(
-		request.ToCoreAlertGroupQueryParams())
+	params, err := request.ToCoreAlertGroupQueryParams()
 	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := c.appContext.DataStore.EscalateAlertGroup(params); err != nil {
 		log.Error("%v", err)
-		return err
+		return errors.WithStack(err)
 	}
 	return w.Ok()
 }
@@ -180,11 +114,14 @@ func (c *ApiContext) UnstarAlertGroupHandler(w *ResponseWriter, r *http.Request)
 		return err
 	}
 
-	err := c.appContext.DataStore.UnstarAlertGroup(
-		request.ToCoreAlertGroupQueryParams())
+	params, err := request.ToCoreAlertGroupQueryParams()
 	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := c.appContext.DataStore.UnstarAlertGroup(params); err != nil {
 		log.Error("%v", err)
-		return err
+		return errors.WithStack(err)
 	}
 	return w.Ok()
 }

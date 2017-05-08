@@ -1,5 +1,3 @@
-// +build cgo
-
 /* Copyright (c) 2016 Jason Ish
  * All rights reserved.
  *
@@ -26,14 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package sqlcommon
+package postgres
 
 import (
 	"database/sql"
 	"fmt"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/resources"
-	"os"
 	"path"
 )
 
@@ -42,9 +39,9 @@ type SqlMigrator struct {
 	directory string
 }
 
-func NewSqlMigrator(db *sql.DB, directory string) *SqlMigrator {
+func NewSqlMigrator(db *PgDB, directory string) *SqlMigrator {
 	return &SqlMigrator{
-		db:        db,
+		db:        db.DB,
 		directory: directory,
 	}
 }
@@ -63,9 +60,9 @@ func (m *SqlMigrator) Migrate() error {
 			nextVersion = currentVersion + 1
 		}
 		rows.Close()
-		log.Debug("Current database schema version: %d", currentVersion)
+		log.Info("Current database schema version: %d", currentVersion)
 	} else {
-		log.Debug("Initializing database.")
+		log.Info("Initializing database.")
 	}
 
 	for {
@@ -89,12 +86,6 @@ func (m *SqlMigrator) Migrate() error {
 			log.Error("Failed to execute script: %v", err)
 		}
 
-		err = m.setVersion(tx, nextVersion)
-		if err != nil {
-			log.Error("Failed to update schema version: %v", err)
-			return err
-		}
-
 		err = tx.Commit()
 		if err != nil {
 			log.Error("Fail to commit transaction: %v", err)
@@ -105,18 +96,4 @@ func (m *SqlMigrator) Migrate() error {
 	}
 
 	return nil
-}
-
-func (m *SqlMigrator) setVersion(tx *sql.Tx, version int) error {
-	_, err := tx.Exec(`insert into schema (version, timestamp)
-	                     values ($1, datetime('now'))`, version)
-	return err
-}
-
-func (m *SqlMigrator) fileExists(path string) bool {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true
-	}
-	return false
 }

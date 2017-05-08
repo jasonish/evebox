@@ -49,6 +49,11 @@ func NewEveEventFromBytes(b []byte) (event EveEvent, err error) {
 		return nil, err
 	}
 
+	// Create empty tags if it doesn't exist.
+	if event["tags"] == nil {
+		event["tags"] = []interface{}{}
+	}
+
 	// Attempt to parse the timestamp, fail the decode if it can't be
 	// parsed.
 	timestamp, err := event.parseTimestamp()
@@ -60,6 +65,10 @@ func NewEveEventFromBytes(b []byte) (event EveEvent, err error) {
 	event["__parsed_timestamp"] = timestamp
 
 	return event, nil
+}
+
+func NewEveEventFromString(s string) (event EveEvent, err error) {
+	return NewEveEventFromBytes([]byte(s))
 }
 
 func (e EveEvent) MarshalJSON() ([]byte, error) {
@@ -83,6 +92,11 @@ func (e EveEvent) parseTimestamp() (time.Time, error) {
 
 func (e EveEvent) Timestamp() time.Time {
 	return e["__parsed_timestamp"].(time.Time)
+}
+
+func (e EveEvent) SetTimestamp(ts time.Time) {
+	e["timestamp"] = FormatTimestamp(ts)
+	e["__parsed_timestamp"] = ts
 }
 
 func (e EveEvent) EventType() string {
@@ -170,16 +184,17 @@ func (e EveEvent) GetAlertSignatureId() (uint64, bool) {
 
 func (e EveEvent) AddTag(tag string) {
 	if e["tags"] == nil {
-		log.Info("Creating empty tags.")
-		e["tags"] = make([]interface{}, 1)
+		log.Println("Tags is null...")
+		e["tags"] = []interface{}{}
 	}
+	tags := e["tags"].([]interface{})
 	tags, ok := e["tags"].([]interface{})
 	if !ok {
-		log.Warning("Failed to convert tags to []string")
+		log.Warning("Failed to convert tags to []interface{}: %v", e["tags"])
 		return
 	}
 	for _, existing := range tags {
-		if existing.(string) == tag {
+		if existing == tag {
 			return
 		}
 	}

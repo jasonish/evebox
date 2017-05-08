@@ -41,7 +41,6 @@ import (
 )
 
 type DataStore struct {
-	core.NotImplementedEventService
 	core.UnimplementedDatastore
 	db *SqliteService
 }
@@ -246,19 +245,11 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 	b.WhereEquals(
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
-	if p.MinTimestamp != "" {
-		ts, err := eve.ParseTimestamp(p.MinTimestamp)
-		if err != nil {
-			return err
-		}
-		b.WhereGte("timestamp", ts.UnixNano())
+	if !p.MinTimestamp.IsZero() {
+		b.WhereGte("timestamp", p.MinTimestamp.UnixNano())
 	}
-	if p.MaxTimestamp != "" {
-		ts, err := eve.ParseTimestamp(p.MaxTimestamp)
-		if err != nil {
-			return err
-		}
-		b.WhereLte("timestamp", ts.UnixNano())
+	if !p.MaxTimestamp.IsZero() {
+		b.WhereLte("timestamp", p.MaxTimestamp.UnixNano())
 	}
 
 	// TODO - query string
@@ -305,22 +296,12 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
 
-	if p.MinTimestamp != "" {
-		log.Debug("MinTimestamp: %s", p.MinTimestamp)
-		ts, err := eve.ParseTimestamp(p.MinTimestamp)
-		if err != nil {
-			return err
-		}
-		builder.WhereGte("timestamp", ts.UnixNano())
+	if !p.MinTimestamp.IsZero() {
+		builder.WhereGte("timestamp", p.MinTimestamp.UnixNano())
 	}
 
-	if p.MaxTimestamp != "" {
-		log.Debug("MaxTimestamp: %s", p.MaxTimestamp)
-		ts, err := eve.ParseTimestamp(p.MaxTimestamp)
-		if err != nil {
-			return err
-		}
-		builder.WhereLte("timestamp", ts.UnixNano())
+	if !p.MaxTimestamp.IsZero() {
+		builder.WhereLte("timestamp", p.MaxTimestamp.UnixNano())
 	}
 
 	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
@@ -365,20 +346,12 @@ func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
 
-	if p.MinTimestamp != "" {
-		ts, err := eve.ParseTimestamp(p.MinTimestamp)
-		if err != nil {
-			return err
-		}
-		builder.WhereGte("timestamp", ts.UnixNano())
+	if !p.MinTimestamp.IsZero() {
+		builder.WhereGte("timestamp", p.MinTimestamp.UnixNano())
 	}
 
-	if p.MaxTimestamp != "" {
-		ts, err := eve.ParseTimestamp(p.MaxTimestamp)
-		if err != nil {
-			return err
-		}
-		builder.WhereLte("timestamp", ts.UnixNano())
+	if !p.MaxTimestamp.IsZero() {
+		builder.WhereLte("timestamp", p.MaxTimestamp.UnixNano())
 	}
 
 	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
@@ -428,24 +401,12 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		parseQueryString(&sqlBuilder, options.QueryString, "events")
 	}
 
-	if options.MaxTs != "" {
-		ts, err := eve.ParseTimestamp(options.MaxTs)
-		if err != nil {
-			log.Error("Failed to parse timestamp: %s: %v", options.MaxTs, err)
-			return nil, err
-		}
-		log.Debug("Parsed %s -> %v", options.MaxTs, ts)
-		sqlBuilder.WhereLte("events.timestamp", ts.UnixNano())
+	if !options.MaxTs.IsZero() {
+		sqlBuilder.WhereLte("events.timestamp", options.MaxTs.UnixNano())
 	}
 
-	if options.MinTs != "" {
-		ts, err := eve.ParseTimestamp(options.MinTs)
-		if err != nil {
-			log.Error("Failed to parse min timestamp: %s: %v", options.MinTs, err)
-			return nil, err
-		}
-		log.Debug("Parsed mints %s -> %v", options.MinTs, ts)
-		sqlBuilder.WhereGte("events.timestamp", ts.UnixNano())
+	if !options.MinTs.IsZero() {
+		sqlBuilder.WhereGte("events.timestamp", options.MinTs.UnixNano())
 	}
 
 	query += sqlBuilder.BuildFrom()

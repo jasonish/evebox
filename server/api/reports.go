@@ -104,11 +104,14 @@ func (c *ApiContext) ReportHistogram(w *ResponseWriter, r *http.Request) error {
 
 func (c *ApiContext) NetflowHandler(w *ResponseWriter, r *http.Request) error {
 
-	options := core.EventQueryOptionsFromHttpRequest(r)
+	options, err := core.EventQueryOptionsFromHttpRequest(r)
+	if err != nil {
+		return err
+	}
 
 	sortBy := r.FormValue("sortBy")
 
-	response, err := c.appContext.EventService.FindNetflow(options, sortBy, "")
+	response, err := c.appContext.DataStore.FindNetflow(options, sortBy, "")
 	if err != nil {
 		return err
 	}

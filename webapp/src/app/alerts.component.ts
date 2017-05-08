@@ -182,6 +182,8 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 return row.event.event._source.tags.indexOf('archived') > -1;
             });
 
+            console.log(`Found ${archived.length} archived events.`);
+
             archived.forEach((row: any) => {
                 this.removeRow(row);
             });

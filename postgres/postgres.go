@@ -31,39 +31,105 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/log"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
+	"path"
+	"path/filepath"
 )
+
+const driver = "postgres"
 
 const PGDATABASE = "evebox"
 const PGUSER = "evebox"
 const PGPASS = "evebox"
-const PGPORT = "8432"
+
+type PgConfig struct {
+	Database string
+	User     string
+	Password string
+	Host     string
+}
 
 type Service struct {
 	db *sql.DB
 }
 
-func NewService() (*Service, error) {
-	args := fmt.Sprintf(
-		"dbname=%s user=%s password=%s port=%s sslmode=%s",
-		PGDATABASE,
-		PGUSER,
-		PGPASS,
-		PGPORT,
-		"disable")
-	db, err := sql.Open("postgres", args)
+type PgDB struct {
+	*sql.DB
+}
+
+func NewPgDatabase(config PgConfig) (*PgDB, error) {
+	dsn := fmt.Sprintf("dbname=%s user=%s password=%s host=%s",
+		config.Database, config.User, config.Password, config.Host)
+	db, err := sql.Open(driver, dsn)
+
+	var versionString string
+
+	err = db.QueryRow("show server_version").Scan(&versionString)
 	if err != nil {
-		log.Fatal(err)
+		db.Close()
+		return nil, errors.Wrap(err, "Failed to query PostgreSQL version.")
+	}
+	log.Info("Connected to PostgreSQL version %s", versionString)
+
+	version, err := ParseVersion(versionString)
+	if err != nil {
+		db.Close()
+		return nil, errors.Errorf("Failed to parse PostgreSQL version %s", versionString)
+	}
+	if version.Major < 10 && version.Minor < 5 {
+		db.Close()
+		return nil, errors.New("PostgreSQL version 9.5 or newer is required.")
 	}
 
-	var pgVersion string
+	return &PgDB{
+		DB: db,
+	}, err
+}
 
-	err = db.QueryRow("select version()").Scan(&pgVersion)
+func ConfigureManaged(dataDirectory string) (*PostgresManager, error) {
+
+	version, err := GetVersion()
 	if err != nil {
 		return nil, err
 	}
-	log.Info("Connected to PostgreSQL version %s.", pgVersion)
 
-	return &Service{
-		db: db,
-	}, nil
+	log.Info("Found PostgreSQL version %s (%s)", version.MajorMinor,
+		version.Full)
+
+	if version.Major < 10 && version.Minor < 5 {
+		return nil, errors.New("PostgreSQL version 9.5 or newer required.")
+	}
+
+	manager, err := NewPostgresManager(dataDirectory)
+	if err != nil {
+		return nil, err
+	}
+	if !manager.IsInitialized() {
+		log.Info("Initializing %s", dataDirectory)
+		manager.Init()
+	}
+
+	return manager, nil
+}
+
+func ManagedConfig(dataDirectory string) (PgConfig, error) {
+	pgConfig := PgConfig{}
+
+	absPath, err := filepath.Abs(dataDirectory)
+	if err != nil {
+		return pgConfig, err
+	}
+
+	pgVersion, err := GetVersion()
+	if err != nil {
+		return pgConfig, err
+	}
+
+	pgConfig.Host = path.Join(
+		absPath, fmt.Sprintf("pgdata%s", pgVersion.MajorMinor))
+	pgConfig.Database = PGDATABASE
+	pgConfig.User = PGUSER
+	pgConfig.Password = PGPASS
+
+	return pgConfig, nil
 }

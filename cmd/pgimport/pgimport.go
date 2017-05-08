@@ -27,33 +27,46 @@
 package pgimport
 
 import (
-	"fmt"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/postgres"
 	flag "github.com/spf13/pflag"
 	"io"
+	"runtime"
+	"sync"
 	"time"
 )
 
 func Main(args []string) {
 
-	var end bool
-	var oneshot bool
-	var useBookmark bool
-	var bookmarkPath string
 	var verbose bool
+	var dataDirectory string
+	useNow := false
 
 	flagset := flag.NewFlagSet("pgimport", flag.ExitOnError)
-	flagset.BoolVar(&end, "end", false, "Start at end of file")
-	flagset.BoolVar(&oneshot, "oneshot", false, "One shot mode (exit on EOF)")
-	flagset.BoolVar(&useBookmark, "bookmark", false, "Bookmark location")
-	flagset.StringVar(&bookmarkPath, "bookmark-path", "", "Path to bookmark file")
 	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	flagset.StringVarP(&dataDirectory, "data-directory", "D", "", "Data directory")
+	flagset.BoolVar(&useNow, "now", false, "Use current time")
 	flagset.Parse(args)
 
 	if verbose {
 		log.SetLevel(log.DEBUG)
+	}
+
+	if dataDirectory == "" {
+		log.Fatalf("Managed Postgres required; use --data-directory")
+	}
+
+	pgConfig, err := postgres.ManagedConfig(dataDirectory)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(pgConfig.Host)
+
+	pg, err := postgres.NewPgDatabase(pgConfig)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if len(flagset.Args()) == 0 {
@@ -61,52 +74,43 @@ func Main(args []string) {
 	} else if len(flagset.Args()) > 1 {
 		log.Fatal("Only one input file allowed.")
 	}
-	inputFilename := flagset.Args()[0]
-
-	// If useBookmark but no path, set a default.
-	if useBookmark && bookmarkPath == "" {
-		bookmarkPath = fmt.Sprintf("%s.bookmark", inputFilename)
-	}
 
 	reader, err := evereader.NewFollowingReader(flagset.Args()[0])
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Initialize bookmark.
-	var bookmarker *evereader.Bookmarker = nil
-	if useBookmark {
-		bookmarker = &evereader.Bookmarker{
-			Filename: bookmarkPath,
-			Reader:   reader,
-		}
-		err := bookmarker.Init(end)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else if end {
-		log.Info("Jumping to end of file.")
-		err := reader.SkipToEnd()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+	//indexer := postgres.NewPgEventIndexer(pg)
 
-	pg, err := postgres.NewService()
-	if err != nil {
-		log.Fatal(err)
-	}
-	indexer, err := postgres.NewIndexer(pg)
-	if err != nil {
-		log.Fatal(err)
-	}
+	count := 0
 
-	count := uint64(0)
-	lastStatTs := time.Now()
-	lastStatCount := uint64(0)
+	submitChan := make(chan eve.EveEvent)
 
-	// Number of EOFs in last stat interval.
-	eofs := uint64(0)
+	wg := sync.WaitGroup{}
+	threadCount := runtime.NumCPU()
+
+	for i := 0; i < threadCount; i++ {
+		thread := i
+		wg.Add(1)
+		go func() {
+			_count := 0
+			_indexer := postgres.NewPgEventIndexer(pg)
+			for event := range submitChan {
+				if event == nil {
+					break
+				}
+				_indexer.Submit(event)
+				_count++
+				if _count == 1000 {
+					_indexer.Commit()
+					_count = 0
+				}
+			}
+			_indexer.Commit()
+			log.Info("Thread %d returning.", thread)
+			wg.Done()
+		}()
+	}
 
 	for {
 		eof := false
@@ -114,45 +118,34 @@ func Main(args []string) {
 		if err != nil {
 			if err == io.EOF {
 				eof = true
-				eofs++
 			} else {
 				log.Fatal(err)
 			}
 		}
 
 		if event != nil {
-			indexer.AddEvent(event)
-			count++
-			if useBookmark {
-				bookmark := bookmarker.GetBookmark()
-				bookmarker.WriteBookmark(bookmark)
+			if useNow {
+				event.SetTimestamp(time.Now())
 			}
-		}
-
-		now := time.Now()
-
-		if now.Sub(lastStatTs).Seconds() > 1 {
-			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d",
-				count,
-				count-lastStatCount,
-				float64(count-lastStatCount)/(now.Sub(lastStatTs).Seconds()),
-				eofs)
-			lastStatTs = now
-			lastStatCount = count
-			eofs = 0
-			indexer.Flush()
+			submitChan <- event
+			count++
 		}
 
 		if eof {
-			if oneshot {
-				break
-			} else {
-				indexer.Flush()
-				time.Sleep(100 * time.Millisecond)
-			}
+			break
 		}
-
 	}
 
-	indexer.Flush()
+	log.Info("Closing down channels.")
+	for i := 0; i < threadCount; i++ {
+		submitChan <- nil
+	}
+
+	wg.Wait()
+
+	log.Println(count)
+
+	//log.Println("Committing.")
+	//indexer.Commit()
+	//log.Info("Committed %d events.", count)
 }
