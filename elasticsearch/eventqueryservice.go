@@ -58,11 +58,11 @@ func (s *EventQueryService) EventQuery(options core.EventQueryOptions) (interfac
 	}
 
 	if options.MinTs != "" {
-		query.AddFilter(RangeGte("timestamp", options.MinTs))
+		query.AddFilter(RangeGte("@timestamp", options.MinTs))
 	}
 
 	if options.MaxTs != "" {
-		query.AddFilter(RangeLte("timestamp", options.MaxTs))
+		query.AddFilter(RangeLte("@timestamp", options.MaxTs))
 	}
 
 	if options.EventType != "" {

@@ -82,20 +82,8 @@ type AlertGroupResult struct {
 	AlertGroups AlertGroupResultSet `json:"alerts"`
 }
 
-// AlertQueryService is a service for querying alerts.
-type AlertQueryService struct {
-	es *ElasticSearch
-}
-
-func NewAlertQueryService(es *ElasticSearch) *AlertQueryService {
-	service := &AlertQueryService{
-		es: es,
-	}
-	return service
-}
-
 // Return a 3 tuple aggregation: signature, source, dest...
-func (s *AlertQueryService) get3TupleAggs() map[string]interface{} {
+func (s *DataStore) get3TupleAggs() map[string]interface{} {
 
 	size := 10000
 
@@ -151,7 +139,7 @@ func (s *AlertQueryService) get3TupleAggs() map[string]interface{} {
 	return aggs
 }
 
-func (s *AlertQueryService) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
+func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
 
 	query := NewEventQuery()
 
@@ -177,11 +165,11 @@ func (s *AlertQueryService) AlertQuery(options core.AlertQueryOptions) (interfac
 		query.AddTimeRangeFilter(options.TimeRange)
 	} else {
 		if !options.MaxTs.IsZero() {
-			query.AddFilter(RangeLte("timestamp",
+			query.AddFilter(RangeLte("@timestamp",
 				eve.FormatTimestampUTC(options.MaxTs)))
 		}
 		if !options.MinTs.IsZero() {
-			query.AddFilter(RangeGte("timestamp",
+			query.AddFilter(RangeGte("@timestamp",
 				eve.FormatTimestampUTC(options.MinTs)))
 		}
 	}
@@ -211,8 +199,8 @@ func (s *AlertQueryService) AlertQuery(options core.AlertQueryOptions) (interfac
 				minEvent := bucket2.GetMap("oldest").GetMap("hits").GetMapList("hits")[0]
 				maxEvent := bucket2.GetMap("newest").GetMap("hits").GetMapList("hits")[0]
 
-				alertGroup.MinTs = minEvent.GetMap("_source").GetString("timestamp")
-				alertGroup.MaxTs = maxEvent.GetMap("_source").GetString("timestamp")
+				alertGroup.MinTs = minEvent.GetMap("_source").GetString("@timestamp")
+				alertGroup.MaxTs = maxEvent.GetMap("_source").GetString("@timestamp")
 
 				alertGroup.Event = maxEvent
 

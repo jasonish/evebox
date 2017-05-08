@@ -223,7 +223,7 @@ func (s *DataStore) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []str
 					ExistsQuery("event_type"),
 					KeywordTermQuery("event_type", "alert", s.es.keyword),
 					RangeQuery{
-						Field: "timestamp",
+						Field: "@timestamp",
 						Gte:   p.MinTimestamp,
 						Lte:   p.MaxTimestamp,
 					},
@@ -316,7 +316,7 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 					ExistsQuery("event_type"),
 					KeywordTermQuery("event_type", "alert", s.es.keyword),
 					RangeQuery{
-						Field: "timestamp",
+						Field: "@timestamp",
 						Gte:   p.MinTimestamp,
 						Lte:   p.MaxTimestamp,
 					},
@@ -420,7 +420,7 @@ func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParam
 					ExistsQuery("event_type"),
 					KeywordTermQuery("event_type", "alert", s.es.keyword),
 					RangeQuery{
-						Field: "timestamp",
+						Field: "@timestamp",
 						Gte:   p.MinTimestamp,
 						Lte:   p.MaxTimestamp,
 					},
@@ -483,7 +483,7 @@ func (s *DataStore) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags 
 		ExistsQuery("event_type"),
 		KeywordTermQuery("event_type", "alert", s.es.keyword),
 		RangeQuery{
-			Field: "timestamp",
+			Field: "@timestamp",
 			Gte:   p.MinTimestamp,
 			Lte:   p.MaxTimestamp,
 		},
