@@ -32,54 +32,22 @@ import (
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/util"
 	"sort"
-	"time"
 )
 
-// AlertGroupResultEntry is a single entry in the list of alert group responses.
-// Its a group rather than an individual alert as it represents many alerts
-// that have been grouped together by some parameters such as signature,
-// source and destination.
-//
-// It provides enough information to act on the alert group such as archiving
-// or escalating all the alerts in the group.
-type AlertGroupResultEntry struct {
-	Count          int64                  `json:"count"`
-	Event          map[string]interface{} `json:"event"`
-	MaxTs          string                 `json:"maxTs"`
-	MinTs          string                 `json:"minTs"`
-	EscalatedCount int64                  `json:"escalatedCount"`
-
-	time time.Time
-}
-
-// Time returns the timestamp of the alert group as a time.Time value.
-func (a AlertGroupResultEntry) Time() time.Time {
-	if a.time.IsZero() {
-		a.time, _ = eve.ParseTimestamp(a.MaxTs)
-	}
-	return a.time
-}
-
-// AlertGroupResultSet is a list of AlertGroupResultEntry's including an
+// AlertGroupList is a list of AlertGroup's including an
 // interface implementing for sorting.
-type AlertGroupResultSet []AlertGroupResultEntry
+type AlertGroupList []core.AlertGroup
 
-func (a AlertGroupResultSet) Len() int {
+func (a AlertGroupList) Len() int {
 	return len(a)
 }
 
-func (a AlertGroupResultSet) Less(i, j int) bool {
+func (a AlertGroupList) Less(i, j int) bool {
 	return a[i].Time().Before(a[j].Time())
 }
 
-func (a AlertGroupResultSet) Swap(i, j int) {
+func (a AlertGroupList) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
-}
-
-// AlertGroupResult is the "wrapper" type for the returned result set in case
-// additional data is required.
-type AlertGroupResult struct {
-	AlertGroups AlertGroupResultSet `json:"alerts"`
 }
 
 // Return a 3 tuple aggregation: signature, source, dest...
@@ -139,7 +107,7 @@ func (s *DataStore) get3TupleAggs() map[string]interface{} {
 	return aggs
 }
 
-func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
+func (s *DataStore) AlertQuery(options core.AlertQueryOptions) ([]core.AlertGroup, error) {
 
 	query := NewEventQuery()
 
@@ -182,7 +150,7 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 		return nil, err
 	}
 
-	alertGroups := AlertGroupResultSet{}
+	alertGroups := AlertGroupList{}
 
 	aggs := util.JsonMap(results.Aggregations)
 	signatures := aggs.GetMap("signatures")
@@ -192,7 +160,7 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 			destinations := bucket1.GetMap("destinations")
 			for _, bucket2 := range destinations.GetMapList("buckets") {
 
-				alertGroup := AlertGroupResultEntry{}
+				alertGroup := core.AlertGroup{}
 				alertGroup.Count, _ = bucket2.Get("doc_count").(json.Number).Int64()
 				alertGroup.EscalatedCount, _ = bucket2.GetMap("escalated").Get("doc_count").(json.Number).Int64()
 
@@ -215,5 +183,5 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, err
 
 	sort.Sort(sort.Reverse(alertGroups))
 
-	return AlertGroupResult{AlertGroups: alertGroups}, nil
+	return alertGroups, nil
 }

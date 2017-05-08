@@ -35,7 +35,7 @@ type Datastore interface {
 
 	GetEveEventSink() EveEventSink
 
-	AlertQuery(options AlertQueryOptions) (interface{}, error)
+	AlertQuery(options AlertQueryOptions) ([]AlertGroup, error)
 	EventQuery(options EventQueryOptions) (interface{}, error)
 
 	ArchiveAlertGroup(p AlertGroupQueryParams) error

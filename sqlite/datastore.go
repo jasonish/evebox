@@ -97,7 +97,7 @@ func (s *DataStore) GetEventById(id string) (map[string]interface{}, error) {
 	return nil, nil
 }
 
-func (s *DataStore) AlertQuery(options core.AlertQueryOptions) (interface{}, error) {
+func (s *DataStore) AlertQuery(options core.AlertQueryOptions) ([]core.AlertGroup, error) {
 
 	query := `
 SELECT b.count,
@@ -181,7 +181,7 @@ ORDER BY timestamp DESC`
 	}
 	defer rows.Close()
 
-	alerts := []interface{}{}
+	alerts := make([]core.AlertGroup, 0)
 
 	for rows.Next() {
 		var count int64
@@ -212,24 +212,22 @@ ORDER BY timestamp DESC`
 				"archived")
 		}
 
-		alert := map[string]interface{}{
-			"count":          count,
-			"escalatedCount": escalated,
-			"minTs":          eve.FormatTimestampUTC(time.Unix(0, minTsNanos)),
-			"maxTs":          eve.FormatTimestampUTC(event.Timestamp()),
-			"event": map[string]interface{}{
+		alert := core.AlertGroup{
+			Count: count,
+			Event: map[string]interface{}{
 				"_id":     id,
 				"_source": event,
 			},
+			MinTs: eve.FormatTimestampUTC(time.Unix(0, minTsNanos)),
+			MaxTs: eve.FormatTimestampUTC(event.Timestamp()),
+			EscalatedCount: escalated,
 		}
 
 		alerts = append(alerts, alert)
 	}
 	log.Debug("Alert query execution time: %v", time.Now().Sub(queryStart))
 
-	return map[string]interface{}{
-		"alerts": alerts,
-	}, nil
+	return alerts, nil
 }
 
 func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {

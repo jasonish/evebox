@@ -113,11 +113,16 @@ func (c *ApiContext) AlertsHandler(w *ResponseWriter, r *http.Request) error {
 		options.MaxTs = ts
 	}
 
-	results, err := c.appContext.DataStore.AlertQuery(options)
+	alerts, err := c.appContext.DataStore.AlertQuery(options)
 	if err != nil {
 		return err
 	}
-	return w.OkJSON(results)
+
+	response := map[string]interface{}{
+		"alerts": alerts,
+	}
+
+	return w.OkJSON(response)
 }
 
 type AlertGroupQueryParameters struct {
