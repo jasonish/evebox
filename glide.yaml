@@ -37,3 +37,4 @@ import:
 - package: golang.org/x/sync
   subpackages:
   - syncmap
+- package: github.com/jasonish/go-idsrules

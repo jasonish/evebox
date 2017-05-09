@@ -41,17 +41,6 @@ import (
 // contains all the data in its raw format.
 type EveEvent map[string]interface{}
 
-func (e EveEvent) MarshalJSON() ([]byte, error) {
-	event := map[string]interface{}{}
-	for key, val := range e {
-		if strings.HasPrefix(key, "__") {
-			continue
-		}
-		event[key] = val
-	}
-	return json.Marshal(event)
-}
-
 func NewEveEventFromBytes(b []byte) (event EveEvent, err error) {
 
 	decoder := json.NewDecoder(bytes.NewReader(b))
@@ -71,6 +60,17 @@ func NewEveEventFromBytes(b []byte) (event EveEvent, err error) {
 	event["__parsed_timestamp"] = timestamp
 
 	return event, nil
+}
+
+func (e EveEvent) MarshalJSON() ([]byte, error) {
+	event := map[string]interface{}{}
+	for key, val := range e {
+		if strings.HasPrefix(key, "__") {
+			continue
+		}
+		event[key] = val
+	}
+	return json.Marshal(event)
 }
 
 func (e EveEvent) parseTimestamp() (time.Time, error) {
@@ -116,16 +116,6 @@ func (e EveEvent) DestIp() string {
 	return e.GetString("dest_ip")
 }
 
-func asUint16(in interface{}) uint16 {
-	if number, ok := in.(json.Number); ok {
-		i64, err := number.Int64()
-		if err == nil {
-			return uint16(i64)
-		}
-	}
-	return 0
-}
-
 func (e EveEvent) SrcPort() uint16 {
 	return asUint16(e["src_port"])
 }
@@ -163,6 +153,21 @@ func (e EveEvent) GetString(key string) string {
 	return util.JsonMap(e).GetString(key)
 }
 
+func (e EveEvent) GetAlert() util.JsonMap {
+	return util.JsonMap(e).GetMap("alert")
+}
+
+func (e EveEvent) GetAlertSignatureId() (uint64, bool) {
+	ruleId, ok := e.GetMap("alert").Get("signature_id").(json.Number)
+	if ok {
+		asInt64, err := ruleId.Int64()
+		if err == nil {
+			return uint64(asInt64), true
+		}
+	}
+	return 0, false
+}
+
 func (e EveEvent) AddTag(tag string) {
 	if e["tags"] == nil {
 		log.Info("Creating empty tags.")
@@ -180,4 +185,14 @@ func (e EveEvent) AddTag(tag string) {
 	}
 	tags = append(tags, tag)
 	e["tags"] = tags
+}
+
+func asUint16(in interface{}) uint16 {
+	if number, ok := in.(json.Number); ok {
+		asInt64, err := number.Int64()
+		if err == nil {
+			return uint16(asInt64)
+		}
+	}
+	return 0
 }

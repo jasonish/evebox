@@ -1,5 +1,5 @@
-hash: f59a05ea6ef2a660e1dfe0f261d124cd8667592a45f3921f56e7bc2e51349326
-updated: 2017-04-19T21:57:35.219130936-06:00
+hash: 88fe4920b0097a94d2e711e8105bf7e28bb6d46e64cf37eb5549c90ca840f594
+updated: 2017-05-08T17:04:40.4794763-06:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -29,6 +29,8 @@ imports:
   - json/parser
   - json/scanner
   - json/token
+- name: github.com/jasonish/go-idsrules
+  version: c646b91576074ac8fdd232bdbddcf1bfe31e1a7b
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/lib/pq

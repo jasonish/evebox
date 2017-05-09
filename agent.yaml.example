@@ -31,3 +31,8 @@ input:
     # Set a host field. This will override the "host" field set by
     # Suricata if the Suricata "sensor-name" option is set.
     #host: "evebox-agent"
+
+  # The EveBox agent can add the rule to an event. To do so, list the
+  # rule files here.
+  rules:
+    - /etc/suricata/rules/*.rules

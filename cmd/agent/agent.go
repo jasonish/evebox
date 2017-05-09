@@ -37,6 +37,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"github.com/jasonish/evebox/rules"
 )
 
 var flagset *pflag.FlagSet
@@ -152,6 +153,13 @@ func Main(args []string) {
 	for field, value := range viper.GetStringMap("input.custom-fields") {
 		eveFileProcessor.AddCustomField(field, value)
 	}
+
+	ruleList := viper.GetStringSlice("input.rules")
+	if ruleList != nil {
+		ruleMap := rules.NewRuleMap(ruleList)
+		eveFileProcessor.AddFilter(ruleMap)
+	}
+
 	eveFileProcessor.Start()
 
 	sigchan := make(chan os.Signal)

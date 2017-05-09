@@ -43,6 +43,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"strings"
+	"github.com/jasonish/evebox/rules"
 )
 
 const DEFAULT_DATA_DIR = ""
@@ -345,6 +346,12 @@ func initInternalEveReader(appContext *appcontext.AppContext) {
 	eveFileProcessor.AddFilter(&eve.TagsFilter{})
 	eveFileProcessor.AddFilter(eve.NewGeoipFilter(appContext.GeoIpService))
 	eveFileProcessor.AddFilter(&useragent.EveUserAgentFilter{})
+
+	inputRules := viper.GetStringSlice("input.rules")
+	if inputRules != nil {
+		ruleMap := rules.NewRuleMap(inputRules)
+		eveFileProcessor.AddFilter(ruleMap)
+	}
 
 	for field, value := range viper.GetStringMap("input.custom-fields") {
 		eveFileProcessor.AddCustomField(field, value)

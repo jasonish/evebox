@@ -201,7 +201,16 @@
 
       </div>
 
+    </div>
 
+    <!-- Rule. -->
+    <div *ngIf="event._source.rule" class="panel panel-default">
+      <div class="panel-heading">
+        <b>Rule</b>
+      </div>
+      <div class="panel-body">
+        {{event._source.rule}}
+      </div>
     </div>
 
     <!-- HTTP. -->
