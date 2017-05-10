@@ -61,3 +61,30 @@ table.table.evebox-event-table {
   border: 1px solid lightgray;
   border-top: 0;
 }
+
+.rule-header-action {
+  color: darkred;
+  font-weight: bold;
+}
+
+.rule-header-proto {
+  color: darkblue;
+  font-weight: bold;
+}
+
+.rule-header-addr {
+  color: purple;
+}
+
+.rule-header-port {
+  color: magenta;
+}
+
+.rule-keyword {
+  color: blue;
+  font-weight: bold;
+}
+
+.rule-keyword-value {
+  color: green;
+}

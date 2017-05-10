@@ -129,3 +129,30 @@ $evebox-info-color: #50656f;
 .fa-star {
   color: yellow;
 }
+
+.rule-header-action {
+  color: mediumvioletred;
+  font-weight: bold;
+}
+
+.rule-header-proto {
+  color: deepskyblue;
+  font-weight: bold;
+}
+
+.rule-header-addr {
+  color: lightgray;
+}
+
+.rule-header-port {
+  color: magenta;
+}
+
+.rule-keyword {
+  color: dodgerblue;
+  font-weight: bold;
+}
+
+.rule-keyword-value {
+  color: lawngreen;
+}
