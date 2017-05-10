@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+**Added**
+- The agent, and the server when reading logs can now add the rule to
+  the event by providing the locatin of the rule files in the
+  configuration.
+- If an event has a "rule" object it will now be displayed in the
+  event details.
+
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.7.0...HEAD)
+
 ## 0.7.0 - 2017-04-22
 
 **Added**
