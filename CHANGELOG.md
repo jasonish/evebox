@@ -8,6 +8,14 @@
   configuration.
 - If an event has a "rule" object it will now be displayed in the
   event details.
+  
+**Fixed**
+- Fix an issue where alerts may not be archived if their @timestamp
+  and timestamp fields were out of sync -
+  https://github.com/jasonish/evebox/issues/48.
+- A usability issue where the alert view would be reset to 100 items
+  after arching event, if previously set to "all" -
+  https://github.com/jasonish/evebox/issues/49.
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.7.0...HEAD)
 
