@@ -6,6 +6,7 @@
 - The agent, and the server when reading logs can now add the rule to
   the event by providing the locatin of the rule files in the
   configuration.
+- Add option to esimport to add rule to event.
 - If an event has a "rule" object it will now be displayed in the
   event details.
   

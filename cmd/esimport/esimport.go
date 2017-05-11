@@ -40,6 +40,7 @@ import (
 	"io"
 	"os"
 	"time"
+	"github.com/jasonish/evebox/rules"
 )
 
 const DEFAULT_INDEX = "evebox"
@@ -104,6 +105,10 @@ func configure(args []string) {
 	flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
 	viper.BindPFlag("geoip.database-filename", flagset.Lookup("geoip-database"))
 
+	flagset.String("rules", "", "Path to Suricata IDS rules")
+	viper.BindPFlag("rules", flagset.Lookup("rules"))
+	viper.BindEnv("rules", "ESIMPORT_RULES")
+
 	if err := flagset.Parse(args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			os.Exit(0)
@@ -129,6 +134,12 @@ func configure(args []string) {
 	} else if len(flagset.Args()) > 1 {
 		log.Fatal("Multiple input filenames not allowed")
 	}
+}
+
+func loadRuleMap() *rules.RuleMap {
+	rulePatterns := viper.GetStringSlice("rules")
+	rulemap := rules.NewRuleMap(rulePatterns)
+	return rulemap
 }
 
 func Main(args []string) {
@@ -182,7 +193,13 @@ func Main(args []string) {
 		log.Info("Template %s exists, will not create.", es.EventBaseIndex)
 	}
 
+	filters := make([]eve.EveFilter, 0)
+
+	ruleMap := loadRuleMap()
+	filters = append(filters, ruleMap)
+
 	geoIpFilter := eve.NewGeoipFilter(geoip.NewGeoIpService())
+	filters = append(filters, geoIpFilter)
 
 	indexer := elasticsearch.NewIndexer(es)
 
@@ -211,8 +228,11 @@ func Main(args []string) {
 		}
 	}
 
-	uaFilter := useragent.EveUserAgentFilter{}
-	tagsFilter := eve.TagsFilter{}
+	uaFilter := &useragent.EveUserAgentFilter{}
+	filters = append(filters, uaFilter)
+
+	tagsFilter := &eve.TagsFilter{}
+	filters = append(filters, tagsFilter)
 
 	count := uint64(0)
 	lastStatTs := time.Now()
@@ -238,9 +258,9 @@ func Main(args []string) {
 
 		if event != nil {
 
-			geoIpFilter.Filter(event)
-			tagsFilter.Filter(event)
-			uaFilter.Filter(event)
+			for _, filter := range(filters) {
+				filter.Filter(event)
+			}
 
 			if stdout {
 				asJson, err := json.Marshal(event)

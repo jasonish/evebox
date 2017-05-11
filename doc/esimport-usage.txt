@@ -11,6 +11,7 @@ Options:
   -k, --no-check-certificate       Disable certificate check
       --oneshot                    One shot mode (exit on EOF)
   -p, --password string            Password
+      --rules string               Path to Suricata IDS rules
       --stdout                     Print events to stdout
   -u, --username string            Username
   -v, --verbose                    Verbose output
