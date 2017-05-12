@@ -63,21 +63,24 @@ table.table.evebox-event-table {
 }
 
 .rule-header-action {
-  color: darkred;
   font-weight: bold;
 }
 
 .rule-header-proto {
-  color: darkblue;
   font-weight: bold;
+  font-style: italic;
 }
 
 .rule-header-addr {
-  color: purple;
+  color: dimgrey;
 }
 
 .rule-header-port {
-  color: magenta;
+  color: slategrey;
+}
+
+.rule-header-direction {
+  font-weight: bold;
 }
 
 .rule-keyword {

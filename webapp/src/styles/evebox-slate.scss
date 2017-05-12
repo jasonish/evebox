@@ -131,21 +131,18 @@ $evebox-info-color: #50656f;
 }
 
 .rule-header-action {
-  color: mediumvioletred;
   font-weight: bold;
 }
 
 .rule-header-proto {
-  color: deepskyblue;
   font-weight: bold;
+  font-style: italic;
 }
 
 .rule-header-addr {
-  color: lightgray;
 }
 
 .rule-header-port {
-  color: magenta;
 }
 
 .rule-keyword {
