@@ -35,9 +35,9 @@ import (
 	"io/ioutil"
 	"strings"
 	"github.com/jasonish/evebox/eve"
-	"gopkg.in/fsnotify.v1"
 	"time"
 	"sync"
+	"github.com/fsnotify/fsnotify"
 )
 
 type RuleMap struct {
