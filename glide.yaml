@@ -38,3 +38,4 @@ import:
   subpackages:
   - syncmap
 - package: github.com/jasonish/go-idsrules
+- package: github.com/fsnotify/fsnotify

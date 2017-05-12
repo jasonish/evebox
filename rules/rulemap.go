@@ -35,7 +35,101 @@ import (
 	"io/ioutil"
 	"strings"
 	"github.com/jasonish/evebox/eve"
+	"gopkg.in/fsnotify.v1"
+	"time"
+	"sync"
 )
+
+type RuleMap struct {
+	paths   []string
+	rules   map[uint64]idsrules.Rule
+	watcher *fsnotify.Watcher
+	lock    sync.RWMutex
+}
+
+func NewRuleMap(paths []string) *RuleMap {
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Warning("Failed to initialize file watcher, rules won't be automatically reloaded: %v", err)
+		watcher = nil
+	}
+
+	rulemap := &RuleMap{
+		paths:   paths,
+		watcher: watcher,
+	}
+
+	rulemap.reload()
+
+	go rulemap.watchFiles()
+
+	return rulemap
+}
+
+func (r *RuleMap) watchFiles() {
+
+	doReload := false
+	lastMod := time.Now()
+
+	timer := time.Tick(1 * time.Second)
+
+	for {
+		select {
+		case <-r.watcher.Events:
+			doReload = true
+			lastMod = time.Now()
+		case err := <-r.watcher.Errors:
+			log.Warning("File watch error: %v", err)
+		case <-timer:
+			if doReload && time.Now().Sub(lastMod).Seconds() > 1 {
+				log.Info("Reloading rules...")
+				r.reload()
+				doReload = false
+			}
+		}
+	}
+}
+
+func (r *RuleMap) reload() {
+	rules := make(map[uint64]idsrules.Rule)
+	filenames := findRuleFilenames(r.paths)
+	for _, filename := range (filenames) {
+		if err := loadRulesFromFile(&rules, filename); err != nil {
+			log.Warning("Failed to load rules from %s: %v", filename, err)
+		}
+		if err := r.watcher.Add(filename); err != nil {
+			log.Warning("Failed to add watch for %s: %v", filename, err)
+		}
+	}
+	r.lock.Lock()
+	r.rules = rules
+	r.lock.Unlock()
+	log.Info("Loaded %d rules", len(rules))
+}
+
+func (r *RuleMap) FindById(id uint64) *idsrules.Rule {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	if r == nil || r.rules == nil {
+		return nil
+	}
+	if rule, ok := r.rules[id]; ok {
+		return &rule
+	}
+	return nil
+}
+
+// Filter implements eve.EveFilter for RuleMap.
+func (r *RuleMap) Filter(event eve.EveEvent) {
+	ruleId, ok := event.GetAlertSignatureId()
+	if ok {
+		rule := r.FindById(ruleId)
+		if rule != nil {
+			event["rule"] = rule.Raw
+		}
+	}
+}
 
 func loadRulesFromFile(ruleMap *map[uint64]idsrules.Rule, filename string) error {
 	file, err := os.Open(filename)
@@ -77,16 +171,12 @@ func loadRulesFromFile(ruleMap *map[uint64]idsrules.Rule, filename string) error
 	return nil
 }
 
-type RuleMap struct {
-	rules map[uint64]idsrules.Rule
-}
-
-func NewRuleMap(paths []string) *RuleMap {
-
-	rules := make(map[uint64]idsrules.Rule)
+// findRuleFilenames returns a list of full file names from the
+// paths/patterns provided.
+func findRuleFilenames(paths []string) []string {
+	filenames := make([]string, 0)
 
 	for _, path := range (paths) {
-
 		fileInfo, err := os.Stat(path)
 		if err != nil {
 			// Load as glob.
@@ -96,7 +186,7 @@ func NewRuleMap(paths []string) *RuleMap {
 				continue
 			}
 			for _, m := range (matches) {
-				loadRulesFromFile(&rules, m)
+				filenames = append(filenames, m)
 			}
 		} else if fileInfo.IsDir() {
 			infos, err := ioutil.ReadDir(path)
@@ -109,41 +199,12 @@ func NewRuleMap(paths []string) *RuleMap {
 					continue
 				}
 				fullFilename := filepath.Join(path, info.Name())
-				log.Info("%s", fullFilename)
-				if err := loadRulesFromFile(&rules, fullFilename); err != nil {
-					log.Warning("Failed to load %s: %v", fullFilename, err)
-				}
+				filenames = append(filenames, fullFilename)
 			}
 		} else {
-			loadRulesFromFile(&rules, path)
-		}
-
-	}
-
-	log.Info("Loaded %d rules", len(rules))
-
-	return &RuleMap{
-		rules: rules,
-	}
-}
-
-func (r *RuleMap) FindById(id uint64) *idsrules.Rule {
-	if r == nil || r.rules == nil {
-		return nil
-	}
-	if rule, ok := r.rules[id]; ok {
-		return &rule
-	}
-	return nil
-}
-
-// Filter implements eve.EveFilter for RuleMap.
-func (r *RuleMap) Filter(event eve.EveEvent) {
-	ruleId, ok := event.GetAlertSignatureId()
-	if ok {
-		rule := r.FindById(ruleId)
-		if rule != nil {
-			event["rule"] = rule.Raw
+			filenames = append(filenames, path)
 		}
 	}
+
+	return filenames
 }
