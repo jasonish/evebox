@@ -88,6 +88,7 @@ import {SettingsComponent} from './settings/settings.component';
 import {ThemeService} from './shared/theme.service';
 import {SettingsService} from './settings.service';
 import { RuleHighlightPipe } from './rule-highlight.pipe';
+import {EveboxPrintablePipe} from './pipes/printable.pipe';
 
 @NgModule({
     declarations: [
@@ -131,14 +132,14 @@ import { RuleHighlightPipe } from './rule-highlight.pipe';
         EveboxBase64DecodePipe,
         EveboxHexPipe,
         EveBoxEventDescriptionPrinterPipe,
+        RuleHighlightPipe,
+        EveboxPrintablePipe,
         EventSeverityToBootstrapClass,
         EveboxFormatTimestampPipe,
 
         LoginComponent,
 
         SettingsComponent,
-
-        RuleHighlightPipe,
     ],
     imports: [
         // Angular modules.

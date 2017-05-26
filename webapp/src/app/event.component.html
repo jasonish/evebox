@@ -295,7 +295,7 @@
       <div class="panel-body">
         <div class="row">
           <div class="col-md-6 col-sm-6">
-            <pre>{{event._source.payload | eveboxBase64Decode}}</pre>
+            <pre style="white-space: pre-wrap;">{{event._source.payload | eveboxBase64Decode | printable}}</pre>
           </div>
           <div class="col-md-6 col-sm-6">
             <pre>{{event._source.payload | eveboxBase64Decode | hex}}</pre>
@@ -318,7 +318,7 @@
       <div class="panel-body">
         <div class="row">
           <div class="col-md-6">
-            <pre>{{event._source.packet | eveboxBase64Decode}}</pre>
+            <pre style="white-space: pre-wrap;">{{event._source.packet | eveboxBase64Decode | printable}}</pre>
           </div>
           <div class="col-md-6">
             <pre>{{event._source.packet| eveboxBase64Decode | hex}}</pre>
