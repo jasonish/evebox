@@ -27,17 +27,17 @@
 package rules
 
 import (
+	"github.com/fsnotify/fsnotify"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
-	"path/filepath"
-	"os"
 	"github.com/jasonish/go-idsrules"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
-	"github.com/jasonish/evebox/eve"
-	"time"
 	"sync"
-	"github.com/fsnotify/fsnotify"
+	"time"
 )
 
 type RuleMap struct {
@@ -94,7 +94,7 @@ func (r *RuleMap) watchFiles() {
 func (r *RuleMap) reload() {
 	rules := make(map[uint64]idsrules.Rule)
 	filenames := findRuleFilenames(r.paths)
-	for _, filename := range (filenames) {
+	for _, filename := range filenames {
 		if err := loadRulesFromFile(&rules, filename); err != nil {
 			log.Warning("Failed to load rules from %s: %v", filename, err)
 		}
@@ -176,7 +176,7 @@ func loadRulesFromFile(ruleMap *map[uint64]idsrules.Rule, filename string) error
 func findRuleFilenames(paths []string) []string {
 	filenames := make([]string, 0)
 
-	for _, path := range (paths) {
+	for _, path := range paths {
 		fileInfo, err := os.Stat(path)
 		if err != nil {
 			// Load as glob.
@@ -185,7 +185,7 @@ func findRuleFilenames(paths []string) []string {
 				log.Warning("No matches for %s: %v", path, err)
 				continue
 			}
-			for _, m := range (matches) {
+			for _, m := range matches {
 				filenames = append(filenames, m)
 			}
 		} else if fileInfo.IsDir() {

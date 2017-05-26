@@ -31,13 +31,13 @@ import (
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/rules"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
-	"github.com/jasonish/evebox/rules"
 )
 
 var flagset *pflag.FlagSet

@@ -27,8 +27,8 @@
 package rules
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 // Test that a nil RuleMap, or a RuleMap with a nil internal rulemap behaves

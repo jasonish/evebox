@@ -36,6 +36,7 @@ import (
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/rules"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
 	"github.com/jasonish/evebox/sqlite/configdb"
@@ -43,7 +44,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"strings"
-	"github.com/jasonish/evebox/rules"
 )
 
 const DEFAULT_DATA_DIR = ""

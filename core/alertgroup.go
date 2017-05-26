@@ -27,8 +27,8 @@
 package core
 
 import (
-	"time"
 	"github.com/jasonish/evebox/eve"
+	"time"
 )
 
 // AlertGroup is a single entry in the list of alert group responses.

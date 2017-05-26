@@ -218,8 +218,8 @@ ORDER BY timestamp DESC`
 				"_id":     id,
 				"_source": event,
 			},
-			MinTs: eve.FormatTimestampUTC(time.Unix(0, minTsNanos)),
-			MaxTs: eve.FormatTimestampUTC(event.Timestamp()),
+			MinTs:          eve.FormatTimestampUTC(time.Unix(0, minTsNanos)),
+			MaxTs:          eve.FormatTimestampUTC(event.Timestamp()),
 			EscalatedCount: escalated,
 		}
 
