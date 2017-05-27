@@ -87,8 +87,8 @@ import {AppEventService} from './appevent.service';
 import {SettingsComponent} from './settings/settings.component';
 import {ThemeService} from './shared/theme.service';
 import {SettingsService} from './settings.service';
-import { RuleHighlightPipe } from './rule-highlight.pipe';
 import {EveboxPrintablePipe} from './pipes/printable.pipe';
+import {RuleHighlightPipe} from './pipes/rule-highlight.pipe';
 
 @NgModule({
     declarations: [

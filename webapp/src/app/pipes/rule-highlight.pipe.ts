@@ -33,6 +33,10 @@ export class RuleHighlightPipe implements PipeTransform {
 
     transform(value: any, args?: any): any {
 
+        // First encode html.
+        value = value.replace("<", "&___lt___");
+        value = value.replace(">", "&___gt___");
+
         value = value.replace(
                 /^([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/,
                 `<span class="rule-header-action">$1</span> 
@@ -45,6 +49,12 @@ export class RuleHighlightPipe implements PipeTransform {
 
         value = value.replace(/:([^;]+)/g, `:<span class="rule-keyword-value">$1</span>`);
         value = value.replace(/(\w+\:)/g, `<span class="rule-keyword">$1</span>`);
+
+        // Catch keywords without a value.
+        value = value.replace(/(;\s*)(\w+;)/g, `$1<span class="rule-keyword">$2</span>`);
+
+        value = value.replace("&___lt___", "&lt;");
+        value = value.replace("&___gt___", "&gt;");
 
         return value;
     }
