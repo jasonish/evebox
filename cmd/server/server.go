@@ -173,6 +173,9 @@ func Main(args []string) {
 	viper.BindPFlag("database.elasticsearch.index", flagset.Lookup("index"))
 	viper.BindEnv("index", "ELASTICSEARCH_INDEX")
 
+	viper.BindEnv("database.elasticsearch.username", "ELASTICSEARCH_USERNAME")
+	viper.BindEnv("database.elasticsearch.password", "ELASTICSEARCH_PASSWORD")
+
 	// Elastic Search keyword. This is purposely not bound to viper as viper
 	// fails to tell us if it was set or not.
 	flagset.String("elasticsearch-keyword", "", "Elastic Search keyword")
@@ -278,6 +281,12 @@ func Main(args []string) {
 			viper.GetString("database.elasticsearch.url"))
 		elasticSearch.SetEventIndex(
 			viper.GetString("database.elasticsearch.index"))
+
+		username := viper.GetString("database.elasticsearch.username")
+		password := viper.GetString("database.elasticsearch.password")
+		if username != "" || password != "" {
+			elasticSearch.SetUsernamePassword(username, password)
+		}
 
 		keywordSet, keyword := getElasticSearchKeyword(flagset)
 		if keywordSet {
