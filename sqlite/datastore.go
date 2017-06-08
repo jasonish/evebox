@@ -31,9 +31,9 @@ package sqlite
 import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/elasticsearch"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
 	"github.com/pkg/errors"
 	"strconv"
 	"strings"
@@ -129,15 +129,15 @@ ORDER BY timestamp DESC`
 
 	builder.WhereEquals("json_extract(events.source, '$.event_type')", "alert")
 
-	if elasticsearch.StringSliceContains(options.MustHaveTags, "archived") {
+	if util.StringSliceContains(options.MustHaveTags, "archived") {
 		builder.WhereEquals("archived", 1)
 	}
 
-	if elasticsearch.StringSliceContains(options.MustNotHaveTags, "archived") {
+	if util.StringSliceContains(options.MustNotHaveTags, "archived") {
 		builder.WhereEquals("archived", 0)
 	}
 
-	if elasticsearch.StringSliceContains(options.MustHaveTags, "escalated") {
+	if util.StringSliceContains(options.MustHaveTags, "escalated") {
 		builder.WhereEquals("escalated", 1)
 	}
 

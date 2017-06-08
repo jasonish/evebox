@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2014-2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,64 +26,56 @@
 
 package elasticsearch
 
-import (
-	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/log"
-	"time"
-)
+import "github.com/jasonish/evebox/util"
 
-func FormatTimestampUTC(timestamp time.Time) string {
-	return timestamp.UTC().Format("2006-01-02T15:04:05.000Z")
-}
+// AddTagsToEvent will add the given tags to the event referenced by ID.
+func (s *DataStore) AddTagsToEvent(id string, addTags []string) error {
 
-type EventQueryService struct {
-	es *ElasticSearch
-}
-
-func NewEventQueryService(es *ElasticSearch) *EventQueryService {
-	return &EventQueryService{
-		es: es,
-	}
-}
-
-func (s *EventQueryService) EventQuery(options core.EventQueryOptions) (interface{}, error) {
-
-	query := NewEventQuery()
-	query.MustNot(TermQuery("event_type", "stats"))
-	query.SortBy("@timestamp", "desc")
-
-	if options.Size > 0 {
-		query.Size = options.Size
-	} else {
-		query.Size = 500
-	}
-
-	if options.QueryString != "" {
-		query.AddFilter(QueryString(options.QueryString))
-	}
-
-	if !options.MinTs.IsZero() {
-		query.AddFilter(RangeGte("@timestamp",
-			FormatTimestampUTC(options.MinTs)))
-	}
-
-	if !options.MaxTs.IsZero() {
-		query.AddFilter(RangeLte("@timestamp",
-			FormatTimestampUTC(options.MaxTs)))
-	}
-
-	if options.EventType != "" {
-		query.AddFilter(TermQuery("event_type", options.EventType))
-	}
-
-	response, err := s.es.Search(query)
+	raw, err := s.GetEventById(id)
 	if err != nil {
-		log.Error("%v", err)
+		return err
 	}
 
-	hits := response.Hits.Hits
+	event := util.JsonMap(raw)
+	tags := event.GetMap("_source").GetAsStrings("tags")
 
-	return map[string]interface{}{
-		"data": hits,
-	}, nil
+	for _, tag := range addTags {
+		if !util.StringSliceContains(tags, tag) {
+			tags = append(tags, tag)
+		}
+	}
+
+	s.es.PartialUpdate(event.GetString("_index"), event.GetString("_type"),
+		event.GetString("_id"), map[string]interface{}{
+			"tags": tags,
+		})
+
+	return nil
+}
+
+// RemoveTagsFromEvent will remove the given tags from the event referenced
+// by ID.
+func (s *DataStore) RemoveTagsFromEvent(id string, rmTags []string) error {
+
+	raw, err := s.GetEventById(id)
+	if err != nil {
+		return err
+	}
+
+	event := util.JsonMap(raw)
+	currentTags := event.GetMap("_source").GetAsStrings("tags")
+	tags := make([]string, 0)
+
+	for _, tag := range currentTags {
+		if !util.StringSliceContains(rmTags, tag) {
+			tags = append(tags, tag)
+		}
+	}
+
+	s.es.PartialUpdate(event.GetString("_index"), event.GetString("_type"),
+		event.GetString("_id"), map[string]interface{}{
+			"tags": tags,
+		})
+
+	return nil
 }

@@ -75,8 +75,6 @@ type AppContext struct {
 
 	ElasticSearch *elasticsearch.ElasticSearch
 
-	EsEventService elasticsearch.EventService
-
 	ReportService core.ReportService
 
 	GeoIpService *geoip.GeoIpService

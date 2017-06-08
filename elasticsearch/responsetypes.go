@@ -27,17 +27,12 @@
 package elasticsearch
 
 import (
-	"encoding/json"
 	"github.com/jasonish/evebox/util"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 )
-
-// Type alias for a map[string] - helper for building up JSON.
-type m map[string]interface{}
-
-// Type alias for an interface slice - helper for building up JSON lists.
-type l []interface{}
 
 // PingResponse represents the response to an Elastic Search ping (GET /).
 type PingResponse struct {
@@ -118,26 +113,23 @@ type SearchResponse struct {
 	Status int                    `json:"status"`
 }
 
-type RangeQuery struct {
-	Field string
-	Gte   string
-	Lte   string
+type ElasticSearchError struct {
+	// The raw error body as returned from the server.
+	Raw string
 }
 
-func (r RangeQuery) MarshalJSON() ([]byte, error) {
-	values := map[string]string{}
-	if r.Gte != "" {
-		values["gte"] = r.Gte
-	}
-	if r.Lte != "" {
-		values["lte"] = r.Lte
+func (e ElasticSearchError) Error() string {
+	return e.Raw
+}
+
+func NewElasticSearchError(response *http.Response) ElasticSearchError {
+
+	error := ElasticSearchError{}
+
+	raw, _ := ioutil.ReadAll(response.Body)
+	if raw != nil {
+		error.Raw = string(raw)
 	}
 
-	rangeq := map[string]interface{}{
-		"range": map[string]interface{}{
-			r.Field: values,
-		},
-	}
-
-	return json.Marshal(rangeq)
+	return error
 }

@@ -58,43 +58,43 @@ func (s *DataStore) get3TupleAggs() map[string]interface{} {
 	size := 10000
 
 	aggs := map[string]interface{}{
-		"signatures": m{
-			"terms": m{
+		"signatures": map[string]interface{}{
+			"terms": map[string]interface{}{
 				"field": "alert.signature_id",
 				"size":  size,
 			},
-			"aggs": m{
-				"sources": m{
-					"terms": m{
+			"aggs": map[string]interface{}{
+				"sources": map[string]interface{}{
+					"terms": map[string]interface{}{
 						"field": s.es.FormatKeyword("src_ip"),
 						"size":  size,
 					},
-					"aggs": m{
-						"destinations": m{
-							"terms": m{
+					"aggs": map[string]interface{}{
+						"destinations": map[string]interface{}{
+							"terms": map[string]interface{}{
 								"field": s.es.FormatKeyword("dest_ip"),
 								"size":  size,
 							},
-							"aggs": m{
-								"newest": m{
-									"top_hits": m{
-										"sort": l{
+							"aggs": map[string]interface{}{
+								"newest": map[string]interface{}{
+									"top_hits": map[string]interface{}{
+										"sort": []interface{}{
 											Sort("@timestamp", "desc"),
 										},
 										"size": 1,
 									},
 								},
-								"oldest": m{
-									"top_hits": m{
-										"sort": l{
+								"oldest": map[string]interface{}{
+									"top_hits": map[string]interface{}{
+										"sort": []interface{}{
 											Sort("@timestamp", "asc"),
 										},
 										"size": 1,
 									},
 								},
-								"escalated": m{
-									"filter": m{
-										"term": m{
+								"escalated": map[string]interface{}{
+									"filter": map[string]interface{}{
+										"term": map[string]interface{}{
 											"tags": "escalated",
 										},
 									},

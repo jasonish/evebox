@@ -26,7 +26,89 @@
 
 package elasticsearch
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+)
+
+// EventQuery is a type for building up an Elastic Search event query.
+type EventQuery struct {
+	Query struct {
+		Bool struct {
+			Filter  []interface{} `json:"filter"`
+			MustNot []interface{} `json:"must_not,omitempty"`
+			Should  []interface{} `json:"should,omitempty"`
+
+			// Should be an integer, but we make it an interface so
+			// its not included if not set.
+			MinimumShouldMatch interface{} `json:"minimum_should_match,omitempty"`
+		} `json:"bool"`
+	} `json:"query"`
+	Size int64                  `json:"size"`
+	Sort []interface{}          `json:"sort,omitempty"`
+	Aggs map[string]interface{} `json:"aggs,omitempty"`
+}
+
+func NewEventQuery() EventQuery {
+	query := EventQuery{}
+	query.AddFilter(ExistsQuery("event_type"))
+	query.Sort = []interface{}{
+		Sort("@timestamp", "desc"),
+	}
+	query.Aggs = map[string]interface{}{}
+	return query
+}
+
+func (q *EventQuery) EventType(eventType string) {
+	q.AddFilter(TermQuery("event_type", eventType))
+}
+
+func (q *EventQuery) ShouldHaveIp(addr string, keyword string) {
+	if strings.HasSuffix(addr, ".") {
+		q.Should(KeywordPrefixQuery("src_ip", addr, keyword))
+		q.Should(KeywordPrefixQuery("dest_ip", addr, keyword))
+	} else {
+		q.Should(KeywordTermQuery("src_ip", addr, keyword))
+		q.Should(KeywordTermQuery("dest_ip", addr, keyword))
+	}
+	q.Query.Bool.MinimumShouldMatch = 1
+}
+
+func (q *EventQuery) AddFilter(filter interface{}) {
+	q.Query.Bool.Filter = append(q.Query.Bool.Filter, filter)
+}
+
+func (q *EventQuery) Should(filter interface{}) {
+	q.Query.Bool.Should = append(q.Query.Bool.Should, filter)
+}
+
+func (q *EventQuery) MustNot(query interface{}) {
+	q.Query.Bool.MustNot = append(q.Query.Bool.MustNot, query)
+}
+
+func (q *EventQuery) SortBy(field string, order string) *EventQuery {
+	q.Sort = append(q.Sort, Sort(field, order))
+	return q
+}
+
+func (q *EventQuery) AddTimeRangeFilter(timeRange string) error {
+	duration, err := time.ParseDuration(fmt.Sprintf("-%s", timeRange))
+	if err != nil {
+		return err
+	}
+	then := time.Now().Add(duration)
+	q.AddFilter(map[string]interface{}{
+		"range": map[string]interface{}{
+			"@timestamp": map[string]interface{}{
+				"gte": then,
+			},
+		},
+	})
+
+	return nil
+}
 
 func ExistsQuery(field string) interface{} {
 	return map[string]interface{}{
@@ -101,6 +183,30 @@ func RangeGte(field string, value interface{}) interface{} {
 
 func RangeLte(field string, value interface{}) interface{} {
 	return Range("lte", field, value)
+}
+
+type RangeQuery struct {
+	Field string
+	Gte   string
+	Lte   string
+}
+
+func (r RangeQuery) MarshalJSON() ([]byte, error) {
+	values := map[string]string{}
+	if r.Gte != "" {
+		values["gte"] = r.Gte
+	}
+	if r.Lte != "" {
+		values["lte"] = r.Lte
+	}
+
+	rangeq := map[string]interface{}{
+		"range": map[string]interface{}{
+			r.Field: values,
+		},
+	}
+
+	return json.Marshal(rangeq)
 }
 
 func TopHitsAgg(field string, order string, size int64) interface{} {

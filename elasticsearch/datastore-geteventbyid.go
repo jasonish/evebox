@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2014-2015 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,10 +24,33 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package core
+package elasticsearch
 
-type ArchiveService interface {
-	ArchiveAlerts(signatureId uint64,
-		srcIp string, destIp string,
-		minTimestamp string, maxTimestamp string) error
+type getEventByIdQuery struct {
+	Query struct {
+		Bool struct {
+			Filter struct {
+				Term struct {
+					ID string `json:"_id"`
+				} `json:"term"`
+			} `json:"filter"`
+		} `json:"bool"`
+	} `json:"query"`
+}
+
+// GetEventById returns the event with the given ID. If not event is found
+// nil will be returned for the event and error will not be set.
+func (s *DataStore) GetEventById(id string) (map[string]interface{}, error) {
+	query := getEventByIdQuery{}
+	query.Query.Bool.Filter.Term.ID = id
+	result, err := s.es.Search(query)
+	if err != nil {
+		return nil, err
+	}
+	if len(result.Hits.Hits) > 0 {
+		return result.Hits.Hits[0], nil
+	}
+
+	// No event found.
+	return nil, nil
 }

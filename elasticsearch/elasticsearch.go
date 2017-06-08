@@ -42,6 +42,7 @@ import (
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"math"
+	"time"
 )
 
 type ElasticSearch struct {
@@ -333,7 +334,7 @@ func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*Searc
 }
 
 func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchResponse, error) {
-	body := m{
+	body := map[string]interface{}{
 		"scroll_id": scrollId,
 		"scroll":    duration,
 	}
@@ -384,4 +385,22 @@ func DecodeResponse(reader io.Reader, output interface{}) error {
 	decoder := json.NewDecoder(reader)
 	decoder.UseNumber()
 	return decoder.Decode(output)
+}
+
+func (s *ElasticSearch) doUpdateByQuery(query map[string]interface{}) (util.JsonMap, error) {
+	var response util.JsonMap
+	err := s.HttpClient.PostJsonDecodeResponse(
+		fmt.Sprintf("%s/_update_by_query?refresh=true&conflicts=proceed",
+			s.EventSearchIndex), query, &response)
+	if err != nil {
+		return nil, errors.Wrap(err, "request failed")
+	}
+
+	return response, nil
+}
+
+// FormatTimestampUTC formats a time.Time into the format generally used
+// by Elastic Search, in particular the @timestamp field.
+func FormatTimestampUTC(timestamp time.Time) string {
+	return timestamp.UTC().Format("2006-01-02T15:04:05.000Z")
 }

@@ -26,12 +26,49 @@
 
 package elasticsearch
 
-// Check if a slice of strings contains a string.
-func StringSliceContains(slice []string, what string) bool {
-	for _, item := range slice {
-		if item == what {
-			return true
-		}
+import (
+	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/log"
+)
+
+func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, error) {
+
+	query := NewEventQuery()
+	query.MustNot(TermQuery("event_type", "stats"))
+	query.SortBy("@timestamp", "desc")
+
+	if options.Size > 0 {
+		query.Size = options.Size
+	} else {
+		query.Size = 500
 	}
-	return false
+
+	if options.QueryString != "" {
+		query.AddFilter(QueryString(options.QueryString))
+	}
+
+	if !options.MinTs.IsZero() {
+		query.AddFilter(RangeGte("@timestamp",
+			FormatTimestampUTC(options.MinTs)))
+	}
+
+	if !options.MaxTs.IsZero() {
+		query.AddFilter(RangeLte("@timestamp",
+			FormatTimestampUTC(options.MaxTs)))
+	}
+
+	if options.EventType != "" {
+		query.AddFilter(TermQuery("event_type", options.EventType))
+	}
+
+	response, err := s.es.Search(query)
+	if err != nil {
+		log.Error("%v", err)
+	}
+
+	hits := response.Hits.Hits
+
+	return map[string]interface{}{
+		"data": hits,
+	}, nil
 }

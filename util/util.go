@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2014-2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,30 +24,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package elasticsearch
+package util
 
-import (
-	"io/ioutil"
-	"net/http"
-)
-
-type ElasticSearchError struct {
-	// The raw error body as returned from the server.
-	Raw string
-}
-
-func (e ElasticSearchError) Error() string {
-	return e.Raw
-}
-
-func NewElasticSearchError(response *http.Response) ElasticSearchError {
-
-	error := ElasticSearchError{}
-
-	raw, _ := ioutil.ReadAll(response.Body)
-	if raw != nil {
-		error.Raw = string(raw)
+// Check if a slice of strings contains a string.
+func StringSliceContains(slice []string, what string) bool {
+	for _, item := range slice {
+		if item == what {
+			return true
+		}
 	}
-
-	return error
+	return false
 }

@@ -33,9 +33,9 @@ import (
 	"strings"
 )
 
-// bulkUpdateTags will add and/or remvoe tags from a set of documents using
+// BulkUpdateTags will add and/or remove tags from a set of documents using
 // the Elastic Search bulk API.
-func bulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
+func BulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
 	addTags []string, rmTags []string) (bool, error) {
 
 	bulk := make([]string, 0)
@@ -47,13 +47,13 @@ func bulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
 		tags := make([]string, 0)
 
 		for _, tag := range currentTags {
-			if rmTags == nil || !StringSliceContains(rmTags, tag) {
+			if rmTags == nil || !util.StringSliceContains(rmTags, tag) {
 				tags = append(tags, tag)
 			}
 		}
 
 		for _, tag := range addTags {
-			if !StringSliceContains(tags, tag) {
+			if !util.StringSliceContains(tags, tag) {
 				tags = append(tags, tag)
 			}
 		}
@@ -62,8 +62,8 @@ func bulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
 		docType := doc.Get("_type").(string)
 		index := doc.Get("_index").(string)
 
-		command := m{
-			"update": m{
+		command := map[string]interface{}{
+			"update": map[string]interface{}{
 				"_id":    id,
 				"_type":  docType,
 				"_index": index,
@@ -71,8 +71,8 @@ func bulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
 		}
 		bulk = append(bulk, util.ToJson(command))
 
-		partial := m{
-			"doc": m{
+		partial := map[string]interface{}{
+			"doc": map[string]interface{}{
 				"tags": tags,
 			},
 		}
