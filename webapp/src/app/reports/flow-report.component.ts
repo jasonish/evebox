@@ -171,16 +171,16 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         this.load(() => {
             return this.api.reportAgg('src_ip', aggOptions)
-                .then((response: any) => {
-                    this.topClientsByFlows = response.data;
-                });
+                    .then((response: any) => {
+                        this.topClientsByFlows = response.data;
+                    });
         });
 
         this.load(() => {
             return this.api.reportAgg('dest_ip', aggOptions)
-                .then((response: any) => {
-                    this.topServersByFlows = response.data;
-                });
+                    .then((response: any) => {
+                        this.topServersByFlows = response.data;
+                    });
         });
 
         let query: any = {
@@ -201,7 +201,12 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 topFlowsByAge: {
                     top_hits: {
                         sort: [
-                            {'flow.age': {order: 'desc'}}
+                            {
+                                'flow.age': {
+                                    order: 'desc',
+                                    unmapped_type: "long"
+                                }
+                            }
                         ],
                         size: 10,
                     }

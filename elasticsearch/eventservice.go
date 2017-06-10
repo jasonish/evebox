@@ -570,21 +570,6 @@ func (s *DataStore) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags 
 	return nil
 }
 
-func TopHitsAgg(field string, order string, size int64) interface{} {
-	return map[string]interface{}{
-		"top_hits": map[string]interface{}{
-			"sort": []map[string]interface{}{
-				map[string]interface{}{
-					field: map[string]interface{}{
-						"order": order,
-					},
-				},
-			},
-			"size": size,
-		},
-	}
-}
-
 func (s *EventService) FindNetflow(options core.EventQueryOptions, sortBy string, order string) (interface{}, error) {
 
 	size := int64(10)

@@ -317,7 +317,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                     aggs: {
                         bytes: {
                             sum: {
-                                field: 'netflow.bytes'
+                                field: 'netflow.bytes',
                             }
                         }
                     }
