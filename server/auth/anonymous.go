@@ -61,8 +61,13 @@ func (a *AnonymousAuthenticator) login(username string) *sessions.Session {
 }
 
 func (a *AnonymousAuthenticator) Login(r *http.Request) (*sessions.Session, error) {
-	log.Info("Logging in anonymous user from %v", r.RemoteAddr)
-	session := a.login(username)
+	remoteUsername := r.Header.Get("REMOTE_USER")
+	if remoteUsername == "" {
+		remoteUsername = username
+	}
+	log.Info("Logging in anonymous user {%s} from %v",
+		remoteUsername, r.RemoteAddr)
+	session := a.login(remoteUsername)
 	session.RemoteAddr = r.RemoteAddr
 	return session, nil
 }
