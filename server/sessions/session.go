@@ -34,13 +34,10 @@ import (
 
 type Session struct {
 	Id         string
-	Username   string
 	User       core.User
 	RemoteAddr string
-
-	Expires time.Time
-
-	Other map[string]interface{}
+	Expires    time.Time
+	Other      map[string]interface{}
 }
 
 func NewSession() *Session {
@@ -49,6 +46,10 @@ func NewSession() *Session {
 	return session
 }
 
+func (s *Session) Username() string {
+	return s.User.Username
+}
+
 func (s *Session) String() string {
-	return fmt.Sprintf("{Id: %s; Username: %s}", s.Id, s.Username)
+	return fmt.Sprintf("{Id: %s; Username: %s}", s.Id, s.User.Username)
 }

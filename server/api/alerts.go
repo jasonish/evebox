@@ -30,6 +30,7 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/server/sessions"
 	"github.com/pkg/errors"
 	"net/http"
 )
@@ -71,6 +72,7 @@ func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() (core.AlertGro
 
 // /api/1/alert-group/archive
 func (c *ApiContext) AlertGroupArchiveHandler(w *ResponseWriter, r *http.Request) error {
+	session := r.Context().Value("session").(*sessions.Session)
 	var request AlertGroupQueryParameters
 
 	if err := DecodeRequestBody(r, &request); err != nil {
@@ -82,7 +84,7 @@ func (c *ApiContext) AlertGroupArchiveHandler(w *ResponseWriter, r *http.Request
 		return errors.WithStack(err)
 	}
 
-	err = c.appContext.DataStore.ArchiveAlertGroup(params)
+	err = c.appContext.DataStore.ArchiveAlertGroup(params, session.User)
 	if err != nil {
 		log.Error("%v", err)
 		return err
@@ -91,6 +93,8 @@ func (c *ApiContext) AlertGroupArchiveHandler(w *ResponseWriter, r *http.Request
 }
 
 func (c *ApiContext) StarAlertGroupHandler(w *ResponseWriter, r *http.Request) error {
+	session := r.Context().Value("session").(*sessions.Session)
+
 	var request AlertGroupQueryParameters
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err
@@ -101,7 +105,7 @@ func (c *ApiContext) StarAlertGroupHandler(w *ResponseWriter, r *http.Request) e
 		return errors.WithStack(err)
 	}
 
-	if err := c.appContext.DataStore.EscalateAlertGroup(params); err != nil {
+	if err := c.appContext.DataStore.EscalateAlertGroup(params, session.User); err != nil {
 		log.Error("%v", err)
 		return errors.WithStack(err)
 	}
@@ -109,7 +113,9 @@ func (c *ApiContext) StarAlertGroupHandler(w *ResponseWriter, r *http.Request) e
 }
 
 func (c *ApiContext) UnstarAlertGroupHandler(w *ResponseWriter, r *http.Request) error {
+	session := r.Context().Value("session").(*sessions.Session)
 	var request AlertGroupQueryParameters
+
 	if err := DecodeRequestBody(r, &request); err != nil {
 		return err
 	}
@@ -119,7 +125,7 @@ func (c *ApiContext) UnstarAlertGroupHandler(w *ResponseWriter, r *http.Request)
 		return errors.WithStack(err)
 	}
 
-	if err := c.appContext.DataStore.UnstarAlertGroup(params); err != nil {
+	if err := c.appContext.DataStore.DeEscalateAlertGroup(params, session.User); err != nil {
 		log.Error("%v", err)
 		return errors.WithStack(err)
 	}

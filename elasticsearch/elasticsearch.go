@@ -363,6 +363,31 @@ func (es *ElasticSearch) PartialUpdate(index string, doctype string, id string,
 		index, doctype, id), body)
 }
 
+func IsError(response *http.Response) error {
+	if response.StatusCode < 400 {
+		return nil
+	}
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return errors.Wrap(err, "failed to read response")
+	}
+	return errors.Errorf("%s %s", response.Status, string(body))
+}
+
+func (es *ElasticSearch) Update(index string, docType string, docId string,
+	body map[string]interface{}) (*RawResponse, error) {
+	response, err := es.HttpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
+		index, docType, docId), body)
+	if err != nil {
+		return nil, errors.Wrap(err, "http request failed")
+	}
+	defer response.Body.Close()
+	if err := IsError(response); err != nil {
+		return nil, err
+	}
+	return DecodeRawResponse(response.Body)
+}
+
 // Refresh refreshes all indices logging any error but not returning and
 // discarding the response so the caller doesn't have to.
 func (es *ElasticSearch) Refresh() {

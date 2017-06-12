@@ -27,7 +27,11 @@
 package elasticsearch
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/jasonish/evebox/util"
+	"github.com/pkg/errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -132,4 +136,28 @@ func NewElasticSearchError(response *http.Response) ElasticSearchError {
 	}
 
 	return error
+}
+
+type RawResponse struct {
+	json util.JsonMap
+	raw  []byte
+}
+
+func DecodeRawResponse(r io.Reader) (*RawResponse, error) {
+	raw, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+	response := &RawResponse{raw: raw}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	err = decoder.Decode(&response.json)
+	if err != nil {
+		return response, errors.Wrap(err, "failed to decode response")
+	}
+	return response, nil
+}
+
+func (r RawResponse) RawString() string {
+	return string(r.raw)
 }

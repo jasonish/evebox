@@ -87,7 +87,6 @@ func (a *UsernamePasswordAuthenticator) Login(r *http.Request) (*sessions.Sessio
 	}
 
 	session := a.sessionStore.NewSession()
-	session.Username = user.Username
 	session.User = user
 	session.RemoteAddr = r.RemoteAddr
 
@@ -118,7 +117,6 @@ func (a *UsernamePasswordAuthenticator) Authenticate(w http.ResponseWriter, r *h
 		}
 		session := &sessions.Session{
 			Id:         a.sessionStore.GenerateID(),
-			Username:   username,
 			User:       user,
 			RemoteAddr: r.RemoteAddr,
 		}

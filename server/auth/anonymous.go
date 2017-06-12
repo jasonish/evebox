@@ -49,11 +49,7 @@ func NewAnonymousAuthenticator(sessionStore *sessions.SessionStore) *AnonymousAu
 
 func (a *AnonymousAuthenticator) login(username string) *sessions.Session {
 	session := a.sessionStore.NewSession()
-	session.Username = username
-	session.User = core.User{
-		Username: username,
-		Id:       username,
-	}
+	session.User = core.NewAnonymousUser(username)
 
 	a.sessionStore.Put(session)
 

@@ -84,7 +84,7 @@ func (c *ApiContext) LogoutHandler(w *ResponseWriter, r *http.Request) error {
 		log.Debug("Logout request has no session")
 	} else {
 		c.sessionStore.Delete(session)
-		log.Info("User %s from [%v] logged out", session.Username,
+		log.Info("User %s from [%v] logged out", session.User.Username,
 			r.RemoteAddr)
 	}
 

@@ -164,7 +164,6 @@ func (g *GitHubAuthenticator) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session.User = user
-	session.Username = user.Username
 	session.RemoteAddr = r.RemoteAddr
 
 	log.Info("User %s logged in (via GitHub) from %s", user.Username,

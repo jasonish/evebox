@@ -32,8 +32,18 @@ type User struct {
 	FullName string `json:"full_name,omitempty"`
 	Email    string `json:"email,omitempty"`
 
+	Anonymous bool `json:"anonymous,omitempty"`
+
 	GitHubUsername string `json:"github_username,omitempty"`
 	GitHubID       int64  `json:"github_id,omitempty"`
+}
+
+func NewAnonymousUser(username string) User {
+	return User{
+		Id:        username,
+		Username:  username,
+		Anonymous: true,
+	}
 }
 
 func (u User) IsValid() bool {

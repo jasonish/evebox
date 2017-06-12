@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2016-2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@ import (
 	"github.com/jasonish/evebox/log"
 	"io"
 	"io/ioutil"
+	"time"
 )
 
 type DataStore struct {
@@ -214,10 +215,22 @@ func (s *DataStore) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []str
 	return nil
 }
 
+const ACTION_ARCHIVED = "archived"
+
+const ACTION_ESCALATED = "escalated"
+
+const ACTION_DEESCALATED = "de-escalated"
+
+type HistoryEntry struct {
+	Timestamp string `json:"timestamp"`
+	Username  string `json:"username"`
+	Action    string `json:"action"`
+}
+
 // ArchiveAlertGroupByQuery uses the Elastic Search update_by_query API to
 // archive events with a query instead of updating each document. This is
 // only available in Elastic Search v5+.
-func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, tags []string) error {
+func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, tags []string, action HistoryEntry) error {
 	log.Println("AddTagsToAlertGroupsByQuery")
 	mustNot := []interface{}{}
 	for _, tag := range tags {
@@ -253,9 +266,17 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 			            ctx._source.tags.add(tag);
 			        }
 			    }
+			    if (ctx._source.evebox == null) {
+			        ctx._source.evebox = new HashMap();
+			    }
+			    if (ctx._source.evebox.history == null) {
+			        ctx._source.evebox.history = new ArrayList();
+			    }
+			    ctx._source.evebox.history.add(params.action);
 			`,
 			"params": map[string]interface{}{
-				"tags": tags,
+				"tags":   tags,
+				"action": action,
 			},
 		},
 	}
@@ -272,32 +293,46 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 }
 
 // ArchiveAlertGroup is a specialization of AddTagsToAlertGroup.
-func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
+func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 	tags := []string{"archived", "evebox.archived"}
-	if s.es.MajorVersion >= 5 && s.es.MinorVersion >= 2 {
-		return s.AddTagsToAlertGroupsByQuery(p, tags)
+	if s.es.MajorVersion < 5 {
+		return s.AddTagsToAlertGroup(p, tags)
 	}
-	return s.AddTagsToAlertGroup(p, tags)
+	return s.AddTagsToAlertGroupsByQuery(p, tags, HistoryEntry{
+		Action:    ACTION_ARCHIVED,
+		Timestamp: FormatTimestampUTC(time.Now()),
+		Username:  user.Username,
+	})
 }
 
 // EscalateAlertGroup is a specialization of AddTagsToAlertGroup.
-func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
+func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 	tags := []string{"escalated", "evebox.escalated"}
-	if s.es.MajorVersion >= 5 && s.es.MinorVersion >= 2 {
-		return s.AddTagsToAlertGroupsByQuery(p, tags)
+	if s.es.MajorVersion < 5 {
+		return s.AddTagsToAlertGroup(p, tags)
 	}
-	return s.AddTagsToAlertGroup(p, tags)
+	history := HistoryEntry{
+		Username:  user.Username,
+		Action:    ACTION_ESCALATED,
+		Timestamp: FormatTimestampUTC(time.Now()),
+	}
+	return s.AddTagsToAlertGroupsByQuery(p, tags, history)
 }
 
-func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
+func (s *DataStore) DeEscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 	tags := []string{"escalated", "evebox.escalated"}
-	if s.es.MajorVersion >= 5 && s.es.MinorVersion >= 2 {
-		return s.RemoveTagsFromAlertGroupsByQuery(p, tags)
+	if s.es.MajorVersion < 5 {
+		return s.RemoveTagsFromAlertGroup(p, tags)
 	}
-	return s.RemoveTagsFromAlertGroup(p, tags)
+	return s.RemoveTagsFromAlertGroupsByQuery(p, tags, HistoryEntry{
+		Username:  user.Username,
+		Timestamp: FormatTimestampUTC(time.Now()),
+		Action:    ACTION_DEESCALATED,
+	})
 }
 
-func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParams, tags []string) error {
+func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParams,
+	tags []string, action HistoryEntry) error {
 	should := []interface{}{}
 	for _, tag := range tags {
 		should = append(should, TermQuery("tags", tag))
@@ -324,12 +359,22 @@ func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParam
 		"script": map[string]interface{}{
 			"lang": "painless",
 			"inline": `
-			    for (tag in params.tags) {
-			        ctx._source.tags.removeIf(entry -> entry == tag);
+			    if (ctx._source.tags != null) {
+			        for (tag in params.tags) {
+			            ctx._source.tags.removeIf(entry -> entry == tag);
+			        }
 			    }
+			    if (ctx._source.evebox == null) {
+			        ctx._source.evebox = new HashMap();
+			    }
+			    if (ctx._source.evebox.history == null) {
+			        ctx._source.evebox.history = new ArrayList();
+			    }
+			    ctx._source.evebox.history.add(params.action);
 			`,
 			"params": map[string]interface{}{
-				"tags": tags,
+				"tags":   tags,
+				"action": action,
 			},
 		},
 	}

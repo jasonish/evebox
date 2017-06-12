@@ -26,7 +26,6 @@
 
 import {Pipe, PipeTransform} from '@angular/core';
 
-//import moment = require("moment");
 import * as moment from 'moment';
 
 @Pipe({

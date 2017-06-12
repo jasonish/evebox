@@ -29,6 +29,7 @@ package core
 import (
 	"fmt"
 	"github.com/jasonish/evebox/log"
+	"github.com/pkg/errors"
 )
 
 var NotImplementedError error
@@ -43,19 +44,33 @@ type Datastore interface {
 	AlertQuery(options AlertQueryOptions) ([]AlertGroup, error)
 	EventQuery(options EventQueryOptions) (interface{}, error)
 
-	ArchiveAlertGroup(p AlertGroupQueryParams) error
-	EscalateAlertGroup(p AlertGroupQueryParams) error
-	UnstarAlertGroup(p AlertGroupQueryParams) error
+	ArchiveAlertGroup(p AlertGroupQueryParams, u User) error
+	EscalateAlertGroup(p AlertGroupQueryParams, u User) error
+	DeEscalateAlertGroup(p AlertGroupQueryParams, u User) error
+
+	ArchiveEvent(eventId string, user User) error
+	EscalateEvent(eventId string, user User) error
+	DeEscalateEvent(eventId string, user User) error
 
 	GetEventById(id string) (map[string]interface{}, error)
 	FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error)
 
-	AddTagsToEvent(id string, tags []string) error
-	RemoveTagsFromEvent(id string, tags []string) error
 	FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error)
 }
 
 type UnimplementedDatastore struct {
+}
+
+func (d *UnimplementedDatastore) ArchiveEvent(eventId string, user User) error {
+	return errors.New("ArchiveEvent not implemented by this datastore.")
+}
+
+func (d *UnimplementedDatastore) EscalateEvent(eventId string, user User) error {
+	return errors.New("EscalateEvent not implemented by this datastore.")
+}
+
+func (d *UnimplementedDatastore) DeEscalateEvent(eventId string, user User) error {
+	return errors.New("DeEscalateEvent not implemented by this datastore.")
 }
 
 func (d *UnimplementedDatastore) GetEveEventSink() EveEventSink {
@@ -73,7 +88,7 @@ func (s *UnimplementedDatastore) EventQuery(options EventQueryOptions) (interfac
 	return nil, NotImplementedError
 }
 
-func (s *UnimplementedDatastore) UnstarAlertGroup(p AlertGroupQueryParams) error {
+func (s *UnimplementedDatastore) DeEscalateAlertGroup(p AlertGroupQueryParams, u User) error {
 	log.Warning("UnstarAlertGroup not implemented in this datastore")
 	return NotImplementedError
 }
@@ -87,27 +102,11 @@ func (s *UnimplementedDatastore) FindFlow(flowId uint64, proto string, timestamp
 	return nil, NotImplementedError
 }
 
-func (s *UnimplementedDatastore) AddTagsToEvent(id string, tags []string) error {
+func (s *UnimplementedDatastore) ArchiveAlertGroup(p AlertGroupQueryParams, u User) error {
 	return NotImplementedError
 }
 
-func (s *UnimplementedDatastore) AddTagsToAlertGroup(p AlertGroupQueryParams, tags []string) error {
-	return NotImplementedError
-}
-
-func (s *UnimplementedDatastore) RemoveTagsFromAlertGroup(p AlertGroupQueryParams, tags []string) error {
-	return NotImplementedError
-}
-
-func (s *UnimplementedDatastore) RemoveTagsFromEvent(id string, tags []string) error {
-	return NotImplementedError
-}
-
-func (s *UnimplementedDatastore) ArchiveAlertGroup(p AlertGroupQueryParams) error {
-	return NotImplementedError
-}
-
-func (s *UnimplementedDatastore) EscalateAlertGroup(p AlertGroupQueryParams) error {
+func (s *UnimplementedDatastore) EscalateAlertGroup(p AlertGroupQueryParams, u User) error {
 	return NotImplementedError
 }
 

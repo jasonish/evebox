@@ -229,7 +229,7 @@ ORDER BY timestamp DESC`
 	return alerts, nil
 }
 
-func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
+func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 
 	b := SqlBuilder{}
 
@@ -278,7 +278,7 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams) error {
 	return err
 }
 
-func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
+func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 
 	query := `UPDATE events SET escalated = 1 WHERE`
 
@@ -328,7 +328,7 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams) error {
 	return err
 }
 
-func (s *DataStore) UnstarAlertGroup(p core.AlertGroupQueryParams) error {
+func (s *DataStore) DeEscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 
 	query := `UPDATE events SET escalated = 0 WHERE`
 

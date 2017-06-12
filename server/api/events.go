@@ -32,6 +32,7 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/server/sessions"
 	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
@@ -56,41 +57,38 @@ func (c *ApiContext) GetEventByIdHandler(w *ResponseWriter, r *http.Request) err
 
 // Archive a single event.
 func (c *ApiContext) ArchiveEventHandler(w *ResponseWriter, r *http.Request) error {
+	session := r.Context().Value("session").(*sessions.Session)
 	eventId := mux.Vars(r)["id"]
 
-	err := c.appContext.DataStore.AddTagsToEvent(eventId,
-		[]string{"archived", "evebox.archived"})
+	err := c.appContext.DataStore.ArchiveEvent(eventId, session.User)
 	if err != nil {
-		log.Error("%v", err)
+		log.Error("Failed to escalated event: %v", err)
 		return err
 	}
-
 	return w.Ok()
 }
 
 func (c *ApiContext) EscalateEventHandler(w *ResponseWriter, r *http.Request) error {
+	session := r.Context().Value("session").(*sessions.Session)
 	eventId := mux.Vars(r)["id"]
 
-	err := c.appContext.DataStore.AddTagsToEvent(eventId,
-		[]string{"escalated", "evebox.escalated"})
+	err := c.appContext.DataStore.EscalateEvent(eventId, session.User)
 	if err != nil {
-		log.Error("%v", err)
+		log.Error("Failed to escalated event: %v", err)
 		return err
 	}
-
 	return w.Ok()
 }
 
 func (c *ApiContext) DeEscalateEventHandler(w *ResponseWriter, r *http.Request) error {
+	session := r.Context().Value("session").(*sessions.Session)
 	eventId := mux.Vars(r)["id"]
 
-	err := c.appContext.DataStore.RemoveTagsFromEvent(eventId,
-		[]string{"escalated", "evebox.escalated"})
+	err := c.appContext.DataStore.DeEscalateEvent(eventId, session.User)
 	if err != nil {
-		log.Error("%v", err)
+		log.Error("Failed to de-escalated event: %v", err)
 		return err
 	}
-
 	return w.Ok()
 }
 

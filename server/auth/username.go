@@ -76,10 +76,10 @@ func (a *UsernameAuthenticator) Login(r *http.Request) (*sessions.Session, error
 		username, r.RemoteAddr)
 
 	session := a.sessionStore.NewSession()
-	session.Username = username
-	session.User = core.User{
-		Username: username,
-	}
+
+	// Yes, we have a username, but its still anonymous.
+	session.User = core.NewAnonymousUser(username)
+
 	session.RemoteAddr = r.RemoteAddr
 
 	a.sessionStore.Put(session)
@@ -98,8 +98,7 @@ func (a *UsernameAuthenticator) Authenticate(w http.ResponseWriter, r *http.Requ
 	username, _, ok := r.BasicAuth()
 	if ok && username != "" {
 		session := &sessions.Session{
-			Id:       a.sessionStore.GenerateID(),
-			Username: username,
+			Id: a.sessionStore.GenerateID(),
 		}
 		a.sessionStore.Put(session)
 		return session

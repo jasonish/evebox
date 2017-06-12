@@ -62,7 +62,7 @@ func (s *SessionStore) Reap() {
 		if ok && now.After(session.Expires) {
 			//log.Info("Expiring session %s", session.String())
 			log.InfoWithFields(log.Fields{
-				"username": session.Username,
+				"username": session.User.Username,
 				"addr":     session.RemoteAddr,
 			}, "Expiring session")
 			s.Delete(session)

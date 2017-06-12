@@ -212,6 +212,31 @@
       </div>
     </div>
 
+    <!-- History. -->
+    <div *ngIf="event._source.evebox && event._source.evebox.history" class="panel panel-default">
+      <div class="panel-heading">
+        <b>History</b>
+      </div>
+      <ul class="list-group">
+        <li *ngFor="let action of event._source.evebox.history" class="list-group-item">
+          <div [ngSwitch]="action.action">
+            <div *ngSwitchCase="'escalated'">
+              {{action.timestamp | eveboxFormatTimestamp}} - Escalated by <b>{{action.username}}</b>
+            </div>
+            <div *ngSwitchCase="'de-escalated'">
+              {{action.timestamp | eveboxFormatTimestamp}} - De-escalated by <b>{{action.username}}</b>
+            </div>
+            <div *ngSwitchCase="'archived'">
+              {{action.timestamp | eveboxFormatTimestamp}} - Archived by <b>{{action.username}}</b>
+            </div>
+            <div *ngSwitchDefault>
+              {{action.timestamp | eveboxFormatTimestamp}} - <{{action.username}}> : {{action.action}}
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
     <!-- HTTP. -->
     <div *ngIf="event._source.http" class="panel panel-default">
       <div class="panel-heading">

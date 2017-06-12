@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2017 Jason Ish
+/* Copyright (c) 2016-2017 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,54 +28,20 @@ package elasticsearch
 
 import "github.com/jasonish/evebox/util"
 
-// AddTagsToEvent will add the given tags to the event referenced by ID.
-func (s *DataStore) AddTagsToEvent(id string, addTags []string) error {
-
-	raw, err := s.GetEventById(id)
-	if err != nil {
-		return err
-	}
-
-	event := util.JsonMap(raw)
-	tags := event.GetMap("_source").GetAsStrings("tags")
-
-	for _, tag := range addTags {
-		if !util.StringSliceContains(tags, tag) {
-			tags = append(tags, tag)
-		}
-	}
-
-	s.es.PartialUpdate(event.GetString("_index"), event.GetString("_type"),
-		event.GetString("_id"), map[string]interface{}{
-			"tags": tags,
-		})
-
-	return nil
+// Document wraps an individual Elastic Search document to provide some
+// helper access functions.
+type Document struct {
+	util.JsonMap
 }
 
-// RemoveTagsFromEvent will remove the given tags from the event referenced
-// by ID.
-func (s *DataStore) RemoveTagsFromEvent(id string, rmTags []string) error {
+func (d Document) Id() string {
+	return d.GetString("_id")
+}
 
-	raw, err := s.GetEventById(id)
-	if err != nil {
-		return err
-	}
+func (d Document) Type() string {
+	return d.GetString("_type")
+}
 
-	event := util.JsonMap(raw)
-	currentTags := event.GetMap("_source").GetAsStrings("tags")
-	tags := make([]string, 0)
-
-	for _, tag := range currentTags {
-		if !util.StringSliceContains(rmTags, tag) {
-			tags = append(tags, tag)
-		}
-	}
-
-	s.es.PartialUpdate(event.GetString("_index"), event.GetString("_type"),
-		event.GetString("_id"), map[string]interface{}{
-			"tags": tags,
-		})
-
-	return nil
+func (d Document) Index() string {
+	return d.GetString("_index")
 }
