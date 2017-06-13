@@ -46,11 +46,11 @@ func TestEveEvent_AddTag(t *testing.T) {
 }
 
 func TestEvePacketToPcapTCP4(t *testing.T) {
-	event, err := NewEveEventFromJson(tcp4EventAlert)
+	event, err := NewEveEventFromString(tcp4EventAlert)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pcap, err := EvePacketToPcap(event)
+	pcap, err := EvePacket2Pcap(event)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestEvePacketToPcapTCP4(t *testing.T) {
 }
 
 func TestEvePayloadToPcapTCP4(t *testing.T) {
-	event, err := NewEveEventFromJson(tcp4EventAlert)
+	event, err := NewEveEventFromString(tcp4EventAlert)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,24 +77,16 @@ func TestEvePayloadToPcapTCP4(t *testing.T) {
 	if len(pcap) != 119 {
 		t.Fatalf("Expected len to be 119, not %d.", len(pcap))
 	}
-
-	// file, err := os.Create("TestEvePayloadToPcapTCP4.pcap")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// file.Write(pcap)
-	// file.Close()
-
 }
 
 var icmp4EveAlert string = `{"timestamp":"2016-02-09T03:14:52.232074-0600","flow_id":140467580337840,"in_iface":"eth1","event_type":"alert","src_ip":"10.16.1.1","dest_ip":"10.16.1.5","proto":"ICMP","icmp_type":3,"icmp_code":3,"alert":{"action":"allowed","gid":1,"signature_id":2100402,"rev":8,"signature":"GPL ICMP_INFO Destination Unreachable Port Unreachable","category":"Misc activity","severity":3},"payload":"RQAATgAAQABAESR6ChABBQoQAQGHaQCJADotAPYfAAAAAQAAAAAAACBDS0FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQAAIQAK","payload_printable":"E..N..@.@.$z\n...\n....i...:-............. CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA..!.\n","stream":0,"packet":"xBL1ZkOIABUXDQb3CABFwABqvNYAAEABptcKEAEBChABBQMDE24AAAAARQAATgAAQABAESR6ChABBQoQAQGHaQCJADotAPYfAAAAAQAAAAAAACBDS0FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQAAIQAK","host":"home-firewall"}`
 
 func TestEvePacketToPcap(t *testing.T) {
-	event, err := NewEveEventFromJson(icmp4EveAlert)
+	event, err := NewEveEventFromString(icmp4EveAlert)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pcap, err := EvePacketToPcap(event)
+	pcap, err := EvePacket2Pcap(event)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +99,7 @@ func TestEvePacketToPcap(t *testing.T) {
 }
 
 func TestEvePayloadToPcap(t *testing.T) {
-	event, err := NewEveEventFromJson(icmp4EveAlert)
+	event, err := NewEveEventFromString(icmp4EveAlert)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,12 +113,4 @@ func TestEvePayloadToPcap(t *testing.T) {
 	if len(pcap) != 146 {
 		t.Fatalf("Expected pcap length to be 146, not %d.", len(pcap))
 	}
-
-	// file, err := os.Create("test3.pcap")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// file.Write(pcap)
-	// file.Close()
-
 }
