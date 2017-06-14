@@ -1,3 +1,7 @@
 ./webapp/node_modules
 ./vendor
 ./docker/release-builder/Dockerfile
+./pgdata*
+./eve*json
+./*.sqlite
+./*.dump
