@@ -9,6 +9,10 @@
 - Add option to esimport to add rule to event.
 - If an event has a "rule" object it will now be displayed in the
   event details.
+- Initial support for PostgreSQL. Like SQLite this does not yet
+  support reporting.
+- Event history recording. A timestamp and username will be recorded
+  when an alert is archived, escalated or de-escalated.
   
 **Fixed**
 - Fix an issue where alerts may not be archived if their @timestamp
@@ -17,6 +21,8 @@
 - A usability issue where the alert view would be reset to 100 items
   after arching event, if previously set to "all" -
   https://github.com/jasonish/evebox/issues/49.
+- Elastic Search mapping errors on flow and netflow reports -
+  https://github.com/jasonish/evebox/issues/39
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.7.0...HEAD)
 
