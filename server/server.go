@@ -303,9 +303,6 @@ func StaticHandlerFactory(appContext appcontext.AppContext) http.Handler {
 
 		proxy := httputil.NewSingleHostReverseProxy(devServerProxyUrl)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			stripped := strings.TrimPrefix(r.URL.Path, "/public")
-			log.Debug("Proxying %s -> %s", r.URL.Path, stripped)
-			r.URL.Path = stripped
 			proxy.ServeHTTP(w, r)
 		})
 	}
