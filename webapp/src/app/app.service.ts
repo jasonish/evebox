@@ -51,7 +51,7 @@ export class AppService {
 
     private eventEmitter: EventEmitter<AppEvent> = new EventEmitter<AppEvent>();
 
-    private timeRangeDisabled = false;
+    timeRangeDisabled = false;
 
     private lastRouteEvent: number = new Date().getTime() / 1000;
 

@@ -24,48 +24,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {
-    Component, Input, style, state, animate,
-    transition, trigger, ElementRef, OnInit
-} from '@angular/core';
+import {Component, Input} from '@angular/core';
+import {animate, state, style, transition, trigger} from '@angular/animations';
 
 @Component({
     selector: 'loading-spinner',
-    template: `<div [@visibleState]="loading ? 'true' : 'false'">
+    template: `<div *ngIf="active" [@eveboxSpinnerTrigger]="active ? 'true' : 'false'">
     <i class="fa fa-spinner fa-pulse evebox-loading-spinner"
-    [hidden]="!isVisible()"
     [ngStyle]="{'font-size': fontSize + 'px'}"></i>
 </div>`,
     animations: [
-        trigger('visibleState', [
-                state('false', style({
-                    opacity: '0',
-                    //visibility: "hidden",
-                })),
-                state('true', style({
-                    opacity: '1.0',
-                    visibility: 'visible',
-                })),
-                transition('false => true', animate('500ms ease-out')),
-                transition('true => false', animate('500ms ease-out'))
-            ]
+        trigger('eveboxSpinnerTrigger', [
+                    state('void', style({
+                        opacity: 0,
+                    })),
+                    state('*', style({
+                        opacity: 1,
+                    })),
+                    transition('void => *', animate('500ms')),
+                    transition('* => void', animate('500ms')),
+                ]
         )
     ]
 })
 export class EveboxLoadingSpinnerComponent {
 
-    @Input('loading') loading = false;
+    @Input('loading') active = false;
     @Input('fontSize') fontSize = 300;
-
-    constructor(private element: ElementRef) {
-    }
-
-    isVisible() {
-        let opacity = this.element.nativeElement.children[0].style.opacity;
-        if (opacity == '0') {
-            return false;
-        }
-        return true;
-    }
 
 }

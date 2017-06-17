@@ -584,7 +584,9 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         }).then(() => {
             this.activeRow = 0;
-            this.loading = false;
+            setTimeout(() => {
+                this.loading = false;
+            }, 0);
             this.appService.resetIdleTime();
         });
     }

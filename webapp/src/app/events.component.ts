@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {ElasticSearchService, ResultSet} from './elasticsearch.service';
 import {EveboxEventTableConfig} from './event-table.component';
@@ -159,7 +159,10 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.refresh();
         });
 
-        this.appService.disableTimeRange();
+        // Use setTimeout to prevent ExpressionChangedAfterItHasBeenCheckedError.
+        setTimeout(() => {
+            this.appService.disableTimeRange();
+        }, 0);
 
         this.mousetrap.bind(this, '/', () => this.focusFilterInput());
         this.mousetrap.bind(this, 'r', () => this.refresh());

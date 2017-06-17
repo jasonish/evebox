@@ -1,6 +1,8 @@
-<div [@loadingState]="!rows || (!silentRefresh && loading) ? 'true' : 'false'">
+<loading-spinner [loading]="loading"></loading-spinner>
 
-  <loading-spinner [loading]="!rows || !silentRefresh && loading"></loading-spinner>
+<div [@loadingState]="!rows || (!silentRefresh && loading) ? 'true' : 'false'">
+  <!--<loading-spinner [loading]="!rows || !silentRefresh && loading"></loading-spinner>-->
+
 
   <!-- Button and filter bar. -->
   <div style="position: relative;">
