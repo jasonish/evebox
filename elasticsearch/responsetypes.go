@@ -104,19 +104,6 @@ type Hits struct {
 	Hits  []map[string]interface{} `json:"hits"`
 }
 
-type SearchResponse struct {
-	Shards       map[string]interface{} `json:"_shards"`
-	TimedOut     bool                   `json:"timed_out"`
-	Took         uint64                 `json:"took"`
-	Hits         Hits                   `json:"hits"`
-	Aggregations util.JsonMap           `json:"aggregations"`
-	ScrollId     string                 `json:"_scroll_id,omitempty"`
-
-	// A search may result in an error.
-	Error  map[string]interface{} `json:"error"`
-	Status int                    `json:"status"`
-}
-
 type ElasticSearchError struct {
 	// The raw error body as returned from the server.
 	Raw string

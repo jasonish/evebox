@@ -309,12 +309,8 @@ func (es *ElasticSearch) Search(query interface{}) (*SearchResponse, error) {
 			Cause:   err,
 		})
 	}
-	result := SearchResponse{}
-	if err := es.Decode(response, &result); err != nil {
-		log.Println("Failed to decode response...")
-		return nil, err
-	}
-	return &result, nil
+	defer response.Body.Close()
+	return DecodeSearchResponse(response.Body)
 }
 
 func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*SearchResponse, error) {
@@ -323,14 +319,13 @@ func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*Searc
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		return nil, NewElasticSearchError(response)
 	}
-	searchResponse := SearchResponse{}
-	if err := DecodeResponse(response.Body, &searchResponse); err != nil {
-		return nil, err
-	}
-	return &searchResponse, nil
+
+	return DecodeSearchResponse(response.Body)
 }
 
 func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchResponse, error) {
@@ -342,11 +337,9 @@ func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchRespon
 	if err != nil {
 		return nil, err
 	}
-	searchResponse := SearchResponse{}
-	if err := DecodeResponse(response.Body, &searchResponse); err != nil {
-		return nil, err
-	}
-	return &searchResponse, nil
+	defer response.Body.Close()
+
+	return DecodeSearchResponse(response.Body)
 }
 
 func (es *ElasticSearch) DeleteScroll(scrollId string) (*http.Response, error) {
@@ -404,12 +397,6 @@ func (es *ElasticSearch) FormatKeyword(keyword string) string {
 		return keyword
 	}
 	return fmt.Sprintf("%s.%s", keyword, es.keyword)
-}
-
-func DecodeResponse(reader io.Reader, output interface{}) error {
-	decoder := json.NewDecoder(reader)
-	decoder.UseNumber()
-	return decoder.Decode(output)
 }
 
 func (s *ElasticSearch) doUpdateByQuery(query map[string]interface{}) (util.JsonMap, error) {
