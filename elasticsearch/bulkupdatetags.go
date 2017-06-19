@@ -82,21 +82,25 @@ func BulkUpdateTags(es *ElasticSearch, documents []map[string]interface{},
 	// Needs to finish with a new line.
 	bulk = append(bulk, "")
 	bulkString := strings.Join(bulk, "\n")
-	response, err := es.HttpClient.PostString("_bulk", "application/json", bulkString)
+	httpResponse, err := es.HttpClient.PostString("_bulk", "application/json", bulkString)
 	if err != nil {
 		log.Error("Failed to update event tags: %v", err)
 		return false, err
 	}
+	defer httpResponse.Body.Close()
 
 	retry := false
 
-	if response.StatusCode != http.StatusOK {
-		return retry, NewElasticSearchError(response)
+	if httpResponse.StatusCode != http.StatusOK {
+		response, err := DecodeResponse(httpResponse)
+		if err != nil {
+			return retry, err
+		}
+		return retry, response.AsError()
 	} else {
-		bulkResponse := BulkResponse{}
-
-		if err := es.Decode(response, &bulkResponse); err != nil {
-			log.Error("Failed to decode bulk response: %v", err)
+		bulkResponse, err := DecodeResponse(httpResponse)
+		if err != nil {
+			log.Error("Failed to decode bulk httpResponse: %v", err)
 		} else {
 			log.Info("Tags updated on %d events; errors=%v",
 				len(bulkResponse.Items), bulkResponse.Errors)

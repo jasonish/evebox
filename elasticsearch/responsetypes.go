@@ -30,22 +30,119 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/jasonish/evebox/util"
-	"github.com/pkg/errors"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-// PingResponse represents the response to an Elastic Search ping (GET /).
-type PingResponse struct {
+type Hits struct {
+	Total uint64                   `json:"total"`
+	Hits  []map[string]interface{} `json:"hits"`
+}
+
+type Response struct {
+	// Ping response fields.
 	Name        string `json:"name"`
 	ClusterName string `json:"cluster_name"`
+	ClusterUuid string `json:"cluster_uuid"`
 	Version     struct {
 		Number string `json:"number"`
 	} `json:"version"`
 	Tagline string `json:"tagline"`
+
+	// Bulk response fields.
+	Errors bool                     `json:"errors"`
+	Items  []map[string]interface{} `json:"items"`
+
+	Shards       map[string]interface{} `json:"_shards"`
+	ScrollId     string                 `json:"_scroll_id"`
+	TimedOut     bool                   `json:"timed_out"`
+	Took         uint64                 `json:"took"`
+	Hits         Hits                   `json:"hits"`
+	Aggregations util.JsonMap           `json:"aggregations"`
+
+	// A search may result in an error.
+	Error  map[string]interface{} `json:"error"`
+	Status int                    `json:"status"`
+
+	Raw []byte
+}
+
+func DecodeResponse(r *http.Response) (*Response, error) {
+
+	raw, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &Response{}
+
+	if strings.HasPrefix(r.Header.Get("content-type"), "application/json") {
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		decoder.UseNumber()
+
+		if err := decoder.Decode(response); err != nil {
+			return nil, err
+		}
+	}
+
+	response.Raw = raw
+
+	return response, nil
+}
+
+func DecodeResponseAsError(r *http.Response) error {
+	raw, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+
+	response := &Response{}
+
+	if strings.HasPrefix(r.Header.Get("content-type"), "application/json") {
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		decoder.UseNumber()
+
+		if err := decoder.Decode(response); err != nil {
+			return err
+		}
+	}
+
+	response.Raw = raw
+
+	return response.AsError()
+}
+
+func (r *Response) HasErrors() bool {
+	if r.Error != nil {
+		return true
+	}
+	if len(r.Error) > 0 {
+		return true
+	}
+	return false
+}
+
+func (r *Response) IsError() bool {
+	return r.Error != nil
+}
+
+func (r *Response) AsError() *ErrorReponse {
+	return &ErrorReponse{r}
+}
+
+type ErrorReponse struct {
+	*Response
+}
+
+func (e *ErrorReponse) Error() string {
+	return string(e.Raw)
+}
+
+// PingResponse represents the response to an Elastic Search ping (GET /).
+type PingResponse struct {
+	*Response
 }
 
 // MajorVersion returns the major version of Elastic Search as found
@@ -80,71 +177,4 @@ func (p PingResponse) ParseVersion() (int64, int64) {
 		}
 	}
 	return majorVersion, minorVersion
-}
-
-// BulkCreateHeader represents the JSON used to prefix a document to be indexed
-// in the bulk request.
-type BulkCreateHeader struct {
-	Create struct {
-		Index string `json:"_index"`
-		Type  string `json:"_type"`
-		Id    string `json:"_id"`
-	} `json:"create"`
-}
-
-// Struct representing a response to a _bulk request.
-type BulkResponse struct {
-	Took   uint64                   `json:"took"`
-	Errors bool                     `json:"errors"`
-	Items  []map[string]interface{} `json:"items"`
-}
-
-type Hits struct {
-	Total uint64                   `json:"total"`
-	Hits  []map[string]interface{} `json:"hits"`
-}
-
-type ElasticSearchError struct {
-	// The raw error body as returned from the server.
-	Raw string
-}
-
-func (e ElasticSearchError) Error() string {
-	return e.Raw
-}
-
-func NewElasticSearchError(response *http.Response) ElasticSearchError {
-
-	error := ElasticSearchError{}
-
-	raw, _ := ioutil.ReadAll(response.Body)
-	if raw != nil {
-		error.Raw = string(raw)
-	}
-
-	return error
-}
-
-type RawResponse struct {
-	json util.JsonMap
-	raw  []byte
-}
-
-func DecodeRawResponse(r io.Reader) (*RawResponse, error) {
-	raw, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response")
-	}
-	response := &RawResponse{raw: raw}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
-	err = decoder.Decode(&response.json)
-	if err != nil {
-		return response, errors.Wrap(err, "failed to decode response")
-	}
-	return response, nil
-}
-
-func (r RawResponse) RawString() string {
-	return string(r.raw)
 }

@@ -188,6 +188,7 @@ func (p *PostgresManager) Start() error {
 		"-c", "log_destination=stderr",
 		"-c", "logging_collector=off",
 		"-c", "listen_addresses=127.0.0.1",
+		"-c", "constraint_exclusion=on",
 		"-k", path)
 
 	stdout, err := p.command.StdoutPipe()

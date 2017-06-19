@@ -227,3 +227,13 @@ func TopHitsAgg(field string, order string, size int64) interface{} {
 		},
 	}
 }
+
+// BulkCreateHeader represents the JSON used to prefix a document to be indexed
+// in the bulk request.
+type BulkCreateHeader struct {
+	Create struct {
+		Index string `json:"_index"`
+		Type  string `json:"_type"`
+		Id    string `json:"_id"`
+	} `json:"create"`
+}

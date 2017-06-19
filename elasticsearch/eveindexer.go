@@ -77,24 +77,8 @@ func (i *BulkEveIndexer) initEntropy() {
 	i.entropy = rand.New(rand.NewSource(seed))
 }
 
-func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*BulkResponse, error) {
-
-	var bulkResponse BulkResponse
-
-	if response.StatusCode == 200 {
-		decoder := json.NewDecoder(response.Body)
-		decoder.UseNumber()
-		err := decoder.Decode(&bulkResponse)
-		if err != nil {
-			return nil, err
-		}
-		return &bulkResponse, nil
-	} else {
-		log.Info("Got unexpected status code %d", response.StatusCode)
-	}
-
-	err := NewElasticSearchError(response)
-	return nil, err
+func (i *BulkEveIndexer) DecodeResponse(response *http.Response) (*Response, error) {
+	return DecodeResponse(response)
 }
 
 func (i *BulkEveIndexer) Submit(event eve.EveEvent) error {

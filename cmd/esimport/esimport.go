@@ -281,7 +281,7 @@ func Main(args []string) {
 				log.Fatal(err)
 			}
 			if status != nil {
-				response, ok := status.(*elasticsearch.BulkResponse)
+				response, ok := status.(*elasticsearch.Response)
 				if ok {
 					log.Debug("Indexed %d events {errors=%v}", len(response.Items),
 						response.Errors)

@@ -115,22 +115,24 @@ func (es *ElasticSearch) Decode(response *http.Response, v interface{}) error {
 }
 
 func (es *ElasticSearch) Ping() (*PingResponse, error) {
-
 	response, err := es.HttpClient.Get("")
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
-		return nil, NewElasticSearchError(response)
+		return nil, DecodeResponseAsError(response)
 	}
 
-	var body PingResponse
-	if err := es.Decode(response, &body); err != nil {
+	body, err := DecodeResponse(response)
+	if err != nil {
 		return nil, err
 	}
-	es.MajorVersion, es.MinorVersion = body.ParseVersion()
-	return &body, nil
+
+	pingResponse := PingResponse{body}
+	es.MajorVersion, es.MinorVersion = pingResponse.ParseVersion()
+	return &pingResponse, nil
 }
 
 func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
@@ -271,7 +273,7 @@ func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 		return err
 	}
 	if response.StatusCode != http.StatusOK {
-		return NewElasticSearchError(response)
+		return DecodeResponseAsError(response)
 	}
 	es.HttpClient.DiscardResponse(response)
 
@@ -295,7 +297,7 @@ func (e *DatastoreError) Error() string {
 	return ""
 }
 
-func (es *ElasticSearch) Search(query interface{}) (*SearchResponse, error) {
+func (es *ElasticSearch) Search(query interface{}) (*Response, error) {
 	if es.keyword == "" && !es.noKeyword {
 		log.Warning("Search keyword not known, trying again.")
 		es.InitKeyword()
@@ -310,10 +312,10 @@ func (es *ElasticSearch) Search(query interface{}) (*SearchResponse, error) {
 		})
 	}
 	defer response.Body.Close()
-	return DecodeSearchResponse(response.Body)
+	return DecodeResponse(response)
 }
 
-func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*SearchResponse, error) {
+func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*Response, error) {
 	path := fmt.Sprintf("%s/_search?scroll=%s", es.EventSearchIndex, duration)
 	response, err := es.HttpClient.PostJson(path, body)
 	if err != nil {
@@ -322,13 +324,13 @@ func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*Searc
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, NewElasticSearchError(response)
+		return nil, DecodeResponseAsError(response)
 	}
 
-	return DecodeSearchResponse(response.Body)
+	return DecodeResponse(response)
 }
 
-func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchResponse, error) {
+func (es *ElasticSearch) Scroll(scrollId string, duration string) (*Response, error) {
 	body := map[string]interface{}{
 		"scroll_id": scrollId,
 		"scroll":    duration,
@@ -339,7 +341,7 @@ func (es *ElasticSearch) Scroll(scrollId string, duration string) (*SearchRespon
 	}
 	defer response.Body.Close()
 
-	return DecodeSearchResponse(response.Body)
+	return DecodeResponse(response)
 }
 
 func (es *ElasticSearch) DeleteScroll(scrollId string) (*http.Response, error) {
@@ -368,7 +370,7 @@ func IsError(response *http.Response) error {
 }
 
 func (es *ElasticSearch) Update(index string, docType string, docId string,
-	body map[string]interface{}) (*RawResponse, error) {
+	body map[string]interface{}) (*Response, error) {
 	response, err := es.HttpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
 		index, docType, docId), body)
 	if err != nil {
@@ -378,7 +380,7 @@ func (es *ElasticSearch) Update(index string, docType string, docId string,
 	if err := IsError(response); err != nil {
 		return nil, err
 	}
-	return DecodeRawResponse(response.Body)
+	return DecodeResponse(response)
 }
 
 // Refresh refreshes all indices logging any error but not returning and

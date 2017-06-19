@@ -308,7 +308,7 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.Us
 // EscalateAlertGroup is a specialization of AddTagsToAlertGroup.
 func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 	tags := []string{"escalated", "evebox.escalated"}
-	if s.es.MajorVersion < 5 {
+	if s.es.MajorVersion < 6 {
 		return s.AddTagsToAlertGroup(p, tags)
 	}
 	history := HistoryEntry{
