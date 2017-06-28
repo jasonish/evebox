@@ -370,7 +370,7 @@ func IsError(response *http.Response) error {
 }
 
 func (es *ElasticSearch) Update(index string, docType string, docId string,
-	body map[string]interface{}) (*Response, error) {
+	body interface{}) (*Response, error) {
 	response, err := es.HttpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
 		index, docType, docId), body)
 	if err != nil {
@@ -401,7 +401,7 @@ func (es *ElasticSearch) FormatKeyword(keyword string) string {
 	return fmt.Sprintf("%s.%s", keyword, es.keyword)
 }
 
-func (s *ElasticSearch) doUpdateByQuery(query map[string]interface{}) (util.JsonMap, error) {
+func (s *ElasticSearch) doUpdateByQuery(query interface{}) (util.JsonMap, error) {
 	var response util.JsonMap
 	err := s.HttpClient.PostJsonDecodeResponse(
 		fmt.Sprintf("%s/_update_by_query?refresh=true&conflicts=proceed",

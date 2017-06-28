@@ -144,8 +144,9 @@ func (c *ApiContext) InitRoutes(router *router.Router) {
 
 	r.GET("/alerts", c.AlertsHandler)
 	r.POST("/alert-group/archive", c.AlertGroupArchiveHandler)
-	r.POST("/alert-group/star", c.StarAlertGroupHandler)
-	r.POST("/alert-group/unstar", c.UnstarAlertGroupHandler)
+	r.POST("/alert-group/star", c.EscalateAlertGroupHandler)
+	r.POST("/alert-group/unstar", c.DeEscalateAlertGroupHandler)
+	r.POST("/alert-group/comment", c.CommentOnAlertGroupHandler)
 
 	r.GET("/version", c.VersionHandler)
 	r.POST("/submit", c.SubmitHandler)
@@ -155,6 +156,7 @@ func (c *ApiContext) InitRoutes(router *router.Router) {
 	r.POST("/event/{id}/archive", c.ArchiveEventHandler)
 	r.POST("/event/{id}/escalate", c.EscalateEventHandler)
 	r.POST("/event/{id}/de-escalate", c.DeEscalateEventHandler)
+	r.POST("/event/{id}/comment", c.CommentOnEventHandler)
 	r.GET("/event/{id}", c.GetEventByIdHandler)
 	r.GET("/event-query", c.EventQueryHandler)
 	r.GET("/report/dns/requests/rrnames", c.ReportDnsRequestRrnames)

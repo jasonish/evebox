@@ -24,7 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import {
+    Component,
+    EventEmitter,
+    OnDestroy,
+    OnInit,
+    Output
+} from '@angular/core';
 import {Location} from '@angular/common';
 import {ActivatedRoute, Router} from '@angular/router';
 import {AlertGroup, ElasticSearchService} from './elasticsearch.service';
@@ -35,6 +41,53 @@ import {MousetrapService} from './mousetrap.service';
 import {EveboxSubscriptionService} from './subscription.service';
 import {loadingAnimation} from './animations';
 import {ToastrService} from './toastr.service';
+
+@Component({
+    selector: "evebox-comment-input",
+    template: `<div>
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <b>New Comment...</b>
+    </div>
+    <div style="margin-left: 5px; margin-right: 5px; margin-top: 5px;">
+          <textarea rows="3" [(ngModel)]="comment"
+                    style="width: 100%; resize: vertical; border: solid 1px #cccccc;"></textarea>
+    </div>
+    <div style="margin: 0px 5px 5px 5px;">
+      <div class="row">
+        <div class="col-md-6">
+          <button type="button" class="btn btn-default btn-block"
+                  (click)="close()">Close
+          </button>
+        </div>
+        <div class="col-md-6">
+          <button type="button" [disabled]="comment == ''"
+                  class="btn btn-primary btn-block"
+                  (click)="submitComment()">Comment
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`,
+})
+export class EveboxCommentInput {
+
+    @Output("on-close") public onClose = new EventEmitter<any>();
+    @Output("on-submit") public onSubmit = new EventEmitter<any>();
+
+    public comment: string = "";
+
+    close() {
+        this.onClose.emit();
+    }
+
+    submitComment() {
+        this.onSubmit.emit(this.comment);
+    }
+
+}
 
 /**
  * Component to show a single event.
@@ -56,6 +109,8 @@ export class EventComponent implements OnInit, OnDestroy {
     flows: any[] = [];
 
     servicesForEvent: any[] = [];
+
+    public commentInputVisible: boolean = true;
 
     constructor(private route: ActivatedRoute,
                 private router: Router,
@@ -140,6 +195,21 @@ export class EventComponent implements OnInit, OnDestroy {
             return true;
         }
         return false;
+    }
+
+    onCommentSubmit(comment: any) {
+        if (this.alertGroup) {
+            this.api.commentOnAlertGroup(this.alertGroup, comment)
+                    .then(() => {
+                        this.commentInputVisible = false;
+                        this.elasticSearch.getEventById(this.event._id)
+                                .then((response: any) => {
+                                    this.event = response;
+                                });
+                    });
+        } else {
+            this.api.commentOnEvent(this.eventId, comment);
+        }
     }
 
     sessionSearch() {

@@ -40,25 +40,30 @@ func init() {
 
 type Datastore interface {
 	GetEveEventSink() EveEventSink
-
 	AlertQuery(options AlertQueryOptions) ([]AlertGroup, error)
 	EventQuery(options EventQueryOptions) (interface{}, error)
-
 	ArchiveAlertGroup(p AlertGroupQueryParams, u User) error
 	EscalateAlertGroup(p AlertGroupQueryParams, u User) error
 	DeEscalateAlertGroup(p AlertGroupQueryParams, u User) error
-
 	ArchiveEvent(eventId string, user User) error
 	EscalateEvent(eventId string, user User) error
 	DeEscalateEvent(eventId string, user User) error
-
 	GetEventById(id string) (map[string]interface{}, error)
 	FindFlow(flowId uint64, proto string, timestamp string, srcIp string, destIp string) (interface{}, error)
-
 	FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error)
+	CommentOnEventId(eventId string, user User, comment string) error
+	CommentOnAlertGroup(p AlertGroupQueryParams, user User, comment string) error
 }
 
 type UnimplementedDatastore struct {
+}
+
+func (d *UnimplementedDatastore) CommentOnAlertGroup(p AlertGroupQueryParams, user User, comment string) error {
+	return errors.New("CommentOnAlertGroup not implemented by active datastore.")
+}
+
+func (d *UnimplementedDatastore) CommentOnEventId(eventId string, user User, comment string) error {
+	return errors.New("CommentOnEventId not implemented by active datastore.")
 }
 
 func (d *UnimplementedDatastore) ArchiveEvent(eventId string, user User) error {

@@ -92,7 +92,7 @@ func (c *ApiContext) AlertGroupArchiveHandler(w *ResponseWriter, r *http.Request
 	return w.Ok()
 }
 
-func (c *ApiContext) StarAlertGroupHandler(w *ResponseWriter, r *http.Request) error {
+func (c *ApiContext) EscalateAlertGroupHandler(w *ResponseWriter, r *http.Request) error {
 	session := r.Context().Value("session").(*sessions.Session)
 
 	var request AlertGroupQueryParameters
@@ -112,7 +112,7 @@ func (c *ApiContext) StarAlertGroupHandler(w *ResponseWriter, r *http.Request) e
 	return w.Ok()
 }
 
-func (c *ApiContext) UnstarAlertGroupHandler(w *ResponseWriter, r *http.Request) error {
+func (c *ApiContext) DeEscalateAlertGroupHandler(w *ResponseWriter, r *http.Request) error {
 	session := r.Context().Value("session").(*sessions.Session)
 	var request AlertGroupQueryParameters
 

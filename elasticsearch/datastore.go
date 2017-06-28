@@ -31,6 +31,8 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"time"
@@ -38,6 +40,7 @@ import (
 
 type DataStore struct {
 	es *ElasticSearch
+	core.UnimplementedDatastore
 }
 
 func NewDataStore(es *ElasticSearch) (*DataStore, error) {
@@ -221,10 +224,28 @@ const ACTION_ESCALATED = "escalated"
 
 const ACTION_DEESCALATED = "de-escalated"
 
+const ACTION_COMMENT = "comment"
+
 type HistoryEntry struct {
 	Timestamp string `json:"timestamp"`
 	Username  string `json:"username"`
 	Action    string `json:"action"`
+	Comment   string `json:"comment,omitempty"`
+}
+
+func (s *DataStore) buildAlertGroupQuery(p core.AlertGroupQueryParams) *EventQuery {
+	q := EventQuery{}
+	q.AddFilter(ExistsQuery("event_type"))
+	q.AddFilter(KeywordTermQuery("event_type", "alert", s.es.keyword))
+	q.AddFilter(RangeQuery{
+		Field: "@timestamp",
+		Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
+		Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
+	})
+	q.AddFilter(KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword))
+	q.AddFilter(KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword))
+	q.AddFilter(TermQuery("alert.signature_id", p.SignatureID))
+	return &q
 }
 
 // ArchiveAlertGroupByQuery uses the Elastic Search update_by_query API to
@@ -237,33 +258,21 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 		mustNot = append(mustNot, TermQuery("tags", tag))
 	}
 
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"filter": []interface{}{
-					ExistsQuery("event_type"),
-					KeywordTermQuery("event_type", "alert", s.es.keyword),
-					RangeQuery{
-						Field: "@timestamp",
-						Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
-						Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
-					},
-					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
-					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
-					TermQuery("alert.signature_id", p.SignatureID),
-				},
-				"must_not": mustNot,
-			},
-		},
-		"script": map[string]interface{}{
-			"lang": "painless",
-			"inline": `
-			    if (ctx._source.tags == null) {
-			        ctx._source.tags = new ArrayList();
-			    }
-			    for (tag in params.tags) {
-			        if (!ctx._source.tags.contains(tag)) {
-			            ctx._source.tags.add(tag);
+	query := s.buildAlertGroupQuery(p)
+	if len(mustNot) > 0 {
+		query.Query.Bool.MustNot = mustNot
+	}
+	query.Script = &Script{
+		Lang: "painless",
+		Inline: `
+		        if (params.tags != null) {
+			        if (ctx._source.tags == null) {
+			            ctx._source.tags = new ArrayList();
+			        }
+			        for (tag in params.tags) {
+			            if (!ctx._source.tags.contains(tag)) {
+			                ctx._source.tags.add(tag);
+			            }
 			        }
 			    }
 			    if (ctx._source.evebox == null) {
@@ -273,11 +282,10 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 			        ctx._source.evebox.history = new ArrayList();
 			    }
 			    ctx._source.evebox.history.add(params.action);
-			`,
-			"params": map[string]interface{}{
-				"tags":   tags,
-				"action": action,
-			},
+		`,
+		Params: map[string]interface{}{
+			"tags":   tags,
+			"action": action,
 		},
 	}
 
@@ -308,7 +316,7 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.Us
 // EscalateAlertGroup is a specialization of AddTagsToAlertGroup.
 func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 	tags := []string{"escalated", "evebox.escalated"}
-	if s.es.MajorVersion < 6 {
+	if s.es.MajorVersion < 5 {
 		return s.AddTagsToAlertGroup(p, tags)
 	}
 	history := HistoryEntry{
@@ -338,27 +346,11 @@ func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParam
 		should = append(should, TermQuery("tags", tag))
 	}
 
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"filter": []interface{}{
-					ExistsQuery("event_type"),
-					KeywordTermQuery("event_type", "alert", s.es.keyword),
-					RangeQuery{
-						Field: "@timestamp",
-						Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
-						Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
-					},
-					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
-					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
-					TermQuery("alert.signature_id", p.SignatureID),
-				},
-				"should": should,
-			},
-		},
-		"script": map[string]interface{}{
-			"lang": "painless",
-			"inline": `
+	query := s.buildAlertGroupQuery(p)
+	query.Query.Bool.Should = should
+	query.Script = &Script{
+		Lang: "painless",
+		Inline: `
 			    if (ctx._source.tags != null) {
 			        for (tag in params.tags) {
 			            ctx._source.tags.removeIf(entry -> entry == tag);
@@ -371,11 +363,10 @@ func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParam
 			        ctx._source.evebox.history = new ArrayList();
 			    }
 			    ctx._source.evebox.history.add(params.action);
-			`,
-			"params": map[string]interface{}{
-				"tags":   tags,
-				"action": action,
-			},
+		`,
+		Params: map[string]interface{}{
+			"tags":   tags,
+			"action": action,
 		},
 	}
 
@@ -480,4 +471,74 @@ func (s *DataStore) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags 
 	s.es.Refresh()
 
 	return nil
+}
+
+func (s *DataStore) CommentOnAlertGroup(p core.AlertGroupQueryParams, user core.User, comment string) error {
+	history := HistoryEntry{
+		Username:  user.Username,
+		Action:    ACTION_COMMENT,
+		Comment:   comment,
+		Timestamp: FormatTimestampUTC(time.Now()),
+	}
+	return s.AddTagsToAlertGroupsByQuery(p, nil, history)
+}
+
+func (s *DataStore) CommentOnEventId(eventId string, user core.User, comment string) error {
+
+	event, err := s.GetEventById(eventId)
+	if err != nil {
+		return errors.Wrapf(err, "failed to find event with ID %s", eventId)
+	}
+	doc := Document{event}
+
+	action := HistoryEntry{
+		Username:  user.Username,
+		Action:    ACTION_COMMENT,
+		Comment:   comment,
+		Timestamp: FormatTimestampUTC(time.Now()),
+	}
+
+	query := EventQuery{}
+	query.Script = &Script{
+		Lang: "painless",
+		Inline: `
+			    if (ctx._source.evebox == null) {
+			        ctx._source.evebox = new HashMap();
+			    }
+			    if (ctx._source.evebox.history == null) {
+			        ctx._source.evebox.history = new ArrayList();
+			    }
+			    ctx._source.evebox.history.add(params.action);
+		`,
+		Params: map[string]interface{}{
+			"action": action,
+		},
+	}
+
+	//query := map[string]interface{}{
+	//	"script": &Script{
+	//		Lang: "painless",
+	//		Inline: `
+	//		    if (ctx._source.evebox == null) {
+	//		        ctx._source.evebox = new HashMap();
+	//		    }
+	//		    if (ctx._source.evebox.history == null) {
+	//		        ctx._source.evebox.history = new ArrayList();
+	//		    }
+	//		    ctx._source.evebox.history.add(params.action);
+	//	`,
+	//		Params: map[string]interface{}{
+	//			"action": action,
+	//		},
+	//	},
+	//}
+
+	log.Println(util.ToJson(query))
+
+	_, err = s.es.Update(doc.Index(), doc.Type(), doc.Id(), query)
+	if err != nil {
+		log.Error("error: %v", err)
+	}
+
+	return errors.New("CommentOnEventId not implemented by Elastic Search datastore.")
 }

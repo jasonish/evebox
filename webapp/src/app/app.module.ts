@@ -34,7 +34,7 @@ import {AppComponent} from './app.component';
 import {RouterModule} from '@angular/router';
 import {AuthGuard, ConfigResolver, routing} from './app.routes';
 import {AlertsComponent} from './alerts.component';
-import {EventComponent} from './event.component';
+import {EveboxCommentInput, EventComponent} from './event.component';
 import {EventsComponent} from './events.component';
 import {DNSReportComponent} from './reports/dns-report.component';
 import {AlertReportComponent} from './reports/alerts-report.component';
@@ -140,6 +140,7 @@ import {RuleHighlightPipe} from './pipes/rule-highlight.pipe';
         LoginComponent,
 
         SettingsComponent,
+        EveboxCommentInput,
     ],
     imports: [
         // Angular modules.

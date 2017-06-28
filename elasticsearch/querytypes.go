@@ -33,22 +33,45 @@ import (
 	"time"
 )
 
+type Script struct {
+	Lang   string                 `json:"lang,omitempty"`
+	Inline string                 `json:"inline,omitempty"`
+	Params map[string]interface{} `json:"params,omitempty"`
+}
+
+type Bool struct {
+	Filter  []interface{} `json:"filter,omitempty"`
+	MustNot []interface{} `json:"must_not,omitempty"`
+	Should  []interface{} `json:"should,omitempty"`
+
+	// Should be an integer, but we make it an interface so
+	// its not included if not set.
+	MinimumShouldMatch interface{} `json:"minimum_should_match,omitempty"`
+}
+
+type Query struct {
+	Bool *Bool `json:"bool,omitempty"`
+}
+
 // EventQuery is a type for building up an Elastic Search event query.
 type EventQuery struct {
-	Query struct {
-		Bool struct {
-			Filter  []interface{} `json:"filter"`
-			MustNot []interface{} `json:"must_not,omitempty"`
-			Should  []interface{} `json:"should,omitempty"`
-
-			// Should be an integer, but we make it an interface so
-			// its not included if not set.
-			MinimumShouldMatch interface{} `json:"minimum_should_match,omitempty"`
-		} `json:"bool"`
-	} `json:"query"`
-	Size int64                  `json:"size"`
-	Sort []interface{}          `json:"sort,omitempty"`
-	Aggs map[string]interface{} `json:"aggs,omitempty"`
+	//Query struct {
+	//	//Bool struct {
+	//	//	Filter  []interface{} `json:"filter,omitempty"`
+	//	//	MustNot []interface{} `json:"must_not,omitempty"`
+	//	//	Should  []interface{} `json:"should,omitempty"`
+	//	//
+	//	//	// Should be an integer, but we make it an interface so
+	//	//	// its not included if not set.
+	//	//	MinimumShouldMatch interface{} `json:"minimum_should_match,omitempty"`
+	//	//} `json:"bool,omitempty"`
+	//	Bool *Bool `json:"bool,omitempty"`
+	//} `json:"query,omitempty"`
+	Query  *Query                 `json:"query,omitempty"`
+	Script *Script                `json:"script,omitempty"`
+	Size   int64                  `json:"size,omitempty"`
+	Sort   []interface{}          `json:"sort,omitempty"`
+	Aggs   map[string]interface{} `json:"aggs,omitempty"`
 }
 
 func NewEventQuery() EventQuery {
@@ -77,6 +100,12 @@ func (q *EventQuery) ShouldHaveIp(addr string, keyword string) {
 }
 
 func (q *EventQuery) AddFilter(filter interface{}) {
+	if q.Query == nil {
+		q.Query = &Query{}
+	}
+	if q.Query.Bool == nil {
+		q.Query.Bool = &Bool{}
+	}
 	q.Query.Bool.Filter = append(q.Query.Bool.Filter, filter)
 }
 
