@@ -256,12 +256,45 @@
         <b>HTTP</b>
       </div>
       <div class="panel-body">
-        <div *ngFor="let item of event._source.http | mapToItems">
-          <div class="col-md-4 col-sm-6">
-            <em>{{item.key | genericPrettyPrinter}}:</em>
-            <search-link [value]="item.val"></search-link>
+
+        <div class="row">
+          <div *ngFor="let item of event._source.http | mapToItems">
+            <div [ngSwitch]="item.key">
+              <div *ngSwitchCase="'http_response_body'">
+              </div>
+              <div *ngSwitchCase="'http_response_body_printable'">
+              </div>
+              <div *ngSwitchDefault>
+                <div class="col-md-4 col-sm-6">
+                  <em>{{item.key | genericPrettyPrinter}}:</em>
+                  <search-link [value]="item.val"></search-link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <div *ngIf="event._source.http.http_response_body">
+          <br/>
+          <div class="panel panel-default" style="margin-bottom: 0px;">
+            <div class="panel-heading">
+              HTTP Response Body
+            </div>
+            <div class="panel-body">
+              <div class="row">
+                <div class="col-md-6">
+                <pre style="white-space: pre-wrap; max-height: 300px;">{{event._source.http.http_response_body | eveboxBase64Decode |
+                  printable}}</pre>
+                </div>
+                <div class="col-md-6">
+                <pre style="max-height: 300px;">{{event._source.http.http_response_body | eveboxBase64Decode |
+                  hex}}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
