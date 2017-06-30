@@ -34,12 +34,17 @@ type Feature int
 const (
 	// Server supports reporting.
 	FEATURE_REPORTING Feature = iota
+
+	// Server supports event commenting.
+	FEATURE_COMMENTS
 )
 
 func (f Feature) String() string {
 	switch f {
 	case FEATURE_REPORTING:
 		return "reporting"
+	case FEATURE_COMMENTS:
+		return "comments"
 	}
 	return ""
 }

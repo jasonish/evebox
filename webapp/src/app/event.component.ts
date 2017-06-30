@@ -41,6 +41,8 @@ import {MousetrapService} from './mousetrap.service';
 import {EveboxSubscriptionService} from './subscription.service';
 import {loadingAnimation} from './animations';
 import {ToastrService} from './toastr.service';
+import {FEATURE_COMMENTS} from './app.service';
+import {ConfigService} from './config.service';
 
 @Component({
     selector: "evebox-comment-input",
@@ -111,6 +113,7 @@ export class EventComponent implements OnInit, OnDestroy {
     servicesForEvent: any[] = [];
 
     public commentInputVisible: boolean = false;
+    public features:any = {};
 
     constructor(private route: ActivatedRoute,
                 private router: Router,
@@ -121,6 +124,7 @@ export class EventComponent implements OnInit, OnDestroy {
                 private eventService: EventService,
                 private mousetrap: MousetrapService,
                 private ss: EveboxSubscriptionService,
+                private configService: ConfigService,
                 private toastr: ToastrService) {
     }
 
@@ -137,6 +141,10 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
+
+        if (this.configService.hasFeature(FEATURE_COMMENTS)) {
+            this.features['comments'] = true;
+        }
 
         let alertGroup = this.eventService.popAlertGroup();
 

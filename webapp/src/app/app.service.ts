@@ -34,6 +34,7 @@ import {AppEventService, AppEventType} from './appevent.service';
 declare var localStorage: any;
 
 export let FEATURE_REPORTING = 'reporting';
+export let FEATURE_COMMENTS = 'comments';
 
 export enum AppEventCode {
     SHOW_HELP = 0,
