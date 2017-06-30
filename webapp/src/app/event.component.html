@@ -27,15 +27,11 @@
                 (click)="commentInputVisible = true">
           Comment
         </button>
+
       </div>
     </div>
 
     <br/>
-
-    <!--<evebox-comment-input (on-close)="hideCommentInput()"></evebox-comment-input>-->
-    <evebox-comment-input *ngIf="commentInputVisible"
-                          (on-close)="commentInputVisible = false"
-                          (on-submit)="onCommentSubmit($event)"></evebox-comment-input>
 
     <div
         class="panel {{event | eventSeverityToBootstrapClass:'panel-':'success'}}">
@@ -241,6 +237,11 @@
             <div *ngSwitchCase="'archived'">
               {{action.timestamp | eveboxFormatTimestamp}} - Archived by <b>{{action.username}}</b>
             </div>
+            <div *ngSwitchCase="'comment'">
+              {{action.timestamp | eveboxFormatTimestamp}} - Comment by <b>{{action.username}}</b>
+              <br/>
+              <pre style="margin-bottom: 0px;">{{action.comment}}</pre>
+            </div>
             <div *ngSwitchDefault>
               {{action.timestamp | eveboxFormatTimestamp}} -
               <{{action.username}}> : {{action.action}}
@@ -248,7 +249,19 @@
           </div>
         </li>
       </ul>
+      <div  *ngIf="!commentInputVisible" class="panel-footer">
+
+        <button class="btn btn-default"
+                (click)="commentInputVisible = true">Add
+          Comment
+        </button>
+
+      </div>
     </div>
+
+    <evebox-comment-input id="comment" *ngIf="!hasHistory() || commentInputVisible"
+                          (on-close)="commentInputVisible = false"
+                          (on-submit)="onCommentSubmit($event)"></evebox-comment-input>
 
     <!-- HTTP. -->
     <div *ngIf="event._source.http" class="panel panel-default">

@@ -110,7 +110,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
     servicesForEvent: any[] = [];
 
-    public commentInputVisible: boolean = true;
+    public commentInputVisible: boolean = false;
 
     constructor(private route: ActivatedRoute,
                 private router: Router,
@@ -197,6 +197,19 @@ export class EventComponent implements OnInit, OnDestroy {
         return false;
     }
 
+    hasHistory():boolean {
+        try {
+            if (this.event._source.evebox.history) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        catch (err) {
+            return false;
+        }
+    }
+
     onCommentSubmit(comment: any) {
         if (this.alertGroup) {
             this.api.commentOnAlertGroup(this.alertGroup, comment)
@@ -208,7 +221,14 @@ export class EventComponent implements OnInit, OnDestroy {
                                 });
                     });
         } else {
-            this.api.commentOnEvent(this.eventId, comment);
+            this.api.commentOnEvent(this.eventId, comment)
+                    .then(() => {
+                        this.commentInputVisible = false;
+                        this.elasticSearch.getEventById(this.event._id)
+                                .then((response: any) => {
+                                    this.event = response;
+                                });
+                    });
         }
     }
 
