@@ -29,6 +29,7 @@ package api
 import (
 	"encoding/json"
 	"github.com/jasonish/evebox/appcontext"
+	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/server/auth"
 	"github.com/jasonish/evebox/server/router"
 	"github.com/jasonish/evebox/server/sessions"
@@ -84,6 +85,12 @@ func apiFuncWrapper(handler apiHandlerFunc) http.Handler {
 
 		w.Header().Set("content-type", "application/json")
 		encoder := json.NewEncoder(w)
+		status := http.StatusInternalServerError
+
+		switch err.(type) {
+		case *core.EventNotFoundError:
+			status = http.StatusNotFound
+		}
 
 		switch err := err.(type) {
 		case ApiError:
@@ -96,7 +103,7 @@ func apiFuncWrapper(handler apiHandlerFunc) http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			encoder.Encode(&httpErrorResponse{
 				error:  err,
-				status: http.StatusInternalServerError,
+				status: status,
 			})
 		}
 	})

@@ -62,7 +62,7 @@ func (c *ApiContext) ArchiveEventHandler(w *ResponseWriter, r *http.Request) err
 
 	err := c.appContext.DataStore.ArchiveEvent(eventId, session.User)
 	if err != nil {
-		log.Error("Failed to escalated event: %v", err)
+		log.Error("Failed to archive event: %v", err)
 		return err
 	}
 	return w.Ok()

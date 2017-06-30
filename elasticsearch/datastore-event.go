@@ -39,6 +39,9 @@ func (s *DataStore) ArchiveEvent(eventId string, user core.User) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get event")
 	}
+	if event == nil {
+		return core.NewEventNotFoundError(eventId)
+	}
 	eventDoc := Document{event}
 
 	request := map[string]interface{}{
