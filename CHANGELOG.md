@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.8.0 - 2017-06-30
 
 **Added**
 - The agent, and the server when reading logs can now add the rule to
@@ -29,7 +29,7 @@
 - Elastic Search mapping errors on flow and netflow reports -
   https://github.com/jasonish/evebox/issues/39
 
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.7.0...HEAD)
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.7.0...0.8.0)
 
 ## 0.7.0 - 2017-04-22
 
