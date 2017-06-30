@@ -52,7 +52,12 @@ type Bookmarker struct {
 	Reader   *FollowingReader
 }
 
-func NewBookmarker(reader *FollowingReader, directory string) (*Bookmarker, error) {
+// NewBookmaker creates a new bookmarker for a FollowingReader.
+//
+// The 'end' flag tells the bookmarker what to do new if no valid bookmark
+// exists. The true reading will start at the end of the file, if false the
+// reading will start from the beginning of the file.
+func NewBookmarker(reader *FollowingReader, directory string, end bool) (*Bookmarker, error) {
 	var bookmarkFilename string
 
 	if directory == "" {
@@ -63,11 +68,13 @@ func NewBookmarker(reader *FollowingReader, directory string) (*Bookmarker, erro
 			directory, hash)
 	}
 
+	log.Info("Using bookmark file %s", bookmarkFilename)
+
 	bookmarker := &Bookmarker{
 		Filename: bookmarkFilename,
 		Reader:   reader,
 	}
-	if err := bookmarker.Init(true); err != nil {
+	if err := bookmarker.Init(end); err != nil {
 		return nil, err
 	}
 	return bookmarker, nil
@@ -149,10 +156,13 @@ func (b *Bookmarker) Init(end bool) error {
 	bookmark, err := b.ReadBookmark()
 
 	if err == nil && b.BookmarkIsValid(bookmark) {
+		log.Info("Found valid bookmark, jumping to offset %d", bookmark.Offset)
 		err = b.Reader.SkipTo(bookmark.Offset)
 		if err != nil {
-			log.Error("Failed to skip to line %d, will skip to end of file: %s", err)
-			b.Reader.SkipToEnd()
+			if end {
+				log.Error("Failed to skip to line %d, will skip to end of file: %s", err)
+				b.Reader.SkipToEnd()
+			}
 		}
 	} else {
 		if err != nil {

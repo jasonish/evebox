@@ -62,6 +62,9 @@ type EveFileProcessor struct {
 	lastStatCount uint64
 	lastStatTime  time.Time
 	eofs          uint64
+
+	// Start reading at end of file if no valid bookmark exists.
+	End bool
 }
 
 func (p *EveFileProcessor) AddFilter(filter eve.EveFilter) {
@@ -98,7 +101,7 @@ func (p *EveFileProcessor) Run() {
 			goto Retry
 		}
 
-		bookmarker, err = NewBookmarker(reader, p.BookmarkDirectory)
+		bookmarker, err = NewBookmarker(reader, p.BookmarkDirectory, p.End)
 		if err != nil {
 			log.Warning("Failed to get bookmarker (will try again): %v", err)
 			reader.Close()

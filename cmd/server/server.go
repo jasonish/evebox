@@ -227,6 +227,7 @@ func Main(args []string) {
 
 	var input string
 	flagset.StringVar(&input, "input", "", "Input eve-log file (optional)")
+	inputStart := flagset.Bool("input-start", false, "Read start of input file (if no bookmark)")
 
 	flagset.Parse(args[0:])
 
@@ -388,7 +389,7 @@ func Main(args []string) {
 			viper.GetString("database.type"))
 	}
 
-	initInternalEveReader(&appContext)
+	initInternalEveReader(&appContext, *inputStart)
 
 	httpServer := server.NewServer(appContext)
 	err = httpServer.Start(opts.Host, opts.Port)
@@ -399,7 +400,7 @@ func Main(args []string) {
 	exiter.Exit(0)
 }
 
-func initInternalEveReader(appContext *appcontext.AppContext) {
+func initInternalEveReader(appContext *appcontext.AppContext, inputStart bool) {
 	enabled := viper.GetBool("input.enabled")
 	if !enabled {
 		return
@@ -417,6 +418,7 @@ func initInternalEveReader(appContext *appcontext.AppContext) {
 		Filename:          filename,
 		BookmarkDirectory: bookmarkDirectory,
 		Sink:              eventSink,
+		End:               !inputStart,
 	}
 
 	eveFileProcessor.AddFilter(&eve.TagsFilter{})
