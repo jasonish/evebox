@@ -13,6 +13,11 @@
   support reporting.
 - Event history recording. A timestamp and username will be recorded
   when an alert is archived, escalated or de-escalated.
+- Support for commenting on events (Elastic Search only)
+  (https://github.com/jasonish/evebox/issues/36).
+- Specific support for displaying the HTTP response body if available
+  in Eve entries. Requires Suricata 4.0.0-rc1 or newer
+  (https://github.com/jasonish/evebox/issues/40)
   
 **Fixed**
 - Fix an issue where alerts may not be archived if their @timestamp
