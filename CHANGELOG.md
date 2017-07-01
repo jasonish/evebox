@@ -1,5 +1,13 @@
 # Change Log
 
+## unreleased
+
+**Added**
+- Commenting support for PostgreSQL.
+  - With "has:comment" query string support.
+
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.8.0...HEAD)
+
 ## 0.8.0 - 2017-06-30
 
 **Added**
