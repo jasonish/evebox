@@ -78,7 +78,10 @@ func (c *ApiContext) CommentOnEventHandler(w *ResponseWriter, r *http.Request) e
 
 	log.Info("Got comment on event %s comment from user %s", eventId, session.Username())
 
-	c.appContext.DataStore.CommentOnEventId(eventId, session.User, request.Comment)
+	if err := c.appContext.DataStore.CommentOnEventId(eventId, session.User, request.Comment); err != nil {
+		log.Error("%v", err)
+		return errors.WithStack(err)
+	}
 
 	return w.Ok()
 }

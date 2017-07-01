@@ -385,6 +385,8 @@ func Main(args []string) {
 		pgMigrator.Migrate()
 
 		appContext.DataStore = postgres.NewPgDatastore(pg)
+
+		appContext.SetFeature(core.FEATURE_COMMENTS)
 	default:
 		log.Fatal("unsupported datastore: ",
 			viper.GetString("database.type"))

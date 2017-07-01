@@ -649,6 +649,9 @@ func parseQueryString(queryString string, filters *[]string, args *[]interface{}
 					`events.metadata->'history' @> '[{"action": "escalated"}]'::jsonb`)
 			} else if key == "is" && val == "escalated" {
 				*filters = append(*filters, `events.escalated = true`)
+			} else if key == "has" && val == "comment" {
+				*filters = append(*filters,
+					`events.metadata->'history' @> '[{"action": "comment"}]'::jsonb`)
 			} else {
 				path := strings.Replace(key, ".", ",", -1)
 				*filters = append(*filters,
@@ -662,4 +665,92 @@ func parseQueryString(queryString string, filters *[]string, args *[]interface{}
 			break
 		}
 	}
+}
+
+func (d *PgDatastore) CommentOnAlertGroup(p core.AlertGroupQueryParams, user core.User, comment string) (err error) {
+
+	var maxTime time.Time
+	if !p.MaxTimestamp.IsZero() {
+		maxTime = p.MaxTimestamp
+	} else {
+		maxTime = time.Now()
+	}
+
+	var minTime time.Time
+	if !p.MinTimestamp.IsZero() {
+		minTime = p.MinTimestamp
+	}
+
+	sqlTemplate := `
+update events
+set
+  metadata = jsonb_set(
+    metadata,
+    '{"history"}',
+    case when metadata->'history' is null then '[]'::jsonb
+      else metadata->'history' end || $6::jsonb
+    )
+where
+  timestamp <= $4
+  and timestamp >= $5
+  and uuid in (
+    select uuid from events_source
+    where
+      source->>'event_type' = 'alert'
+      AND (source->>'src_ip')::inet = $1
+      AND (source->>'dest_ip')::inet = $2
+      AND (source->'alert'->>'signature_id')::bigint = $3
+      AND timestamp <= $4
+      AND timestamp >= $5
+    )
+`
+
+	history := elasticsearch.HistoryEntry{
+		Timestamp: elasticsearch.FormatTimestampUTC(time.Now()),
+		Username:  user.Username,
+		Action:    elasticsearch.ACTION_COMMENT,
+		Comment:   comment,
+	}
+
+	qstart := time.Now()
+	_, err = d.pg.Exec(sqlTemplate,
+		p.SrcIP,
+		p.DstIP,
+		p.SignatureID,
+		maxTime,
+		minTime,
+		util.ToJson(history))
+	log.Info("Update time: %v", time.Now().Sub(qstart))
+	if err != nil {
+		return errors.Wrap(err, "query failed")
+	}
+	return nil
+}
+
+func (d *PgDatastore) CommentOnEventId(eventId string, user core.User, comment string) error {
+
+	history := elasticsearch.HistoryEntry{
+		Timestamp: elasticsearch.FormatTimestampUTC(time.Now()),
+		Username:  user.Username,
+		Action:    elasticsearch.ACTION_COMMENT,
+		Comment:   comment,
+	}
+
+	sqlTemplate := `update events
+set
+  metadata = jsonb_set(
+    metadata,
+    '{"history"}',
+    case when metadata->'history' is null then '[]'::jsonb
+      else metadata->'history' end || $1::jsonb
+    )
+where
+  uuid = $2
+`
+	_, err := d.pg.Exec(sqlTemplate, util.ToJson(history), eventId)
+	if err != nil {
+		return errors.Wrap(err, "update query failed")
+	}
+
+	return nil
 }
