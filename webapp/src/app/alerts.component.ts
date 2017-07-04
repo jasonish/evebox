@@ -366,9 +366,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     removeRow(row: any) {
-
         let rowIndex = this.rows.indexOf(row);
-        console.log("Row index: " + rowIndex);
 
         if (this.rows === this.allRows) {
             this.allRows = this.allRows.filter((_row: any) => {
@@ -399,10 +397,8 @@ export class AlertsComponent implements OnInit, OnDestroy {
             this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
         }
 
-        if (this.activeRow >= this.rows.length) {
-            this.activeRow--;
-        }
-
+        // If out of rows, attempt to slide in a portion of the complete result
+        // set.
         if (this.rows.length == 0) {
             if (this.offset > 0) {
                 this.offset -= this.windowSize;
@@ -412,6 +408,15 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
             // And scroll to the top.
             window.scrollTo(0, 0);
+        } else {
+            // Otherwise, do some updating of the active row.
+            if (rowIndex < this.activeRow) {
+                this.activeRow--;
+            }
+
+            if (this.activeRow >= this.rows.length) {
+                this.activeRow--;
+            }
         }
     }
 

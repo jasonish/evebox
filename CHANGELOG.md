@@ -7,6 +7,9 @@
   - With "has:comment" query string support.
   - And "comment:SOME_STRING" for search comments.
 
+**Fixed**
+- Fix an issue with updating the "active" row after archiving events.
+
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.8.0...HEAD)
 
 ## 0.8.0 - 2017-06-30
