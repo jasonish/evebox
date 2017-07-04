@@ -634,6 +634,21 @@ func dumpQuery(query string, args []interface{}) {
 	log.Println(strings.Replace(query, "\n", " ", -1))
 }
 
+// Parse a query string for a PostgreSQL search.
+//
+// Supported keywords and args:
+//     src_ip:ADDR
+//     dest_ip:ADDR
+//     was:escalated
+//     is:escalated
+//     has:comment
+//     comment:STRING
+//
+// Any other key/value pair will be constructed into a query doing an 'ILIKE'
+// on the JSON field of the event.
+//
+// An argument with no key will be done with an 'ILIKE' on the text representation
+// of the JSON event.
 func parseQueryString(queryString string, filters *[]string, args *[]interface{}) {
 	parser := sqlite.NewQueryStringParser(queryString)
 	for {
@@ -641,9 +656,15 @@ func parseQueryString(queryString string, filters *[]string, args *[]interface{}
 
 		if key != "" && val != "" {
 			if key == "src_ip" {
-				*filters = append(*filters,
-					fmt.Sprintf("(events_source.source->>'src_ip')::inet = $%d::inet", len(*args)+1))
+				filter := fmt.Sprintf("(events_source.source->>'src_ip')::inet = $%d::inet", len(*args)+1)
+				*filters = append(*filters, filter)
 				*args = append(*args, val)
+				log.Debug("Adding query filter %s with arg %v", filter, val)
+			} else if key == "dest_ip" {
+				filter := fmt.Sprintf("(events_source.source->>'dest_ip')::inet = $%d::inet", len(*args)+1)
+				*filters = append(*filters, filter)
+				*args = append(*args, val)
+				log.Debug("Adding query filter %s with arg %v", filter, val)
 			} else if key == "was" && val == "escalated" {
 				*filters = append(*filters,
 					`events.metadata->'history' @> '[{"action": "escalated"}]'::jsonb`)
@@ -651,16 +672,25 @@ func parseQueryString(queryString string, filters *[]string, args *[]interface{}
 				*filters = append(*filters, `events.escalated = true`)
 			} else if key == "has" && val == "comment" {
 				*filters = append(*filters,
-					`events.metadata->'history' @> '[{"action": "comment"}]'::jsonb`)
+					`events.metadata @> '{"history": [{"action": "comment"}]}'::jsonb`)
+			} else if key == "comment" {
+				*filters = append(*filters,
+					fmt.Sprintf(`
+					    events.metadata @> '{"history": [{"action": "comment"}]}'
+					    AND (events.metadata->'history')::text ILIKE $%d`, len(*args)+1))
+				*args = append(*args, fmt.Sprintf("%%%s%%", val))
 			} else {
 				path := strings.Replace(key, ".", ",", -1)
-				*filters = append(*filters,
-					fmt.Sprintf("events_source.source #>> '{%s}' ILIKE $%d", path, len(*args)+1))
+				filter := fmt.Sprintf("events_source.source #>> '{%s}' ILIKE $%d", path, len(*args)+1)
+				*filters = append(*filters, filter)
 				*args = append(*args, val)
+				log.Debug("Adding query filter %s with arg %v", filter, val)
 			}
 		} else if val != "" {
 			*filters = append(*filters, fmt.Sprintf("events_source.source::text ILIKE $%d", len(*args)+1))
-			*args = append(*args, fmt.Sprintf("%%%s%%", val))
+			arg := fmt.Sprintf("%%%s%%", val)
+			*args = append(*args, arg)
+			log.Debug("Adding query filter %s (%v)", (*filters)[len(*filters)-1], arg)
 		} else if key == "" && val == "" {
 			break
 		}
