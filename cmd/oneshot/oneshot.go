@@ -163,7 +163,12 @@ Example:
 			&useragent.EveUserAgentFilter{},
 		}
 	Loop:
-		for _, filename := range flagset.Args() {
+		for i, filename := range flagset.Args() {
+			last := len(flagset.Args()) == i+1
+			done := false
+			if last {
+				log.Info("Last file...")
+			}
 			reader, err := evereader.NewBasicReader(filename)
 			if err != nil {
 				log.Fatal(err)
@@ -171,6 +176,10 @@ Example:
 			size, _ := reader.FileSize()
 			log.Info("Reading %s (%d bytes)", filename, size)
 			lastPercent := 0
+
+			// The number of events queued to be committed.
+			queued := 0
+
 			for {
 				select {
 				case <-stopReading:
@@ -178,48 +187,75 @@ Example:
 				default:
 				}
 
+				eof := false
+
 				event, err := reader.Next()
 				if err != nil {
 					if err == io.EOF {
-						break
-					}
-					log.Fatal(err)
-				}
-
-				for _, filter := range filters {
-					filter.Filter(event)
-				}
-
-				if err := eventSink.Submit(event); err != nil {
-					log.Fatal(err)
-				}
-
-				// Commit every 10000 events...
-				if count > 0 && count%10000 == 0 {
-					if _, err := eventSink.Commit(); err != nil {
+						if !last {
+							break
+						} else {
+							eof = true
+						}
+					} else {
 						log.Fatal(err)
 					}
 				}
 
-				// But only log when the percentage goes up a full percent.
-				offset, _ := reader.FileOffset()
-				percent := int((float64(offset) / float64(size)) * 100.0)
-				if percent > lastPercent {
-					log.Info("%s: %d events (%d%%)", filename, count, percent)
-					lastPercent = percent
+				if event != nil {
+					for _, filter := range filters {
+						filter.Filter(event)
+					}
+
+					if err := eventSink.Submit(event); err != nil {
+						log.Fatal(err)
+					}
+					queued++
+				}
+
+				// Commit every 10000 events, or an EOF.
+				if (eof && queued > 0) || count > 0 && count%10000 == 0 {
+					// Only log when we are in the following mode of the
+					// last file.
+					if eof && done {
+						log.Info("Adding %d events.", queued)
+					}
+					if _, err := eventSink.Commit(); err != nil {
+						log.Fatal(err)
+					}
+					queued = 0
+				}
+
+				// But only log when the percentage goes up a full percent. And
+				// when we are actively processing a log file to the end.
+				if !done {
+					offset, _ := reader.FileOffset()
+					percent := int((float64(offset) / float64(size)) * 100.0)
+					if percent > lastPercent {
+						log.Info("%s: %d events (%d%%)", filename, count, percent)
+						lastPercent = percent
+					}
+				}
+
+				if eof {
+					time.Sleep(100 * time.Millisecond)
 				}
 
 				count++
+
+				if !done && last && eof {
+					if !nowait {
+						log.Debug("Sending done signal.")
+						doneReading <- 1
+					}
+					done = true
+				}
 			}
 
-			log.Info("%s: %d events (100%%)", filename, count)
 			if _, err := eventSink.Commit(); err != nil {
 				log.Fatal(err)
 			}
-		}
-
-		if !nowait {
-			doneReading <- 1
+			log.Info("%s: %d events (100%%)", filename, count)
 		}
 	}()
 	if !nowait {
