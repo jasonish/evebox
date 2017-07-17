@@ -217,16 +217,16 @@ export class ElasticSearchService {
     let params = new URLSearchParams();
 
     if (options.queryString) {
-      params.set('queryString', options.queryString);
+      params.set('query_string', options.queryString);
     }
     if (options.timeEnd) {
-      params.set('maxTs', options.timeEnd);
+      params.set('max_ts', options.timeEnd);
     }
     if (options.timeStart) {
-      params.set('minTs', options.timeStart);
+      params.set('min_ts', options.timeStart);
     }
     if (options.eventType && options.eventType != 'all') {
-      params.set('eventType', options.eventType);
+      params.set('event_type', options.eventType);
     }
     if (options.order) {
       params.set("order", options.order);

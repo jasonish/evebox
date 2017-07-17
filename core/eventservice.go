@@ -92,23 +92,23 @@ func EventQueryOptionsFromHttpRequest(r *http.Request) (EventQueryOptions, error
 	options.TimeRange = r.FormValue("timeRange")
 	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 10, 64)
 
-	if r.FormValue("maxTs") != "" {
-		ts, err := eve.ParseTimestamp(r.FormValue("maxTs"))
+	if r.FormValue("max_ts") != "" {
+		ts, err := eve.ParseTimestamp(r.FormValue("max_ts"))
 		if err != nil {
 			return options, errors.WithStack(err)
 		}
 		options.MaxTs = ts
 	}
 
-	if r.FormValue("minTs") != "" {
-		ts, err := eve.ParseTimestamp(r.FormValue("minTs"))
+	if r.FormValue("min_ts") != "" {
+		ts, err := eve.ParseTimestamp(r.FormValue("min_ts"))
 		if err != nil {
 			return options, errors.WithStack(err)
 		}
 		options.MinTs = ts
 	}
 
-	options.EventType = r.FormValue("eventType")
+	options.EventType = r.FormValue("event_type")
 
 	return options, nil
 }

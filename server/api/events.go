@@ -100,17 +100,17 @@ func (c *ApiContext) EventQueryHandler(w *ResponseWriter, r *http.Request) error
 		return newHttpErrorResponse(http.StatusBadRequest, err)
 	}
 
-	options.QueryString = r.FormValue("queryString")
+	options.QueryString = r.FormValue("query_string")
 
-	maxTs, err := parseFormTimestamp(r, "maxTs")
+	maxTs, err := parseFormTimestamp(r, "max_ts")
 	if err != nil {
-		return errors.Wrap(err, "failed to parse maxTs")
+		return errors.Wrap(err, "failed to parse max_ts")
 	}
 	options.MaxTs = maxTs
 
-	minTs, err := parseFormTimestamp(r, "minTs")
+	minTs, err := parseFormTimestamp(r, "min_ts")
 	if err != nil {
-		return errors.Wrap(err, "failed to parse maxTs")
+		return errors.Wrap(err, "failed to parse min_ts")
 	}
 	options.MinTs = minTs
 
@@ -119,7 +119,7 @@ func (c *ApiContext) EventQueryHandler(w *ResponseWriter, r *http.Request) error
 		options.Order = order
 	}
 
-	options.EventType = r.FormValue("eventType")
+	options.EventType = r.FormValue("event_type")
 	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 0, 64)
 
 	response, err := c.appContext.DataStore.EventQuery(options)
