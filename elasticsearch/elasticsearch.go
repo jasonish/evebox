@@ -70,7 +70,13 @@ type ElasticSearch struct {
 }
 
 func New(url string) *ElasticSearch {
+	// First, strip any trailing / from the URL.
+	for strings.HasSuffix(url, "/") {
+		url = strings.TrimSuffix(url, "/")
+	}
+
 	HttpClient := httputil.NewHttpClient()
+
 	HttpClient.SetBaseUrl(url)
 
 	es := &ElasticSearch{

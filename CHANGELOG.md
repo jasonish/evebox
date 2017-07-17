@@ -12,6 +12,8 @@
 
 **Fixed**
 - Fix an issue with updating the "active" row after archiving events.
+- Strip trailing slashes in the Elastic Search URL
+  (https://github.com/jasonish/evebox/issues/55).
 
 **Changes**
 - In request to the backend, rename maxTs, minTs, eventType to max_ts,
