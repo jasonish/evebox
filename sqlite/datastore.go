@@ -415,7 +415,12 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		query += sqlBuilder.BuildWhere()
 	}
 
-	query += fmt.Sprintf(" ORDER BY events.timestamp DESC")
+	if options.Order == "asc" {
+		query += fmt.Sprintf(" ORDER BY events.timestamp ASC")
+	} else {
+		query += fmt.Sprintf(" ORDER BY events.timestamp DESC")
+	}
+
 	query += fmt.Sprintf(" LIMIT %d", size)
 
 	tx, err := s.db.GetTx()
@@ -423,8 +428,6 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		return nil, err
 	}
 	defer tx.Commit()
-
-	log.Info("query: %s", query)
 
 	rows, err := tx.Query(query, sqlBuilder.args...)
 	if err != nil {

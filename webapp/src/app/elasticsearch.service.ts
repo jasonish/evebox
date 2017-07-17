@@ -228,6 +228,9 @@ export class ElasticSearchService {
     if (options.eventType && options.eventType != 'all') {
       params.set('eventType', options.eventType);
     }
+    if (options.order) {
+      params.set("order", options.order);
+    }
 
     return this.api.get('api/1/event-query', {search: params}).then((response: any) => {
 

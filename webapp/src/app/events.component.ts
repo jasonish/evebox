@@ -84,8 +84,14 @@ import {loadingAnimation} from './animations';
         <button type="button" class="btn btn-default" (click)="gotoNewest()">
           Newest
         </button>
+        <button type="button" class="btn btn-default" (click)="gotoNewer()">
+          Newer
+        </button>
         <button type="button" class="btn btn-default" (click)="gotoOlder()">
           Older
+        </button>
+        <button type="button" class="btn btn-default" (click)="gotoOldest()">
+          Oldest
         </button>
       </div>
 
@@ -132,6 +138,7 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     timeStart: string;
     timeEnd: string;
+    private order: string;
 
     eveboxEventTableConfig: EveboxEventTableConfig = {
         showCount: false,
@@ -156,6 +163,7 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.timeStart = params.timeStart || qp.timeStart;
             this.timeEnd = params.timeEnd || qp.timeEnd;
             this.eventTypeFilter = params.eventType || this.eventTypeFilterValues[0];
+            this.order = params.order;
             this.refresh();
         });
 
@@ -198,6 +206,15 @@ export class EventsComponent implements OnInit, OnDestroy {
         this.appService.updateParams(this.route, {
             timeStart: undefined,
             timeEnd: undefined,
+            order: "desc",
+        });
+    }
+
+    gotoNewer() {
+        this.appService.updateParams(this.route, {
+            timeEnd: undefined,
+            timeStart: this.resultSet.newestTimestamp,
+            order: "asc",
         });
     }
 
@@ -205,6 +222,15 @@ export class EventsComponent implements OnInit, OnDestroy {
         this.appService.updateParams(this.route, {
             timeEnd: this.resultSet.oldestTimestamp,
             timeStart: undefined,
+            order: "desc",
+        });
+    }
+
+    gotoOldest() {
+        this.appService.updateParams(this.route, {
+            timeEnd: undefined,
+            timeStart: undefined,
+            order: "asc",
         });
     }
 
@@ -221,9 +247,13 @@ export class EventsComponent implements OnInit, OnDestroy {
             timeEnd: this.timeEnd,
             timeStart: this.timeStart,
             eventType: this.eventTypeFilter.toLowerCase(),
+            order: this.order,
         }).then((resultSet: ResultSet) => {
             this.resultSet = resultSet;
             this.eveboxEventTableConfig.rows = resultSet.events;
+            if (this.order === "asc") {
+                this.eveboxEventTableConfig.rows = this.eveboxEventTableConfig.rows.reverse()
+            }
             this.loading = false;
         }, (error: any) => {
 

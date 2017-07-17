@@ -81,6 +81,8 @@ type EventQueryOptions struct {
 
 	// Event type to limit results to.
 	EventType string
+
+	Order string
 }
 
 func EventQueryOptionsFromHttpRequest(r *http.Request) (EventQueryOptions, error) {

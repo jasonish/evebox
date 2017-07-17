@@ -8,6 +8,7 @@
   - And "comment:SOME_STRING" for search comments.
 - In oneshot mode, continue reading the last file to pickup new events
   (https://github.com/jasonish/evebox/issues/54).
+- Add "Newer" and "Oldest" buttons to the "Events" view.
 
 **Fixed**
 - Fix an issue with updating the "active" row after archiving events.

@@ -32,10 +32,15 @@ import (
 )
 
 func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, error) {
-
 	query := NewEventQuery()
+
 	query.MustNot(TermQuery("event_type", "stats"))
-	query.SortBy("@timestamp", "desc")
+
+	if options.Order == "asc" {
+		query.SortBy("@timestamp", "asc")
+	} else {
+		query.SortBy("@timestamp", "desc")
+	}
 
 	if options.Size > 0 {
 		query.Size = options.Size

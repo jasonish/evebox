@@ -545,7 +545,7 @@ where
   AND events_source.uuid = events.uuid
   %%AND_EVENT_TYPE%%
   %%QUERYSTRING%%
-order by events_source.timestamp desc
+order by events_source.timestamp %%ORDER%%
 limit 500
 	`
 
@@ -567,6 +567,12 @@ limit 500
 			sqlTemplate = strings.Replace(sqlTemplate, "%%QUERYSTRING%%",
 				where, -1)
 		}
+	}
+
+	if options.Order == "asc" {
+		sqlTemplate = strings.Replace(sqlTemplate, "%%ORDER%%", "asc", -1)
+	} else {
+		sqlTemplate = strings.Replace(sqlTemplate, "%%ORDER%%", "desc", -1)
 	}
 
 	re := regexp.MustCompile("%%[A-Z_]+%%")

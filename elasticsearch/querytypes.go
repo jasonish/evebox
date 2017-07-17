@@ -77,9 +77,12 @@ type EventQuery struct {
 func NewEventQuery() EventQuery {
 	query := EventQuery{}
 	query.AddFilter(ExistsQuery("event_type"))
+
+	// This is the default sort order. A SortBy() call will replace this.
 	query.Sort = []interface{}{
 		Sort("@timestamp", "desc"),
 	}
+
 	query.Aggs = map[string]interface{}{}
 	return query
 }
@@ -118,7 +121,9 @@ func (q *EventQuery) MustNot(query interface{}) {
 }
 
 func (q *EventQuery) SortBy(field string, order string) *EventQuery {
-	q.Sort = append(q.Sort, Sort(field, order))
+	q.Sort = []interface{}{
+		Sort(field, order),
+	}
 	return q
 }
 
