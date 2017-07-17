@@ -16,8 +16,8 @@
   (https://github.com/jasonish/evebox/issues/55).
 
 **Changes**
-- In request to the backend, rename maxTs, minTs, eventType to max_ts,
-  min_ts and event_type.
+- In requests to the backend, rename maxTs, minTs, eventType to
+  max_ts, min_ts and event_type.
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.8.0...HEAD)
 
@@ -25,7 +25,7 @@
 
 **Added**
 - The agent, and the server when reading logs can now add the rule to
-  the event by providing the locatin of the rule files in the
+  the event by providing the location of the rule files in the
   configuration.
 - Add option to esimport to add rule to event.
 - If an event has a "rule" object it will now be displayed in the
