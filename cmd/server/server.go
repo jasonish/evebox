@@ -46,6 +46,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"strings"
+	"time"
 )
 
 const DEFAULT_DATA_DIR = ""
@@ -376,9 +377,23 @@ func Main(args []string) {
 			}
 		}
 
-		pg, err := postgres.NewPgDatabase(pgConfig)
-		if err != nil {
-			log.Fatal(err)
+		// Try a few times to connect to the database sleeping for a bit on
+		// failure. Useful when using something like Docker compose where the
+		// database might not be ready on the first connection attempt.
+		var pg *postgres.PgDB
+		tryCount := 5
+		for tryCount > 0 {
+			tryCount--
+			pg, err = postgres.NewPgDatabase(pgConfig)
+			if err != nil {
+				if tryCount == 0 {
+					log.Fatal(err)
+				}
+				log.Warning("Failed to connect to database, will try again: %v", err)
+				time.Sleep(1 * time.Second)
+			} else {
+				break
+			}
 		}
 
 		pgMigrator := postgres.NewSqlMigrator(pg, "postgres")
