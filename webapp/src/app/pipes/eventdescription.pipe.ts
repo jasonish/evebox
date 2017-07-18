@@ -77,7 +77,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
         let event = value;
 
         if (!event._source.event_type) {
-            return '<Error: This does not look like an event.>';
+            return '[Error: This does not look like an event]';
         }
 
         let eve = event._source;
@@ -105,7 +105,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 return `${ssh.client.software_version} -> ${ssh.server.software_version}`;
             }
             case 'tls': {
-                return `${eve.tls.version} - ${eve.tls.subject}`;
+                return `${eve.tls.version} - ${eve.tls.sni || "[no sni]"} - ${eve.tls.subject || "[no subject]"}`;
             }
             case 'flow': {
                 let flow = eve.flow;
