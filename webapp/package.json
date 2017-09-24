@@ -41,7 +41,8 @@
     "rxjs": "^5.1.0",
     "toastr": "^2.1.2",
     "ts-helpers": "^1.1.1",
-    "zone.js": "^0.8.4"
+    "zone.js": "^0.8.4",
+    "script-loader": "^0.7.1"
   },
   "devDependencies": {
     "@angular/cli": "^1.1.2",
