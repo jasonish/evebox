@@ -349,6 +349,11 @@
       "from": "queue@>=4.2.1 <5.0.0",
       "resolved": "https://registry.npmjs.org/queue/-/queue-4.2.1.tgz"
     },
+    "raw-loader": {
+      "version": "0.5.1",
+      "from": "raw-loader@>=0.5.1 <0.6.0",
+      "resolved": "https://registry.npmjs.org/raw-loader/-/raw-loader-0.5.1.tgz"
+    },
     "reflect-metadata": {
       "version": "0.1.10",
       "from": "reflect-metadata@>=0.1.2 <0.2.0",
@@ -363,6 +368,11 @@
       "version": "5.4.1",
       "from": "rxjs@>=5.1.0 <6.0.0",
       "resolved": "https://registry.npmjs.org/rxjs/-/rxjs-5.4.1.tgz"
+    },
+    "script-loader": {
+      "version": "0.7.1",
+      "from": "script-loader@>=0.7.1 <0.8.0",
+      "resolved": "https://registry.npmjs.org/script-loader/-/script-loader-0.7.1.tgz"
     },
     "source-map": {
       "version": "0.5.6",
