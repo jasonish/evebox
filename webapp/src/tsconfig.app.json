@@ -1,14 +1,16 @@
 {
-  "compileOnSave": false,
   "compilerOptions": {
-    "declaration": false,
+    "baseUrl": "",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "lib": ["es2015", "dom"],
+    "mapRoot": "./",
     "module": "commonjs",
     "moduleResolution": "node",
-    "outDir": "../dist/out-tsc-e2e",
     "sourceMap": true,
     "target": "es5",
+    "noImplicitAny": true,
+    "suppressImplicitAnyIndexErrors": true,
     "typeRoots": [
       "../node_modules/@types"
     ]
