@@ -1,4 +1,4 @@
-FROM fedora:25
+FROM fedora:26
 MAINTAINER Jason Ish <ish@unx.ca>
 
 RUN rpm -Uvh https://evebox.org/files/rpm/stable/evebox-release.noarch.rpm && \
