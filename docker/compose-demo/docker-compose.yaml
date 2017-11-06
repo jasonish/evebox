@@ -19,4 +19,4 @@ services:
       - elasticsearch
     ports:
       - 5636:5636
-    command: --input /var/log/suricata/eve.json -vv -e http://elasticsearch:9200
+    command: --input /var/log/suricata/eve.json -e http://elasticsearch:9200
