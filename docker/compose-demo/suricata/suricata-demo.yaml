@@ -6,3 +6,31 @@ include: /etc/suricata/suricata.yaml
 default-rule-path: /var/lib/suricata/rules
 rule-files:
   - suricata.rules
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            payload: yes
+            packet: yes
+            http-body: yes
+            tagged-packets: yes
+            xff:
+              enabled: yes
+              mode: extra-data
+              deployment: reverse
+              header: X-Forwarded-For
+        - http:
+            extended: yes
+        - dns
+        - tls:
+            extended: yes
+        - smtp
+        - ssh
+        - stats
+        - flow
+        - netflow
+        - vars
