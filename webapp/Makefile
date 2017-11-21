@@ -1,6 +1,7 @@
 GITREV :=	$(shell git rev-parse --short HEAD)
 
-BUILD_ARGS +=	--sourcemaps
+# Issues with Angular 5.
+#BUILD_ARGS +=	--sourcemaps
 BUILD_ARGS +=	--aot
 BUILD_ARGS +=	--prod
 

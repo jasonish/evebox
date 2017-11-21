@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+declare function require(name:string);
+
 import {Injectable} from '@angular/core';
 import {SETTING_THEME, SettingsService} from '../settings.service';
 

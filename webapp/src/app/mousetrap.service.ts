@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+declare function require(name:string);
+
 import {Injectable, NgZone} from '@angular/core';
 
 let mousetrap = require('mousetrap/mousetrap');

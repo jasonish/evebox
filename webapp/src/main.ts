@@ -24,23 +24,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import './polyfills.ts';
+declare function require(name:string);
 
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
-import {enableProdMode} from '@angular/core';
-import {AppModule} from './app/app.module';
-import {environment} from './environments/environment';
+import { enableProdMode } from '@angular/core';
+import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+
+import { AppModule } from './app/app.module';
+import { environment } from './environments/environment';
+
 import {ThemeService} from './app/shared/theme.service';
 import {SettingsService} from './app/settings.service';
-import 'rxjs';
 
 require('!!script-loader!jquery/dist/jquery.min.js');
 require('!!script-loader!bootstrap/dist/js/bootstrap.min.js');
 require('chart.js');
-
-if (process.env.ENV === 'production') {
-    enableProdMode();
-}
 
 if (environment.production) {
     console.log('Enabling production mode from ng cli environment.');
@@ -49,4 +46,5 @@ if (environment.production) {
 
 new ThemeService(new SettingsService()).init();
 
-platformBrowserDynamic().bootstrapModule(AppModule);
+platformBrowserDynamic().bootstrapModule(AppModule)
+  .catch(err => console.log(err));

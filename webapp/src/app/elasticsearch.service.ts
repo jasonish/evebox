@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+declare function require(name:string);
+
 import {Injectable} from '@angular/core';
 import {TopNavService} from './topnav.service';
 import {AppService} from './app.service';

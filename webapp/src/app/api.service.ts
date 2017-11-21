@@ -30,7 +30,7 @@ import {ToastrService} from './toastr.service';
 import {GITREV} from '../environments/gitrev';
 import {Router} from '@angular/router';
 
-import {Observable} from 'rxjs/Rx';
+import {Observable} from 'rxjs/Observable';
 import 'rxjs/add/operator/catch';
 import 'rxjs/add/operator/map';
 import {AppEventService, AppEventType} from './appevent.service';

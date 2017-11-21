@@ -24,6 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+declare function require(name:string);
+
 import {Component, Input, OnChanges} from '@angular/core';
 import {EveboxLoadingSpinnerComponent} from './loading-spinner.component';
 

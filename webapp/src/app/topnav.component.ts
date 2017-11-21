@@ -33,7 +33,7 @@ import {Router, ActivatedRoute} from '@angular/router';
 import {MousetrapService} from './mousetrap.service';
 import {TopNavService} from './topnav.service';
 import {AppService, AppEventCode, FEATURE_REPORTING} from './app.service';
-import {Subscription} from 'rxjs/Rx';
+import {Subscription} from 'rxjs/Subscription';
 import {ConfigService} from './config.service';
 import {ApiService} from './api.service';
 
