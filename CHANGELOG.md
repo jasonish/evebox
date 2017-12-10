@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.8.1 - 2017-12-10
 
 **Added**
 - Commenting support for PostgreSQL.
@@ -19,7 +19,7 @@
 - In requests to the backend, rename maxTs, minTs, eventType to
   max_ts, min_ts and event_type.
 
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.8.0...HEAD)
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.8.0...0.8.1)
 
 ## 0.8.0 - 2017-06-30
 
