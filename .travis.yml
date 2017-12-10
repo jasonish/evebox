@@ -44,12 +44,15 @@ before_install:
 
 script:
 - |
-  make install-deps
-  WITH_SQLITE=1 make dist
+  make install-deps || exit 1
+
+  (cd webapp && make) || exit 1
+
+  WITH_SQLITE=1 make dist || exit 1
 
   # On Linux, make a Windows release as well.
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    WITH_SQLITE=1 GOOS=windows CC=x86_64-w64-mingw32-gcc make dist
+    WITH_SQLITE=1 GOOS=windows CC=x86_64-w64-mingw32-gcc make dist || exit 1
   fi
 
   # Copy just what we want to deploy to S3 into a deploy directory, as
