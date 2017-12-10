@@ -12,7 +12,9 @@ matrix:
   - os: linux
     addons:
       apt:
-        packages: rpm
+        packages:
+          - rpm
+          - gcc-mingw-w64
     language: go
     go: 1.8
   - os: osx
@@ -43,12 +45,16 @@ script:
   make install-deps
   WITH_SQLITE=1 make dist
 
+  # On Linux, make a Windows release as well.
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    WITH_SQLITE=1 GOOS=windows CC=x86_64-w64-mingw32-gcc make dist
+  fi
+
   # Copy just what we want to deploy to S3 into a deploy directory, as
   # the S3 deployment step will copy everything in the directory
   # pointed at.
   mkdir -p deploy
   cp dist/*.zip deploy/
-
 
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     rvm install $RUBY_VERSION
