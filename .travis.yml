@@ -8,6 +8,8 @@ env:
     - RUBY_VERSION=2.1.1
 
 matrix:
+  allow_failures:
+    - os: osx
   include:
   - os: linux
     addons:
