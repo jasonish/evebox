@@ -32,6 +32,8 @@ import (
 	"encoding/json"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"fmt"
+	"strings"
 )
 
 type op struct {
@@ -80,6 +82,9 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 		}
 	}
 
+	values := []string{}
+	stringifyEvent(event, &values)
+
 	encoded, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -89,12 +94,40 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 		query: "insert into events (timestamp, source) values ($1, $2)",
 		args:  []interface{}{event.Timestamp().UnixNano(), encoded},
 	})
+
+	// Add to full text search...
 	i.queue = append(i.queue, op{
 		query: "insert into events_fts (rowid, source) values (last_insert_rowid(), $1)",
-		args:  []interface{}{encoded},
+		args:  []interface{}{strings.Join(values, " ")},
 	})
 
 	return nil
+}
+
+func stringifyArray(array []interface{}, strings *[]string) {
+	for _, val := range(array) {
+		switch val := val.(type) {
+		case map[string]interface{}:
+			stringifyEvent(val, strings)
+		case []interface{}:
+			stringifyArray(val, strings)
+		default:
+			*strings = append(*strings, fmt.Sprintf("%v", val))
+		}
+	}
+}
+
+func stringifyEvent(event eve.EveEvent, strings *[]string) {
+	for _, val := range (event) {
+		switch val := val.(type) {
+		case map[string]interface{}:
+			stringifyEvent(val, strings)
+		case []interface{}:
+			stringifyArray(val, strings)
+		default:
+			*strings = append(*strings, fmt.Sprintf("%v", val))
+		}
+	}
 }
 
 func (i *SqliteIndexer) Commit() (interface{}, error) {
