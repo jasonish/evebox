@@ -35,6 +35,7 @@ type SqlBuilder struct {
 	from   map[string]bool
 	where  []string
 	args   []interface{}
+	limit  int
 }
 
 func (b *SqlBuilder) Select(what string) (builder *SqlBuilder) {
@@ -75,6 +76,10 @@ func (b *SqlBuilder) HasWhere() bool {
 	return len(b.where) > 0
 }
 
+func (b *SqlBuilder) Limit(limit int) {
+	b.limit = limit
+}
+
 func (b *SqlBuilder) Build() string {
 	sql := ""
 
@@ -94,6 +99,10 @@ func (b *SqlBuilder) Build() string {
 
 	if b.HasWhere() {
 		sql += b.BuildWhere()
+	}
+
+	if b.limit > 0 {
+		sql += fmt.Sprintf(" LIMIT %d", b.limit)
 	}
 
 	return sql

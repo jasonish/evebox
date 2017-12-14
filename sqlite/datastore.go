@@ -251,31 +251,42 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.Us
 	if !p.MaxTimestamp.IsZero() {
 		b.WhereLte("timestamp", p.MaxTimestamp.UnixNano())
 	}
+	b.Limit(1000)
 
 	// TODO - query string
 
 	query := fmt.Sprintf("UPDATE events SET archived = 1 WHERE rowid IN (%s)", b.Build())
 
-	tx, err := s.db.GetTx()
-	if err != nil {
-		log.Error("%v", err)
-	}
-	defer tx.Commit()
+	for {
 
-	start := time.Now()
-	r, err := tx.Exec(query, b.args...)
-	if err != nil {
-		log.Error("error archiving alerts: %v", err)
-		return err
-	}
-	duration := time.Now().Sub(start)
-	count, err := r.RowsAffected()
-	if err != nil {
-		log.Warning("Failed to get archived row count: %v", err)
-	}
-	log.Info("Archived %d events in %v", count, duration)
+		tx, err := s.db.GetTx()
+		if err != nil {
+			log.Error("Failed to get transaction: %v", err)
+			return err
+		}
 
-	return err
+		execStart := time.Now()
+		r, err := tx.Exec(query, b.args...)
+		if err == nil {
+			count, err := r.RowsAffected()
+			if err != nil {
+				log.Warning("Failed to get archived row count: %v", err)
+			}
+			tx.Commit()
+			if count > 0 {
+				log.Info("Archived %d events in %v", count, time.Now().Sub(execStart))
+			} else {
+				break
+			}
+		} else {
+			log.Warning("Failed to commit archive query: %v", err)
+			tx.Rollback()
+			return err
+		}
+
+	}
+
+	return nil
 }
 
 func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
