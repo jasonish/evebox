@@ -36,6 +36,8 @@ import (
 	"strings"
 )
 
+const BATCH_SIZE = 100
+
 type op struct {
 	query string
 	args  []interface{}
@@ -101,11 +103,19 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 		args:  []interface{}{strings.Join(values, " ")},
 	})
 
+	if len(i.queue)/2 == BATCH_SIZE {
+		log.Debug("Committing %d events", len(i.queue)/2)
+		_, err := i.Commit()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func stringifyArray(array []interface{}, strings *[]string) {
-	for _, val := range(array) {
+	for _, val := range (array) {
 		switch val := val.(type) {
 		case map[string]interface{}:
 			stringifyEvent(val, strings)
