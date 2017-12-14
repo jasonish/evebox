@@ -90,8 +90,7 @@ func (c *ApiContext) SubmitHandler(w *ResponseWriter, r *http.Request) error {
 		log.Error("Failed to commit events: %v", err)
 		return err
 	}
-
-	log.Debug("Committed %d events from %v", count, r.RemoteAddr)
+	log.Debug("Added %d events from %v", count, r.RemoteAddr)
 
 	return w.OkJSON(SubmitResponse{Count: count})
 }
