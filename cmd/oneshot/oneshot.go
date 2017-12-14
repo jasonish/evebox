@@ -59,6 +59,8 @@ var opts struct {
 	Version          bool
 	DatabaseFilename string
 	InMemory         bool
+	Verbose          bool
+	NoWait           bool
 }
 
 func VersionMain() {
@@ -72,7 +74,7 @@ func setDefaults() {
 
 func Main(args []string) {
 
-	log.SetLevel(log.DEBUG)
+	log.SetLevel(log.INFO)
 
 	var err error
 
@@ -94,17 +96,25 @@ Example:
 	flagset.StringVarP(&opts.Port, "port", "p", "", "Port to bind to")
 	flagset.StringVarP(&opts.Host, "host", "", "127.0.0.1", "Host to bind to")
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
-
 	flagset.StringVar(&opts.DatabaseFilename, "database-filename", "", "Database filename")
 	flagset.BoolVar(&opts.InMemory, "in-memory", false, "Use in-memory database")
-
-	var nowait bool
-	flagset.BoolVar(&nowait, "no-wait", false, "Do not wait for all events to load")
+	flagset.BoolVar(&opts.NoWait, "no-wait", false, "Do not wait for all events to load")
+	flagset.BoolVar(&opts.Verbose, "verbose", false, "Verbose (debug) logging")
 
 	flagset.Parse(args[0:])
 
+	if opts.Verbose {
+		log.SetLevel(log.DEBUG)
+	}
+
 	if opts.Version {
 		VersionMain()
+		return
+	}
+
+	// Display usage if no filenames provided.
+	if len(flagset.Args()) == 0 {
+		flagset.Usage()
 		return
 	}
 
@@ -244,7 +254,7 @@ Example:
 				count++
 
 				if !done && last && eof {
-					if !nowait {
+					if !opts.NoWait {
 						log.Debug("Sending done signal.")
 						doneReading <- 1
 					}
@@ -258,7 +268,7 @@ Example:
 			log.Info("%s: %d events (100%%)", filename, count)
 		}
 	}()
-	if !nowait {
+	if !opts.NoWait {
 	Loop:
 		for {
 			select {
