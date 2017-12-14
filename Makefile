@@ -40,14 +40,12 @@ all: public evebox
 install-deps:
 # NPM
 	$(MAKE) -C webapp $@
-# Go - may need to update Dockerfile if these change.
-	which glide > /dev/null 2>&1 || \
-		go get github.com/Masterminds/glide
+	go get -u github.com/golang/dep/cmd/dep
 	which reflex > /dev/null 2>&1 || \
 		go get github.com/cespare/reflex
 	which go-bindata > /dev/null 2>&1 || \
 		go get github.com/jteeuwen/go-bindata/...
-	glide install
+	dep ensure -v
 
 clean:
 	rm -rf dist
@@ -58,7 +56,6 @@ clean:
 
 distclean: clean
 	rm -rf vendor
-	rm -rf .glide
 	$(MAKE) -C webapp $@
 
 .PHONY: dist rpm deb

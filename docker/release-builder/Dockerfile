@@ -42,11 +42,6 @@ ENV GOPATH /go
 ENV PATH $PATH:/usr/local/node/bin:$GOPATH/bin:/usr/local/go/bin
 ENV PROJECT_DIR $GOPATH/src/github.com/jasonish/evebox
 
-# Install glide. Go get has been known to get broken versions but
-# normally I'd avoid install software this way.
-RUN mkdir -p $GOPATH/bin && \
-    curl https://glide.sh/get | sh
-
 WORKDIR $PROJECT_DIR
 
 COPY /docker/release-builder/docker-entrypoint.sh /

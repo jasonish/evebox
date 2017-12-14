@@ -33,13 +33,10 @@ before_install:
   if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew unlink node || true
       brew unlink go || true
-      brew unlink glide || true
       brew install node
       brew install go
-      brew install glide
       brew link node
       brew link go
-      brew link glide
   fi
 
 script:
