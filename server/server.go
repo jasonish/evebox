@@ -43,8 +43,6 @@ import (
 	"github.com/jasonish/evebox/server/sessions"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/acme/autocert"
-	"net/http/httputil"
-	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -196,8 +194,7 @@ func NewServer(appContext appcontext.AppContext) *Server {
 	apiContext.InitRoutes(router.Subrouter("/api/1"))
 
 	// Static file server, must be last as it serves as the fallback.
-	router.Prefix("/public", StaticHandlerFactory(appContext))
-
+	router.Prefix("/public", resources.FileServer{});
 	return server
 }
 
@@ -290,23 +287,6 @@ func (s *Server) Start(host string, port uint16) error {
 			config.Http.TlsCertificate,
 			keyFile, root)
 	}
-}
-
-func StaticHandlerFactory(appContext appcontext.AppContext) http.Handler {
-	if appContext.Vars.DevWebAppServerUrl != "" {
-		log.Notice("Proxying static files to %v.",
-			appContext.Vars.DevWebAppServerUrl)
-		devServerProxyUrl, err := url.Parse(appContext.Vars.DevWebAppServerUrl)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		proxy := httputil.NewSingleHostReverseProxy(devServerProxyUrl)
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			proxy.ServeHTTP(w, r)
-		})
-	}
-	return resources.FileServer{}
 }
 
 func VersionHeaderWrapper(handler http.Handler) http.Handler {

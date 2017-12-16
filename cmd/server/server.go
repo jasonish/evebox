@@ -60,7 +60,6 @@ const HTTP_TLS_KEY_KEY = "http.tls.key"
 var opts struct {
 	Port               uint16
 	Host               string
-	DevServerUri       string
 	Version            bool
 	NoCheckCertificate bool
 }
@@ -203,7 +202,6 @@ func Main(args []string) {
 
 	flagset.Uint16VarP(&opts.Port, "port", "p", server.DEFAULT_PORT, "Port to bind to")
 	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
-	flagset.StringVarP(&opts.DevServerUri, "dev", "", "", "Frontend development server URI")
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
 	flagset.StringVarP(&configFilename, "config", "c", "", "Configuration filename")
 	flagset.BoolVarP(&opts.NoCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check for Elastic Search")
@@ -265,7 +263,6 @@ func Main(args []string) {
 	appContext := appcontext.AppContext{}
 	configure(&appContext.Config)
 	appContext.GeoIpService = geoip.NewGeoIpService()
-	appContext.Vars.DevWebAppServerUrl = opts.DevServerUri
 
 	datadir := viper.GetString("data-directory")
 	if datadir == "" {

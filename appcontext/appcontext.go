@@ -80,11 +80,6 @@ type AppContext struct {
 	GeoIpService *geoip.GeoIpService
 
 	Features map[core.Feature]bool
-
-	Vars struct {
-		// URL to the frontend web application development server.
-		DevWebAppServerUrl string
-	}
 }
 
 func (c *AppContext) SetFeature(feature core.Feature) {
