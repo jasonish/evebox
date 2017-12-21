@@ -31,7 +31,6 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/util"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
@@ -515,30 +514,6 @@ func (s *DataStore) CommentOnEventId(eventId string, user core.User, comment str
 		},
 	}
 
-	//query := map[string]interface{}{
-	//	"script": &Script{
-	//		Lang: "painless",
-	//		Inline: `
-	//		    if (ctx._source.evebox == null) {
-	//		        ctx._source.evebox = new HashMap();
-	//		    }
-	//		    if (ctx._source.evebox.history == null) {
-	//		        ctx._source.evebox.history = new ArrayList();
-	//		    }
-	//		    ctx._source.evebox.history.add(params.action);
-	//	`,
-	//		Params: map[string]interface{}{
-	//			"action": action,
-	//		},
-	//	},
-	//}
-
-	log.Println(util.ToJson(query))
-
 	_, err = s.es.Update(doc.Index(), doc.Type(), doc.Id(), query)
-	if err != nil {
-		log.Error("error: %v", err)
-	}
-
-	return errors.New("CommentOnEventId not implemented by Elastic Search datastore.")
+	return err
 }
