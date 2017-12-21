@@ -1,8 +1,8 @@
-FROM fedora:26
+FROM centos:7
 MAINTAINER Jason Ish <ish@unx.ca>
 
 RUN rpm -Uvh https://evebox.org/files/rpm/stable/evebox-release.noarch.rpm && \
-    dnf install --disablerepo=* --enablerepo=evebox -y evebox && \
+    yum install --disablerepo=* --enablerepo=evebox -y evebox && \
     /usr/bin/evebox version
 
 EXPOSE 5636
