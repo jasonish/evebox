@@ -81,11 +81,11 @@
                          [rows]="topSignatures"
                          [headers]="['#', 'Signature']"></report-data-table>
 
-      <div *ngIf="loading == 0" class="panel panel-default">
-        <div class="panel-heading">
+      <div *ngIf="loading == 0" class="card">
+        <div class="card-header">
           <b>SSH</b>
         </div>
-        <div class="panel-body">
+        <div class="card-body">
 
           <div class="row">
             <div class="col-md-6">
@@ -155,8 +155,8 @@
     <!-- Second Column -->
     <div class="col-md-6">
 
-      <div *ngIf="loading == 0 && flow.ready" class="panel panel-default">
-        <div class="panel-heading">
+      <div *ngIf="loading == 0 && flow.ready" class="card">
+        <div class="card-header">
           <b>Flow</b>
         </div>
         <table class="table">

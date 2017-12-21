@@ -30,49 +30,50 @@ import {
     OnDestroy,
     OnInit,
     Output
-} from '@angular/core';
-import {Location} from '@angular/common';
-import {ActivatedRoute, Router} from '@angular/router';
-import {AlertGroup, ElasticSearchService} from './elasticsearch.service';
-import {ApiService} from './api.service';
-import {EventServices} from './eventservices.service';
-import {EventService} from './event.service';
-import {MousetrapService} from './mousetrap.service';
-import {EveboxSubscriptionService} from './subscription.service';
-import {loadingAnimation} from './animations';
-import {ToastrService} from './toastr.service';
-import {FEATURE_COMMENTS} from './app.service';
-import {ConfigService} from './config.service';
+} from "@angular/core";
+import {Location} from "@angular/common";
+import {ActivatedRoute, Router} from "@angular/router";
+import {AlertGroup, ElasticSearchService} from "./elasticsearch.service";
+import {ApiService} from "./api.service";
+import {EventServices} from "./eventservices.service";
+import {EventService} from "./event.service";
+import {MousetrapService} from "./mousetrap.service";
+import {EveboxSubscriptionService} from "./subscription.service";
+import {loadingAnimation} from "./animations";
+import {ToastrService} from "./toastr.service";
+import {FEATURE_COMMENTS} from "./app.service";
+import {ConfigService} from "./config.service";
 
 @Component({
     selector: "evebox-comment-input",
-    template: `<div>
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      <b>New Comment...</b>
-    </div>
-    <div style="margin-left: 5px; margin-right: 5px; margin-top: 5px;">
+    template: `
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <b>New Comment...</b>
+          </div>
+          <div style="margin-left: 5px; margin-right: 5px; margin-top: 5px;">
           <textarea rows="3" [(ngModel)]="comment"
                     style="width: 100%; resize: vertical; border: solid 1px #cccccc;"></textarea>
-    </div>
-    <div style="margin: 0px 5px 5px 5px;">
-      <div class="row">
-        <div class="col-md-6">
-          <button type="button" class="btn btn-default btn-block"
-                  (click)="close()">Close
-          </button>
-        </div>
-        <div class="col-md-6">
-          <button type="button" [disabled]="comment == ''"
-                  class="btn btn-primary btn-block"
-                  (click)="submitComment()">Comment
-          </button>
+          </div>
+          <div style="margin: 0px 5px 5px 5px;">
+            <div class="row">
+              <div class="col-md-6">
+                <button type="button" class="btn btn-secondary btn-block"
+                        (click)="close()">Close
+                </button>
+              </div>
+              <div class="col-md-6">
+                <button type="button" [disabled]="comment == ''"
+                        class="btn btn-primary btn-block"
+                        (click)="submitComment()">Comment
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
-`,
+    `,
 })
 export class EveboxCommentInput {
 
@@ -95,9 +96,14 @@ export class EveboxCommentInput {
  * Component to show a single event.
  */
 @Component({
-    templateUrl: './event.component.html',
+    templateUrl: "./event.component.html",
     animations: [
         loadingAnimation,
+    ],
+    styles: [
+        "dl { margin: 0px; padding: 0px; }",
+        "dt { margin: 0px; padding: 0px; margin-right: 20px; text-align: right; }",
+        "dd { margin: 0px; padding: 0px; }",
     ]
 })
 export class EventComponent implements OnInit, OnDestroy {
@@ -113,7 +119,7 @@ export class EventComponent implements OnInit, OnDestroy {
     servicesForEvent: any[] = [];
 
     public commentInputVisible: boolean = false;
-    public features:any = {};
+    public features: any = {};
 
     constructor(private route: ActivatedRoute,
                 private router: Router,
@@ -143,7 +149,7 @@ export class EventComponent implements OnInit, OnDestroy {
     ngOnInit() {
 
         if (this.configService.hasFeature(FEATURE_COMMENTS)) {
-            this.features['comments'] = true;
+            this.features["comments"] = true;
         }
 
         let alertGroup = this.eventService.popAlertGroup();
@@ -158,7 +164,7 @@ export class EventComponent implements OnInit, OnDestroy {
             if (alertGroup && this.eventId == alertGroup.event._id) {
                 this.alertGroup = alertGroup;
                 this.event = this.alertGroup.event;
-                if (this.event._source.event_type != 'flow') {
+                if (this.event._source.event_type != "flow") {
                     this.findFlow(this.event);
                 }
                 this.setup();
@@ -169,9 +175,9 @@ export class EventComponent implements OnInit, OnDestroy {
 
         });
 
-        this.mousetrap.bind(this, 'u', () => this.goBack());
-        this.mousetrap.bind(this, 'e', () => this.archiveEvent());
-        this.mousetrap.bind(this, 'f8', () => this.archiveEvent());
+        this.mousetrap.bind(this, "u", () => this.goBack());
+        this.mousetrap.bind(this, "e", () => this.archiveEvent());
+        this.mousetrap.bind(this, "f8", () => this.archiveEvent());
 
     }
 
@@ -189,8 +195,8 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     showArchiveButton(): boolean {
-        return this.event._source.event_type == 'alert' &&
-                this.event._source.tags.indexOf('archived') == -1;
+        return this.event._source.event_type == "alert" &&
+            this.event._source.tags.indexOf("archived") == -1;
     }
 
     eventType(): string {
@@ -199,13 +205,13 @@ export class EventComponent implements OnInit, OnDestroy {
 
     hasGeoip(): boolean {
         if (this.event._source.geoip &&
-                Object.keys(this.event._source.geoip).length > 0) {
+            Object.keys(this.event._source.geoip).length > 0) {
             return true;
         }
         return false;
     }
 
-    hasHistory():boolean {
+    hasHistory(): boolean {
         try {
             if (this.event._source.evebox.history) {
                 return true;
@@ -221,22 +227,22 @@ export class EventComponent implements OnInit, OnDestroy {
     onCommentSubmit(comment: any) {
         if (this.alertGroup) {
             this.api.commentOnAlertGroup(this.alertGroup, comment)
-                    .then(() => {
-                        this.commentInputVisible = false;
-                        this.elasticSearch.getEventById(this.event._id)
-                                .then((response: any) => {
-                                    this.event = response;
-                                });
-                    });
+                .then(() => {
+                    this.commentInputVisible = false;
+                    this.elasticSearch.getEventById(this.event._id)
+                        .then((response: any) => {
+                            this.event = response;
+                        });
+                });
         } else {
             this.api.commentOnEvent(this.eventId, comment)
-                    .then(() => {
-                        this.commentInputVisible = false;
-                        this.elasticSearch.getEventById(this.event._id)
-                                .then((response: any) => {
-                                    this.event = response;
-                                });
-                    });
+                .then(() => {
+                    this.commentInputVisible = false;
+                    this.elasticSearch.getEventById(this.event._id)
+                        .then((response: any) => {
+                            this.event = response;
+                        });
+                });
         }
     }
 
@@ -248,19 +254,19 @@ export class EventComponent implements OnInit, OnDestroy {
         // This is only for alerts right now.
         q += ` event_type${this.elasticSearch.keywordSuffix}:"alert"`;
 
-        if (this.params && this.params.referer == '/inbox') {
+        if (this.params && this.params.referer == "/inbox") {
             q += ` -tags:archived`;
         }
 
         console.log(q);
 
-        this.router.navigate(['/events', {q: q}]);
+        this.router.navigate(["/events", {q: q}]);
     }
 
     archiveEvent() {
         if (this.alertGroup) {
             this.elasticSearch.archiveAlertGroup(this.alertGroup);
-            this.alertGroup.event._source.tags.push('archived');
+            this.alertGroup.event._source.tags.push("archived");
         }
         else {
             this.elasticSearch.archiveEvent(this.event);
@@ -274,7 +280,7 @@ export class EventComponent implements OnInit, OnDestroy {
             this.alertGroup.escalatedCount = this.alertGroup.count;
         }
         else {
-            console.log('Escalating single event.');
+            console.log("Escalating single event.");
             this.elasticSearch.escalateEvent(this.event);
         }
     }
@@ -302,11 +308,11 @@ export class EventComponent implements OnInit, OnDestroy {
             return false;
         }
 
-        if (this.event._source.tags.indexOf('escalated') > -1) {
+        if (this.event._source.tags.indexOf("escalated") > -1) {
             return true;
         }
 
-        if (this.event._source.tags.indexOf('evebox.escalated') > -1) {
+        if (this.event._source.tags.indexOf("evebox.escalated") > -1) {
             return true;
         }
 
@@ -315,7 +321,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
     findFlow(event: any) {
         if (!event._source.flow_id) {
-            console.log('Unable to find flow for event, event does not have a flow id.');
+            console.log("Unable to find flow for event, event does not have a flow id.");
             console.log(event);
             return;
         }
@@ -332,10 +338,10 @@ export class EventComponent implements OnInit, OnDestroy {
                 this.flows = response.flows;
             }
             else {
-                console.log('No flows found for event.');
+                console.log("No flows found for event.");
             }
         }, error => {
-            console.log('Failed to find flows for event:');
+            console.log("Failed to find flows for event:");
             console.log(error);
         });
     }
@@ -345,28 +351,28 @@ export class EventComponent implements OnInit, OnDestroy {
         this.loading = true;
 
         this.elasticSearch.getEventById(this.eventId)
-                .then((response: any) => {
-                    this.event = response;
-                    if (this.event._source.event_type != 'flow') {
-                        this.findFlow(response);
-                    }
-                    this.setup();
-                    this.loading = false;
-                })
-                .catch((error: any) => {
-                    this.notifyError(error)
-                    this.loading = false;
-                });
+            .then((response: any) => {
+                this.event = response;
+                if (this.event._source.event_type != "flow") {
+                    this.findFlow(response);
+                }
+                this.setup();
+                this.loading = false;
+            })
+            .catch((error: any) => {
+                this.notifyError(error);
+                this.loading = false;
+            });
     }
 
     notifyError(error: any) {
         try {
             this.toastr.error(error.error.message);
-            return
+            return;
         }
         catch (e) {
         }
 
-        this.toastr.error("Unhandled error: " + JSON.stringify(error))
+        this.toastr.error("Unhandled error: " + JSON.stringify(error));
     }
 }

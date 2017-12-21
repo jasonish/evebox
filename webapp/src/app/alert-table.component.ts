@@ -30,21 +30,20 @@ import {
     Output,
     EventEmitter,
     OnInit,
-    OnDestroy
-} from '@angular/core';
+    OnDestroy, AfterViewChecked
+} from "@angular/core";
 import {AppService} from './app.service';
 import {MousetrapService} from './mousetrap.service';
 import {ActivatedRoute} from '@angular/router';
 
-//import moment = require("moment");
 import * as moment from 'moment';
 declare var $: any;
 
 @Component({
-    selector: 'alert-table',
+    selector: 'evebox-alert-table',
     templateUrl: './alert-table.component.html',
 })
-export class AlertTableComponent implements OnInit, OnDestroy {
+export class AlertTableComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     @Input() rows: any[] = [];
     @Output() rowClicked: EventEmitter<any> = new EventEmitter<any>();
@@ -63,6 +62,7 @@ export class AlertTableComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
+        // Bind "." to open the dropdown menu for the specific event.
         this.mousetrap.bind(this, '.', () => {
             this.openDropdownMenu();
         });
@@ -79,13 +79,20 @@ export class AlertTableComponent implements OnInit, OnDestroy {
         this.mousetrap.unbind(this);
     }
 
+    ngAfterViewChecked() {
+        // This seems to be required to activate the dropdowns when used in
+        // an event table row. Probably something to do with the stopPropagations.
+        $(".dropdown-toggle").dropdown();
+    }
+
+    // Event handler to show the dropdown menu for the active row.
     openDropdownMenu() {
         // Toggle.
-        let element = $('#dropdown-' + this.activeRow);
+        const element = $('#row-' + this.activeRow + " .dropdown-toggle");
         element.dropdown('toggle');
 
         // Focus.
-        element.find('li:first-child a').focus();
+        element.next().find('a:first').focus();
     }
 
     isArchived(row: any) {
@@ -106,14 +113,12 @@ export class AlertTableComponent implements OnInit, OnDestroy {
                 row.selected = true;
         });
 
-        // Probably a little broad but gets the job done.
-        $('table .open').dropdown('toggle');
     }
 
     filterBySignatureId(row: any) {
 
         // Probably a little broad but gets the job done.
-        $('.open').dropdown('toggle');
+        //$('.open').dropdown('toggle');
 
         let signatureId = row.event.event._source.alert.signature_id;
         this.appService.updateParams(this.route, {

@@ -35,16 +35,17 @@ import {AppService} from '../app.service';
         <div class="input-group">
           <input type="text" class="form-control" [(ngModel)]="queryString"
                  placeholder="Filter..." name="queryString"/>
-          <div class="input-group-btn">
-            <button type="submit" class="btn btn-default">Apply</button>
+          <span class="input-group-btn">
+            <button type="submit"
+                    class="btn btn-secondary">Apply</button>
             <button type="button"
-                    class="btn btn-default"
+                    class="btn btn-secondary"
                     (click)="clearFilter()">Clear
             </button>
-          </div>
+          </span>
         </div>
       </form>
-`
+    `
 })
 export class EveboxFilterInputComponent {
 

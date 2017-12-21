@@ -7,10 +7,10 @@
     computers or in other browsers.
   </div>
 
-  <form class="form-horizontal">
+  <form>
 
-    <div class="form-group">
-      <label class="col-md-4 control-label">Theme</label>
+    <div class="form-group row">
+      <label class="col-md-4 col-form-label">Theme</label>
       <div class="col-md-8">
         <select class="form-control" [(ngModel)]="model.theme" name="theme"
                 (change)="setTheme()">
@@ -22,8 +22,8 @@
 
     <hr/>
 
-    <div class="form-group">
-      <label class="col-md-4 control-label">Alerts per Page</label>
+    <div class="form-group row">
+      <label class="col-md-4 col-form-label">Alerts per Page</label>
       <div class="col-md-8">
         <select class="form-control" [(ngModel)]="model.alertsPerPage"
                 (change)="updateAlertsPerPage()"

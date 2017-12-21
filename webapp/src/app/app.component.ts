@@ -37,6 +37,7 @@ declare var window: any;
     template: `
 <evebox-help *ngIf="isAuthenticated"></evebox-help>
 <evebox-top-nav *ngIf="isAuthenticated"></evebox-top-nav>
+<br/>
 <div class="container-fluid">
 <router-outlet></router-outlet>
 </div>

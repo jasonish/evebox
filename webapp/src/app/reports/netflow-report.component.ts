@@ -24,102 +24,115 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from '@angular/core';
-import {Params, ActivatedRoute} from '@angular/router';
-import {ReportsService} from './reports.service';
-import {AppService, AppEvent, AppEventCode} from '../app.service';
-import {ToastrService} from '../toastr.service';
-import {TopNavService} from '../topnav.service';
-import {ElasticSearchService} from '../elasticsearch.service';
-import {EveboxSubscriptionTracker} from '../subscription-tracker';
-import {loadingAnimation} from '../animations';
-import {humanizeFileSize} from '../humanize.service';
-import {ApiService} from '../api.service';
+import {Component, OnInit, OnDestroy} from "@angular/core";
+import {Params, ActivatedRoute} from "@angular/router";
+import {ReportsService} from "./reports.service";
+import {AppService, AppEvent, AppEventCode} from "../app.service";
+import {ToastrService} from "../toastr.service";
+import {TopNavService} from "../topnav.service";
+import {ElasticSearchService} from "../elasticsearch.service";
+import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {loadingAnimation} from "../animations";
+import {humanizeFileSize} from "../humanize.service";
+import {ApiService} from "../api.service";
 
-import * as moment from 'moment';
+import * as moment from "moment";
 
 @Component({
-    template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
+    template: `
+      <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
-  <loading-spinner [loading]="loading > 0"></loading-spinner>
+        <loading-spinner [loading]="loading > 0"></loading-spinner>
 
-  <div class="row">
-    <div class="col-md-6 col-sm-6">
-      <button type="button" class="btn btn-default" (click)="refresh()">
-        Refresh
-      </button>
-    </div>
-    <div class="col-md-6 col-sm-6">
-      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
-    </div>
-  </div>
+        <div class="row">
+          <div class="col-md-6 col-sm-6">
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+              Refresh
+            </button>
+          </div>
+          <div class="col-md-6 col-sm-6">
+            <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+          </div>
+        </div>
 
-  <br/>
+        <br/>
 
-  <div *ngIf="noEvents" style="text-align: center;">
-    <hr/>
-    No netflow events found.
-    <hr/>
-  </div>
+        <div *ngIf="noEvents" style="text-align: center;">
+          <hr/>
+          No netflow events found.
+          <hr/>
+        </div>
 
-  <metrics-graphic *ngIf="eventsOverTime"
-                   graphId="eventsOverTime"
-                   title="Netflow Events Over Time"
-                   [data]="eventsOverTime"></metrics-graphic>
+        <metrics-graphic *ngIf="eventsOverTime"
+                         graphId="eventsOverTime"
+                         title="Netflow Events Over Time"
+                         [data]="eventsOverTime"></metrics-graphic>
 
-  <div class="row">
+        <div class="row">
 
-    <div class="col-md-6">
+          <div class="col-md-6">
 
-      <report-data-table *ngIf="topSourcesByBytes"
-                         title="Top Sources by Bytes"
-                         [rows]="topSourcesByBytes"
-                         [headers]="['#', 'Source']"></report-data-table>
+            <report-data-table *ngIf="topSourcesByBytes"
+                               title="Top Sources by Bytes"
+                               [rows]="topSourcesByBytes"
+                               [headers]="['#', 'Source']"></report-data-table>
 
-      <report-data-table *ngIf="topSourcesByPackets"
-                         title="Top Sources by Packets"
-                         [rows]="topSourcesByPackets"
-                         [headers]="['#', 'Source']">
-      </report-data-table>
+            <br/>
 
-     </div>
+            <report-data-table *ngIf="topSourcesByPackets"
+                               title="Top Sources by Packets"
+                               [rows]="topSourcesByPackets"
+                               [headers]="['#', 'Source']">
+            </report-data-table>
 
-    <div class="col-md-6">
+          </div>
 
-      <report-data-table *ngIf="topDestinationsByBytes"
-                         title="Top Destinations By Bytes"
-                         [rows]="topDestinationsByBytes"
-                         [headers]="['#', 'Destination']"></report-data-table>
+          <br/>
 
-      <report-data-table *ngIf="topDestinationsByPackets"
-                         title="Top Destinations by Packets"
-                         [rows]="topDestinationsByPackets"
-                         [headers]="['#', 'Destination']">
-      </report-data-table>
+          <div class="col-md-6">
 
-    </div>
+            <report-data-table *ngIf="topDestinationsByBytes"
+                               title="Top Destinations By Bytes"
+                               [rows]="topDestinationsByBytes"
+                               [headers]="['#', 'Destination']"></report-data-table>
 
-  </div>
+            <br/>
 
-  <div *ngIf="topByBytes" class="panel panel-default">
-    <div class="panel-heading">
-      <b>Top Flows by Bytes</b>
-    </div>
-    <eveboxEventTable2 [rows]="topByBytes"
-                       [showEventType]="false"
-                       [showActiveEvent]="false"></eveboxEventTable2>
-  </div>
+            <report-data-table *ngIf="topDestinationsByPackets"
+                               title="Top Destinations by Packets"
+                               [rows]="topDestinationsByPackets"
+                               [headers]="['#', 'Destination']">
+            </report-data-table>
 
-  <div *ngIf="topFlowsByPackets" class="panel panel-default">
-    <div class="panel-heading">
-      <b>Top Flows by Packets</b>
-    </div>
-    <eveboxEventTable2 [rows]="topFlowsByPackets"
-                       [showEventType]="false"
-                       [showActiveEvent]="false"></eveboxEventTable2>
-  </div>
+          </div>
 
-</div>`,
+        </div>
+
+        <br/>
+
+        <div *ngIf="topByBytes" class="card">
+          <div class="card-header">
+            <b>Top Flows by Bytes</b>
+          </div>
+          <eveboxEventTable2 [rows]="topByBytes"
+                             [showEventType]="false"
+                             [showActiveEvent]="false"></eveboxEventTable2>
+        </div>
+
+        <br/>
+
+        <div *ngIf="topFlowsByPackets" class="card">
+          <div class="card-header">
+            <b>Top Flows by Packets</b>
+          </div>
+          <eveboxEventTable2 [rows]="topFlowsByPackets"
+                             [showEventType]="false"
+                             [showActiveEvent]="false"></eveboxEventTable2>
+        </div>
+
+        <br/>
+
+      </div>`,
     animations: [
         loadingAnimation,
     ]
@@ -139,7 +152,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     loading = 0;
 
-    queryString = '';
+    queryString = "";
 
     // A flag that will be set to true if not events to report on were found.
     noEvents = false;
@@ -158,7 +171,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
     ngOnInit() {
 
         this.subTracker.subscribe(this.route.params, (params: Params) => {
-            this.queryString = params['q'] || '';
+            this.queryString = params["q"] || "";
             this.refresh();
         });
 
@@ -182,7 +195,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             }
             else {
                 this.noEvents = true;
-                this.toastr.warning('No netflow events found.');
+                this.toastr.warning("No netflow events found.");
             }
         });
 
@@ -195,8 +208,8 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 bool: {
                     filter: [
                         // Somewhat limit to eve events of netflow only.
-                        {exists: {field: 'event_type'}},
-                        {term: {event_type: 'netflow'}}
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "netflow"}}
                     ]
                 }
             },
@@ -226,7 +239,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             return this.api.reportHistogram({
                 timeRange: range,
                 interval: this.reportsService.histogramTimeInterval(range),
-                eventType: 'netflow',
+                eventType: "netflow",
                 queryString: this.queryString,
             }).then((response: any) => {
                 this.eventsOverTime = response.data.map((x: any) => {
@@ -247,16 +260,16 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         }
 
         this.wrapLoad(() => {
-            params.sortBy = 'netflow.pkts';
-            return this.api.getWithParams('api/1/netflow', params)
+            params.sortBy = "netflow.pkts";
+            return this.api.getWithParams("api/1/netflow", params)
                 .then((response: any) => {
                     this.topFlowsByPackets = response.data;
                 });
         });
 
         this.wrapLoad(() => {
-            params.sortBy = 'netflow.bytes';
-            return this.api.getWithParams('api/1/netflow', params)
+            params.sortBy = "netflow.bytes";
+            return this.api.getWithParams("api/1/netflow", params)
                 .then((response: any) => {
                     this.topByBytes = response.data;
                 });
@@ -267,72 +280,72 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 bool: {
                     filter: [
                         // Somewhat limit to eve events of netflow only.
-                        {exists: {field: 'event_type'}},
-                        {term: {event_type: 'netflow'}}
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "netflow"}}
                     ]
                 }
             },
             size: 0,
             sort: [
-                {'@timestamp': {order: 'desc'}}
+                {"@timestamp": {order: "desc"}}
             ],
             aggs: {
                 sourcesByBytes: {
                     terms: {
-                        field: this.elasticsearch.asKeyword('src_ip'),
+                        field: this.elasticsearch.asKeyword("src_ip"),
                         order: {
-                            'bytes': 'desc'
+                            "bytes": "desc"
                         },
                     },
                     aggs: {
                         bytes: {
                             sum: {
-                                field: 'netflow.bytes'
+                                field: "netflow.bytes"
                             }
                         }
                     }
                 },
                 sourcesByPackets: {
                     terms: {
-                        field: this.elasticsearch.asKeyword('src_ip'),
+                        field: this.elasticsearch.asKeyword("src_ip"),
                         order: {
-                            'packets': 'desc'
+                            "packets": "desc"
                         }
                     },
                     aggs: {
                         packets: {
                             sum: {
-                                field: 'netflow.pkts'
+                                field: "netflow.pkts"
                             }
                         }
                     }
                 },
                 topDestinationsByBytes: {
                     terms: {
-                        field: this.elasticsearch.asKeyword('dest_ip'),
+                        field: this.elasticsearch.asKeyword("dest_ip"),
                         order: {
-                            'bytes': 'desc'
+                            "bytes": "desc"
                         },
                     },
                     aggs: {
                         bytes: {
                             sum: {
-                                field: 'netflow.bytes',
+                                field: "netflow.bytes",
                             }
                         }
                     }
                 },
                 topDestinationsByPackets: {
                     terms: {
-                        field: this.elasticsearch.asKeyword('dest_ip'),
+                        field: this.elasticsearch.asKeyword("dest_ip"),
                         order: {
-                            'packets': 'desc'
+                            "packets": "desc"
                         },
                     },
                     aggs: {
                         packets: {
                             sum: {
-                                field: 'netflow.pkts'
+                                field: "netflow.pkts"
                             }
                         }
                     }
@@ -340,7 +353,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             }
         };
 
-        if (this.queryString && this.queryString != '') {
+        if (this.queryString && this.queryString != "") {
             query.query.bool.filter.push({
                 query_string: {
                     query: this.queryString
@@ -353,7 +366,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         this.elasticsearch.search(query).then((response: any) => {
 
             if (response.error) {
-                console.log('Errors returned:');
+                console.log("Errors returned:");
                 console.log(response.error);
                 let error = response.error;
                 if (error.root_cause && error.root_cause.length > 0) {
@@ -397,7 +410,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             this.loading--;
 
         }, error => {
-            console.log('Search error:');
+            console.log("Search error:");
             console.log(error);
             this.loading--;
         });

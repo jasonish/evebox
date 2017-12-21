@@ -1,0 +1,32 @@
+$event-table-border-color: #ddd;
+
+@import "~bootstrap/scss/bootstrap";
+
+@import "common";
+
+.evebox-top-navbar {
+  @extend .navbar;
+  @extend .navbar-expand-lg;
+  @extend .navbar-light;
+  @extend .bg-light;
+  @extend .fixed-top;
+}
+
+.evebox-event-table {
+  tr.evebox-danger {
+    @extend .table-danger;
+  }
+
+  tr.evebox-warning {
+    @extend .table-warning;
+  }
+
+  tr.evebox-info {
+    @extend .table-info;
+  }
+
+  tr.evebox-success {
+    @extend .table-success;
+  }
+}
+

@@ -24,89 +24,96 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnDestroy, OnInit} from '@angular/core';
-import {ReportsService} from './reports.service';
-import {AppService, AppEventCode} from '../app.service';
-import {EveboxFormatIpAddressPipe} from '../pipes/format-ipaddress.pipe';
-import {EveboxSubscriptionTracker} from '../subscription-tracker';
-import {ActivatedRoute, Params} from '@angular/router';
-import {ApiService, ReportAggOptions} from '../api.service';
-import {TopNavService} from '../topnav.service';
+import {Component, OnDestroy, OnInit} from "@angular/core";
+import {ReportsService} from "./reports.service";
+import {AppService, AppEventCode} from "../app.service";
+import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
+import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {ActivatedRoute, Params} from "@angular/router";
+import {ApiService, ReportAggOptions} from "../api.service";
+import {TopNavService} from "../topnav.service";
 
-import * as moment from 'moment';
+import * as moment from "moment";
 
 @Component({
-    template: `<div class="content" [ngClass]="{'evebox-opacity-50': loading > 0}">
+    template: `
+      <div class="content" [ngClass]="{'evebox-opacity-50': loading > 0}">
 
-  <loading-spinner [loading]="loading > 0"></loading-spinner>
+        <loading-spinner [loading]="loading > 0"></loading-spinner>
 
-  <div class="row">
-    <div class="col-md-6 col-sm-6">
-      <button type="button" class="btn btn-default" (click)="refresh()">
-        Refresh
-      </button>
-    </div>
-    <div class="col-md-6 col-sm-6">
-      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
-    </div>
-  </div>
+        <div class="row">
+          <div class="col-md">
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+              Refresh
+            </button>
+          </div>
+          <div class="col-md">
+            <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+          </div>
+        </div>
 
-  <br/>
+        <br/>
 
-  <metrics-graphic *ngIf="eventsOverTime"
-                   graphId="dnsRequestsOverTime"
-                   title="DNS Requests Over Time"
-                   [data]="eventsOverTime"></metrics-graphic>
+        <metrics-graphic *ngIf="eventsOverTime"
+                         graphId="dnsRequestsOverTime"
+                         title="DNS Requests Over Time"
+                         [data]="eventsOverTime"></metrics-graphic>
 
-  <div class="row">
-    <div class="col-md-6">
-      <report-data-table *ngIf="topRrnames"
-                         title="Top Request RRNames"
-                         [rows]="topRrnames"
-                         [headers]="['#', 'RRName']"></report-data-table>
-    </div>
-    <div class="col-md-6">
-      <report-data-table *ngIf="topRdata"
-                         title="Top Response Rdata"
-                         [rows]="topRdata"
-                         [headers]="['#', 'Rdata']"></report-data-table>
-    </div>
-  </div>
+        <div class="row">
+          <div class="col-md-6">
+            <report-data-table *ngIf="topRrnames"
+                               title="Top Request RRNames"
+                               [rows]="topRrnames"
+                               [headers]="['#', 'RRName']"></report-data-table>
+          </div>
+          <div class="col-md-6">
+            <report-data-table *ngIf="topRdata"
+                               title="Top Response Rdata"
+                               [rows]="topRdata"
+                               [headers]="['#', 'Rdata']"></report-data-table>
+          </div>
+        </div>
 
-  <div class="row">
+        <br/>
 
-    <div class="col-md-6">
-      <report-data-table *ngIf="topServers"
-                         title="Top DNS Servers"
-                         [rows]="topServers"
-                         [headers]="['#', 'Server']"></report-data-table>
-    </div>
+        <div class="row">
 
-    <div class="col-md-6">
-      <report-data-table *ngIf="topClients"
-                         title="Top DNS Clients"
-                         [rows]="topClients"
-                         [headers]="['#', 'Client']"></report-data-table>
-    </div>
+          <div class="col-md-6">
+            <report-data-table *ngIf="topServers"
+                               title="Top DNS Servers"
+                               [rows]="topServers"
+                               [headers]="['#', 'Server']"></report-data-table>
+          </div>
 
-  </div>
+          <div class="col-md-6">
+            <report-data-table *ngIf="topClients"
+                               title="Top DNS Clients"
+                               [rows]="topClients"
+                               [headers]="['#', 'Client']"></report-data-table>
+          </div>
 
-  <div class="row">
-    <div class="col-md-6">
-      <report-data-table *ngIf="topRrtypes"
-                         title="Top Requests Types"
-                         [rows]="topRrtypes"
-                         [headers]="['#', 'RRType']"></report-data-table>
-    </div>
-    <div class="col-md-6">
-      <report-data-table *ngIf="topRcodes"
-                         title="Top Response Codes"
-                         [rows]="topRcodes"
-                         [headers]="['#', 'RCode']"></report-data-table>
-    </div>
-  </div>
+        </div>
 
-</div>`,
+        <br/>
+
+        <div class="row">
+          <div class="col-md-6">
+            <report-data-table *ngIf="topRrtypes"
+                               title="Top Requests Types"
+                               [rows]="topRrtypes"
+                               [headers]="['#', 'RRType']"></report-data-table>
+          </div>
+          <div class="col-md-6">
+            <report-data-table *ngIf="topRcodes"
+                               title="Top Response Codes"
+                               [rows]="topRcodes"
+                               [headers]="['#', 'RCode']"></report-data-table>
+          </div>
+        </div>
+
+        <br/>
+
+      </div>`,
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
 
@@ -121,7 +128,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
     loading = 0;
 
-    queryString = '';
+    queryString = "";
 
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
@@ -137,7 +144,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
     ngOnInit() {
 
         this.subTracker.subscribe(this.route.params, (params: Params) => {
-            this.queryString = params['q'] || '';
+            this.queryString = params["q"] || "";
             this.refresh();
         });
 
@@ -194,53 +201,53 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         let range = this.topNavService.getTimeRangeAsSeconds();
 
         let aggOptions: ReportAggOptions = {
-            eventType: 'dns',
-            dnsType: 'answer',
+            eventType: "dns",
+            dnsType: "answer",
             timeRange: range,
             queryString: this.queryString,
             size: size,
         };
 
         this.load(() => {
-            return this.api.reportAgg('dns.rcode', aggOptions)
+            return this.api.reportAgg("dns.rcode", aggOptions)
                 .then((response: any) => {
                     this.topRcodes = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg('dns.rdata', aggOptions)
+            return this.api.reportAgg("dns.rdata", aggOptions)
                 .then((response: any) => {
                     this.topRdata = response.data;
                 });
         });
 
         // Switch to request queries.
-        aggOptions.dnsType = 'query';
+        aggOptions.dnsType = "query";
 
         this.load(() => {
-            return this.api.reportAgg('dns.rrname', aggOptions)
+            return this.api.reportAgg("dns.rrname", aggOptions)
                 .then((response: any) => {
                     this.topRrnames = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg('dns.rrtype', aggOptions)
+            return this.api.reportAgg("dns.rrtype", aggOptions)
                 .then((response: any) => {
                     this.topRrtypes = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg('src_ip', aggOptions)
+            return this.api.reportAgg("src_ip", aggOptions)
                 .then((response: any) => {
                     this.topClients = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg('dest_ip', aggOptions)
+            return this.api.reportAgg("dest_ip", aggOptions)
                 .then((response: any) => {
                     this.topServers = response.data;
                 });
@@ -251,8 +258,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
             return this.api.reportHistogram({
                 timeRange: range,
                 interval: this.reportsService.histogramTimeInterval(range),
-                eventType: 'dns',
-                dnsType: 'query',
+                eventType: "dns",
+                dnsType: "query",
                 queryString: this.queryString,
             }).then((response: any) => {
                 this.eventsOverTime = response.data.map((x: any) => {

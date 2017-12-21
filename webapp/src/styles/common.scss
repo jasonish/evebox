@@ -1,24 +1,17 @@
+//$line-height-lg: 1.25;
+//$line-height-sm: 1.25;
+//$line-height-base: 1.25;
+
+//@import "~bootstrap/scss/bootstrap";
+
 @import "~font-awesome/css/font-awesome.css";
 @import "~toastr/package/toastr.css";
 @import "~metrics-graphics/dist/metricsgraphics.css";
 
-/* Colour and border style for event tables. */
-$event-table-border-color: #ddd;
-$event-table-border: 1px solid $event-table-border-color;
+$navbar-height: 56;
 
 body {
-
-  // Top padding required for the fixed navbar.
-  padding-top: 50px;
-
-}
-
-.evebox-opacity-50 {
-  opacity: 0.5;
-}
-
-.content {
-  margin-top: 20px;
+  padding-top: $navbar-height + px;
 }
 
 .evebox-loading-spinner {
@@ -31,29 +24,48 @@ body {
   opacity: 0.8;
 }
 
-.evebox-help-table-shortcut {
-  font-family: monospace;
-}
-
-.evebox-help-table {
-  td:nth-child(1) {
-    text-align: right;
-  }
+.raised-background {
+  background-color: white;
+  z-index: 1000;
 }
 
 .evebox-event-table {
+  @extend .table;
+  @extend .table-hover;
 
+  // Make the cursor a pointer finger.
   cursor: pointer;
 
-  // Compact the row height a little.
+  /* Colour and border style for event tables. */
+  $event-table-border: 1px solid $event-table-border-color;
+
+  th {
+    border-top: $event-table-border !important;
+  }
+
+  td:first-child, th:first-child {
+    border-left: $event-table-border !important;
+  }
+
+  td:last-child, th:last-child {
+    border-right: $event-table-border !important;
+  }
+
+  tr:last-child {
+    td {
+      border-bottom: $event-table-border !important;
+    }
+  }
+
+  // Reduce the padding between rows.
   td {
-    padding-bottom: 0px !important;
+    margin: 0px;
+    padding: 3px 3px 0px 3px; // Top, right, bottom, left.
   }
 
-  // Also required to shrink the height of a row a little.
+  // Remove any padding or margin from labels within the table.
   label {
-    padding: 0 !important;
-    margin: 0 !important;
+    margin: 0px;
+    padding: 0px;
   }
-
 }

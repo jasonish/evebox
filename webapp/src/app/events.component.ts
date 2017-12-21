@@ -24,91 +24,91 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnDestroy, OnInit} from '@angular/core';
-import {ActivatedRoute} from '@angular/router';
-import {ElasticSearchService, ResultSet} from './elasticsearch.service';
-import {EveboxEventTableConfig} from './event-table.component';
-import {MousetrapService} from './mousetrap.service';
-import {AppService} from './app.service';
-import {ToastrService} from './toastr.service';
-import {EveboxSubscriptionService} from './subscription.service';
-import {loadingAnimation} from './animations';
+import {Component, OnDestroy, OnInit} from "@angular/core";
+import {ActivatedRoute} from "@angular/router";
+import {ElasticSearchService, ResultSet} from "./elasticsearch.service";
+import {EveboxEventTableConfig} from "./event-table.component";
+import {MousetrapService} from "./mousetrap.service";
+import {AppService} from "./app.service";
+import {ToastrService} from "./toastr.service";
+import {EveboxSubscriptionService} from "./subscription.service";
+import {loadingAnimation} from "./animations";
 
 @Component({
-    template: `<loading-spinner [loading]="loading"></loading-spinner>
+    template: `
+      <loading-spinner [loading]="loading"></loading-spinner>
 
-<div class="content" [@loadingState]="(!resultSet || loading) ? 'true' : 'false'">
+      <div class="content" [@loadingState]="(!resultSet || loading) ? 'true' : 'false'">
 
-  <div class="row">
-    <div class="col-md-12">
-      <div class="form-group">
-        <form name="filterInputForm" (submit)="submitFilter()">
-          <div class="input-group">
-            <input id="filter-input" type="text" class="form-control"
-                   placeholder="Filter..." [(ngModel)]="queryString"
-                   name="queryString"/>
-            <div class="input-group-btn">
-              <button type="submit" class="btn btn-default">Search</button>
-              <button type="button" class="btn btn-default"
-                      (click)="clearFilter()">Clear
+        <div class="row">
+          <div class="col-md">
+            <form name="filterInputForm" (submit)="submitFilter()">
+              <div class="input-group">
+                <input id="filter-input" type="text" class="form-control"
+                       placeholder="Filter..." [(ngModel)]="queryString"
+                       name="queryString"/>
+                <div class="input-group-btn">
+                  <button type="submit" class="btn btn-secondary">Search</button>
+                  <button type="button" class="btn btn-secondary"
+                          (click)="clearFilter()">Clear
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <br/>
+
+        <div class="row">
+          <div class="col-md">
+
+            <button type="button" class="btn btn-secondary" (click)="refresh()">Refresh
+            </button>
+
+            <div class="btn-group dropdown">
+              <button type="button"
+                      class="btn btn-secondary dropdown-toggle"
+                      data-toggle="dropdown"
+                      aria-haspopup="true"
+                      aria-expanded="false">
+                Event Type: {{eventTypeFilter}}
+              </button>
+              <div class="dropdown-menu">
+                <a *ngFor="let type of eventTypeFilterValues" class="dropdown-item"
+                   (click)="setEventTypeFilter(type)">{{type}}</a>
+              </div>
+            </div>
+
+            <div *ngIf="hasEvents()" class="float-right">
+              <button type="button" class="btn btn-secondary" (click)="gotoNewest()">
+                Newest
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="gotoNewer()">
+                Newer
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="gotoOlder()">
+                Older
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="gotoOldest()">
+                Oldest
               </button>
             </div>
+
           </div>
-        </form>
-      </div>
-    </div>
-  </div>
+        </div>
 
-  <div class="row">
-    <div class="col-md-12">
+        <div *ngIf="!loading && !hasEvents()" style="text-align: center;">
+          <hr/>
+          No events found.
+          <hr/>
+        </div>
 
-      <button type="button" class="btn btn-default" (click)="refresh()">Refresh
-      </button>
+        <br/>
 
-      <div class="btn-group">
-        <button type="button"
-                class="btn btn-default dropdown-toggle"
-                data-toggle="dropdown"
-                aria-haspopup="true"
-                aria-expanded="false">
-          Event Type: {{eventTypeFilter}} <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-          <li *ngFor="let type of eventTypeFilterValues">
-            <a (click)="setEventTypeFilter(type)">{{type}}</a>
-          </li>
-        </ul>
-      </div>
-
-      <div *ngIf="hasEvents()" class="pull-right">
-        <button type="button" class="btn btn-default" (click)="gotoNewest()">
-          Newest
-        </button>
-        <button type="button" class="btn btn-default" (click)="gotoNewer()">
-          Newer
-        </button>
-        <button type="button" class="btn btn-default" (click)="gotoOlder()">
-          Older
-        </button>
-        <button type="button" class="btn btn-default" (click)="gotoOldest()">
-          Oldest
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <div *ngIf="!loading && !hasEvents()" style="text-align: center;">
-    <hr/>
-    No events found.
-    <hr/>
-  </div>
-
-  <br/>
-
-  <eveboxEventTable
-      [config]="eveboxEventTableConfig"></eveboxEventTable>
-</div>`,
+        <evebox-event-table
+            [config]="eveboxEventTableConfig"></evebox-event-table>
+      </div>`,
     animations: [
         loadingAnimation,
     ]
@@ -119,19 +119,19 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     loading = false;
 
-    queryString = '';
+    queryString = "";
 
     eventTypeFilterValues: string[] = [
-        'All',
-        'Alert',
-        'HTTP',
-        'Flow',
-        'NetFlow',
-        'DNS',
-        'TLS',
-        'Drop',
-        'FileInfo',
-        'SSH',
+        "All",
+        "Alert",
+        "HTTP",
+        "Flow",
+        "NetFlow",
+        "DNS",
+        "TLS",
+        "Drop",
+        "FileInfo",
+        "SSH",
     ];
 
     eventTypeFilter: string = this.eventTypeFilterValues[0];
@@ -159,7 +159,7 @@ export class EventsComponent implements OnInit, OnDestroy {
 
             let qp: any = this.route.snapshot.queryParams;
 
-            this.queryString = params.q || qp.q || '';
+            this.queryString = params.q || qp.q || "";
             this.timeStart = params.timeStart || qp.timeStart;
             this.timeEnd = params.timeEnd || qp.timeEnd;
             this.eventTypeFilter = params.eventType || this.eventTypeFilterValues[0];
@@ -172,8 +172,8 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.appService.disableTimeRange();
         }, 0);
 
-        this.mousetrap.bind(this, '/', () => this.focusFilterInput());
-        this.mousetrap.bind(this, 'r', () => this.refresh());
+        this.mousetrap.bind(this, "/", () => this.focusFilterInput());
+        this.mousetrap.bind(this, "r", () => this.refresh());
     }
 
     ngOnDestroy() {
@@ -182,18 +182,18 @@ export class EventsComponent implements OnInit, OnDestroy {
     }
 
     focusFilterInput() {
-        document.getElementById('filter-input').focus();
+        document.getElementById("filter-input").focus();
     }
 
     submitFilter() {
-        document.getElementById('filter-input').blur();
+        document.getElementById("filter-input").blur();
         this.appService.updateParams(this.route, {
             q: this.queryString
         });
     }
 
     clearFilter() {
-        this.queryString = '';
+        this.queryString = "";
         this.submitFilter();
     }
 
@@ -252,12 +252,12 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.resultSet = resultSet;
             this.eveboxEventTableConfig.rows = resultSet.events;
             if (this.order === "asc") {
-                this.eveboxEventTableConfig.rows = this.eveboxEventTableConfig.rows.reverse()
+                this.eveboxEventTableConfig.rows = this.eveboxEventTableConfig.rows.reverse();
             }
             this.loading = false;
         }, (error: any) => {
 
-            console.log('Error fetching alerts:');
+            console.log("Error fetching alerts:");
             console.log(error);
 
             // Check for a reason.
@@ -265,7 +265,7 @@ export class EventsComponent implements OnInit, OnDestroy {
                 this.toastr.error(error.error.root_cause[0].reason);
             }
             catch (err) {
-                this.toastr.error('An error occurred while executing query.');
+                this.toastr.error("An error occurred while executing query.");
             }
 
             this.resultSet = undefined;

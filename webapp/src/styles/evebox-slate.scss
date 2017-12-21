@@ -1,9 +1,9 @@
 $icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
 @import "~bootswatch/slate/variables";
-@import "~bootstrap-sass/assets/stylesheets/bootstrap";
+//@import "~bootstrap-sass/assets/stylesheets/bootstrap";
 @import "~bootswatch/slate/bootswatch";
 
-@import "./common.scss";
+@import "common-old";
 
 .raised-background {
   background-color: #272B30;
@@ -99,19 +99,19 @@ $evebox-info-color: #50656f;
   @extend .active;
 }
 
-.panel.panel-danger > .panel-heading {
+.panel.panel-danger > .card-header {
   background-color: $evebox-danger-color;
 }
 
-.panel.panel-warning > .panel-heading {
+.panel.panel-warning > .card-header {
   background-color: $evebox-warning-color;
 }
 
-.panel.panel-info > .panel-heading {
+.panel.panel-info > .card-header {
   background-color: $evebox-info-color;
 }
 
-.panel.panel-success > .panel-heading {
+.panel.panel-success > .card-header {
   background-color: #49515a;
 }
 

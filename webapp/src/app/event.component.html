@@ -2,11 +2,11 @@
   <div *ngIf="event._source">
 
     <div class="row">
-      <div class="col-md-12">
-        <button type="button" class="btn btn-default"
+      <div class="col-md">
+        <button type="button" class="btn btn-secondary"
                 (click)="goBack()">Back
         </button>
-        <button type="button" class="btn btn-default"
+        <button type="button" class="btn btn-secondary"
                 *ngIf="showArchiveButton()"
                 (click)="archiveEvent()">Archive
         </button>
@@ -14,11 +14,11 @@
         <!-- For now, escalation is only for alerts. -->
         <div *ngIf="eventType() == 'alert'" style="display: inline;">
           <button *ngIf="!isEscalated()" type="button"
-                  class="btn btn-default"
+                  class="btn btn-secondary"
                   (click)="escalateEvent()">Escalate
           </button>
           <button *ngIf="isEscalated()" type="button"
-                  class="btn btn-default"
+                  class="btn btn-secondary"
                   (click)="deEscalateEvent()">De-escalate
           </button>
         </div>
@@ -28,16 +28,15 @@
 
     <br/>
 
-    <div
-        class="panel {{event | eventSeverityToBootstrapClass:'panel-':'success'}}">
-      <div class="panel-heading">
+    <div class="card">
+      <div class="card-header {{event | eventSeverityToBootstrapClass:'bg-':'success'}}">
         <b>{{event._source.event_type | uppercase}}: <span [innerHTML]="event |
         eveboxEventDescriptionPrinter"></span></b>
         <span class="pull-right" *ngIf="alertGroup">
           &nbsp;<a href="javascript:void(0)" (click)="sessionSearch()"><span
             class="badge">{{alertGroup.count}}</span></a>
         </span>
-        <span class="pull-right"
+        <span class="float-right"
               *ngIf="servicesForEvent.length > 0">
           [
           <span
@@ -49,22 +48,26 @@
           ]
         </span>
       </div>
-      <div class="panel-body">
+      <div class="card-body">
 
         <div class="row">
-          <div class="col-md-5">
-            <dl class="dl-horizontal">
-              <dt>Timestamp</dt>
-              <dd>
+          <div class="col-md">
+            <dl class="row">
+              <dt class="col">Timestamp</dt>
+              <dd class="col">
                 <search-link field="timestamp"
                              value="{{event._source.timestamp}}">
                   {{event._source.timestamp}}
                 </search-link>
               </dd>
-              <dt>Protocol</dt>
-              <dd>{{event._source.proto}}</dd>
-              <dt>Source</dt>
-              <dd>
+            </dl>
+            <dl class="row">
+              <dt class="col">Protocol</dt>
+              <dd class="col">{{event._source.proto}}</dd>
+            </dl>
+            <dl class="row">
+              <dt class="col">Source</dt>
+              <dd class="col">
                 <!-- @formatter:off -->
                 <search-link field="src_ip"
                              [search]="event._source.src_ip"
@@ -86,8 +89,10 @@
                   </ul>
                 </span>
               </dd>
-              <dt>Destination</dt>
-              <dd>
+            </dl>
+            <dl class="row">
+              <dt class="col">Destination</dt>
+              <dd class="col">
                 <!-- @formatter:off -->
                 <search-link field="dest_ip"
                              [search]="event._source.dest_ip"
@@ -108,43 +113,49 @@
                   </ul>
                 </span>
               </dd>
-
-              <div *ngIf="event._source.in_iface">
-                <dt>In Interface</dt>
-                <dd>{{event._source.in_iface}}</dd>
-              </div>
-              <div *ngIf="event._source.flow_id">
-                <dt>Flow ID</dt>
-                <dd>
+            </dl>
+            <div *ngIf="event._source.in_iface">
+              <dl class="row">
+                <dt class="col">In Interface</dt>
+                <dd class="col">{{event._source.in_iface}}</dd>
+              </dl>
+            </div>
+            <div *ngIf="event._source.flow_id">
+              <dl class="row">
+                <dt class="col">Flow ID</dt>
+                <dd class="col">
                   <search-link field="flow_id"
                                value="{{event._source.flow_id}}">
                     {{event._source.flow_id}}
                   </search-link>
                 </dd>
-              </div>
-
-            </dl>
+              </dl>
+            </div>
           </div>
 
-          <div class="col-md-7">
+          <div class="col-md">
 
             <div [ngSwitch]="event._source.event_type">
 
               <!-- Alert. -->
               <div *ngSwitchCase="'alert'">
-                <dl class="dl-horizontal">
+                <dl class="row">
                   <dt>Signature</dt>
                   <dd>
                     <search-link field="alert.signature"
                                  route="/alerts"
                                  value="{{event._source.alert.signature}}"></search-link>
                   </dd>
+                </dl>
+                <dl class="row">
                   <dt>Category</dt>
                   <dd>
                     <search-link field="alert.category"
                                  route="/alerts"
                                  value="{{event._source.alert.category}}"></search-link>
                   </dd>
+                </dl>
+                <dl class="row">
                   <dt>Signature ID</dt>
                   <dd>
                     {{event._source.alert.gid}}:
@@ -155,6 +166,8 @@
                     </search-link>
                     :{{event._source.alert.rev}}
                   </dd>
+                </dl>
+                <dl class="row">
                   <dt>Severity</dt>
                   <dd>{{event._source.alert.severity}}
                   </dd>
@@ -163,35 +176,45 @@
 
               <!-- DNS. -->
               <div *ngSwitchCase="'dns'">
-                <dl class="dl-horizontal">
-                  <dt>Type</dt>
-                  <dd>{{event._source.dns.type}}</dd>
-                  <dt>ID</dt>
-                  <dd>{{event._source.dns.id}}</dd>
-                  <dt>RCode</dt>
-                  <dd>{{event._source.dns.rcode}}</dd>
-                  <dt>RRName</dt>
-                  <dd>{{event._source.dns.rrname}}</dd>
-                  <dt>RRType</dt>
-                  <dd>{{event._source.dns.rrtype}}</dd>
-                  <dt>RData</dt>
-                  <dd>{{event._source.dns.rdata}}</dd>
+                <dl class="row">
+                  <dt class="col">Type</dt>
+                  <dd class="col">{{event._source.dns.type}}</dd>
+                </dl>
+                <dl class="row">
+                  <dt class="col">ID</dt>
+                  <dd class="col">{{event._source.dns.id}}</dd>
+                </dl>
+                <dl class="row">
+                  <dt class="col">RCode</dt>
+                  <dd class="col">{{event._source.dns.rcode}}</dd>
+                </dl>
+                <dl class="row">
+                  <dt class="col">RRName</dt>
+                  <dd class="col">{{event._source.dns.rrname}}</dd>
+                </dl>
+                <dl class="row">
+                  <dt class="col">RRType</dt>
+                  <dd class="col">{{event._source.dns.rrtype}}</dd>
+                </dl>
+                <dl class="row">
+                  <dt class="col">RData</dt>
+                  <dd class="col">{{event._source.dns.rdata}}</dd>
                 </dl>
               </div>
 
               <div *ngSwitchDefault>
-                <dl class="dl-horizontal">
-                  <div
-                      *ngFor="let item of event._source[event._source.event_type] | mapToItems">
-                    <dt>{{item.key |
+                <div
+                    *ngFor="let item of event._source[event._source.event_type] | mapToItems">
+                  <dl class="row">
+                    <dt class="col">{{item.key |
                       genericPrettyPrinter}}
                     </dt>
-                    <dd>
+                    <dd class="col">
                       <search-link
                           [value]="item.val"></search-link>
                     </dd>
-                  </div>
-                </dl>
+                  </dl>
+                </div>
               </div>
 
             </div>
@@ -205,56 +228,60 @@
     </div>
 
     <!-- Rule. -->
-    <div *ngIf="event._source.rule" class="panel panel-default">
-      <div class="panel-heading">
-        <b>Rule</b>
-      </div>
-      <div class="panel-body" [innerHTML]="event._source.rule | ruleHighlight">
+    <div *ngIf="event._source.rule">
+      <br/>
+      <div class="card">
+        <div class="card-header">
+          <b>Rule</b>
+        </div>
+        <div class="card-body" [innerHTML]="event._source.rule | ruleHighlight">
+        </div>
       </div>
     </div>
 
     <!-- History. -->
-    <div *ngIf="event._source.evebox && event._source.evebox.history"
-         class="panel panel-default">
-      <div class="panel-heading">
-        <b>History</b>
-      </div>
-      <ul class="list-group">
-        <li *ngFor="let action of event._source.evebox.history"
-            class="list-group-item">
-          <div [ngSwitch]="action.action">
-            <div *ngSwitchCase="'escalated'">
-              {{action.timestamp | eveboxFormatTimestamp}} - Escalated by <b>{{action.username}}</b>
+    <div *ngIf="event._source.evebox && event._source.evebox.history">
+      <br/>
+      <div class="card">
+        <div class="card-header">
+          <b>History</b>
+        </div>
+        <ul class="list-group">
+          <li *ngFor="let action of event._source.evebox.history"
+              class="list-group-item">
+            <div [ngSwitch]="action.action">
+              <div *ngSwitchCase="'escalated'">
+                {{action.timestamp | eveboxFormatTimestamp}} - Escalated by <b>{{action.username}}</b>
+              </div>
+              <div *ngSwitchCase="'de-escalated'">
+                {{action.timestamp | eveboxFormatTimestamp}} - De-escalated by <b>{{action.username}}</b>
+              </div>
+              <div *ngSwitchCase="'archived'">
+                {{action.timestamp | eveboxFormatTimestamp}} - Archived by <b>{{action.username}}</b>
+              </div>
+              <div *ngSwitchCase="'comment'">
+                {{action.timestamp | eveboxFormatTimestamp}} - Comment by <b>{{action.username}}</b>
+                <br/>
+                <pre style="margin-bottom: 0px;">{{action.comment}}</pre>
+              </div>
+              <div *ngSwitchDefault>
+                {{action.timestamp | eveboxFormatTimestamp}} -
+                <{{action.username}}> : {{action.action}}
+              </div>
             </div>
-            <div *ngSwitchCase="'de-escalated'">
-              {{action.timestamp | eveboxFormatTimestamp}} - De-escalated by <b>{{action.username}}</b>
-            </div>
-            <div *ngSwitchCase="'archived'">
-              {{action.timestamp | eveboxFormatTimestamp}} - Archived by <b>{{action.username}}</b>
-            </div>
-            <div *ngSwitchCase="'comment'">
-              {{action.timestamp | eveboxFormatTimestamp}} - Comment by <b>{{action.username}}</b>
-              <br/>
-              <pre style="margin-bottom: 0px;">{{action.comment}}</pre>
-            </div>
-            <div *ngSwitchDefault>
-              {{action.timestamp | eveboxFormatTimestamp}} -
-              <{{action.username}}> : {{action.action}}
-            </div>
-          </div>
-        </li>
-      </ul>
-      <div *ngIf="features['comments'] && !commentInputVisible" class="panel-footer">
-
-        <button class="btn btn-default"
-                (click)="commentInputVisible = true">Add
-          Comment
-        </button>
-
+          </li>
+        </ul>
+        <div *ngIf="features['comments'] && !commentInputVisible" class="card-footer">
+          <button class="btn btn-secondary"
+                  (click)="commentInputVisible = true">Add
+            Comment
+          </button>
+        </div>
       </div>
     </div>
 
-    <div *ngIf="features['comments']">
+    <div *ngIf="features['comments'] && (!hasHistory() || commentInputVisible)">
+      <br/>
       <evebox-comment-input id="comment"
                             *ngIf="!hasHistory() || commentInputVisible"
                             (on-close)="commentInputVisible = false"
@@ -262,79 +289,84 @@
     </div>
 
     <!-- HTTP. -->
-    <div *ngIf="event._source.http" class="panel panel-default">
-      <div class="panel-heading">
-        <b>HTTP</b>
-      </div>
-      <div class="panel-body">
-
-        <div class="row">
-          <div *ngFor="let item of event._source.http | mapToItems">
-            <div [ngSwitch]="item.key">
-              <div *ngSwitchCase="'http_response_body'">
-              </div>
-              <div *ngSwitchCase="'http_response_body_printable'">
-              </div>
-              <div *ngSwitchDefault>
-                <div class="col-md-4 col-sm-6">
-                  <em>{{item.key | genericPrettyPrinter}}:</em>
-                  <search-link [value]="item.val"></search-link>
+    <div *ngIf="event._source.http">
+      <br/>
+      <div class="card">
+        <div class="card-header">
+          <b>HTTP</b>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div *ngFor="let item of event._source.http | mapToItems" class="col-md-4">
+              <div [ngSwitch]="item.key">
+                <div *ngSwitchCase="'http_response_body'">
+                </div>
+                <div *ngSwitchCase="'http_response_body_printable'">
+                </div>
+                <div *ngSwitchDefault>
+                    <em>{{item.key | genericPrettyPrinter}}:</em>
+                    <search-link [value]="item.val"></search-link>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div *ngIf="event._source.http.http_response_body">
-          <br/>
-          <div class="panel panel-default" style="margin-bottom: 0px;">
-            <div class="panel-heading">
-              HTTP Response Body
-            </div>
-            <div class="panel-body">
-              <div class="row">
-                <div class="col-md-6">
+          <div *ngIf="event._source.http.http_response_body">
+            <br/>
+            <div class="card" style="margin-bottom: 0px;">
+              <div class="card-header">
+                HTTP Response Body
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-6">
                 <pre style="white-space: pre-wrap; max-height: 300px;">{{event._source.http.http_response_body | eveboxBase64Decode |
                   printable}}</pre>
-                </div>
-                <div class="col-md-6">
+                  </div>
+                  <div class="col-md-6">
                 <pre style="max-height: 300px;">{{event._source.http.http_response_body | eveboxBase64Decode |
                   hex}}</pre>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
 
     <!-- GeoIP. -->
-    <div *ngIf="hasGeoip()" class="panel panel-default">
-      <div class="panel-heading">
-        <b>GeoIP</b>
-      </div>
-      <div class="panel-body">
-        <div *ngFor="let item of event._source.geoip | mapToItems">
-          <div class="col-md-4 col-sm-6">
-            <em>{{item.key | genericPrettyPrinter}}:</em>
-            <search-link [value]="item.val"></search-link>
+    <div *ngIf="hasGeoip()">
+      <br/>
+      <div class="card">
+        <div class="card-header">
+          <b>GeoIP</b>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div *ngFor="let item of event._source.geoip | mapToItems" class="col-md-4">
+              <em>{{item.key | genericPrettyPrinter}}:</em>
+              <search-link [value]="item.val"></search-link>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- TLS (in-event). -->
-    <div *ngIf="event._source.event_type != 'tls' && event._source.tls"
-         class="panel panel-default">
-      <div class="panel-heading">
-        TLS
-      </div>
-      <div class="panel-body">
-        <div *ngFor="let item of event._source.tls | mapToItems">
-          <div class="col-md-6 col-sm-6">
-            <em>{{item.key | genericPrettyPrinter}}:</em>
-            <search-link [value]="item.val"></search-link>
+    <div *ngIf="event._source.event_type != 'tls' && event._source.tls">
+      <br/>
+      <div class="card">
+        <div class="card-header">
+          TLS
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div *ngFor="let item of event._source.tls | mapToItems" class="col-md-6">
+              <em>{{item.key | genericPrettyPrinter}}:</em>
+              <search-link [value]="item.val"></search-link>
+            </div>
           </div>
         </div>
       </div>
@@ -342,8 +374,9 @@
 
     <!-- Flows, if any. -->
     <div *ngFor="let flow of flows">
-      <div class="panel panel-default">
-        <div class="panel-heading">
+      <br/>
+      <div class="card">
+        <div class="card-header">
           <span class="pull-right">
             [
             <a [routerLink]="['/event', flow._id]">Open</a>
@@ -352,9 +385,9 @@
           <b>Flow - {{flow._source.proto}} {{flow._source.src_ip}} ->
             {{flow._source.dest_ip}}</b>
         </div>
-        <div class="panel-body">
-          <div *ngFor="let item of flow._source.flow | mapToItems">
-            <div class="col-md-4">
+        <div class="card-body">
+          <div class="row">
+            <div *ngFor="let item of flow._source.flow | mapToItems" class="col-md-4">
               <em>{{item.key | genericPrettyPrinter}}:</em>
               <search-link [value]="item.val"></search-link>
             </div>
@@ -364,57 +397,80 @@
     </div>
 
     <!-- Payload -->
-    <div *ngIf="event._source.payload" class="panel panel-default">
-      <div class="panel-heading">
-        <b>Payload</b>
-        <span class="pull-right">
+    <div *ngIf="event._source.payload">
+      <br/>
+      <div class="card">
+        <div class="card-header">
+          <b>Payload</b>
+          <span class="pull-right">
           [
           <a href="javascript:void(0);"
              (click)="eventToPcap('payload');">PCAP</a>
           ]
         </span>
-      </div>
-      <div class="panel-body">
-        <div class="row">
-          <div class="col-md-6 col-sm-6">
-            <pre style="white-space: pre-wrap;">{{event._source.payload | eveboxBase64Decode | printable}}</pre>
-          </div>
-          <div class="col-md-6 col-sm-6">
-            <pre>{{event._source.payload | eveboxBase64Decode | hex}}</pre>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 col-sm-6">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <pre style="white-space: pre-wrap;">{{event._source.payload | eveboxBase64Decode | printable}}</pre>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-sm-6">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <pre>{{event._source.payload | eveboxBase64Decode | hex}}</pre>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Packet -->
-    <div *ngIf="event._source.packet" class="panel panel-default">
-      <div class="panel-heading">
-        <b>Packet</b>
-        <span class="pull-right">
+    <div *ngIf="event._source.packet">
+      <br/>
+      <div class="card">
+        <div class="card-header">
+          <b>Packet</b>
+          <span class="pull-right">
           [
           <a href="javascript:void(0);"
              (click)="eventToPcap('packet');">PCAP</a>
           ]
         </span>
-      </div>
-      <div class="panel-body">
-        <div class="row">
-          <div class="col-md-6">
-            <pre style="white-space: pre-wrap;">{{event._source.packet | eveboxBase64Decode | printable}}</pre>
-          </div>
-          <div class="col-md-6">
-            <pre>{{event._source.packet| eveboxBase64Decode | hex}}</pre>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <pre style="white-space: pre-wrap;">{{event._source.packet | eveboxBase64Decode | printable}}</pre>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <pre>{{event._source.packet| eveboxBase64Decode | hex}}</pre>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- JSON -->
-    <div class="panel panel-default">
-      <div class="panel-heading">
+    <br/>
+    <div class="card">
+      <div class="card-header">
         <b>JSON</b>
       </div>
-      <div class="panel-body" style="padding: 0px;">
+      <div class="card-body" style="padding: 0px;">
         <ace-editor value="{{event | eveboxJsonPretty }}"
                     mode="json"></ace-editor>
       </div>

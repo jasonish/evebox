@@ -1,0 +1,67 @@
+// Custom colors by Anne-Fleur.
+$evebox-warning-color: #3d5f5f;
+$evebox-info-color: #50656f;
+$evebox-danger-color: #72383e;
+
+// Override some Bootstrap colors.
+$warning: $evebox-warning-color;
+$info: $evebox-info-color;
+$danger: $evebox-danger-color;
+
+@import "!~bootswatch/dist/slate/variables";
+
+// Restore the bootstrap default button padding.
+$input-btn-padding-y: .375rem;
+$input-btn-padding-x: .75rem;
+
+@import "~bootstrap/scss/bootstrap";
+@import "!~bootswatch/dist/slate/bootswatch";
+
+// Bootswatch/Slate fixup: The border around disabled buttons was different
+//   than on enabled buttons. Make it consistent.
+.btn, .btn:disabled {
+  border: 1px $gray-600 solid;
+}
+
+// Set the border colour around event tables to a dark gray provided by the slate theme.
+$event-table-border-color: $gray-800;
+
+@import "common";
+
+// The dark theme navbar styling.
+.evebox-top-navbar {
+  @extend .navbar;
+  @extend .navbar-expand-lg;
+  @extend .navbar-dark;
+  @extend .bg-primary;
+  @extend .fixed-top;
+
+  // Remove the borders that Bootswatch/Slate puts between the
+  // nav-links and brand.
+  .nav-link {
+    border-left: 0px !important;
+    border-right: 0px !important;
+  }
+  .navbar-brand {
+    border: 0px !important;
+  }
+}
+
+.evebox-event-table {
+  tr.evebox-danger {
+    @extend .table-danger;
+  }
+
+  tr.evebox-warning {
+    @extend .table-warning;
+  }
+
+  tr.evebox-info {
+    @extend .table-info;
+  }
+
+  tr.evebox-success {
+    background-color: $gray-800;
+  }
+}
+

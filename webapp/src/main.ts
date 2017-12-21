@@ -36,7 +36,7 @@ import {ThemeService} from './app/shared/theme.service';
 import {SettingsService} from './app/settings.service';
 
 require('!!script-loader!jquery/dist/jquery.min.js');
-require('!!script-loader!bootstrap/dist/js/bootstrap.min.js');
+require('!!script-loader!bootstrap/dist/js/bootstrap.bundle.min.js');
 require('chart.js');
 
 if (environment.production) {

@@ -1,7 +1,6 @@
 $icon-font-path: "~bootstrap-sass/assets/fonts/bootstrap/";
-@import "~bootstrap-sass/assets/stylesheets/_bootstrap.scss";
 
-@import "./common.scss";
+@import "common-old";
 
 .raised-background {
   background-color: white;
@@ -32,7 +31,8 @@ table.table.evebox-event-table {
 
 // Apply Bootstrap colouring to event tables.
 .evebox-event-table > tbody > tr.evebox-danger > td {
-  @extend .danger;
+  @extend .table-danger;
+  //@extend .danger;
 }
 
 .evebox-event-table > tbody > tr.evebox-warning > td {

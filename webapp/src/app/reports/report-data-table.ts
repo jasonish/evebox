@@ -28,8 +28,8 @@ import {Component, Input} from '@angular/core';
 
 @Component({
     selector: 'report-data-table',
-    template: `<div class="panel panel-default" [ngClass]="{'evebox-opacity-50': loading > 0}">
-  <div class="panel-heading">
+    template: `<div class="card" [ngClass]="{'evebox-opacity-50': loading > 0}">
+  <div class="card-header">
     <b>{{title}}</b>
   </div>
   <div *ngIf="loading > 0 || !rows">
@@ -37,22 +37,22 @@ import {Component, Input} from '@angular/core';
        style="position: absolute; left: 50%; margin-left: -100px; font-size: 200px; opacity: 0.5;"></i>
   </div>
 
-  <div *ngIf="!rows || rows.length == 0" class="panel-body">
+  <div *ngIf="!rows || rows.length == 0" class="card-body">
     No data.
   </div>
 
   <table *ngIf="rows && rows.length > 0"
-         class="table table-striped table-condensed">
+         class="table table-sm table-striped table-hover">
     <thead>
     <tr>
-      <th class="col-md-2">{{headers[0]}}</th>
-      <th class="col-md-10">{{headers[1]}}</th>
+      <th>{{headers[0]}}</th>
+      <th>{{headers[1]}}</th>
     </tr>
     </thead>
     <tbody>
     <tr *ngFor="let row of rows; let i = index">
-      <td class="col-md-1">{{row.count}}</td>
-      <td class="col-md-11">
+      <td>{{row.count}}</td>
+      <td>
         <a [routerLink]="['/events', {q: q(row)}]">{{row.key}}</a>
       </td>
     </tr>

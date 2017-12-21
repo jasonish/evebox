@@ -109,7 +109,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     ngAfterViewChecked() {
-        $('.dropdown-toggle').dropdown();
+        //$('.dropdown-toggle').dropdown();
 
         // This makes the navbar collapse when a link is clicked. Only applies
         // when the viewport is narrow enough to make it collapse.

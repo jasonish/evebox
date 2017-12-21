@@ -24,140 +24,143 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnDestroy, OnInit} from '@angular/core';
-import {AppEvent, AppEventCode, AppService} from './app.service';
-import {ApiService} from './api.service';
+import {Component, OnDestroy, OnInit} from "@angular/core";
+import {AppEvent, AppEventCode, AppService} from "./app.service";
+import {ApiService} from "./api.service";
 
 declare var $: any;
 
 @Component({
-    selector: 'evebox-help',
-    template: `<div class="modal fade" id="help-modal" tabindex="-1" role="dialog"
-     aria-labelledby="help-modal-label">
-  <div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-body">
+    selector: "evebox-help",
+    template: `
+      <div class="modal fade" id="help-modal" tabindex="-1" role="dialog"
+           aria-labelledby="help-modal-label">
+        <div class="modal-dialog modal-lg" role="document">
+          <div class="modal-content">
+            <div class="modal-body">
 
-        <ul class="nav nav-tabs" role="tablist">
-          <li role="presentation" class="active"><a data-toggle="tab"
-                                                    data-target="#help-keyboard-shortcuts">Keyboard
-            Shortcuts</a></li>
-          <li role="presentation"><a data-toggle="tab"
-                                     data-target="#help-tab-about">About</a>
-          </li>
-        </ul>
+              <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                  <a data-toggle="tab" class="nav-link active"
+                     data-target="#help-keyboard-shortcuts">Keyboard
+                    Shortcuts</a></li>
+                <li class="nav-item">
+                  <a data-toggle="tab" class="nav-link"
+                     data-target="#help-tab-about">About</a>
+                </li>
+              </ul>
 
-        <div class="tab-content">
-          <div role="tabpanel" class="tab-pane fade in active"
-               id="help-keyboard-shortcuts">
-            <table class="table table-bordered evebox-help-table">
-              <tr *ngFor="let shortcut of shortcuts">
+              <div class="tab-content">
 
-                <td class="col-md-1 evebox-help-table-shortcut">
-                  {{shortcut.shortcut}}
-                </td>
+                <div class="tab-pane fade show active"
+                     id="help-keyboard-shortcuts">
+                  <table class="table table-bordered evebox-help-table table-sm">
+                    <tr *ngFor="let shortcut of shortcuts">
 
-                <td class="col-md-11">
-                  {{shortcut.help}}
-                </td>
+                      <td class="evebox-help-table-shortcut">
+                        {{shortcut.shortcut}}
+                      </td>
 
-              </tr>
-            </table>
-          </div>
-          <div
-              role="tabpanel"
-              class="tab-pane fade" id="help-tab-about">
+                      <td>
+                        {{shortcut.help}}
+                      </td>
 
-            <div style="padding: 12px;">
+                    </tr>
+                  </table>
+                </div>
 
-              <p>This is EveBox version {{versionInfo.version}} (Rev: {{versionInfo.revision}}).
-              </p>
+                <div class="tab-pane fade" id="help-tab-about">
 
-              <p>Github:
-                <a href="http://github.com/jasonish/evebox">http://github.com/jasonish/evebox</a>
+                  <div style="padding: 12px;">
+
+                    <p>This is EveBox version {{versionInfo.version}} (Rev: {{versionInfo.revision}}).
+                    </p>
+
+                    <p>Github:
+                      <a href="http://github.com/jasonish/evebox">http://github.com/jasonish/evebox</a>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+            <div class="modal-footer" style="border: 0 !important;">
+              <button type="button" class="btn btn-secondary"
+                      data-dismiss="modal">Close
+              </button>
             </div>
 
           </div>
         </div>
-
-      </div>
-
-      <div class="modal-footer" style="border: 0 !important;">
-        <button type="button" class="btn btn-default"
-                data-dismiss="modal">Close
-        </button>
-      </div>
-
-    </div>
-  </div>
-</div>`
+      </div>`
 })
 export class EveboxHelpComponent implements OnInit, OnDestroy {
 
     shortcuts: any[] = [
         {
-            shortcut: '?',
-            help: 'Show help.'
+            shortcut: "?",
+            help: "Show help."
         },
 
         {
-            shortcut: 'g i',
-            help: 'Goto inbox.'
+            shortcut: "g i",
+            help: "Goto inbox."
         },
         {
-            shortcut: 'g x',
-            help: 'Goto escalated.'
+            shortcut: "g x",
+            help: "Goto escalated."
         },
         {
-            shortcut: 'g a',
-            help: 'Goto alerts.'
+            shortcut: "g a",
+            help: "Goto alerts."
         },
         {
-            shortcut: 'g e',
-            help: 'Goto events.'
-        },
-
-        {
-            shortcut: 'F8',
-            help: 'In inbox, archives active alert.'
+            shortcut: "g e",
+            help: "Goto events."
         },
 
         {
-            shortcut: 'F9',
-            help: 'In inbox, escalate and archive active alert.'
+            shortcut: "F8",
+            help: "In inbox, archives active alert."
         },
 
         {
-            shortcut: 'e',
-            help: 'Archive selected alerts.'
+            shortcut: "F9",
+            help: "In inbox, escalate and archive active alert."
+        },
+
+        {
+            shortcut: "e",
+            help: "Archive selected alerts."
         },
         {
-            shortcut: 's',
-            help: 'Toggles escalated status of alert.'
+            shortcut: "s",
+            help: "Toggles escalated status of alert."
         },
         {
-            shortcut: 'x',
-            help: 'Select highlighted event.'
+            shortcut: "x",
+            help: "Select highlighted event."
         },
         {
-            shortcut: '/',
-            help: 'Focus search input.'
+            shortcut: "/",
+            help: "Focus search input."
         },
         {
-            shortcut: 'j',
-            help: 'Next event.'
+            shortcut: "j",
+            help: "Next event."
         },
         {
-            shortcut: 'k',
-            help: 'Previous event.'
+            shortcut: "k",
+            help: "Previous event."
         },
         {
-            shortcut: 'o',
-            help: 'Open event.'
+            shortcut: "o",
+            help: "Open event."
         },
         {
-            shortcut: 'u',
-            help: 'When in event view, go back to event listing.'
+            shortcut: "u",
+            help: "When in event view, go back to event listing."
         }
     ];
 
@@ -182,7 +185,7 @@ export class EveboxHelpComponent implements OnInit, OnDestroy {
     }
 
     showHelp() {
-        $('#help-modal').modal();
+        $("#help-modal").modal();
     }
 
     eventHandler(appEvent: AppEvent) {

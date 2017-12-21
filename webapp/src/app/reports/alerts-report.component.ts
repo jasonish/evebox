@@ -24,88 +24,93 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnDestroy, OnInit} from '@angular/core';
-import {ReportsService} from './reports.service';
-import {AppEventCode, AppService} from '../app.service';
-import {EveboxFormatIpAddressPipe} from '../pipes/format-ipaddress.pipe';
-import {ActivatedRoute, Params} from '@angular/router';
-import {EveboxSubscriptionService} from '../subscription.service';
-import {loadingAnimation} from '../animations';
-import {EveboxSubscriptionTracker} from '../subscription-tracker';
-import {ApiService, ReportAggOptions} from '../api.service';
-import {TopNavService} from '../topnav.service';
-import * as moment from 'moment';
-import {ElasticSearchService} from '../elasticsearch.service';
+import {Component, OnDestroy, OnInit} from "@angular/core";
+import {ReportsService} from "./reports.service";
+import {AppEventCode, AppService} from "../app.service";
+import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
+import {ActivatedRoute, Params} from "@angular/router";
+import {EveboxSubscriptionService} from "../subscription.service";
+import {loadingAnimation} from "../animations";
+import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {ApiService, ReportAggOptions} from "../api.service";
+import {TopNavService} from "../topnav.service";
+import * as moment from "moment";
+import {ElasticSearchService} from "../elasticsearch.service";
 
 @Component({
-    template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
+    template: `
+      <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
-  <loading-spinner [loading]="loading > 0"></loading-spinner>
+        <loading-spinner [loading]="loading > 0"></loading-spinner>
 
-  <div class="row">
-    <div class="col-md-6 col-sm-6">
-      <button type="button" class="btn btn-default" (click)="refresh()">
-        Refresh
-      </button>
-    </div>
-    <div class="col-md-6 col-sm-6">
-      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
-    </div>
-  </div>
+        <div class="row">
+          <div class="col">
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+              Refresh
+            </button>
+          </div>
+          <div class="col">
+            <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+          </div>
+        </div>
 
-  <br/>
+        <br/>
 
-  <metrics-graphic *ngIf="eventsOverTime"
-                   graphId="alertsOverTimeGraph"
-                   title="Alerts Over Time"
-                   [data]="eventsOverTime"></metrics-graphic>
+        <metrics-graphic *ngIf="eventsOverTime"
+                         graphId="alertsOverTimeGraph"
+                         title="Alerts Over Time"
+                         [data]="eventsOverTime"></metrics-graphic>
 
-  <div class="row">
-    <div class="col-md-6">
-      <report-data-table *ngIf="signatureRows"
-                         title="Top Alert Signatures"
-                         [rows]="signatureRows"
-                         [headers]="['#', 'Signature']"></report-data-table>
-    </div>
-    <div class="col-md-6">
-      <report-data-table *ngIf="categoryRows"
-                         title="Top Alert Categories"
-                         [rows]="categoryRows"
-                         [headers]="['#', 'Category']"></report-data-table>
-    </div>
-  </div>
+        <div class="row">
+          <div class="col-md">
+            <report-data-table *ngIf="signatureRows"
+                               title="Top Alert Signatures"
+                               [rows]="signatureRows"
+                               [headers]="['#', 'Signature']"></report-data-table>
+          </div>
+          <div class="col-md">
+            <report-data-table *ngIf="categoryRows"
+                               title="Top Alert Categories"
+                               [rows]="categoryRows"
+                               [headers]="['#', 'Category']"></report-data-table>
+          </div>
+        </div>
 
-  <div class="row">
-    <div class="col-md-6">
-      <report-data-table *ngIf="sourceRows"
-                         title="Top Alerting Source IPs"
-                         [rows]="sourceRows"
-                         [headers]="['#', 'Source']"></report-data-table>
-    </div>
-    <div class="col-md-6">
-      <report-data-table *ngIf="destinationRows"
-                         title="Top Alerting Destination IPs"
-                         [rows]="destinationRows"
-                         [headers]="['#', 'Destination']"></report-data-table>
-    </div>
-  </div>
+        <br/>
 
-  <div class="row">
-    <div class="col-md-6">
-      <report-data-table *ngIf="srcPorts"
-                         title="Top Alerting Source Ports"
-                         [rows]="srcPorts"
-                         [headers]="['#', 'Port']"></report-data-table>
-    </div>
-    <div class="col-md-6">
-      <report-data-table *ngIf="destPorts"
-                         title="Top Alerting Destination Ports"
-                         [rows]="destPorts"
-                         [headers]="['#', 'Port']"></report-data-table>
-    </div>
-  </div>
+        <div class="row">
+          <div class="col-md">
+            <report-data-table *ngIf="sourceRows"
+                               title="Top Alerting Source IPs"
+                               [rows]="sourceRows"
+                               [headers]="['#', 'Source']"></report-data-table>
+          </div>
+          <div class="col-md">
+            <report-data-table *ngIf="destinationRows"
+                               title="Top Alerting Destination IPs"
+                               [rows]="destinationRows"
+                               [headers]="['#', 'Destination']"></report-data-table>
+          </div>
+        </div>
 
-</div>`,
+        <br/>
+
+        <div class="row">
+          <div class="col-md">
+            <report-data-table *ngIf="srcPorts"
+                               title="Top Alerting Source Ports"
+                               [rows]="srcPorts"
+                               [headers]="['#', 'Port']"></report-data-table>
+          </div>
+          <div class="col-md">
+            <report-data-table *ngIf="destPorts"
+                               title="Top Alerting Destination Ports"
+                               [rows]="destPorts"
+                               [headers]="['#', 'Port']"></report-data-table>
+          </div>
+        </div>
+
+      </div>`,
     animations: [
         loadingAnimation,
     ]
@@ -124,7 +129,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     loading = 0;
 
-    queryString = '';
+    queryString = "";
 
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
@@ -140,12 +145,12 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
 
-        if (this.route.snapshot.queryParams['q']) {
-            this.queryString = this.route.snapshot.queryParams['q'];
+        if (this.route.snapshot.queryParams["q"]) {
+            this.queryString = this.route.snapshot.queryParams["q"];
         }
 
         this.subTracker.subscribe(this.route.params, (params: Params) => {
-            this.queryString = params['q'] || '';
+            this.queryString = params["q"] || "";
             this.refresh();
         });
 
@@ -182,25 +187,25 @@ export class AlertReportComponent implements OnInit, OnDestroy {
             queryString: this.queryString,
             timeRange: timeRangeSeconds,
             size: size,
-            eventType: 'alert',
+            eventType: "alert",
         };
 
         this.load(() => {
-            return this.api.reportAgg('alert.signature', aggOptions)
+            return this.api.reportAgg("alert.signature", aggOptions)
                 .then((response: any) => {
                     this.signatureRows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg('alert.category', aggOptions)
+            return this.api.reportAgg("alert.category", aggOptions)
                 .then((response: any) => {
                     this.categoryRows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg('src_ip', aggOptions)
+            return this.api.reportAgg("src_ip", aggOptions)
                 .then((response: any) => {
                     this.sourceRows = response.data;
 
@@ -216,7 +221,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
         });
 
         this.load(() => {
-            return this.api.reportAgg('dest_ip', aggOptions)
+            return this.api.reportAgg("dest_ip", aggOptions)
                 .then((response: any) => {
                     this.destinationRows = response.data;
 
@@ -233,14 +238,14 @@ export class AlertReportComponent implements OnInit, OnDestroy {
         });
 
         this.load(() => {
-            return this.api.reportAgg('src_port', aggOptions)
+            return this.api.reportAgg("src_port", aggOptions)
                 .then((response: any) => {
                     this.srcPorts = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg('dest_port', aggOptions)
+            return this.api.reportAgg("dest_port", aggOptions)
                 .then((response: any) => {
                     this.destPorts = response.data;
                 });
@@ -250,7 +255,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
             return this.api.reportHistogram({
                 timeRange: timeRangeSeconds,
                 interval: this.reports.histogramTimeInterval(timeRangeSeconds),
-                eventType: 'alert',
+                eventType: "alert",
                 queryString: this.queryString,
             }).then((response: any) => {
                 this.eventsOverTime = response.data.map((x: any) => {

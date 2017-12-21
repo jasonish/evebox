@@ -24,16 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnInit, OnDestroy} from '@angular/core';
-import {Router} from '@angular/router';
-import {EveboxFormatTimestampPipe} from './pipes/format-timestamp.pipe';
-import {EveboxFormatIpAddressPipe} from './pipes/format-ipaddress.pipe';
-import {KeyTableDirective} from './keytable.directive';
-import {EveBoxEventDescriptionPrinterPipe} from './pipes/eventdescription.pipe';
-import {EveboxDurationComponent} from './duration.component';
-import {EventSeverityToBootstrapClass} from './pipes/event-severity-to-bootstrap-class.pipe';
-import {MousetrapService} from './mousetrap.service';
-import {ElasticSearchService} from './elasticsearch.service';
+import {Component, Input, OnDestroy, OnInit} from "@angular/core";
+import {Router} from "@angular/router";
+import {MousetrapService} from "./mousetrap.service";
+import {ElasticSearchService} from "./elasticsearch.service";
 
 export interface EveboxEventTableConfig {
     showCount: boolean;
@@ -41,60 +35,61 @@ export interface EveboxEventTableConfig {
 }
 
 @Component({
-    selector: 'eveboxEventTable',
-    template: `<div *ngIf="config.rows && config.rows.length > 0" class="table-responsive">
-  <table class="table table-condensed table-hover evebox-event-table"
-         eveboxKeyTable [rows]="config.rows" [(activeRow)]="activeRow">
-    <thead>
-    <tr>
-      <!-- Chevron column. -->
-      <th></th>
-      <!-- Timestamp. -->
-      <th>Timestamp</th>
-      <!-- Event type. -->
-      <th>Type</th>
-      <!-- Source/Dest. -->
-      <th>Source/Dest</th>
-      <!-- Description. -->
-      <th>Description</th>
-    </tr>
-    </thead>
-    <tbody *ngIf="config.rows.length > 0">
-    <tr *ngFor="let row of config.rows; let i = index"
-        [ngClass]="row | eventSeverityToBootstrapClass:'evebox-':'success'"
-        (click)="openRow(row)">
-      <td>
-        <div *ngIf="i == activeRow"
-             class="glyphicon glyphicon-chevron-right"></div>
-      </td>
-      <td class="text-nowrap">
-        {{row._source.timestamp | eveboxFormatTimestamp}}
-        <br/>
-        <evebox-duration style="color: gray"
-                         [timestamp]="row._source.timestamp"></evebox-duration>
-      </td>
-      <td>{{row._source.event_type | uppercase}}</td>
-      <td class="text-nowrap">
-        <label>S:</label>
-        {{row._source.src_ip | eveboxFormatIpAddress}}
-        <br/>
-        <label>D:</label>
-        {{row._source.dest_ip | eveboxFormatIpAddress}}
-      </td>
-      <td style="word-break: break-all;">{{row |
-        eveboxEventDescriptionPrinter}}
-        <div *ngIf="getEventType(row) == 'alert' && ! isArchived(row)"
-             class="pull-right"
-             (click)="$event.stopPropagation()">
-          <button type="button" class="btn btn-default"
-                  (click)="archive(row, $event)">Archive
-          </button>
-        </div>
-      </td>
-    </tr>
-    </tbody>
-  </table>
-</div>`,
+    selector: "evebox-event-table",
+    template: `
+      <div *ngIf="config.rows && config.rows.length > 0">
+
+        <table class="evebox-event-table"
+               eveboxKeyTable [rows]="config.rows" [(activeRow)]="activeRow">
+          <thead>
+          <tr>
+            <!-- Chevron column. -->
+            <th></th>
+            <!-- Timestamp. -->
+            <th>Timestamp</th>
+            <!-- Event type. -->
+            <th>Type</th>
+            <!-- Source/Dest. -->
+            <th>Source/Dest</th>
+            <!-- Description. -->
+            <th>Description</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr *ngFor="let row of config.rows; let i = index"
+              [ngClass]="row | eventSeverityToBootstrapClass:'evebox-':'success'"
+              (click)="openRow(row)">
+            <td>
+              <i *ngIf="i == activeRow" class="fa fa-chevron-right"></i>
+            </td>
+            <td class="text-nowrap">
+              {{row._source.timestamp | eveboxFormatTimestamp}}
+              <br/>
+              <evebox-duration style="color: gray"
+                               [timestamp]="row._source.timestamp"></evebox-duration>
+            </td>
+            <td>{{row._source.event_type | uppercase}}</td>
+            <td class="text-nowrap">
+              <label>S:</label>
+              {{row._source.src_ip | eveboxFormatIpAddress}}
+              <br/>
+              <label>D:</label>
+              {{row._source.dest_ip | eveboxFormatIpAddress}}
+            </td>
+            <td style="word-break: break-all;">{{row |
+            eveboxEventDescriptionPrinter}}
+              <div *ngIf="getEventType(row) == 'alert' && ! isArchived(row)"
+                   class="pull-right"
+                   (click)="$event.stopPropagation()">
+                <button type="button" class="btn btn-secondary"
+                        (click)="archive(row, $event)">Archive
+                </button>
+              </div>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>`,
 })
 export class EveboxEventTableComponent implements OnInit, OnDestroy {
 
@@ -107,7 +102,7 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
-        this.mousetrap.bind(this, 'o', () => {
+        this.mousetrap.bind(this, "o", () => {
             this.openActiveRow();
         });
     }
@@ -126,7 +121,7 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
     }
 
     openRow(row: any) {
-        this.router.navigate(['/event', row._id]);
+        this.router.navigate(["/event", row._id]);
     }
 
     getEventType(row: any) {
@@ -135,7 +130,7 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
 
     isArchived(row: any) {
         try {
-            return row._source.tags.indexOf('archived') > -1;
+            return row._source.tags.indexOf("archived") > -1;
         }
         catch (e) {
             return false;
@@ -150,8 +145,8 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
             if (!row._source.tags) {
                 row._source.tags = [];
             }
-            row._source.tags.push('archived');
-            row._source.tags.push('evebox.archived');
+            row._source.tags.push("archived");
+            row._source.tags.push("evebox.archived");
         });
     }
 }

@@ -67,9 +67,9 @@ export class ThemeService {
     loadTheme(theme: string) {
         switch (theme) {
             case "dark":
-                return require("../../styles/evebox-slate.scss");
+                return require("../../styles/theme-dark.scss");
             default:
-                return require("../../styles/evebox-default.scss");
+                return require("../../styles/theme-light.scss");
         }
     }
 

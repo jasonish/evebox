@@ -24,70 +24,74 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from '@angular/core';
-import {ActivatedRoute, Params} from '@angular/router';
-import {ReportsService} from './reports.service';
-import {AppService, AppEvent, AppEventCode} from '../app.service';
-import {TopNavService} from '../topnav.service';
-import {ElasticSearchService} from '../elasticsearch.service';
-import {loadingAnimation} from '../animations';
-import {EveboxSubscriptionTracker} from '../subscription-tracker';
-import {ApiService, ReportAggOptions} from '../api.service';
+import {Component, OnInit, OnDestroy} from "@angular/core";
+import {ActivatedRoute, Params} from "@angular/router";
+import {ReportsService} from "./reports.service";
+import {AppService, AppEvent, AppEventCode} from "../app.service";
+import {TopNavService} from "../topnav.service";
+import {ElasticSearchService} from "../elasticsearch.service";
+import {loadingAnimation} from "../animations";
+import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {ApiService, ReportAggOptions} from "../api.service";
 
-//import moment = require("moment");
-import * as moment from 'moment';
+import * as moment from "moment";
 
 @Component({
-    template: `<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
+    template: `
+      <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
-  <loading-spinner [loading]="loading > 0"></loading-spinner>
+        <loading-spinner [loading]="loading > 0"></loading-spinner>
 
-  <div class="row">
-    <div class="col-md-6 col-sm-6">
-      <button type="button" class="btn btn-default" (click)="refresh()">
-        Refresh
-      </button>
-    </div>
-    <div class="col-md-6 col-sm-6">
-      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
-    </div>
-  </div>
+        <div class="row">
+          <div class="col-md-6 col-sm-6">
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+              Refresh
+            </button>
+          </div>
+          <div class="col-md-6 col-sm-6">
+            <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+          </div>
+        </div>
 
-  <br/>
+        <br/>
 
-  <metrics-graphic *ngIf="eventsOverTime"
-                   graphId="eventsOverTime"
-                   title="Netflow Events Over Time"
-                   [data]="eventsOverTime"></metrics-graphic>
+        <metrics-graphic *ngIf="eventsOverTime"
+                         graphId="eventsOverTime"
+                         title="Netflow Events Over Time"
+                         [data]="eventsOverTime"></metrics-graphic>
 
-  <div class="row">
+        <div class="row">
 
-    <div class="col-md-6">
-      <report-data-table *ngIf="topClientsByFlows"
-                         title="Top Clients By Flow Count"
-                         [rows]="topClientsByFlows"
-                         [headers]="['Flows', 'Client IP']"></report-data-table>
-    </div>
+          <div class="col-md-6">
+            <report-data-table *ngIf="topClientsByFlows"
+                               title="Top Clients By Flow Count"
+                               [rows]="topClientsByFlows"
+                               [headers]="['Flows', 'Client IP']"></report-data-table>
+          </div>
 
-    <div class="col-md-6">
-      <report-data-table *ngIf="topServersByFlows"
-                         title="Top Servers By Flow Count"
-                         [rows]="topServersByFlows"
-                         [headers]="['Flows', 'Server IP']"></report-data-table>
-    </div>
+          <div class="col-md-6">
+            <report-data-table *ngIf="topServersByFlows"
+                               title="Top Servers By Flow Count"
+                               [rows]="topServersByFlows"
+                               [headers]="['Flows', 'Server IP']"></report-data-table>
+          </div>
 
-  </div>
+        </div>
 
-  <div *ngIf="topFlowsByAge" class="panel panel-default">
-    <div class="panel-heading">
-      <b>Top Flows by Age</b>
-    </div>
-    <eveboxEventTable2 [rows]="topFlowsByAge"
-                       [showEventType]="false"
-                       [showActiveEvent]="false"></eveboxEventTable2>
-  </div>
+        <br/>
 
-</div>`,
+        <div *ngIf="topFlowsByAge" class="card">
+          <div class="card-header">
+            <b>Top Flows by Age</b>
+          </div>
+          <eveboxEventTable2 [rows]="topFlowsByAge"
+                             [showEventType]="false"
+                             [showActiveEvent]="false"></eveboxEventTable2>
+        </div>
+
+        <br/>
+
+      </div>`,
     animations: [
         loadingAnimation,
     ]
@@ -103,7 +107,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
     loading = 0;
 
-    queryString = '';
+    queryString = "";
 
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
@@ -118,7 +122,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
     ngOnInit() {
 
         this.subTracker.subscribe(this.route.params, (params: Params) => {
-            this.queryString = params['q'] || '';
+            this.queryString = params["q"] || "";
             this.refresh();
         });
 
@@ -150,7 +154,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             return this.api.reportHistogram({
                 timeRange: range,
                 interval: this.reportsService.histogramTimeInterval(range),
-                eventType: 'flow',
+                eventType: "flow",
                 queryString: this.queryString,
             }).then((response: any) => {
                 this.eventsOverTime = response.data.map((x: any) => {
@@ -164,23 +168,23 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         let aggOptions: ReportAggOptions = {
             timeRange: range,
-            eventType: 'flow',
+            eventType: "flow",
             size: 10,
             queryString: this.queryString,
         };
 
         this.load(() => {
-            return this.api.reportAgg('src_ip', aggOptions)
-                    .then((response: any) => {
-                        this.topClientsByFlows = response.data;
-                    });
+            return this.api.reportAgg("src_ip", aggOptions)
+                .then((response: any) => {
+                    this.topClientsByFlows = response.data;
+                });
         });
 
         this.load(() => {
-            return this.api.reportAgg('dest_ip', aggOptions)
-                    .then((response: any) => {
-                        this.topServersByFlows = response.data;
-                    });
+            return this.api.reportAgg("dest_ip", aggOptions)
+                .then((response: any) => {
+                    this.topServersByFlows = response.data;
+                });
         });
 
         let query: any = {
@@ -188,22 +192,22 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 bool: {
                     filter: [
                         // Somewhat limit to eve events only.
-                        {exists: {field: 'event_type'}},
-                        {term: {event_type: 'flow'}}
+                        {exists: {field: "event_type"}},
+                        {term: {event_type: "flow"}}
                     ]
                 }
             },
             size: 0,
             sort: [
-                {'@timestamp': {order: 'desc'}}
+                {"@timestamp": {order: "desc"}}
             ],
             aggs: {
                 topFlowsByAge: {
                     top_hits: {
                         sort: [
                             {
-                                'flow.age': {
-                                    order: 'desc',
+                                "flow.age": {
+                                    order: "desc",
                                     unmapped_type: "long"
                                 }
                             }
@@ -214,7 +218,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             }
         };
 
-        if (this.queryString && this.queryString != '') {
+        if (this.queryString && this.queryString != "") {
             query.query.filtered.query = {
                 query_string: {
                     query: this.queryString
