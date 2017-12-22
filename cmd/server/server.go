@@ -305,6 +305,22 @@ func Main(args []string) {
 			elasticSearch.SetUsernamePassword(username, password)
 		}
 
+		for {
+			ping, err := elasticSearch.Ping()
+			if err != nil {
+				log.Error("Failed to ping Elastic Search, delaying startup: %v", err)
+				time.Sleep(3 * time.Second)
+			} else {
+				log.Info("Connected to Elastic Search (version: %s)",
+					ping.Version.Number)
+				major, _ := ping.ParseVersion()
+				if major < 5 {
+					log.Warning("Elastic Search versions less than 5 will be unsupported in a future release")
+				}
+				break
+			}
+		}
+
 		keywordSet, keyword := getElasticSearchKeyword(flagset)
 		if keywordSet {
 			log.Info("Forcing Elastic Search keyword to '%s'", keyword)
@@ -313,17 +329,6 @@ func Main(args []string) {
 			elasticSearch.InitKeyword()
 		}
 
-		pingResponse, err := elasticSearch.Ping()
-		if err != nil {
-			log.Error("Failed to ping Elastic Search: %v", err)
-		} else {
-			log.Info("Connected to Elastic Search (version: %s)",
-				pingResponse.Version.Number)
-			major, _ := pingResponse.ParseVersion()
-			if major < 5 {
-				log.Warning("Elastic Search versions less than 5 will be unsupported in a future release")
-			}
-		}
 		appContext.ElasticSearch = elasticSearch
 		appContext.ReportService = elasticsearch.NewReportService(elasticSearch)
 		appContext.DataStore, err = elasticsearch.NewDataStore(elasticSearch)
