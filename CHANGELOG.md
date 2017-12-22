@@ -1,5 +1,10 @@
 # Change Log
 
+## unreleased
+
+**Changes**
+- Upgrade the Bootstrap CSS framework to version 4.
+
 ## 0.8.1 - 2017-12-10
 
 **Added**
