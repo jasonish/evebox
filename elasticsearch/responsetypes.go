@@ -128,15 +128,15 @@ func (r *Response) IsError() bool {
 	return r.Error != nil
 }
 
-func (r *Response) AsError() *ErrorReponse {
-	return &ErrorReponse{r}
+func (r *Response) AsError() *ErrorResponse {
+	return &ErrorResponse{r}
 }
 
-type ErrorReponse struct {
+type ErrorResponse struct {
 	*Response
 }
 
-func (e *ErrorReponse) Error() string {
+func (e *ErrorResponse) Error() string {
 	return string(e.Raw)
 }
 

@@ -148,7 +148,7 @@ func (s *ReportService) ReportHistogram(interval string, options core.ReportOpti
 	}
 
 	// Unwrap response.
-	data := []map[string]interface{}{}
+	var data []map[string]interface{}
 	buckets := response.Aggregations.GetMap("histogram").GetMapList("buckets")
 	for _, bucket := range buckets {
 		data = append(data, map[string]interface{}{
@@ -257,7 +257,7 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 
 	// Unwrap response.
 	buckets := util.JsonMap(response.Aggregations[agg].(map[string]interface{})).GetMapList("buckets")
-	data := []map[string]interface{}{}
+	var data []map[string]interface{}
 	for _, bucket := range buckets {
 		data = append(data, map[string]interface{}{
 			"key":   bucket["key"],

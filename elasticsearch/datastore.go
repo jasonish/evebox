@@ -158,7 +158,7 @@ func (s *DataStore) buildAlertGroupQuery(p core.AlertGroupQueryParams) *EventQue
 // only available in Elastic Search v5+.
 func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, tags []string, action HistoryEntry) error {
 	log.Println("AddTagsToAlertGroupsByQuery")
-	mustNot := []interface{}{}
+	var mustNot []interface{}
 	for _, tag := range tags {
 		mustNot = append(mustNot, TermQuery("tags", tag))
 	}
@@ -237,7 +237,7 @@ func (s *DataStore) DeEscalateAlertGroup(p core.AlertGroupQueryParams, user core
 
 func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParams,
 	tags []string, action HistoryEntry) error {
-	should := []interface{}{}
+	var should []interface{}
 	for _, tag := range tags {
 		should = append(should, TermQuery("tags", tag))
 	}
