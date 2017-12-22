@@ -55,18 +55,6 @@ type Query struct {
 
 // EventQuery is a type for building up an Elastic Search event query.
 type EventQuery struct {
-	//Query struct {
-	//	//Bool struct {
-	//	//	Filter  []interface{} `json:"filter,omitempty"`
-	//	//	MustNot []interface{} `json:"must_not,omitempty"`
-	//	//	Should  []interface{} `json:"should,omitempty"`
-	//	//
-	//	//	// Should be an integer, but we make it an interface so
-	//	//	// its not included if not set.
-	//	//	MinimumShouldMatch interface{} `json:"minimum_should_match,omitempty"`
-	//	//} `json:"bool,omitempty"`
-	//	Bool *Bool `json:"bool,omitempty"`
-	//} `json:"query,omitempty"`
 	Query  *Query                 `json:"query,omitempty"`
 	Script *Script                `json:"script,omitempty"`
 	Size   int64                  `json:"size,omitempty"`
