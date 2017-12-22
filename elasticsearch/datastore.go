@@ -32,8 +32,6 @@ import (
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/pkg/errors"
-	"io"
-	"io/ioutil"
 	"time"
 )
 
@@ -125,98 +123,6 @@ func (s *DataStore) FindNetflow(options core.EventQueryOptions, sortBy string,
 	}, nil
 }
 
-// AddTagsToAlertGroup adds the provided tags to all alerts that match the
-// provided alert group parameters.
-func (s *DataStore) AddTagsToAlertGroup(p core.AlertGroupQueryParams, tags []string) error {
-
-	mustNot := []interface{}{}
-	for _, tag := range tags {
-		mustNot = append(mustNot, TermQuery("tags", tag))
-	}
-
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"filter": []interface{}{
-					ExistsQuery("event_type"),
-					KeywordTermQuery("event_type", "alert", s.es.keyword),
-					RangeQuery{
-						Field: "@timestamp",
-						Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
-						Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
-					},
-					KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
-					KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
-					TermQuery("alert.signature_id", p.SignatureID),
-				},
-				"must_not": mustNot,
-			},
-		},
-		"_source": "tags",
-		"sort": []interface{}{
-			"_doc",
-		},
-		"size": 10000,
-	}
-
-	searchResponse, err := s.es.SearchScroll(query, "1m")
-	if err != nil {
-		log.Error("Failed to initialize scroll: %v", err)
-		return err
-	}
-	scrollID := searchResponse.ScrollId
-	defer func() {
-		response, err := s.es.DeleteScroll(scrollID)
-		if err != nil {
-			log.Error("Failed to delete scroll id: %v", err)
-		}
-		io.Copy(ioutil.Discard, response.Body)
-	}()
-
-	for {
-		log.Debug("Search response total: %d; hits: %d",
-			searchResponse.Hits.Total, len(searchResponse.Hits.Hits))
-
-		if len(searchResponse.Hits.Hits) == 0 {
-			break
-		}
-
-		// We do this in a retry loop as some documents may fail to be
-		// updated. Most likely rejected due to max thread count or
-		// something.
-		maxRetries := 5
-		retries := 0
-		for {
-			retry, err := BulkUpdateTags(s.es, searchResponse.Hits.Hits,
-				tags, nil)
-			if err != nil {
-				log.Error("BulkAddTags failed: %v", err)
-				return err
-			}
-			if !retry {
-				break
-			}
-			retries++
-			if retries > maxRetries {
-				log.Warning("Errors occurred archive events, not all events may have been archived.")
-				break
-			}
-		}
-
-		// Get next set of events to archive.
-		searchResponse, err = s.es.Scroll(scrollID, "1m")
-		if err != nil {
-			log.Error("Failed to fetch from scroll: %v", err)
-			return err
-		}
-
-	}
-
-	s.es.Refresh()
-
-	return nil
-}
-
 const ACTION_ARCHIVED = "archived"
 
 const ACTION_ESCALATED = "escalated"
@@ -302,9 +208,6 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 // ArchiveAlertGroup is a specialization of AddTagsToAlertGroup.
 func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 	tags := []string{"archived", "evebox.archived"}
-	if s.es.MajorVersion < 5 {
-		return s.AddTagsToAlertGroup(p, tags)
-	}
 	return s.AddTagsToAlertGroupsByQuery(p, tags, HistoryEntry{
 		Action:    ACTION_ARCHIVED,
 		Timestamp: FormatTimestampUTC(time.Now()),
@@ -315,9 +218,6 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.Us
 // EscalateAlertGroup is a specialization of AddTagsToAlertGroup.
 func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 	tags := []string{"escalated", "evebox.escalated"}
-	if s.es.MajorVersion < 5 {
-		return s.AddTagsToAlertGroup(p, tags)
-	}
 	history := HistoryEntry{
 		Username:  user.Username,
 		Action:    ACTION_ESCALATED,
@@ -328,9 +228,6 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.U
 
 func (s *DataStore) DeEscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
 	tags := []string{"escalated", "evebox.escalated"}
-	if s.es.MajorVersion < 5 {
-		return s.RemoveTagsFromAlertGroup(p, tags)
-	}
 	return s.RemoveTagsFromAlertGroupsByQuery(p, tags, HistoryEntry{
 		Username:  user.Username,
 		Timestamp: FormatTimestampUTC(time.Now()),
@@ -376,98 +273,6 @@ func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParam
 	}
 	log.Info("Events updated: %v; failures=%d",
 		response.Get("updated"), len(response.GetMapList("failures")))
-
-	return nil
-}
-
-// RemoveTagsFromAlertGroup removes the given tags from all alerts matching
-// the provided parameters.
-func (s *DataStore) RemoveTagsFromAlertGroup(p core.AlertGroupQueryParams, tags []string) error {
-
-	filter := []interface{}{
-		ExistsQuery("event_type"),
-		KeywordTermQuery("event_type", "alert", s.es.keyword),
-		RangeQuery{
-			Field: "@timestamp",
-			Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
-			Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
-		},
-		KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword),
-		KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword),
-		TermQuery("alert.signature_id", p.SignatureID),
-	}
-
-	for _, tag := range tags {
-		filter = append(filter, TermQuery("tags", tag))
-	}
-
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"filter": filter,
-			},
-		},
-		"_source": "tags",
-		"sort": []interface{}{
-			"_doc",
-		},
-		"size": 10000,
-	}
-
-	searchResponse, err := s.es.SearchScroll(query, "1m")
-	if err != nil {
-		log.Error("Failed to initialize scroll: %v", err)
-		return err
-	}
-	scrollID := searchResponse.ScrollId
-	defer func() {
-		response, err := s.es.DeleteScroll(scrollID)
-		if err != nil {
-			log.Error("Failed to delete scroll id: %v", err)
-		}
-		io.Copy(ioutil.Discard, response.Body)
-	}()
-
-	for {
-		log.Debug("Search response total: %d; hits: %d",
-			searchResponse.Hits.Total, len(searchResponse.Hits.Hits))
-
-		if len(searchResponse.Hits.Hits) == 0 {
-			break
-		}
-
-		// We do this in a retry loop as some documents may fail to be
-		// updated. Most likely rejected due to max thread count or
-		// something.
-		maxRetries := 5
-		retries := 0
-		for {
-			retry, err := BulkUpdateTags(s.es, searchResponse.Hits.Hits,
-				nil, tags)
-			if err != nil {
-				log.Error("BulkAddTags failed: %v", err)
-				return err
-			}
-			if !retry {
-				break
-			}
-			retries++
-			if retries > maxRetries {
-				log.Warning("Errors occurred archive events, not all events may have been archived.")
-				break
-			}
-		}
-
-		// Get next set of events to archive.
-		searchResponse, err = s.es.Scroll(scrollID, "1m")
-		if err != nil {
-			log.Error("Failed to fetch from scroll: %v", err)
-			return err
-		}
-
-	}
-
-	s.es.Refresh()
 
 	return nil
 }

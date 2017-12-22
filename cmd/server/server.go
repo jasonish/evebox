@@ -315,7 +315,7 @@ func Main(args []string) {
 					ping.Version.Number)
 				major, _ := ping.ParseVersion()
 				if major < 5 {
-					log.Warning("Elastic Search versions less than 5 will be unsupported in a future release")
+					log.Fatalf("Elastic Search versions less than 5 are not supported.")
 				}
 				break
 			}
