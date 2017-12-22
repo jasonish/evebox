@@ -152,11 +152,16 @@ Docker installed, you can build a release with the following command:
 ## Run in Development Mode
 
 ```
-ARGS="-e http://localhost:9200" make dev-server
+./dev.sh -e http://elasticsearch:9200
 ```
 
 to run in development mode using an Elastic Search datastore at
-http://localhost:9200.
+http://elasticsearch:9200.
+
+The connect your browser to http://localhost:4200. Note this port is
+different than the EveBox port, as the Angular CLI/Webpack development
+server is used to serve up the web application with backend requests
+being proxied to the Go application.
 
 In development mode changes to Go files will trigger a
 recompile/restart, and changes to the web app will trigger a recompile

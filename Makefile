@@ -77,7 +77,7 @@ resources/bindata.go: $(RESOURCES) webapp
 	go generate ./resources/...
 
 # Build's EveBox for the host platform.
-evebox: Makefile $(GO_SRCS) resources/bindata.go
+evebox: Makefile $(GO_SRCS)
 	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" \
 		-ldflags "$(LDFLAGS)" \
 		cmd/evebox.go
@@ -85,17 +85,6 @@ evebox: Makefile $(GO_SRCS) resources/bindata.go
 # Format all go source code except in the vendor directory.
 gofmt:
 	@go fmt $(GO_PACKAGES)
-
-dev-server:
-	./webapp/node_modules/.bin/concurrently -k \
-		"make -C webapp serve" \
-		"make dev-server-reflex" \
-
-# Helper for dev-server mode, watches evebox Go source and rebuilds and
-# restarts as needed.
-dev-server-reflex:
-	reflex -s -R 'bindata\.go' -r '\.go$$' -- \
-	sh -c "NO_WEBAPP=1 make evebox && ./evebox ${ARGS}"
 
 dist: GOARCH ?= $(shell go env GOARCH)
 dist: GOOS ?= $(shell go env GOOS)
