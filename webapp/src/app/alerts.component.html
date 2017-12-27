@@ -115,10 +115,29 @@
         <th></th>
         <th></th>
         <th></th>
-        <th><a (click)="onSort('count')">#</a></th>
-        <th><a (click)="onSort('timestamp')">Timestamp</a></th>
-        <th><a (click)="onSort('source')">Source</a>/<a (click)="sort('dest')">Dest</a></th>
-        <th width="50%"><a (click)="onSort('signature')">Signature</a></th>
+        <th style="white-space: nowrap;"><a (click)="onSort('count')">#
+          <i *ngIf="sortBy == 'count' && sortOrder == 'desc'" class="fa fa-caret-up"></i>
+          <i *ngIf="sortBy == 'count' && sortOrder == 'asc'" class="fa fa-caret-down"></i>
+        </a></th>
+        <th><a (click)="onSort('timestamp')">
+          Timestamp
+          <i *ngIf="sortBy == 'timestamp' && sortOrder == 'desc'" class="fa fa-caret-up"></i>
+          <i *ngIf="sortBy == 'timestamp' && sortOrder == 'asc'" class="fa fa-caret-down"></i>
+        </a></th>
+        <th>
+          <a (click)="onSort('source')">Source
+            <span *ngIf="sortBy == 'source' && sortOrder == 'desc'"><i class="fa fa-caret-up"></i></span>
+            <span *ngIf="sortBy == 'source' && sortOrder == 'asc'"><i class="fa fa-caret-down"></i></span>
+          </a>/
+          <a (click)="onSort('dest')">Dest
+            <span *ngIf="sortBy == 'dest' && sortOrder == 'desc'"><i class="fa fa-caret-up"></i></span>
+            <span *ngIf="sortBy == 'dest' && sortOrder == 'asc'"><i class="fa fa-caret-down"></i></span>
+          </a>
+        </th>
+        <th width="50%"><a (click)="onSort('signature')">Signature <i
+            *ngIf="sortBy == 'signature' && sortOrder == 'desc'" class="fa fa-caret-up"> </i>
+          <i *ngIf="sortBy == 'signature' && sortOrder == 'asc'" class="fa fa-caret-down"> </i>
+        </a></th>
       </tr>
       </thead>
 
