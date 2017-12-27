@@ -47,7 +47,6 @@ import {EveboxFilterInputComponent} from './shared/filter-input.component';
 import {TopNavComponent} from './topnav.component';
 import {EveboxHelpComponent} from './help.component';
 import {AceEditor} from './ace-editor.component';
-import {AlertTableComponent} from './alert-table.component';
 import {EveboxEventTableComponent} from './event-table.component';
 import {KeyTableDirective} from './keytable.directive';
 import {EveboxDurationComponent} from './duration.component';
@@ -82,7 +81,7 @@ import {
     SshTopClientsComponent,
     SshTopServersComponent
 } from './reports/ssh-report.component';
-import {LoginComponent} from 'app/login/login.component';
+import {LoginComponent} from './login/login.component';
 import {AppEventService} from './appevent.service';
 import {SettingsComponent} from './settings/settings.component';
 import {ThemeService} from './shared/theme.service';
@@ -116,7 +115,6 @@ import {RuleHighlightPipe} from './pipes/rule-highlight.pipe';
         TopNavComponent,
         EveboxHelpComponent,
         AceEditor,
-        AlertTableComponent,
         EveboxEventTableComponent,
         KeyTableDirective,
         EveboxDurationComponent,

@@ -24,20 +24,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {AlertService} from './alert.service';
-import {Component, OnInit, OnDestroy} from '@angular/core';
-import {ElasticSearchService, AlertGroup} from './elasticsearch.service';
-import {Router, ActivatedRoute} from '@angular/router';
-import {MousetrapService} from './mousetrap.service';
-import {AppService, AppEvent, AppEventCode} from './app.service';
-import {EventService} from './event.service';
-import {ToastrService} from './toastr.service';
-import {TopNavService} from './topnav.service';
-import {EveboxSubscriptionService} from './subscription.service';
-import {loadingAnimation} from './animations';
-import {SETTING_ALERTS_PER_PAGE, SettingsService} from './settings.service';
+import {AlertService} from "./alert.service";
+import {AfterViewChecked, Component, OnDestroy, OnInit} from "@angular/core";
+import {AlertGroup, ElasticSearchService} from "./elasticsearch.service";
+import {ActivatedRoute, Router} from "@angular/router";
+import {MousetrapService} from "./mousetrap.service";
+import {AppEvent, AppEventCode, AppService} from "./app.service";
+import {EventService} from "./event.service";
+import {ToastrService} from "./toastr.service";
+import {TopNavService} from "./topnav.service";
+import {EveboxSubscriptionService} from "./subscription.service";
+import {loadingAnimation} from "./animations";
+import {SETTING_ALERTS_PER_PAGE, SettingsService} from "./settings.service";
 
 declare var window: any;
+declare var $: any;
 
 export interface AlertsState {
     rows: any[];
@@ -49,12 +50,12 @@ export interface AlertsState {
 }
 
 @Component({
-    templateUrl: './alerts.component.html',
+    templateUrl: "./alerts.component.html",
     animations: [
         loadingAnimation,
     ]
 })
-export class AlertsComponent implements OnInit, OnDestroy {
+export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     windowSize = 100;
     offset = 0;
@@ -63,11 +64,14 @@ export class AlertsComponent implements OnInit, OnDestroy {
     allRows: any[] = [];
 
     activeRow = 0;
-    queryString = '';
+    queryString = "";
     loading = false;
     dispatcherSubscription: any;
 
     silentRefresh = false;
+
+    sortBy: string = "timestamp";
+    sortOrder: string = "desc";
 
     constructor(private alertService: AlertService,
                 private elasticSearchService: ElasticSearchService,
@@ -89,57 +93,76 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.windowSize = this.settings.getInt(SETTING_ALERTS_PER_PAGE, 100);
 
         this.ss.subscribe(this, this.route.params, (params: any) => {
-            this.queryString = params.q || '';
+            this.queryString = params.q || "";
             if (!this.restoreState()) {
                 this.refresh();
             }
         });
 
-        this.mousetrap.bind(this, '/', () => this.focusFilterInput());
-        this.mousetrap.bind(this, '* a', () => this.selectAllRows());
-        this.mousetrap.bind(this, '* n', () => this.deselectAllRows());
-        this.mousetrap.bind(this, 'r', () => this.refresh());
-        this.mousetrap.bind(this, 'o', () => this.openActiveEvent());
-        this.mousetrap.bind(this, 'f8', () => this.archiveActiveEvent());
-        this.mousetrap.bind(this, 's', () =>
-                this.toggleEscalatedState(this.getActiveRow()));
+        this.mousetrap.bind(this, "/", () => this.focusFilterInput());
+        this.mousetrap.bind(this, "* a", () => this.selectAllRows());
+        this.mousetrap.bind(this, "* n", () => this.deselectAllRows());
+        this.mousetrap.bind(this, "r", () => this.refresh());
+        this.mousetrap.bind(this, "o", () => this.openActiveEvent());
+        this.mousetrap.bind(this, "f8", () => this.archiveActiveEvent());
+        this.mousetrap.bind(this, "s", () =>
+            this.toggleEscalatedState(this.getActiveRow()));
 
         // Escalate then archive event.
-        this.mousetrap.bind(this, 'f9', () => {
+        this.mousetrap.bind(this, "f9", () => {
             this.escalateAndArchiveEvent(this.getActiveRow());
         });
 
-        this.mousetrap.bind(this, 'x', () =>
-                this.toggleSelectedState(this.getActiveRow()));
-        this.mousetrap.bind(this, 'e', () => this.archiveEvents());
+        this.mousetrap.bind(this, "x", () =>
+            this.toggleSelectedState(this.getActiveRow()));
+        this.mousetrap.bind(this, "e", () => this.archiveEvents());
 
-        this.mousetrap.bind(this, '>', () => {
+        this.mousetrap.bind(this, ">", () => {
             this.older();
         });
 
-        this.mousetrap.bind(this, '<', () => {
+        this.mousetrap.bind(this, "<", () => {
             this.newer();
         });
 
         // CTRL >
-        this.mousetrap.bind(this, 'ctrl+shift+.', () => {
+        this.mousetrap.bind(this, "ctrl+shift+.", () => {
             this.oldest();
         });
 
         // CTRL <
-        this.mousetrap.bind(this, 'ctrl+shift+,', () => {
+        this.mousetrap.bind(this, "ctrl+shift+,", () => {
             this.newest();
         });
 
         this.dispatcherSubscription = this.appService.subscribe((event: any) => {
             this.appEventHandler(event);
         });
+
+        // Bind "." to open the dropdown menu for the specific event.
+        this.mousetrap.bind(this, ".", () => {
+            this.openDropdownMenu();
+        });
+
+        this.mousetrap.bind(this, "1", () => {
+            this.selectBySignatureId(this.rows[this.activeRow]);
+        });
+        this.mousetrap.bind(this, "2", () => {
+            this.filterBySignatureId(this.rows[this.activeRow]);
+        });
+
     }
 
     ngOnDestroy(): any {
         this.mousetrap.unbind(this);
         this.ss.unsubscribe(this);
         this.dispatcherSubscription.unsubscribe();
+    }
+
+    ngAfterViewChecked() {
+        // This seems to be required to activate the dropdowns when used in
+        // an event table row. Probably something to do with the stopPropagations.
+        $(".dropdown-toggle").dropdown();
     }
 
     buildState(): any {
@@ -161,14 +184,14 @@ export class AlertsComponent implements OnInit, OnDestroy {
             return false;
         }
 
-        console.log('Restoring previous state.');
+        console.log("Restoring previous state.");
 
         if (state.route != this.appService.getRoute()) {
-            console.log('Saved state route differs.');
+            console.log("Saved state route differs.");
             return false;
         }
         if (state.queryString != this.queryString) {
-            console.log('Query strings differ, previous state not being restored.');
+            console.log("Query strings differ, previous state not being restored.");
             return false;
         }
 
@@ -179,7 +202,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
         // If in inbox, remove any archived events.
         if (this.isInbox()) {
             let archived = this.rows.filter((row: any) => {
-                return row.event.event._source.tags.indexOf('archived') > -1;
+                return row.event.event._source.tags.indexOf("archived") > -1;
             });
 
             console.log(`Found ${archived.length} archived events.`);
@@ -188,7 +211,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 this.removeRow(row);
             });
         }
-        else if (this.appService.getRoute() == '/escalated') {
+        else if (this.appService.getRoute() == "/escalated") {
             let deEscalated = this.rows.filter(row => {
                 return row.event.escalatedCount == 0;
             });
@@ -206,7 +229,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     isInbox() {
-        return this.appService.getRoute() == '/inbox';
+        return this.appService.getRoute() == "/inbox";
     }
 
     older() {
@@ -244,6 +267,73 @@ export class AlertsComponent implements OnInit, OnDestroy {
         return Math.min(a, b);
     }
 
+    private compare(a: any, b: any): number {
+        if (a < b) {
+            return -1;
+        }
+        else if (a > b) {
+            return 1;
+        }
+        return 0;
+    }
+
+    onSort(column: string) {
+        console.log("Sorting by: " + column);
+
+        if (column != this.sortBy) {
+            this.sortBy = column;
+            this.sortOrder = "desc";
+        }
+        else {
+            if (this.sortOrder == "desc") {
+                this.sortOrder = "asc";
+            }
+            else {
+                this.sortOrder = "desc";
+            }
+        }
+
+        switch (this.sortBy) {
+            case "signature":
+                this.allRows.sort((a: any, b: any) => {
+                    return this.compare(
+                        a.event.event._source.alert.signature.toUpperCase(),
+                        b.event.event._source.alert.signature.toUpperCase());
+                });
+                break;
+            case "count":
+                this.allRows.sort((a: any, b: any) => {
+                    return a.event.count - b.event.count;
+                });
+                break;
+            case "source":
+                this.allRows.sort((a: any, b: any) => {
+                    return this.compare(
+                        a.event.event._source.src_ip,
+                        b.event.event._source.src_ip);
+                });
+                break;
+            case "dest":
+                this.allRows.sort((a: any, b: any) => {
+                    return this.compare(
+                        a.event.event._source.dest_ip,
+                        b.event.event._source.dest_ip);
+                });
+                break;
+            case "timestamp":
+                console.log(this.allRows[0]);
+                this.allRows.sort((a: any, b: any) => {
+                    return this.compare(a.event.maxTs, b.event.maxTs);
+                });
+                break;
+        }
+
+        if (this.sortOrder === "desc") {
+            this.allRows.reverse();
+        }
+
+        this.rows = this.allRows.slice(this.offset, this.windowSize);
+    }
 
     escalateAndArchiveEvent(row: any) {
         this.archiveAlertGroup(row).then(() => {
@@ -274,7 +364,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 // could result in reloading events waiting to be archived.
                 // TODO: Limit to archive jobs only.
                 if (this.elasticSearchService.jobSize() > 0) {
-                    console.log('Elastic Search jobs active, not refreshing.');
+                    console.log("Elastic Search jobs active, not refreshing.");
                     return;
                 }
 
@@ -330,7 +420,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     archiveSelected() {
         let selected = this.rows.filter((row: any) => {
             return row.selected &&
-                    row.event.event._source.tags.indexOf('archived') < 0;
+                row.event.event._source.tags.indexOf("archived") < 0;
         });
         selected.forEach((row: any) => {
             this.archiveAlertGroup(row);
@@ -344,10 +434,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
         }
 
         // Optimistically mark the event as archived.
-        row.event.event._source.tags.push('archived');
+        row.event.event._source.tags.push("archived");
 
         // If in inbox, also remove it from view.
-        if (this.appService.getRoute() == '/inbox') {
+        if (this.appService.getRoute() == "/inbox") {
             this.removeRow(row);
         }
 
@@ -421,7 +511,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     focusFilterInput() {
-        document.getElementById('filter-input').focus();
+        document.getElementById("filter-input").focus();
     }
 
     /**
@@ -458,7 +548,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     submitFilter() {
         //this.appService.updateQueryParameters({q: this.queryString});
         this.appService.updateParams(this.route, {q: this.queryString});
-        document.getElementById('filter-input').blur();
+        document.getElementById("filter-input").blur();
         this.refresh();
     }
 
@@ -468,9 +558,10 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.alertService.pushState(this.buildState());
 
         this.eventService.pushAlertGroup(event);
-        this.router.navigate(['/event', event.event._id, {
+        this.router.navigate(["/event", event.event._id, {
             referer: this.appService.getRoute()
         }]);
+
     }
 
     rowClicked(row: any) {
@@ -478,7 +569,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     }
 
     clearFilter() {
-        this.queryString = '';
+        this.queryString = "";
         this.submitFilter();
     }
 
@@ -524,19 +615,19 @@ export class AlertsComponent implements OnInit, OnDestroy {
         let queryOptions: any = {
             mustHaveTags: [],
             mustNotHaveTags: [],
-            timeRange: '',
+            timeRange: "",
             queryString: this.queryString,
         };
 
         // Add filters depending on view.
         switch (this.appService.getRoute()) {
-            case '/inbox':
+            case "/inbox":
                 // Limit to non-archived events.
-                queryOptions.mustNotHaveTags.push('archived');
+                queryOptions.mustNotHaveTags.push("archived");
                 break;
-            case '/escalated':
+            case "/escalated":
                 // Limit to escalated events only, no time range applied.
-                queryOptions.mustHaveTags.push('escalated');
+                queryOptions.mustHaveTags.push("escalated");
                 break;
             default:
                 break;
@@ -546,7 +637,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
         // Set a time range on all but escalated.
         switch (this.appService.getRoute()) {
-            case '/escalated':
+            case "/escalated":
                 break;
             default:
                 //queryOptions.timeRange = this.topNavService.timeRange;
@@ -568,14 +659,14 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
             this.rows = [];
 
-            if (typeof error === 'object') {
+            if (typeof error === "object") {
                 if (error.message) {
                     this.toastr.error(error.message);
                     return;
                 }
             }
 
-            console.log('Error fetching alerts:');
+            console.log("Error fetching alerts:");
             console.log(error);
 
             // Check for a reason.
@@ -583,7 +674,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
                 this.toastr.error(error.error.root_cause[0].reason);
             }
             catch (err) {
-                this.toastr.error('An error occurred while executing query.');
+                this.toastr.error("An error occurred while executing query.");
             }
 
 
@@ -594,6 +685,44 @@ export class AlertsComponent implements OnInit, OnDestroy {
             }, 0);
             this.appService.resetIdleTime();
         });
+    }
+
+    // Event handler to show the dropdown menu for the active row.
+    openDropdownMenu() {
+        // Toggle.
+        const element = $("#row-" + this.activeRow + " .dropdown-toggle");
+        element.dropdown("toggle");
+
+        // Focus.
+        element.next().find("a:first").focus();
+    }
+
+    isArchived(row: any) {
+        if (row.event.event._source.tags) {
+            if (row.event.event._source.tags.indexOf("archived") > -1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    selectBySignatureId(row: any) {
+
+        let signatureId = row.event.event._source.alert.signature_id;
+
+        this.rows.forEach((row: any) => {
+            if (row.event.event._source.alert.signature_id === signatureId)
+                row.selected = true;
+        });
+
+    }
+
+    filterBySignatureId(row: any) {
+        let signatureId = row.event.event._source.alert.signature_id;
+        this.appService.updateParams(this.route, {
+            q: `alert.signature_id:${signatureId}`
+        });
+
     }
 
 }
