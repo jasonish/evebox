@@ -49,6 +49,18 @@ export interface AlertsState {
     scrollOffset: number;
 }
 
+function compare(a:any, b:any):any {
+    let c = {};
+
+    for (let key in b) {
+        if (a[key] != b[key]) {
+            c[key] = b[key];
+        }
+    }
+
+    return c;
+}
+
 @Component({
     templateUrl: "./alerts.component.html",
     animations: [
@@ -73,6 +85,8 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     sortBy: string = "timestamp";
     sortOrder: string = "desc";
 
+    private params:any;
+
     constructor(private alertService: AlertService,
                 private elasticSearchService: ElasticSearchService,
                 private router: Router,
@@ -93,7 +107,38 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.windowSize = this.settings.getInt(SETTING_ALERTS_PER_PAGE, 100);
 
         this.ss.subscribe(this, this.route.params, (params: any) => {
+
+            let doReload = !this.params;
+
+            if (this.params) {
+                let newParams = compare(this.params, params);
+                for (let key in newParams) {
+                    switch (key) {
+                        case "sortBy":
+                        case "sortOrder":
+                            break;
+                        default:
+                            doReload = true;
+                    }
+                }
+            }
+
+            if (params.sortBy) {
+                this.sortBy = params.sortBy;
+            }
+
+            if (params.sortOrder) {
+                this.sortOrder = params.sortOrder;
+            }
+
+            this.params = params;
+
+            if (!doReload) {
+                return;
+            }
+
             this.queryString = params.q || "";
+
             if (!this.restoreState()) {
                 this.refresh();
             }
@@ -280,6 +325,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     onSort(column: string) {
         console.log("Sorting by: " + column);
 
+
         if (column != this.sortBy) {
             this.sortBy = column;
             this.sortOrder = "desc";
@@ -293,6 +339,11 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             }
         }
 
+        this.appService.updateParams(this.route, {sortBy: this.sortBy, sortOrder: this.sortOrder});
+        this.sort();
+    }
+
+    sort() {
         switch (this.sortBy) {
             case "signature":
                 this.allRows.sort((a: any, b: any) => {
@@ -679,6 +730,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
 
         }).then(() => {
+            this.sort();
             this.activeRow = 0;
             setTimeout(() => {
                 this.loading = false;
