@@ -703,6 +703,8 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.offset = 0;
             this.rows = this.allRows.slice(this.offset, this.windowSize);
         }, (error: any) => {
+            console.log("error handler");
+
             if (error === false) {
                 console.log("Got error 'false', ignoring.");
                 return;
@@ -711,18 +713,15 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.rows = [];
 
             if (typeof error === "object") {
-                if (error.message) {
-                    this.toastr.error(error.message);
+                if (error.error.message) {
+                    this.toastr.error(error.error.message);
                     return;
                 }
             }
 
-            console.log("Error fetching alerts:");
-            console.log(error);
-
             // Check for a reason.
             try {
-                this.toastr.error(error.error.root_cause[0].reason);
+                this.toastr.error(error.message);
             }
             catch (err) {
                 this.toastr.error("An error occurred while executing query.");

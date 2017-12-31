@@ -29,12 +29,14 @@ import {Headers, Http, RequestOptionsArgs, Response} from '@angular/http';
 import {ToastrService} from './toastr.service';
 import {GITREV} from '../environments/gitrev';
 import {Router} from '@angular/router';
-
-import {Observable} from 'rxjs/Observable';
-import 'rxjs/add/operator/catch';
-import 'rxjs/add/operator/map';
 import {AppEventService, AppEventType} from './appevent.service';
 import {ConfigService} from './config.service';
+import {Observable} from "rxjs/Observable";
+
+import 'rxjs/add/observable/throw';
+import 'rxjs/add/operator/catch';
+import 'rxjs/add/operator/map';
+
 
 declare var localStorage: any;
 
@@ -187,7 +189,6 @@ export class ApiService {
     }
 
     get(path: string, options: RequestOptionsArgs = {}): Promise<any> {
-        console.log(options);
         return this.request("GET", path, options)
                 .map(res => res.json())
                 .toPromise();
