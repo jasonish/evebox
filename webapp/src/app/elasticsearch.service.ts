@@ -270,7 +270,7 @@ export class ElasticSearchService {
     return this.api.post('api/1/find-flow', params);
   }
 
-  newGetAlerts(options: any = {}): Promise<any> {
+  getAlerts(options: any = {}): Promise<any> {
 
     let tags: string[] = [];
 

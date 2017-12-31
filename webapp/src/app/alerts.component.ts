@@ -698,7 +698,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                 break;
         }
 
-        return this.elasticSearchService.newGetAlerts(queryOptions).then((rows: any) => {
+        return this.elasticSearchService.getAlerts(queryOptions).then((rows: any) => {
             this.allRows = rows;
             this.offset = 0;
             this.rows = this.allRows.slice(this.offset, this.windowSize);
