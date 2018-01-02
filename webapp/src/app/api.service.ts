@@ -29,13 +29,13 @@ import {Headers, Http, RequestOptionsArgs, Response} from "@angular/http";
 import {ToastrService} from "./toastr.service";
 import {GITREV} from "../environments/gitrev";
 import {Router} from "@angular/router";
-import {AppEventService, AppEventType} from "./appevent.service";
 import {ConfigService} from "./config.service";
 import {Observable} from "rxjs/Observable";
 
 import "rxjs/add/observable/throw";
 import "rxjs/add/operator/catch";
 import "rxjs/add/operator/map";
+import {BehaviorSubject} from "rxjs/BehaviorSubject";
 
 
 declare var localStorage: any;
@@ -55,11 +55,13 @@ export class ApiService {
 
     private sessionId: string;
 
+    public isAuthenticated$: BehaviorSubject<boolean> =
+        new BehaviorSubject<boolean>(this.authenticated);
+
     constructor(private http: Http,
                 private toastr: ToastrService,
                 private router: Router,
-                private configService: ConfigService,
-                private appEventService: AppEventService) {
+                private configService: ConfigService) {
         this.sessionId = localStorage.sessionId;
     }
 
@@ -107,13 +109,7 @@ export class ApiService {
 
     setAuthenticated(authenticated: boolean) {
         this.authenticated = authenticated;
-
-        this.appEventService.dispatch({
-            type: AppEventType.AUTHENTICATION_STATUS,
-            data: {
-                authenticated: this.authenticated,
-            }
-        });
+        this.isAuthenticated$.next(this.authenticated);
 
         if (!authenticated) {
             this.router.navigate(["/login"]);

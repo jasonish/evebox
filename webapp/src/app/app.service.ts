@@ -24,17 +24,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {EventEmitter, Injectable} from '@angular/core';
-import {ActivatedRoute, Params, Router} from '@angular/router';
-import {MousetrapService} from './mousetrap.service';
-import {ApiService} from './api.service';
-import {ConfigService} from './config.service';
-import {AppEventService, AppEventType} from './appevent.service';
+import {EventEmitter, Injectable} from "@angular/core";
+import {ActivatedRoute, Params, Router} from "@angular/router";
+import {MousetrapService} from "./mousetrap.service";
 
-declare var localStorage: any;
-
-export let FEATURE_REPORTING = 'reporting';
-export let FEATURE_COMMENTS = 'comments';
+export let FEATURE_REPORTING = "reporting";
+export let FEATURE_COMMENTS = "comments";
 
 export enum AppEventCode {
     SHOW_HELP = 0,
@@ -58,10 +53,7 @@ export class AppService {
 
     constructor(private router: Router,
                 private route: ActivatedRoute,
-                private mousetrap: MousetrapService,
-                private api: ApiService,
-                private configService: ConfigService,
-                private appEventService: AppEventService) {
+                private mousetrap: MousetrapService) {
 
         mousetrap.bindAny(this, () => {
             this.resetIdleTime();
@@ -86,12 +78,12 @@ export class AppService {
     }
 
     enableTimeRange() {
-        console.log('Enabling time range.');
+        console.log("Enabling time range.");
         this.timeRangeDisabled = false;
     }
 
     disableTimeRange() {
-        console.log('Disabling time range.');
+        console.log("Disabling time range.");
         this.timeRangeDisabled = true;
     }
 
@@ -110,7 +102,7 @@ export class AppService {
 
         // Return the route with a leading / as that is what is expected right
         // now.
-        return '/' + route;
+        return "/" + route;
     }
 
     updateQueryParameters(params: any) {

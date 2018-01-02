@@ -26,17 +26,15 @@
 
 import {Component, OnInit} from "@angular/core";
 import {AppService} from "./app.service";
-import {AppEvent, AppEventService, AppEventType} from "./appevent.service";
 import {ApiService} from "./api.service";
 
-declare var document: any;
 declare var window: any;
 
 @Component({
     selector: "app-root",
     template: `
-      <evebox-help *ngIf="isAuthenticated"></evebox-help>
-      <evebox-top-nav *ngIf="isAuthenticated"></evebox-top-nav>
+      <evebox-help *ngIf="api.isAuthenticated$ | async"></evebox-help>
+      <evebox-top-nav *ngIf="api.isAuthenticated$ | async"></evebox-top-nav>
       <br/>
       <div class="container-fluid">
         <router-outlet></router-outlet>
@@ -45,24 +43,11 @@ declare var window: any;
 })
 export class AppComponent implements OnInit {
 
-    isAuthenticated: boolean = false;
-
     constructor(private appService: AppService,
-                private api: ApiService,
-                private appEventService: AppEventService) {
-        this.isAuthenticated = this.api.isAuthenticated();
+                public api: ApiService) {
     }
 
     ngOnInit() {
-        this.appEventService.subscribe((event: AppEvent) => {
-            console.log("AppComponent: got event:");
-            console.log(event);
-            if (event.type == AppEventType.AUTHENTICATION_STATUS) {
-                this.isAuthenticated = event.data.authenticated;
-                console.log(`AppComponent.isAuthenticated: ${this.isAuthenticated}`);
-            }
-        });
-
         window.addEventListener("click", () => {
             this.appService.resetIdleTime();
         }, true);
