@@ -24,18 +24,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
-import {Headers, Http, RequestOptionsArgs, Response} from '@angular/http';
-import {ToastrService} from './toastr.service';
-import {GITREV} from '../environments/gitrev';
-import {Router} from '@angular/router';
-import {AppEventService, AppEventType} from './appevent.service';
-import {ConfigService} from './config.service';
+import {Injectable} from "@angular/core";
+import {Headers, Http, RequestOptionsArgs, Response} from "@angular/http";
+import {ToastrService} from "./toastr.service";
+import {GITREV} from "../environments/gitrev";
+import {Router} from "@angular/router";
+import {AppEventService, AppEventType} from "./appevent.service";
+import {ConfigService} from "./config.service";
 import {Observable} from "rxjs/Observable";
 
-import 'rxjs/add/observable/throw';
-import 'rxjs/add/operator/catch';
-import 'rxjs/add/operator/map';
+import "rxjs/add/observable/throw";
+import "rxjs/add/operator/catch";
+import "rxjs/add/operator/map";
 
 
 declare var localStorage: any;
@@ -81,18 +81,18 @@ export class ApiService {
             return;
         }
         let webappRev: string = GITREV;
-        let serverRev: string = response.headers.get('x-evebox-git-revision');
+        let serverRev: string = response.headers.get("x-evebox-git-revision");
         if (webappRev !== serverRev) {
             console.log(`Server version: ${serverRev}; webapp version: ${webappRev}`);
             this.toastr.warning(
-                    `The EveBox server has been updated.
+                `The EveBox server has been updated.
              Please reload</a>.
              <br><a href="javascript:window.location.reload()"
              class="btn btn-primary btn-block">Reload Now</a>`, {
-                        closeButton: true,
-                        timeOut: 0,
-                        extendedTimeOut: 0,
-                    });
+                    closeButton: true,
+                    timeOut: 0,
+                    extendedTimeOut: 0,
+                });
             this.versionWarned = true;
         }
     }
@@ -100,7 +100,7 @@ export class ApiService {
     applySessionHeader(options: RequestOptionsArgs) {
         if (this.sessionId) {
             let headers = options.headers || new Headers();
-            headers.append('x-evebox-session-id', this.sessionId);
+            headers.append("x-evebox-session-id", this.sessionId);
             options.headers = headers;
         }
     }
@@ -116,7 +116,7 @@ export class ApiService {
         });
 
         if (!authenticated) {
-            this.router.navigate(['/login']);
+            this.router.navigate(["/login"]);
         }
     }
 
@@ -133,7 +133,7 @@ export class ApiService {
     }
 
     buildUrl(path: string): string {
-        let url = `${this.baseUrl}${path.replace(/^\//, '')}`;
+        let url = `${this.baseUrl}${path.replace(/^\//, "")}`;
         return url;
     }
 
@@ -141,74 +141,74 @@ export class ApiService {
      * Low level options request, just fixup the URL.
      */
     _options(path: string, options: RequestOptionsArgs = {}) {
-        return this.http.options(this.buildUrl(path), options)
+        return this.http.options(this.buildUrl(path), options);
     }
 
     request(method: string, path: string, options: RequestOptionsArgs = {}) {
-        let url = `${this.baseUrl}${path.replace(/^\//, '')}`;
+        let url = `${this.baseUrl}${path.replace(/^\//, "")}`;
         options.method = method;
         this.applySessionHeader(options);
         return this.http.request(url, options)
-                .map((res: Response) => {
-                    this.updateSessionId(res);
-                    this.checkVersion(res);
-                    return res;
-                })
-                .catch((err: any) => {
-                    if (err.status === 401) {
-                        this.handle401(err);
-                    }
+            .map((res: Response) => {
+                this.updateSessionId(res);
+                this.checkVersion(res);
+                return res;
+            })
+            .catch((err: any) => {
+                if (err.status === 401) {
+                    this.handle401(err);
+                }
 
-                    // Attempt to map the error to json.
-                    try {
-                        return Observable.throw(err.json())
-                    }
-                    catch (e) {
-                        return Observable.throw(err);
-                    }
-                });
+                // Attempt to map the error to json.
+                try {
+                    return Observable.throw(err.json());
+                }
+                catch (e) {
+                    return Observable.throw(err);
+                }
+            });
     }
 
     post(path: string, body: any, options: RequestOptionsArgs = {}) {
         options.body = JSON.stringify(body);
         return this.request("POST", path, options)
-                .map((res: Response) => res.json())
-                .toPromise();
+            .map((res: Response) => res.json())
+            .toPromise();
     }
 
     postForm(path: string, form: URLSearchParams, options: RequestOptionsArgs = {}) {
         options.body = form.toString();
         this.applySessionHeader(options);
         let headers = options.headers || new Headers();
-        headers.append('Content-Type',
-                'application/x-www-form-urlencoded');
+        headers.append("Content-Type",
+            "application/x-www-form-urlencoded");
         options.headers = headers;
         return this.request("POST", path, options)
-                .map((res: Response) => res.json())
-                .toPromise();
+            .map((res: Response) => res.json())
+            .toPromise();
     }
 
     get(path: string, options: RequestOptionsArgs = {}): Promise<any> {
         return this.request("GET", path, options)
-                .map(res => res.json())
-                .toPromise();
+            .map(res => res.json())
+            .toPromise();
     }
 
     updateConfig() {
         return this.get("/api/1/config")
-                .then((config) => {
-                    this.configService.setConfig(config);
-                    return config;
-                })
+            .then((config) => {
+                this.configService.setConfig(config);
+                return config;
+            });
     }
 
     checkAuth() {
         return this.updateConfig()
-                .then(config => {
-                    this.setAuthenticated(true);
-                    return true;
-                })
-                .catch(() => false);
+            .then(config => {
+                this.setAuthenticated(true);
+                return true;
+            })
+            .catch(() => false);
     }
 
     login(username: string = "", password: string = "") {
@@ -216,24 +216,24 @@ export class ApiService {
         params.set("username", username);
         params.set("password", password);
         return this.postForm("/api/1/login", params)
-                .then((response: any) => {
-                    this.setSessionId(response.session_id);
-                    return this.updateConfig()
-                            .then(() => {
-                                this.setSessionId(response.session_id);
-                                this.setAuthenticated(true);
-                                return true;
-                            });
-                });
+            .then((response: any) => {
+                this.setSessionId(response.session_id);
+                return this.updateConfig()
+                    .then(() => {
+                        this.setSessionId(response.session_id);
+                        this.setAuthenticated(true);
+                        return true;
+                    });
+            });
     }
 
     logout() {
         return this.get("/api/1/logout")
-                .catch(() => {
-                })
-                .then(() => {
-                    this.setAuthenticated(false)
-                });
+            .catch(() => {
+            })
+            .then(() => {
+                this.setAuthenticated(false);
+            });
     }
 
     getWithParams(path: string, params = {}): Promise<any> {
@@ -244,29 +244,29 @@ export class ApiService {
             qsb.push(`${param}=${params[param]}`);
         }
 
-        return this.get(`${path}?${qsb.join('&')}`);
+        return this.get(`${path}?${qsb.join("&")}`);
     }
 
     getVersion() {
-        return this.get('api/1/version');
+        return this.get("api/1/version");
     }
 
     eventToPcap(what: any, event: any) {
 
-        let form = <HTMLFormElement>document.createElement('form');
-        form.setAttribute('method', 'post');
-        form.setAttribute('action', 'api/1/eve2pcap');
+        let form = <HTMLFormElement>document.createElement("form");
+        form.setAttribute("method", "post");
+        form.setAttribute("action", "api/1/eve2pcap");
 
-        let whatField = <HTMLElement>document.createElement('input');
-        whatField.setAttribute('type', 'hidden');
-        whatField.setAttribute('name', 'what');
-        whatField.setAttribute('value', what);
+        let whatField = <HTMLElement>document.createElement("input");
+        whatField.setAttribute("type", "hidden");
+        whatField.setAttribute("name", "what");
+        whatField.setAttribute("value", what);
         form.appendChild(whatField);
 
-        let eventField = <HTMLElement>document.createElement('input');
-        eventField.setAttribute('type', 'hidden');
-        eventField.setAttribute('name', 'event');
-        eventField.setAttribute('value', JSON.stringify(event));
+        let eventField = <HTMLElement>document.createElement("input");
+        eventField.setAttribute("type", "hidden");
+        eventField.setAttribute("name", "event");
+        eventField.setAttribute("value", JSON.stringify(event));
         form.appendChild(eventField);
 
         document.body.appendChild(form);
@@ -304,7 +304,7 @@ export class ApiService {
             query.push(`eventType=${options.eventType}`);
         }
 
-        return this.get(`api/1/report/histogram?${query.join('&')}`);
+        return this.get(`api/1/report/histogram?${query.join("&")}`);
     }
 
     reportAgg(agg: string, options: ReportAggOptions = {}) {
@@ -315,7 +315,7 @@ export class ApiService {
 
         for (let option in options) {
             switch (option) {
-                case 'timeRange':
+                case "timeRange":
                     if (options[option] > 0) {
                         qsb.push(`timeRange=${options[option]}s`);
                     }
@@ -326,7 +326,7 @@ export class ApiService {
             }
         }
 
-        return this.get(`api/1/report/agg?${qsb.join('&')}`);
+        return this.get(`api/1/report/agg?${qsb.join("&")}`);
     }
 
     commentOnEvent(eventId: string, comment: string) {
@@ -352,7 +352,7 @@ export class ApiService {
         return this.post(`api/1/alert-group/comment`, {
             "alert_group": request,
             "comment": comment,
-        })
+        });
     }
 
 }
