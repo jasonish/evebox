@@ -24,24 +24,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit} from '@angular/core';
-import {AppService} from './app.service';
-import {AppEvent, AppEventService, AppEventType} from './appevent.service';
-import {ApiService} from './api.service';
+import {Component, OnInit} from "@angular/core";
+import {AppService} from "./app.service";
+import {AppEvent, AppEventService, AppEventType} from "./appevent.service";
+import {ApiService} from "./api.service";
 
 declare var document: any;
 declare var window: any;
 
 @Component({
-    selector: 'app-root',
+    selector: "app-root",
     template: `
-<evebox-help *ngIf="isAuthenticated"></evebox-help>
-<evebox-top-nav *ngIf="isAuthenticated"></evebox-top-nav>
-<br/>
-<div class="container-fluid">
-<router-outlet></router-outlet>
-</div>
-`,
+      <evebox-help *ngIf="isAuthenticated"></evebox-help>
+      <evebox-top-nav *ngIf="isAuthenticated"></evebox-top-nav>
+      <br/>
+      <div class="container-fluid">
+        <router-outlet></router-outlet>
+      </div>
+    `,
 })
 export class AppComponent implements OnInit {
 
@@ -63,7 +63,7 @@ export class AppComponent implements OnInit {
             }
         });
 
-        window.addEventListener('click', () => {
+        window.addEventListener("click", () => {
             this.appService.resetIdleTime();
         }, true);
     }
