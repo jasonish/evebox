@@ -69,7 +69,8 @@
            aria-expanded="false">
           <i class="fa fa-gear"></i>
         </a>
-        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="toolDropdown">
+        <div class="dropdown-menu dropdown-menu-right"
+             aria-labelledby="toolDropdown">
           <a class="dropdown-item" href="#/settings">
             Settings
           </a>
@@ -81,7 +82,9 @@
     </ul>
 
     <!-- TODO Using button here as it looks better than a bade. -->
-    <button type="button" class="btn btn-secondary">{{elasticSearchService.jobSize()}}</button>
+    <button type="button" class="btn btn-secondary">
+      {{elasticSearchService.jobCount$ | async}}
+    </button>
 
   </div>
 
