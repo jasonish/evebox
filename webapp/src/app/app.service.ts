@@ -25,7 +25,7 @@
  */
 
 import {EventEmitter, Injectable} from "@angular/core";
-import {ActivatedRoute, Params, Router} from "@angular/router";
+import {ActivatedRoute, Router} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 
 export let FEATURE_REPORTING = "reporting";
@@ -103,21 +103,6 @@ export class AppService {
         // Return the route with a leading / as that is what is expected right
         // now.
         return "/" + route;
-    }
-
-    updateQueryParameters(params: any) {
-        let oldParams: Params = this.route.snapshot.queryParams;
-        let newParams: Params = {};
-
-        Object.keys(oldParams).forEach((key: any) => {
-            newParams[key] = oldParams[key];
-        });
-
-        Object.keys(params).forEach((key: any) => {
-            newParams[key] = params[key];
-        });
-
-        this.router.navigate([this.getRoute()], {queryParams: newParams});
     }
 
     updateParams(activatedRoute: ActivatedRoute, params: any = {}, queryParams: any = {}) {

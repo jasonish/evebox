@@ -27,20 +27,20 @@
 import {
     Component, OnInit, OnDestroy, OnChanges,
     AfterViewChecked
-} from '@angular/core';
-import {ElasticSearchService} from './elasticsearch.service';
-import {Router, ActivatedRoute} from '@angular/router';
-import {MousetrapService} from './mousetrap.service';
-import {TopNavService} from './topnav.service';
-import {AppService, AppEventCode, FEATURE_REPORTING} from './app.service';
-import {Subscription} from 'rxjs/Subscription';
-import {ConfigService} from './config.service';
-import {ApiService} from './api.service';
+} from "@angular/core";
+import {ElasticSearchService} from "./elasticsearch.service";
+import {Router, ActivatedRoute, NavigationEnd} from "@angular/router";
+import {MousetrapService} from "./mousetrap.service";
+import {TopNavService} from "./topnav.service";
+import {AppService, AppEventCode, FEATURE_REPORTING} from "./app.service";
+import {Subscription} from "rxjs/Subscription";
+import {ConfigService} from "./config.service";
+import {ApiService} from "./api.service";
 
 declare var $: any;
 
 @Component({
-    selector: 'evebox-top-nav',
+    selector: "evebox-top-nav",
     templateUrl: "topnav.component.html",
 })
 export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
@@ -63,39 +63,44 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         console.log("TopNavService.ngOnInit");
 
         if (this.configService.hasFeature(FEATURE_REPORTING)) {
-            this.features['reporting'] = true;
+            this.features["reporting"] = true;
         }
 
-        this.mousetrap.bind(this, 'g i', () => {
-            this.gotoRoute('/inbox');
+        this.mousetrap.bind(this, "g i", () => {
+            this.gotoRoute("/inbox");
         });
-        this.mousetrap.bind(this, 'g x', () => {
-            this.gotoRoute('/escalated');
+        this.mousetrap.bind(this, "g x", () => {
+            this.gotoRoute("/escalated");
         });
-        this.mousetrap.bind(this, 'g a', () => {
-            this.gotoRoute('/alerts');
+        this.mousetrap.bind(this, "g a", () => {
+            this.gotoRoute("/alerts");
         });
-        this.mousetrap.bind(this, 'g e', () => {
-            this.gotoRoute('/events');
+        this.mousetrap.bind(this, "g e", () => {
+            this.gotoRoute("/events");
         });
-        this.mousetrap.bind(this, '?', () => {
+        this.mousetrap.bind(this, "?", () => {
             this.showHelp();
         });
 
         // Re-enable the time picker after each route change.
         this.routerSub = this.router.events.subscribe((event) => {
-
-            switch (this.appService.getRoute()) {
-                case '/escalated':
-                case '/event':
-                    this.appService.disableTimeRange();
-                    break;
-                default:
-                    this.appService.enableTimeRange();
-                    break;
+            if (event instanceof NavigationEnd) {
+                this.toggleTimeRange();
             }
-
         });
+        this.toggleTimeRange();
+    }
+
+    private toggleTimeRange() {
+        switch (this.appService.getRoute()) {
+            case "/escalated":
+            case "/event":
+                this.appService.disableTimeRange();
+                break;
+            default:
+                this.appService.enableTimeRange();
+                break;
+        }
     }
 
     ngOnDestroy(): any {
@@ -104,16 +109,14 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     ngAfterViewChecked() {
-        //$('.dropdown-toggle').dropdown();
-
         // This makes the navbar collapse when a link is clicked. Only applies
         // when the viewport is narrow enough to make it collapse.
-        $('#evebox-topnav-collapse-1 a:not(.no-collapse)').on('click', (e: any) => {
+        $("#evebox-topnav-collapse-1 a:not(.no-collapse)").on("click", (e: any) => {
             var clickover = $(e.target);
             var $navbar = $(".navbar-collapse");
             var _opened = $navbar.hasClass("in");
             if (_opened === true && !clickover.hasClass("navbar-toggle")) {
-                $navbar.collapse('hide');
+                $navbar.collapse("hide");
             }
         });
 
@@ -142,6 +145,6 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     logout() {
-        this.api.logout()
+        this.api.logout();
     }
 }

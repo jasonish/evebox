@@ -1,0 +1,36 @@
+<div class="card">
+  <div class="card-body">
+    <button type="button" class="btn btn-secondary"
+            (click)="checkAuthentication()">Check Authentication
+    </button>
+  </div>
+</div>
+
+<br/>
+
+<div class="card">
+  <div class="card-body">
+    <div class="row">
+      <div class="col">
+        <input style="width: 100%;" type="text" placeholder="Username..."
+               [(ngModel)]="loginModel.username">
+      </div>
+      <div class="col">
+        <input style="width: 100%;" type="text" placeholder="Password"
+               [(ngModel)]="loginModel.password">
+      </div>
+      <div class="col">
+        <button type="button" class="btn btn-secondary btn-block"
+                (click)="login()">Login
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<br/>
+
+<div class="card">
+  <button type="button" class="btn btn-secondary" (click)="logout()">Logout
+  </button>
+</div>

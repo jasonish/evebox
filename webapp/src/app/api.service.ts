@@ -36,7 +36,8 @@ import "rxjs/add/observable/throw";
 import "rxjs/add/operator/catch";
 import "rxjs/add/operator/map";
 import {BehaviorSubject} from "rxjs/BehaviorSubject";
-
+import {ClientService, LoginResponse} from "./client.service";
+import {finalize} from "rxjs/operators";
 
 declare var localStorage: any;
 
@@ -47,35 +48,28 @@ declare var localStorage: any;
 @Injectable()
 export class ApiService {
 
-    private baseUrl: string = window.location.pathname;
-
     private authenticated = false;
 
     private versionWarned = false;
 
     private sessionId: string;
 
-    public isAuthenticated$: BehaviorSubject<boolean> =
-        new BehaviorSubject<boolean>(this.authenticated);
-
     constructor(private http: Http,
+                private client: ClientService,
                 private toastr: ToastrService,
                 private router: Router,
                 private configService: ConfigService) {
         this.sessionId = localStorage.sessionId;
     }
 
-    getBaseUrl(): string {
-        return this.baseUrl;
-    }
-
     isAuthenticated(): boolean {
         return this.authenticated;
     }
 
-    setSessionId(sessionId: string) {
+    setSessionId(sessionId: string | null) {
         this.sessionId = sessionId;
         localStorage.sessionId = sessionId;
+        this.client.setSessionId(sessionId);
     }
 
     checkVersion(response: Response) {
@@ -109,9 +103,9 @@ export class ApiService {
 
     setAuthenticated(authenticated: boolean) {
         this.authenticated = authenticated;
-        this.isAuthenticated$.next(this.authenticated);
-
+        this.client.setAuthenticated(authenticated);
         if (!authenticated) {
+            this.setSessionId(null);
             this.router.navigate(["/login"]);
         }
     }
@@ -128,23 +122,17 @@ export class ApiService {
         this.setAuthenticated(false);
     }
 
-    buildUrl(path: string): string {
-        let url = `${this.baseUrl}${path.replace(/^\//, "")}`;
-        return url;
-    }
-
     /**
      * Low level options request, just fixup the URL.
      */
-    _options(path: string, options: RequestOptionsArgs = {}) {
-        return this.http.options(this.buildUrl(path), options);
+    _options(path: string) {
+        return this.http.options(this.client.buildUrl(path));
     }
 
     request(method: string, path: string, options: RequestOptionsArgs = {}) {
-        let url = `${this.baseUrl}${path.replace(/^\//, "")}`;
         options.method = method;
         this.applySessionHeader(options);
-        return this.http.request(url, options)
+        return this.http.request(this.client.buildUrl(path), options)
             .map((res: Response) => {
                 this.updateSessionId(res);
                 this.checkVersion(res);
@@ -202,34 +190,30 @@ export class ApiService {
         return this.updateConfig()
             .then(config => {
                 this.setAuthenticated(true);
+                this.client.setAuthenticated(true);
                 return true;
             })
             .catch(() => false);
     }
 
-    login(username: string = "", password: string = "") {
-        let params = new URLSearchParams();
-        params.set("username", username);
-        params.set("password", password);
-        return this.postForm("/api/1/login", params)
-            .then((response: any) => {
+    login(username: string = "", password: string = ""): Promise<boolean> {
+        return this.client.login(username, password).toPromise()
+            .then((response: LoginResponse) => {
                 this.setSessionId(response.session_id);
+                this.setAuthenticated(true);
                 return this.updateConfig()
                     .then(() => {
-                        this.setSessionId(response.session_id);
-                        this.setAuthenticated(true);
                         return true;
                     });
             });
     }
 
     logout() {
-        return this.get("/api/1/logout")
-            .catch(() => {
-            })
-            .then(() => {
+        return this.client.logout().pipe(
+            finalize(() => {
                 this.setAuthenticated(false);
-            });
+            })
+        ).toPromise();
     }
 
     getWithParams(path: string, params = {}): Promise<any> {

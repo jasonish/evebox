@@ -85,6 +85,9 @@ import {ThemeService} from "./shared/theme.service";
 import {SettingsService} from "./settings.service";
 import {EveboxPrintablePipe} from "./pipes/printable.pipe";
 import {RuleHighlightPipe} from "./pipes/rule-highlight.pipe";
+import {HttpClientModule} from "@angular/common/http";
+import { DebugComponent } from './debug/debug.component';
+import {ClientService} from "./client.service";
 
 @NgModule({
     declarations: [
@@ -136,6 +139,7 @@ import {RuleHighlightPipe} from "./pipes/rule-highlight.pipe";
 
         SettingsComponent,
         EveboxCommentInput,
+        DebugComponent,
     ],
     imports: [
         // Angular modules.
@@ -144,28 +148,30 @@ import {RuleHighlightPipe} from "./pipes/rule-highlight.pipe";
         HttpModule,
         RouterModule,
         BrowserAnimationsModule,
+        HttpClientModule,
 
         // Evebox modules.
         routing,
     ],
     providers: [
-        ConfigService,
-        ElasticSearchService,
-        MousetrapService,
-        TopNavService,
         AlertService,
         AppService,
         ApiService,
+        AuthGuard,
+        ConfigService,
+        ClientService,
+        ConfigResolver,
+        ElasticSearchService,
         EventServices,
         EventService,
-        ToastrService,
-        ReportsService,
         EveboxSubscriptionService,
         EveboxFormatIpAddressPipe,
-        ThemeService,
+        MousetrapService,
+        ReportsService,
         SettingsService,
-        AuthGuard,
-        ConfigResolver,
+        TopNavService,
+        ToastrService,
+        ThemeService,
     ],
     bootstrap: [AppComponent]
 })

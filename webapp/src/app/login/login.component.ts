@@ -24,112 +24,111 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {AfterViewInit, Component, OnInit} from '@angular/core';
-import {ActivatedRoute, Router} from '@angular/router';
-import {ApiService} from '../api.service';
-import {Http} from '@angular/http';
-import {URLSearchParams} from '@angular/http';
+import {AfterViewInit, Component, OnInit} from "@angular/core";
+import {ActivatedRoute, Router} from "@angular/router";
+import {ApiService} from "../api.service";
+import {Http} from "@angular/http";
+import {URLSearchParams} from "@angular/http";
+import {ClientService} from "../client.service";
 
 declare var window: any;
 
 @Component({
-  templateUrl: "login.component.html",
+    templateUrl: "login.component.html",
 })
 export class LoginComponent implements OnInit, AfterViewInit {
 
-  model: any = {
-    username: "",
-    password: "",
-  };
+    model: any = {
+        username: "",
+        password: "",
+    };
 
-  username = false;
-  password = false;
-  github = false;
+    username = false;
+    password = false;
+    github = false;
 
-  error: string;
+    error: string;
 
-  loginMessage: string;
+    loginMessage: string;
 
-  constructor(private api: ApiService,
-              private router: Router,
-              private route: ActivatedRoute,
-              private http: Http) {
-  }
-
-  ngOnInit() {
-
-    if (this.route.snapshot.params["error"]) {
-      this.error = this.route.snapshot.params["error"];
+    constructor(private api: ApiService,
+                private router: Router,
+                private route: ActivatedRoute,
+                private client: ClientService) {
     }
 
-    console.log(this.route.snapshot.params)
+    ngOnInit() {
 
-
-
-    // Get the login types.
-    this.api._options("/api/1/login")
-      .map(res => res.json())
-      .toPromise()
-      .then((options) => {
-        console.log("Login options:");
-        console.log(options);
-        if (options.authentication.required) {
-          for (let authType of options.authentication.types) {
-            switch (authType) {
-              case "username":
-                this.username = true;
-                break;
-              case "usernamepassword":
-                this.username = true;
-                this.password = true;
-                break;
-              case "github":
-                this.github = true;
-                break;
-            }
-          }
+        if (this.route.snapshot.params["error"]) {
+            this.error = this.route.snapshot.params["error"];
         }
-        if (options.login_message) {
-          this.loginMessage = options.login_message;
-        }
-      });
 
-    this.focus();
-  }
+        console.log(this.route.snapshot.params);
 
-  ngAfterViewInit() {
-    this.focus();
-  }
+        // Get the login types.
+        this.api._options("/api/1/login")
+            .map(res => res.json())
+            .toPromise()
+            .then((options) => {
+                console.log("Login options:");
+                console.log(options);
+                if (options.authentication.required) {
+                    for (let authType of options.authentication.types) {
+                        switch (authType) {
+                            case "username":
+                                this.username = true;
+                                break;
+                            case "usernamepassword":
+                                this.username = true;
+                                this.password = true;
+                                break;
+                            case "github":
+                                this.github = true;
+                                break;
+                        }
+                    }
+                }
+                if (options.login_message) {
+                    this.loginMessage = options.login_message;
+                }
+            });
 
-  focus() {
-    let em = document.getElementById("username");
-    if (em) {
-      em.focus();
-      document.execCommand("selectall", null, false);
+        this.focus();
     }
-  }
 
-  login() {
-    this.api.login(this.model.username, this.model.password)
-      .then(() => {
-        this.router.navigate(['/']);
-      })
-      .catch(error => {
-        if (error.status === 401) {
-          this.error = "Login failed";
-        }
-        else {
-          this.error = "Login failed: " + JSON.stringify(error);
-        }
-      })
-  }
+    ngAfterViewInit() {
+        this.focus();
+    }
 
-  loginGithub() {
-    let params = new URLSearchParams();
-    params.set("fail-redirect", `${this.api.getBaseUrl()}/#/login`);
-    params.set("success-redirect", this.api.getBaseUrl());
-    this.api.get("/auth/github", {search: params}).then((response) => {
-      window.location = response.redirect;
-    })
-  }
+    focus() {
+        let em = document.getElementById("username");
+        if (em) {
+            em.focus();
+            document.execCommand("selectall", null, false);
+        }
+    }
+
+    login() {
+        this.api.login(this.model.username, this.model.password)
+            .then(() => {
+                this.router.navigate(["/"]);
+            })
+            .catch(error => {
+                if (error.status === 401) {
+                    this.error = "Login failed";
+                }
+                else {
+                    this.error = "Login failed: " + JSON.stringify(error);
+                }
+            });
+    }
+
+    loginGithub() {
+        let params = new URLSearchParams();
+        params.set("fail-redirect", `${this.client.baseUrl}/#/login`);
+        params.set("success-redirect", this.client.baseUrl);
+        this.api.get("/auth/github", {search: params}).then((response) => {
+            window.location = response.redirect;
+        });
+    }
 }

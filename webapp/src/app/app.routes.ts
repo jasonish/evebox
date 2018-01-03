@@ -24,21 +24,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {CanActivate, RouterModule, Routes} from '@angular/router';
-import {EventsComponent} from './events.component';
-import {EventComponent} from './event.component';
-import {AlertsComponent} from './alerts.component';
-import {AlertReportComponent} from './reports/alerts-report.component';
-import {DNSReportComponent} from './reports/dns-report.component';
-import {FlowReportComponent} from './reports/flow-report.component';
-import {NetflowReportComponent} from './reports/netflow-report.component';
-import {Injectable, ModuleWithProviders} from '@angular/core';
-import {IpReportComponent} from './reports/ip-report/ip-report.component';
-import {SshReportComponent} from './reports/ssh-report.component';
-import {LoginComponent} from './login/login.component';
-import {ConfigService} from './config.service';
-import {ApiService} from 'app/api.service';
-import {SettingsComponent} from './settings/settings.component';
+import {CanActivate, RouterModule, Routes} from "@angular/router";
+import {EventsComponent} from "./events.component";
+import {EventComponent} from "./event.component";
+import {AlertsComponent} from "./alerts.component";
+import {AlertReportComponent} from "./reports/alerts-report.component";
+import {DNSReportComponent} from "./reports/dns-report.component";
+import {FlowReportComponent} from "./reports/flow-report.component";
+import {NetflowReportComponent} from "./reports/netflow-report.component";
+import {Injectable, ModuleWithProviders} from "@angular/core";
+import {IpReportComponent} from "./reports/ip-report/ip-report.component";
+import {SshReportComponent} from "./reports/ssh-report.component";
+import {LoginComponent} from "./login/login.component";
+import {ConfigService} from "./config.service";
+import {ApiService} from "app/api.service";
+import {SettingsComponent} from "./settings/settings.component";
+import {DebugComponent} from "./debug/debug.component";
 
 declare var window: any;
 
@@ -69,74 +70,79 @@ export class ConfigResolver implements CanActivate {
         }
 
         return this.api.get("/api/1/config")
-                .then((config) => {
-                    console.log(config);
-                    this.configService.setConfig(config);
-                    return true;
-                })
-                .catch(() => {
-                    return false;
-                });
+            .then((config) => {
+                console.log(config);
+                this.configService.setConfig(config);
+                return true;
+            })
+            .catch(() => {
+                return false;
+            });
     }
 }
 
 const routes: Routes = [
 
     {
-        path: 'login',
-        pathMatch: 'prefix',
+        path: "login",
+        pathMatch: "prefix",
         component: LoginComponent,
     },
     {
-        path: '',
-        pathMatch: 'prefix',
+        path: "debug",
+        pathMatch: "prefix",
+        component: DebugComponent,
+    },
+    {
+        path: "",
+        pathMatch: "prefix",
         canActivate: [AuthGuard],
         children: [
             {
-                path: '',
-                redirectTo: 'inbox',
-                pathMatch: 'prefix',
+                path: "",
+                redirectTo: "inbox",
+                pathMatch: "prefix",
             },
             {
-                path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
+                path: "inbox", component: AlertsComponent, pathMatch: "prefix",
             },
             {
-                path: 'inbox', component: AlertsComponent, pathMatch: 'prefix',
+                path: "inbox", component: AlertsComponent, pathMatch: "prefix",
             }
             ,
             {
-                path: 'escalated',
+                path: "escalated",
                 component: AlertsComponent,
-                pathMatch: 'prefix',
+                pathMatch: "prefix",
             }
             ,
             {
-                path: 'alerts', component: AlertsComponent, pathMatch: 'prefix',
+                path: "alerts", component: AlertsComponent, pathMatch: "prefix",
             }
             ,
             {
-                path: 'event/:id',
+                path: "event/:id",
                 component: EventComponent,
-                pathMatch: 'prefix',
+                pathMatch: "prefix",
             }
             ,
             {
-                path: 'events', component: EventsComponent, pathMatch: 'prefix',
+                path: "events", component: EventsComponent, pathMatch: "prefix",
             }
             ,
-            {path: 'reports/alerts', component: AlertReportComponent},
-            {path: 'reports/dns', component: DNSReportComponent},
-            {path: 'reports/flow', component: FlowReportComponent},
-            {path: 'reports/netflow', component: NetflowReportComponent},
-            {path: 'reports/ssh', component: SshReportComponent},
+            {path: "reports/alerts", component: AlertReportComponent},
+            {path: "reports/dns", component: DNSReportComponent},
+            {path: "reports/flow", component: FlowReportComponent},
+            {path: "reports/netflow", component: NetflowReportComponent},
+            {path: "reports/ssh", component: SshReportComponent},
             {
-                path: 'reports/ip',
+                path: "reports/ip",
                 component: IpReportComponent,
-                pathMatch: 'prefix',
+                pathMatch: "prefix",
             },
 
             {
-                path: 'settings', component: SettingsComponent,
+                path: "settings", component: SettingsComponent,
             }
         ]
     },

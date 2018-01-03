@@ -26,15 +26,15 @@
 
 import {Component, OnInit} from "@angular/core";
 import {AppService} from "./app.service";
-import {ApiService} from "./api.service";
+import {ClientService} from "./client.service";
 
-declare var window: any;
+declare var window: Window;
 
 @Component({
     selector: "app-root",
     template: `
-      <evebox-help *ngIf="api.isAuthenticated$ | async"></evebox-help>
-      <evebox-top-nav *ngIf="api.isAuthenticated$ | async"></evebox-top-nav>
+      <evebox-help *ngIf="client.isAuthenticated$ | async"></evebox-help>
+      <evebox-top-nav *ngIf="client.isAuthenticated$ | async"></evebox-top-nav>
       <br/>
       <div class="container-fluid">
         <router-outlet></router-outlet>
@@ -44,7 +44,7 @@ declare var window: any;
 export class AppComponent implements OnInit {
 
     constructor(private appService: AppService,
-                public api: ApiService) {
+                public client: ClientService) {
     }
 
     ngOnInit() {
