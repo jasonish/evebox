@@ -36,7 +36,6 @@ import (
 	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/resources"
 	"github.com/jasonish/evebox/server/api"
 	"github.com/jasonish/evebox/server/auth"
 	"github.com/jasonish/evebox/server/router"
@@ -46,6 +45,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"github.com/jasonish/evebox/resources"
 )
 
 const DEFAULT_PORT = 5636
@@ -82,9 +82,9 @@ func Redirector(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/":
-			r.URL.Path = "/public/index.html"
+			r.URL.Path = "/public/"
 		case "/index.html":
-			r.URL.Path = "/public/index.html"
+			r.URL.Path = "/public/"
 		case "/favicon.ico":
 			r.URL.Path = "/public/favicon.ico"
 		}
@@ -194,7 +194,8 @@ func NewServer(appContext appcontext.AppContext) *Server {
 	apiContext.InitRoutes(router.Subrouter("/api/1"))
 
 	// Static file server, must be last as it serves as the fallback.
-	router.Prefix("/public", resources.FileServer{});
+	router.Prefix("/public", http.FileServer(resources.ResourceBox))
+
 	return server
 }
 

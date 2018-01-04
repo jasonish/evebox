@@ -32,12 +32,11 @@ import (
 	"github.com/jasonish/evebox/log"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
-	"strings"
+	"github.com/gobuffalo/packr"
 )
 
-//go:generate go-bindata -nometadata -pkg resources -ignore bindata\.go ./...
+var ResourceBox packr.Box = packr.NewBox(".")
 
 func GetAsset(name string) ([]byte, error) {
 	realName := fmt.Sprintf("./resources/%s", name)
@@ -46,7 +45,7 @@ func GetAsset(name string) ([]byte, error) {
 		log.Info("Using filesystem asset %s", realName)
 		return ioutil.ReadAll(realAsset)
 	}
-	return Asset(name)
+	return ResourceBox.MustBytes(name)
 }
 
 // AssetString returns an asset as a string.
@@ -65,29 +64,4 @@ func GetReader(name string) (io.Reader, error) {
 		return nil, err
 	}
 	return bytes.NewReader(data), nil
-}
-
-type FileServer struct {
-}
-
-func (s FileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var path string
-
-	if r.URL.Path == "/" {
-		path = "index.html"
-	} else {
-		path = strings.TrimPrefix(r.URL.Path, "/")
-	}
-
-	// Remove any query string parameters...
-	parts := strings.SplitN(path, "?", 2)
-	path = parts[0]
-
-	bytes, err := Asset(path)
-	if err != nil {
-		log.Error("Public file not found: %s", path)
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		w.Write(bytes)
-	}
 }

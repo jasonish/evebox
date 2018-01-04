@@ -33,7 +33,7 @@ APP :=		evebox
 GO_SRCS :=	$(shell find . -name \*.go | grep -v /vendor/)
 GO_PACKAGES :=	$(shell go list ./... | grep -v /vendor/)
 
-WEBAPP_SRCS :=	$(shell find webapp/src -type f)
+WEBAPP_SRCS :=	$(shell find webapp -type f | grep -v node_modules)
 
 all: public evebox
 
@@ -43,15 +43,15 @@ install-deps:
 	go get -u github.com/golang/dep/cmd/dep
 	which reflex > /dev/null 2>&1 || \
 		go get github.com/cespare/reflex
-	which go-bindata > /dev/null 2>&1 || \
-		go get github.com/jteeuwen/go-bindata/...
+	which packr > /dev/null 2>&1 || \
+		go get github.com/gobuffalo/packr/packr
 	dep ensure -v
 
 clean:
 	rm -rf dist
 	rm -f evebox
-	rm -f resources/public/*
-	rm -f resources/bindata.go
+	rm -rf resources/public
+	packr clean
 	find . -name \*~ -exec rm -f {} \;
 
 distclean: clean
@@ -63,21 +63,11 @@ distclean: clean
 resources/public/_done: $(WEBAPP_SRCS)
 	cd webapp && $(MAKE)
 	touch $@
-
 public: resources/public/_done
-
-ifdef NO_WEBAPP
-webapp:
-else
-webapp: public
-endif
-
-resources/bindata.go: RESOURCES := $(shell find resources | grep -v bindata.go)
-resources/bindata.go: $(RESOURCES) webapp
-	go generate ./resources/...
 
 # Build's EveBox for the host platform.
 evebox: Makefile $(GO_SRCS)
+	packr -z
 	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" \
 		-ldflags "$(LDFLAGS)" \
 		cmd/evebox.go
@@ -104,8 +94,9 @@ dist: CGO_ENABLED ?= $(CGO_ENABLED)
 ifeq ($(GOOS),windows)
 dist: APP_EXT := .exe
 endif
-dist: resources/bindata.go
+dist: public
 	@echo "Building EveBox rev $(BUILD_REV)."
+	packr -z
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags "$(TAGS)" -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP}${APP_EXT} cmd/evebox.go

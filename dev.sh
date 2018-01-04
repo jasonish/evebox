@@ -9,6 +9,6 @@ args="$@"
 
 (cd webapp && make serve) &
 
-reflex -s -R bindata\.go -r \.go$ -- \
-       sh -c "NO_WEBAPP=1 make evebox && \
+reflex -s -R -packr\.go -r \.go$ -- \
+       sh -c "rm -f evebox && make evebox && \
                  ./evebox server ${args}"

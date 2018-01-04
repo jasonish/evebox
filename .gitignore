@@ -1,8 +1,8 @@
 *~
 *.iml
+*-packr.go
 /.idea
 /vendor
 /resources/public
-/resources/bindata.go
 /evebox
 /dist
