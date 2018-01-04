@@ -7,6 +7,11 @@ env:
     - NODE_VERSION=8.9.3
     - RUBY_VERSION=2.1.1
 
+cache:
+  directories:
+    - $GOPATH/src/github.com/jasonish/evebox/webapp/node_modules
+    - $GOPATH/src/github.com/jasonish/evebox/vendor
+
 matrix:
   allow_failures:
     - os: osx
