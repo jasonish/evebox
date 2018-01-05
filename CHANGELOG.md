@@ -2,6 +2,12 @@
 
 ## unreleased
 
+**Fixed**
+- The inbox will not remember the sort after after archiving or
+  escalating event. Indicators of sort order were added, and the sort
+  order is now retained after refresh or page
+  reload. https://github.com/jasonish/evebox/issues/61
+
 **Changes**
 - Upgrade the Bootstrap CSS framework to version 4.
 
