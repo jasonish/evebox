@@ -35,23 +35,23 @@ GO_PACKAGES :=	$(shell go list ./... | grep -v /vendor/)
 
 WEBAPP_SRCS :=	$(shell find webapp -type f | grep -v node_modules)
 
+GOPATH ?=	$(HOME)/go
+
 all: public evebox
 
 install-deps:
 # NPM
 	$(MAKE) -C webapp $@
 	go get -u github.com/golang/dep/cmd/dep
-	which reflex > /dev/null 2>&1 || \
-		go get github.com/cespare/reflex
-	which packr > /dev/null 2>&1 || \
-		go get github.com/gobuffalo/packr/packr
-	dep ensure -v
+	go get -u github.com/cespare/reflex
+	go get -u github.com/gobuffalo/packr/packr
+	$(GOPATH)/bin/dep ensure -v
 
 clean:
 	rm -rf dist
 	rm -f evebox
 	rm -rf resources/public
-	packr clean
+	$(GOPATH)/bin/packr clean
 	find . -name \*~ -exec rm -f {} \;
 
 distclean: clean
@@ -67,7 +67,7 @@ public: resources/public/_done
 
 # Build's EveBox for the host platform.
 evebox: Makefile $(GO_SRCS)
-	packr -z
+	$(GOPATH)/bin/packr -z
 	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" \
 		-ldflags "$(LDFLAGS)" \
 		cmd/evebox.go
@@ -96,7 +96,7 @@ dist: APP_EXT := .exe
 endif
 dist: public
 	@echo "Building EveBox rev $(BUILD_REV)."
-	packr -z
+	$(GOPATH)/bin/packr -z
 	CGO_ENABLED=$(CGO_ENABLED) GOARCH=$(GOARCH) GOOS=$(GOOS) \
 		go build -tags "$(TAGS)" -ldflags "$(LDFLAGS)" \
 		-o dist/$(DISTNAME)/${APP}${APP_EXT} cmd/evebox.go
