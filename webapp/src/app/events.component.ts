@@ -47,7 +47,7 @@ import {loadingAnimation} from "./animations";
                 <input id="filter-input" type="text" class="form-control"
                        placeholder="Filter..." [(ngModel)]="queryString"
                        name="queryString"/>
-                <div class="input-group-btn">
+                <div class="input-group-append">
                   <button type="submit" class="btn btn-secondary">Search</button>
                   <button type="button" class="btn btn-secondary"
                           (click)="clearFilter()">Clear
