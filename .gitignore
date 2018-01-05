@@ -1,6 +1,7 @@
 *~
 *.iml
 *-packr.go
+.vagrant
 /.idea
 /vendor
 /resources/public
