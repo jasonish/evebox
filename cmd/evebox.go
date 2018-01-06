@@ -40,11 +40,12 @@ import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
 	"os"
+	"runtime"
 )
 
 func VersionMain() {
-	fmt.Printf("EveBox Version %s (rev %s)\n",
-		core.BuildVersion, core.BuildRev)
+	fmt.Printf("EveBox Version %s (rev %s); os=%s, arch=%s\n",
+		core.BuildVersion, core.BuildRev, runtime.GOOS, runtime.GOARCH)
 }
 
 func Usage() {

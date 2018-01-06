@@ -47,6 +47,7 @@ import (
 	"github.com/spf13/viper"
 	"strings"
 	"time"
+	"runtime"
 )
 
 const DEFAULT_DATA_DIR = ""
@@ -172,7 +173,8 @@ func Main(args []string) {
 	var err error
 	verbose := false
 
-	log.Info("This is EveBox Server version %v (rev: %v)", core.BuildVersion, core.BuildRev)
+	log.Info("This is EveBox Server version %v (rev: %v); os=%s, arch=%s",
+		core.BuildVersion, core.BuildRev, runtime.GOOS, runtime.GOARCH)
 
 	initViper()
 
