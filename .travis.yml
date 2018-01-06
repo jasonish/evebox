@@ -4,7 +4,7 @@ env:
   global:
     - GOPATH=~/gopath
     - PATH=${GOPATH}/bin:$PATH
-    - NODE_VERSION=8.9.3
+    - NODE_VERSION="--lts"
     - RUBY_VERSION=2.1.1
 
 cache:
@@ -23,17 +23,17 @@ matrix:
           - rpm
           - gcc-mingw-w64
     language: go
-    go: 1.8
+    go: 1.9
   - os: osx
-    osx_image: xcode8.1
+    osx_image: xcode8.3
     language: go
-    go: 1.8
+    go: 1.9
 
 before_install:
 - |
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      nvm install $NODE_VERSION
-      nvm use $NODE_VERSION
+      nvm install ${NODE_VERSION}
+      nvm use ${NODE_VERSION}
   fi
   if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew unlink node || true
@@ -47,14 +47,11 @@ before_install:
 script:
 - |
   make install-deps || exit 1
-
-  (cd webapp && make) || exit 1
-
-  WITH_SQLITE=1 make dist || exit 1
+  make dist || exit 1
 
   # On Linux, make a Windows release as well.
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    WITH_SQLITE=1 GOOS=windows CC=x86_64-w64-mingw32-gcc make dist || exit 1
+    GOOS=windows CC=x86_64-w64-mingw32-gcc make dist || exit 1
   fi
 
   # Copy just what we want to deploy to S3 into a deploy directory, as

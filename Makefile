@@ -104,12 +104,6 @@ dist: public
 	cp evebox.yaml.example dist/$(DISTNAME)
 	cd dist && zip -r ${DISTNAME}.zip ${DISTNAME}
 
-release:
-	rm -rf dist/*
-	WITH_SQLITE=1 GOOS=linux GOARCH=amd64 $(MAKE) dist
-	GOOS=freebsd GOARCH=amd64 $(MAKE) dist
-	GOOS=darwin GOARCH=amd64 $(MAKE) dist
-
 # Debian packaging. Due to a versioning screwup early on, we now need
 # to set the epoch to 1 for those updating with apt.
 deb: EPOCH := 1
