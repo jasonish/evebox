@@ -213,7 +213,7 @@
           </div>
 
           <span *ngIf="row.event.event._source.alert.action != 'allowed'"
-                class="label label-warning">{{row.event.event._source.alert.action
+                class="badge badge-warning">{{row.event.event._source.alert.action
           | uppercase}}</span>
           <span
               [innerHTML]="row.event.event | eveboxEventDescriptionPrinter"></span>
