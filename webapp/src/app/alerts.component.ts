@@ -766,6 +766,9 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                 row.selected = true;
         });
 
+        // Close the dropdown. Bootstraps toggle method didn't work quite
+        // right here, so remove the "show" class.
+        $(".dropdown-menu.show").removeClass("show");
     }
 
     filterBySignatureId(row: any) {
@@ -774,6 +777,9 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             q: `alert.signature_id:${signatureId}`
         });
 
+        // Close the dropdown. Bootstraps toggle method didn't work quite
+        // right here, so remove the "show" class.
+        $(".dropdown-menu.show").removeClass("show");
     }
 
 }
