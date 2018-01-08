@@ -8,6 +8,10 @@ $warning: $evebox-warning-color;
 $info: $evebox-info-color;
 $danger: $evebox-danger-color;
 
+// Bootswatch/Slate changes this from the default size. So set the Bootstrap
+// default size first.
+$font-size-base:              1rem;
+
 @import "!~bootswatch/dist/slate/variables";
 
 // Restore the bootstrap default button padding.
@@ -27,6 +31,21 @@ $input-btn-padding-x: .75rem;
 $event-table-border-color: $gray-800;
 
 @import "common";
+
+// The idea here is to darken up the "white" text and backgrounds a little,
+// to be a bit more like the slate theme from Bootswatch for Bootstrap 3.
+
+input, select {
+  background-color: $gray-300 !important;
+}
+
+body, tr {
+  color: $gray-300 !important;
+}
+
+button {
+  color: $gray-200 !important;
+}
 
 // The dark theme navbar styling.
 .evebox-top-navbar {
