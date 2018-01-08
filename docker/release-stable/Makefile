@@ -1,4 +1,4 @@
-TAG :=	jasonish/evebox
+TAG :=	jasonish/evebox:latest
 
 all: build
 
