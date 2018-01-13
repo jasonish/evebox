@@ -39,6 +39,8 @@ import * as moment from "moment";
     template: `
       <div class="content" [ngClass]="{'evebox-opacity-50': loading > 0}">
 
+        <br/>
+        
         <loading-spinner [loading]="loading > 0"></loading-spinner>
 
         <div class="row">

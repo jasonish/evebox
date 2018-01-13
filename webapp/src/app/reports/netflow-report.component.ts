@@ -42,6 +42,8 @@ import * as moment from "moment";
     template: `
       <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
+        <br/>
+        
         <loading-spinner [loading]="loading > 0"></loading-spinner>
 
         <div class="row">

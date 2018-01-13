@@ -181,6 +181,7 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
     template: `
       <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
         <loading-spinner [loading]="loading > 0"></loading-spinner>
+        <br/>
         <div class="row">
           <div class="col-sm">
             <button type="button" class="btn btn-secondary"

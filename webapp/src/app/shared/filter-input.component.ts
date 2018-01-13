@@ -35,7 +35,7 @@ import {AppService} from '../app.service';
         <div class="input-group">
           <input type="text" class="form-control" [(ngModel)]="queryString"
                  placeholder="Filter..." name="queryString"/>
-          <span class="input-group-btn">
+          <span class="input-group-append">
             <button type="submit"
                     class="btn btn-secondary">Apply</button>
             <button type="button"

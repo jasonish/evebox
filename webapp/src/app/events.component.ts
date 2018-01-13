@@ -40,6 +40,8 @@ import {loadingAnimation} from "./animations";
 
       <div class="content" [@loadingState]="(!resultSet || loading) ? 'true' : 'false'">
 
+        <br/>
+        
         <div class="row">
           <div class="col-md">
             <form name="filterInputForm" (submit)="submitFilter()">

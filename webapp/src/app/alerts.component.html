@@ -4,52 +4,80 @@
 
   <!-- Fixes the button/search bar in place, and hides the page as it scrolls
        underneath. -->
+
+  <div style="position: relative;">
+
+    <div class="evebox-fixed">
+
+      <br/>
+
+      <div class="row" style="margin-right: 15px;">
+        <div class="col-md">
+          <button type="button" class="btn btn-secondary" (click)="refresh()">
+            Refresh
+          </button>
+          <button *ngIf="rows && rows.length > 0 && !allSelected()"
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="selectAllRows()">Select All
+          </button>
+          <button *ngIf="rows && rows.length > 0 && allSelected()" type="button"
+                  class="btn btn-secondary"
+                  (click)="deselectAllRows()">Deselect All
+          </button>
+          <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="archiveSelected()">Archive
+          </button>
+          <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="escalateSelected()">Escalate
+          </button>
+        </div>
+        <div class="col-md">
+          <form (submit)="submitFilter()">
+            <div class="input-group">
+              <input id="filter-input"
+                     type="text"
+                     class="form-control"
+                     placeholder="Filter..."
+                     [(ngModel)]="queryString"
+                     name="queryString"/>
+              <div class="input-group-append">
+                <button class="btn btn-secondary" type="submit">Apply
+                </button>
+                <button type="button"
+                        class="btn btn-secondary"
+                        (click)="clearFilter()">Clear
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <br/>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- This hidden div acts as a spacer as it should be the same height
+     as the fixed row above. -->
+<div style="visibility: hidden;">
   <div class="row">
     <div class="col-md">
-      <button type="button" class="btn btn-secondary" (click)="refresh()">
-        Refresh
-      </button>
-      <button *ngIf="rows && rows.length > 0 && !allSelected()"
-              type="button"
-              class="btn btn-secondary"
-              (click)="selectAllRows()">Select All
-      </button>
-      <button *ngIf="rows && rows.length > 0 && allSelected()" type="button"
-              class="btn btn-secondary"
-              (click)="deselectAllRows()">Deselect All
-      </button>
-      <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-              type="button"
-              class="btn btn-secondary"
-              (click)="archiveSelected()">Archive
-      </button>
-      <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-              type="button"
-              class="btn btn-secondary"
-              (click)="escalateSelected()">Escalate
-      </button>
+      <button type="button" class="btn btn-secondary btn-block">Spacer</button>
     </div>
     <div class="col-md">
-      <form (submit)="submitFilter()">
-        <div class="input-group">
-          <input id="filter-input"
-                 type="text"
-                 class="form-control"
-                 placeholder="Filter..."
-                 [(ngModel)]="queryString"
-                 name="queryString"/>
-          <div class="input-group-append">
-            <button class="btn btn-secondary" type="submit">Apply
-            </button>
-            <button type="button"
-                    class="btn btn-secondary"
-                    (click)="clearFilter()">Clear
-            </button>
-          </div>
-        </div>
-      </form>
+      <button type="button" class="btn btn-secondary btn-block">Spacer</button>
     </div>
   </div>
+  <br>
 </div>
 
 <div *ngIf="!loading && rows && rows.length == 0" style="text-align: center;">
@@ -80,13 +108,15 @@
               type="button"
               class="btn btn-secondary" (click)="newer()">Newer
       </button>
-      <button [disabled]="rows.length == allRows.length || offset + windowSize >= allRows.length"
-              type="button"
-              class="btn btn-secondary" (click)="older()">Older
+      <button
+          [disabled]="rows.length == allRows.length || offset + windowSize >= allRows.length"
+          type="button"
+          class="btn btn-secondary" (click)="older()">Older
       </button>
-      <button [disabled]="rows.length == allRows.length || offset + windowSize >= allRows.length"
-              type="button"
-              class="btn btn-secondary" (click)="oldest()">Oldest
+      <button
+          [disabled]="rows.length == allRows.length || offset + windowSize >= allRows.length"
+          type="button"
+          class="btn btn-secondary" (click)="oldest()">Oldest
       </button>
       <button type="button"
               class="btn btn-secondary dropdown-toggle"
@@ -95,7 +125,8 @@
               aria-expanded="false">
       </button>
       <div class="dropdown-menu dropdown-menu-right">
-        <a class="dropdown-item" href="javascript:void(0)" (click)="showAll()">View All</a>
+        <a class="dropdown-item" href="javascript:void(0)" (click)="showAll()">View
+          All</a>
       </div>
     </div>
   </div>
@@ -116,27 +147,37 @@
         <th></th>
         <th></th>
         <th style="white-space: nowrap;"><a (click)="onSort('count')">#
-          <i *ngIf="sortBy == 'count' && sortOrder == 'desc'" class="fa fa-caret-up"></i>
-          <i *ngIf="sortBy == 'count' && sortOrder == 'asc'" class="fa fa-caret-down"></i>
+          <i *ngIf="sortBy == 'count' && sortOrder == 'desc'"
+             class="fa fa-caret-up"></i>
+          <i *ngIf="sortBy == 'count' && sortOrder == 'asc'"
+             class="fa fa-caret-down"></i>
         </a></th>
         <th><a (click)="onSort('timestamp')">
           Timestamp
-          <i *ngIf="sortBy == 'timestamp' && sortOrder == 'desc'" class="fa fa-caret-up"></i>
-          <i *ngIf="sortBy == 'timestamp' && sortOrder == 'asc'" class="fa fa-caret-down"></i>
+          <i *ngIf="sortBy == 'timestamp' && sortOrder == 'desc'"
+             class="fa fa-caret-up"></i>
+          <i *ngIf="sortBy == 'timestamp' && sortOrder == 'asc'"
+             class="fa fa-caret-down"></i>
         </a></th>
         <th>
           <a (click)="onSort('source')">Source
-            <span *ngIf="sortBy == 'source' && sortOrder == 'desc'"><i class="fa fa-caret-up"></i></span>
-            <span *ngIf="sortBy == 'source' && sortOrder == 'asc'"><i class="fa fa-caret-down"></i></span>
+            <span *ngIf="sortBy == 'source' && sortOrder == 'desc'"><i
+                class="fa fa-caret-up"></i></span>
+            <span *ngIf="sortBy == 'source' && sortOrder == 'asc'"><i
+                class="fa fa-caret-down"></i></span>
           </a>/
           <a (click)="onSort('dest')">Dest
-            <span *ngIf="sortBy == 'dest' && sortOrder == 'desc'"><i class="fa fa-caret-up"></i></span>
-            <span *ngIf="sortBy == 'dest' && sortOrder == 'asc'"><i class="fa fa-caret-down"></i></span>
+            <span *ngIf="sortBy == 'dest' && sortOrder == 'desc'"><i
+                class="fa fa-caret-up"></i></span>
+            <span *ngIf="sortBy == 'dest' && sortOrder == 'asc'"><i
+                class="fa fa-caret-down"></i></span>
           </a>
         </th>
         <th width="50%"><a (click)="onSort('signature')">Signature <i
-            *ngIf="sortBy == 'signature' && sortOrder == 'desc'" class="fa fa-caret-up"> </i>
-          <i *ngIf="sortBy == 'signature' && sortOrder == 'asc'" class="fa fa-caret-down"> </i>
+            *ngIf="sortBy == 'signature' && sortOrder == 'desc'"
+            class="fa fa-caret-up"> </i>
+          <i *ngIf="sortBy == 'signature' && sortOrder == 'asc'"
+             class="fa fa-caret-down"> </i>
         </a></th>
       </tr>
       </thead>
@@ -146,7 +187,8 @@
           [ngClass]="row.event.event | eventSeverityToBootstrapClass:'evebox-'"
           (click)="rowClicked(row)" class="align-items-center">
         <td style="width: 1% !important;">
-          <i *ngIf="i == activeRow" class="fa fa-chevron-right" aria-hidden="true"></i>
+          <i *ngIf="i == activeRow" class="fa fa-chevron-right"
+             aria-hidden="true"></i>
         </td>
         <td class="clearfix" style="width: 1% !important;">
           <input type="checkbox" [(ngModel)]="row.selected"
@@ -200,13 +242,16 @@
               <a class="dropdown-item" href="javascript:void(0);"
                  (click)="selectBySignatureId(row)">1. Select
                 all with SID: {{row.event.event._source.alert.signature_id}}</a>
-              <a class="dropdown-item" href="javascript:void(0)" (click)="filterBySignatureId(row)">2.
+              <a class="dropdown-item" href="javascript:void(0)"
+                 (click)="filterBySignatureId(row)">2.
                 Filter
                 on SID: {{row.event.event._source.alert.signature_id}}</a>
-              <a class="dropdown-item" [routerLink]="['/reports/ip', {ip: row.event.event._source.src_ip}]">
+              <a class="dropdown-item"
+                 [routerLink]="['/reports/ip', {ip: row.event.event._source.src_ip}]">
                 Source IP report for {{row.event.event._source.src_ip}}
               </a>
-              <a class="dropdown-item" [routerLink]="['/reports/ip', {ip: row.event.event._source.dest_ip}]">
+              <a class="dropdown-item"
+                 [routerLink]="['/reports/ip', {ip: row.event.event._source.dest_ip}]">
                 Destination IP report for {{row.event.event._source.dest_ip}}
               </a>
             </div>

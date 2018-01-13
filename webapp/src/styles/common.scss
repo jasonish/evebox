@@ -29,6 +29,13 @@ body {
   z-index: 1000;
 }
 
+.evebox-fixed {
+  position: fixed;
+  width: 100%;
+  background-color: $body-bg;
+  z-index: 1;
+}
+
 .evebox-event-table {
   @extend .table;
   @extend .table-hover;
