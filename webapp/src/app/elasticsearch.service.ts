@@ -69,6 +69,8 @@ export class ElasticSearchService {
     public jobCount$: BehaviorSubject<number> =
         new BehaviorSubject<number>(0);
 
+    public useIpDatatype:boolean: false;
+
     constructor(private api: ApiService,
                 private topNavService: TopNavService,
                 private appService: AppService,
@@ -78,6 +80,7 @@ export class ElasticSearchService {
 
         try {
             this.keywordSuffix = config.getConfig()["extra"]["elasticSearchKeywordSuffix"];
+            this.useIpDatatype = config.getConfig()["extra"]["elasticSearchUseIpDatatype"];
         }
         catch (err) {
         }
