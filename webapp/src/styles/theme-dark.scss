@@ -84,3 +84,22 @@ button {
   }
 }
 
+// Styles for the Metrics Graphics in dark mode.
+.evebox-metrics-graphic {
+
+  // Lighten up the font used in the metrics graphics.
+  text {
+    fill: white;
+  }
+
+  // Lighten up the color of the actual graph lines and area.
+  .mg-line1-color {
+    stroke: lightblue;
+  }
+
+  .mg-area1-color {
+    fill: lightblue;
+    opacity: 1;
+  }
+
+}
