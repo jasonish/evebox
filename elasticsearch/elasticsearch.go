@@ -63,6 +63,8 @@ type ElasticSearch struct {
 	// of the Logstash template used "raw", newer ones use "keyword".
 	keyword string
 
+	useIpDatatype bool
+
 	// Set to true if keyword checks should not be done.
 	noKeyword bool
 
@@ -167,6 +169,10 @@ func (es *ElasticSearch) GetTemplate(name string) (util.JsonMap, error) {
 	return template, nil
 }
 
+func (es *ElasticSearch) GetUseIpDatatype() bool {
+	return es.useIpDatatype
+}
+
 // GetKeywordType is a crude way of determining if the template is using
 // Logstash 5 keyword type, or Logstash 2 "raw" type.
 func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
@@ -188,6 +194,17 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 
 	version := template.GetMap(index).Get("version")
 	log.Debug("Found template version %v", version)
+
+	properties := template.GetMap(index).
+		GetMap("mappings").GetMap("_default_").GetMap("properties")
+	if properties != nil {
+		destIpType := properties.GetMap("dest_ip").GetString("type")
+		sourceIpType := properties.GetMap("src_ip").GetString("type")
+		if (destIpType == "ip" && sourceIpType == "ip") {
+			log.Info("Elastic Search EVE records are using IP datatype.")
+			es.useIpDatatype = true
+		}
+	}
 
 	dynamicTemplates := template.GetMap(index).
 		GetMap("mappings").
@@ -214,6 +231,7 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 			}
 		}
 	}
+
 	log.Warning("Failed to parse template, keyword resolution delayed.")
 	log.Warning("Template: %s", util.ToJson(template))
 	return "", nil

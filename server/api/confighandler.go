@@ -46,8 +46,11 @@ func (c *ApiContext) ConfigHandler(w *ResponseWriter, r *http.Request) error {
 
 	esKeyword := ""
 
+	response.Extra = map[string]interface{}{}
+
 	if c.appContext.ElasticSearch != nil {
 		esKeyword, _ = c.appContext.ElasticSearch.GetKeywordType("")
+		response.Extra["elasticSearchUseIpDatatype"] = c.appContext.ElasticSearch.GetUseIpDatatype()
 	}
 
 	// Make sure features is at least an empty list.
@@ -56,8 +59,6 @@ func (c *ApiContext) ConfigHandler(w *ResponseWriter, r *http.Request) error {
 	for feature, enabled := range c.appContext.Features {
 		response.Features[feature.String()] = enabled
 	}
-
-	response.Extra = map[string]interface{}{}
 
 	if esKeyword != "" {
 		response.Extra["elasticSearchKeywordSuffix"] = "." + esKeyword
