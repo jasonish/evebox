@@ -7,12 +7,17 @@
   escalating event. Indicators of sort order were added, and the sort
   order is now retained after refresh or page
   reload. https://github.com/jasonish/evebox/issues/61
+- [Elastic Search] Per IP report when the src_ip and dest_ip fields
+  have been mapped to the IP datatype
+  (https://github.com/jasonish/evebox/issues/56)
 
 **Changes**
 - Upgrade the Bootstrap CSS framework to version 4.
 
 **Removed**
 - Support for Elastic Search versions less than 5.
+
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.8.1...HEAD)
 
 ## 0.8.1 - 2017-12-10
 
