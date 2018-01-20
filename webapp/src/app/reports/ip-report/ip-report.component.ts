@@ -115,6 +115,8 @@ export class IpReportComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
+        this.useIpDatatype = this.elasticsearch.useIpDatatype;
+
         this.ss.subscribe(this, this.route.params, (params: any) => {
             this.ip = params.ip;
             this.queryString = params.q;
@@ -128,8 +130,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
             }
         });
 
-        this.useIpDatatype = this.elasticsearch.useIpDatatype;
-
+        console.log("ipDataType: " + this.elasticsearch.useIpDatatype);
     }
 
     relatedAddresses: any[] = [];
@@ -668,8 +669,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
         let type = "term";
 
         if (value[value.length -1] == ".") {
-            type = "prefix";
-        } else {
+           type = "prefix";
         }
 
         field = this.asKeyword(field);

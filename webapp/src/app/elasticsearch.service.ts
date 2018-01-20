@@ -69,7 +69,7 @@ export class ElasticSearchService {
     public jobCount$: BehaviorSubject<number> =
         new BehaviorSubject<number>(0);
 
-    public useIpDatatype:boolean: false;
+    public useIpDatatype:boolean = false;
 
     constructor(private api: ApiService,
                 private topNavService: TopNavService,
@@ -83,9 +83,11 @@ export class ElasticSearchService {
             this.useIpDatatype = config.getConfig()["extra"]["elasticSearchUseIpDatatype"];
         }
         catch (err) {
+            console.log(err);
         }
 
         console.log("Use Elastic Search keyword suffix: " + this.keywordSuffix);
+        console.log("Using Elastic Search IP datatype: " + this.useIpDatatype);
     }
 
     /**

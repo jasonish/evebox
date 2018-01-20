@@ -1,5 +1,7 @@
 <loading-spinner [loading]="loading > 0"></loading-spinner>
 
+<br/>
+
 <div class="content" *ngIf="ip" [@loadingState]="loading > 0 ? 'true' : 'false'">
 
   <div>
