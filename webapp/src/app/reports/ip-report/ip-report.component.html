@@ -2,7 +2,8 @@
 
 <br/>
 
-<div class="content" *ngIf="ip" [@loadingState]="loading > 0 ? 'true' : 'false'">
+<div class="content" *ngIf="ip"
+     [@loadingState]="loading > 0 ? 'true' : 'false'">
 
   <div>
     <span *ngIf="relatedAddresses.length > 0" class="pull-right">
@@ -23,26 +24,29 @@
   </div>
 
   <div class="row">
-    <div class="col-md-1 col-sm-1">
-      <button type="button" class="btn btn-default" (click)="refresh()">
-        Refresh
-      </button>
-    </div>
-    <div class="col-md-5 col-sm-5">
-      <div *ngIf="sensors">
-        <select class="form-control"
-                [(ngModel)]="sensorFilter"
-                (ngModelChange)="refresh()">
+    <div class="col">
+
+      <form class="form-inline">
+
+        <button type="button" class="btn btn-secondary mr-2" (click)="refresh()">
+          Refresh
+        </button>
+
+        <select *ngIf="sensors" class="form-control" [(ngModel)]="sensorFilter"
+                (ngModelChange)="refresh()" name="sensorSelector">
           <option value="">All Sensors</option>
           <option *ngFor="let sensor of sensors" [value]="sensor">
             {{sensor}}
           </option>
         </select>
-      </div>
+
+      </form>
     </div>
-    <div class="col-md-6 col-sm-6">
+
+    <div class="col">
       <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
     </div>
+
   </div>
 
   <br/>
@@ -63,25 +67,35 @@
                          [rows]="dnsHostnamesForAddress"
                          [headers]="['#', 'Hostname']"></report-data-table>
 
+      <br/>
+
       <report-data-table *ngIf="dnsRequestedHostnames"
                          title="DNS: Top Requested Hostnames"
                          [rows]="dnsRequestedHostnames"
                          [headers]="['#', 'Hostname']"></report-data-table>
+
+      <br/>
 
       <report-data-table *ngIf="userAgents"
                          title="Outgoing HTTP User Agents"
                          [rows]="userAgents"
                          [headers]="['#', 'User Agent']"></report-data-table>
 
+      <br/>
+
       <report-data-table *ngIf="topDestinationHttpHostnames"
                          title="HTTP: Incoming HTTP Request Hostnames"
                          [rows]="topDestinationHttpHostnames"
                          [headers]="['#', 'Hostnames']"></report-data-table>
 
+      <br/>
+
       <report-data-table *ngIf="topSignatures"
                          title="Alerts: Top Alerts"
                          [rows]="topSignatures"
                          [headers]="['#', 'Signature']"></report-data-table>
+
+      <br/>
 
       <div *ngIf="loading == 0" class="card">
         <div class="card-header">
@@ -90,13 +104,13 @@
         <div class="card-body">
 
           <div class="row">
-            <div class="col-md-6">
+            <div class="col">
               <report-data-table *ngIf="ssh.sshInboundClientVersions"
                                  title="Inbound Client Versions"
                                  [rows]="ssh.sshInboundClientVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
-            <div class="col-md-6">
+            <div class="col">
               <report-data-table *ngIf="ssh.sshOutboundClientVersions"
                                  title="Outbound Client Versions"
                                  [rows]="ssh.sshOutboundClientVersions"
@@ -104,14 +118,16 @@
             </div>
           </div> <!-- end row -->
 
+          <br/>
+
           <div class="row">
-            <div class="col-md-6">
+            <div class="col">
               <report-data-table *ngIf="ssh.sshOutboundServerVersions"
                                  title="Outbound Server Versions"
                                  [rows]="ssh.sshOutboundServerVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
-            <div class="col-md-6">
+            <div class="col">
               <report-data-table *ngIf="ssh.sshInboundServerVersions"
                                  title="Inbound Server Versions"
                                  [rows]="ssh.sshInboundServerVersions"
@@ -119,14 +135,16 @@
             </div>
           </div> <!-- end row -->
 
+          <br/>
+
           <div class="row">
-            <div class="col-md-6">
+            <div class="col">
               <report-data-table *ngIf="ssh.sshInboundClientProtoVersions"
                                  title="Inbound Client Proto Versions"
                                  [rows]="ssh.sshInboundClientProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
-            <div class="col-md-6">
+            <div class="col">
               <report-data-table *ngIf="ssh.sshOutboundClientProtoVersions"
                                  title="Outbound Client Proto Versions"
                                  [rows]="ssh.sshOutboundClientProtoVersions"
@@ -134,14 +152,16 @@
             </div>
           </div>
 
+          <br/>
+
           <div class="row">
-            <div class="col-md-6">
+            <div class="col">
               <report-data-table *ngIf="ssh.sshInboundServerProtoVersions"
                                  title="Inbound Server Proto Versions"
                                  [rows]="ssh.sshInboundServerProtoVersions"
                                  [headers]="['#', 'Version']"></report-data-table>
             </div>
-            <div class="col-md-6">
+            <div class="col">
               <report-data-table *ngIf="ssh.sshOutboundServerProtoVersions"
                                  title="Outbound Server Proto Versions"
                                  [rows]="ssh.sshOutboundServerProtoVersions"
@@ -155,7 +175,7 @@
     </div>
 
     <!-- Second Column -->
-    <div class="col-md-6">
+    <div class="col">
 
       <div *ngIf="loading == 0 && flow.ready" class="card">
         <div class="card-header">
@@ -195,10 +215,14 @@
         </table>
       </div> <!-- end panel -->
 
+      <br/>
+
       <report-data-table *ngIf="tlsSni"
                          title="Incoming TLS Server Names (SNI)"
                          [rows]="tlsSni"
                          [headers]="['#', 'Name']"></report-data-table>
+
+      <br/>
 
       <div class="row">
         <div class="col-md-6">
@@ -207,6 +231,9 @@
                              [rows]="tlsClientVersions"
                              [headers]="['#', 'Version']"></report-data-table>
         </div>
+
+        <br/>
+
         <div class="col-md-6">
           <report-data-table *ngIf="tlsServerVersions"
                              title="TLS Versions as Server"
@@ -215,17 +242,23 @@
         </div>
       </div>
 
+      <br/>
+
       <report-data-table *ngIf="topHttpHostnames"
                          title="HTTP: Top Requested Hostnames"
                          [rows]="topHttpHostnames"
                          [headers]="['#', 'Hostname']">
       </report-data-table>
 
+      <br/>
+
       <report-data-table *ngIf="topTlsSniRequests"
                          title="TLS: Top Requested SNI Names"
                          [rows]="topTlsSniRequests"
                          [headers]="['#', 'Name']">
       </report-data-table>
+
+      <br/>
 
       <report-data-table *ngIf="topTlsSubjectRequests"
                          title="TLS: Top Requested TLS Subjects"
