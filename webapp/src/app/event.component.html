@@ -1,4 +1,7 @@
 <div class="content" [@loadingState]="loading ? 'true' : 'false'">
+
+  <br/>
+
   <div *ngIf="event._source">
 
     <div class="row">
@@ -34,7 +37,7 @@
         eveboxEventDescriptionPrinter"></span></b>
         <span class="pull-right" *ngIf="alertGroup">
           &nbsp;<a href="javascript:void(0)" (click)="sessionSearch()"><span
-            class="badge">{{alertGroup.count}}</span></a>
+            class="badge badge-secondary">{{alertGroup.count}}</span></a>
         </span>
         <span class="float-right"
               *ngIf="servicesForEvent.length > 0">
