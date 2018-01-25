@@ -184,7 +184,7 @@
 
       <tbody>
       <tr *ngFor="let row of rows; let i = index" id="row-{{i}}"
-          [ngClass]="row.event.event | eventSeverityToBootstrapClass:'evebox-'"
+          [ngClass]="row.event.event | eventSeverityToBootstrapClass:'evebox-bg-'"
           (click)="rowClicked(row)" class="align-items-center">
         <td style="width: 1% !important;">
           <i *ngIf="i == activeRow" class="fa fa-chevron-right"

@@ -12,12 +12,12 @@
            class="dropdown-toggle"
            data-toggle="dropdown">Related Reports
           <span class="caret"></span></a>
-        <ul class="dropdown-menu dropdown-menu-right"
+        <div class="dropdown-menu dropdown-menu-right"
             aria-labelledby="dropdownMenu1">
           <li *ngFor="let related of relatedAddresses">
-            <a [routerLink]="['/reports/ip', {ip: related.value}]">{{related.name}}</a>
+            <a class="dropdown-item" [routerLink]="['/reports/ip', {ip: related.value}]">{{related.name}}</a>
           </li>
-        </ul>
+        </div>
       </div>
     </span>
     <h2 style="margin-top: 0px;">Report for IP {{ip}}</h2>

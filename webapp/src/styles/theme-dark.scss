@@ -103,3 +103,19 @@ button {
   }
 
 }
+
+.evebox-bg-danger {
+  @extend .bg-danger;
+}
+
+.evebox-bg-warning {
+  @extend .bg-warning;
+}
+
+.evebox-bg-info {
+  @extend .bg-info;
+}
+
+.evebox-bg-success {
+  @extend .bg-success;
+}

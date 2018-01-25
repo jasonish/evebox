@@ -30,3 +30,22 @@ $event-table-border-color: #ddd;
   }
 }
 
+.evebox-bg-danger {
+  @extend .bg-danger;
+  background-color: transparentize($danger, 0.5) !important;
+}
+
+.evebox-bg-warning {
+  @extend .bg-warning;
+  background-color: transparentize($warning, 0.5) !important;
+}
+
+.evebox-bg-info {
+  @extend .bg-info;
+  background-color: transparentize($info, 0.5) !important;
+}
+
+.evebox-bg-success {
+  @extend .bg-success;
+  background-color: transparentize($success, 0.5) !important;
+}

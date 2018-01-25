@@ -32,7 +32,8 @@
     <br/>
 
     <div class="card">
-      <div class="card-header {{event | eventSeverityToBootstrapClass:'bg-':'success'}}">
+      <div
+          class="card-header {{event | eventSeverityToBootstrapClass:'evebox-bg-':'success'}}">
         <b>{{event._source.event_type | uppercase}}: <span [innerHTML]="event |
         eveboxEventDescriptionPrinter"></span></b>
         <span class="pull-right" *ngIf="alertGroup">
@@ -85,11 +86,10 @@
                      data-toggle="dropdown"
                      aria-haspopup="true" aria-expanded="true">
                     <span class="caret"></span></a>
-                  <ul class="dropdown-menu">
-                    <li><a
-                        [routerLink]="['/reports/ip', {ip: event._source.src_ip}]">IP
-                      Report</a></li>
-                  </ul>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item" [routerLink]="['/reports/ip', {ip: event._source.src_ip}]">IP
+                      Report</a>
+                  </div>
                 </span>
               </dd>
             </dl>
@@ -109,11 +109,11 @@
                      data-toggle="dropdown"
                      aria-haspopup="true" aria-expanded="true">
                     <span class="caret"></span></a>
-                  <ul class="dropdown-menu">
-                    <li><a
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item"
                         [routerLink]="['/reports/ip', {ip: event._source.dest_ip}]">IP
-                      Report</a></li>
-                  </ul>
+                      Report</a>
+                  </div>
                 </span>
               </dd>
             </dl>
@@ -257,7 +257,8 @@
                 {{action.timestamp | eveboxFormatTimestamp}} - Escalated by <b>{{action.username}}</b>
               </div>
               <div *ngSwitchCase="'de-escalated'">
-                {{action.timestamp | eveboxFormatTimestamp}} - De-escalated by <b>{{action.username}}</b>
+                {{action.timestamp | eveboxFormatTimestamp}} - De-escalated by
+                <b>{{action.username}}</b>
               </div>
               <div *ngSwitchCase="'archived'">
                 {{action.timestamp | eveboxFormatTimestamp}} - Archived by <b>{{action.username}}</b>
@@ -274,7 +275,8 @@
             </div>
           </li>
         </ul>
-        <div *ngIf="features['comments'] && !commentInputVisible" class="card-footer">
+        <div *ngIf="features['comments'] && !commentInputVisible"
+             class="card-footer">
           <button class="btn btn-secondary"
                   (click)="commentInputVisible = true">Add
             Comment
@@ -300,15 +302,16 @@
         </div>
         <div class="card-body">
           <div class="row">
-            <div *ngFor="let item of event._source.http | mapToItems" class="col-md-4">
+            <div *ngFor="let item of event._source.http | mapToItems"
+                 class="col-md-4">
               <div [ngSwitch]="item.key">
                 <div *ngSwitchCase="'http_response_body'">
                 </div>
                 <div *ngSwitchCase="'http_response_body_printable'">
                 </div>
                 <div *ngSwitchDefault>
-                    <em>{{item.key | genericPrettyPrinter}}:</em>
-                    <search-link [value]="item.val"></search-link>
+                  <em>{{item.key | genericPrettyPrinter}}:</em>
+                  <search-link [value]="item.val"></search-link>
                 </div>
               </div>
             </div>
@@ -348,7 +351,8 @@
         </div>
         <div class="card-body">
           <div class="row">
-            <div *ngFor="let item of event._source.geoip | mapToItems" class="col-md-4">
+            <div *ngFor="let item of event._source.geoip | mapToItems"
+                 class="col-md-4">
               <em>{{item.key | genericPrettyPrinter}}:</em>
               <search-link [value]="item.val"></search-link>
             </div>
@@ -366,7 +370,8 @@
         </div>
         <div class="card-body">
           <div class="row">
-            <div *ngFor="let item of event._source.tls | mapToItems" class="col-md-6">
+            <div *ngFor="let item of event._source.tls | mapToItems"
+                 class="col-md-6">
               <em>{{item.key | genericPrettyPrinter}}:</em>
               <search-link [value]="item.val"></search-link>
             </div>
@@ -390,7 +395,8 @@
         </div>
         <div class="card-body">
           <div class="row">
-            <div *ngFor="let item of flow._source.flow | mapToItems" class="col-md-4">
+            <div *ngFor="let item of flow._source.flow | mapToItems"
+                 class="col-md-4">
               <em>{{item.key | genericPrettyPrinter}}:</em>
               <search-link [value]="item.val"></search-link>
             </div>
