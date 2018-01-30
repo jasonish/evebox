@@ -303,16 +303,17 @@
         </div>
         <div class="card-body">
           <div class="row">
-            <div *ngFor="let item of event._source.http | mapToItems"
-                 class="col-md-4">
+            <div *ngFor="let item of event._source.http | mapToItems">
               <div [ngSwitch]="item.key">
                 <div *ngSwitchCase="'http_response_body'">
                 </div>
                 <div *ngSwitchCase="'http_response_body_printable'">
                 </div>
                 <div *ngSwitchDefault>
-                  <em>{{item.key | genericPrettyPrinter}}:</em>
-                  <search-link [value]="item.val"></search-link>
+                  <div class="col">
+                    <em>{{item.key | genericPrettyPrinter}}:</em>
+                    <search-link [value]="item.val"></search-link>
+                  </div>
                 </div>
               </div>
             </div>
