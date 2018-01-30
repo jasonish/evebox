@@ -61,6 +61,7 @@ var opts struct {
 	InMemory         bool
 	Verbose          bool
 	NoWait           bool
+	NoOpen           bool
 }
 
 func VersionMain() {
@@ -100,6 +101,7 @@ Example:
 	flagset.BoolVar(&opts.InMemory, "in-memory", false, "Use in-memory database")
 	flagset.BoolVar(&opts.NoWait, "no-wait", false, "Do not wait for all events to load")
 	flagset.BoolVar(&opts.Verbose, "verbose", false, "Verbose (debug) logging")
+	flagset.BoolVar(&opts.NoOpen, "no-open", false, "Don't open browser")
 
 	flagset.Parse(args[0:])
 
@@ -326,20 +328,22 @@ Example:
 	}
 	log.Info("Bound to port %d", port)
 
-	log.Info("Attempting to start browser.")
 	url := fmt.Sprintf("http://localhost:%d", port)
-	go func() {
-		if runtime.GOOS == "linux" {
-			c := exec.Command("xdg-open", url)
-			c.Run()
-		} else if runtime.GOOS == "darwin" {
-			c := exec.Command("open", url)
-			c.Run()
-		} else if runtime.GOOS == "windows" {
-			c := exec.Command("start", url)
-			c.Run()
-		}
-	}()
+	if (!opts.NoOpen) {
+		log.Info("Attempting to start browser.")
+		go func() {
+			if runtime.GOOS == "linux" {
+				c := exec.Command("xdg-open", url)
+				c.Run()
+			} else if runtime.GOOS == "darwin" {
+				c := exec.Command("open", url)
+				c.Run()
+			} else if runtime.GOOS == "windows" {
+				c := exec.Command("start", url)
+				c.Run()
+			}
+		}()
+	}
 
 	fmt.Printf("\nIf your browser didn't open, go to %s\n", url)
 
