@@ -10,6 +10,8 @@
 - [Elastic Search] Per IP report when the src_ip and dest_ip fields
   have been mapped to the IP datatype
   (https://github.com/jasonish/evebox/issues/56)
+- When parsing rules, if parse error was encountered the remaining
+  rules would not be parsed. Instead log and continue parsing.
 
 **Changes**
 - Upgrade the Bootstrap CSS framework to version 4.
