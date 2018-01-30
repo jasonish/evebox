@@ -12,6 +12,7 @@
   (https://github.com/jasonish/evebox/issues/56)
 - When parsing rules, if parse error was encountered the remaining
   rules would not be parsed. Instead log and continue parsing.
+- Various fixes to oneshot where it would stop reading the input file.
 
 **Changes**
 - Upgrade the Bootstrap CSS framework to version 4.
