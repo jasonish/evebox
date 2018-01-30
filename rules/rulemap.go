@@ -148,13 +148,8 @@ func loadRulesFromFile(ruleMap *map[uint64]idsrules.Rule, filename string) error
 			if err == io.EOF {
 				break
 			}
-			if parseError, ok := err.(*idsrules.RuleParseError); ok {
-				log.Warning("Rule parse error: %v", parseError)
-				continue
-			} else {
-				log.Error("%v", err)
-				break
-			}
+			log.Warning("Rule parser error: %v", err)
+			continue
 		}
 
 		if _, ok := (*ruleMap)[rule.Sid]; ok {
