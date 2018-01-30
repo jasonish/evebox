@@ -43,12 +43,12 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"time"
+	"runtime"
+	"os/exec"
 )
 
 const DEFAULT_PORT = 5636
@@ -172,13 +172,10 @@ Example:
 			eve.NewGeoipFilter(appContext.GeoIpService),
 			&useragent.EveUserAgentFilter{},
 		}
+		done := false
 	Loop:
 		for i, filename := range flagset.Args() {
 			last := len(flagset.Args()) == i+1
-			done := false
-			if last {
-				log.Info("Last file...")
-			}
 			reader, err := evereader.NewBasicReader(filename)
 			if err != nil {
 				log.Fatal(err)
@@ -202,16 +199,13 @@ Example:
 				event, err := reader.Next()
 				if err != nil {
 					if err == io.EOF {
-						if !last {
-							break
-						} else {
-							eof = true
-						}
+						eof = true
 					} else {
 						log.Fatal(err)
 					}
 				}
 
+				// Handle event.
 				if event != nil {
 					for _, filter := range filters {
 						filter.Filter(event)
@@ -221,15 +215,11 @@ Example:
 						log.Fatal(err)
 					}
 					queued++
+					count++
 				}
 
 				// Commit every 10000 events, or an EOF.
 				if (eof && queued > 0) || count > 0 && count%10000 == 0 {
-					// Only log when we are in the following mode of the
-					// last file.
-					if eof && done {
-						log.Info("Adding %d events.", queued)
-					}
 					if _, err := eventSink.Commit(); err != nil {
 						log.Fatal(err)
 					}
@@ -248,33 +238,38 @@ Example:
 				}
 
 				if eof {
-					time.Sleep(100 * time.Millisecond)
-				}
-
-				count++
-
-				if !done && last && eof {
-					if !opts.NoWait {
-						log.Debug("Sending done signal.")
-						doneReading <- 1
+					if !last {
+						// Break to move onto next file.
+						break
+					} else {
+						done = true
+						select {
+						case doneReading <- 1:
+						default:
+						}
+						time.Sleep(100 * time.Millisecond)
 					}
-					done = true
 				}
+
 			}
 
 			if _, err := eventSink.Commit(); err != nil {
 				log.Fatal(err)
 			}
-			log.Info("%s: %d events (100%%)", filename, count)
+			log.Info("Finished reading %s: %d events (100%%)", filename, count)
 		}
+
 	}()
+
 	if !opts.NoWait {
 	Loop:
 		for {
 			select {
 			case <-sigchan:
-				stopReading <- 1
+				// Break out of wait on Control-C.
+				break Loop
 			case <-doneReading:
+				// Signal from read loop to continue.
 				break Loop
 			}
 		}
