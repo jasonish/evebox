@@ -87,7 +87,8 @@
                      aria-haspopup="true" aria-expanded="true">
                     <span class="caret"></span></a>
                   <div class="dropdown-menu">
-                    <a class="dropdown-item" [routerLink]="['/reports/ip', {ip: event._source.src_ip}]">IP
+                    <a class="dropdown-item"
+                       [routerLink]="['/reports/ip', {ip: event._source.src_ip}]">IP
                       Report</a>
                   </div>
                 </span>
@@ -111,7 +112,7 @@
                     <span class="caret"></span></a>
                   <div class="dropdown-menu">
                     <a class="dropdown-item"
-                        [routerLink]="['/reports/ip', {ip: event._source.dest_ip}]">IP
+                       [routerLink]="['/reports/ip', {ip: event._source.dest_ip}]">IP
                       Report</a>
                   </div>
                 </span>
@@ -323,18 +324,26 @@
               <div class="card-header">
                 HTTP Response Body
               </div>
+
               <div class="card-body">
                 <div class="row">
-                  <div class="col-md-6">
-                <pre style="white-space: pre-wrap; max-height: 300px;">{{event._source.http.http_response_body | eveboxBase64Decode |
-                  printable}}</pre>
+                  <div class="col">
+                    <div class="card bg-light">
+                      <div class="card-body">
+                        <pre style="white-space: pre-wrap;">{{event._source.http.http_response_body | eveboxBase64Decode | printable}}</pre>
+                      </div>
+                    </div>
                   </div>
-                  <div class="col-md-6">
-                <pre style="max-height: 300px;">{{event._source.http.http_response_body | eveboxBase64Decode |
-                  hex}}</pre>
+                  <div class="col">
+                    <div class="card bg-light">
+                      <div class="card-body">
+                        <pre style="white-space: pre-wrap;">{{event._source.http.http_response_body | eveboxBase64Decode | hex}}</pre>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
