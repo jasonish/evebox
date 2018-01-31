@@ -123,6 +123,10 @@ Example:
 	appContext := appcontext.AppContext{}
 	appContext.GeoIpService = geoip.NewGeoIpService()
 
+	// As this is oneshot mode, set the default time range to all, as it may
+	// be run against old eve files, or eve files generated from old pcaps.
+	appContext.DefaultTimeRange = "all";
+	appContext.ForceDefaultTimeRange = true;
 	if opts.InMemory {
 		log.Info("Using in-memory database")
 		viper.Set("database.sqlite.filename", ":memory:")

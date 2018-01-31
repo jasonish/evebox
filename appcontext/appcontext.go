@@ -80,6 +80,15 @@ type AppContext struct {
 	GeoIpService *geoip.GeoIpService
 
 	Features map[core.Feature]bool
+
+	// A default time range to send to a client. Mainly useful for oneshot
+	// server mode where we want to set a better time range.
+	DefaultTimeRange string
+
+	// Tell the client to ignore any locally stored configuration of the
+	// default time range.
+	ForceDefaultTimeRange bool
+
 }
 
 func (c *AppContext) SetFeature(feature core.Feature) {

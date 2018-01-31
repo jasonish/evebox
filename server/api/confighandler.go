@@ -36,6 +36,7 @@ type ConfigResponse struct {
 	EventServices      []map[string]interface{} `json:"event-services"`
 	Extra              map[string]interface{}   `json:"extra"`
 	Features           map[string]bool          `json:"features"`
+	Defaults           map[string]interface{}   `json:"defaults,omitempty"`
 }
 
 func (c *ApiContext) ConfigHandler(w *ResponseWriter, r *http.Request) error {
@@ -64,6 +65,12 @@ func (c *ApiContext) ConfigHandler(w *ResponseWriter, r *http.Request) error {
 		response.Extra["elasticSearchKeywordSuffix"] = "." + esKeyword
 	} else {
 		response.Extra["elasticSearchKeywordSuffix"] = ""
+	}
+
+	response.Defaults = make(map[string]interface{})
+	if c.appContext.DefaultTimeRange != "" {
+		response.Defaults["time_range"] = c.appContext.DefaultTimeRange
+		response.Defaults["force_time_range"] = c.appContext.ForceDefaultTimeRange
 	}
 
 	return w.OkJSON(response)
