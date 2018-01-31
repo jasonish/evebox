@@ -81,4 +81,4 @@
 
 [[constraint]]
   name = "github.com/gobuffalo/packr"
-  version = "1.9.10"
+  version = "2.0.2"
