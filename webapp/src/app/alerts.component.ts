@@ -102,8 +102,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     ngOnInit(): any {
 
-        console.log("AlertService.ngOnInit");
-
         this.windowSize = this.settings.getInt(SETTING_ALERTS_PER_PAGE, 100);
 
         this.ss.subscribe(this, this.route.params, (params: any) => {

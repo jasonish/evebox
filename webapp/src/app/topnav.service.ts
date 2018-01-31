@@ -24,19 +24,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
-import * as moment from 'moment';
+import {Injectable} from "@angular/core";
+import * as moment from "moment";
+import {ConfigService} from "./config.service";
 
 declare var localStorage: any;
 
 @Injectable()
-export class TopNavService  {
+export class TopNavService {
 
-    timeRange = '24h';
+    timeRange = "24h";
 
-    constructor() {
-        if (localStorage.timeRange !== undefined) {
-            this.timeRange = localStorage.timeRange;
+    constructor(private config: ConfigService) {
+        let forceDefaultTimeRange = config.getDefault("force_time_range");
+        let defaultTimeRange = config.getDefault("time_range");
+        let localTimeRange = localStorage.timeRange;
+
+        if (defaultTimeRange && (forceDefaultTimeRange || !localTimeRange)) {
+            if (defaultTimeRange == "all") {
+                this.timeRange = "";
+            } else {
+                this.timeRange = defaultTimeRange;
+            }
+        } else if (localTimeRange) {
+            this.timeRange = localTimeRange;
         }
     }
 
@@ -49,7 +60,7 @@ export class TopNavService  {
      * Get the time range in seconds.
      */
     getTimeRangeAsSeconds(): any {
-        if (this.timeRange == '') {
+        if (this.timeRange == "") {
             // Everything...
             return 0;
         }

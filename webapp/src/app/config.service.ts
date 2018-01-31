@@ -46,6 +46,13 @@ export class ConfigService {
         return this.config;
     }
 
+    getDefault(key:string) {
+        if (this.config && "defaults" in this.config) {
+            return this.config["defaults"][key];
+        }
+        return undefined;
+    }
+
     hasFeature(feature: string): boolean {
         if (this.config.features && this.config.features[feature] === true) {
             return true;
