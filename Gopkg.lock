@@ -22,8 +22,8 @@
 [[projects]]
   name = "github.com/gobuffalo/packr"
   packages = ["."]
-  revision = "cd5d3b2451218b709c19f00a470005980a3a90df"
-  version = "v2.0.2"
+  revision = "6de5183d12ba3e77d5a9218120a2acf4214240dd"
+  version = "v1.10.2"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -101,12 +101,6 @@
   packages = ["."]
   revision = "d419a98cdbed11a922bf76f257b7c4be79b50e73"
   version = "v1.7.4"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/markbates/inflect"
-  packages = ["."]
-  revision = "1290f21759a90e7c4bd277347c8631ed8d4b9ee0"
 
 [[projects]]
   name = "github.com/mattn/go-isatty"
@@ -310,6 +304,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "485c498abc0e7db34cdc81a2315994e48e5b8bd6b6a074b5a4cfbae5dff8420d"
+  inputs-digest = "996503a5c93f6da04cddf447c533255a32b2b90616480dfc45292432e59a68cd"
   solver-name = "gps-cdcl"
   solver-version = 1
