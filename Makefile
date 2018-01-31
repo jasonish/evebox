@@ -89,7 +89,7 @@ ifneq ($(VERSION_SUFFIX),)
 dist: VERSION := latest
 endif
 dist: DISTNAME ?= ${APP}$(DIST_SUFFIX)-${VERSION}-${GOOS}-${DISTARCH}
-dist: LDFLAGS += -s -w
+dist: LDFLAGS += -s
 dist: CGO_ENABLED ?= $(CGO_ENABLED)
 ifeq ($(GOOS),windows)
 dist: APP_EXT := .exe
