@@ -136,6 +136,10 @@ func (p *EveFileProcessor) process(reader *FollowingReader, bookmarker *Bookmark
 				eof = true
 				p.eofs++
 			} else {
+				if _, ok := err.(MalformedEventError); ok {
+					log.Error("Maleformed event error: %v", err)
+					continue
+				}
 				return err
 			}
 		}
