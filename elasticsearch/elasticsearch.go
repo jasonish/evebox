@@ -45,6 +45,8 @@ import (
 	"time"
 )
 
+const LOG_REQUEST_RESPONSE = false
+
 type ElasticSearch struct {
 	baseUrl  string
 	username string
@@ -328,6 +330,11 @@ func (es *ElasticSearch) Search(query interface{}) (*Response, error) {
 	}
 
 	path := fmt.Sprintf("%s/_search", es.EventSearchIndex)
+
+	if LOG_REQUEST_RESPONSE {
+		log.Debug("REQUEST: POST %s: %s", path, util.ToJson(query))
+	}
+
 	response, err := es.HttpClient.PostJson(path, query)
 	if err != nil {
 		return nil, errors.WithStack(&DatastoreError{
@@ -335,8 +342,15 @@ func (es *ElasticSearch) Search(query interface{}) (*Response, error) {
 			Cause:   err,
 		})
 	}
+
 	defer response.Body.Close()
-	return DecodeResponse(response)
+	decodedResponse, err := DecodeResponse(response)
+
+	if LOG_REQUEST_RESPONSE {
+		log.Debug("RESPONSE: POST %s: %s", path, decodedResponse.Raw)
+	}
+
+	return decodedResponse, err
 }
 
 func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*Response, error) {
