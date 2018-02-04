@@ -257,7 +257,7 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 
 	// Unwrap response.
 	buckets := util.JsonMap(response.Aggregations[agg].(map[string]interface{})).GetMapList("buckets")
-	var data []map[string]interface{}
+	data := make([]map[string]interface{}, 0)
 	for _, bucket := range buckets {
 		data = append(data, map[string]interface{}{
 			"key":   bucket["key"],
