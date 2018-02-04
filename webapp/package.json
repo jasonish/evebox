@@ -29,6 +29,7 @@
     "chart.js": "^2.4.0",
     "core-js": "^2.5.3",
     "font-awesome": "^4.6.3",
+    "google-palette": "^1.0.0",
     "humanize-plus": "^1.8.2",
     "jquery": "^3.3.1",
     "metrics-graphics": "2.10.1",

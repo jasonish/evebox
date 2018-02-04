@@ -24,9 +24,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy, Input, OnChanges} from "@angular/core";
+import {Component, Input, OnChanges, OnDestroy, OnInit} from "@angular/core";
 import {ReportsService} from "./reports.service";
-import {AppService, AppEventCode} from "../app.service";
+import {AppEventCode, AppService} from "../app.service";
 import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 import {ActivatedRoute, Params} from "@angular/router";
 import {EveboxSubscriptionService} from "../subscription.service";
@@ -36,6 +36,7 @@ import {ApiService, ReportAggOptions} from "../api.service";
 import {TopNavService} from "../topnav.service";
 import * as moment from "moment";
 import {ElasticSearchService} from "../elasticsearch.service";
+import * as palette from "google-palette";
 
 declare var Chart: any;
 
@@ -211,7 +212,9 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
               <div class="card-body">
                 <canvas [hidden]="!clientSoftware || clientSoftware.length == 0"
                         id="clientVersionsPie" style="height: 300px;"></canvas>
-                <div *ngIf="!clientSoftware || clientSoftware.length == 0">No data.</div>
+                <div *ngIf="!clientSoftware || clientSoftware.length == 0">No
+                  data.
+                </div>
               </div>
             </div>
           </div>
@@ -311,6 +314,10 @@ export class SshReportComponent implements OnInit, OnDestroy {
     load(fn: any) {
         this.loading++;
         fn().then(() => {
+        }).catch((err) => {
+            console.log("Caught error loading resource:");
+            console.log(err);
+        }).then(() => {
             this.loading--;
         });
     }
@@ -362,7 +369,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                         labels: labels,
                         datasets: [
                             {
-                                backgroundColor: randomColour(),
+                                backgroundColor: this.getColours(1),
                                 data: values,
                                 pointStyle: "line",
                             }
@@ -379,7 +386,8 @@ export class SshReportComponent implements OnInit, OnDestroy {
                                     type: "time",
                                     ticks: {
                                         maxRotation: 0,
-                                    }
+                                    },
+                                    gridLines: false,
                                 }
                             ]
                         },
@@ -387,6 +395,10 @@ export class SshReportComponent implements OnInit, OnDestroy {
                             display: false,
                         },
                         maintainAspectRatio: false,
+                        tooltips: {
+                            enabled: true,
+                            intersect: false,
+                        }
                     },
                 });
 
@@ -446,15 +458,12 @@ export class SshReportComponent implements OnInit, OnDestroy {
     }
 
     renderPieChart(canvasId: string, data: any[]) {
-
         let labels: string[] = [];
         let values: number[] = [];
-        let colours: string[] = [];
 
         data.forEach((version: any) => {
             labels.push(version.key);
             values.push(version.count);
-            colours.push(randomColour());
         });
 
         let ctx = document.getElementById(canvasId);
@@ -462,6 +471,8 @@ export class SshReportComponent implements OnInit, OnDestroy {
         if (this.charts[canvasId]) {
             this.charts[canvasId].destroy();
         }
+
+        let colours = this.getColours(data.length);
 
         this.charts[canvasId] = new Chart(ctx, {
             type: "pie",
@@ -478,18 +489,16 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 legend: {
                     display: true,
                     position: "right",
-                }
+                },
             }
         });
 
     }
 
-}
+    private getColours(count: number): string[] {
+        return palette("tol-rainbow", count).map(colour => {
+            return "#" + colour;
+        });
+    }
 
-function randomColour() {
-    let r = Math.floor(Math.random() * 255);
-    let g = Math.floor(Math.random() * 255);
-    let b = Math.floor(Math.random() * 255);
-    let color = "rgb(" + r + ", " + g + ", " + b + ")";
-    return color;
 }
