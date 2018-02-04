@@ -209,7 +209,9 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
             <div class="card">
               <div class="card-header"> SSH Client Software</div>
               <div class="card-body">
-                <canvas id="clientVersionsPie" style="height: 300px;"></canvas>
+                <canvas [hidden]="!clientSoftware || clientSoftware.length == 0"
+                        id="clientVersionsPie" style="height: 300px;"></canvas>
+                <div *ngIf="!clientSoftware || clientSoftware.length == 0">No data.</div>
               </div>
             </div>
           </div>
@@ -217,7 +219,11 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
             <div class="card">
               <div class="card-header"> SSH Server Software</div>
               <div class="card-body">
-                <canvas id="serverVersionsPie" style="height: 300px;"></canvas>
+                <canvas [hidden]="!serverSoftware || serverSoftware.length == 0"
+                        id="serverVersionsPie" style="height: 300px;"></canvas>
+                <div *ngIf="!serverSoftware || serverSoftware.length == 0">No
+                  data.
+                </div>
               </div>
             </div>
           </div>
