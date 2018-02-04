@@ -27,7 +27,6 @@
 import {Component, Input, OnChanges, OnDestroy, OnInit} from "@angular/core";
 import {ReportsService} from "./reports.service";
 import {AppEventCode, AppService} from "../app.service";
-import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
 import {ActivatedRoute, Params} from "@angular/router";
 import {EveboxSubscriptionService} from "../subscription.service";
 import {loadingAnimation} from "../animations";
@@ -101,8 +100,7 @@ export class SshTopServersComponent implements OnInit, OnChanges {
 
     results: any[] = [];
 
-    constructor(private api: ApiService, private topNavService: TopNavService,
-                private elasticSearch: ElasticSearchService) {
+    constructor(private api: ApiService, private topNavService: TopNavService) {
     }
 
     ngOnInit(): void {
@@ -284,8 +282,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 private route: ActivatedRoute,
                 private reports: ReportsService,
                 private api: ApiService,
-                private topNavService: TopNavService,
-                private formatIpAddressPipe: EveboxFormatIpAddressPipe) {
+                private topNavService: TopNavService) {
     }
 
     ngOnInit() {
@@ -369,7 +366,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                         labels: labels,
                         datasets: [
                             {
-                                backgroundColor: this.getColours(1),
+                                backgroundColor: this.getColours(9),
                                 data: values,
                                 pointStyle: "line",
                             }
