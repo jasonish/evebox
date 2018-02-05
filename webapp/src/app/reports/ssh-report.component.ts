@@ -197,7 +197,7 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
 
         <div class="row">
           <div class="col-sm">
-            <canvas id="eventsOverTimeChart" height="225"></canvas>
+            <canvas [hidden]="!eventsOverTime || eventsOverTime.length == 0" id="eventsOverTimeChart" height="225"></canvas>
           </div>
         </div>
 

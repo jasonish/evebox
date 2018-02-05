@@ -171,8 +171,10 @@ export class AlertReportComponent implements OnInit, OnDestroy {
     load(fn: any) {
         this.loading++;
         fn().then(() => {
+        }).catch((err) => {
+        }).then(() => {
             this.loading--;
-        });
+        })
     }
 
     refresh() {
