@@ -361,14 +361,13 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 }
 
                 this.charts["eventsOverTimeChart"] = new Chart(ctx, {
-                    type: "line",
+                    type: "bar",
                     data: {
                         labels: labels,
                         datasets: [
                             {
-                                backgroundColor: this.getColours(9),
+                                backgroundColor: this.getColours(1)[0],
                                 data: values,
-                                pointStyle: "line",
                             }
                         ]
                     },
@@ -493,7 +492,8 @@ export class SshReportComponent implements OnInit, OnDestroy {
     }
 
     private getColours(count: number): string[] {
-        return palette("tol-rainbow", count).map(colour => {
+        let colours = palette("qualitative", count);
+        return colours.map(colour => {
             return "#" + colour;
         });
     }
