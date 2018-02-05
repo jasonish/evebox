@@ -47,7 +47,17 @@ import (
 
 const LOG_REQUEST_RESPONSE = false
 
+type Config struct {
+	BaseURL          string
+	DisableCertCheck bool
+	Username         string
+	Password         string
+}
+
 type ElasticSearch struct {
+	// User provided config.
+	config Config
+
 	baseUrl  string
 	username string
 	password string
@@ -70,33 +80,24 @@ type ElasticSearch struct {
 	// Set to true if keyword checks should not be done.
 	noKeyword bool
 
-	HttpClient *httputil.HttpClient
+	httpClient *httputil.HttpClient
 }
 
-func New(url string) *ElasticSearch {
-	// First, strip any trailing / from the URL.
-	for strings.HasSuffix(url, "/") {
-		url = strings.TrimSuffix(url, "/")
-	}
+func New(config Config) *ElasticSearch {
+	url := strings.TrimSuffix(config.BaseURL, "/")
 
-	HttpClient := httputil.NewHttpClient()
-
-	HttpClient.SetBaseUrl(url)
+	httpClient := httputil.NewHttpClient()
+	httpClient.SetBaseUrl(url)
+	httpClient.DisableCertCheck(config.DisableCertCheck)
+	httpClient.SetUsernamePassword(config.Username, config.Password)
 
 	es := &ElasticSearch{
+		config:     config,
 		baseUrl:    url,
-		HttpClient: HttpClient,
+		httpClient: httpClient,
 	}
 
 	return es
-}
-
-func (es *ElasticSearch) DisableCertCheck(disableCertCheck bool) {
-	es.HttpClient.DisableCertCheck(disableCertCheck)
-}
-
-func (es *ElasticSearch) SetUsernamePassword(username ...string) error {
-	return es.HttpClient.SetUsernamePassword(username...)
 }
 
 func (es *ElasticSearch) SetEventIndex(index string) {
@@ -125,7 +126,7 @@ func (es *ElasticSearch) Decode(response *http.Response, v interface{}) error {
 }
 
 func (es *ElasticSearch) Ping() (*PingResponse, error) {
-	response, err := es.HttpClient.Get("")
+	response, err := es.httpClient.Get("")
 	if err != nil {
 		return nil, err
 	}
@@ -145,19 +146,19 @@ func (es *ElasticSearch) Ping() (*PingResponse, error) {
 	return &pingResponse, nil
 }
 
-func (es *ElasticSearch) CheckTemplate(name string) (exists bool, err error) {
-	response, err := es.HttpClient.Head(fmt.Sprintf("_template/%s", name))
-	if err != nil {
-		return exists, err
+// TemplateExists checks if a template exists on the server.
+func (es *ElasticSearch) TemplateExists(name string) (exists bool, err error) {
+	response, err := es.httpClient.Head(fmt.Sprintf("_template/%s", name))
+	if err == nil {
+		return response.StatusCode == 200, nil
 	}
-	exists = response.StatusCode == 200
-	return exists, nil
+	return false, err
 }
 
 func (es *ElasticSearch) GetTemplate(name string) (util.JsonMap, error) {
 	url := fmt.Sprintf("_template/%s", name)
 	log.Debug("Fetching template %s", url)
-	response, err := es.HttpClient.Get(url)
+	response, err := es.httpClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -294,14 +295,14 @@ func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 	}
 	template["template"] = fmt.Sprintf("%s-*", index)
 
-	response, err := es.HttpClient.PutJson(fmt.Sprintf("_template/%s", index), template)
+	response, err := es.httpClient.PutJson(fmt.Sprintf("_template/%s", index), template)
 	if err != nil {
 		return err
 	}
 	if response.StatusCode != http.StatusOK {
 		return DecodeResponseAsError(response)
 	}
-	es.HttpClient.DiscardResponse(response)
+	es.httpClient.DiscardResponse(response)
 
 	// Success.
 	return nil
@@ -335,7 +336,7 @@ func (es *ElasticSearch) Search(query interface{}) (*Response, error) {
 		log.Debug("REQUEST: POST %s: %s", path, util.ToJson(query))
 	}
 
-	response, err := es.HttpClient.PostJson(path, query)
+	response, err := es.httpClient.PostJson(path, query)
 	if err != nil {
 		return nil, errors.WithStack(&DatastoreError{
 			Message: "Failed to connect to Elastic Search",
@@ -355,7 +356,7 @@ func (es *ElasticSearch) Search(query interface{}) (*Response, error) {
 
 func (es *ElasticSearch) SearchScroll(body interface{}, duration string) (*Response, error) {
 	path := fmt.Sprintf("%s/_search?scroll=%s", es.EventSearchIndex, duration)
-	response, err := es.HttpClient.PostJson(path, body)
+	response, err := es.httpClient.PostJson(path, body)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +374,7 @@ func (es *ElasticSearch) Scroll(scrollId string, duration string) (*Response, er
 		"scroll_id": scrollId,
 		"scroll":    duration,
 	}
-	response, err := es.HttpClient.PostJson("_search/scroll", body)
+	response, err := es.httpClient.PostJson("_search/scroll", body)
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +384,7 @@ func (es *ElasticSearch) Scroll(scrollId string, duration string) (*Response, er
 }
 
 func (es *ElasticSearch) DeleteScroll(scrollId string) (*http.Response, error) {
-	return es.HttpClient.Delete("_search/scroll", "application/json",
+	return es.httpClient.Delete("_search/scroll", "application/json",
 		strings.NewReader(scrollId))
 }
 
@@ -392,7 +393,7 @@ func (es *ElasticSearch) PartialUpdate(index string, doctype string, id string,
 	body := map[string]interface{}{
 		"doc": doc,
 	}
-	return es.HttpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
+	return es.httpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
 		index, doctype, id), body)
 }
 
@@ -409,7 +410,7 @@ func IsError(response *http.Response) error {
 
 func (es *ElasticSearch) Update(index string, docType string, docId string,
 	body interface{}) (*Response, error) {
-	response, err := es.HttpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
+	response, err := es.httpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
 		index, docType, docId), body)
 	if err != nil {
 		return nil, errors.Wrap(err, "http request failed")
@@ -424,7 +425,7 @@ func (es *ElasticSearch) Update(index string, docType string, docId string,
 // Refresh refreshes all indices logging any error but not returning and
 // discarding the response so the caller doesn't have to.
 func (es *ElasticSearch) Refresh() {
-	response, err := es.HttpClient.PostString("_refresh", "application/json", "{}")
+	response, err := es.httpClient.PostString("_refresh", "application/json", "{}")
 	if err != nil {
 		log.Error("Failed to refresh Elastic Search: %v", err)
 		return
@@ -441,7 +442,7 @@ func (es *ElasticSearch) FormatKeyword(keyword string) string {
 
 func (s *ElasticSearch) doUpdateByQuery(query interface{}) (util.JsonMap, error) {
 	var response util.JsonMap
-	err := s.HttpClient.PostJsonDecodeResponse(
+	err := s.httpClient.PostJsonDecodeResponse(
 		fmt.Sprintf("%s/_update_by_query?refresh=true&conflicts=proceed",
 			s.EventSearchIndex), query, &response)
 	if err != nil {

@@ -51,8 +51,8 @@ import (
 )
 
 const DEFAULT_DATA_DIR = ""
-const DEFAULT_ELASTICSEARCH_URL string = "http://localhost:9200"
-const DEFAULT_ELASTICSEARCH_INDEX string = "logstash"
+const DEFAULT_ELASTICSEARCH_URL = "http://localhost:9200"
+const DEFAULT_ELASTICSEARCH_INDEX = "logstash"
 
 const HTTP_TLS_ENABLED_KEY = "http.tls.enabled"
 const HTTP_TLS_CERT_KEY = "http.tls.certificate"
@@ -296,16 +296,17 @@ func Main(args []string) {
 			viper.GetString("database.elasticsearch.url"))
 		log.Info("Using ElasticSearch Index %s.",
 			viper.GetString("database.elasticsearch.index"))
-		elasticSearch := elasticsearch.New(
-			viper.GetString("database.elasticsearch.url"))
+
+		config := elasticsearch.Config{
+			BaseURL:          viper.GetString("database.elasticsearch.url"),
+			DisableCertCheck: opts.NoCheckCertificate,
+			Username: viper.GetString("database.elasticsearch.username"),
+			Password: viper.GetString("database.elasticsearch.password"),
+		}
+
+		elasticSearch := elasticsearch.New(config)
 		elasticSearch.SetEventIndex(
 			viper.GetString("database.elasticsearch.index"))
-
-		username := viper.GetString("database.elasticsearch.username")
-		password := viper.GetString("database.elasticsearch.password")
-		if username != "" || password != "" {
-			elasticSearch.SetUsernamePassword(username, password)
-		}
 
 		for {
 			ping, err := elasticSearch.Ping()

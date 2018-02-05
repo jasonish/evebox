@@ -65,19 +65,9 @@ func (c *HttpClient) DisableCertCheck(disableCertCheck bool) {
 	c.disableCertCheck = disableCertCheck
 }
 
-func (c *HttpClient) SetUsernamePassword(username ...string) error {
-	if len(username) == 1 {
-		parts := strings.SplitN(username[0], ":", 2)
-		if len(parts) < 2 {
-			return fmt.Errorf("bad format")
-		}
-		c.username = parts[0]
-		c.password = parts[1]
-	} else {
-		c.username = username[0]
-		c.password = username[1]
-	}
-	return nil
+func (c *HttpClient) SetUsernamePassword(username string, password string) {
+	c.username = username
+	c.password = password
 }
 
 func (c *HttpClient) DialTLS(network string, addr string) (net.Conn, error) {

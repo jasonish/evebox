@@ -119,7 +119,7 @@ func (i *BulkEveIndexer) Commit() (interface{}, error) {
 	// checks are required in case Elastic Search was re-installed or something
 	// and the templates lost.
 	templateCheckLock.Lock()
-	exists, err := i.es.CheckTemplate(i.es.EventBaseIndex)
+	exists, err := i.es.TemplateExists(i.es.EventBaseIndex)
 	if err != nil {
 		log.Error("Failed to check if template %s exists: %v",
 			i.es.EventBaseIndex, err)
@@ -138,7 +138,7 @@ func (i *BulkEveIndexer) Commit() (interface{}, error) {
 	templateCheckLock.Unlock()
 
 	if len(i.buf) > 0 {
-		response, err := i.es.HttpClient.PostBytes("_bulk",
+		response, err := i.es.httpClient.PostBytes("_bulk",
 			"application/json", i.buf)
 		if err != nil {
 			return nil, err

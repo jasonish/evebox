@@ -164,15 +164,16 @@ func Main(args []string) {
 		log.Info("Using bookmark file %s", bookmarkFilename)
 	}
 
-	es := elasticsearch.New(viper.GetString("elasticsearch"))
-	es.EventBaseIndex = viper.GetString("index")
-	es.DisableCertCheck(viper.GetBool("disable-certificate-check"))
-	if viper.GetString("username") != "" || viper.GetString("password") != "" {
-		if err := es.SetUsernamePassword(viper.GetString("username"),
-			viper.GetString("password")); err != nil {
-			log.Fatalf("Failed to set username and password: %v", err)
-		}
+	config := elasticsearch.Config{
+		BaseURL:          viper.GetString("elasticsearch"),
+		DisableCertCheck: viper.GetBool("disable-certificate-check"),
+		Username:         viper.GetString("username"),
+		Password:         viper.GetString("password"),
 	}
+
+	es := elasticsearch.New(config)
+	es.EventBaseIndex = viper.GetString("index")
+
 	response, err := es.Ping()
 	if err != nil {
 		log.Fatal("error: failed to ping Elastic Search:", err)
@@ -182,7 +183,7 @@ func Main(args []string) {
 	majorVersion := response.MajorVersion()
 
 	// Check if the template exists.
-	templateExists, err := es.CheckTemplate(es.EventBaseIndex)
+	templateExists, err := es.TemplateExists(es.EventBaseIndex)
 	if !templateExists {
 		log.Info("Template %s does not exist, creating...", es.EventBaseIndex)
 		err = es.LoadTemplate(es.EventBaseIndex, majorVersion)
