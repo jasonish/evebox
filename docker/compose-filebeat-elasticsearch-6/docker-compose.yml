@@ -7,8 +7,8 @@ services:
       - 9200:9200
     environment:
       - discovery.type=single-node
-  logstash:
-    image: docker.elastic.co/logstash/logstash-oss:6.1.3
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:6.1.3
     volumes:
       - ${LOGDIR:-/var/log/suricata}:/var/log/suricata
-      - ./pipeline/:/usr/share/logstash/pipeline/
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml
