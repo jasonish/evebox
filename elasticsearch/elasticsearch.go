@@ -33,8 +33,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jasonish/evebox/httputil"
-
 	"bytes"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/resources"
@@ -43,6 +41,7 @@ import (
 	"io/ioutil"
 	"math"
 	"time"
+	"github.com/jasonish/evebox/httpclient"
 )
 
 const LOG_REQUEST_RESPONSE = false
@@ -80,13 +79,13 @@ type ElasticSearch struct {
 	// Set to true if keyword checks should not be done.
 	noKeyword bool
 
-	httpClient *httputil.HttpClient
+	httpClient *httpclient.HttpClient
 }
 
 func New(config Config) *ElasticSearch {
 	url := strings.TrimSuffix(config.BaseURL, "/")
 
-	httpClient := httputil.NewHttpClient()
+	httpClient := httpclient.NewHttpClient()
 	httpClient.SetBaseUrl(url)
 	httpClient.DisableCertCheck(config.DisableCertCheck)
 	httpClient.SetUsernamePassword(config.Username, config.Password)

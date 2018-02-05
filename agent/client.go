@@ -28,17 +28,17 @@ package agent
 
 import (
 	"encoding/json"
-	"github.com/jasonish/evebox/httputil"
 	"github.com/jasonish/evebox/util"
+	"github.com/jasonish/evebox/httpclient"
 )
 
 type Client struct {
-	httpClient *httputil.HttpClient
+	httpClient *httpclient.HttpClient
 }
 
 func NewClient() *Client {
 	client := Client{
-		httpClient: httputil.NewHttpClient(),
+		httpClient: httpclient.NewHttpClient(),
 	}
 	return &client
 }

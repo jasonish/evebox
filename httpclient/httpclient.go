@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-package httputil
+package httpclient
 
 import (
 	"bytes"
