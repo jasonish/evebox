@@ -76,8 +76,7 @@ import {ApiService} from "./api.service";
 import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {
-    IpAddrDataTableComponent, SshReportComponent, SshTopClientsComponent,
-    SshTopServersComponent
+    IpAddrDataTableComponent, SshReportComponent
 } from "./reports/ssh-report.component";
 import {LoginComponent} from "./login/login.component";
 import {SettingsComponent} from "./settings/settings.component";
@@ -86,7 +85,7 @@ import {SettingsService} from "./settings.service";
 import {EveboxPrintablePipe} from "./pipes/printable.pipe";
 import {RuleHighlightPipe} from "./pipes/rule-highlight.pipe";
 import {HttpClientModule} from "@angular/common/http";
-import { DebugComponent } from './debug/debug.component';
+import {DebugComponent} from "./debug/debug.component";
 import {ClientService} from "./client.service";
 
 @NgModule({
@@ -106,8 +105,6 @@ import {ClientService} from "./client.service";
         EveboxReportDataTable,
         IpReportComponent,
         SshReportComponent,
-        SshTopClientsComponent,
-        SshTopServersComponent,
         IpAddrDataTableComponent,
 
         EveboxFilterInputComponent,

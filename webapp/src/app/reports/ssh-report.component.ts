@@ -40,99 +40,6 @@ import * as palette from "google-palette";
 declare var Chart: any;
 
 @Component({
-    selector: "evebox-ssh-top-client-hosts",
-    template: `
-      <evebox-ip-addr-data-table *ngIf="results"
-                                 title="Top SSH Client Hosts"
-                                 [rows]="results"
-                                 [headers]="['#', 'Address']"></evebox-ip-addr-data-table>
-    `,
-})
-export class SshTopClientsComponent implements OnInit, OnChanges {
-
-    @Input() queryString = "";
-
-    results: any[] = [];
-
-    constructor(private api: ApiService, private topNavService: TopNavService) {
-    }
-
-    ngOnInit(): void {
-        this.refresh();
-    }
-
-    ngOnChanges(): void {
-        this.refresh();
-    }
-
-    refresh(): any {
-
-        let size = 10;
-
-        let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
-
-        let aggOptions: ReportAggOptions = {
-            queryString: this.queryString,
-            timeRange: timeRangeSeconds,
-            size: size,
-            eventType: "ssh",
-        };
-
-        return this.api.reportAgg("src_ip", aggOptions)
-            .then((response: any) => {
-                this.results = response.data;
-            });
-    }
-}
-
-@Component({
-    selector: "evebox-ssh-top-server-hosts",
-    template: `
-      <evebox-ip-addr-data-table *ngIf="results"
-                                 title="Top SSH Server Hosts"
-                                 [rows]="results"
-                                 [headers]="['#', 'Address']"></evebox-ip-addr-data-table>
-    `,
-})
-export class SshTopServersComponent implements OnInit, OnChanges {
-
-    @Input() queryString = "";
-
-    results: any[] = [];
-
-    constructor(private api: ApiService, private topNavService: TopNavService) {
-    }
-
-    ngOnInit(): void {
-        this.refresh();
-    }
-
-    ngOnChanges(): void {
-        this.refresh();
-    }
-
-    refresh(): any {
-
-        let size = 10;
-
-        let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
-
-        let aggOptions: ReportAggOptions = {
-            queryString: this.queryString,
-            timeRange: timeRangeSeconds,
-            size: size,
-            eventType: "ssh",
-        };
-
-        return this.api.reportAgg("dest_ip", aggOptions)
-            .then((response: any) => {
-                this.results = response.data;
-            });
-    }
-
-}
-
-@Component({
     selector: "evebox-ip-addr-data-table",
     template: `
       <report-data-table *ngIf="rows"
@@ -252,12 +159,16 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
         <br/>
         <div class="row">
           <div class="col-sm">
-            <evebox-ssh-top-client-hosts
-                [queryString]="queryString"></evebox-ssh-top-client-hosts>
+            <evebox-ip-addr-data-table *ngIf="topSourceAddresses"
+                                       title="Top SSH Client Hosts"
+                                       [rows]="topSourceAddresses"
+                                       [headers]="['#', 'Address']"></evebox-ip-addr-data-table>
           </div>
           <div class="col-sm">
-            <evebox-ssh-top-server-hosts
-                [queryString]="queryString"></evebox-ssh-top-server-hosts>
+            <evebox-ip-addr-data-table *ngIf="topDestinationAddresses"
+                                       title="Top SSH Server Hosts"
+                                       [rows]="topDestinationAddresses"
+                                       [headers]="['#', 'Address']"></evebox-ip-addr-data-table>
           </div>
         </div>
       </div>`,
@@ -325,6 +236,9 @@ export class SshReportComponent implements OnInit, OnDestroy {
         });
     }
 
+    topDestinationAddresses: any[] = [];
+    topSourceAddresses: any[] = [];
+
     refresh() {
 
         let size = 100;
@@ -337,6 +251,22 @@ export class SshReportComponent implements OnInit, OnDestroy {
             size: size,
             eventType: "ssh",
         };
+
+        // Top source IPs.
+        this.load(() => {
+            return this.api.reportAgg("src_ip", aggOptions)
+                .then((response: any) => {
+                    this.topSourceAddresses = response.data;
+                });
+        });
+
+        // Top destination IPs.
+        this.load(() => {
+            return this.api.reportAgg("dest_ip", aggOptions)
+                .then((response: any) => {
+                    this.topDestinationAddresses = response.data;
+                });
+        });
 
         this.load(() => {
             return this.api.reportHistogram({
