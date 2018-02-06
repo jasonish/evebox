@@ -13,9 +13,15 @@
 - When parsing rules, if parse error was encountered the remaining
   rules would not be parsed. Instead log and continue parsing.
 - Various fixes to oneshot where it would stop reading the input file.
+- Fix eve reader getting stuck on malformed records
+  (https://github.com/jasonish/evebox/issues/69)
+- Various fixes to the SSH report.
 
 **Changes**
 - Upgrade the Bootstrap CSS framework to version 4.
+- Include Logstash 6 template for use with Elastic Search 6.
+- Convert the SSH histogram graph to bars instead of lines, in
+  consideration of doing this for all histogram graphs.
 
 **Removed**
 - Support for Elastic Search versions less than 5.
