@@ -271,9 +271,9 @@ func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
 		majorVersion = pingResponse.MajorVersion()
 	}
 
-	if majorVersion < 5 {
-		return fmt.Errorf("Elastic Search versions less than 5 not supported.")
-	} else if majorVersion == 5 {
+	if majorVersion >= 6 {
+		templateFilename = "template-es6x.json"
+	} else if majorVersion >= 5 {
 		templateFilename = "template-es5x.json"
 	} else {
 		return fmt.Errorf("No template for Elastic Search with major version %d", majorVersion)
