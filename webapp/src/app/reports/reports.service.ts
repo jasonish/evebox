@@ -52,7 +52,7 @@ export class ReportsService {
         }
         else if (range <= (86400 * 7)) {
             // 7 days or less.
-            interval = '6h';
+            interval = 'hour';
         }
 
         console.log(`Returning interval: ${interval}.`);

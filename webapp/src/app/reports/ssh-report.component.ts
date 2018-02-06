@@ -196,8 +196,11 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
         <br/>
 
         <div class="row">
-          <div class="col-sm">
-            <canvas [hidden]="!eventsOverTime || eventsOverTime.length == 0" id="eventsOverTimeChart" height="225"></canvas>
+          <div class="col">
+            <div style="height: 225px"
+                 [hidden]="!eventsOverTime || eventsOverTime.values.length == 0">
+              <canvas id="eventsOverTimeChart"></canvas>
+            </div>
           </div>
         </div>
 
@@ -264,7 +267,10 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
 })
 export class SshReportComponent implements OnInit, OnDestroy {
 
-    eventsOverTime: any[] = [];
+    eventsOverTime: any = {
+        labels: [],
+        values: [],
+    };
 
     serverSoftware: any[] = [];
     clientSoftware: any[] = [];
@@ -339,64 +345,87 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 eventType: "ssh",
                 queryString: this.queryString,
             }).then((response: any) => {
-                this.eventsOverTime = response.data.map((x: any) => {
-                    return {
-                        date: moment(x.key).toDate(),
-                        value: x.count,
-                    };
-                });
 
-                let ctx = document.getElementById("eventsOverTimeChart");
+                this.eventsOverTime = {
+                    labels: [],
+                    values: [],
+                };
 
-                let values: any[] = response.data.map((x: any) => {
-                    return x.count;
-                });
-
-                let labels: any[] = response.data.map((x: any) => {
-                    return moment(x.key).format();
-                });
-
-                if (this.charts["eventsOverTimeChart"]) {
-                    this.charts["eventsOverTimeChart"].destroy();
+                let nonZeroCount = 0;
+                for (let item of response.data) {
+                    let count = item.count;
+                    this.eventsOverTime.labels.push(moment(item.key).toDate());
+                    this.eventsOverTime.values.push(count);
+                    if (count > 0) {
+                        nonZeroCount += 1;
+                    }
                 }
 
-                this.charts["eventsOverTimeChart"] = new Chart(ctx, {
-                    type: "bar",
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                backgroundColor: this.getColours(1)[0],
-                                data: values,
-                            }
-                        ]
-                    },
-                    options: {
-                        title: {
-                            display: true,
-                            text: "SSH Connections Over Time",
-                        },
-                        scales: {
-                            xAxes: [
+                if (nonZeroCount == 0) {
+                    this.eventsOverTime = {
+                        labels: [],
+                        values: [],
+                    };
+                }
+
+                setTimeout(() => {
+                    let ctx = document.getElementById("eventsOverTimeChart");
+
+                    if (this.charts["eventsOverTimeChart"]) {
+                        this.charts["eventsOverTimeChart"].destroy();
+                    }
+
+                    this.charts["eventsOverTimeChart"] = new Chart(ctx, {
+                        type: "bar",
+                        data: {
+                            labels: this.eventsOverTime.labels,
+                            datasets: [
                                 {
-                                    type: "time",
-                                    ticks: {
-                                        maxRotation: 0,
-                                    },
-                                    gridLines: false,
+                                    backgroundColor: this.getColours(1)[0],
+                                    data: this.eventsOverTime.values,
                                 }
                             ]
                         },
-                        legend: {
-                            display: false,
+                        options: {
+                            response: true,
+                            title: {
+                                display: true,
+                                text: "SSH Connections Over Time",
+                            },
+                            scales: {
+                                xAxes: [
+                                    {
+                                        type: "time",
+                                        distribution: "series",
+                                        ticks: {
+                                            maxRotation: 0,
+                                        },
+                                        gridLines: {
+                                            tickMarkLength: 10,
+                                        }
+                                    }
+                                ]
+                            },
+                            legend: {
+                                display: false,
+                            },
+                            layout: {},
+                            maintainAspectRatio: false,
+                            tooltips: {
+                                enabled: true,
+                                intersect: false,
+                                displayColors: false,
+                                callbacks: {
+                                    title: function (t) {
+                                        return moment(t[0].xLabel).format("YYYY-MM-DD");
+                                    }
+                                }
+                            }
                         },
-                        maintainAspectRatio: false,
-                        tooltips: {
-                            enabled: true,
-                            intersect: false,
-                        }
-                    },
-                });
+                    });
+
+
+                }, 0);
 
             });
         });
