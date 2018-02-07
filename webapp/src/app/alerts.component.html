@@ -80,6 +80,8 @@
   <br>
 </div>
 
+<br/>
+
 <div *ngIf="!loading && rows && rows.length == 0" style="text-align: center;">
   <hr/>
   No events found.
@@ -91,8 +93,6 @@
   Loading.
   <hr/>
 </div>
-
-<br/>
 
 <div class="row align-items-center" *ngIf="rows && rows.length > 0">
   <div class="col-sm">
