@@ -50,7 +50,7 @@ func (c *ApiContext) ConfigHandler(w *ResponseWriter, r *http.Request) error {
 	response.Extra = map[string]interface{}{}
 
 	if c.appContext.ElasticSearch != nil {
-		esKeyword, _ = c.appContext.ElasticSearch.GetKeywordType("")
+		esKeyword = c.appContext.ElasticSearch.GetKeyword()
 		response.Extra["elasticSearchUseIpDatatype"] = c.appContext.ElasticSearch.GetUseIpDatatype()
 	}
 

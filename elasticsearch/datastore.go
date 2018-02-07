@@ -27,7 +27,6 @@
 package elasticsearch
 
 import (
-	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
@@ -52,7 +51,7 @@ func (d *DataStore) GetEveEventSink() core.EveEventSink {
 }
 
 func (s *DataStore) asKeyword(keyword string) string {
-	return fmt.Sprintf("%s.%s", keyword, s.es.keyword)
+	return s.es.FormatKeyword(keyword)
 }
 
 // FindFlow finds the flow events matching the query parameters in options.
@@ -67,8 +66,8 @@ func (d *DataStore) FindFlow(flowId uint64, proto string, timestamp string,
 	query.AddFilter(TermQuery("proto", proto))
 	query.AddFilter(RangeLte("flow.start", timestamp))
 	query.AddFilter(RangeGte("flow.end", timestamp))
-	query.ShouldHaveIp(srcIp, d.es.keyword)
-	query.ShouldHaveIp(destIp, d.es.keyword)
+	query.ShouldHaveIp(srcIp, d.es.GetKeyword())
+	query.ShouldHaveIp(destIp, d.es.GetKeyword())
 
 	response, err := d.es.Search(query)
 	if err != nil {
@@ -141,14 +140,14 @@ type HistoryEntry struct {
 func (s *DataStore) buildAlertGroupQuery(p core.AlertGroupQueryParams) *EventQuery {
 	q := EventQuery{}
 	q.AddFilter(ExistsQuery("event_type"))
-	q.AddFilter(KeywordTermQuery("event_type", "alert", s.es.keyword))
+	q.AddFilter(KeywordTermQuery("event_type", "alert", s.es.GetKeyword()))
 	q.AddFilter(RangeQuery{
 		Field: "@timestamp",
 		Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
 		Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
 	})
-	q.AddFilter(KeywordTermQuery("src_ip", p.SrcIP, s.es.keyword))
-	q.AddFilter(KeywordTermQuery("dest_ip", p.DstIP, s.es.keyword))
+	q.AddFilter(KeywordTermQuery("src_ip", p.SrcIP, s.es.GetKeyword()))
+	q.AddFilter(KeywordTermQuery("dest_ip", p.DstIP, s.es.GetKeyword()))
 	q.AddFilter(TermQuery("alert.signature_id", p.SignatureID))
 	return &q
 }

@@ -100,7 +100,7 @@ func (s *ReportService) ReportHistogram(interval string, options core.ReportOpti
 	query := NewEventQuery()
 
 	if options.AddressFilter != "" {
-		query.ShouldHaveIp(options.AddressFilter, s.es.keyword)
+		query.ShouldHaveIp(options.AddressFilter, s.es.GetKeyword())
 	}
 
 	if options.QueryString != "" {
@@ -112,11 +112,11 @@ func (s *ReportService) ReportHistogram(interval string, options core.ReportOpti
 	}
 
 	if options.SensorFilter != "" {
-		query.AddFilter(KeywordTermQuery("host", options.SensorFilter, s.es.keyword))
+		query.AddFilter(KeywordTermQuery("host", options.SensorFilter, s.es.GetKeyword()))
 	}
 
 	if options.EventType != "" {
-		query.AddFilter(KeywordTermQuery("event_type", options.EventType, s.es.keyword))
+		query.AddFilter(KeywordTermQuery("event_type", options.EventType, s.es.GetKeyword()))
 	}
 
 	if options.DnsType != "" {
@@ -184,7 +184,7 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 	}
 
 	if options.AddressFilter != "" {
-		query.ShouldHaveIp(options.AddressFilter, s.es.keyword)
+		query.ShouldHaveIp(options.AddressFilter, s.es.GetKeyword())
 	}
 
 	if options.TimeRange != "" {

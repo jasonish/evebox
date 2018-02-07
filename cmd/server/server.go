@@ -300,13 +300,21 @@ func Main(args []string) {
 		config := elasticsearch.Config{
 			BaseURL:          viper.GetString("database.elasticsearch.url"),
 			DisableCertCheck: opts.NoCheckCertificate,
-			Username: viper.GetString("database.elasticsearch.username"),
-			Password: viper.GetString("database.elasticsearch.password"),
+			Username:         viper.GetString("database.elasticsearch.username"),
+			Password:         viper.GetString("database.elasticsearch.password"),
+			Index:            viper.GetString("database.elasticsearch.index"),
+		}
+
+		// Configuration provided keyword suffix?
+		isSet, keyword := getElasticSearchKeyword(flagset)
+		if isSet {
+			config.KeywordSuffix = keyword
+			if keyword == "" {
+				config.NoKeywordSuffix = true
+			}
 		}
 
 		elasticSearch := elasticsearch.New(config)
-		elasticSearch.SetEventIndex(
-			viper.GetString("database.elasticsearch.index"))
 
 		for {
 			ping, err := elasticSearch.Ping()
@@ -324,12 +332,9 @@ func Main(args []string) {
 			}
 		}
 
-		keywordSet, keyword := getElasticSearchKeyword(flagset)
-		if keywordSet {
-			log.Info("Forcing Elastic Search keyword to '%s'", keyword)
-			elasticSearch.SetKeyword(keyword)
-		} else {
-			elasticSearch.InitKeyword()
+		// May want to loop here until this has succeeded...
+		if err := elasticSearch.ConfigureIndex(); err != nil {
+			log.Error("Failed to configure Elastic Search index, EveBox may not function properly: %v", err)
 		}
 
 		appContext.ElasticSearch = elasticSearch

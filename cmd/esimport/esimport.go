@@ -172,7 +172,7 @@ func Main(args []string) {
 	}
 
 	es := elasticsearch.New(config)
-	es.EventBaseIndex = viper.GetString("index")
+	es.EventIndexPrefix = viper.GetString("index")
 
 	response, err := es.Ping()
 	if err != nil {
@@ -183,15 +183,15 @@ func Main(args []string) {
 	majorVersion := response.MajorVersion()
 
 	// Check if the template exists.
-	templateExists, err := es.TemplateExists(es.EventBaseIndex)
+	templateExists, err := es.TemplateExists(es.EventIndexPrefix)
 	if !templateExists {
-		log.Info("Template %s does not exist, creating...", es.EventBaseIndex)
-		err = es.LoadTemplate(es.EventBaseIndex, majorVersion)
+		log.Info("Template %s does not exist, creating...", es.EventIndexPrefix)
+		err = es.LoadTemplate(es.EventIndexPrefix, majorVersion)
 		if err != nil {
 			log.Fatal("Failed to create template:", err)
 		}
 	} else {
-		log.Info("Template %s exists, will not create.", es.EventBaseIndex)
+		log.Info("Template %s exists, will not create.", es.EventIndexPrefix)
 	}
 
 	filters := make([]eve.EveFilter, 0)

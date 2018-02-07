@@ -85,7 +85,7 @@ func (i *BulkEveIndexer) Submit(event eve.EveEvent) error {
 
 	timestamp := event.Timestamp()
 	event["@timestamp"] = timestamp.UTC().Format(AtTimestampFormat)
-	index := fmt.Sprintf("%s-%s", i.es.EventBaseIndex,
+	index := fmt.Sprintf("%s-%s", i.es.EventIndexPrefix,
 		timestamp.UTC().Format("2006.01.02"))
 
 	header := BulkCreateHeader{}
@@ -119,16 +119,16 @@ func (i *BulkEveIndexer) Commit() (interface{}, error) {
 	// checks are required in case Elastic Search was re-installed or something
 	// and the templates lost.
 	templateCheckLock.Lock()
-	exists, err := i.es.TemplateExists(i.es.EventBaseIndex)
+	exists, err := i.es.TemplateExists(i.es.EventIndexPrefix)
 	if err != nil {
 		log.Error("Failed to check if template %s exists: %v",
-			i.es.EventBaseIndex, err)
+			i.es.EventIndexPrefix, err)
 		templateCheckLock.Unlock()
 		return nil, errors.Errorf("no template installed for configured index")
 	} else if !exists {
 		log.Warning("Template %s does not exist, will create.",
-			i.es.EventBaseIndex)
-		err := i.es.LoadTemplate(i.es.EventBaseIndex, 0)
+			i.es.EventIndexPrefix)
+		err := i.es.LoadTemplate(i.es.EventIndexPrefix, 0)
 		if err != nil {
 			log.Error("Failed to install template: %v", err)
 			templateCheckLock.Unlock()

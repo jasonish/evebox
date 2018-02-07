@@ -78,6 +78,14 @@ func (m JsonMap) GetString(name string) string {
 	return val
 }
 
+func (m JsonMap) GetKeys() []string {
+	keys := make([]string, 0)
+	for key := range(m) {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
 // GetAsStrings will return the value with the given name as a slice
 // of strings. On failure an empty slice will be returned.
 func (m JsonMap) GetAsStrings(name string) []string {

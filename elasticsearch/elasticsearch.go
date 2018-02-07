@@ -51,6 +51,10 @@ type Config struct {
 	DisableCertCheck bool
 	Username         string
 	Password         string
+	Index            string
+
+	KeywordSuffix   string
+	NoKeywordSuffix bool
 }
 
 type ElasticSearch struct {
@@ -62,7 +66,7 @@ type ElasticSearch struct {
 	password string
 
 	EventSearchIndex string
-	EventBaseIndex   string
+	EventIndexPrefix string
 
 	// These are filled on a ping request. Perhaps when creating an
 	// instance of this object we should ping.
@@ -70,14 +74,7 @@ type ElasticSearch struct {
 	MajorVersion  int64
 	MinorVersion  int64
 
-	// The keyword to use for "keyword" type queries. Older versions
-	// of the Logstash template used "raw", newer ones use "keyword".
-	keyword string
-
 	useIpDatatype bool
-
-	// Set to true if keyword checks should not be done.
-	noKeyword bool
 
 	httpClient *httpclient.HttpClient
 }
@@ -96,19 +93,21 @@ func New(config Config) *ElasticSearch {
 		httpClient: httpClient,
 	}
 
+	es.setEventIndex(config.Index)
+
 	return es
 }
 
-func (es *ElasticSearch) SetEventIndex(index string) {
+func (es *ElasticSearch) setEventIndex(index string) {
 	if strings.HasSuffix(index, "*") {
 		baseIndex := strings.TrimSuffix(strings.TrimSuffix(index, "*"), "-")
 		es.EventSearchIndex = index
-		es.EventBaseIndex = baseIndex
+		es.EventIndexPrefix = baseIndex
 	} else {
-		es.EventBaseIndex = index
+		es.EventIndexPrefix = index
 		es.EventSearchIndex = fmt.Sprintf("%s-*", index)
 	}
-	log.Info("Event base index: %s", es.EventBaseIndex)
+	log.Info("Event base index: %s", es.EventIndexPrefix)
 	log.Info("Event search index: %s", es.EventSearchIndex)
 }
 
@@ -122,6 +121,12 @@ func (es *ElasticSearch) Decode(response *http.Response, v interface{}) error {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
 	return decoder.Decode(v)
+}
+
+// GetKeyword returns the Elastic Search keyword suffix for searches on
+// unanalyzed terms.
+func (es *ElasticSearch) GetKeyword() string {
+	return es.config.KeywordSuffix
 }
 
 func (es *ElasticSearch) Ping() (*PingResponse, error) {
@@ -175,28 +180,31 @@ func (es *ElasticSearch) GetUseIpDatatype() bool {
 	return es.useIpDatatype
 }
 
-// GetKeywordType is a crude way of determining if the template is using
-// Logstash 5 keyword type, or Logstash 2 "raw" type.
-func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
+func (es *ElasticSearch) ConfigureIndex() (error) {
 
-	// It appears as though Filebeat indexes don't need this.
-	if index == "filebeat" {
-		es.noKeyword = true
-		return "", nil
+	index := es.EventIndexPrefix
+
+	if strings.HasPrefix(index, "filebeat") {
+		if es.config.KeywordSuffix == "" && !es.config.NoKeywordSuffix {
+			es.config.KeywordSuffix = ""
+			es.config.NoKeywordSuffix = true
+		}
+		return nil
 	}
 
-	if index == "" {
-		index = es.EventBaseIndex
-	}
 	template, err := es.GetTemplate(index)
 	if err != nil {
 		log.Warning("Failed to get template from Elastic Search, keyword resolution delayed.")
-		return "", nil
+		return err
 	}
+
+	keys := template.GetKeys()
+	log.Info("Found templates %s", keys)
 
 	version := template.GetMap(index).Get("version")
 	log.Debug("Found template version %v", version)
 
+	// Check if we should use the IP datatype on src_ip and dest_ip.
 	properties := template.GetMap(index).
 		GetMap("mappings").GetMap("_default_").GetMap("properties")
 	if properties != nil {
@@ -208,52 +216,35 @@ func (es *ElasticSearch) GetKeywordType(index string) (string, error) {
 		}
 	}
 
-	dynamicTemplates := template.GetMap(index).
-		GetMap("mappings").
-		GetMap("_default_").
-		GetMapList("dynamic_templates")
-	if dynamicTemplates == nil {
-		log.Warning("Failed to parse template, keyword resolution delayed.")
-		log.Warning("Template: %s", util.ToJson(template))
-		return "", nil
-	}
-	for _, entry := range dynamicTemplates {
-		if entry["string_fields"] != nil {
-			mappingType := entry.GetMap("string_fields").
-				GetMap("mapping").
-				GetMap("fields").
-				GetMap("keyword").
-				Get("type")
-			if mappingType == "keyword" {
-				return "keyword", nil
+	// Determine keyword.
+	if es.config.KeywordSuffix == "" && !es.config.NoKeywordSuffix {
+		keywordFound := false
+		dynamicTemplates := template.GetMap(index).
+			GetMap("mappings").
+			GetMap("_default_").
+			GetMapList("dynamic_templates")
+		for _, entry := range dynamicTemplates {
+			if entry["string_fields"] != nil {
+				mappingType := entry.GetMap("string_fields").
+					GetMap("mapping").
+					GetMap("fields").
+					GetMap("keyword").
+					Get("type")
+				if mappingType == "keyword" {
+					es.config.KeywordSuffix = "keyword"
+					keywordFound = true
+				}
 			}
+		}
 
-			if entry.GetMap("string_fields").GetMap("mapping").GetMap("fields").GetMap("raw") != nil {
-				return "raw", nil
-			}
+		if keywordFound {
+			log.Info("Found Elastic Search keyword suffix to be: %s",
+				es.config.KeywordSuffix)
+		} else {
+			log.Warning("Failed to determine Elastic Search keyword suffix, EveBox may not work properly.")
 		}
 	}
 
-	log.Warning("Failed to parse template, keyword resolution delayed.")
-	log.Warning("Template: %s", util.ToJson(template))
-	return "", nil
-}
-
-func (es *ElasticSearch) SetKeyword(keyword string) {
-	if keyword == "" {
-		es.noKeyword = true
-	} else {
-		es.keyword = keyword
-	}
-}
-
-func (es *ElasticSearch) InitKeyword() error {
-	keyword, err := es.GetKeywordType(es.EventBaseIndex)
-	if err != nil {
-		return err
-	}
-	es.keyword = keyword
-	log.Info("Elastic Search keyword initialized to \"%s\"", es.keyword)
 	return nil
 }
 
@@ -324,9 +315,9 @@ func (e *DatastoreError) Error() string {
 }
 
 func (es *ElasticSearch) Search(query interface{}) (*Response, error) {
-	if es.keyword == "" && !es.noKeyword {
+	if es.config.KeywordSuffix == "" && !es.config.NoKeywordSuffix {
 		log.Warning("Search keyword not known, trying again.")
-		es.InitKeyword()
+		es.ConfigureIndex()
 	}
 
 	path := fmt.Sprintf("%s/_search", es.EventSearchIndex)
@@ -433,10 +424,10 @@ func (es *ElasticSearch) Refresh() {
 }
 
 func (es *ElasticSearch) FormatKeyword(keyword string) string {
-	if es.keyword == "" {
+	if es.config.KeywordSuffix == "" {
 		return keyword
 	}
-	return fmt.Sprintf("%s.%s", keyword, es.keyword)
+	return fmt.Sprintf("%s.%s", keyword, es.config.KeywordSuffix)
 }
 
 func (s *ElasticSearch) doUpdateByQuery(query interface{}) (util.JsonMap, error) {
