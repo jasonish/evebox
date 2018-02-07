@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.9.0 - 2018-01-97
 
 **Fixed**
 - The inbox will not remember the sort after after archiving or
@@ -26,7 +26,7 @@
 **Removed**
 - Support for Elastic Search versions less than 5.
 
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.8.1...HEAD)
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.8.1...0.9.0)
 
 ## 0.8.1 - 2017-12-10
 
