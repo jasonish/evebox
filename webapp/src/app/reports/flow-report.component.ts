@@ -59,7 +59,7 @@ import * as moment from "moment";
 
         <metrics-graphic *ngIf="eventsOverTime"
                          graphId="eventsOverTime"
-                         title="Netflow Events Over Time"
+                         title="Flow Events Over Time"
                          [data]="eventsOverTime"></metrics-graphic>
 
         <div class="row">
