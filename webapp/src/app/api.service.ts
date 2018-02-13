@@ -38,6 +38,7 @@ import "rxjs/add/operator/map";
 import {BehaviorSubject} from "rxjs/BehaviorSubject";
 import {ClientService, LoginResponse} from "./client.service";
 import {finalize} from "rxjs/operators";
+import {HttpClient, HttpParams} from "@angular/common/http";
 
 declare var localStorage: any;
 
@@ -155,18 +156,6 @@ export class ApiService {
 
     post(path: string, body: any, options: RequestOptionsArgs = {}) {
         options.body = JSON.stringify(body);
-        return this.request("POST", path, options)
-            .map((res: Response) => res.json())
-            .toPromise();
-    }
-
-    postForm(path: string, form: URLSearchParams, options: RequestOptionsArgs = {}) {
-        options.body = form.toString();
-        this.applySessionHeader(options);
-        let headers = options.headers || new Headers();
-        headers.append("Content-Type",
-            "application/x-www-form-urlencoded");
-        options.headers = headers;
         return this.request("POST", path, options)
             .map((res: Response) => res.json())
             .toPromise();
@@ -309,6 +298,32 @@ export class ApiService {
         return this.get(`api/1/report/agg?${qsb.join("&")}`);
     }
 
+    flowHistogram(args: any = {}): any {
+        let params = new HttpParams();
+
+        let subAggs = [];
+        if (args.appProto) {
+            subAggs.push("app_proto");
+        }
+        if (subAggs.length > 0) {
+            params = params.append("sub_aggs", subAggs.join(","));
+        }
+
+        if (args.timeRange) {
+            params = params.append("time_range", args.timeRange);
+        }
+
+        if (args.queryString) {
+            params = params.append("query_string", args.queryString);
+        }
+
+        if (args.interval) {
+            params = params.append("interval", args.interval);
+        }
+
+        return this.client.get("api/1/flow/histogram", params);
+    }
+
     commentOnEvent(eventId: string, comment: string) {
         console.log(`Commenting on event ${eventId}.`);
         return this.post(`api/1/event/${eventId}/comment`, {
@@ -334,6 +349,7 @@ export class ApiService {
             "comment": comment,
         });
     }
+
 
 }
 

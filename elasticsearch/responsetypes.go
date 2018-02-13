@@ -43,30 +43,30 @@ type Hits struct {
 
 type Response struct {
 	// Ping response fields.
-	Name        string `json:"name"`
-	ClusterName string `json:"cluster_name"`
-	ClusterUuid string `json:"cluster_uuid"`
-	Version     struct {
-		Number string `json:"number"`
+	Name        string `json:"name,omitempty"`
+	ClusterName string `json:"cluster_name,omitempty"`
+	ClusterUuid string `json:"cluster_uuid,omitempty"`
+	Version struct {
+		Number string `json:"number,omitempty"`
 	} `json:"version"`
-	Tagline string `json:"tagline"`
+	Tagline string `json:"tagline,omitempty"`
 
 	// Bulk response fields.
-	Errors bool                     `json:"errors"`
-	Items  []map[string]interface{} `json:"items"`
+	Errors bool                     `json:"errors,omitempty"`
+	Items  []map[string]interface{} `json:"items,omitempty"`
 
-	Shards       map[string]interface{} `json:"_shards"`
-	ScrollId     string                 `json:"_scroll_id"`
-	TimedOut     bool                   `json:"timed_out"`
-	Took         uint64                 `json:"took"`
-	Hits         Hits                   `json:"hits"`
-	Aggregations util.JsonMap           `json:"aggregations"`
+	Shards       map[string]interface{} `json:"_shards,omitempty"`
+	ScrollId     string                 `json:"_scroll_id,omitempty"`
+	TimedOut     bool                   `json:"timed_out,omitempty"`
+	Took         uint64                 `json:"took,omitempty"`
+	Hits         Hits                   `json:"hits,omitempty"`
+	Aggregations util.JsonMap           `json:"aggregations,omitempty"`
 
 	// A search may result in an error.
-	Error  map[string]interface{} `json:"error"`
-	Status int                    `json:"status"`
+	Error  map[string]interface{} `json:"error,omitempty"`
+	Status int                    `json:"status,omitempty"`
 
-	Raw []byte
+	Raw []byte `json:"-"`
 }
 
 func DecodeResponse(r *http.Response) (*Response, error) {

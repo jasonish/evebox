@@ -26,6 +26,11 @@
 
 package util
 
+import (
+	"encoding/json"
+	"github.com/jasonish/evebox/log"
+)
+
 // A wrapper around a generic string map for accessing elements.
 type JsonMap map[string]interface{}
 
@@ -78,12 +83,37 @@ func (m JsonMap) GetString(name string) string {
 	return val
 }
 
+func (m JsonMap) GetInt64(name string) int64 {
+	number, ok := m[name].(json.Number)
+	if ok {
+		value, err := number.Int64()
+		if err == nil {
+			return value
+		} else {
+			fvalue, err := number.Float64()
+			if err == nil {
+				return int64(fvalue)
+			}
+		}
+	} else {
+		log.Warning("Failed to convert %v to json.Number", m[name])
+	}
+	return 0
+}
+
 func (m JsonMap) GetKeys() []string {
 	keys := make([]string, 0)
-	for key := range(m) {
+	for key := range (m) {
 		keys = append(keys, key)
 	}
 	return keys
+}
+
+func (m JsonMap) HasKey(key string) bool {
+	if m[key] == nil {
+		return false
+	}
+	return true
 }
 
 // GetAsStrings will return the value with the given name as a slice

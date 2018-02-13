@@ -172,6 +172,8 @@ func (c *ApiContext) InitRoutes(router *router.Router) {
 	r.GET("/report/agg", c.ReportAggs)
 	r.GET("/report/histogram", c.ReportHistogram)
 	r.POST("/find-flow", c.FindFlowHandler)
+
+	r.GET("/flow/histogram", c.FlowHistogram)
 }
 
 // DecodeRequestBody is a helper functio to decoder request bodies into a

@@ -24,24 +24,28 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from "@angular/core";
+import {Component, OnDestroy, OnInit} from "@angular/core";
 import {ActivatedRoute, Params} from "@angular/router";
 import {ReportsService} from "./reports.service";
-import {AppService, AppEvent, AppEventCode} from "../app.service";
+import {AppEvent, AppEventCode, AppService} from "../app.service";
 import {TopNavService} from "../topnav.service";
 import {ElasticSearchService} from "../elasticsearch.service";
 import {loadingAnimation} from "../animations";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {ApiService, ReportAggOptions} from "../api.service";
 
+import * as chartjs from "../shared/chartjs";
 import * as moment from "moment";
+import {EveBoxProtoPrettyPrinter} from "../pipes/proto-pretty-printer.pipe";
+
+declare var Chart: any;
 
 @Component({
     template: `
       <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
         <br/>
-        
+
         <loading-spinner [loading]="loading > 0"></loading-spinner>
 
         <div class="row">
@@ -51,16 +55,35 @@ import * as moment from "moment";
             </button>
           </div>
           <div class="col-md-6 col-sm-6">
-            <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+            <evebox-filter-input
+                [queryString]="queryString"></evebox-filter-input>
           </div>
         </div>
 
         <br/>
 
-        <metrics-graphic *ngIf="eventsOverTime"
-                         graphId="eventsOverTime"
-                         title="Flow Events Over Time"
-                         [data]="eventsOverTime"></metrics-graphic>
+        <div class="row">
+          <div class="col">
+            <div style="height: 250px;">
+              <canvas id="eventsOverTimeChart"
+                      style="padding-top: 0px;"></canvas>
+            </div>
+            <div *ngIf="interval != ''" class="dropdown"
+                 style="text-align:center;">
+              <span class="mx-auto" data-toggle="dropdown">
+                <small><a
+                    href="javascript:void(0)">{{interval}} intervals</a></small>
+              </span>
+              <div class="dropdown-menu">
+                <a class="dropdown-item" href="javascript:void(0);"
+                   (click)="changeHistogramInterval(item.value)"
+                   *ngFor="let item of histogramIntervals">{{item.msg}}</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <br/>
 
         <div class="row">
 
@@ -100,8 +123,6 @@ import * as moment from "moment";
 })
 export class FlowReportComponent implements OnInit, OnDestroy {
 
-    eventsOverTime: any[];
-
     topClientsByFlows: any[];
     topServersByFlows: any[];
 
@@ -113,15 +134,35 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
+    private charts: any = {};
+
+    histogramIntervals: any[] = [
+        {value: "1s", msg: "1 second"},
+        {value: "1m", msg: "1 minute"},
+        {value: "5m", msg: "5 minute"},
+        {value: "15m", msg: "15 minutes"},
+        {value: "1h", msg: "1 hour"},
+        {value: "6h", msg: "6 hours"},
+        {value: "12h", msg: "12 hours"},
+        {value: "1d", msg: "1 day (24 hours)"},
+    ];
+
+    public interval: string = null;
+
+    private range: number = null;
+
     constructor(private appService: AppService,
                 private route: ActivatedRoute,
                 private reportsService: ReportsService,
                 private topNavService: TopNavService,
                 private api: ApiService,
-                private elasticsearch: ElasticSearchService) {
+                private elasticsearch: ElasticSearchService,
+                private protoPrettyPrinter: EveBoxProtoPrettyPrinter) {
     }
 
     ngOnInit() {
+
+        this.range = this.topNavService.getTimeRangeAsSeconds();
 
         this.subTracker.subscribe(this.route.params, (params: Params) => {
             this.queryString = params["q"] || "";
@@ -130,6 +171,8 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         this.subTracker.subscribe(this.appService, (event: AppEvent) => {
             if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
+                this.range = this.topNavService.getTimeRangeAsSeconds();
+                this.interval = null;
                 this.refresh();
             }
         });
@@ -146,32 +189,175 @@ export class FlowReportComponent implements OnInit, OnDestroy {
         }).catch((err) => {
         }).then(() => {
             this.loading--;
-        })
+        });
+    }
+
+    private renderChart(id: string, options: any) {
+        let element = document.getElementById(id);
+        let ctx = (<HTMLCanvasElement>element).getContext("2d");
+
+        if (this.charts[id]) {
+            this.charts[id].destroy();
+        }
+
+        this.charts[id] = new Chart(ctx, options);
+    }
+
+    private refreshEventsOverTime() {
+        if (!this.interval) {
+            this.interval = "1d";
+
+            if (this.range <= 60) {
+                this.interval = "1s";
+            } else if (this.range <= 3600) {
+                this.interval = "1m";
+            } else if (this.range <= (3600 * 3)) {
+                this.interval = "5m";
+            } else if (this.range <= 3600 * 24) {
+                this.interval = "15m";
+            } else if (this.range <= 3600 * 24 * 3) {
+                this.interval = "1h";
+            }
+        }
+
+        let histogramOptions: any = {
+            appProto: true,
+            queryString: this.queryString,
+            interval: this.interval,
+        };
+
+        if (this.range > 0) {
+            histogramOptions.timeRange = `${this.range}s`;
+        }
+
+        this.api.flowHistogram(histogramOptions).subscribe((response) => {
+            console.log(response);
+
+            let labels = [];
+            let eventCounts = [];
+            let protos = [];
+
+            response.data.forEach((elem) => {
+                for (let proto in elem.app_proto) {
+                    if (protos.indexOf(proto) < 0) {
+                        protos.push(proto);
+                    }
+                }
+            });
+
+            let data = {};
+
+            let colours = chartjs.getColourPalette(protos.length + 1);
+
+            let totals = [];
+
+            response.data.forEach((elem) => {
+                let proto_sum = 0;
+                for (let proto of protos) {
+                    if (!data[proto]) {
+                        data[proto] = [];
+                    }
+                    if (proto in elem.app_proto) {
+                        let val = elem.app_proto[proto];
+                        data[proto].push(val);
+                        proto_sum += val;
+                    } else {
+                        data[proto].push(0);
+                    }
+                }
+                labels.push(moment(elem.key).toDate());
+
+                totals.push(elem.events);
+                eventCounts.push(elem.events - proto_sum);
+            });
+
+            let datasets: any[] = [{
+                label: "Other",
+                backgroundColor: colours[0],
+                borderColor: colours[0],
+                data: eventCounts,
+                fill: false,
+            }];
+
+            let i = 1;
+
+            for (let proto of protos) {
+                let label = proto;
+                if (proto === "failed") {
+                    label = "Unknown";
+                } else {
+                    label = this.protoPrettyPrinter.transform(proto, null);
+                }
+                datasets.push({
+                    label: label,
+                    backgroundColor: colours[i],
+                    borderColor: colours[i],
+                    fill: false,
+                    data: data[proto],
+                });
+                i += 1;
+            }
+
+            this.renderChart("eventsOverTimeChart", {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: datasets,
+                },
+                options: {
+                    title: {
+                        display: true,
+                        text: "Flow Events Over Time",
+                        padding: 0,
+                    },
+                    legend: {
+                        position: "right",
+                    },
+                    scales: {
+                        xAxes: [
+                            {
+                                display: true,
+                                type: "time",
+                                stacked: true,
+                            }
+                        ],
+                        yAxes: [
+                            {
+                                gridLines: false,
+                                stacked: true,
+                                ticks: {
+                                    padding: 5,
+                                }
+                            }
+                        ]
+                    },
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    tooltips: {
+                        callbacks: {
+                            footer: function (a, b) {
+                                let index = a[0].index;
+                                return `Total: ${totals[index]}`;
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    changeHistogramInterval(interval) {
+        this.interval = interval;
+        this.refreshEventsOverTime();
     }
 
     refresh() {
-
-        let range = this.topNavService.getTimeRangeAsSeconds();
         let now = moment();
 
-        this.load(() => {
-            return this.api.reportHistogram({
-                timeRange: range,
-                interval: this.reportsService.histogramTimeInterval(range),
-                eventType: "flow",
-                queryString: this.queryString,
-            }).then((response: any) => {
-                this.eventsOverTime = response.data.map((x: any) => {
-                    return {
-                        date: moment(x.key).toDate(),
-                        value: x.count
-                    };
-                });
-            });
-        });
+        this.refreshEventsOverTime();
 
         let aggOptions: ReportAggOptions = {
-            timeRange: range,
+            timeRange: this.range,
             eventType: "flow",
             size: 10,
             queryString: this.queryString,
@@ -222,15 +408,15 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             }
         };
 
-        if (this.queryString && this.queryString != "") {
-            query.query.filtered.query = {
-                query_string: {
-                    query: this.queryString
-                }
-            };
-        }
+        // if (this.queryString && this.queryString != "") {
+        //     query.query.filtered.query = {
+        //         query_string: {
+        //             query: this.queryString
+        //         }
+        //     };
+        // }
 
-        this.elasticsearch.addTimeRangeFilter(query, now, range);
+        this.elasticsearch.addTimeRangeFilter(query, now, this.range);
 
         this.load(() => {
             return this.elasticsearch.search(query).then((response: any) => {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2018 Jason Ish
+/* Copyright (c) 2018 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,19 +27,21 @@
 import {Pipe, PipeTransform} from '@angular/core';
 
 @Pipe({
-    name: 'genericPrettyPrinter'
+    name: 'evebox-proto-pretty-printer'
 })
-export class EveBoxGenericPrettyPrinter implements PipeTransform {
+export class EveBoxProtoPrettyPrinter implements PipeTransform {
 
     transform(value: any, args: any): any {
 
-        // Replace underscores with spaces.
-        value = value.replace(/_/g, ' ');
-
-        // Captialize the first letter of each word.
-        value = value.toLowerCase().replace(/\b./g, (a: any) => {
-            return a.toUpperCase();
-        });
+        switch (value) {
+            case "http":
+            case "dns":
+            case "tls":
+            case "ssh":
+            case "smtp":
+            case "dcerpc":
+                return value.toUpperCase()
+        }
 
         return value;
     }

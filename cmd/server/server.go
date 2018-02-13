@@ -343,6 +343,7 @@ func Main(args []string) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		appContext.FlowService = elasticsearch.NewFlowService(elasticSearch)
 		appContext.SetFeature(core.FEATURE_REPORTING)
 		appContext.SetFeature(core.FEATURE_COMMENTS)
 	case "sqlite":

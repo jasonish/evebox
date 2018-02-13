@@ -163,4 +163,21 @@ export class ClientService {
                 })
             );
     }
+
+    get(path:string, params?:any):Observable<any> {
+        let headers = new HttpHeaders();
+        if (this._sessionId) {
+            headers = this.addSessionIdHeader(headers);
+        }
+
+        let options:any = {
+            headers: headers,
+        }
+
+        if (params) {
+            options.params = params;
+        }
+
+        return this.http.get(this.buildUrl(path), options)
+    }
 }

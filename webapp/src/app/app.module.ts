@@ -87,6 +87,7 @@ import {RuleHighlightPipe} from "./pipes/rule-highlight.pipe";
 import {HttpClientModule} from "@angular/common/http";
 import {DebugComponent} from "./debug/debug.component";
 import {ClientService} from "./client.service";
+import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
 
 @NgModule({
     declarations: [
@@ -169,6 +170,9 @@ import {ClientService} from "./client.service";
         TopNavService,
         ToastrService,
         ThemeService,
+
+        // Local pipes.
+        EveBoxProtoPrettyPrinter,
     ],
     bootstrap: [AppComponent]
 })

@@ -27,17 +27,10 @@
 package elasticsearch
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 )
-
-type Script struct {
-	Lang   string                 `json:"lang,omitempty"`
-	Inline string                 `json:"inline,omitempty"`
-	Params map[string]interface{} `json:"params,omitempty"`
-}
 
 type Bool struct {
 	Filter  []interface{} `json:"filter,omitempty"`
@@ -49,15 +42,21 @@ type Bool struct {
 	MinimumShouldMatch interface{} `json:"minimum_should_match,omitempty"`
 }
 
-type Query struct {
-	Bool *Bool `json:"bool,omitempty"`
+// BulkCreateHeader represents the JSON used to prefix a document to be indexed
+// in the bulk request.
+type BulkCreateHeader struct {
+	Create struct {
+		Index string `json:"_index"`
+		Type  string `json:"_type"`
+		Id    string `json:"_id"`
+	} `json:"create"`
 }
 
 // EventQuery is a type for building up an Elastic Search event query.
 type EventQuery struct {
 	Query  *Query                 `json:"query,omitempty"`
 	Script *Script                `json:"script,omitempty"`
-	Size   int64                  `json:"size,omitempty"`
+	Size   int64                  `json:"size"`
 	Sort   []interface{}          `json:"sort,omitempty"`
 	Aggs   map[string]interface{} `json:"aggs,omitempty"`
 }
@@ -140,22 +139,6 @@ func ExistsQuery(field string) interface{} {
 	}
 }
 
-func TermQuery(field string, value interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"term": map[string]interface{}{
-			field: value,
-		},
-	}
-}
-
-func PrefixQuery(field string, value interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"prefix": map[string]interface{}{
-			field: value,
-		},
-	}
-}
-
 func KeywordTermQuery(field string, value string, suffix string) map[string]interface{} {
 	term := field
 	if suffix != "" {
@@ -181,6 +164,86 @@ func QueryString(query string) map[string]interface{} {
 	}
 }
 
+// Range.
+func NewRangeQuery(field string, gte interface{}, lte interface{}) map[string]interface{} {
+	rng := map[string]interface{}{}
+
+	if gte != nil {
+		rng["gte"] = gte
+	}
+
+	if lte != nil {
+		rng["lte"] = lte
+	}
+
+	return map[string]interface{}{
+		"range": map[string]interface{}{
+			field: rng,
+		},
+	}
+}
+
+func RangeGte(field string, value interface{}) interface{} {
+	return NewRangeQuery(field, value, nil)
+}
+
+func RangeLte(field string, value interface{}) interface{} {
+	return NewRangeQuery(field, nil, value)
+}
+
+// DateHistogram
+type DateHistogram map[string]map[string]interface{}
+
+func NewDateHistogram() DateHistogram {
+	return map[string]map[string]interface{}{
+		"date_histogram": {},
+	}
+}
+
+func (t DateHistogram) Field(field string) DateHistogram {
+	t["date_histogram"]["field"] = field
+	return t
+}
+
+func (t DateHistogram) Interval(interval string) DateHistogram {
+	t["date_histogram"]["interval"] = interval
+	return t
+}
+
+func (t DateHistogram) MinDocCount(count int64) DateHistogram {
+	t["date_histogram"]["min_doc_count"] = count
+	return t
+}
+
+// AddAgg adds a sub-aggregation object to a DateHistogram.
+func (t DateHistogram) AddAgg(name string, agg interface{}) DateHistogram {
+	aggs := t["aggs"]
+	if aggs == nil {
+		aggs = make(map[string]interface{})
+	}
+	aggs[name] = agg
+	t["aggs"] = aggs
+	return t
+}
+
+func PrefixQuery(field string, value interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"prefix": map[string]interface{}{
+			field: value,
+		},
+	}
+}
+
+type Query struct {
+	Bool *Bool `json:"bool,omitempty"`
+}
+
+type Script struct {
+	Lang   string                 `json:"lang,omitempty"`
+	Inline string                 `json:"inline,omitempty"`
+	Params map[string]interface{} `json:"params,omitempty"`
+}
+
 func Sort(field string, order string) map[string]interface{} {
 	return map[string]interface{}{
 		field: map[string]interface{}{
@@ -189,46 +252,27 @@ func Sort(field string, order string) map[string]interface{} {
 	}
 }
 
-func Range(rangeType string, field string, value interface{}) interface{} {
+type SumAggregation struct {
+	Sum map[string]interface{} `json:"sum"`
+}
+
+func NewSumAggregation() SumAggregation {
+	return SumAggregation{
+		Sum: map[string]interface{}{},
+	}
+}
+
+func (t SumAggregation) Field(field string) SumAggregation {
+	t.Sum["field"] = field
+	return t
+}
+
+func TermQuery(field string, value interface{}) map[string]interface{} {
 	return map[string]interface{}{
-		"range": map[string]interface{}{
-			field: map[string]interface{}{
-				rangeType: value,
-			},
+		"term": map[string]interface{}{
+			field: value,
 		},
 	}
-}
-
-func RangeGte(field string, value interface{}) interface{} {
-	return Range("gte", field, value)
-}
-
-func RangeLte(field string, value interface{}) interface{} {
-	return Range("lte", field, value)
-}
-
-type RangeQuery struct {
-	Field string
-	Gte   string
-	Lte   string
-}
-
-func (r RangeQuery) MarshalJSON() ([]byte, error) {
-	values := map[string]string{}
-	if r.Gte != "" {
-		values["gte"] = r.Gte
-	}
-	if r.Lte != "" {
-		values["lte"] = r.Lte
-	}
-
-	rangeq := map[string]interface{}{
-		"range": map[string]interface{}{
-			r.Field: values,
-		},
-	}
-
-	return json.Marshal(rangeq)
 }
 
 func TopHitsAgg(field string, order string, size int64) interface{} {
@@ -248,14 +292,4 @@ func TopHitsAgg(field string, order string, size int64) interface{} {
 			"size": size,
 		},
 	}
-}
-
-// BulkCreateHeader represents the JSON used to prefix a document to be indexed
-// in the bulk request.
-type BulkCreateHeader struct {
-	Create struct {
-		Index string `json:"_index"`
-		Type  string `json:"_type"`
-		Id    string `json:"_id"`
-	} `json:"create"`
 }

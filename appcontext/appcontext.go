@@ -71,7 +71,11 @@ type AppContext struct {
 	ConfigDB  *configdb.ConfigDB
 	Userstore core.UserStore
 
+	// The interface to the underlying datastore.
 	DataStore core.Datastore
+
+	// Service for working with flows.
+	FlowService core.FlowService
 
 	ElasticSearch *elasticsearch.ElasticSearch
 

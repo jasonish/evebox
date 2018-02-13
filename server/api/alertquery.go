@@ -28,11 +28,9 @@ package api
 
 import (
 	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/eve"
-	"github.com/jasonish/evebox/log"
-	"github.com/pkg/errors"
 	"net/http"
 	"strings"
+	"fmt"
 )
 
 // AlertsHandler handles GET requests to /api/1/alerts. This is the handler
@@ -72,45 +70,20 @@ func (c *ApiContext) AlertsHandler(w *ResponseWriter, r *http.Request) error {
 		}
 	}
 
+	args, err := parseCommonRequestArgs(r)
+	if err != nil {
+		return err
+	}
+	if args.TimeRange != "" && !(args.MinTs.IsZero() && args.MaxTs.IsZero()) {
+		return fmt.Errorf("time_range not allowed with min_ts or max_ts")
+	}
+	options.MinTs = args.MinTs
+	options.MaxTs = args.MaxTs
+	options.TimeRange = args.TimeRange
+
 	options.QueryString = r.FormValue("query_string")
 	if options.QueryString == "" {
 		options.QueryString = r.FormValue("queryString")
-	}
-
-	timeRange := r.FormValue("time_range")
-	if timeRange == "" {
-		timeRange = r.FormValue("timeRange")
-	}
-	minTs := r.FormValue("min_ts")
-	maxTs := r.FormValue("max_ts")
-	if timeRange != "" && (minTs != "" || maxTs != "") {
-		return newHttpErrorResponse(http.StatusBadRequest,
-			errors.Errorf("time_range not allowed with min_ts or max_ts"))
-	}
-
-	options.TimeRange = r.FormValue("time_range")
-	if options.TimeRange == "" {
-		options.TimeRange = r.FormValue("timeRange")
-	}
-
-	if minTs != "" {
-		ts, err := eve.ParseTimestamp(minTs)
-		if err != nil {
-			return newHttpErrorResponse(http.StatusBadRequest,
-				errors.Errorf("Failed to parse '%s' as timestamp", minTs))
-		}
-		log.Debug("Parsed %s as %v", minTs, ts)
-		options.MinTs = ts
-	}
-
-	if maxTs != "" {
-		ts, err := eve.ParseTimestamp(maxTs)
-		if err != nil {
-			return newHttpErrorResponse(http.StatusBadRequest,
-				errors.Errorf("Failed to parse '%s' as timestamp", minTs))
-		}
-		log.Debug("Parsed %s as %v", minTs, ts)
-		options.MaxTs = ts
 	}
 
 	alerts, err := c.appContext.DataStore.AlertQuery(options)

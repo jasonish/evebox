@@ -432,11 +432,23 @@ func (es *ElasticSearch) FormatKeyword(keyword string) string {
 
 func (s *ElasticSearch) doUpdateByQuery(query interface{}) (util.JsonMap, error) {
 	var response util.JsonMap
-	err := s.httpClient.PostJsonDecodeResponse(
+	rawResponse, err := s.httpClient.PostJson(
 		fmt.Sprintf("%s/_update_by_query?refresh=true&conflicts=proceed",
-			s.EventSearchIndex), query, &response)
+			s.EventSearchIndex), query)
 	if err != nil {
 		return nil, errors.Wrap(err, "request failed")
+	}
+	defer rawResponse.Body.Close()
+
+	body, err := ioutil.ReadAll(rawResponse.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	if err := decoder.Decode(&response); err != nil {
+		return nil, err
 	}
 
 	return response, nil

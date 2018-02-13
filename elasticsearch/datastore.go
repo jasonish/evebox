@@ -28,10 +28,10 @@ package elasticsearch
 
 import (
 	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/pkg/errors"
 	"time"
+	"github.com/jasonish/evebox/eve"
 )
 
 type DataStore struct {
@@ -139,13 +139,11 @@ type HistoryEntry struct {
 
 func (s *DataStore) buildAlertGroupQuery(p core.AlertGroupQueryParams) *EventQuery {
 	q := EventQuery{}
+	q.Size = -1
 	q.AddFilter(ExistsQuery("event_type"))
 	q.AddFilter(KeywordTermQuery("event_type", "alert", s.es.GetKeyword()))
-	q.AddFilter(RangeQuery{
-		Field: "@timestamp",
-		Gte:   eve.FormatTimestampUTC(p.MinTimestamp),
-		Lte:   eve.FormatTimestampUTC(p.MaxTimestamp),
-	})
+	q.AddFilter(NewRangeQuery("@timestamp", eve.FormatTimestampUTC(p.MinTimestamp),
+		eve.FormatTimestampUTC(p.MaxTimestamp)))
 	q.AddFilter(KeywordTermQuery("src_ip", p.SrcIP, s.es.GetKeyword()))
 	q.AddFilter(KeywordTermQuery("dest_ip", p.DstIP, s.es.GetKeyword()))
 	q.AddFilter(TermQuery("alert.signature_id", p.SignatureID))
