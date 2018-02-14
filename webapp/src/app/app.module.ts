@@ -92,12 +92,9 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
 @NgModule({
     declarations: [
         AppComponent,
-
         AlertsComponent,
         EventsComponent,
         EventComponent,
-
-        // Report components.
         DNSReportComponent,
         AlertReportComponent,
         NetflowReportComponent,
@@ -107,9 +104,7 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         IpReportComponent,
         SshReportComponent,
         IpAddrDataTableComponent,
-
         EveboxFilterInputComponent,
-
         TopNavComponent,
         EveboxHelpComponent,
         AceEditor,
@@ -119,7 +114,15 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         EveboxSearchLinkComponent,
         EveboxEventTable2Component,
         EveboxLoadingSpinnerComponent,
+        LoginComponent,
+        SettingsComponent,
+        EveboxCommentInput,
+        DebugComponent,
 
+        // Local pipes.
+        EveBoxProtoPrettyPrinter,
+        EventSeverityToBootstrapClass,
+        EveboxFormatTimestampPipe,
         EveboxFormatIpAddressPipe,
         EveboxHumanizePipe,
         EveboxJsonPrettyPipe,
@@ -130,14 +133,6 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         EveBoxEventDescriptionPrinterPipe,
         RuleHighlightPipe,
         EveboxPrintablePipe,
-        EventSeverityToBootstrapClass,
-        EveboxFormatTimestampPipe,
-
-        LoginComponent,
-
-        SettingsComponent,
-        EveboxCommentInput,
-        DebugComponent,
     ],
     imports: [
         // Angular modules.
@@ -163,7 +158,6 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         EventServices,
         EventService,
         EveboxSubscriptionService,
-        EveboxFormatIpAddressPipe,
         MousetrapService,
         ReportsService,
         SettingsService,
@@ -173,6 +167,7 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
 
         // Local pipes.
         EveBoxProtoPrettyPrinter,
+        EveboxFormatIpAddressPipe,
     ],
     bootstrap: [AppComponent]
 })
