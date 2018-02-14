@@ -114,11 +114,9 @@ func (c *ApiContext) EventQueryHandler(w *ResponseWriter, r *http.Request) error
 	}
 	options.MinTs = minTs
 
-	order := r.FormValue("order")
-	if order != "" {
-		options.Order = order
-	}
-
+	options.SortBy = r.FormValue("sort_by")
+	options.SortOrder = r.FormValue("order")
+	options.TimeRange = r.FormValue("time_range")
 	options.EventType = r.FormValue("event_type")
 	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 0, 64)
 

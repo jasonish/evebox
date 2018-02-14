@@ -52,7 +52,7 @@ func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() (core.AlertGro
 		if err != nil {
 			return params, errors.Wrap(err, "bad min_timestamp format")
 		}
-		params.MinTimestamp = minTimestamp
+		params.MinTs = minTimestamp
 	}
 
 	if a.MaxTimestamp != "" {
@@ -60,7 +60,7 @@ func (a *AlertGroupQueryParameters) ToCoreAlertGroupQueryParams() (core.AlertGro
 		if err != nil {
 			return params, errors.Wrap(err, "bad max_timestamp format")
 		}
-		params.MaxTimestamp = maxTimestamp
+		params.MaxTs = maxTimestamp
 	}
 
 	params.SignatureID = a.SignatureId

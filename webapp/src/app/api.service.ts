@@ -25,7 +25,10 @@
  */
 
 import {Injectable} from "@angular/core";
-import {Headers, Http, RequestOptionsArgs, Response} from "@angular/http";
+import {
+    Headers, Http, RequestOptionsArgs, Response,
+    URLSearchParams
+} from "@angular/http";
 import {ToastrService} from "./toastr.service";
 import {GITREV} from "../environments/gitrev";
 import {Router} from "@angular/router";
@@ -39,6 +42,8 @@ import {BehaviorSubject} from "rxjs/BehaviorSubject";
 import {ClientService, LoginResponse} from "./client.service";
 import {finalize} from "rxjs/operators";
 import {HttpClient, HttpParams} from "@angular/common/http";
+import {ResultSet} from "./elasticsearch.service";
+import * as moment from "moment";
 
 declare var localStorage: any;
 
@@ -277,25 +282,62 @@ export class ApiService {
     }
 
     reportAgg(agg: string, options: ReportAggOptions = {}) {
-
-        let qsb: any = [];
-
-        qsb.push(`agg=${agg}`);
+        let params = new HttpParams().append("agg", agg);
 
         for (let option in options) {
             switch (option) {
                 case "timeRange":
-                    if (options[option] > 0) {
-                        qsb.push(`timeRange=${options[option]}s`);
-                    }
+                    params = params.append("timeRange", `${options[option]}s`);
                     break;
                 default:
-                    qsb.push(`${option}=${options[option]}`);
+                    params = params.append(option, options[option]);
                     break;
             }
         }
 
-        return this.get(`api/1/report/agg?${qsb.join("&")}`);
+        return this.client.get("api/1/report/agg", params).toPromise();
+    }
+
+    /**
+     * Find events - all events, not just alerts.
+     */
+    eventQuery(options: EventQueryOptions = {}): Observable<any> {
+
+        let params = new HttpParams();
+
+        if (options.queryString) {
+            params = params.append("query_string", options.queryString);
+        }
+
+        if (options.maxTs) {
+            params = params.append("max_ts", options.maxTs);
+        }
+
+        if (options.minTs) {
+            params = params.append("min_ts", options.minTs);
+        }
+
+        if (options.eventType && options.eventType != "all") {
+            params = params.append("event_type", options.eventType);
+        }
+
+        if (options.sortOrder) {
+            params = params.append("order", options.sortOrder);
+        }
+
+        if (options.sortBy) {
+            params = params.append("sort_by", options.sortBy);
+        }
+
+        if (options.size) {
+            params = params.append("size", options.size.toString());
+        }
+
+        if (options.timeRange) {
+            params = params.append("time_range", `${options.timeRange}s`);
+        }
+
+        return this.client.get("api/1/event-query", params);
     }
 
     flowHistogram(args: any = {}): any {
@@ -375,4 +417,15 @@ export interface ReportAggOptions {
     // Subtype info.
     dnsType?: string;
 
+}
+
+export interface EventQueryOptions {
+    queryString?: string;
+    maxTs?: string;
+    minTs?: string;
+    eventType?: string;
+    sortOrder?: string;
+    sortBy?: string;
+    size?: number;
+    timeRange?: number;
 }

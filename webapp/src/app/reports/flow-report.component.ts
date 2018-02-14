@@ -33,10 +33,13 @@ import {ElasticSearchService} from "../elasticsearch.service";
 import {loadingAnimation} from "../animations";
 import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {ApiService, ReportAggOptions} from "../api.service";
+import {EveBoxProtoPrettyPrinter} from "../pipes/proto-pretty-printer.pipe";
 
 import * as chartjs from "../shared/chartjs";
 import * as moment from "moment";
-import {EveBoxProtoPrettyPrinter} from "../pipes/proto-pretty-printer.pipe";
+import "rxjs/add/operator/finally";
+import {finalize} from "rxjs/operators";
+import {Observable} from "rxjs/Observable";
 
 declare var Chart: any;
 
@@ -186,7 +189,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
     load(fn: any) {
         this.loading++;
         fn().then(() => {
-        }).catch((err) => {
+        }).catch((_) => {
         }).then(() => {
             this.loading--;
         });
@@ -230,120 +233,119 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             histogramOptions.timeRange = `${this.range}s`;
         }
 
-        this.api.flowHistogram(histogramOptions).subscribe((response) => {
-            console.log(response);
+        this.wrap(this.api.flowHistogram(histogramOptions))
+            .subscribe((response) => {
+                let labels = [];
+                let eventCounts = [];
+                let protos = [];
 
-            let labels = [];
-            let eventCounts = [];
-            let protos = [];
-
-            response.data.forEach((elem) => {
-                for (let proto in elem.app_proto) {
-                    if (protos.indexOf(proto) < 0) {
-                        protos.push(proto);
+                response.data.forEach((elem) => {
+                    for (let proto in elem.app_proto) {
+                        if (protos.indexOf(proto) < 0) {
+                            protos.push(proto);
+                        }
                     }
-                }
-            });
-
-            let data = {};
-
-            let colours = chartjs.getColourPalette(protos.length + 1);
-
-            let totals = [];
-
-            response.data.forEach((elem) => {
-                let proto_sum = 0;
-                for (let proto of protos) {
-                    if (!data[proto]) {
-                        data[proto] = [];
-                    }
-                    if (proto in elem.app_proto) {
-                        let val = elem.app_proto[proto];
-                        data[proto].push(val);
-                        proto_sum += val;
-                    } else {
-                        data[proto].push(0);
-                    }
-                }
-                labels.push(moment(elem.key).toDate());
-
-                totals.push(elem.events);
-                eventCounts.push(elem.events - proto_sum);
-            });
-
-            let datasets: any[] = [{
-                label: "Other",
-                backgroundColor: colours[0],
-                borderColor: colours[0],
-                data: eventCounts,
-                fill: false,
-            }];
-
-            let i = 1;
-
-            for (let proto of protos) {
-                let label = proto;
-                if (proto === "failed") {
-                    label = "Unknown";
-                } else {
-                    label = this.protoPrettyPrinter.transform(proto, null);
-                }
-                datasets.push({
-                    label: label,
-                    backgroundColor: colours[i],
-                    borderColor: colours[i],
-                    fill: false,
-                    data: data[proto],
                 });
-                i += 1;
-            }
 
-            this.renderChart("eventsOverTimeChart", {
-                type: "bar",
-                data: {
-                    labels: labels,
-                    datasets: datasets,
-                },
-                options: {
-                    title: {
-                        display: true,
-                        text: "Flow Events Over Time",
-                        padding: 0,
+                let data = {};
+
+                let colours = chartjs.getColourPalette(protos.length + 1);
+
+                let totals = [];
+
+                response.data.forEach((elem) => {
+                    let proto_sum = 0;
+                    for (let proto of protos) {
+                        if (!data[proto]) {
+                            data[proto] = [];
+                        }
+                        if (proto in elem.app_proto) {
+                            let val = elem.app_proto[proto];
+                            data[proto].push(val);
+                            proto_sum += val;
+                        } else {
+                            data[proto].push(0);
+                        }
+                    }
+                    labels.push(moment(elem.key).toDate());
+
+                    totals.push(elem.events);
+                    eventCounts.push(elem.events - proto_sum);
+                });
+
+                let datasets: any[] = [{
+                    label: "Other",
+                    backgroundColor: colours[0],
+                    borderColor: colours[0],
+                    data: eventCounts,
+                    fill: false,
+                }];
+
+                let i = 1;
+
+                for (let proto of protos) {
+                    let label = proto;
+                    if (proto === "failed") {
+                        label = "Unknown";
+                    } else {
+                        label = this.protoPrettyPrinter.transform(proto, null);
+                    }
+                    datasets.push({
+                        label: label,
+                        backgroundColor: colours[i],
+                        borderColor: colours[i],
+                        fill: false,
+                        data: data[proto],
+                    });
+                    i += 1;
+                }
+
+                this.renderChart("eventsOverTimeChart", {
+                    type: "bar",
+                    data: {
+                        labels: labels,
+                        datasets: datasets,
                     },
-                    legend: {
-                        position: "right",
-                    },
-                    scales: {
-                        xAxes: [
-                            {
-                                display: true,
-                                type: "time",
-                                stacked: true,
-                            }
-                        ],
-                        yAxes: [
-                            {
-                                gridLines: false,
-                                stacked: true,
-                                ticks: {
-                                    padding: 5,
+                    options: {
+                        title: {
+                            display: true,
+                            text: "Flow Events Over Time",
+                            padding: 0,
+                        },
+                        legend: {
+                            position: "right",
+                        },
+                        scales: {
+                            xAxes: [
+                                {
+                                    display: true,
+                                    type: "time",
+                                    stacked: true,
                                 }
-                            }
-                        ]
-                    },
-                    maintainAspectRatio: false,
-                    responsive: true,
-                    tooltips: {
-                        callbacks: {
-                            footer: function (a, b) {
-                                let index = a[0].index;
-                                return `Total: ${totals[index]}`;
+                            ],
+                            yAxes: [
+                                {
+                                    gridLines: false,
+                                    stacked: true,
+                                    ticks: {
+                                        padding: 5,
+                                    }
+                                }
+                            ]
+                        },
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        tooltips: {
+                            callbacks: {
+                                footer: function (a, b) {
+                                    let index = a[0].index;
+                                    return `Total: ${totals[index]}`;
+                                }
                             }
                         }
                     }
-                }
+                });
             });
-        });
     }
 
     changeHistogramInterval(interval) {
@@ -352,8 +354,6 @@ export class FlowReportComponent implements OnInit, OnDestroy {
     }
 
     refresh() {
-        let now = moment();
-
         this.refreshEventsOverTime();
 
         let aggOptions: ReportAggOptions = {
@@ -377,53 +377,23 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 });
         });
 
-        let query: any = {
-            query: {
-                bool: {
-                    filter: [
-                        // Somewhat limit to eve events only.
-                        {exists: {field: "event_type"}},
-                        {term: {event_type: "flow"}}
-                    ]
-                }
-            },
-            size: 0,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
-            aggs: {
-                topFlowsByAge: {
-                    top_hits: {
-                        sort: [
-                            {
-                                "flow.age": {
-                                    order: "desc",
-                                    unmapped_type: "long"
-                                }
-                            }
-                        ],
-                        size: 10,
-                    }
-                }
-            }
-        };
-
-        // if (this.queryString && this.queryString != "") {
-        //     query.query.filtered.query = {
-        //         query_string: {
-        //             query: this.queryString
-        //         }
-        //     };
-        // }
-
-        this.elasticsearch.addTimeRangeFilter(query, now, this.range);
-
-        this.load(() => {
-            return this.elasticsearch.search(query).then((response: any) => {
-                this.topFlowsByAge = response.aggregations.topFlowsByAge.hits.hits;
-                this.loading--;
-            });
+        this.wrap(this.api.eventQuery({
+            queryString: this.queryString,
+            eventType: "flow",
+            size: 10,
+            timeRange: this.range,
+            sortBy: "flow.age",
+            sortOrder: "desc",
+        })).subscribe((response) => {
+            this.topFlowsByAge = response.data;
         });
-
     }
+
+    private wrap(observable: Observable<any>) {
+        this.loading++;
+        return observable.pipe(finalize(() => {
+            this.loading--;
+        }));
+    }
+
 }

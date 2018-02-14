@@ -31,25 +31,39 @@ import (
 	"github.com/jasonish/evebox/log"
 )
 
+const DEFAULT_SORT_BY = "@timestamp";
+const DEFAULT_SORT_ORDER = "desc"
+const DEFAULT_SIZE = 500
+
 func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, error) {
 	query := NewEventQuery()
 
 	query.MustNot(TermQuery("event_type", "stats"))
 
-	if options.Order == "asc" {
-		query.SortBy("@timestamp", "asc")
-	} else {
-		query.SortBy("@timestamp", "desc")
+	sortBy := options.SortBy
+	if sortBy == "" {
+		sortBy = DEFAULT_SORT_BY
 	}
+
+	sortOrder := options.SortOrder
+	if sortOrder == "" {
+		sortOrder = DEFAULT_SORT_ORDER
+	}
+
+	query.SortBy(sortBy, sortOrder)
 
 	if options.Size > 0 {
 		query.Size = options.Size
 	} else {
-		query.Size = 500
+		query.Size = DEFAULT_SIZE
 	}
 
 	if options.QueryString != "" {
 		query.AddFilter(QueryString(options.QueryString))
+	}
+
+	if options.TimeRange != "" {
+		query.AddTimeRangeFilter(options.TimeRange)
 	}
 
 	if !options.MinTs.IsZero() {

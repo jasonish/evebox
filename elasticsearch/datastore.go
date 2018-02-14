@@ -142,8 +142,8 @@ func (s *DataStore) buildAlertGroupQuery(p core.AlertGroupQueryParams) *EventQue
 	q.Size = -1
 	q.AddFilter(ExistsQuery("event_type"))
 	q.AddFilter(KeywordTermQuery("event_type", "alert", s.es.GetKeyword()))
-	q.AddFilter(NewRangeQuery("@timestamp", eve.FormatTimestampUTC(p.MinTimestamp),
-		eve.FormatTimestampUTC(p.MaxTimestamp)))
+	q.AddFilter(NewRangeQuery("@timestamp", eve.FormatTimestampUTC(p.MinTs),
+		eve.FormatTimestampUTC(p.MaxTs)))
 	q.AddFilter(KeywordTermQuery("src_ip", p.SrcIP, s.es.GetKeyword()))
 	q.AddFilter(KeywordTermQuery("dest_ip", p.DstIP, s.es.GetKeyword()))
 	q.AddFilter(TermQuery("alert.signature_id", p.SignatureID))

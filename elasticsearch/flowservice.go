@@ -53,8 +53,6 @@ func (s *FlowService) Histogram(options core.FlowHistogramOptions) interface{} {
 		query.AddTimeRangeFilter(options.TimeRange)
 	}
 
-	query.AddTimeRangeFilter("24h")
-
 	if !options.MinTs.IsZero() {
 		query.AddFilter(RangeGte("@timestamp",
 			eve.FormatTimestampUTC(options.MinTs)))

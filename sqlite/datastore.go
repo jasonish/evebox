@@ -245,11 +245,11 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.Us
 	b.WhereEquals(
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
-	if !p.MinTimestamp.IsZero() {
-		b.WhereGte("timestamp", p.MinTimestamp.UnixNano())
+	if !p.MinTs.IsZero() {
+		b.WhereGte("timestamp", p.MinTs.UnixNano())
 	}
-	if !p.MaxTimestamp.IsZero() {
-		b.WhereLte("timestamp", p.MaxTimestamp.UnixNano())
+	if !p.MaxTs.IsZero() {
+		b.WhereLte("timestamp", p.MaxTs.UnixNano())
 	}
 	b.Limit(1000)
 
@@ -307,12 +307,12 @@ func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.U
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
 
-	if !p.MinTimestamp.IsZero() {
-		builder.WhereGte("timestamp", p.MinTimestamp.UnixNano())
+	if !p.MinTs.IsZero() {
+		builder.WhereGte("timestamp", p.MinTs.UnixNano())
 	}
 
-	if !p.MaxTimestamp.IsZero() {
-		builder.WhereLte("timestamp", p.MaxTimestamp.UnixNano())
+	if !p.MaxTs.IsZero() {
+		builder.WhereLte("timestamp", p.MaxTs.UnixNano())
 	}
 
 	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
@@ -357,12 +357,12 @@ func (s *DataStore) DeEscalateAlertGroup(p core.AlertGroupQueryParams, user core
 		"json_extract(events.source, '$.dest_ip')",
 		p.DstIP)
 
-	if !p.MinTimestamp.IsZero() {
-		builder.WhereGte("timestamp", p.MinTimestamp.UnixNano())
+	if !p.MinTs.IsZero() {
+		builder.WhereGte("timestamp", p.MinTs.UnixNano())
 	}
 
-	if !p.MaxTimestamp.IsZero() {
-		builder.WhereLte("timestamp", p.MaxTimestamp.UnixNano())
+	if !p.MaxTs.IsZero() {
+		builder.WhereLte("timestamp", p.MaxTs.UnixNano())
 	}
 
 	query = strings.Replace(query, "WHERE", builder.BuildWhere(), 1)
@@ -426,7 +426,7 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		query += sqlBuilder.BuildWhere()
 	}
 
-	if options.Order == "asc" {
+	if options.SortOrder == "asc" {
 		query += fmt.Sprintf(" ORDER BY events.timestamp ASC")
 	} else {
 		query += fmt.Sprintf(" ORDER BY events.timestamp DESC")

@@ -27,21 +27,23 @@
 import {Component, OnDestroy, OnInit} from "@angular/core";
 import {ActivatedRoute} from "@angular/router";
 import {ElasticSearchService, ResultSet} from "./elasticsearch.service";
-import {EveboxEventTableConfig} from "./event-table.component";
 import {MousetrapService} from "./mousetrap.service";
 import {AppService} from "./app.service";
 import {ToastrService} from "./toastr.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {loadingAnimation} from "./animations";
+import {ApiService} from "./api.service";
+import {finalize} from "rxjs/operators";
 
 @Component({
     template: `
       <loading-spinner [loading]="loading"></loading-spinner>
 
-      <div class="content" [@loadingState]="(!resultSet || loading) ? 'true' : 'false'">
+      <div class="content"
+           [@loadingState]="loading ? 'true' : 'false'">
 
         <br/>
-        
+
         <div class="row">
           <div class="col-md">
             <form name="filterInputForm" (submit)="submitFilter()">
@@ -50,7 +52,8 @@ import {loadingAnimation} from "./animations";
                        placeholder="Filter..." [(ngModel)]="queryString"
                        name="queryString"/>
                 <div class="input-group-append">
-                  <button type="submit" class="btn btn-secondary">Search</button>
+                  <button type="submit" class="btn btn-secondary">Search
+                  </button>
                   <button type="button" class="btn btn-secondary"
                           (click)="clearFilter()">Clear
                   </button>
@@ -65,7 +68,8 @@ import {loadingAnimation} from "./animations";
         <div class="row">
           <div class="col-md">
 
-            <button type="button" class="btn btn-secondary" (click)="refresh()">Refresh
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+              Refresh
             </button>
 
             <div class="btn-group dropdown">
@@ -77,22 +81,27 @@ import {loadingAnimation} from "./animations";
                 Event Type: {{eventTypeFilter}}
               </button>
               <div class="dropdown-menu">
-                <a *ngFor="let type of eventTypeFilterValues" class="dropdown-item"
+                <a *ngFor="let type of eventTypeFilterValues"
+                   class="dropdown-item"
                    (click)="setEventTypeFilter(type)">{{type}}</a>
               </div>
             </div>
 
             <div *ngIf="hasEvents()" class="float-right">
-              <button type="button" class="btn btn-secondary" (click)="gotoNewest()">
+              <button type="button" class="btn btn-secondary"
+                      (click)="gotoNewest()">
                 Newest
               </button>
-              <button type="button" class="btn btn-secondary" (click)="gotoNewer()">
+              <button type="button" class="btn btn-secondary"
+                      (click)="gotoNewer()">
                 Newer
               </button>
-              <button type="button" class="btn btn-secondary" (click)="gotoOlder()">
+              <button type="button" class="btn btn-secondary"
+                      (click)="gotoOlder()">
                 Older
               </button>
-              <button type="button" class="btn btn-secondary" (click)="gotoOldest()">
+              <button type="button" class="btn btn-secondary"
+                      (click)="gotoOldest()">
                 Oldest
               </button>
             </div>
@@ -109,7 +118,7 @@ import {loadingAnimation} from "./animations";
         <br/>
 
         <evebox-event-table
-            [config]="eveboxEventTableConfig"></evebox-event-table>
+            [rows]="model.events"></evebox-event-table>
       </div>`,
     animations: [
         loadingAnimation,
@@ -117,7 +126,11 @@ import {loadingAnimation} from "./animations";
 })
 export class EventsComponent implements OnInit, OnDestroy {
 
-    resultSet: ResultSet;
+    model: any = {
+        newestTimestamp: "",
+        oldestTimestamp: "",
+        events: [],
+    };
 
     loading = false;
 
@@ -142,16 +155,12 @@ export class EventsComponent implements OnInit, OnDestroy {
     timeEnd: string;
     private order: string;
 
-    eveboxEventTableConfig: EveboxEventTableConfig = {
-        showCount: false,
-        rows: []
-    };
-
     constructor(private route: ActivatedRoute,
                 private elasticsearch: ElasticSearchService,
                 private mousetrap: MousetrapService,
                 private appService: AppService,
                 private toastr: ToastrService,
+                private api: ApiService,
                 private ss: EveboxSubscriptionService) {
     }
 
@@ -162,8 +171,8 @@ export class EventsComponent implements OnInit, OnDestroy {
             let qp: any = this.route.snapshot.queryParams;
 
             this.queryString = params.q || qp.q || "";
-            this.timeStart = params.timeStart || qp.timeStart;
-            this.timeEnd = params.timeEnd || qp.timeEnd;
+            this.timeStart = params.minTs || qp.minTs;
+            this.timeEnd = params.maxTs || qp.maxTs;
             this.eventTypeFilter = params.eventType || this.eventTypeFilterValues[0];
             this.order = params.order;
             this.refresh();
@@ -215,14 +224,14 @@ export class EventsComponent implements OnInit, OnDestroy {
     gotoNewer() {
         this.appService.updateParams(this.route, {
             timeEnd: undefined,
-            timeStart: this.resultSet.newestTimestamp,
+            timeStart: this.model.newestTimestamp,
             order: "asc",
         });
     }
 
     gotoOlder() {
         this.appService.updateParams(this.route, {
-            timeEnd: this.resultSet.oldestTimestamp,
+            timeEnd: this.model.oldestTimestamp,
             timeStart: undefined,
             order: "desc",
         });
@@ -237,46 +246,32 @@ export class EventsComponent implements OnInit, OnDestroy {
     }
 
     hasEvents() {
-        return this.resultSet && this.resultSet.events.length > 0;
+        return this.model.events.length > 0;
     }
 
     refresh() {
-
         this.loading = true;
 
-        this.elasticsearch.findEvents({
+        this.api.eventQuery({
             queryString: this.queryString,
-            timeEnd: this.timeEnd,
-            timeStart: this.timeStart,
+            maxTs: this.timeEnd,
+            minTs: this.timeStart,
             eventType: this.eventTypeFilter.toLowerCase(),
-            order: this.order,
-        }).then((resultSet: ResultSet) => {
-            this.resultSet = resultSet;
-            this.eveboxEventTableConfig.rows = resultSet.events;
-            if (this.order === "asc") {
-                this.eveboxEventTableConfig.rows = this.eveboxEventTableConfig.rows.reverse();
-            }
+            sortOrder: this.order,
+        }).pipe(finalize(() => {
             this.loading = false;
-        }, (error: any) => {
+        })).subscribe((response) => {
+            let events = response.data;
 
-            console.log("Error fetching alerts:");
-            console.log(error);
-
-            // Check for a reason.
-            try {
-                this.toastr.error(error.error.root_cause[0].reason);
-            }
-            catch (err) {
-                this.toastr.error("An error occurred while executing query.");
+            // If the sortOrder is "asc", reverse to put back into descending sortOrder.
+            if (this.order == "asc") {
+                events = events.reverse();
             }
 
-            this.resultSet = undefined;
-            this.eveboxEventTableConfig.rows = [];
-
-            this.loading = false;
-        }).then(() => {
+            this.model.events = response.data;
+            this.model.newestTimestamp = events[0]._source["@timestamp"];
+            this.model.oldestTimestamp = events[events.length - 1]._source["@timestamp"];
         });
-
     }
 
 }

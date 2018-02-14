@@ -104,10 +104,18 @@ func (c *ApiContext) ReportHistogram(w *ResponseWriter, r *http.Request) error {
 
 func (c *ApiContext) NetflowHandler(w *ResponseWriter, r *http.Request) error {
 
-	options, err := core.EventQueryOptionsFromHttpRequest(r)
+	params, err := parseCommonRequestArgs(r)
 	if err != nil {
 		return err
 	}
+
+	options := core.EventQueryOptions{}
+	options.QueryString = params.QueryString
+	options.TimeRange = params.TimeRange
+	options.Size = params.Size
+	options.MinTs = params.MinTs
+	options.MaxTs = params.MaxTs
+	options.EventType = params.EventType
 
 	sortBy := r.FormValue("sortBy")
 

@@ -29,18 +29,13 @@ import {Router} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {ElasticSearchService} from "./elasticsearch.service";
 
-export interface EveboxEventTableConfig {
-    showCount: boolean;
-    rows: any[];
-}
-
 @Component({
     selector: "evebox-event-table",
     template: `
-      <div *ngIf="config.rows && config.rows.length > 0">
+      <div *ngIf="rows && rows.length > 0">
 
         <table class="evebox-event-table"
-               eveboxKeyTable [rows]="config.rows" [(activeRow)]="activeRow">
+               eveboxKeyTable [rows]="rows" [(activeRow)]="activeRow">
           <thead>
           <tr>
             <!-- Chevron column. -->
@@ -56,7 +51,7 @@ export interface EveboxEventTableConfig {
           </tr>
           </thead>
           <tbody>
-          <tr *ngFor="let row of config.rows; let i = index"
+          <tr *ngFor="let row of rows; let i = index"
               [ngClass]="row | eventSeverityToBootstrapClass:'evebox-':'success'"
               (click)="openRow(row)">
             <td>
@@ -93,7 +88,8 @@ export interface EveboxEventTableConfig {
 })
 export class EveboxEventTableComponent implements OnInit, OnDestroy {
 
-    @Input() config: EveboxEventTableConfig;
+    @Input() rows: any[] = null;
+
     activeRow = 0;
 
     constructor(private router: Router,
@@ -112,7 +108,7 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
     }
 
     getActiveRow() {
-        let row = this.config.rows[this.activeRow];
+        let row = this.rows[this.activeRow];
         return row;
     }
 

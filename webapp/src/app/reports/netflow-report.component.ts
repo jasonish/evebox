@@ -24,10 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit, OnDestroy} from "@angular/core";
-import {Params, ActivatedRoute} from "@angular/router";
+import {Component, OnDestroy, OnInit} from "@angular/core";
+import {ActivatedRoute, Params} from "@angular/router";
 import {ReportsService} from "./reports.service";
-import {AppService, AppEvent, AppEventCode} from "../app.service";
+import {AppEvent, AppEventCode, AppService} from "../app.service";
 import {ToastrService} from "../toastr.service";
 import {TopNavService} from "../topnav.service";
 import {ElasticSearchService} from "../elasticsearch.service";
@@ -43,7 +43,7 @@ import * as moment from "moment";
       <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
 
         <br/>
-        
+
         <loading-spinner [loading]="loading > 0"></loading-spinner>
 
         <div class="row">
@@ -53,7 +53,8 @@ import * as moment from "moment";
             </button>
           </div>
           <div class="col-md-6 col-sm-6">
-            <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+            <evebox-filter-input
+                [queryString]="queryString"></evebox-filter-input>
           </div>
         </div>
 
@@ -377,9 +378,6 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
                 this.loading--;
                 return;
             }
-
-            console.log(response);
-            console.log(response.aggregations);
 
             this.topSourcesByBytes = response.aggregations.sourcesByBytes.buckets.map((bucket: any) => {
                 return {

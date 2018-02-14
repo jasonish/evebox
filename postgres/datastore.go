@@ -353,15 +353,15 @@ and cast(s.source #>> '{flow,end}' AS timestamptz) >= $5
 
 func (d *PgDatastore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.User) (err error) {
 	var maxTime time.Time
-	if !p.MaxTimestamp.IsZero() {
-		maxTime = p.MaxTimestamp
+	if !p.MaxTs.IsZero() {
+		maxTime = p.MaxTs
 	} else {
 		maxTime = time.Now()
 	}
 
 	var minTime time.Time
-	if !p.MinTimestamp.IsZero() {
-		minTime = p.MinTimestamp
+	if !p.MinTs.IsZero() {
+		minTime = p.MinTs
 	}
 
 	history := elasticsearch.HistoryEntry{
@@ -415,15 +415,15 @@ where
 
 func (d *PgDatastore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) (err error) {
 	var maxTime time.Time
-	if p.MaxTimestamp.IsZero() {
+	if p.MaxTs.IsZero() {
 		maxTime = time.Now()
 	} else {
-		maxTime = p.MaxTimestamp
+		maxTime = p.MaxTs
 	}
 
 	var minTime time.Time
-	if !p.MinTimestamp.IsZero() {
-		minTime = p.MinTimestamp
+	if !p.MinTs.IsZero() {
+		minTime = p.MinTs
 	}
 
 	sqlTemplate := `
@@ -475,15 +475,15 @@ where
 
 func (d *PgDatastore) DeEscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) (err error) {
 	var maxTime time.Time
-	if !p.MaxTimestamp.IsZero() {
-		maxTime = p.MaxTimestamp
+	if !p.MaxTs.IsZero() {
+		maxTime = p.MaxTs
 	} else {
 		maxTime = time.Now()
 	}
 
 	var minTime time.Time
-	if !p.MinTimestamp.IsZero() {
-		minTime = p.MinTimestamp
+	if !p.MinTs.IsZero() {
+		minTime = p.MinTs
 	}
 
 	sqlTemplate := `
@@ -569,7 +569,7 @@ limit 500
 		}
 	}
 
-	if options.Order == "asc" {
+	if options.SortOrder == "asc" {
 		sqlTemplate = strings.Replace(sqlTemplate, "%%ORDER%%", "asc", -1)
 	} else {
 		sqlTemplate = strings.Replace(sqlTemplate, "%%ORDER%%", "desc", -1)
@@ -706,15 +706,15 @@ func parseQueryString(queryString string, filters *[]string, args *[]interface{}
 func (d *PgDatastore) CommentOnAlertGroup(p core.AlertGroupQueryParams, user core.User, comment string) (err error) {
 
 	var maxTime time.Time
-	if !p.MaxTimestamp.IsZero() {
-		maxTime = p.MaxTimestamp
+	if !p.MaxTs.IsZero() {
+		maxTime = p.MaxTs
 	} else {
 		maxTime = time.Now()
 	}
 
 	var minTime time.Time
-	if !p.MinTimestamp.IsZero() {
-		minTime = p.MinTimestamp
+	if !p.MinTs.IsZero() {
+		minTime = p.MinTs
 	}
 
 	sqlTemplate := `

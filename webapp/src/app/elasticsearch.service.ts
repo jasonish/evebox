@@ -37,6 +37,8 @@ import {ApiService} from "./api.service";
 import {URLSearchParams} from "@angular/http";
 
 import * as moment from "moment";
+import {HttpParams} from "@angular/common/http";
+import {ClientService} from "./client.service";
 
 let queue = require("queue");
 
@@ -69,12 +71,13 @@ export class ElasticSearchService {
     public jobCount$: BehaviorSubject<number> =
         new BehaviorSubject<number>(0);
 
-    public useIpDatatype:boolean = false;
+    public useIpDatatype: boolean = false;
 
     constructor(private api: ApiService,
                 private topNavService: TopNavService,
                 private appService: AppService,
                 private config: ConfigService,
+                private client: ClientService,
                 private toastr: ToastrService) {
         this.index = config.getConfig().ElasticSearchIndex;
 
@@ -231,70 +234,13 @@ export class ElasticSearchService {
             });
     }
 
-    /**
-     * Find events - all events, not just alerts.
-     */
-    findEvents(options: any = {}): Promise<ResultSet> {
-
-        let params = new URLSearchParams();
-
-        if (options.queryString) {
-            params.set("query_string", options.queryString);
-        }
-        if (options.timeEnd) {
-            params.set("max_ts", options.timeEnd);
-        }
-        if (options.timeStart) {
-            params.set("min_ts", options.timeStart);
-        }
-        if (options.eventType && options.eventType != "all") {
-            params.set("event_type", options.eventType);
-        }
-        if (options.order) {
-            params.set("order", options.order);
-        }
-
-        return this.api.get("api/1/event-query", {search: params}).then((response: any) => {
-
-            let events = response.data;
-
-            events.sort((a: any, b: any) => {
-                let x = moment(a._source.timestamp);
-                let y = moment(b._source.timestamp);
-                return y.diff(x);
-            });
-
-            let newestTimestamp: any;
-            let oldestTimestamp: any;
-
-            if (events.length > 0) {
-                newestTimestamp = events[0]._source["@timestamp"];
-                oldestTimestamp = events[events.length - 1]._source["@timestamp"];
-            }
-
-            let resultSet: ResultSet = {
-                took: response.took,
-                count: events.length,
-                timedOut: response.timed_out,
-                events: events,
-                newestTimestamp: newestTimestamp,
-                oldestTimestamp: oldestTimestamp
-            };
-
-            return resultSet;
-
-        });
-    }
-
     findFlow(params: any): Promise<any> {
         return this.api.post("api/1/find-flow", params);
     }
 
     getAlerts(options: any = {}): Promise<any> {
-
+        let params = new HttpParams();
         let tags: string[] = [];
-
-        let queryParts: string[] = [];
 
         if (options.mustHaveTags) {
             options.mustHaveTags.forEach((tag: string) => {
@@ -308,24 +254,21 @@ export class ElasticSearchService {
             });
         }
 
-        queryParts.push(`tags=${tags.join(",")}`);
-        queryParts.push(`timeRange=${options.timeRange}`);
-        queryParts.push(`queryString=${options.queryString}`);
+        params = params.append("tags", tags.join(","));
+        params = params.append("time_range", options.timeRange);
+        params = params.append("query_string", options.queryString);
 
-        let requestOptions = {
-            search: queryParts.join("&"),
-        };
-
-        return this.api.get("api/1/alerts", requestOptions).then((response: any) => {
-            return response.alerts.map((alert: AlertGroup) => {
-                return {
-                    event: alert,
-                    selected: false,
-                    date: moment(alert.maxTs).toDate()
-                };
+        return this.client.get("api/1/alerts", params)
+            .toPromise()
+            .then((response: any) => {
+                return response.alerts.map((alert: AlertGroup) => {
+                    return {
+                        event: alert,
+                        selected: false,
+                        date: moment(alert.maxTs).toDate()
+                    };
+                });
             });
-
-        });
     }
 
     /**

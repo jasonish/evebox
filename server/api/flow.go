@@ -34,6 +34,7 @@ import (
 	"time"
 	"fmt"
 	"strings"
+	"strconv"
 )
 
 type CommonRequestArgs struct {
@@ -41,6 +42,8 @@ type CommonRequestArgs struct {
 	MaxTs       time.Time
 	TimeRange   string
 	QueryString string
+	Size        int64
+	EventType   string
 }
 
 func parseCommonRequestArgs(r *http.Request) (CommonRequestArgs, error) {
@@ -48,7 +51,23 @@ func parseCommonRequestArgs(r *http.Request) (CommonRequestArgs, error) {
 
 	args := CommonRequestArgs{}
 
+	args.EventType = r.FormValue("event_type")
+
+	if r.FormValue("size") != "" {
+		args.Size, err = strconv.ParseInt(r.FormValue("size"), 10, 64)
+		if err != nil {
+			return args, nil
+		}
+	}
+
+	// time_range with timeRange fallback.
 	args.TimeRange = r.FormValue("time_range")
+	if args.TimeRange == "" {
+		args.TimeRange = r.FormValue("timeRange")
+		if args.TimeRange != "" {
+			log.Warning("Found deprecated query string parameter 'timeRange'.")
+		}
+	}
 
 	minTs := r.FormValue("min_ts")
 	if minTs != "" {
@@ -66,7 +85,14 @@ func parseCommonRequestArgs(r *http.Request) (CommonRequestArgs, error) {
 		}
 	}
 
+	// query_string will queryString fallback.
 	args.QueryString = r.FormValue("query_string")
+	if args.QueryString == "" {
+		args.QueryString = r.FormValue("queryString")
+		if args.QueryString != "" {
+			log.Warning("Found deprecated query string parameter 'queryString'.")
+		}
+	}
 
 	return args, nil
 }
@@ -93,14 +119,13 @@ func (c *ApiContext) FlowHistogram(w *ResponseWriter, r *http.Request) error {
 
 	interval := r.FormValue("interval")
 
-	options := core.FlowHistogramOptions{
-		MinTs:       args.MinTs,
-		MaxTs:       args.MaxTs,
-		TimeRange:   args.TimeRange,
-		Interval:    interval,
-		SubAggs:     strings.Split(r.FormValue("sub_aggs"), ","),
-		QueryString: args.QueryString,
-	}
+	options := core.FlowHistogramOptions{}
+	options.MinTs = args.MinTs
+	options.MaxTs = args.MaxTs
+	options.TimeRange = args.TimeRange
+	options.Interval = interval
+	options.SubAggs = strings.Split(r.FormValue("sub_aggs"), ",")
+	options.QueryString = args.QueryString
 
 	response := c.appContext.FlowService.Histogram(options)
 	w.OkJSON(response)

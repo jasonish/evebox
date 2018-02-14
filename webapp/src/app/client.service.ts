@@ -172,7 +172,7 @@ export class ClientService {
 
         let options:any = {
             headers: headers,
-        }
+        };
 
         if (params) {
             options.params = params;

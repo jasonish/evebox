@@ -27,90 +27,46 @@
 package core
 
 import (
-	"github.com/jasonish/evebox/eve"
-	"github.com/pkg/errors"
-	"net/http"
-	"strconv"
 	"time"
 )
+
+type CommonQueryOptions struct {
+	MinTs       time.Time
+	MaxTs       time.Time
+	TimeRange   string
+	QueryString string
+	EventType   string
+}
 
 // AlertGroupQueryParams holds the parameters for querying a specific
 // group of alerts.
 type AlertGroupQueryParams struct {
-	SignatureID  uint64
-	SrcIP        string
-	DstIP        string
-	MinTimestamp time.Time
-	MaxTimestamp time.Time
+	CommonQueryOptions
+	SignatureID uint64
+	SrcIP       string
+	DstIP       string
 }
 
 // AlertQueryOptions includes the options for querying alerts which are then
 // returned as alert groups.
 type AlertQueryOptions struct {
+	CommonQueryOptions
+
 	// Tags that events must have.
 	MustHaveTags []string
 
 	// Tags that events must not have.
 	MustNotHaveTags []string
-
-	// Query string.
-	QueryString string
-
-	// Time range which is a duration string telling how far back
-	// to log for events (eg. 24h, 1m). Must be parsable by
-	// https://golang.org/pkg/time/#ParseDuration
-	TimeRange string
-
-	MinTs time.Time
-	MaxTs time.Time
 }
 
 type EventQueryOptions struct {
-	QueryString string
-
-	TimeRange string
+	CommonQueryOptions
 
 	// Number of results to return.
 	Size int64
 
-	// Maximum timestamp to include in result set.
-	MaxTs time.Time
-
-	// Minimum timestamp to include in result set.
-	MinTs time.Time
-
-	// Event type to limit results to.
-	EventType string
-
-	Order string
-}
-
-func EventQueryOptionsFromHttpRequest(r *http.Request) (EventQueryOptions, error) {
-	options := EventQueryOptions{}
-
-	options.QueryString = r.FormValue("queryString")
-	options.TimeRange = r.FormValue("timeRange")
-	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 10, 64)
-
-	if r.FormValue("max_ts") != "" {
-		ts, err := eve.ParseTimestamp(r.FormValue("max_ts"))
-		if err != nil {
-			return options, errors.WithStack(err)
-		}
-		options.MaxTs = ts
-	}
-
-	if r.FormValue("min_ts") != "" {
-		ts, err := eve.ParseTimestamp(r.FormValue("min_ts"))
-		if err != nil {
-			return options, errors.WithStack(err)
-		}
-		options.MinTs = ts
-	}
-
-	options.EventType = r.FormValue("event_type")
-
-	return options, nil
+	SortBy    string
+	SortOrder string
 }
 
 type ReportOptions struct {

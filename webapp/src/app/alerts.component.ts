@@ -682,8 +682,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                 break;
         }
 
-        let range = 0;
-
         // Set a time range on all but escalated.
         switch (this.appService.getRoute()) {
             case "/escalated":
