@@ -118,4 +118,5 @@ button {
 
 .evebox-bg-success {
   @extend .bg-success;
+  background-color: transparentize($success, 0.8) !important;
 }

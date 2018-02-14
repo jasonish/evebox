@@ -52,7 +52,7 @@ import {ElasticSearchService} from "./elasticsearch.service";
           </thead>
           <tbody>
           <tr *ngFor="let row of rows; let i = index"
-              [ngClass]="row | eventSeverityToBootstrapClass:'evebox-':'success'"
+              [ngClass]="row | eventSeverityToBootstrapClass:'evebox-bg-':'success'"
               (click)="openRow(row)">
             <td>
               <i *ngIf="i == activeRow" class="fa fa-chevron-right"></i>

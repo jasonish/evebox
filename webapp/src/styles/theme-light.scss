@@ -12,24 +12,6 @@ $event-table-border-color: #ddd;
   @extend .fixed-top;
 }
 
-.evebox-event-table {
-  tr.evebox-danger {
-    @extend .table-danger;
-  }
-
-  tr.evebox-warning {
-    @extend .table-warning;
-  }
-
-  tr.evebox-info {
-    @extend .table-info;
-  }
-
-  tr.evebox-success {
-    @extend .table-success;
-  }
-}
-
 .evebox-bg-danger {
   @extend .bg-danger;
   background-color: transparentize($danger, 0.8) !important;
