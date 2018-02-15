@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:5.6.7
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - 9200:9200
+  logstash:
+    image: docker.elastic.co/logstash/logstash:5.6.7
+    volumes:
+      - ${LOGDIR:-/var/log/suricata}:/var/log/suricata
+      - ./etc/logstash/conf.d:/etc/logstash/conf.d
+    command: |
+      /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/suricata.conf
