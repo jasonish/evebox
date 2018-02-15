@@ -41,3 +41,9 @@ type EveEventSink interface {
 	// TODO Don't use an interface as the return status.
 	Commit() (status interface{}, err error)
 }
+
+type FlowHistogramOptions struct {
+	CommonQueryOptions
+	Interval    string
+	SubAggs     []string
+}

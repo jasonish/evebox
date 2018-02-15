@@ -146,15 +146,3 @@ func parseFormTimestamp(request *http.Request, key string) (time.Time, error) {
 	}
 	return ts, nil
 }
-
-// FormTimestamp is a wrapper for r.FormValue(timestampKey) as properly
-// formatted timestamps may contain a "+" as part of the time zone. Angular
-// does not URL encode that plus, but Golang will decode it as a space. So
-// after getting the form value replace all spaces with "+".
-func FormTimestamp(r *http.Request, key string) string {
-	timestamp := r.FormValue(key)
-	if timestamp != "" {
-		timestamp = strings.Replace(timestamp, " ", "+", 1)
-	}
-	return timestamp
-}

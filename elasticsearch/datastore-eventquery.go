@@ -53,10 +53,12 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 	query.SortBy(sortBy, sortOrder)
 
 	if options.Size > 0 {
-		query.Size = options.Size
+		query.SetSize(options.Size)
 	} else {
-		query.Size = DEFAULT_SIZE
+		query.SetSize(DEFAULT_SIZE)
 	}
+
+	log.Println(options.QueryString)
 
 	if options.QueryString != "" {
 		query.AddFilter(QueryString(options.QueryString))

@@ -53,6 +53,7 @@ type Datastore interface {
 	FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error)
 	CommentOnEventId(eventId string, user User, comment string) error
 	CommentOnAlertGroup(p AlertGroupQueryParams, user User, comment string) error
+	FlowHistogram(options FlowHistogramOptions) (interface{}, error)
 }
 
 type UnimplementedDatastore struct {
@@ -118,3 +119,8 @@ func (s *UnimplementedDatastore) EscalateAlertGroup(p AlertGroupQueryParams, u U
 func (s *UnimplementedDatastore) FindNetflow(options EventQueryOptions, sortBy string, order string) (interface{}, error) {
 	return nil, NotImplementedError
 }
+
+func (s *UnimplementedDatastore) FlowHistogram(options FlowHistogramOptions) (interface{}, error) {
+	return nil, NotImplementedError
+}
+

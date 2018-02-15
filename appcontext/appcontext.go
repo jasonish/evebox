@@ -74,9 +74,6 @@ type AppContext struct {
 	// The interface to the underlying datastore.
 	DataStore core.Datastore
 
-	// Service for working with flows.
-	FlowService core.FlowService
-
 	ElasticSearch *elasticsearch.ElasticSearch
 
 	ReportService core.ReportService

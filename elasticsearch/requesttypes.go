@@ -56,7 +56,8 @@ type BulkCreateHeader struct {
 type EventQuery struct {
 	Query  *Query                 `json:"query,omitempty"`
 	Script *Script                `json:"script,omitempty"`
-	Size   int64                  `json:"size"`
+	// Pointer so its not serialize unless set.
+	Size   *int64                  `json:"size,omitempty"`
 	Sort   []interface{}          `json:"sort,omitempty"`
 	Aggs   map[string]interface{} `json:"aggs,omitempty"`
 }
@@ -72,6 +73,11 @@ func NewEventQuery() EventQuery {
 
 	query.Aggs = map[string]interface{}{}
 	return query
+}
+
+func (q *EventQuery) SetSize(val int64) *EventQuery {
+	q.Size = &val
+	return q
 }
 
 func (q *EventQuery) EventType(eventType string) {

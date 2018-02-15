@@ -32,18 +32,9 @@ import (
 	"github.com/jasonish/evebox/log"
 )
 
-type FlowService struct {
-	es *ElasticSearch
-}
-
-func NewFlowService(es *ElasticSearch) core.FlowService {
-	return &FlowService{es: es}
-}
-
-func (s *FlowService) Histogram(options core.FlowHistogramOptions) interface{} {
+func (s *DataStore) FlowHistogram(options core.FlowHistogramOptions) (interface{}, error) {
 	query := NewEventQuery()
 	query.EventType("flow")
-	query.Size = 0
 
 	if options.QueryString != "" {
 		query.AddFilter(QueryString(options.QueryString))
@@ -98,7 +89,10 @@ func (s *FlowService) Histogram(options core.FlowHistogramOptions) interface{} {
 
 	query.Aggs["histogram"] = agg
 
-	response, _ := s.es.Search(query)
+	response, err := s.es.Search(query)
+	if err != nil {
+		return nil, err
+	}
 
 	data := map[string]interface{}{}
 	data["raw"] = response
@@ -139,5 +133,5 @@ func (s *FlowService) Histogram(options core.FlowHistogramOptions) interface{} {
 
 	data["data"] = values
 
-	return data
+	return data, nil
 }

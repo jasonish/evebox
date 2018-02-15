@@ -28,86 +28,16 @@ package api
 
 import (
 	"net/http"
-	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/eve"
-	"time"
 	"fmt"
 	"strings"
-	"strconv"
 )
-
-type CommonRequestArgs struct {
-	MinTs       time.Time
-	MaxTs       time.Time
-	TimeRange   string
-	QueryString string
-	Size        int64
-	EventType   string
-}
-
-func parseCommonRequestArgs(r *http.Request) (CommonRequestArgs, error) {
-	var err error = nil
-
-	args := CommonRequestArgs{}
-
-	args.EventType = r.FormValue("event_type")
-
-	if r.FormValue("size") != "" {
-		args.Size, err = strconv.ParseInt(r.FormValue("size"), 10, 64)
-		if err != nil {
-			return args, nil
-		}
-	}
-
-	// time_range with timeRange fallback.
-	args.TimeRange = r.FormValue("time_range")
-	if args.TimeRange == "" {
-		args.TimeRange = r.FormValue("timeRange")
-		if args.TimeRange != "" {
-			log.Warning("Found deprecated query string parameter 'timeRange'.")
-		}
-	}
-
-	minTs := r.FormValue("min_ts")
-	if minTs != "" {
-		args.MinTs, err = eve.ParseTimestamp(minTs)
-		if err != nil {
-			return args, err
-		}
-	}
-
-	maxTs := r.FormValue("max_ts")
-	if maxTs != "" {
-		args.MaxTs, err = eve.ParseTimestamp(maxTs)
-		if err != nil {
-			return args, err
-		}
-	}
-
-	// query_string will queryString fallback.
-	args.QueryString = r.FormValue("query_string")
-	if args.QueryString == "" {
-		args.QueryString = r.FormValue("queryString")
-		if args.QueryString != "" {
-			log.Warning("Found deprecated query string parameter 'queryString'.")
-		}
-	}
-
-	return args, nil
-}
 
 // Parameters:
 //
 //   sub_aggs: comma separated list of sub-aggregations, values include:
 //               - app_proto
 func (c *ApiContext) FlowHistogram(w *ResponseWriter, r *http.Request) error {
-	if c.appContext.FlowService == nil {
-		log.Warning("Flow service not implemented.")
-		w.WriteHeader(http.StatusNotImplemented)
-		return nil
-	}
-
 	args, err := parseCommonRequestArgs(r)
 	if err != nil {
 		return err
@@ -127,7 +57,10 @@ func (c *ApiContext) FlowHistogram(w *ResponseWriter, r *http.Request) error {
 	options.SubAggs = strings.Split(r.FormValue("sub_aggs"), ",")
 	options.QueryString = args.QueryString
 
-	response := c.appContext.FlowService.Histogram(options)
+	response, err := c.appContext.DataStore.FlowHistogram(options)
+	if err != nil {
+		return err
+	}
 	w.OkJSON(response)
 	return nil
 }

@@ -59,7 +59,6 @@ func (d *DataStore) FindFlow(flowId uint64, proto string, timestamp string,
 	srcIp string, destIp string) (interface{}, error) {
 
 	query := NewEventQuery()
-	query.Size = 1
 
 	query.EventType("flow")
 	query.AddFilter(TermQuery("flow_id", flowId))
@@ -106,7 +105,7 @@ func (s *DataStore) FindNetflow(options core.EventQueryOptions, sortBy string,
 	if sortBy != "" {
 		query.Aggs["agg"] = TopHitsAgg(sortBy, order, size)
 	} else {
-		query.Size = size
+		query.SetSize(size)
 	}
 
 	response, err := s.es.Search(query)
@@ -139,7 +138,6 @@ type HistoryEntry struct {
 
 func (s *DataStore) buildAlertGroupQuery(p core.AlertGroupQueryParams) *EventQuery {
 	q := EventQuery{}
-	q.Size = -1
 	q.AddFilter(ExistsQuery("event_type"))
 	q.AddFilter(KeywordTermQuery("event_type", "alert", s.es.GetKeyword()))
 	q.AddFilter(NewRangeQuery("@timestamp", eve.FormatTimestampUTC(p.MinTs),
@@ -192,6 +190,7 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 	}
 
 	response, err := s.es.doUpdateByQuery(query)
+	log.Println(response)
 	if err != nil {
 		log.Error("failed to update by query: %v", err)
 		return err

@@ -176,10 +176,3 @@ func (c *ApiContext) InitRoutes(router *router.Router) {
 	r.GET("/flow/histogram", c.FlowHistogram)
 }
 
-// DecodeRequestBody is a helper functio to decoder request bodies into a
-// particular interface.
-func DecodeRequestBody(r *http.Request, value interface{}) error {
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
-	return decoder.Decode(value)
-}
