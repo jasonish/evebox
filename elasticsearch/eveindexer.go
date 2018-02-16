@@ -90,7 +90,7 @@ func (i *BulkEveIndexer) Submit(event eve.EveEvent) error {
 
 	header := BulkCreateHeader{}
 	header.Create.Index = index
-	header.Create.Type = "log"
+	header.Create.Type = "doc"
 
 	id := ulid.MustNew(ulid.Timestamp(timestamp), i.entropy).String()
 	header.Create.Id = id
