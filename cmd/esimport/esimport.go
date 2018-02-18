@@ -109,6 +109,12 @@ func configure(args []string) {
 	viper.BindPFlag("rules", flagset.Lookup("rules"))
 	viper.BindEnv("rules", "ESIMPORT_RULES")
 
+	flagset.Bool("force-template", false, "Force loading of template")
+	viper.BindPFlag("force-template", flagset.Lookup("force-template"))
+
+	flagset.String("doc-type", "", "Mapping type for events")
+	viper.BindPFlag("doc-type", flagset.Lookup("doc-type"))
+
 	if err := flagset.Parse(args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			os.Exit(0)
@@ -169,6 +175,8 @@ func Main(args []string) {
 		DisableCertCheck: viper.GetBool("disable-certificate-check"),
 		Username:         viper.GetString("username"),
 		Password:         viper.GetString("password"),
+		ForceTemplate:    viper.GetBool("force-template"),
+		DocType:          viper.GetString("doc-type"),
 	}
 
 	es := elasticsearch.New(config)
@@ -180,19 +188,6 @@ func Main(args []string) {
 	}
 	log.Info("Connected to Elastic Search v%s (cluster:%s; name: %s)",
 		response.Version.Number, response.ClusterName, response.Name)
-	majorVersion := response.MajorVersion()
-
-	// Check if the template exists.
-	templateExists, err := es.TemplateExists(es.EventIndexPrefix)
-	if !templateExists {
-		log.Info("Template %s does not exist, creating...", es.EventIndexPrefix)
-		err = es.LoadTemplate(es.EventIndexPrefix, majorVersion)
-		if err != nil {
-			log.Fatal("Failed to create template:", err)
-		}
-	} else {
-		log.Info("Template %s exists, will not create.", es.EventIndexPrefix)
-	}
 
 	filters := make([]eve.EveFilter, 0)
 

@@ -113,7 +113,15 @@ example::
 Command Line Options
 --------------------
 
-.. literalinclude:: esimport-usage.txt
+.. option:: --force-template
+
+   Like Logstash's `overwrite-template`, this option will always load
+   the EveBox template into Elasticsearch.
+
+   While this option is off by default, it is recommended if only
+   using EveBox to add events to Elasticsearch. It is off by default
+   to better work with Elasticsearch instances where the template is
+   already managed by Logstash of Filebeat.
 
 Configuration File
 ------------------

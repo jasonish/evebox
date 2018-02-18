@@ -185,16 +185,25 @@ func Main(args []string) {
 	viper.BindPFlag("database.type", flagset.Lookup("datastore"))
 	viper.BindEnv("database.type", "DATABASE_TYPE")
 
-	flagset.StringP("elasticsearch", "e", DEFAULT_ELASTICSEARCH_URL, "Elastic Search URI (default: http://localhost:9200")
+	flagset.StringP("elasticsearch", "e", DEFAULT_ELASTICSEARCH_URL,
+		"Elastic Search URI (default: http://localhost:9200")
 	viper.BindPFlag("database.elasticsearch.url", flagset.Lookup("elasticsearch"))
 	viper.BindEnv("database.elasticsearch.url", "ELASTICSEARCH_URL")
 
-	flagset.StringP("index", "i", DEFAULT_ELASTICSEARCH_INDEX, "Elastic Search Index (default: logstash)")
+	flagset.StringP("index", "i", DEFAULT_ELASTICSEARCH_INDEX,
+		"Elastic Search Index (default: logstash)")
 	viper.BindPFlag("database.elasticsearch.index", flagset.Lookup("index"))
 	viper.BindEnv("index", "ELASTICSEARCH_INDEX")
 
 	viper.BindEnv("database.elasticsearch.username", "ELASTICSEARCH_USERNAME")
 	viper.BindEnv("database.elasticsearch.password", "ELASTICSEARCH_PASSWORD")
+
+	flagset.Bool("elasticsearch-force-template", false,
+		"Force install/overwrite of Elasticsearch template")
+	viper.BindPFlag("database.elasticsearch.force-template",
+		flagset.Lookup("elasticsearch-force-template"))
+	viper.BindEnv("database.elasticsearch.force-template",
+		"ELASTICSEARCH_FORCE_TEMPLATE")
 
 	// Elastic Search keyword. This is purposely not bound to viper as viper
 	// fails to tell us if it was set or not.
@@ -303,6 +312,7 @@ func Main(args []string) {
 			Username:         viper.GetString("database.elasticsearch.username"),
 			Password:         viper.GetString("database.elasticsearch.password"),
 			Index:            viper.GetString("database.elasticsearch.index"),
+			ForceTemplate:    viper.GetBool("database.elasticsearch.force-template"),
 		}
 
 		// Configuration provided keyword suffix?

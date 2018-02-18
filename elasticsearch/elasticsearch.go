@@ -35,7 +35,6 @@ import (
 
 	"bytes"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/resources"
 	"github.com/jasonish/evebox/util"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -52,9 +51,10 @@ type Config struct {
 	Username         string
 	Password         string
 	Index            string
-
-	KeywordSuffix   string
-	NoKeywordSuffix bool
+	KeywordSuffix    string
+	NoKeywordSuffix  bool
+	ForceTemplate    bool
+	DocType          string
 }
 
 type ElasticSearch struct {
@@ -150,15 +150,6 @@ func (es *ElasticSearch) Ping() (*PingResponse, error) {
 	return &pingResponse, nil
 }
 
-// TemplateExists checks if a template exists on the server.
-func (es *ElasticSearch) TemplateExists(name string) (exists bool, err error) {
-	response, err := es.httpClient.Head(fmt.Sprintf("_template/%s", name))
-	if err == nil {
-		return response.StatusCode == 200, nil
-	}
-	return false, err
-}
-
 func (es *ElasticSearch) GetTemplate(name string) (util.JsonMap, error) {
 	url := fmt.Sprintf("_template/%s", name)
 	log.Debug("Fetching template %s", url)
@@ -245,56 +236,6 @@ func (es *ElasticSearch) ConfigureIndex() (error) {
 		}
 	}
 
-	return nil
-}
-
-func (es *ElasticSearch) LoadTemplate(index string, majorVersion int64) error {
-
-	var templateFilename string
-
-	if majorVersion == 0 {
-		// Version unknown, get it.
-		pingResponse, err := es.Ping()
-		if err != nil {
-			log.Warning("Failed to ping Elastic Search: %v", err)
-			return err
-		}
-		majorVersion = pingResponse.MajorVersion()
-	}
-
-	if majorVersion >= 6 {
-		templateFilename = "template-es6x.json"
-	} else if majorVersion >= 5 {
-		templateFilename = "template-es5x.json"
-	} else {
-		return fmt.Errorf("No template for Elastic Search with major version %d", majorVersion)
-	}
-
-	templateFile, err := resources.GetReader(fmt.Sprintf("elasticsearch/%s", templateFilename))
-	if err != nil {
-		return err
-	}
-
-	decoder := json.NewDecoder(templateFile)
-	decoder.UseNumber()
-
-	var template map[string]interface{}
-	err = decoder.Decode(&template)
-	if err != nil {
-		return err
-	}
-	template["template"] = fmt.Sprintf("%s-*", index)
-
-	response, err := es.httpClient.PutJson(fmt.Sprintf("_template/%s", index), template)
-	if err != nil {
-		return err
-	}
-	if response.StatusCode != http.StatusOK {
-		return DecodeResponseAsError(response)
-	}
-	es.httpClient.DiscardResponse(response)
-
-	// Success.
 	return nil
 }
 

@@ -56,6 +56,14 @@ database:
     #username: username
     #password: password
 
+    # For loading the EveBox template (Logstash compatible) into
+    # Elasticsearch. It is recommended to turn this option on if only
+    # using EveBox to add events to Elasticsearch. Leave disabled if
+    # already using Logstash or Filebeat on the same index.
+    #
+    # Default: false
+    #force-template: false
+
   postgresql:
 
     # If managed, EveBox will manage its own PostgreSQL instance using

@@ -29,7 +29,6 @@ package resources
 import (
 	"bytes"
 	"fmt"
-	"github.com/jasonish/evebox/log"
 	"io"
 	"io/ioutil"
 	"os"
@@ -42,7 +41,6 @@ func GetAsset(name string) ([]byte, error) {
 	realName := fmt.Sprintf("./resources/%s", name)
 	realAsset, err := os.Open(realName)
 	if err == nil {
-		log.Info("Using filesystem asset %s", realName)
 		return ioutil.ReadAll(realAsset)
 	}
 	return ResourceBox.MustBytes(name)

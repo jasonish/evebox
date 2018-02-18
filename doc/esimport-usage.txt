@@ -6,6 +6,7 @@ Options:
   -c, --config string              Configuration file
   -e, --elasticsearch string       Elastic Search URL
       --end                        Start at end of file
+      --force-template             Force loading of template
       --geoip-database string      Path to GeoIP (v2) database file
       --index string               Elastic Search index prefix (default "evebox")
   -k, --no-check-certificate       Disable certificate check
