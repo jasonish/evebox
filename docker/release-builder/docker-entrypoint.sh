@@ -1,6 +1,6 @@
 #! /bin/sh
 
-. /opt/rh/rh-ruby22/enable
+. /opt/rh/rh-ruby23/enable
 
 make install-deps
 make dist rpm deb
