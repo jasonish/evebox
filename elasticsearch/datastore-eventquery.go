@@ -58,8 +58,6 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		query.SetSize(DEFAULT_SIZE)
 	}
 
-	log.Println(options.QueryString)
-
 	if options.QueryString != "" {
 		query.AddFilter(QueryString(options.QueryString))
 	}
