@@ -302,20 +302,43 @@
           <b>HTTP</b>
         </div>
         <div class="card-body">
-          <div class="row">
-            <div *ngFor="let item of event._source.http | mapToItems">
-              <div [ngSwitch]="item.key">
-                <div *ngSwitchCase="'http_response_body'">
-                </div>
-                <div *ngSwitchCase="'http_response_body_printable'">
-                </div>
-                <div *ngSwitchDefault>
-                  <div class="col">
-                    <em>{{item.key | genericPrettyPrinter}}:</em>
-                    <search-link [value]="item.val"></search-link>
+          <table class="table table-striped table-sm">
+            <tr *ngFor="let item of http | mapToItems">
+              <td style="border: 0px; white-space: nowrap">{{item.key |
+                genericPrettyPrinter}}:
+              </td>
+              <td style="border: 0px;">
+                <search-link [value]="item.val"></search-link>
+              </td>
+            </tr>
+          </table>
+
+          <div *ngIf="event._source.http.http_request_body">
+            <br/>
+            <div class="card" style="margin-bottom: 0px;">
+              <div class="card-header">
+                HTTP Request Body
+              </div>
+
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-6">
+                    <div class="card bg-light">
+                      <div class="card-body">
+                        <pre style="white-space: pre-wrap;">{{event._source.http.http_request_body | eveboxBase64Decode | printable}}</pre>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="card bg-light">
+                      <div class="card-body">
+                        <pre style="overflow-x: scroll;">{{event._source.http.http_request_body | eveboxBase64Decode | hex}}</pre>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -328,17 +351,17 @@
 
               <div class="card-body">
                 <div class="row">
-                  <div class="col">
+                  <div class="col-6">
                     <div class="card bg-light">
                       <div class="card-body">
                         <pre style="white-space: pre-wrap;">{{event._source.http.http_response_body | eveboxBase64Decode | printable}}</pre>
                       </div>
                     </div>
                   </div>
-                  <div class="col">
+                  <div class="col-6">
                     <div class="card bg-light">
                       <div class="card-body">
-                        <pre style="white-space: pre-wrap;">{{event._source.http.http_response_body | eveboxBase64Decode | hex}}</pre>
+                        <pre style="overflow-x: scroll;">{{event._source.http.http_response_body | eveboxBase64Decode | hex}}</pre>
                       </div>
                     </div>
                   </div>

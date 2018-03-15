@@ -116,6 +116,8 @@ export class EventComponent implements OnInit, OnDestroy {
     params: any = {};
     flows: any[] = [];
 
+    http:any = null;
+
     servicesForEvent: any[] = [];
 
     public commentInputVisible: boolean = false;
@@ -178,7 +180,6 @@ export class EventComponent implements OnInit, OnDestroy {
         this.mousetrap.bind(this, "u", () => this.goBack());
         this.mousetrap.bind(this, "e", () => this.archiveEvent());
         this.mousetrap.bind(this, "f8", () => this.archiveEvent());
-
     }
 
     ngOnDestroy() {
@@ -347,7 +348,6 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     refresh() {
-
         this.loading = true;
 
         this.elasticSearch.getEventById(this.eventId)
@@ -356,6 +356,26 @@ export class EventComponent implements OnInit, OnDestroy {
                 if (this.event._source.event_type != "flow") {
                     this.findFlow(response);
                 }
+
+                // Break out some fields of the event.
+                if (this.event._source.http) {
+                    this.http = {};
+                    let http = this.event._source.http;
+                    for (let key in http) {
+                        switch (key) {
+                            case "http_response_body_printable":
+                            case "http_request_body_printable":
+                            case "http_response_body":
+                            case "http_request_body":
+                                break;
+                            default:
+                                console.log(key);
+                                this.http[key] = http[key];
+                                break;
+                        }
+                    }
+                }
+
                 this.setup();
                 this.loading = false;
             })
