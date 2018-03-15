@@ -32,8 +32,8 @@
     <br/>
 
     <div class="card">
-      <div
-          class="card-header {{event | eventSeverityToBootstrapClass:'evebox-bg-':'success'}}">
+      <div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"
+           class="card-header {{event | eventSeverityToBootstrapClass:'evebox-bg-':'success'}}">
         <b>{{event._source.event_type | uppercase}}: <span [innerHTML]="event |
         eveboxEventDescriptionPrinter"></span></b>
         <span class="pull-right" *ngIf="alertGroup">
