@@ -32,8 +32,9 @@
     <br/>
 
     <div class="card">
-      <div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"
-           class="card-header {{event | eventSeverityToBootstrapClass:'evebox-bg-':'success'}}">
+      <div
+          style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"
+          class="card-header {{event | eventSeverityToBootstrapClass:'evebox-bg-':'success'}}">
         <b>{{event._source.event_type | uppercase}}: <span [innerHTML]="event |
         eveboxEventDescriptionPrinter"></span></b>
         <span class="pull-right" *ngIf="alertGroup">
@@ -207,18 +208,15 @@
               </div>
 
               <div *ngSwitchDefault>
-                <div
-                    *ngFor="let item of event._source[event._source.event_type] | mapToItems">
-                  <dl class="row">
-                    <dt class="col">{{item.key |
-                      genericPrettyPrinter}}
-                    </dt>
-                    <dd class="col">
-                      <search-link
-                          [value]="item.val"></search-link>
-                    </dd>
-                  </dl>
-                </div>
+                <table class="table table-sm">
+                  <tr *ngFor="let item of event._source[event._source.event_type] | mapToItems">
+                    <td style="border: 0;"><b>{{item.key |
+                      genericPrettyPrinter}}</b></td>
+                    <td style="border: 0;">
+                      <search-link [value]="item.val"></search-link>
+                    </td>
+                  </tr>
+                </table>
               </div>
 
             </div>
