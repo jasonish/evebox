@@ -104,6 +104,8 @@ export class EveboxCommentInput {
         "dl { margin: 0px; padding: 0px; }",
         "dt { margin: 0px; padding: 0px; margin-right: 20px; text-align: right; }",
         "dd { margin: 0px; padding: 0px; }",
+        ".info-table td { border: 99px; padding: 0px; }",
+        ".info-table tr td:first-child { font-weight: bold; }"
     ]
 })
 export class EventComponent implements OnInit, OnDestroy {
