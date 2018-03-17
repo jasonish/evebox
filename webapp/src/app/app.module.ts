@@ -34,7 +34,7 @@ import {AppComponent} from "./app.component";
 import {RouterModule} from "@angular/router";
 import {AuthGuard, ConfigResolver, routing} from "./app.routes";
 import {AlertsComponent} from "./alerts.component";
-import {EveboxCommentInput, EventComponent} from "./event.component";
+import {EveboxCommentInput, EventComponent} from "./event/event.component";
 import {EventsComponent} from "./events.component";
 import {DNSReportComponent} from "./reports/dns-report.component";
 import {AlertReportComponent} from "./reports/alerts-report.component";
@@ -168,6 +168,8 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         // Local pipes.
         EveBoxProtoPrettyPrinter,
         EveboxFormatIpAddressPipe,
+
+        // Angular included pipes.
     ],
     bootstrap: [AppComponent]
 })

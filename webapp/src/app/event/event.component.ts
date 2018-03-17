@@ -33,16 +33,16 @@ import {
 } from "@angular/core";
 import {Location} from "@angular/common";
 import {ActivatedRoute, Router} from "@angular/router";
-import {AlertGroup, ElasticSearchService} from "./elasticsearch.service";
-import {ApiService} from "./api.service";
-import {EventServices} from "./eventservices.service";
-import {EventService} from "./event.service";
-import {MousetrapService} from "./mousetrap.service";
-import {EveboxSubscriptionService} from "./subscription.service";
-import {loadingAnimation} from "./animations";
-import {ToastrService} from "./toastr.service";
-import {FEATURE_COMMENTS} from "./app.service";
-import {ConfigService} from "./config.service";
+import {AlertGroup, ElasticSearchService} from "../elasticsearch.service";
+import {ApiService} from "../api.service";
+import {EventServices} from "../eventservices.service";
+import {EventService} from "../event.service";
+import {MousetrapService} from "../mousetrap.service";
+import {EveboxSubscriptionService} from "../subscription.service";
+import {loadingAnimation} from "../animations";
+import {ToastrService} from "../toastr.service";
+import {FEATURE_COMMENTS} from "../app.service";
+import {ConfigService} from "../config.service";
 
 @Component({
     selector: "evebox-comment-input",
@@ -100,13 +100,7 @@ export class EveboxCommentInput {
     animations: [
         loadingAnimation,
     ],
-    styles: [
-        "dl { margin: 0px; padding: 0px; }",
-        "dt { margin: 0px; padding: 0px; margin-right: 20px; text-align: right; }",
-        "dd { margin: 0px; padding: 0px; }",
-        ".info-table td { border: 99px; padding: 0px; }",
-        ".info-table tr td:first-child { font-weight: bold; }"
-    ]
+    styleUrls: ["./event.component.scss"],
 })
 export class EventComponent implements OnInit, OnDestroy {
 
@@ -118,7 +112,7 @@ export class EventComponent implements OnInit, OnDestroy {
     params: any = {};
     flows: any[] = [];
 
-    http:any = null;
+    http: any = null;
 
     servicesForEvent: any[] = [];
 
@@ -199,7 +193,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
     showArchiveButton(): boolean {
         return this.event._source.event_type == "alert" &&
-            this.event._source.tags.indexOf("archived") == -1;
+                this.event._source.tags.indexOf("archived") == -1;
     }
 
     eventType(): string {
@@ -208,7 +202,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
     hasGeoip(): boolean {
         if (this.event._source.geoip &&
-            Object.keys(this.event._source.geoip).length > 0) {
+                Object.keys(this.event._source.geoip).length > 0) {
             return true;
         }
         return false;
@@ -230,22 +224,22 @@ export class EventComponent implements OnInit, OnDestroy {
     onCommentSubmit(comment: any) {
         if (this.alertGroup) {
             this.api.commentOnAlertGroup(this.alertGroup, comment)
-                .then(() => {
-                    this.commentInputVisible = false;
-                    this.elasticSearch.getEventById(this.event._id)
-                        .then((response: any) => {
-                            this.event = response;
-                        });
-                });
+                    .then(() => {
+                        this.commentInputVisible = false;
+                        this.elasticSearch.getEventById(this.event._id)
+                                .then((response: any) => {
+                                    this.event = response;
+                                });
+                    });
         } else {
             this.api.commentOnEvent(this.eventId, comment)
-                .then(() => {
-                    this.commentInputVisible = false;
-                    this.elasticSearch.getEventById(this.event._id)
-                        .then((response: any) => {
-                            this.event = response;
-                        });
-                });
+                    .then(() => {
+                        this.commentInputVisible = false;
+                        this.elasticSearch.getEventById(this.event._id)
+                                .then((response: any) => {
+                                    this.event = response;
+                                });
+                    });
         }
     }
 
@@ -353,38 +347,38 @@ export class EventComponent implements OnInit, OnDestroy {
         this.loading = true;
 
         this.elasticSearch.getEventById(this.eventId)
-            .then((response: any) => {
-                this.event = response;
-                if (this.event._source.event_type != "flow") {
-                    this.findFlow(response);
-                }
+                .then((response: any) => {
+                    this.event = response;
+                    if (this.event._source.event_type != "flow") {
+                        this.findFlow(response);
+                    }
 
-                // Break out some fields of the event.
-                if (this.event._source.http) {
-                    this.http = {};
-                    let http = this.event._source.http;
-                    for (let key in http) {
-                        switch (key) {
-                            case "http_response_body_printable":
-                            case "http_request_body_printable":
-                            case "http_response_body":
-                            case "http_request_body":
-                                break;
-                            default:
-                                console.log(key);
-                                this.http[key] = http[key];
-                                break;
+                    // Break out some fields of the event.
+                    if (this.event._source.http) {
+                        this.http = {};
+                        let http = this.event._source.http;
+                        for (let key in http) {
+                            switch (key) {
+                                case "http_response_body_printable":
+                                case "http_request_body_printable":
+                                case "http_response_body":
+                                case "http_request_body":
+                                    break;
+                                default:
+                                    console.log(key);
+                                    this.http[key] = http[key];
+                                    break;
+                            }
                         }
                     }
-                }
 
-                this.setup();
-                this.loading = false;
-            })
-            .catch((error: any) => {
-                this.notifyError(error);
-                this.loading = false;
-            });
+                    this.setup();
+                    this.loading = false;
+                })
+                .catch((error: any) => {
+                    this.notifyError(error);
+                    this.loading = false;
+                });
     }
 
     notifyError(error: any) {

@@ -55,7 +55,7 @@
       </div>
       <div class="card-body">
         <div class="row">
-          <div class="col-md">
+          <div class="col">
 
             <table class="table table-sm table-striped table-hover info-table">
               <tr>
@@ -64,6 +64,14 @@
                   <search-link field="timestamp"
                                value="{{event._source.timestamp}}">
                     {{event._source.timestamp}}
+                  </search-link>
+                </td>
+              </tr>
+              <tr *ngIf="event._source.host">
+                <td>Sensor</td>
+                <td>
+                  <search-link field="host" [search]="event._source.host"
+                               value="{{event._source.host}}">
                   </search-link>
                 </td>
               </tr>
@@ -135,7 +143,7 @@
 
           </div>
 
-          <div class="col-md">
+          <div class="col">
             <div [ngSwitch]="event._source.event_type">
               <div *ngSwitchCase="'alert'">
                 <table
@@ -166,6 +174,42 @@
                   </tr>
                 </table>
               </div>
+              <div *ngSwitchCase="'dns'">
+                <table
+                    class="table table-sm table-striped table-hover info-table">
+                  <tr>
+                    <td>Transaction ID</td>
+                    <td>{{event._source.dns.id}}</td>
+                  </tr>
+                  <tr>
+                    <td>Type</td>
+                    <td>{{event._source.dns.type | lowercase | titlecase}}</td>
+                  </tr>
+                  <tr>
+                    <td>Request</td>
+                    <td>
+                      <span *ngIf="event._source.dns.rrtype">{{event._source.dns.rrtype}} </span>
+                      {{event._source.dns.rrname}}
+                    </td>
+                  </tr>
+                  <!-- For Pre EVE DNS v2. -->
+                  <tr *ngIf="!event._source.dns.answers && event._source.dns.rdata">
+                    <td>Answer</td>
+                    <td>{{event._source.dns.rdata}}</td>
+                  </tr>
+                </table>
+                <div *ngIf="event._source.dns.answers">
+                  <b>Answers:</b>
+                  <table
+                      class="table table-sm table-striped table-hover app-no-border">
+                    <tr *ngFor="let answer of event._source.dns.answers">
+                      <td>{{answer.rrtype}}</td>
+                      <td>{{answer.rrname}}</td>
+                      <td>{{answer.rdata}}</td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
               <div *ngSwitchDefault>
                 <table
                     class="table table-sm table-striped table-hover info-table">
@@ -183,7 +227,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Rule. -->
     <div *ngIf="event._source.rule">
       <br/>
@@ -398,11 +442,11 @@
         <div class="card-header">
           <b>Payload</b>
           <span class="pull-right">
-          [
-          <a href="javascript:void(0);"
-             (click)="eventToPcap('payload');">PCAP</a>
-          ]
-        </span>
+            [
+            <a href="javascript:void(0);"
+               (click)="eventToPcap('payload');">PCAP</a>
+            ]
+          </span>
         </div>
         <div class="card-body">
           <div class="row">
@@ -432,11 +476,11 @@
         <div class="card-header">
           <b>Packet</b>
           <span class="pull-right">
-          [
-          <a href="javascript:void(0);"
-             (click)="eventToPcap('packet');">PCAP</a>
-          ]
-        </span>
+            [
+            <a href="javascript:void(0);"
+               (click)="eventToPcap('packet');">PCAP</a>
+            ]
+          </span>
         </div>
         <div class="card-body">
           <div class="row">
