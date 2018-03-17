@@ -82,7 +82,7 @@ import {finalize} from "rxjs/operators";
               </button>
               <div class="dropdown-menu">
                 <a *ngFor="let type of eventTypeFilterValues"
-                   class="dropdown-item"
+                   class="dropdown-item" href="javascript:void(0);"
                    (click)="setEventTypeFilter(type)">{{type}}</a>
               </div>
             </div>
