@@ -199,10 +199,25 @@
                   </tr>
                 </table>
                 <div *ngIf="event._source.dns.answers">
-                  <b>Answers:</b>
                   <table
                       class="table table-sm table-striped table-hover app-no-border">
+                    <tr>
+                      <th colspan="3">Answers</th>
+                    </tr>
                     <tr *ngFor="let answer of event._source.dns.answers">
+                      <td>{{answer.rrtype}}</td>
+                      <td>{{answer.rrname}}</td>
+                      <td>{{answer.rdata}}</td>
+                    </tr>
+                  </table>
+                </div>
+                <div *ngIf="event._source.dns.authorities">
+                  <table
+                      class="table table-sm table-striped table-hover app-no-border">
+                    <tr>
+                      <th colspan="3">Authorities</th>
+                    </tr>
+                    <tr *ngFor="let answer of event._source.dns.authorities">
                       <td>{{answer.rrtype}}</td>
                       <td>{{answer.rrname}}</td>
                       <td>{{answer.rdata}}</td>
