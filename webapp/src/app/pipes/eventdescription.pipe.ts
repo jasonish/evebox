@@ -79,6 +79,29 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
         }
     }
 
+    formatSmb(eve:any) {
+        let smb = eve.smb;
+        let ntlmssp = smb.ntlmssp || {};
+        let msg = `${smb.command}`;
+        if (smb.dialect) {
+            msg = `${msg}, Dialect: ${smb.dialect}`;
+        }
+        if (smb.status) {
+            msg = `${msg}, Status: ${smb.status}`;
+        }
+        if (smb.filename) {
+            msg = `${msg}, Filename: ${smb.filename}`;
+        }
+        if (ntlmssp.domain) {
+            msg = `${msg}, Host: ${ntlmssp.domain}`;
+        }
+        if (ntlmssp.host) {
+            msg = `${msg}, Host: ${ntlmssp.host}`;
+        }
+
+        return msg;
+    }
+
     transform(value: any, args: any): any {
 
         let event = value;
@@ -195,6 +218,8 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 let extraInfo = '- ' + extra.join('; ');
 
                 return `${eve.fileinfo.filename} ${extraInfo}`;
+            case "smb":
+                return this.formatSmb(eve);
             default:
                 return JSON.stringify(event._source[event._source.event_type]);
         }

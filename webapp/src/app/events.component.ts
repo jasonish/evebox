@@ -26,7 +26,7 @@
 
 import {Component, OnDestroy, OnInit} from "@angular/core";
 import {ActivatedRoute} from "@angular/router";
-import {ElasticSearchService, ResultSet} from "./elasticsearch.service";
+import {ElasticSearchService} from "./elasticsearch.service";
 import {MousetrapService} from "./mousetrap.service";
 import {AppService} from "./app.service";
 import {ToastrService} from "./toastr.service";
@@ -147,6 +147,8 @@ export class EventsComponent implements OnInit, OnDestroy {
         "Drop",
         "FileInfo",
         "SSH",
+        "SMB",
+        "NFS",
     ];
 
     eventTypeFilter: string = this.eventTypeFilterValues[0];
