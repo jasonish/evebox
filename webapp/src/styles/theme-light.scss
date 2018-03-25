@@ -31,3 +31,35 @@ $event-table-border-color: #ddd;
   @extend .bg-success;
   background-color: transparentize($success, 0.8) !important;
 }
+
+rule {
+  .rule-header-action {
+    font-weight: bold;
+  }
+
+  .rule-header-proto {
+    font-weight: bold;
+    font-style: italic;
+  }
+
+  .rule-header-addr {
+    color: dimgrey;
+  }
+
+  .rule-header-port {
+    color: slategrey;
+  }
+
+  .rule-header-direction {
+    font-weight: bold;
+  }
+
+  .rule-keyword {
+    color: blue;
+    font-weight: bold;
+  }
+
+  .rule-keyword-value {
+    color: green;
+  }
+}

@@ -1,5 +1,9 @@
 # Change Log
 
+## unreleased
+- Better Elastic Search version support, including Elastic Search 6.
+- Fix rule highlight (including making reference URLs links).
+
 ## 0.9.0 - 2018-01-97
 
 **Fixed**

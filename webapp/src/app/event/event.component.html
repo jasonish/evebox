@@ -244,13 +244,13 @@
     </div>
 
     <!-- Rule. -->
-    <div *ngIf="event._source.rule">
+    <div *ngIf="event._source.alert.rule">
       <br/>
       <div class="card">
         <div class="card-header">
           <b>Rule</b>
         </div>
-        <div class="card-body" [innerHTML]="event._source.rule | ruleHighlight">
+        <div class="card-body" [innerHTML]="event._source.alert.rule | ruleHighlight">
         </div>
       </div>
     </div>

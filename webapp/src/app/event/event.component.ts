@@ -372,6 +372,16 @@ export class EventComponent implements OnInit, OnDestroy {
                         }
                     }
 
+                    // If the Suricata provided rule doesn't exist, check for
+                    // an EveBox added one and put it where the Suricata one
+                    // would be found.
+                    if (this.event._source.event_type == "alert") {
+                        if (!this.event._source.alert.rule && this.event._source.rule) {
+                            this.event._source.alert.rule = this.event._source.rule;
+                        }
+                        delete(this.event._source.rule);
+                    }
+
                     this.setup();
                     this.loading = false;
                 })

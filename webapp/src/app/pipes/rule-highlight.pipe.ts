@@ -32,7 +32,6 @@ import {Pipe, PipeTransform} from '@angular/core';
 export class RuleHighlightPipe implements PipeTransform {
 
     transform(value: any, args?: any): any {
-
         // First encode html.
         value = value.replace("<", "&___lt___");
         value = value.replace(">", "&___gt___");
@@ -53,10 +52,13 @@ export class RuleHighlightPipe implements PipeTransform {
         // Catch keywords without a value.
         value = value.replace(/(;\s*)(\w+;)/g, `$1<span class="rule-keyword">$2</span>`);
 
+        // Replace referece URLs with the URL.
+        value = value.replace(/url,(.*?)([;<])/g, `url,<a href="http://$1">$1</a>$2`);
+
         value = value.replace("&___lt___", "&lt;");
         value = value.replace("&___gt___", "&gt;");
 
-        return value;
+        return `<span class="rule">${value}</span>`;
     }
 
 }
