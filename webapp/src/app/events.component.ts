@@ -34,6 +34,7 @@ import {EveboxSubscriptionService} from "./subscription.service";
 import {loadingAnimation} from "./animations";
 import {ApiService} from "./api.service";
 import {finalize} from "rxjs/operators";
+import {EVENT_TYPES} from './shared/eventtypes';
 
 @Component({
     template: `
@@ -78,12 +79,12 @@ import {finalize} from "rxjs/operators";
                       data-toggle="dropdown"
                       aria-haspopup="true"
                       aria-expanded="false">
-                Event Type: {{eventTypeFilter}}
+                Event Type: {{eventTypeFilter.name}}
               </button>
               <div class="dropdown-menu">
-                <a *ngFor="let type of eventTypeFilterValues"
+                <a *ngFor="let type of eventTypes"
                    class="dropdown-item" href="javascript:void(0);"
-                   (click)="setEventTypeFilter(type)">{{type}}</a>
+                   (click)="setEventTypeFilter(type)">{{type.name}}</a>
               </div>
             </div>
 
@@ -142,25 +143,12 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     queryString = "";
 
-    eventTypeFilterValues: string[] = [
-        "All",
-        "Alert",
-        "HTTP",
-        "Flow",
-        "NetFlow",
-        "DNS",
-        "TLS",
-        "Drop",
-        "FileInfo",
-        "SSH",
-        "SMB",
-        "NFS",
-    ];
+    eventTypes = EVENT_TYPES;
 
     // Error to be display if set.
     error: string = null;
 
-    eventTypeFilter: string = this.eventTypeFilterValues[0];
+    eventTypeFilter: any = this.eventTypes[0];
 
     timeStart: string;
     timeEnd: string;
@@ -176,15 +164,17 @@ export class EventsComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit(): any {
-
         this.ss.subscribe(this, this.route.params, (params: any) => {
-
             let qp: any = this.route.snapshot.queryParams;
 
             this.queryString = params.q || qp.q || "";
             this.timeStart = params.minTs || qp.minTs;
             this.timeEnd = params.maxTs || qp.maxTs;
-            this.eventTypeFilter = params.eventType || this.eventTypeFilterValues[0];
+
+            if (params.eventType) {
+                this.setEventTypeFilterByEventType(params.eventType);
+            }
+
             this.order = params.order;
             this.refresh();
         });
@@ -196,6 +186,15 @@ export class EventsComponent implements OnInit, OnDestroy {
 
         this.mousetrap.bind(this, "/", () => this.focusFilterInput());
         this.mousetrap.bind(this, "r", () => this.refresh());
+    }
+
+    setEventTypeFilterByEventType(eventType:string) {
+        for (let et of this.eventTypes) {
+            if (et.eventType == eventType) {
+                this.eventTypeFilter = et;
+                break;
+            }
+        }
     }
 
     ngOnDestroy() {
@@ -219,9 +218,9 @@ export class EventsComponent implements OnInit, OnDestroy {
         this.submitFilter();
     }
 
-    setEventTypeFilter(type: string) {
+    setEventTypeFilter(type: any) {
         this.eventTypeFilter = type;
-        this.appService.updateParams(this.route, {eventType: this.eventTypeFilter});
+        this.appService.updateParams(this.route, {eventType: this.eventTypeFilter.eventType});
     }
 
     gotoNewest() {
@@ -274,7 +273,7 @@ export class EventsComponent implements OnInit, OnDestroy {
             queryString: this.queryString,
             maxTs: this.timeEnd,
             minTs: this.timeStart,
-            eventType: this.eventTypeFilter.toLowerCase(),
+            eventType: this.eventTypeFilter.eventType,
             sortOrder: this.order,
         }).pipe(finalize(() => {
             this.loading = false;

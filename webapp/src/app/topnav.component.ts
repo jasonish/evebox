@@ -36,6 +36,7 @@ import {AppService, AppEventCode, FEATURE_REPORTING} from "./app.service";
 import {Subscription} from "rxjs/Subscription";
 import {ConfigService} from "./config.service";
 import {ApiService} from "./api.service";
+import {EVENT_TYPES} from './shared/eventtypes';
 
 declare var $: any;
 
@@ -48,6 +49,8 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     routerSub: Subscription;
 
     features: any = {};
+
+    EVENT_TYPES = EVENT_TYPES;
 
     constructor(private router: Router,
                 public elasticSearchService: ElasticSearchService,

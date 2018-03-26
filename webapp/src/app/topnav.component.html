@@ -21,9 +21,24 @@
           [routerLinkActive]="['active']">
         <a class="nav-link" href="#/alerts">Alerts</a>
       </li>
-      <li class="nav-item" [routerLink]="['/events']"
-          [routerLinkActive]="['active']">
-        <a class="nav-link" href="#/events">Events</a>
+
+      <li class="nav-item dropdown">
+        <span class="nav-link">
+          <a href="#/events" class="nav-link"
+             style="display: inline; padding: 0px;">Events</a>
+          <a class="nav-link dropdown-toggle" href="#" id="topNavEventsDropdown"
+             style="display: inline; padding: 0px;"
+             role="button" data-toggle="dropdown" aria-haspopup="true"
+             aria-expanded="false" [ngClass]="{active: isActive('/events')}">
+          </a>
+          <div class="dropdown-menu" aria-labelledby="topNavEventsDropdown">
+            <a class="dropdown-item"
+               [routerLink]="['/events', {'eventType': 'alert'}]">Alerts</a>
+            <a class="dropdown-item"
+               [routerLink]="['/events', {'eventType': eventType.eventType}]"
+               *ngFor="let eventType of EVENT_TYPES">{{eventType.name}}</a>
+          </div>
+        </span>
       </li>
 
       <li *ngIf="features['reporting']" class="nav-item dropdown">
