@@ -63,14 +63,19 @@ type Response struct {
 	Aggregations util.JsonMap           `json:"aggregations,omitempty"`
 
 	// A search may result in an error.
-	Error  map[string]interface{} `json:"error,omitempty"`
-	Status int                    `json:"status,omitempty"`
+	Error map[string]interface{} `json:"error,omitempty"`
+
+	Status int `json:"status,omitempty"`
 
 	Raw []byte `json:"-"`
 }
 
-func DecodeResponse(r *http.Response) (*Response, error) {
+func (r *Response) GetFirstRootCause() string {
+	reason := util.JsonMap(r.Error).GetMapSlice("root_cause").First().GetString("reason")
+	return reason
+}
 
+func DecodeResponse(r *http.Response) (*Response, error) {
 	raw, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
@@ -81,7 +86,6 @@ func DecodeResponse(r *http.Response) (*Response, error) {
 	if strings.HasPrefix(r.Header.Get("content-type"), "application/json") {
 		decoder := json.NewDecoder(bytes.NewReader(raw))
 		decoder.UseNumber()
-
 		if err := decoder.Decode(response); err != nil {
 			return nil, err
 		}

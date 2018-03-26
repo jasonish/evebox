@@ -31,6 +31,19 @@ import (
 	"github.com/jasonish/evebox/log"
 )
 
+type JQslice []JsonMap
+
+func (s JQslice) GetN(n int) JsonMap {
+	if len(s) > n {
+		return s[n]
+	}
+	return nil
+}
+
+func (s JQslice) First() JsonMap {
+	return s.GetN(0)
+}
+
 // A wrapper around a generic string map for accessing elements.
 type JsonMap map[string]interface{}
 
@@ -42,6 +55,23 @@ func (m JsonMap) GetMap(name string) JsonMap {
 	if val != nil {
 		return val.(map[string]interface{})
 	}
+	return nil
+}
+
+func (m JsonMap) GetMapSlice(name string) JQslice {
+	if m == nil {
+		return nil
+	}
+
+	switch v := m[name].(type) {
+	case []interface{}:
+		result := JQslice{}
+		for _, item := range v {
+			result = append(result, JsonMap(item.(map[string]interface{})))
+		}
+		return result
+	}
+
 	return nil
 }
 

@@ -29,9 +29,11 @@ package elasticsearch
 import (
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
+	"fmt"
 )
 
 const DEFAULT_SORT_BY = "@timestamp";
+
 const DEFAULT_SORT_ORDER = "desc"
 const DEFAULT_SIZE = 500
 
@@ -85,6 +87,15 @@ func (s *DataStore) EventQuery(options core.EventQueryOptions) (interface{}, err
 		log.Error("%v", err)
 	}
 
+	if response.Status != 0 {
+		reason := response.GetFirstRootCause()
+		if reason == "" {
+			reason = "unknown"
+		}
+		err := fmt.Errorf(reason)
+		log.Warning("Search error: %v", err)
+		return nil, err
+	}
 	hits := response.Hits.Hits
 
 	return map[string]interface{}{

@@ -25,12 +25,16 @@
  */
 
 import {Injectable} from "@angular/core";
-import {HttpClient, HttpHeaders, HttpParams} from "@angular/common/http";
+import {
+    HttpClient, HttpErrorResponse, HttpHeaders,
+    HttpParams
+} from "@angular/common/http";
 import {Observable} from "rxjs/Observable";
 import {of} from "rxjs/observable/of";
 import {catchError, finalize, map} from "rxjs/operators";
 import {_throw} from "rxjs/observable/throw";
 import {BehaviorSubject} from "rxjs/BehaviorSubject";
+import {ErrorObservable} from 'rxjs/observable/ErrorObservable';
 
 declare var localStorage: any;
 
@@ -179,5 +183,13 @@ export class ClientService {
         }
 
         return this.http.get(this.buildUrl(path), options)
+                .pipe(catchError((error:HttpErrorResponse) => {
+                    if (error.error instanceof ErrorEvent) {
+                        console.log("This error is an ErrorEvent.");
+                        return new ErrorObservable(error.error.message);
+                    } else {
+                        return new ErrorObservable(error.error.error.message);
+                    }
+                }))
     }
 }

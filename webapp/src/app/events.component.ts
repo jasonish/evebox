@@ -109,7 +109,13 @@ import {finalize} from "rxjs/operators";
           </div>
         </div>
 
-        <div *ngIf="!loading && !hasEvents()" style="text-align: center;">
+        <div *ngIf="error">
+          <br/>
+          <div class="alert alert-danger text-center">{{error}}</div>
+        </div>
+
+        <div *ngIf="!error && !loading && !hasEvents()"
+             style="text-align: center;">
           <hr/>
           No events found.
           <hr/>
@@ -150,6 +156,9 @@ export class EventsComponent implements OnInit, OnDestroy {
         "SMB",
         "NFS",
     ];
+
+    // Error to be display if set.
+    error: string = null;
 
     eventTypeFilter: string = this.eventTypeFilterValues[0];
 
@@ -247,11 +256,18 @@ export class EventsComponent implements OnInit, OnDestroy {
         });
     }
 
-    hasEvents() {
-        return this.model.events.length > 0;
+    hasEvents(): boolean {
+        try {
+            return this.model.events.length > 0;
+        }
+        catch (err) {
+            return false;
+        }
     }
 
     refresh() {
+        this.clearError();
+        this.model.events = [];
         this.loading = true;
 
         this.api.eventQuery({
@@ -270,10 +286,22 @@ export class EventsComponent implements OnInit, OnDestroy {
                 events = events.reverse();
             }
 
-            this.model.events = response.data;
-            this.model.newestTimestamp = events[0]._source["@timestamp"];
-            this.model.oldestTimestamp = events[events.length - 1]._source["@timestamp"];
+            if (events.length > 0) {
+                this.model.newestTimestamp = events[0]._source["@timestamp"];
+                this.model.oldestTimestamp = events[events.length - 1]._source["@timestamp"];
+            }
+            this.model.events = events;
+        }, (error) => {
+            this.setError(error);
         });
+    }
+
+    private setError(error: string) {
+        this.error = error;
+    }
+
+    private clearError() {
+        this.error = null;
     }
 
 }
