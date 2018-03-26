@@ -33,8 +33,6 @@
           </a>
           <div class="dropdown-menu" aria-labelledby="topNavEventsDropdown">
             <a class="dropdown-item"
-               [routerLink]="['/events', {'eventType': 'alert'}]">Alerts</a>
-            <a class="dropdown-item"
                [routerLink]="['/events', {'eventType': eventType.eventType}]"
                *ngFor="let eventType of EVENT_TYPES">{{eventType.name}}</a>
           </div>
