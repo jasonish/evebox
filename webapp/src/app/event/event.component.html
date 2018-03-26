@@ -229,8 +229,7 @@
                 <table
                     class="table table-sm table-striped table-hover info-table">
                   <tr *ngFor="let item of event._source[event._source.event_type] | mapToItems">
-                    <td><b>{{item.key |
-                      genericPrettyPrinter}}</b></td>
+                    <td><b>{{item.key | eveboxGenericPrettyPrinter}}</b></td>
                     <td>
                       <search-link [value]="item.val"></search-link>
                     </td>
@@ -250,7 +249,8 @@
         <div class="card-header">
           <b>Rule</b>
         </div>
-        <div class="card-body" [innerHTML]="event._source.alert.rule | ruleHighlight">
+        <div class="card-body"
+             [innerHTML]="event._source.alert.rule | ruleHighlight">
         </div>
       </div>
     </div>
@@ -317,7 +317,7 @@
           <table class="table table-striped table-sm">
             <tr *ngFor="let item of http | mapToItems">
               <td style="border: 0px; white-space: nowrap">{{item.key |
-                genericPrettyPrinter}}:
+                eveboxGenericPrettyPrinter}}:
               </td>
               <td style="border: 0px;">
                 <search-link [value]="item.val"></search-link>
@@ -398,7 +398,7 @@
           <div class="row">
             <div *ngFor="let item of event._source.geoip | mapToItems"
                  class="col-md-4">
-              <em>{{item.key | genericPrettyPrinter}}:</em>
+              <em>{{item.key | eveboxGenericPrettyPrinter}}:</em>
               <search-link [value]="item.val"></search-link>
             </div>
           </div>
@@ -417,7 +417,7 @@
           <div class="row">
             <div *ngFor="let item of event._source.tls | mapToItems"
                  class="col-md-6">
-              <em>{{item.key | genericPrettyPrinter}}:</em>
+              <em>{{item.key | eveboxGenericPrettyPrinter}}:</em>
               <search-link [value]="item.val"></search-link>
             </div>
           </div>
@@ -442,7 +442,7 @@
           <div class="row">
             <div *ngFor="let item of flow._source.flow | mapToItems"
                  class="col-md-4">
-              <em>{{item.key | genericPrettyPrinter}}:</em>
+              <em>{{item.key | eveboxGenericPrettyPrinter}}:</em>
               <search-link [value]="item.val"></search-link>
             </div>
           </div>

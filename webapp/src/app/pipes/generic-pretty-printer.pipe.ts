@@ -27,7 +27,7 @@
 import {Pipe, PipeTransform} from '@angular/core';
 
 @Pipe({
-    name: 'genericPrettyPrinter'
+    name: 'eveboxGenericPrettyPrinter'
 })
 export class EveBoxGenericPrettyPrinter implements PipeTransform {
 
@@ -36,8 +36,14 @@ export class EveBoxGenericPrettyPrinter implements PipeTransform {
         // Replace underscores with spaces.
         value = value.replace(/_/g, ' ');
 
+        // fuid -> FUID (SMB events).
+        value = value.replace("fuid", "FUID");
+
+        // id -> ID.
+        value = value.replace(/(^|\s)id/i, "$1ID");
+
         // Captialize the first letter of each word.
-        value = value.toLowerCase().replace(/\b./g, (a: any) => {
+        value = value.replace(/\b./g, (a: any) => {
             return a.toUpperCase();
         });
 
