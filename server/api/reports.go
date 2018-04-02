@@ -71,9 +71,7 @@ func (c *ApiContext) ReportAggs(w *ResponseWriter, r *http.Request) error {
 	options.Size, _ = strconv.ParseInt(r.FormValue("size"), 10, 64)
 	options.AddressFilter = r.FormValue("addressFilter")
 	options.QueryString = r.FormValue("queryString")
-
 	options.EventType = r.FormValue("eventType")
-
 	options.DnsType = r.FormValue("dnsType")
 
 	response, err := c.appContext.ReportService.ReportAggs(agg, options)

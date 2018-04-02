@@ -18,4 +18,4 @@ esac
 
 reflex -s -R -packr\.go -r \.go$ -- \
        sh -c "rm -f evebox && make evebox && \
-                 ./evebox ${command} ${args}"
+                 ./evebox -v ${command} ${args}"

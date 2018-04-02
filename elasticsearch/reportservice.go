@@ -168,6 +168,7 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 	size := int64(10)
 
 	query := NewEventQuery()
+	query.SetSize(0)
 
 	// Event type...
 	if options.EventType != "" {
@@ -218,6 +219,10 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 		// SSH.
 		"ssh.client.software_version": "keyword",
 		"ssh.server.software_version": "keyword",
+
+		// Generic.
+		"traffic.id": "keyword",
+		"traffic.label": "keyword",
 	}
 
 	aggType := aggregations[agg]
@@ -231,6 +236,12 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 			"terms": map[string]interface{}{
 				"field": s.es.FormatKeyword(agg),
 				"size":  size,
+				"min_doc_count": 0,
+			},
+		}
+		query.Aggs["missing"] = map[string]interface{}{
+			"missing": map[string]interface{}{
+				"field": s.es.FormatKeyword(agg),
 			},
 		}
 	} else {
@@ -238,6 +249,12 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 			"terms": map[string]interface{}{
 				"field": agg,
 				"size":  size,
+				"min_doc_count": 0,
+			},
+		}
+		query.Aggs["missing"] = map[string]interface{}{
+			"missing": map[string]interface{}{
+				"field": agg,
 			},
 		}
 	}
@@ -246,6 +263,7 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 	if err != nil {
 		return nil, err
 	}
+
 	if response.Error != nil {
 		if response.Aggregations != nil {
 			log.Warning("Elastic Search errors occurred, but will continue: %s",
@@ -256,6 +274,8 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 	}
 
 	data := make([]map[string]interface{}, 0)
+	missing := int64(0)
+	other := int64(0)
 
 	// Unwrap response.
 	if response.Aggregations != nil {
@@ -266,9 +286,14 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 				"count": bucket["doc_count"],
 			})
 		}
+
+		missing = response.Aggregations.GetMap("missing").GetInt64("doc_count")
+		other = response.Aggregations.GetMap(agg).GetInt64("sum_other_doc_count")
 	}
 
 	return map[string]interface{}{
 		"data": data,
+		"missing": missing,
+		"other": other,
 	}, nil
 }

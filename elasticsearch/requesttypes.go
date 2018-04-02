@@ -54,12 +54,12 @@ type BulkCreateHeader struct {
 
 // EventQuery is a type for building up an Elastic Search event query.
 type EventQuery struct {
-	Query  *Query                 `json:"query,omitempty"`
-	Script *Script                `json:"script,omitempty"`
+	Query  *Query  `json:"query,omitempty"`
+	Script *Script `json:"script,omitempty"`
 	// Pointer so its not serialize unless set.
-	Size   *int64                  `json:"size,omitempty"`
-	Sort   []interface{}          `json:"sort,omitempty"`
-	Aggs   map[string]interface{} `json:"aggs,omitempty"`
+	Size *int64                 `json:"size,omitempty"`
+	Sort []interface{}          `json:"sort,omitempty"`
+	Aggs map[string]interface{} `json:"aggs,omitempty"`
 }
 
 func NewEventQuery() EventQuery {
