@@ -52,13 +52,14 @@ func Usage() {
 	usage := fmt.Sprintf(`Usage: %s <command> [options]
 
 Commands:
-	server			Start the EveBox server
-	config                  Server configuration tool
-	version			Print the EveBox version
-	esimport		Run the Elastic Search Eve import tool
-	evereader		Run the Eve log reader tool
-	oneshot                 Run one time with an eve.json file
-	gencert                 Generate TLS certificate
+    server          Start the EveBox server
+    agent           Start the EveBox agent
+    config          Server configuration tool
+    version         Print the EveBox version
+    esimport        Run the Elastic Search Eve import tool
+    evereader       Run the Eve log reader tool
+    oneshot         Run one time with an eve.json file
+    gencert         Generate TLS certificate
 
 `, os.Args[0])
 	fmt.Fprint(os.Stderr, usage)
