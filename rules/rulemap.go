@@ -126,7 +126,10 @@ func (r *RuleMap) Filter(event eve.EveEvent) {
 	if ok {
 		rule := r.FindById(ruleId)
 		if rule != nil {
-			event["rule"] = rule.Raw
+			alert := event.GetAlert()
+			if alert != nil {
+				alert["rule"] = rule.Raw
+			}
 		}
 	}
 }
