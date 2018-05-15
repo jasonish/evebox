@@ -5,7 +5,7 @@
 - Fix rule highlight (including making reference URLs links).
 - Various event view cleanups.
 
-## 0.9.0 - 2018-01-97
+## 0.9.0 - 2018-02-07
 
 **Fixed**
 - The inbox will not remember the sort after after archiving or
