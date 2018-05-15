@@ -4,6 +4,8 @@
 - Better Elastic Search version support, including Elastic Search 6.
 - Fix rule highlight (including making reference URLs links).
 - Various event view cleanups.
+- [Agent] The agent will now add the rule to the alert object, the same location
+  as Suricata.
 
 ## 0.9.0 - 2018-02-07
 
