@@ -177,11 +177,13 @@ func findRuleFilenames(paths []string) []string {
 			// Load as glob.
 			matches, err := filepath.Glob(path)
 			if err != nil {
-				log.Warning("No matches for %s: %v", path, err)
-				continue
-			}
-			for _, m := range matches {
-				filenames = append(filenames, m)
+				log.Warning("Failed to load glob %s: %v", path, err)
+			} else if len(matches) == 0 {
+				log.Warning("No files matched glob %s.", path)
+			} else {
+				for _, m := range matches {
+					filenames = append(filenames, m)
+				}
 			}
 		} else if fileInfo.IsDir() {
 			infos, err := ioutil.ReadDir(path)
