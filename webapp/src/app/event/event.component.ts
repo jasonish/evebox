@@ -379,7 +379,6 @@ export class EventComponent implements OnInit, OnDestroy {
                         if (!this.event._source.alert.rule && this.event._source.rule) {
                             this.event._source.alert.rule = this.event._source.rule;
                         }
-                        delete(this.event._source.rule);
                     }
 
                     this.setup();
