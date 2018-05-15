@@ -377,6 +377,7 @@ export class EventComponent implements OnInit, OnDestroy {
                     // would be found.
                     if (this.event._source.event_type == "alert") {
                         if (!this.event._source.alert.rule && this.event._source.rule) {
+                            console.log("Copying evebox-agent provided rule into alert.");
                             this.event._source.alert.rule = this.event._source.rule;
                         }
                     }
