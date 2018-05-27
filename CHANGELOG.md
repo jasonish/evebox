@@ -1,11 +1,15 @@
 # Change Log
 
-## unreleased
+## 0.9.1 - 2018-05-29
 - Better Elastic Search version support, including Elastic Search 6.
 - Fix rule highlight (including making reference URLs links).
 - Various event view cleanups.
 - [Agent] The agent will now add the rule to the alert object, the same location
   as Suricata.
+- [Elastic Search] If no keyword found, use "raw" for those remaining Elastic
+  Search 2 templates out there.
+
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.9.0...0.9.1)
 
 ## 0.9.0 - 2018-02-07
 
