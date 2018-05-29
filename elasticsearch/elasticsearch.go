@@ -232,7 +232,9 @@ func (es *ElasticSearch) ConfigureIndex() (error) {
 			log.Info("Found Elastic Search keyword suffix to be: %s",
 				es.config.KeywordSuffix)
 		} else {
-			log.Warning("Failed to determine Elastic Search keyword suffix, EveBox may not work properly.")
+			log.Warning("Failed to determine Elastic Search keyword suffix, will use 'raw'.")
+			es.config.KeywordSuffix = "raw"
+			keywordFound = true
 		}
 	}
 
