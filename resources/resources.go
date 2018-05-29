@@ -33,6 +33,7 @@ import (
 	"io/ioutil"
 	"os"
 	"github.com/gobuffalo/packr"
+	"github.com/jasonish/evebox/log"
 )
 
 var ResourceBox packr.Box = packr.NewBox(".")
@@ -41,9 +42,14 @@ func GetAsset(name string) ([]byte, error) {
 	realName := fmt.Sprintf("./resources/%s", name)
 	realAsset, err := os.Open(realName)
 	if err == nil {
+		log.Debug("Found on-disk asset for %s.", realName)
 		return ioutil.ReadAll(realAsset)
 	}
-	return ResourceBox.MustBytes(name)
+	bytes, err := ResourceBox.MustBytes(name)
+	if err != nil {
+		log.Warning("Failed to find box asset %s.", realName)
+	}
+	return bytes, err
 }
 
 // AssetString returns an asset as a string.
