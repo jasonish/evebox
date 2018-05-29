@@ -40,12 +40,17 @@ GOPATH ?=	$(HOME)/go
 all: public evebox
 
 install-deps:
-# NPM
 	$(MAKE) -C webapp $@
+	go get github.com/golang/dep/cmd/dep
+	go get github.com/cespare/reflex
+	go get github.com/gobuffalo/packr/packr
+	$(GOPATH)/bin/dep ensure -v
+
+update-deps:
 	go get -u github.com/golang/dep/cmd/dep
 	go get -u github.com/cespare/reflex
 	go get -u github.com/gobuffalo/packr/packr
-	$(GOPATH)/bin/dep ensure -v
+	$(GOPATH)/bin/dep ensure -update
 
 clean:
 	rm -rf dist
