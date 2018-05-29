@@ -17,13 +17,13 @@ RUN yum -y install \
     automake \
     libtool
 
-ENV NODE_VERSION 8.9.4
+ENV NODE_VERSION 8.11.2
 RUN mkdir /usr/local/node && \
     cd /usr/local/node && \
     curl -L https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz | \
     tar Jxf - --strip-components=1
 
-ENV GO_VERSION 1.9.4
+ENV GO_VERSION 1.10.2
 RUN cd /usr/local && \
     curl -L https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz | \
     tar zxf -
