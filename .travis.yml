@@ -4,13 +4,8 @@ env:
   global:
     - GOPATH=~/gopath
     - PATH=${GOPATH}/bin:$PATH
-    - NODE_VERSION="--lts"
+    - NODE_VERSION="8.11.3"
     - RUBY_VERSION=2.1.1
-
-cache:
-  directories:
-    - $GOPATH/src/github.com/jasonish/evebox/webapp/node_modules
-    - $GOPATH/src/github.com/jasonish/evebox/vendor
 
 matrix:
   allow_failures:
@@ -23,26 +18,15 @@ matrix:
           - rpm
           - gcc-mingw-w64
     language: go
-    go: 1.9
+    go: "1.10"
   - os: osx
     osx_image: xcode8.3
     language: go
-    go: 1.9
+    go: "1.10"
 
 before_install:
-- |
-  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      nvm install ${NODE_VERSION}
-      nvm use ${NODE_VERSION}
-  fi
-  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      brew unlink node || true
-      brew unlink go || true
-      brew install node
-      brew install go
-      brew link node
-      brew link go
-  fi
+- nvm install ${NODE_VERSION}
+- nvm use ${NODE_VERSION}
 
 script:
 - |
