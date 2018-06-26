@@ -24,12 +24,16 @@
 
       <li class="nav-item dropdown">
         <span class="nav-link">
-          <a [routerLink]="['/events']" class="nav-link"
+          <a [routerLink]="['/events']"
+             [routerLinkActive]="['active']"
+             class="nav-link"
              style="display: inline; padding: 0px;">Events</a>
-          <a class="nav-link dropdown-toggle" href="#" id="topNavEventsDropdown"
+          <a class="nav-link dropdown-toggle ml-1" href="#"
+             id="topNavEventsDropdown"
+             [routerLinkActive]="['active']"
              style="display: inline; padding: 0px;"
              role="button" data-toggle="dropdown" aria-haspopup="true"
-             aria-expanded="false" [ngClass]="{active: isActive('/events')}">
+             aria-expanded="false">
           </a>
           <div class="dropdown-menu" aria-labelledby="topNavEventsDropdown">
             <a class="dropdown-item"
@@ -42,7 +46,9 @@
       <li *ngIf="features['reporting']" class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown"
            role="button" data-toggle="dropdown" aria-haspopup="true"
-           aria-expanded="false" [ngClass]="{active: isActive('/reports')}">
+           [routerLink]="['/reports']"
+           [routerLinkActive]="['active']"
+           aria-expanded="false">
           Reports
         </a>
         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
@@ -96,7 +102,7 @@
 
     <!-- TODO Using button here as it looks better than a bade. -->
     <button type="button" class="btn btn-secondary">
-      {{elasticSearchService.jobCount$ | async}}
+    {{elasticSearchService.jobCount$ | async}}
     </button>
 
   </div>

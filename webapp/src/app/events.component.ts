@@ -69,7 +69,7 @@ import {EVENT_TYPES} from './shared/eventtypes';
         <div class="row">
           <div class="col-md">
 
-            <button type="button" class="btn btn-secondary" (click)="refresh()">
+            <button type="button" class="btn btn-secondary mr-2" (click)="refresh()">
               Refresh
             </button>
 
@@ -89,15 +89,15 @@ import {EVENT_TYPES} from './shared/eventtypes';
             </div>
 
             <div *ngIf="hasEvents()" class="float-right">
-              <button type="button" class="btn btn-secondary"
+              <button type="button" class="btn btn-secondary mr-2"
                       (click)="gotoNewest()">
                 Newest
               </button>
-              <button type="button" class="btn btn-secondary"
+              <button type="button" class="btn btn-secondary mr-2"
                       (click)="gotoNewer()">
                 Newer
               </button>
-              <button type="button" class="btn btn-secondary"
+              <button type="button" class="btn btn-secondary mr-2"
                       (click)="gotoOlder()">
                 Older
               </button>

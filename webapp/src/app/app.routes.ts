@@ -70,14 +70,14 @@ export class ConfigResolver implements CanActivate {
         }
 
         return this.api.get("/api/1/config")
-            .then((config) => {
-                console.log(config);
-                this.configService.setConfig(config);
-                return true;
-            })
-            .catch(() => {
-                return false;
-            });
+                .then((config) => {
+                    console.log(config);
+                    this.configService.setConfig(config);
+                    return true;
+                })
+                .catch(() => {
+                    return false;
+                });
     }
 }
 
@@ -130,11 +130,36 @@ const routes: Routes = [
                 path: "events", component: EventsComponent, pathMatch: "prefix",
             }
             ,
-            {path: "reports/alerts", component: AlertReportComponent},
-            {path: "reports/dns", component: DNSReportComponent},
-            {path: "reports/flow", component: FlowReportComponent},
-            {path: "reports/netflow", component: NetflowReportComponent},
-            {path: "reports/ssh", component: SshReportComponent},
+            {
+                path: "reports",
+                children: [
+                    {
+                        path: "alerts",
+                        component: AlertReportComponent,
+                    },
+                    {
+                        path: "dns",
+                        component: DNSReportComponent
+                    },
+                    {
+                        path: "flow",
+                        component: FlowReportComponent
+                    },
+                    {
+                        path: "netflow",
+                        component: NetflowReportComponent
+                    },
+                    {
+                        path: "ssh",
+                        component: SshReportComponent
+                    },
+                ]
+            },
+            // {path: "reports/alerts", component: AlertReportComponent},
+            // {path: "reports/dns", component: DNSReportComponent},
+            // {path: "reports/flow", component: FlowReportComponent},
+            // {path: "reports/netflow", component: NetflowReportComponent},
+            // {path: "reports/ssh", component: SshReportComponent},
             {
                 path: "reports/ip",
                 component: IpReportComponent,
