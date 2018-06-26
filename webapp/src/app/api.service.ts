@@ -34,6 +34,7 @@ import {Observable} from "rxjs";
 import {ClientService, LoginResponse} from "./client.service";
 import {catchError, finalize, map} from "rxjs/operators";
 import {HttpClient, HttpHeaders, HttpParams} from "@angular/common/http";
+import {throwError} from 'rxjs/internal/observable/throwError';
 
 declare var localStorage: any;
 
@@ -149,11 +150,11 @@ export class ApiService {
                             this.handle401();
                         }
                     }
-                    return Observable.throw(error);
+                    return throwError(error);
                 }));
     }
 
-    post(path: string, body: any, options: any = {}) {
+    post(path: string, body: any, options: any = {}): Promise<any> {
         options.body = body;
         return this.doRequest("POST", path, options).toPromise();
     }
@@ -162,7 +163,7 @@ export class ApiService {
         return this.doRequest("GET", path, options).toPromise();
     }
 
-    updateConfig() {
+    updateConfig(): Promise<any> {
         return this.get("/api/1/config")
                 .then((config) => {
                     this.configService.setConfig(config);
@@ -192,7 +193,7 @@ export class ApiService {
                 });
     }
 
-    logout() {
+    logout() : Promise<any> {
         return this.client.logout().pipe(
                 finalize(() => {
                     this.setAuthenticated(false);
