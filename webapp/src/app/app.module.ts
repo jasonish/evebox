@@ -27,7 +27,6 @@
 import {BrowserModule} from "@angular/platform-browser";
 import {NgModule} from "@angular/core";
 import {FormsModule} from "@angular/forms";
-import {HttpModule} from "@angular/http";
 import {BrowserAnimationsModule} from "@angular/platform-browser/animations";
 
 import {AppComponent} from "./app.component";
@@ -76,7 +75,8 @@ import {ApiService} from "./api.service";
 import {ReportsService} from "./reports/reports.service";
 import {EveboxSubscriptionService} from "./subscription.service";
 import {
-    IpAddrDataTableComponent, SshReportComponent
+    IpAddrDataTableComponent,
+    SshReportComponent
 } from "./reports/ssh-report.component";
 import {LoginComponent} from "./login/login.component";
 import {SettingsComponent} from "./settings/settings.component";
@@ -138,7 +138,6 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         // Angular modules.
         BrowserModule,
         FormsModule,
-        HttpModule,
         RouterModule,
         BrowserAnimationsModule,
         HttpClientModule,

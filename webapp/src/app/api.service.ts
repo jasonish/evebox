@@ -25,10 +25,6 @@
  */
 
 import {Injectable} from "@angular/core";
-import {
-    Headers, Http, RequestOptionsArgs, Response,
-    URLSearchParams
-} from "@angular/http";
 import {ToastrService} from "./toastr.service";
 import {GITREV} from "../environments/gitrev";
 import {Router} from "@angular/router";
@@ -38,12 +34,9 @@ import {Observable} from "rxjs/Observable";
 import "rxjs/add/observable/throw";
 import "rxjs/add/operator/catch";
 import "rxjs/add/operator/map";
-import {BehaviorSubject} from "rxjs/BehaviorSubject";
 import {ClientService, LoginResponse} from "./client.service";
-import {finalize} from "rxjs/operators";
-import {HttpClient, HttpParams} from "@angular/common/http";
-import {ResultSet} from "./elasticsearch.service";
-import * as moment from "moment";
+import {catchError, finalize, map} from "rxjs/operators";
+import {HttpClient, HttpHeaders, HttpParams} from "@angular/common/http";
 
 declare var localStorage: any;
 
@@ -60,7 +53,7 @@ export class ApiService {
 
     private sessionId: string;
 
-    constructor(private http: Http,
+    constructor(private httpClient: HttpClient,
                 private client: ClientService,
                 private toastr: ToastrService,
                 private router: Router,
@@ -78,7 +71,7 @@ export class ApiService {
         this.client.setSessionId(sessionId);
     }
 
-    checkVersion(response: Response) {
+    checkVersion(response: any) {
         if (this.versionWarned) {
             return;
         }
@@ -87,24 +80,31 @@ export class ApiService {
         if (webappRev !== serverRev) {
             console.log(`Server version: ${serverRev}; webapp version: ${webappRev}`);
             this.toastr.warning(
-                `The EveBox server has been updated.
+                    `The EveBox server has been updated.
              Please reload</a>.
              <br><a href="javascript:window.location.reload()"
              class="btn btn-primary btn-block">Reload Now</a>`, {
-                    closeButton: true,
-                    timeOut: 0,
-                    extendedTimeOut: 0,
-                });
+                        closeButton: true,
+                        timeOut: 0,
+                        extendedTimeOut: 0,
+                    });
             this.versionWarned = true;
         }
     }
 
-    applySessionHeader(options: RequestOptionsArgs) {
+    applySessionHeader(options: any) {
         if (this.sessionId) {
             let headers = options.headers || new Headers();
             headers.append("x-evebox-session-id", this.sessionId);
             options.headers = headers;
         }
+    }
+
+    setSessionHeader(headers: HttpHeaders): HttpHeaders {
+        if (this.sessionId) {
+            return headers.set("x-evebox-session-id", this.sessionId);
+        }
+        return headers;
     }
 
     setAuthenticated(authenticated: boolean) {
@@ -116,7 +116,7 @@ export class ApiService {
         }
     }
 
-    private updateSessionId(response: Response) {
+    private updateSessionId(response: any) {
         let sessionId = response.headers.get("x-evebox-session-id");
         if (sessionId && sessionId != this.sessionId) {
             console.log("Updating session ID from response header.");
@@ -124,89 +124,82 @@ export class ApiService {
         }
     }
 
-    private handle401(response: Response) {
+    private handle401() {
         this.setAuthenticated(false);
     }
 
     /**
      * Low level options request, just fixup the URL.
      */
-    _options(path: string) {
-        return this.http.options(this.client.buildUrl(path));
+    _options(path: string): Observable<any> {
+        return this.httpClient.options(this.client.buildUrl(path))
     }
 
-    request(method: string, path: string, options: RequestOptionsArgs = {}) {
-        options.method = method;
-        this.applySessionHeader(options);
-        return this.http.request(this.client.buildUrl(path), options)
-            .map((res: Response) => {
-                this.updateSessionId(res);
-                this.checkVersion(res);
-                return res;
-            })
-            .catch((err: any) => {
-                if (err.status === 401) {
-                    this.handle401(err);
-                }
-
-                // Attempt to map the error to json.
-                try {
-                    return Observable.throw(err.json());
-                }
-                catch (e) {
-                    return Observable.throw(err);
-                }
-            });
+    doRequest(method: string, path: string, options: any = {}): Observable<any> {
+        let headers = options.headers || new HttpHeaders();
+        options.headers = this.setSessionHeader(headers);
+        options.observe = "response";
+        return this.httpClient.request<any>(method, path, options)
+                .pipe(map((response: any) => {
+                    this.updateSessionId(response);
+                    this.checkVersion(response);
+                    return response.body;
+                }), catchError((error) => {
+                    if (error.error instanceof ErrorEvent) {
+                        // Client side or network error.
+                    } else {
+                        if (error.status === 401) {
+                            this.handle401();
+                        }
+                    }
+                    return Observable.throw(error);
+                }));
     }
 
-    post(path: string, body: any, options: RequestOptionsArgs = {}) {
-        options.body = JSON.stringify(body);
-        return this.request("POST", path, options)
-            .map((res: Response) => res.json())
-            .toPromise();
+    post(path: string, body: any, options: any = {}) {
+        options.body = body;
+        return this.doRequest("POST", path, options).toPromise();
     }
 
-    get(path: string, options: RequestOptionsArgs = {}): Promise<any> {
-        return this.request("GET", path, options)
-            .map(res => res.json())
-            .toPromise();
+    get(path: string, options: any = {}): Promise<any> {
+        return this.doRequest("GET", path, options).toPromise();
     }
 
     updateConfig() {
         return this.get("/api/1/config")
-            .then((config) => {
-                this.configService.setConfig(config);
-                return config;
-            });
+                .then((config) => {
+                    this.configService.setConfig(config);
+                    return config;
+                });
     }
 
     checkAuth() {
         return this.updateConfig()
-            .then(config => {
-                this.setAuthenticated(true);
-                this.client.setAuthenticated(true);
-                return true;
-            })
-            .catch(() => false);
+                .then(config => {
+                    this.setAuthenticated(true);
+                    this.client.setAuthenticated(true);
+                    return true;
+                })
+                .catch(() => false);
     }
 
     login(username: string = "", password: string = ""): Promise<boolean> {
         return this.client.login(username, password).toPromise()
-            .then((response: LoginResponse) => {
-                this.setSessionId(response.session_id);
-                this.setAuthenticated(true);
-                return this.updateConfig()
-                    .then(() => {
-                        return true;
-                    });
-            });
+                .then((response: LoginResponse) => {
+                    this.setSessionId(response.session_id);
+                    this.setAuthenticated(true);
+                    return this.updateConfig()
+                            .then(() => {
+                                return true;
+                            });
+                });
     }
 
     logout() {
         return this.client.logout().pipe(
-            finalize(() => {
-                this.setAuthenticated(false);
-            })
+                finalize(() => {
+                    this.setAuthenticated(false);
+                })
         ).toPromise();
     }
 
