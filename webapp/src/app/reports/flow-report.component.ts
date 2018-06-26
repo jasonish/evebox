@@ -37,9 +37,8 @@ import {EveBoxProtoPrettyPrinter} from "../pipes/proto-pretty-printer.pipe";
 
 import * as chartjs from "../shared/chartjs";
 import * as moment from "moment";
-import "rxjs/add/operator/finally";
 import {finalize} from "rxjs/operators";
-import {Observable} from "rxjs/Observable";
+import {Observable} from "rxjs";
 
 declare var Chart: any;
 

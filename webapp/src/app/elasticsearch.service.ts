@@ -24,21 +24,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {BehaviorSubject} from "rxjs/BehaviorSubject";
-
-declare function require(name: string);
-
+import {BehaviorSubject} from "rxjs";
 import {Injectable} from "@angular/core";
 import {TopNavService} from "./topnav.service";
 import {AppService} from "./app.service";
 import {ConfigService} from "./config.service";
 import {ToastrService} from "./toastr.service";
 import {ApiService} from "./api.service";
-import {URLSearchParams} from "@angular/http";
 
 import * as moment from "moment";
 import {HttpParams} from "@angular/common/http";
 import {ClientService} from "./client.service";
+
+declare function require(name: string);
 
 let queue = require("queue");
 
@@ -69,7 +67,7 @@ export class ElasticSearchService {
 
     // Observable for current job count.
     public jobCount$: BehaviorSubject<number> =
-        new BehaviorSubject<number>(0);
+            new BehaviorSubject<number>(0);
 
     public useIpDatatype: boolean = false;
 
@@ -102,10 +100,10 @@ export class ElasticSearchService {
 
     search(query: any): Promise<any> {
         return this.api.post("api/1/query", query)
-            .then((response: any) => response,
-                (error: any) => {
-                    throw error.json();
-                });
+                .then((response: any) => response,
+                        (error: any) => {
+                            throw error.json();
+                        });
     }
 
     updateJobCount() {
@@ -222,16 +220,16 @@ export class ElasticSearchService {
 
     getEventById(id: string): Promise<any> {
         return this.api.get(`api/1/event/${id}`)
-            .then((response: any) => {
-                let event = response;
+                .then((response: any) => {
+                    let event = response;
 
-                // Make sure tags exists.
-                if (!event._source.tags) {
-                    event._source.tags = [];
-                }
+                    // Make sure tags exists.
+                    if (!event._source.tags) {
+                        event._source.tags = [];
+                    }
 
-                return event;
-            });
+                    return event;
+                });
     }
 
     findFlow(params: any): Promise<any> {
@@ -259,16 +257,16 @@ export class ElasticSearchService {
         params = params.append("query_string", options.queryString);
 
         return this.client.get("api/1/alerts", params)
-            .toPromise()
-            .then((response: any) => {
-                return response.alerts.map((alert: AlertGroup) => {
-                    return {
-                        event: alert,
-                        selected: false,
-                        date: moment(alert.maxTs).toDate()
-                    };
+                .toPromise()
+                .then((response: any) => {
+                    return response.alerts.map((alert: AlertGroup) => {
+                        return {
+                            event: alert,
+                            selected: false,
+                            date: moment(alert.maxTs).toDate()
+                        };
+                    });
                 });
-            });
     }
 
     /**

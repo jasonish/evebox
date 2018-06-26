@@ -67,7 +67,6 @@ export class LoginComponent implements OnInit, AfterViewInit {
 
         // Get the login types.
         this.api._options("/api/1/login")
-            .map(res => res.json())
             .toPromise()
             .then((options) => {
                 console.log("Login options:");

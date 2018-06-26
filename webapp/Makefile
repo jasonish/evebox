@@ -31,5 +31,5 @@ distclean:
 	rm -rf typings
 
 serve: gitrev
-	$(NG) server --port 4636 --sourcemaps --proxy-config proxy.conf.json
+	$(NG) serve --port 4636 --proxy-config proxy.conf.json
 

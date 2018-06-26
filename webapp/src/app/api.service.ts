@@ -29,11 +29,8 @@ import {ToastrService} from "./toastr.service";
 import {GITREV} from "../environments/gitrev";
 import {Router} from "@angular/router";
 import {ConfigService} from "./config.service";
-import {Observable} from "rxjs/Observable";
+import {Observable} from "rxjs";
 
-import "rxjs/add/observable/throw";
-import "rxjs/add/operator/catch";
-import "rxjs/add/operator/map";
 import {ClientService, LoginResponse} from "./client.service";
 import {catchError, finalize, map} from "rxjs/operators";
 import {HttpClient, HttpHeaders, HttpParams} from "@angular/common/http";

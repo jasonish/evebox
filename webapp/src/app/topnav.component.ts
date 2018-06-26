@@ -24,16 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {
-    Component, OnInit, OnDestroy, OnChanges,
-    AfterViewChecked
-} from "@angular/core";
+import {AfterViewChecked, Component, OnDestroy, OnInit} from "@angular/core";
 import {ElasticSearchService} from "./elasticsearch.service";
-import {Router, ActivatedRoute, NavigationEnd} from "@angular/router";
+import {NavigationEnd, Router} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {TopNavService} from "./topnav.service";
-import {AppService, AppEventCode, FEATURE_REPORTING} from "./app.service";
-import {Subscription} from "rxjs/Subscription";
+import {AppEventCode, AppService, FEATURE_REPORTING} from "./app.service";
+import {Subscription} from "rxjs";
 import {ConfigService} from "./config.service";
 import {ApiService} from "./api.service";
 import {EVENT_TYPES} from './shared/eventtypes';

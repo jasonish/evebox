@@ -26,15 +26,15 @@
 
 import {Injectable} from "@angular/core";
 import {
-    HttpClient, HttpErrorResponse, HttpHeaders,
+    HttpClient,
+    HttpErrorResponse,
+    HttpHeaders,
     HttpParams
 } from "@angular/common/http";
-import {Observable} from "rxjs/Observable";
-import {of} from "rxjs/observable/of";
+import {Observable, throwError} from "rxjs";
 import {catchError, finalize, map} from "rxjs/operators";
-import {_throw} from "rxjs/observable/throw";
-import {BehaviorSubject} from "rxjs/BehaviorSubject";
-import {ErrorObservable} from 'rxjs/observable/ErrorObservable';
+import {BehaviorSubject} from 'rxjs/internal/BehaviorSubject';
+import {of} from 'rxjs/internal/observable/of';
 
 declare var localStorage: any;
 
@@ -52,7 +52,7 @@ export class ClientService {
     private _sessionId: string = null;
 
     private _isAuthenticated$: BehaviorSubject<boolean> =
-        new BehaviorSubject<boolean>(this.authenticated);
+            new BehaviorSubject<boolean>(this.authenticated);
 
     constructor(private http: HttpClient) {
         if (localStorage._sessionId) {
@@ -84,7 +84,7 @@ export class ClientService {
         return this._baseUrl;
     }
 
-    get isAuthenticated$():BehaviorSubject<boolean> {
+    get isAuthenticated$(): BehaviorSubject<boolean> {
         return this._isAuthenticated$;
     }
 
@@ -112,37 +112,37 @@ export class ClientService {
         return this.http.get(this.buildUrl("api/1/config"), {
             observe: "response",
             headers: headers
-        }).map((response) => {
+        }).pipe(map((response) => {
             let sessionId = response.headers.get("x-evebox-session-id");
             if (sessionId) {
                 this._sessionId = sessionId;
             }
             this.setAuthenticated(true);
             return true;
-        }).catch((error) => {
+        }), catchError((error) => {
             this.setAuthenticated(false);
             return of(false);
-        });
+        }));
     }
 
     login(username: string = "", password: string = ""): Observable<LoginResponse> {
         let params = new HttpParams()
-            .append("username", username)
-            .append("password", password);
+                .append("username", username)
+                .append("password", password);
         return this.http.post(this.buildUrl("api/1/login"), params)
-            .pipe(
-                map((response: LoginResponse) => {
-                    console.log(`Got session ID: ${response.session_id}`);
-                    this.setAuthenticated(true);
-                    this.setSessionId(response.session_id);
-                    return response;
-                }),
-                catchError((error: any) => {
-                    this.setAuthenticated(false);
-                    this.setSessionId(null);
-                    return _throw(error);
-                })
-            );
+                .pipe(
+                        map((response: LoginResponse) => {
+                            console.log(`Got session ID: ${response.session_id}`);
+                            this.setAuthenticated(true);
+                            this.setSessionId(response.session_id);
+                            return response;
+                        }),
+                        catchError((error: any) => {
+                            this.setAuthenticated(false);
+                            this.setSessionId(null);
+                            return throwError(error);
+                        })
+                );
     }
 
     logout(): Observable<boolean> {
@@ -151,30 +151,30 @@ export class ClientService {
             headers = this.addSessionIdHeader(headers);
         }
         return this.http.get(this.buildUrl("api/1/logout"), {headers: headers})
-            .pipe(
-                map(() => {
-                    return true;
-                }),
-                catchError((error: any) => {
-                    console.log("logout error:");
-                    console.log(error);
-                    return of(true);
-                }),
-                finalize(() => {
-                    console.log("Clearing session ID.");
-                    this.setAuthenticated(false);
-                    this.setSessionId(null);
-                })
-            );
+                .pipe(
+                        map(() => {
+                            return true;
+                        }),
+                        catchError((error: any) => {
+                            console.log("logout error:");
+                            console.log(error);
+                            return of(true);
+                        }),
+                        finalize(() => {
+                            console.log("Clearing session ID.");
+                            this.setAuthenticated(false);
+                            this.setSessionId(null);
+                        })
+                );
     }
 
-    get(path:string, params?:any):Observable<any> {
+    get(path: string, params?: any): Observable<any> {
         let headers = new HttpHeaders();
         if (this._sessionId) {
             headers = this.addSessionIdHeader(headers);
         }
 
-        let options:any = {
+        let options: any = {
             headers: headers,
         };
 
@@ -183,12 +183,12 @@ export class ClientService {
         }
 
         return this.http.get(this.buildUrl(path), options)
-                .pipe(catchError((error:HttpErrorResponse) => {
+                .pipe(catchError((error: HttpErrorResponse) => {
                     if (error.error instanceof ErrorEvent) {
                         console.log("This error is an ErrorEvent.");
-                        return new ErrorObservable(error.error.message);
+                        return throwError(error.error.message);
                     } else {
-                        return new ErrorObservable(error.error.error.message);
+                        return throwError(error.error.error.message);
                     }
                 }))
     }
