@@ -103,7 +103,7 @@ export class LoginComponent implements OnInit, AfterViewInit {
         let em = document.getElementById("username");
         if (em) {
             em.focus();
-            document.execCommand("selectall", null, false);
+            document.execCommand("selectall", null, "");
         }
     }
 
