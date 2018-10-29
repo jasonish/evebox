@@ -141,7 +141,6 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     setup() {
-        this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
     }
 
     ngOnInit() {
@@ -347,17 +346,19 @@ export class EventComponent implements OnInit, OnDestroy {
         this.loading = true;
 
         this.elasticSearch.getEventById(this.eventId)
-                .then((response: any) => {
-                    this.event = response;
-                    if (this.event._source.event_type != "flow") {
-                        this.findFlow(response);
+                .then((event: any) => {
+                    let http = null;
+
+                    //this.event = event;
+                    if (event._source.event_type != "flow") {
+                        this.findFlow(event);
                     }
 
                     // Break out some fields of the event.
-                    if (this.event._source.http) {
-                        this.http = {};
-                        let http = this.event._source.http;
-                        for (let key in http) {
+                    if (event._source.http) {
+                        http = {};
+                        let _http = event._source.http;
+                        for (let key in _http) {
                             switch (key) {
                                 case "http_response_body_printable":
                                 case "http_request_body_printable":
@@ -365,8 +366,7 @@ export class EventComponent implements OnInit, OnDestroy {
                                 case "http_request_body":
                                     break;
                                 default:
-                                    console.log(key);
-                                    this.http[key] = http[key];
+                                    http[key] = _http[key];
                                     break;
                             }
                         }
@@ -375,17 +375,20 @@ export class EventComponent implements OnInit, OnDestroy {
                     // If the Suricata provided rule doesn't exist, check for
                     // an EveBox added one and put it where the Suricata one
                     // would be found.
-                    if (this.event._source.event_type == "alert") {
-                        if (!this.event._source.alert.rule && this.event._source.rule) {
-                            console.log("Copying evebox-agent provided rule into alert.");
-                            this.event._source.alert.rule = this.event._source.rule;
+                    if (event._source.alert) {
+                        if (!event._source.alert.rule && event._source.rule) {
+                            event._source.alert.rule = event._source.rule;
                         }
                     }
 
-                    this.setup();
+                    this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
+                    this.event = event;
+                    this.http = http;
                     this.loading = false;
                 })
                 .catch((error: any) => {
+                    console.log("error:");
+                    console.log(error);
                     this.notifyError(error);
                     this.loading = false;
                 });
