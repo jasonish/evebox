@@ -38,14 +38,14 @@
   version = "v1.2.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/google/gopacket"
   packages = [
     ".",
     "layers",
     "pcapgo"
   ]
-  revision = "a6b099ece4680a8bdea84fa78166d0712108a95c"
-  version = "v1.1.15"
+  revision = "d533435fee711155c34af792b4d5c9562e1b931b"
 
 [[projects]]
   name = "github.com/gorilla/context"
@@ -318,6 +318,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "996503a5c93f6da04cddf447c533255a32b2b90616480dfc45292432e59a68cd"
+  inputs-digest = "5f3daaa83efa4ac170197cd09fb027b299af05b2f1210053c147fb80d9e940cc"
   solver-name = "gps-cdcl"
   solver-version = 1
