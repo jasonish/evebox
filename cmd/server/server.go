@@ -28,6 +28,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/jasonish/evebox/resources"
 
 	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
@@ -248,6 +249,14 @@ func Main(args []string) {
 
 	if verbose {
 		log.SetLevel(log.DEBUG)
+	}
+
+	// Self test.
+	_, err = resources.GetEmbeddedAsset("./public/index.html")
+	if err != nil {
+		log.Error("Self test: no embedded index.html found.")
+	} else {
+		log.Info("Self test: found embedded index.html.")
 	}
 
 	if configFilename != "" {

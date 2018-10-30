@@ -29,14 +29,19 @@ package resources
 import (
 	"bytes"
 	"fmt"
+	"github.com/gobuffalo/packr"
+	"github.com/jasonish/evebox/log"
 	"io"
 	"io/ioutil"
 	"os"
-	"github.com/gobuffalo/packr"
-	"github.com/jasonish/evebox/log"
 )
 
 var ResourceBox packr.Box = packr.NewBox(".")
+
+func GetEmbeddedAsset(name string) ([]byte, error) {
+	bytes, err := ResourceBox.Find(name)
+	return bytes, err
+}
 
 func GetAsset(name string) ([]byte, error) {
 	realName := fmt.Sprintf("./resources/%s", name)
@@ -45,11 +50,7 @@ func GetAsset(name string) ([]byte, error) {
 		log.Debug("Found on-disk asset for %s.", realName)
 		return ioutil.ReadAll(realAsset)
 	}
-	bytes, err := ResourceBox.MustBytes(name)
-	if err != nil {
-		log.Warning("Failed to find box asset %s.", realName)
-	}
-	return bytes, err
+	return GetEmbeddedAsset(name)
 }
 
 // AssetString returns an asset as a string.
