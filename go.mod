@@ -1,11 +1,12 @@
 module github.com/jasonish/evebox
 
 require (
+	github.com/cespare/reflex v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gobuffalo/envy v1.6.7
 	github.com/gobuffalo/packd v0.0.0-20181029140631-cf76bd87a5a6
-	github.com/gobuffalo/packr v1.16.0
+	github.com/gobuffalo/packr v1.17.0
 	github.com/golang/protobuf v1.2.0
 	github.com/google/gopacket v0.0.0-20181029225859-d533435fee71
 	github.com/gorilla/context v1.1.1
@@ -14,6 +15,8 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/jasonish/go-idsrules v0.0.0-20180130155942-c986a5f3d49a
 	github.com/joho/godotenv v1.3.0
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
+	github.com/kr/pty v1.1.3 // indirect
 	github.com/lib/pq v0.0.0-20181016162627-9eb73efc1fcc
 	github.com/magiconair/properties v1.8.0
 	github.com/markbates/oncer v0.0.0-20181014194634-05fccaae8fc4
