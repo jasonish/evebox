@@ -1,10 +1,12 @@
 image: centos:7
 
 before_script:
+  - NODE_VERSION="10.13.0"
+  - GO_VERSION="1.11.1"
   - yum -y install tar curl make git gcc gcc-c++ zip
   - cd /usr/local
-  - curl -L https://nodejs.org/dist/v8.12.0/node-v8.12.0-linux-x64.tar.xz | tar Jxf - --strip-components=1
-  - curl -L https://dl.google.com/go/go1.11.1.linux-amd64.tar.gz | tar zxf - --strip-components=1
+  - curl -L https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz | tar Jxf - --strip-components=1
+  - curl -L https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz | tar zxf - --strip-components=1
 
 build:
   script:
