@@ -4,7 +4,7 @@ env:
   global:
     - GOPATH=~/gopath
     - PATH=${GOPATH}/bin:$PATH
-    - NODE_VERSION="8.11.3"
+    - NODE_VERSION="10.13.0"
     - RUBY_VERSION=2.1.1
     - GO111MODULE=on
 
