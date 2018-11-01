@@ -16,8 +16,9 @@ build:
     - pwd
     - make install-deps
     - make dist
+    - mv dist/*.zip .
     - tar zcvf resources-public.tar.gz ./resources/public
   artifacts:
     paths:
       - "resources-public.tar.gz"
-      - "dist/*.zip"
+      - "*.zip"
