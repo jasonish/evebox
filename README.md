@@ -115,14 +115,16 @@ EveBox consists of a JavaScript frontend, and a very minimal backend
 written in Go. To build Evebox the following requirements must first
 be satisfied:
 
-* Node.js v8.9.4 or newer installed.
-* A working Go 1.9 installation and GOPATH.
+* Node.js v10.13.0 or newer installed.
+* Go 1.11.1 or new installed.
 
-First checkout Evebox into your GOPATH, for example:
+First checkout EveBox. As EveBox uses Go 1.11 modules, do not check it
+out into your GOPATH.
+
+For example:
 
 ```
-git clone https://github.com/jasonish/evebox.git \
-    $GOPATH/src/github.com/jasonish/evebox
+git clone https://github.com/jasonish/evebox.git ~/project/evebox
 ```
 
 If this is the first build the npm and Go dependencies must be
@@ -139,9 +141,9 @@ Then to build the binary:
 make
 ```
 
-Or to build a release:
+Or to build a release package:
 ```
-make release
+make dist
 ```
 
 If you don't want to bother with the required development tools, but do have

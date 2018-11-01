@@ -1,5 +1,11 @@
 # Change Log
 
+## unreleased
+- Update to Angular 7.
+- Migrate to Go 1.11 module support. This requires Go 1.11, but no
+  longer requires building in the GOPATH.
+- Event rendering fixes.
+
 ## 0.9.1 - 2018-05-29
 - Better Elastic Search version support, including Elastic Search 6.
 - Fix rule highlight (including making reference URLs links).
