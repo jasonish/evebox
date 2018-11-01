@@ -1,25 +1,21 @@
 image: centos:7
 
 before_script:
-  - pwd
   - yum -y install tar curl make git gcc gcc-c++ zip
-  - mkdir -p /go/src/github.com/jasonish/evebox
-  - cp -a . /go/src/github.com/jasonish/evebox
   - cd /usr/local
   - curl -L https://nodejs.org/dist/v8.12.0/node-v8.12.0-linux-x64.tar.xz | tar Jxf - --strip-components=1
   - curl -L https://dl.google.com/go/go1.11.1.linux-amd64.tar.gz | tar zxf - --strip-components=1
 
 build:
   script:
+    - cd ${CI_PROJECT_DIR}
     - export PATH=/usr/local/go/bin:$PATH
     - export GOPATH=/go
-    - cd /go/src/github.com/jasonish/evebox
+    - pwd
     - make install-deps
     - make dist
     - tar zcvf resources-public.tar.gz ./resources/public
-    - cp resources-public.tar.gz ${CI_PROJECT_DIR}
-    - cp dist/*.zip ${CI_PROJECT_DIR}
   artifacts:
     paths:
       - "resources-public.tar.gz"
-      - "*.zip"
+      - "dist/*.zip"
