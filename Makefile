@@ -43,7 +43,7 @@ install-deps:
 	$(MAKE) -C webapp $@
 	go get github.com/cespare/reflex
 	go get github.com/gobuffalo/packr/packr
-	$(GOPATH)/bin/dep ensure -v
+	go mod download
 
 update-deps:
 	go get -u github.com/golang/dep/cmd/dep

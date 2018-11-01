@@ -6,6 +6,7 @@ env:
     - PATH=${GOPATH}/bin:$PATH
     - NODE_VERSION="8.11.3"
     - RUBY_VERSION=2.1.1
+    - GO111MODULE=on
 
 matrix:
   allow_failures:
@@ -18,11 +19,11 @@ matrix:
           - rpm
           - gcc-mingw-w64
     language: go
-    go: "1.10"
+    go: "1.11"
   - os: osx
     osx_image: xcode8.3
     language: go
-    go: "1.10"
+    go: "1.11"
 
 before_install:
 - nvm install ${NODE_VERSION}
