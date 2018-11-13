@@ -31,7 +31,7 @@ endif
 APP :=		evebox
 
 GO_SRCS :=	$(shell find . -name \*.go | grep -v /vendor/)
-GO_PACKAGES :=	$(shell go list ./... | grep -v /vendor/)
+GO_PACKAGES =	$(shell go list ./... | grep -v /vendor/)
 
 WEBAPP_SRCS :=	$(shell find webapp -type f | grep -v node_modules)
 
