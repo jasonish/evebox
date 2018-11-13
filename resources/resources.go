@@ -39,7 +39,7 @@ import (
 var ResourceBox packr.Box = packr.NewBox(".")
 
 func GetEmbeddedAsset(name string) ([]byte, error) {
-	bytes, err := ResourceBox.Find(name)
+	bytes, err := ResourceBox.MustBytes(name)
 	return bytes, err
 }
 

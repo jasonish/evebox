@@ -4,9 +4,9 @@ require (
 	github.com/cespare/reflex v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsnotify/fsnotify v1.4.7
-	github.com/gobuffalo/envy v1.6.7
-	github.com/gobuffalo/packd v0.0.0-20181029140631-cf76bd87a5a6
-	github.com/gobuffalo/packr v1.17.0
+	github.com/gobuffalo/envy v1.6.8
+	github.com/gobuffalo/packd v0.0.0-20181111195323-b2e760a5f0ff
+	github.com/gobuffalo/packr v1.20.0
 	github.com/golang/protobuf v1.2.0
 	github.com/google/gopacket v0.0.0-20181029225859-d533435fee71
 	github.com/gorilla/context v1.1.1
@@ -42,9 +42,11 @@ require (
 	golang.org/x/crypto v0.0.0-20181030022821-bc7917b19d8f
 	golang.org/x/net v0.0.0-20181029044818-c44066c5c816
 	golang.org/x/oauth2 v0.0.0-20181017192945-9dcd33a902f4
-	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f
+	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
 	golang.org/x/sys v0.0.0-20181029174526-d69651ed3497
 	golang.org/x/text v0.3.0
 	google.golang.org/appengine v1.2.0
 	gopkg.in/yaml.v2 v2.2.1
 )
+
+replace github.com/gobuffalo/packr => github.com/gobuffalo/packr v1.13.0
