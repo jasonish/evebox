@@ -1,11 +1,6 @@
 #! /bin/sh
 
 release() {
-    privileged=""
-    if needs_privilege; then
-	privileged="--privileged"
-    fi
-
     if [ -e ./dist ]; then
 	echo "Deleting exist ./dist directory."
 	rm -rf ./dist
@@ -13,7 +8,7 @@ release() {
 
     docker build --rm -t evebox/release-builder \
 	   -f ./docker/release-builder/Dockerfile .
-    docker run --rm -it ${privileged} \
+    docker run --rm -it \
 	   -e REAL_UID=$(id -u) -e REAL_GID=$(id -g) \
 	   -v $(pwd)/dist:/dist \
 	   evebox/release-builder
