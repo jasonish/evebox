@@ -36,6 +36,7 @@ import (
 	"github.com/jasonish/evebox/appcontext"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/resources"
 	"github.com/jasonish/evebox/server/api"
 	"github.com/jasonish/evebox/server/auth"
 	"github.com/jasonish/evebox/server/router"
@@ -45,7 +46,6 @@ import (
 	"path"
 	"strings"
 	"time"
-	"github.com/jasonish/evebox/resources"
 )
 
 const DEFAULT_PORT = 5636

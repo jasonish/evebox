@@ -175,4 +175,3 @@ func (c *ApiContext) InitRoutes(router *router.Router) {
 
 	r.GET("/flow/histogram", c.FlowHistogram)
 }
-

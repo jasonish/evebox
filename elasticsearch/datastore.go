@@ -28,10 +28,10 @@ package elasticsearch
 
 import (
 	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/pkg/errors"
 	"time"
-	"github.com/jasonish/evebox/eve"
 )
 
 type DataStore struct {

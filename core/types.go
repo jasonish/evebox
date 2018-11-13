@@ -44,6 +44,6 @@ type EveEventSink interface {
 
 type FlowHistogramOptions struct {
 	CommonQueryOptions
-	Interval    string
-	SubAggs     []string
+	Interval string
+	SubAggs  []string
 }

@@ -89,7 +89,6 @@ type AppContext struct {
 	// Tell the client to ignore any locally stored configuration of the
 	// default time range.
 	ForceDefaultTimeRange bool
-
 }
 
 func (c *AppContext) SetFeature(feature core.Feature) {

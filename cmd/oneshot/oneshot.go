@@ -43,12 +43,12 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
-	"runtime"
-	"os/exec"
 )
 
 const DEFAULT_PORT = 5636
@@ -125,8 +125,8 @@ Example:
 
 	// As this is oneshot mode, set the default time range to all, as it may
 	// be run against old eve files, or eve files generated from old pcaps.
-	appContext.DefaultTimeRange = "all";
-	appContext.ForceDefaultTimeRange = true;
+	appContext.DefaultTimeRange = "all"
+	appContext.ForceDefaultTimeRange = true
 	if opts.InMemory {
 		log.Info("Using in-memory database")
 		viper.Set("database.sqlite.filename", ":memory:")
@@ -333,7 +333,7 @@ Example:
 	log.Info("Bound to port %d", port)
 
 	url := fmt.Sprintf("http://localhost:%d", port)
-	if (!opts.NoOpen) {
+	if !opts.NoOpen {
 		log.Info("Attempting to start browser.")
 		go func() {
 			if runtime.GOOS == "linux" {

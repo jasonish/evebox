@@ -11,8 +11,7 @@ func TestNewRangeQuery(t *testing.T) {
 	query := NewRangeQuery("@timestamp", nil, nil)
 	expected := map[string]interface{}{
 		"range": map[string]interface{}{
-			"@timestamp": map[string]interface{}{
-			},
+			"@timestamp": map[string]interface{}{},
 		},
 	}
 	assert.Equal(t, query, expected)

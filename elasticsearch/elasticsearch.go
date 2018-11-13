@@ -34,13 +34,13 @@ import (
 	"strings"
 
 	"bytes"
+	"github.com/jasonish/evebox/httpclient"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/util"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"math"
 	"time"
-	"github.com/jasonish/evebox/httpclient"
 )
 
 const LOG_REQUEST_RESPONSE = false
@@ -171,7 +171,7 @@ func (es *ElasticSearch) GetUseIpDatatype() bool {
 	return es.useIpDatatype
 }
 
-func (es *ElasticSearch) ConfigureIndex() (error) {
+func (es *ElasticSearch) ConfigureIndex() error {
 
 	index := es.EventIndexPrefix
 
@@ -201,7 +201,7 @@ func (es *ElasticSearch) ConfigureIndex() (error) {
 	if properties != nil {
 		destIpType := properties.GetMap("dest_ip").GetString("type")
 		sourceIpType := properties.GetMap("src_ip").GetString("type")
-		if (destIpType == "ip" && sourceIpType == "ip") {
+		if destIpType == "ip" && sourceIpType == "ip" {
 			log.Info("Elastic Search EVE records are using IP datatype.")
 			es.useIpDatatype = true
 		}

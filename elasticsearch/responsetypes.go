@@ -46,7 +46,7 @@ type Response struct {
 	Name        string `json:"name,omitempty"`
 	ClusterName string `json:"cluster_name,omitempty"`
 	ClusterUuid string `json:"cluster_uuid,omitempty"`
-	Version struct {
+	Version     struct {
 		Number string `json:"number,omitempty"`
 	} `json:"version"`
 	Tagline string `json:"tagline,omitempty"`

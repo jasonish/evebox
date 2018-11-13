@@ -27,10 +27,10 @@
 package api
 
 import (
+	"fmt"
 	"github.com/jasonish/evebox/core"
 	"net/http"
 	"strings"
-	"fmt"
 )
 
 // AlertsHandler handles GET requests to /api/1/alerts. This is the handler

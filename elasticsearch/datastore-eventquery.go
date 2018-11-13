@@ -27,12 +27,12 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"github.com/jasonish/evebox/core"
 	"github.com/jasonish/evebox/log"
-	"fmt"
 )
 
-const DEFAULT_SORT_BY = "@timestamp";
+const DEFAULT_SORT_BY = "@timestamp"
 
 const DEFAULT_SORT_ORDER = "desc"
 const DEFAULT_SIZE = 500

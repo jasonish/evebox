@@ -28,8 +28,8 @@ package agent
 
 import (
 	"encoding/json"
-	"github.com/jasonish/evebox/util"
 	"github.com/jasonish/evebox/httpclient"
+	"github.com/jasonish/evebox/util"
 )
 
 type Client struct {

@@ -27,10 +27,10 @@
 package elasticsearch
 
 import (
-	"github.com/jasonish/evebox/resources"
-	"github.com/jasonish/evebox/log"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/resources"
 	"net/http"
 )
 

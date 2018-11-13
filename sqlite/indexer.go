@@ -30,9 +30,9 @@ package sqlite
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
-	"fmt"
 	"strings"
 )
 
@@ -115,7 +115,7 @@ func (i *SqliteIndexer) Submit(event eve.EveEvent) error {
 }
 
 func stringifyArray(array []interface{}, strings *[]string) {
-	for _, val := range (array) {
+	for _, val := range array {
 		switch val := val.(type) {
 		case map[string]interface{}:
 			stringifyEvent(val, strings)
@@ -128,7 +128,7 @@ func stringifyArray(array []interface{}, strings *[]string) {
 }
 
 func stringifyEvent(event eve.EveEvent, strings *[]string) {
-	for _, val := range (event) {
+	for _, val := range event {
 		switch val := val.(type) {
 		case map[string]interface{}:
 			stringifyEvent(val, strings)

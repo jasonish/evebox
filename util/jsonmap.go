@@ -133,7 +133,7 @@ func (m JsonMap) GetInt64(name string) int64 {
 
 func (m JsonMap) GetKeys() []string {
 	keys := make([]string, 0)
-	for key := range (m) {
+	for key := range m {
 		keys = append(keys, key)
 	}
 	return keys

@@ -27,9 +27,9 @@
 package api
 
 import (
-	"net/http"
-	"github.com/jasonish/evebox/core"
 	"fmt"
+	"github.com/jasonish/evebox/core"
+	"net/http"
 	"strings"
 )
 

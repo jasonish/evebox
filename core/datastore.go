@@ -123,4 +123,3 @@ func (s *UnimplementedDatastore) FindNetflow(options EventQueryOptions, sortBy s
 func (s *UnimplementedDatastore) FlowHistogram(options FlowHistogramOptions) (interface{}, error) {
 	return nil, NotImplementedError
 }
-

@@ -31,13 +31,13 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"math/rand"
 	"net/http"
 	"sync"
 	"time"
-	"github.com/jasonish/evebox/util"
 )
 
 const defaultDocType = "doc"

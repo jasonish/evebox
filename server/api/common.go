@@ -1,12 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/jasonish/evebox/eve"
-	"time"
+	"github.com/jasonish/evebox/log"
 	"net/http"
 	"strconv"
-	"github.com/jasonish/evebox/log"
-	"encoding/json"
+	"time"
 )
 
 type CommonRequestArgs struct {
