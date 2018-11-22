@@ -50,6 +50,7 @@ type Config struct {
 	DisableCertCheck bool
 	Username         string
 	Password         string
+	Template         string
 	Index            string
 	KeywordSuffix    string
 	NoKeywordSuffix  bool
@@ -175,6 +176,12 @@ func (es *ElasticSearch) ConfigureIndex() error {
 
 	index := es.EventIndexPrefix
 
+	// Use a template name matching the index prefix unless explicitly set.
+	templateName := index
+	if es.config.Template != "" {
+		templateName = es.config.Template
+	}
+
 	if strings.HasPrefix(index, "filebeat") {
 		if es.config.KeywordSuffix == "" && !es.config.NoKeywordSuffix {
 			es.config.KeywordSuffix = ""
@@ -183,7 +190,7 @@ func (es *ElasticSearch) ConfigureIndex() error {
 		return nil
 	}
 
-	template, err := es.GetTemplate(index)
+	template, err := es.GetTemplate(templateName)
 	if err != nil {
 		log.Warning("Failed to get template from Elastic Search, keyword resolution delayed.")
 		return err

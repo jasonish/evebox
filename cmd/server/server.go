@@ -27,6 +27,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jasonish/evebox/resources"
 
@@ -181,6 +182,9 @@ func Main(args []string) {
 
 	flagset := pflag.NewFlagSet("server", pflag.ExitOnError)
 
+	// Prevent the "pflag: help requested" on help.
+	pflag.ErrHelp = errors.New("")
+
 	// Datastore type.
 	flagset.String("datastore", "elasticsearch", "Datastore to use")
 	viper.BindPFlag("database.type", flagset.Lookup("datastore"))
@@ -192,9 +196,13 @@ func Main(args []string) {
 	viper.BindEnv("database.elasticsearch.url", "ELASTICSEARCH_URL")
 
 	flagset.StringP("index", "i", DEFAULT_ELASTICSEARCH_INDEX,
-		"Elastic Search Index (default: logstash)")
+		"Elastic Search Index")
 	viper.BindPFlag("database.elasticsearch.index", flagset.Lookup("index"))
 	viper.BindEnv("index", "ELASTICSEARCH_INDEX")
+
+	flagset.StringP("elasticsearch-template", "", "","Elastic Search template name")
+	viper.BindPFlag("database.elasticsearch.template", flagset.Lookup("elasticsearch-template"))
+	viper.BindEnv("elasticsearch-template", "ELASTICSEARCH_TEMPLATE")
 
 	viper.BindEnv("database.elasticsearch.username", "ELASTICSEARCH_USERNAME")
 	viper.BindEnv("database.elasticsearch.password", "ELASTICSEARCH_PASSWORD")
@@ -321,6 +329,7 @@ func Main(args []string) {
 			Username:         viper.GetString("database.elasticsearch.username"),
 			Password:         viper.GetString("database.elasticsearch.password"),
 			Index:            viper.GetString("database.elasticsearch.index"),
+			Template:         viper.GetString("database.elasticsearch.template"),
 			ForceTemplate:    viper.GetBool("database.elasticsearch.force-template"),
 		}
 
