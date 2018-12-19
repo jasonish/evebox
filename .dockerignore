@@ -5,3 +5,4 @@
 ./eve*json
 ./*.sqlite
 ./*.dump
+/Dockerfile
