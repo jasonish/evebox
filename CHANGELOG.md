@@ -5,6 +5,8 @@
 - Migrate to Go 1.11 module support. This requires Go 1.11, but no
   longer requires building in the GOPATH.
 - Event rendering fixes.
+- Allow Elastic Search index prefix and template name to be
+  different. https://github.com/jasonish/evebox/issues/83
 
 ## 0.9.1 - 2018-05-29
 - Better Elastic Search version support, including Elastic Search 6.
