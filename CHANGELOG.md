@@ -1,5 +1,9 @@
 # Change Log
 
+## unreleased
+
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.0..master)
+
 ## 0.10.0 - 2018-12-19
 - Update to Angular 7.
 - Migrate to Go 1.11 module support. This requires Go 1.11, but no
@@ -7,6 +11,8 @@
 - Event rendering fixes.
 - Allow Elastic Search index prefix and template name to be
   different. https://github.com/jasonish/evebox/issues/83
+
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.9.1...0.10.0)
 
 ## 0.9.1 - 2018-05-29
 - Better Elastic Search version support, including Elastic Search 6.
