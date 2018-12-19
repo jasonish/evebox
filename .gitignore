@@ -9,3 +9,4 @@
 /dist
 /evebox.yaml
 /agent.yaml
+/.docker_cache

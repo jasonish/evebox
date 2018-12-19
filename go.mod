@@ -6,7 +6,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gobuffalo/envy v1.6.8
 	github.com/gobuffalo/packd v0.0.0-20181111195323-b2e760a5f0ff
-	github.com/gobuffalo/packr v1.20.0
+	github.com/gobuffalo/packr v1.21.9
 	github.com/golang/protobuf v1.2.0
 	github.com/google/gopacket v0.0.0-20181029225859-d533435fee71
 	github.com/gorilla/context v1.1.1

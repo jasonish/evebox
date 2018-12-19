@@ -6,3 +6,4 @@
 ./*.sqlite
 ./*.dump
 /Dockerfile
+/.docker_cache
