@@ -43,8 +43,9 @@
         </span>
       </li>
 
-      <li *ngIf="features['reporting']" class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown"
+      <li *ngIf="features['reporting']" class="nav-item dropdown"
+      >
+        <a class="nav-link dropdown-toggle" id="navbarDropdown"
            role="button" data-toggle="dropdown" aria-haspopup="true"
            [routerLink]="['/reports']"
            [routerLinkActive]="['active']"
@@ -52,11 +53,11 @@
           Reports
         </a>
         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-          <a class="dropdown-item" href="#/reports/alerts">Alerts</a>
-          <a class="dropdown-item" href="#/reports/dns">DNS</a>
-          <a class="dropdown-item" href="#/reports/ssh">SSH</a>
-          <a class="dropdown-item" href="#/reports/flow">Flow</a>
-          <a class="dropdown-item" href="#/reports/netflow">Netflow</a>
+          <a class="dropdown-item" [routerLink]="['/reports/alerts']">Alerts</a>
+          <a class="dropdown-item" [routerLink]="['/reports/dns']">DNS</a>
+          <a class="dropdown-item" [routerLink]="['/reports/ssh']">SSH</a>
+          <a class="dropdown-item" [routerLink]="['/reports/flow']">Flow</a>
+          <a class="dropdown-item" [routerLink]="['/reports/netflow']">Netflow</a>
         </div>
       </li>
 

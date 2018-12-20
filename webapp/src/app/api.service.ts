@@ -164,7 +164,7 @@ export class ApiService {
     }
 
     updateConfig(): Promise<any> {
-        return this.get("/api/1/config")
+        return this.get("api/1/config")
                 .then((config) => {
                     this.configService.setConfig(config);
                     return config;

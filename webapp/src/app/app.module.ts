@@ -31,7 +31,7 @@ import {BrowserAnimationsModule} from "@angular/platform-browser/animations";
 
 import {AppComponent} from "./app.component";
 import {RouterModule} from "@angular/router";
-import {AuthGuard, ConfigResolver, routing} from "./app.routes";
+import {AuthGuard, ConfigResolver, NeverActivate, routing} from "./app.routes";
 import {AlertsComponent} from "./alerts.component";
 import {EveboxCommentInput, EventComponent} from "./event/event.component";
 import {EventsComponent} from "./events.component";
@@ -163,6 +163,9 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         TopNavService,
         ToastrService,
         ThemeService,
+
+        // Route gards.
+        NeverActivate,
 
         // Local pipes.
         EveBoxProtoPrettyPrinter,
