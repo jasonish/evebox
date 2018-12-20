@@ -1,8 +1,10 @@
 # Change Log
 
-## unreleased
+## 0.10.1 - 2018-12-20
+- Fix issue when behind a path on a reverse
+  proxy. https://github.com/jasonish/evebox/issues/84
 
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.0..master)
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.0..0.10.1)
 
 ## 0.10.0 - 2018-12-19
 - Update to Angular 7.
