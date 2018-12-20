@@ -16,6 +16,6 @@ esac
 
 (cd webapp && make serve) &
 
-reflex -s -R -packr\.go -r \.go$ -- \
+$HOME/go/bin/reflex -s -R -packr\.go -r \.go$ -- \
        sh -c "rm -f evebox && make evebox && \
                  ./evebox -v ${command} ${args}"
