@@ -190,7 +190,6 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 	}
 
 	response, err := s.es.doUpdateByQuery(query)
-	log.Println(response)
 	if err != nil {
 		log.Error("failed to update by query: %v", err)
 		return err
