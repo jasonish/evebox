@@ -42,10 +42,12 @@ declare var $: any;
               <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item">
                   <a data-toggle="tab" class="nav-link active"
+                     href="javascript:void(0)"
                      data-target="#help-keyboard-shortcuts">Keyboard
                     Shortcuts</a></li>
                 <li class="nav-item">
                   <a data-toggle="tab" class="nav-link"
+                     href="javascript:void(0)"
                      data-target="#help-tab-about">About</a>
                 </li>
               </ul>
@@ -76,7 +78,9 @@ declare var $: any;
                     <p>This is EveBox version {{versionInfo.version}} (Rev: {{versionInfo.revision}}).
                     </p>
 
-                    <p>Github:
+                    <p>Homepage: <a href="https://evebox.org">https://evebox.org</a></p>
+
+                    <p>GitHub:
                       <a href="http://github.com/jasonish/evebox">http://github.com/jasonish/evebox</a>
                   </div>
 
