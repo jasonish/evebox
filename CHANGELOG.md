@@ -1,8 +1,13 @@
 # Change Log
 
 ## unreleased
+### Fixed
+- If EveBox is installing the Elastic Search template, re-configure
+  after installation to figure out the keyword suffix instead of
+  requiring EveBox to be
+  restarted. https://github.com/jasonish/evebox/issues/85
 
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.0..master)
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..master)
 
 ## 0.10.1 - 2018-12-20
 - Fix issue when behind a path on a reverse

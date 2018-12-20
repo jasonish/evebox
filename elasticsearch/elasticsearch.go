@@ -173,7 +173,6 @@ func (es *ElasticSearch) GetUseIpDatatype() bool {
 }
 
 func (es *ElasticSearch) ConfigureIndex() error {
-
 	index := es.EventIndexPrefix
 
 	// Use a template name matching the index prefix unless explicitly set.
@@ -215,7 +214,7 @@ func (es *ElasticSearch) ConfigureIndex() error {
 	}
 
 	// Determine keyword.
-	if es.config.KeywordSuffix == "" && !es.config.NoKeywordSuffix {
+	if !es.config.NoKeywordSuffix {
 		keywordFound := false
 		dynamicTemplates := template.GetMap(index).
 			GetMap("mappings").
@@ -239,9 +238,7 @@ func (es *ElasticSearch) ConfigureIndex() error {
 			log.Info("Found Elastic Search keyword suffix to be: %s",
 				es.config.KeywordSuffix)
 		} else {
-			log.Warning("Failed to determine Elastic Search keyword suffix, will use 'raw'.")
-			es.config.KeywordSuffix = "raw"
-			keywordFound = true
+			log.Warning("Failed to determine Elastic Search keyword suffix, things may not work right.")
 		}
 	}
 

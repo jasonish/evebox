@@ -89,6 +89,9 @@ func (es *ElasticSearch) LoadTemplate() error {
 	}
 	es.httpClient.DiscardResponse(response)
 
+	// Now reconfigure the index.
+	es.ConfigureIndex()
+
 	// Success.
 	return nil
 }
