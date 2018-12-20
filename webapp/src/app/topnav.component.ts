@@ -134,10 +134,6 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
     }
 
-    isActive(route: any) {
-        return route == this.appService.getRoute();
-    }
-
     showHelp() {
         this.appService.dispatch({
             event: AppEventCode.SHOW_HELP
