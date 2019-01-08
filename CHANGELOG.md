@@ -6,6 +6,8 @@
   after installation to figure out the keyword suffix instead of
   requiring EveBox to be
   restarted. https://github.com/jasonish/evebox/issues/85
+- Update the Brace Javascript dependency. Fixes issue loading event
+  view. https://github.com/jasonish/evebox/issues/91
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..master)
 
