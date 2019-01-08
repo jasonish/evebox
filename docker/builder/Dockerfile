@@ -1,13 +1,16 @@
 FROM centos:7
 
-RUN yum -y install \
+RUN yum -y install epel-release && \
+    yum -y install \
     	make \
 	git \
 	gcc \
 	gcc-c++ \
 	zip \
 	sudo \
-	rpm-build
+	rpm-build \
+	which \
+	mingw64-gcc
 
 # Install Ruby from SCL, and fpm.
 RUN yum -y install \
@@ -29,7 +32,8 @@ RUN cd /usr/local && \
 
 ENV PATH /usr/local/go/bin:$PATH
 
-RUN useradd builder
+RUN groupadd --gid 5000 builder
+RUN useradd --uid 5000 --gid 5000 --password "" --groups wheel builder
 RUN echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
 
 COPY /docker/builder/builder-entrypoint.sh /

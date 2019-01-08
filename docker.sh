@@ -16,16 +16,7 @@ docker_run() {
 	   -e REAL_UID=$(id -u) \
 	   -e REAL_GID=$(id -g) \
 	   -w /src \
-	   -u builder \
 	   evebox/builder "$@"
-}
-
-needs_privilege() {
-    if [ "$(getenforce || true)" = "Enforcing" ]; then
-	return 0
-    else
-	return 1
-    fi
 }
 
 release() {
@@ -33,10 +24,20 @@ release() {
     docker_run make install-deps dist rpm deb
 }
 
+release_windows() {
+    docker_build
+    docker_run "make install-deps"
+    docker_run "GOOS=windows CC=x86_64-w64-mingw32-gcc make dist"
+}
+
 case "$1" in
 
     release)
 	release
+	;;
+
+    release-windows)
+	release_windows
 	;;
 
     install-deps)
@@ -63,7 +64,8 @@ case "$1" in
 usage: ./docker.sh <command>
 
 Commands:
-    release            Build a release
+    release            Build x86_64 Linux release - zip/deb/rpm.
+    release-windows    Build x86_64 Windows release zip.
 EOF
 	fi
 	;;
