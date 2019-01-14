@@ -39,12 +39,6 @@ script:
     GOOS=windows CC=x86_64-w64-mingw32-gcc make dist || exit 1
   fi
 
-  # Copy just what we want to deploy to S3 into a deploy directory, as
-  # the S3 deployment step will copy everything in the directory
-  # pointed at.
-  mkdir -p deploy
-  cp dist/*.zip deploy/
-
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     rvm install $RUBY_VERSION
     rvm use $RUBY_VERSION
@@ -52,64 +46,4 @@ script:
     sudo apt-get -y install rpm
     make deb
     make rpm
-    cp dist/*.deb deploy/
-    cp dist/*.rpm deploy/
   fi
-
-deploy:
-  - provider: s3
-    access_key_id:
-      secure: c9kbS3NW5xLKDkwxYeWLIi3ViTQTwsLLAFEQ6i+o4/2AbvYPP7V1ZGVkBNtdyEXFl9WcDRYYHnZ5CnxmjRUhrDo0/8qvtKd5j/PaidAmKH1l4cxN5mXcjmxpuw5sc8qG4wWwcDSWfcSiaOi5jbSToGERwvVp+/NnyXu6QZnb4Pg=
-    secret_access_key:
-      secure: c13Dhchou1/E8TpZ6X4HuQyhA++hoKinf2Z/AVOQ+yGsEr6vphwu0MpP8TwoSXmMuhUPqv0r5Ajk+vKLX064Cxfb2GpQ2KZSgyROxrBoed6l2mKLe0r1+L7ozoyr9wNeGM4x3d/JiKZJJ18DF687wv2PhDPZISM6MEEUguuueSE=
-    bucket: ci-artifacts.evebox.org
-    skip_cleanup: true
-    region: us-west-1
-    local_dir: deploy
-    on:
-      repo: jasonish/evebox
-      branch: master
-    acl: public_read
-    upload-dir: master
-  - provider: s3
-    access_key_id:
-      secure: c9kbS3NW5xLKDkwxYeWLIi3ViTQTwsLLAFEQ6i+o4/2AbvYPP7V1ZGVkBNtdyEXFl9WcDRYYHnZ5CnxmjRUhrDo0/8qvtKd5j/PaidAmKH1l4cxN5mXcjmxpuw5sc8qG4wWwcDSWfcSiaOi5jbSToGERwvVp+/NnyXu6QZnb4Pg=
-    secret_access_key:
-      secure: c13Dhchou1/E8TpZ6X4HuQyhA++hoKinf2Z/AVOQ+yGsEr6vphwu0MpP8TwoSXmMuhUPqv0r5Ajk+vKLX064Cxfb2GpQ2KZSgyROxrBoed6l2mKLe0r1+L7ozoyr9wNeGM4x3d/JiKZJJ18DF687wv2PhDPZISM6MEEUguuueSE=
-    bucket: ci-artifacts.evebox.org
-    skip_cleanup: true
-    region: us-west-1
-    local_dir: deploy
-    on:
-      repo: jasonish/evebox
-      branch: develop
-    acl: public_read
-    upload-dir: develop
-  - provider: s3
-    access_key_id:
-      secure: c9kbS3NW5xLKDkwxYeWLIi3ViTQTwsLLAFEQ6i+o4/2AbvYPP7V1ZGVkBNtdyEXFl9WcDRYYHnZ5CnxmjRUhrDo0/8qvtKd5j/PaidAmKH1l4cxN5mXcjmxpuw5sc8qG4wWwcDSWfcSiaOi5jbSToGERwvVp+/NnyXu6QZnb4Pg=
-    secret_access_key:
-      secure: c13Dhchou1/E8TpZ6X4HuQyhA++hoKinf2Z/AVOQ+yGsEr6vphwu0MpP8TwoSXmMuhUPqv0r5Ajk+vKLX064Cxfb2GpQ2KZSgyROxrBoed6l2mKLe0r1+L7ozoyr9wNeGM4x3d/JiKZJJ18DF687wv2PhDPZISM6MEEUguuueSE=
-    bucket: ci-artifacts.evebox.org
-    skip_cleanup: true
-    region: us-west-1
-    local_dir: deploy
-    on:
-      repo: jasonish/evebox
-      branch: release-staging
-    acl: public_read
-    upload-dir: release-staging
-  - provider: s3
-    access_key_id:
-      secure: c9kbS3NW5xLKDkwxYeWLIi3ViTQTwsLLAFEQ6i+o4/2AbvYPP7V1ZGVkBNtdyEXFl9WcDRYYHnZ5CnxmjRUhrDo0/8qvtKd5j/PaidAmKH1l4cxN5mXcjmxpuw5sc8qG4wWwcDSWfcSiaOi5jbSToGERwvVp+/NnyXu6QZnb4Pg=
-    secret_access_key:
-      secure: c13Dhchou1/E8TpZ6X4HuQyhA++hoKinf2Z/AVOQ+yGsEr6vphwu0MpP8TwoSXmMuhUPqv0r5Ajk+vKLX064Cxfb2GpQ2KZSgyROxrBoed6l2mKLe0r1+L7ozoyr9wNeGM4x3d/JiKZJJ18DF687wv2PhDPZISM6MEEUguuueSE=
-    bucket: ci-artifacts.evebox.org
-    skip_cleanup: true
-    region: us-west-1
-    local_dir: deploy
-    on:
-      repo: jasonish/evebox
-      branch: release
-    acl: public_read
-    upload-dir: release
