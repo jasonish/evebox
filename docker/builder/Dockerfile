@@ -10,7 +10,9 @@ RUN yum -y install epel-release && \
 	sudo \
 	rpm-build \
 	which \
-	mingw64-gcc
+	mingw64-gcc \
+	clang \
+	patch
 
 # Install Ruby from SCL, and fpm.
 RUN yum -y install \
@@ -36,6 +38,10 @@ RUN groupadd --gid 5000 builder
 RUN useradd --uid 5000 --gid 5000 --password "" --groups wheel builder
 RUN echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
 
-COPY /docker/builder/builder-entrypoint.sh /
+ARG WITH_MACOS=no
+COPY /docker/builder/install-osxcross.sh /
+RUN if [ "${WITH_MACOS}" = "yes" ]; then /install-osxcross.sh; fi
 
-ENTRYPOINT ["/builder-entrypoint.sh"]
+COPY /docker/builder/docker-entrypoint.sh /
+ENTRYPOINT ["/docker-entrypoint.sh"]
+

@@ -13,6 +13,8 @@ OUTPUT_PATH =	../resources/public
 
 NG :=		./node_modules/.bin/ng
 
+PROGRESS :=	$(shell test -t || "--no-progress")
+
 all: build
 
 gitrev:
@@ -21,10 +23,13 @@ gitrev:
 
 build: gitrev
 	@echo "Building EveBox webapp rev $(GITREV)."
-	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH) --deploy-url "public/"
+	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH) --deploy-url "public/" $(PROGRESS)
 
-install-deps:
+./node_modules/_done: package.json package-lock.json
 	npm install
+	touch $@
+
+install-deps: ./node_modules/_done
 
 distclean:
 	rm -rf node_modules

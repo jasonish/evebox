@@ -1,24 +1,34 @@
-image: centos:7
+release:
+  image: docker:stable
+  variables:
+    CONTAINER_IMAGE: registry.gitlab.com/$CI_PROJECT_PATH:latest
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+  services:
+    - docker:dind
+  script: |
+    docker login -u gitlab-ci-token -p $CI_JOB_TOKEN registry.gitlab.com
+    docker pull ${CONTAINER_IMAGE} || true
 
-before_script:
-  - NODE_VERSION="10.13.0"
-  - GO_VERSION="1.11.1"
-  - yum -y install tar curl make git gcc gcc-c++ zip
-  - cd /usr/local
-  - curl -L https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz | tar Jxf - --strip-components=1
-  - curl -L https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz | tar zxf - --strip-components=1
+    export WITH_MACOS="yes"
+    export CACHE_FROM="--cache-from ${CONTAINER_IMAGE}"
 
-build:
-  script:
-    - cd ${CI_PROJECT_DIR}
-    - export PATH=/usr/local/go/bin:$PATH
-    - export GOPATH=/go
-    - pwd
-    - make install-deps
-    - make dist
-    - mv dist/*.zip .
-    - tar zcvf resources-public.tar.gz ./resources/public
+    docker tag ${CONTAINER_IMAGE} evebox/builder:base
+
+    ./docker.sh release
+
+    tar zcvf resources-public.tar.gz ./resources/public
+
+    ./docker.sh release-windows
+    ./docker.sh release-macos
+
+    mv dist/* .
+
+    docker tag evebox/builder:latest ${CONTAINER_IMAGE}
+    docker push ${CONTAINER_IMAGE}
   artifacts:
     paths:
-      - "resources-public.tar.gz"
       - "*.zip"
+      - "*.rpm"
+      - "*.deb"
+      - "resources-public.tar.gz"

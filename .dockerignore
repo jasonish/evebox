@@ -7,3 +7,4 @@
 ./*.dump
 /Dockerfile
 /.docker_cache
+/.gitlab-ci.yml

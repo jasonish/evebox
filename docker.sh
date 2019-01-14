@@ -1,33 +1,68 @@
-#! /usr/bin/env bash
+#! /bin/sh
+
+set -e
+
+IMAGE="evebox/builder:latest"
 
 docker_build() {
-    docker build --rm -t evebox/builder -f ./docker/builder/Dockerfile .
+    DOCKERFILE=${DOCKERFILE:-Dockerfile}
+    docker build ${CACHE_FROM} --rm \
+	   --build-arg WITH_MACOS=${WITH_MACOS-no} \
+	   -t ${IMAGE} \
+	   -f ./docker/builder/Dockerfile .
 }
 
 docker_run() {
-    mkdir -p $(pwd)/.docker_cache/go
-    mkdir -p $(pwd)/.docker_cache/node_modules
-    mkdir -p $(pwd)/.docker_cache/npm
-    docker run --rm -it \
-	   -v $(pwd):/src \
-	   -v $(pwd)/.docker_cache/go:/home/builder/go \
-	   -v $(pwd)/.docker_cache/npm:/home/builder/.npm \
-	   -v $(pwd)/.docker_cache/node_modules:/src/webapp/node_modules \
-	   -e REAL_UID=$(id -u) \
-	   -e REAL_GID=$(id -g) \
+    it=""
+    if [ -t 1 ] ; then
+	it="-it"
+    fi
+
+    volumes=""
+    volumes="${volumes} -v $(pwd):/src"
+
+    cache="$(pwd)/.docker_cache"
+
+    mkdir -p ${cache}/go
+    mkdir -p ${cache}/node_modules
+    mkdir -p ${cache}/npm
+    mkdir -p ./webapp/node_modules
+
+    real_uid=$(id -u)
+    real_gid=$(id -g)
+
+    if [[ "${real_uid}" = "0" ]]; then
+	image_home="/root"
+    else
+	image_home="/home/builder"
+    fi
+
+    volumes="${volumes} -v ${cache}/go:${image_home}/go"
+    volumes="${volumes} -v ${cache}/npm:${image_home}/npm"
+    volumes="${volumes} -v ${cache}/node_modules:/src/webapp/node_modules"
+
+    docker run --rm ${it} ${volumes} \
+	   -e REAL_UID="${real_uid}" \
+	   -e REAL_GID="${real_gid}" \
 	   -w /src \
-	   evebox/builder "$@"
+	   "${IMAGE}" "$@"
 }
 
 release() {
     docker_build
-    docker_run make install-deps dist rpm deb
+    docker_run "make install-deps dist rpm deb"
 }
 
 release_windows() {
     docker_build
-    docker_run "make install-deps"
-    docker_run "GOOS=windows CC=x86_64-w64-mingw32-gcc make dist"
+    docker_run \
+	"make install-deps && GOOS=windows CC=x86_64-w64-mingw32-gcc make dist"
+}
+
+release_macos() {
+    WITH_MACOS=yes docker_build
+    docker_run \
+	 "make install-deps && GOOS=darwin CC=o64-clang make dist"
 }
 
 case "$1" in
@@ -38,6 +73,10 @@ case "$1" in
 
     release-windows)
 	release_windows
+	;;
+
+    release-macos)
+	release_macos
 	;;
 
     install-deps)
@@ -66,6 +105,7 @@ usage: ./docker.sh <command>
 Commands:
     release            Build x86_64 Linux release - zip/deb/rpm.
     release-windows    Build x86_64 Windows release zip.
+    release-macos      Build x86_64 MacOS release zip.
 EOF
 	fi
 	;;
