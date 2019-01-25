@@ -57,8 +57,8 @@ after a restart. For many use cases this can be used instead of
 ::
 
    ./evebox esimport --elasticsearch http://10.16.1.10:9200 --index logstash \
-       --bookmark --bookmark-filename /var/tmp/eve.json.bookmark \
-       /var/log/suricata/eve.json -v
+       --bookmark --bookmark-filename /var/tmp/eve.json.bookmark -v \
+       /var/log/suricata/eve.json
 
 If using *esimport* in this way you may want to create a configuration
 named **esimport.yaml** like:

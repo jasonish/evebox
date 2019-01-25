@@ -27,6 +27,7 @@
 package esimport
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"github.com/jasonish/evebox/elasticsearch"
@@ -40,6 +41,8 @@ import (
 	"github.com/spf13/viper"
 	"io"
 	"os"
+	"path"
+	"sync"
 	"time"
 )
 
@@ -53,7 +56,7 @@ var stdout = false
 var oneshot = false
 
 func usage() {
-	usage := `Usage: evebox esimport [options] /path/to/eve.json
+	usage := `Usage: evebox esimport [options] /path/to/eve.json [/path/to/eve.json...]
 
 Options:
 `
@@ -61,7 +64,7 @@ Options:
 	flagset.PrintDefaults()
 }
 
-func configure(args []string) {
+func configure(args []string) []string {
 
 	viper.SetDefault("index", DEFAULT_INDEX)
 	viper.SetDefault("disable-certificate-check", false)
@@ -102,6 +105,9 @@ func configure(args []string) {
 	flagset.MarkHidden("bookmark-path")
 	viper.BindPFlag("bookmark-filename", flagset.Lookup("bookmark-filename"))
 
+	flagset.String("bookmark-dir", "", "Bookmark directory")
+	viper.BindPFlag("bookmark-dir", flagset.Lookup("bookmark-dir"))
+
 	flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
 	viper.BindPFlag("geoip.database-filename", flagset.Lookup("geoip-database"))
 
@@ -135,11 +141,7 @@ func configure(args []string) {
 		log.SetLevel(log.DEBUG)
 	}
 
-	if len(flagset.Args()) == 1 {
-		viper.Set("input", flagset.Args()[0])
-	} else if len(flagset.Args()) > 1 {
-		log.Fatal("Multiple input filenames not allowed")
-	}
+	return flagset.Args()
 }
 
 func loadRuleMap() *rules.RuleMap {
@@ -148,58 +150,8 @@ func loadRuleMap() *rules.RuleMap {
 	return rulemap
 }
 
-func Main(args []string) {
-
-	configure(args)
-
-	if viper.GetString("elasticsearch") == "" {
-		log.Error("error: --elasticsearch is a required parameter")
-		usage()
-		os.Exit(1)
-	}
-
-	if viper.GetString("input") == "" {
-		log.Fatal("error: no input file provided")
-	}
-
-	useBookmark := viper.GetBool("bookmark")
-	bookmarkFilename := viper.GetString("bookmark-filename")
-
-	if useBookmark && bookmarkFilename == "" {
-		bookmarkFilename = fmt.Sprintf("%s.bookmark", viper.GetString("input"))
-		log.Info("Using bookmark file %s", bookmarkFilename)
-	}
-
-	config := elasticsearch.Config{
-		BaseURL:          viper.GetString("elasticsearch"),
-		DisableCertCheck: viper.GetBool("disable-certificate-check"),
-		Username:         viper.GetString("username"),
-		Password:         viper.GetString("password"),
-		ForceTemplate:    viper.GetBool("force-template"),
-		DocType:          viper.GetString("doc-type"),
-	}
-
-	es := elasticsearch.New(config)
-	es.EventIndexPrefix = viper.GetString("index")
-
-	response, err := es.Ping()
-	if err != nil {
-		log.Fatal("error: failed to ping Elastic Search:", err)
-	}
-	log.Info("Connected to Elastic Search v%s (cluster:%s; name: %s)",
-		response.Version.Number, response.ClusterName, response.Name)
-
-	filters := make([]eve.EveFilter, 0)
-
-	ruleMap := loadRuleMap()
-	filters = append(filters, ruleMap)
-
-	geoIpFilter := eve.NewGeoipFilter(geoip.NewGeoIpService())
-	filters = append(filters, geoIpFilter)
-
-	indexer := elasticsearch.NewIndexer(es)
-
-	reader, err := evereader.NewFollowingReader(viper.GetString("input"))
+func readerRunner(filename string, useBookmark bool, indexer *elasticsearch.BulkEveIndexer, bookmarkFilename string, filters []eve.EveFilter) {
+	reader, err := evereader.NewFollowingReader(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -208,6 +160,7 @@ func Main(args []string) {
 	var bookmarker *evereader.Bookmarker = nil
 	optEnd := viper.GetBool("end")
 	if useBookmark {
+		log.Debug(`Initializing bookmark file "%s" for "%s"`, bookmarkFilename, filename)
 		bookmarker = &evereader.Bookmarker{
 			Filename: bookmarkFilename,
 			Reader:   reader,
@@ -223,12 +176,6 @@ func Main(args []string) {
 			log.Fatal(err)
 		}
 	}
-
-	uaFilter := &useragent.EveUserAgentFilter{}
-	filters = append(filters, uaFilter)
-
-	tagsFilter := &eve.TagsFilter{}
-	filters = append(filters, tagsFilter)
 
 	count := uint64(0)
 	lastStatTs := time.Now()
@@ -279,8 +226,8 @@ func Main(args []string) {
 			if status != nil {
 				response, ok := status.(*elasticsearch.Response)
 				if ok {
-					log.Debug("Indexed %d events {errors=%v}", len(response.Items),
-						response.Errors)
+					log.Debug("Indexed %d events {errors=%v} (filename=%s)",
+						len(response.Items), response.Errors, filename)
 				}
 			}
 
@@ -299,12 +246,13 @@ func Main(args []string) {
 				log.Error("Failed to calculate lag: %v", err)
 			}
 
-			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d; Lag (bytes): %d",
+			log.Info("Total: %d; Last minute: %d; Avg: %.2f/s, EOFs: %d; Lag (bytes): %d -- %s",
 				count,
 				count-lastStatCount,
 				float64(count-lastStatCount)/(now.Sub(lastStatTs).Seconds()),
 				eofs,
-				lag)
+				lag,
+				filename)
 			lastStatTs = now
 			lastStatCount = count
 			eofs = 0
@@ -322,7 +270,113 @@ func Main(args []string) {
 	totalTime := time.Since(startTime)
 
 	if oneshot {
-		log.Info("Indexed %d events: time=%.2fs; avg=%d/s", count, totalTime.Seconds(),
+		log.Info("Indexed %d events from %s: time=%.2fs; avg=%d/s", count, filename, totalTime.Seconds(),
 			uint64(float64(count)/totalTime.Seconds()))
 	}
+
+}
+
+func buildFilters() []eve.EveFilter {
+	// Setup filters.
+	filters := make([]eve.EveFilter, 0)
+
+	// Add rule filter.
+	ruleMap := loadRuleMap()
+	filters = append(filters, ruleMap)
+
+	// Add geo-ip filter.
+	geoIpFilter := eve.NewGeoipFilter(geoip.NewGeoIpService())
+	filters = append(filters, geoIpFilter)
+
+	// User-Agent parsing filter.
+	uaFilter := &useragent.EveUserAgentFilter{}
+	filters = append(filters, uaFilter)
+
+	// Ensures the event has a tags array field.
+	tagsFilter := &eve.TagsFilter{}
+	filters = append(filters, tagsFilter)
+
+	return filters
+}
+
+func Main(args []string) {
+
+	inputFiles := configure(args)
+
+	if viper.GetString("elasticsearch") == "" {
+		log.Error("error: --elasticsearch is a required parameter")
+		usage()
+		os.Exit(1)
+	}
+
+	if len(inputFiles) == 0 {
+		for _, filename := range viper.GetStringSlice("input") {
+			inputFiles = append(inputFiles, filename)
+		}
+	}
+
+	if len(inputFiles) == 0 {
+		log.Fatal("error: no input files provided")
+	}
+
+	useBookmark := viper.GetBool("bookmark")
+	bookmarkFilename := viper.GetString("bookmark-filename")
+
+	if useBookmark && bookmarkFilename == "" {
+		bookmarkFilename = fmt.Sprintf("%s.bookmark", viper.GetString("input"))
+		log.Info("Using bookmark file %s", bookmarkFilename)
+	}
+
+	config := elasticsearch.Config{
+		BaseURL:          viper.GetString("elasticsearch"),
+		DisableCertCheck: viper.GetBool("disable-certificate-check"),
+		Username:         viper.GetString("username"),
+		Password:         viper.GetString("password"),
+		ForceTemplate:    viper.GetBool("force-template"),
+		DocType:          viper.GetString("doc-type"),
+	}
+
+	es := elasticsearch.New(config)
+	es.EventIndexPrefix = viper.GetString("index")
+
+	response, err := es.Ping()
+	if err != nil {
+		log.Fatal("error: failed to ping Elastic Search:", err)
+	}
+	log.Info("Connected to Elastic Search v%s (cluster:%s; name: %s)",
+		response.Version.Number, response.ClusterName, response.Name)
+
+	bookmarkDirectory := viper.GetString("bookmark-dir")
+	if useBookmark {
+		if len(inputFiles) > 1 && len(bookmarkDirectory) == 0 {
+			log.Fatalf("Bookmarking multiple files requires --bookmark-dir")
+		}
+		if bookmarkDirectory != "" {
+			log.Info("Making directory %s", bookmarkDirectory)
+			if err := os.MkdirAll(bookmarkDirectory, 0700); err != nil {
+				log.Fatalf("Failed to create bookmark directory: %v", err)
+			}
+		}
+	}
+
+	wg := sync.WaitGroup{}
+	for _, inFile := range inputFiles {
+		if useBookmark {
+			if len(bookmarkDirectory) > 0 {
+				hasher := md5.New()
+				hasher.Write([]byte(inFile))
+				hash := fmt.Sprintf("%x", hasher.Sum(nil))
+				bookmarkFilename = path.Join(bookmarkDirectory,
+					fmt.Sprintf("%s.bookmark", hash))
+			}
+		}
+		log.Info("Starting reader on %s", inFile)
+		wg.Add(1)
+		go func(filename string, bookmarkFilename string) {
+			indexer := elasticsearch.NewIndexer(es)
+			readerRunner(filename, useBookmark, indexer, bookmarkFilename, buildFilters())
+			wg.Done()
+		}(inFile, bookmarkFilename)
+	}
+	wg.Wait()
 }

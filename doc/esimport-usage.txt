@@ -1,7 +1,8 @@
-Usage: evebox esimport [options] /path/to/eve.json
+Usage: evebox esimport [options] /path/to/eve.json [/path/to/eve.json]
 
 Options:
       --bookmark                   Enable bookmarking
+      --bookmark-dir string        Bookmark directory
       --bookmark-filename string   Path to bookmark file
   -c, --config string              Configuration file
   -e, --elasticsearch string       Elastic Search URL

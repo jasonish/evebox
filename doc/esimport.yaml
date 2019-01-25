@@ -1,5 +1,6 @@
-# The eve log file to read. Only one allowed.
-input: /var/log/suricata/eve.json
+# The eve log files to read.
+input:
+  - /var/log/suricata/eve.json
 
 # Elastic Search URL
 elasticsearch: http://10.16.1.10:9200
@@ -33,6 +34,10 @@ bookmark: true
 # Set a filename to keep the bookmark in case esimport cannot write to
 # the log directory.
 #bookmark-filename: /var/tmp/eve.json.bookmark
+
+# If reading from multiple eve files, a bookmark directory is
+# required.
+#bookmark-dir: /var/tmp/bookmarks
 
 # Change the amount of events to batch per bulk request.
 #batch-size: 1000
