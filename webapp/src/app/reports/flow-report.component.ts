@@ -74,10 +74,10 @@ declare var Chart: any;
                  style="text-align:center;">
               <span class="mx-auto" data-toggle="dropdown">
                 <small><a
-                    href="javascript:void(0)">{{interval}} intervals</a></small>
+                    href="#">{{interval}} intervals</a></small>
               </span>
               <div class="dropdown-menu">
-                <a class="dropdown-item" href="javascript:void(0);"
+                <a class="dropdown-item" href="#"
                    (click)="changeHistogramInterval(item.value)"
                    *ngFor="let item of histogramIntervals">{{item.msg}}</a>
               </div>

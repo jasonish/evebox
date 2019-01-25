@@ -42,12 +42,12 @@ declare var $: any;
               <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item">
                   <a data-toggle="tab" class="nav-link active"
-                     href="javascript:void(0)"
+                     href="#"
                      data-target="#help-keyboard-shortcuts">Keyboard
                     Shortcuts</a></li>
                 <li class="nav-item">
                   <a data-toggle="tab" class="nav-link"
-                     href="javascript:void(0)"
+                     href="#"
                      data-target="#help-tab-about">About</a>
                 </li>
               </ul>

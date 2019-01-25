@@ -83,7 +83,7 @@ import {EVENT_TYPES} from './shared/eventtypes';
               </button>
               <div class="dropdown-menu">
                 <a *ngFor="let type of eventTypes"
-                   class="dropdown-item" href="javascript:void(0);"
+                   class="dropdown-item" href="#"
                    (click)="setEventTypeFilter(type)">{{type.name}}</a>
               </div>
             </div>

@@ -38,7 +38,7 @@
         <b>{{event._source.event_type | uppercase}}: <span [innerHTML]="event |
         eveboxEventDescriptionPrinter"></span></b>
         <span class="pull-right" *ngIf="alertGroup">
-          &nbsp;<a href="javascript:void(0)" (click)="sessionSearch()"><span
+          &nbsp;<a href="#" (click)="sessionSearch()"><span
             class="badge badge-secondary">{{alertGroup.count}}</span></a>
         </span>
         <span class="float-right"
@@ -90,7 +90,7 @@
                       *ngIf="event._source.src_port"
                       style="color: dimgray">:{{event._source.src_port}}</span>
                   <span class="dropdown">
-                    <a href="javascript:void(0)" class="dropdown-toggle"
+                    <a href="#" class="dropdown-toggle"
                        data-toggle="dropdown"
                        aria-haspopup="true" aria-expanded="true">
                       <span class="caret"></span></a>
@@ -114,7 +114,7 @@
                     style="color: dimgray">:{{event._source.dest_port}}</span>
                   <!-- @formatter:on -->
                   <span class="dropdown">
-                    <a href="javascript:void(0)" class="dropdown-toggle"
+                    <a href="#" class="dropdown-toggle"
                        data-toggle="dropdown"
                        aria-haspopup="true" aria-expanded="true">
                       <span class="caret"></span></a>
@@ -458,7 +458,7 @@
           <b>Payload</b>
           <span class="pull-right">
             [
-            <a href="javascript:void(0);"
+            <a href="#"
                (click)="eventToPcap('payload');">PCAP</a>
             ]
           </span>
@@ -492,7 +492,7 @@
           <b>Packet</b>
           <span class="pull-right">
             [
-            <a href="javascript:void(0);"
+            <a href="#"
                (click)="eventToPcap('packet');">PCAP</a>
             ]
           </span>
