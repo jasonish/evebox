@@ -25,7 +25,7 @@ build: gitrev
 	@echo "Building EveBox webapp rev $(GITREV)."
 	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH) --deploy-url "public/" $(PROGRESS)
 
-./node_modules/_done: package.json package-lock.json
+./node_modules/_done: package.json
 	npm install
 	touch $@
 

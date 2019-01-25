@@ -43,16 +43,18 @@
         </span>
       </li>
 
-      <li *ngIf="features['reporting']" class="nav-item dropdown"
-      >
-        <a class="nav-link dropdown-toggle" id="navbarDropdown"
-           role="button" data-toggle="dropdown" aria-haspopup="true"
-           [routerLink]="['/reports']"
-           [routerLinkActive]="['active']"
+      <li *ngIf="features['reporting']" class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle"
+           href="#"
+           id="navbarReportsDownload"
+           role="button"
+           data-toggle="dropdown"
+           aria-haspopup="true"
+           [ngClass]="{'active': reportsActive}"
            aria-expanded="false">
           Reports
         </a>
-        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+        <div class="dropdown-menu" aria-labelledby="navbarReportsDownload">
           <a class="dropdown-item" [routerLink]="['/reports/alerts']">Alerts</a>
           <a class="dropdown-item" [routerLink]="['/reports/dns']">DNS</a>
           <a class="dropdown-item" [routerLink]="['/reports/ssh']">SSH</a>
@@ -103,7 +105,7 @@
 
     <!-- TODO Using button here as it looks better than a bade. -->
     <button type="button" class="btn btn-secondary">
-    {{elasticSearchService.jobCount$ | async}}
+      {{elasticSearchService.jobCount$ | async}}
     </button>
 
   </div>

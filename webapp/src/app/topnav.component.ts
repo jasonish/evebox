@@ -26,7 +26,7 @@
 
 import {AfterViewChecked, Component, OnDestroy, OnInit} from "@angular/core";
 import {ElasticSearchService} from "./elasticsearch.service";
-import {NavigationEnd, Router} from "@angular/router";
+import {ActivatedRoute, NavigationEnd, Router} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
 import {TopNavService} from "./topnav.service";
 import {AppEventCode, AppService, FEATURE_REPORTING} from "./app.service";
@@ -49,12 +49,15 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     EVENT_TYPES = EVENT_TYPES;
 
+    reportsActive = false;
+
     constructor(private router: Router,
                 public elasticSearchService: ElasticSearchService,
                 private mousetrap: MousetrapService,
                 private topNavService: TopNavService,
                 public appService: AppService,
                 private api: ApiService,
+                private route: ActivatedRoute,
                 private configService: ConfigService) {
     }
 
@@ -85,10 +88,13 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         // Re-enable the time picker after each route change.
         this.routerSub = this.router.events.subscribe((event) => {
             if (event instanceof NavigationEnd) {
+                this.reportsActive = event.url.startsWith("/reports/");
                 this.toggleTimeRange();
             }
         });
         this.toggleTimeRange();
+
+        this.reportsActive = this.router.url.startsWith("/reports/");
     }
 
     private toggleTimeRange() {
@@ -119,7 +125,6 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
                 $navbar.collapse("hide");
             }
         });
-
     }
 
     gotoRoute(route: string) {
