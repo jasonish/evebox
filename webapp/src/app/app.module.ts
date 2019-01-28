@@ -34,7 +34,7 @@ import {RouterModule} from "@angular/router";
 import {AuthGuard, ConfigResolver, NeverActivate, routing} from "./app.routes";
 import {AlertsComponent} from "./alerts.component";
 import {EveboxCommentInput, EventComponent} from "./event/event.component";
-import {EventsComponent} from "./events.component";
+import {EventsComponent} from "./events/events.component";
 import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {AlertReportComponent} from "./reports/alerts-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
