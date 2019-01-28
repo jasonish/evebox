@@ -99,13 +99,18 @@ export class EventsComponent implements OnInit, OnDestroy {
         this.mousetrap.bind(this, "r", () => this.refresh());
     }
 
-    setEventTypeFilterByEventType(eventType:string) {
+    setEventTypeFilterByEventType(eventType: string) {
         for (let et of this.eventTypes) {
             if (et.eventType == eventType) {
                 this.eventTypeFilter = et;
                 break;
             }
         }
+    }
+
+    setEventTypeFilter(type: any) {
+        this.eventTypeFilter = type;
+        this.appService.updateParams(this.route, {eventType: this.eventTypeFilter.eventType});
     }
 
     ngOnDestroy() {
@@ -127,11 +132,6 @@ export class EventsComponent implements OnInit, OnDestroy {
     clearFilter() {
         this.queryString = "";
         this.submitFilter();
-    }
-
-    setEventTypeFilter(type: any) {
-        this.eventTypeFilter = type;
-        this.appService.updateParams(this.route, {eventType: this.eventTypeFilter.eventType});
     }
 
     gotoNewest() {
@@ -170,8 +170,7 @@ export class EventsComponent implements OnInit, OnDestroy {
     hasEvents(): boolean {
         try {
             return this.model.events.length > 0;
-        }
-        catch (err) {
+        } catch (err) {
             return false;
         }
     }

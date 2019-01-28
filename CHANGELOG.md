@@ -19,6 +19,8 @@
   https://github.com/jasonish/evebox/issues/72.
 - Fixed pager button on "Events"
   view. https://github.com/jasonish/evebox/issues/92
+- Fix issue with drop down event type selector on events view page
+  where choosing an event type was taking users back to the index.
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..master)
 

@@ -33,7 +33,7 @@
         Refresh
       </button>
 
-      <div class="btn-group dropdown">
+      <div class="btn-group dropright">
         <button type="button"
                 class="btn btn-secondary dropdown-toggle"
                 data-toggle="dropdown"
@@ -42,9 +42,10 @@
           Event Type: {{eventTypeFilter.name}}
         </button>
         <div class="dropdown-menu">
-          <a *ngFor="let type of eventTypes"
-             class="dropdown-item" href="#"
-             (click)="setEventTypeFilter(type)">{{type.name}}</a>
+          <button *ngFor="let type of eventTypes"
+                  style="cursor: pointer;"
+             class="dropdown-item"
+             (click)="setEventTypeFilter(type)">{{type.name}}</button>
         </div>
       </div>
 
