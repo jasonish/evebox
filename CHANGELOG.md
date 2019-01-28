@@ -1,6 +1,7 @@
 # Change Log
 
 ## unreleased
+
 ### Fixed
 - If EveBox is installing the Elastic Search template, re-configure
   after installation to figure out the keyword suffix instead of
@@ -8,6 +9,14 @@
   restarted. https://github.com/jasonish/evebox/issues/85
 - Update the Brace Javascript dependency. Fixes issue loading event
   view. https://github.com/jasonish/evebox/issues/91
+- In agg reports use default min_doc_count of 1 instead of 0. Prevents
+  values from showing in the report that have 0 hits, when the number
+  of results in less than the number of results requested. Affects:
+  Elastic Search. https://github.com/jasonish/evebox/issues/99
+- Remove top rrdata from DNS report as its not really valid with DNS
+  v2 alerts. Best to remove it until an alternate metric can be used
+  to report on DNS responses. Closes
+  https://github.com/jasonish/evebox/issues/72.
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..master)
 
