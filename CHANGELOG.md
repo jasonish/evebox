@@ -17,6 +17,8 @@
   v2 alerts. Best to remove it until an alternate metric can be used
   to report on DNS responses. Closes
   https://github.com/jasonish/evebox/issues/72.
+- Fixed pager button on "Events"
+  view. https://github.com/jasonish/evebox/issues/92
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..master)
 

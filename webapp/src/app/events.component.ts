@@ -168,8 +168,8 @@ export class EventsComponent implements OnInit, OnDestroy {
             let qp: any = this.route.snapshot.queryParams;
 
             this.queryString = params.q || qp.q || "";
-            this.timeStart = params.minTs || qp.minTs;
-            this.timeEnd = params.maxTs || qp.maxTs;
+            this.timeStart = params.timeStart || qp.timeStart;
+            this.timeEnd = params.timeEnd || qp.timeEnd;
 
             if (params.eventType) {
                 this.setEventTypeFilterByEventType(params.eventType);
@@ -240,6 +240,7 @@ export class EventsComponent implements OnInit, OnDestroy {
     }
 
     gotoOlder() {
+        console.log(`gotoOlder: timeEnd=${this.model.oldestTimestamp}`);
         this.appService.updateParams(this.route, {
             timeEnd: this.model.oldestTimestamp,
             timeStart: undefined,
@@ -288,6 +289,9 @@ export class EventsComponent implements OnInit, OnDestroy {
             if (events.length > 0) {
                 this.model.newestTimestamp = events[0]._source["@timestamp"];
                 this.model.oldestTimestamp = events[events.length - 1]._source["@timestamp"];
+
+                console.log(`Newest event: ${this.model.newestTimestamp}`);
+                console.log(`Oldest event: ${this.model.oldestTimestamp}`);
             }
             this.model.events = events;
         }, (error) => {
