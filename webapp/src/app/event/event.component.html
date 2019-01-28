@@ -86,7 +86,8 @@
                   <search-link field="src_ip"
                                [search]="event._source.src_ip"
                                value="{{event._source.src_ip | eveboxFormatIpAddress}}">
-                  </search-link><span
+                  </search-link>
+                  <span
                       *ngIf="event._source.src_port"
                       style="color: dimgray">:{{event._source.src_port}}</span>
                   <span class="dropdown">
@@ -160,11 +161,13 @@
                     <td>Signature ID</td>
                     <td>
                       <!-- @formatter:off -->
-                      {{event._source.alert.gid}}:<search-link
+                      {{event._source.alert.gid}}:
+                      <search-link
                           field="alert.signature_id"
                           router="/alerts"
                           value="{{event._source.alert.signature_id}}">
-                      </search-link>:{{event._source.alert.rev}}
+                      </search-link>
+                      :{{event._source.alert.rev}}
                       <!-- @formatter:on -->
                     </td>
                   </tr>
@@ -457,10 +460,9 @@
         <div class="card-header">
           <b>Payload</b>
           <span class="pull-right">
-            [
-            <a href="#"
-               (click)="eventToPcap('payload');">PCAP</a>
-            ]
+            <button
+                style="font-size: 0.7rem;"
+                (click)="eventToPcap('payload');">PCAP</button>
           </span>
         </div>
         <div class="card-body">
@@ -491,10 +493,9 @@
         <div class="card-header">
           <b>Packet</b>
           <span class="pull-right">
-            [
-            <a href="#"
-               (click)="eventToPcap('packet');">PCAP</a>
-            ]
+            <button
+                style="font-size: 0.7rem;"
+                (click)="eventToPcap('packet');">PCAP</button>
           </span>
         </div>
         <div class="card-body">

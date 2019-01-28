@@ -126,6 +126,14 @@ func (s *SessionStore) NewSession() *Session {
 
 func (s *SessionStore) FindSession(r *http.Request) *Session {
 	sessionId := r.Header.Get(s.Header)
+
+	if sessionId == "" {
+		cookie, err := r.Cookie(s.Header)
+		if err == nil && cookie.Value != "" {
+			sessionId = cookie.Value
+		}
+	}
+
 	if sessionId != "" {
 		session := s.Get(sessionId)
 		if session != nil {

@@ -21,6 +21,9 @@
   view. https://github.com/jasonish/evebox/issues/92
 - Fix issue with drop down event type selector on events view page
   where choosing an event type was taking users back to the index.
+- Fix pcap downloads when authentication is on. This requires setting
+  a cookie as this isn't an XHR/REST style request.
+  https://github.com/jasonish/evebox/issues/90
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..master)
 

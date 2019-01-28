@@ -38,6 +38,8 @@ import {throwError} from 'rxjs/internal/observable/throwError';
 
 declare var localStorage: any;
 
+const SESSION_HEADER = "x-evebox-session-id";
+
 /**
  * The API service exposes the server side API to the rest of the server,
  * and acts as the "client" to the server.
@@ -93,14 +95,14 @@ export class ApiService {
     applySessionHeader(options: any) {
         if (this.sessionId) {
             let headers = options.headers || new Headers();
-            headers.append("x-evebox-session-id", this.sessionId);
+            headers.append(SESSION_HEADER, this.sessionId);
             options.headers = headers;
         }
     }
 
     setSessionHeader(headers: HttpHeaders): HttpHeaders {
         if (this.sessionId) {
-            return headers.set("x-evebox-session-id", this.sessionId);
+            return headers.set(SESSION_HEADER, this.sessionId);
         }
         return headers;
     }
@@ -115,7 +117,7 @@ export class ApiService {
     }
 
     private updateSessionId(response: any) {
-        let sessionId = response.headers.get("x-evebox-session-id");
+        let sessionId = response.headers.get(SESSION_HEADER);
         if (sessionId && sessionId != this.sessionId) {
             console.log("Updating session ID from response header.");
             this.setSessionId(sessionId);
@@ -217,6 +219,11 @@ export class ApiService {
     }
 
     eventToPcap(what: any, event: any) {
+        // Set a cook with the session key to expire in 60 seconds from now.
+        const expires = new Date(new Date().getTime() + 60000);
+        const cookie = `${SESSION_HEADER}=${this.sessionId}; expires=${expires.toUTCString()}`;
+        console.log("Setting cookie: " + cookie);
+        document.cookie = cookie;
 
         let form = <HTMLFormElement>document.createElement("form");
         form.setAttribute("method", "post");
