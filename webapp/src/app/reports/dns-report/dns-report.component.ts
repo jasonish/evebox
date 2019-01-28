@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2016-2019 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,97 +25,18 @@
  */
 
 import {Component, OnDestroy, OnInit} from "@angular/core";
-import {ReportsService} from "./reports.service";
-import {AppService, AppEventCode} from "../app.service";
-import {EveboxFormatIpAddressPipe} from "../pipes/format-ipaddress.pipe";
-import {EveboxSubscriptionTracker} from "../subscription-tracker";
+import {ReportsService} from "../reports.service";
+import {AppEventCode, AppService} from "../../app.service";
+import {EveboxFormatIpAddressPipe} from "../../pipes/format-ipaddress.pipe";
+import {EveboxSubscriptionTracker} from "../../subscription-tracker";
 import {ActivatedRoute, Params} from "@angular/router";
-import {ApiService, ReportAggOptions} from "../api.service";
-import {TopNavService} from "../topnav.service";
+import {ApiService, ReportAggOptions} from "../../api.service";
+import {TopNavService} from "../../topnav.service";
 
 import * as moment from "moment";
 
 @Component({
-    template: `
-      <div class="content" [ngClass]="{'evebox-opacity-50': loading > 0}">
-
-        <br/>
-        
-        <loading-spinner [loading]="loading > 0"></loading-spinner>
-
-        <div class="row">
-          <div class="col-md">
-            <button type="button" class="btn btn-secondary" (click)="refresh()">
-              Refresh
-            </button>
-          </div>
-          <div class="col-md">
-            <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
-          </div>
-        </div>
-
-        <br/>
-
-        <metrics-graphic *ngIf="eventsOverTime"
-                         graphId="dnsRequestsOverTime"
-                         title="DNS Requests Over Time"
-                         [data]="eventsOverTime"></metrics-graphic>
-
-        <div class="row">
-          <div class="col-md-6">
-            <report-data-table *ngIf="topRrnames"
-                               title="Top Request RRNames"
-                               [rows]="topRrnames"
-                               [headers]="['#', 'RRName']"></report-data-table>
-          </div>
-          <div class="col-md-6">
-            <report-data-table *ngIf="topRdata"
-                               title="Top Response Rdata"
-                               [rows]="topRdata"
-                               [headers]="['#', 'Rdata']"></report-data-table>
-          </div>
-        </div>
-
-        <br/>
-
-        <div class="row">
-
-          <div class="col-md-6">
-            <report-data-table *ngIf="topServers"
-                               title="Top DNS Servers"
-                               [rows]="topServers"
-                               [headers]="['#', 'Server']"></report-data-table>
-          </div>
-
-          <div class="col-md-6">
-            <report-data-table *ngIf="topClients"
-                               title="Top DNS Clients"
-                               [rows]="topClients"
-                               [headers]="['#', 'Client']"></report-data-table>
-          </div>
-
-        </div>
-
-        <br/>
-
-        <div class="row">
-          <div class="col-md-6">
-            <report-data-table *ngIf="topRrtypes"
-                               title="Top Requests Types"
-                               [rows]="topRrtypes"
-                               [headers]="['#', 'RRType']"></report-data-table>
-          </div>
-          <div class="col-md-6">
-            <report-data-table *ngIf="topRcodes"
-                               title="Top Response Codes"
-                               [rows]="topRcodes"
-                               [headers]="['#', 'RCode']"></report-data-table>
-          </div>
-        </div>
-
-        <br/>
-
-      </div>`,
+    templateUrl: "./dns-report.component.html",
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
 
@@ -189,7 +110,6 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         });
     }
 
-
     load(fn: any) {
         this.loading++;
         fn().then(() => {
@@ -200,8 +120,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
     }
 
     refresh() {
-
-        let size = 20;
+        let size = 10;
         let range = this.topNavService.getTimeRangeAsSeconds();
 
         let aggOptions: ReportAggOptions = {
@@ -212,23 +131,20 @@ export class DNSReportComponent implements OnInit, OnDestroy {
             size: size,
         };
 
+        // Top response codes.
         this.load(() => {
-            return this.api.reportAgg("dns.rcode", aggOptions)
+            return this.api.reportAgg("dns.rcode", Object.assign({
+                dnsType: "answer",
+            }, aggOptions))
                 .then((response: any) => {
                     this.topRcodes = response.data;
                 });
         });
 
-        this.load(() => {
-            return this.api.reportAgg("dns.rdata", aggOptions)
-                .then((response: any) => {
-                    this.topRdata = response.data;
-                });
-        });
-
-        // Switch to request queries.
+        // Switch to queries.
         aggOptions.dnsType = "query";
 
+        // Top request rrnames.
         this.load(() => {
             return this.api.reportAgg("dns.rrname", aggOptions)
                 .then((response: any) => {
@@ -236,6 +152,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 });
         });
 
+        // Top request rrtypes.
         this.load(() => {
             return this.api.reportAgg("dns.rrtype", aggOptions)
                 .then((response: any) => {
@@ -243,6 +160,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 });
         });
 
+        // Top DNS clients.
         this.load(() => {
             return this.api.reportAgg("src_ip", aggOptions)
                 .then((response: any) => {
@@ -250,6 +168,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 });
         });
 
+        // Top DNS servers.
         this.load(() => {
             return this.api.reportAgg("dest_ip", aggOptions)
                 .then((response: any) => {

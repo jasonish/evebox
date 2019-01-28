@@ -29,7 +29,7 @@ import {EventsComponent} from "./events.component";
 import {EventComponent} from "./event/event.component";
 import {AlertsComponent} from "./alerts.component";
 import {AlertReportComponent} from "./reports/alerts-report.component";
-import {DNSReportComponent} from "./reports/dns-report.component";
+import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {FlowReportComponent} from "./reports/flow-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
 import {Injectable, ModuleWithProviders} from "@angular/core";
