@@ -45,17 +45,17 @@ Adding a User
 
 Adding users is done with the config tool, for example::
 
-  evebox config users -D /var/lib/evebox add --username joe
+  evebox config -D /var/lib/evebox users add --username joe
 
 .. note:: RPM and Debian package installations of EveBox setup
           `/var/lib/evebox` to be owned by the user ``evebox``, so you
           may need use sudo to add users, for example::
 
-	    sudo -u evebox evebox config users -D /var/lib/evebox add
+	    sudo -u evebox config -D /var/lib/evebox users add
 
 	  or as root::
 
-	    sudo evebox config users -D /var/lib/evebox add
+	    sudo evebox config -D /var/lib/evebox users add
 
 External Authenticators
 -----------------------

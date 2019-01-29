@@ -24,6 +24,8 @@
 - Fix pcap downloads when authentication is on. This requires setting
   a cookie as this isn't an XHR/REST style request.
   https://github.com/jasonish/evebox/issues/90
+- Fix doc on adding a
+  user. https://github.com/jasonish/evebox/issues/89
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..master)
 
