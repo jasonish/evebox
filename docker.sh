@@ -39,7 +39,7 @@ docker_run() {
 
     volumes="${volumes} -v ${cache}/go:${image_home}/go"
     volumes="${volumes} -v ${cache}/npm:${image_home}/npm"
-    volumes="${volumes} -v ${cache}/node_modules:/src/webapp/node_modules"
+    #volumes="${volumes} -v ${cache}/node_modules:/src/webapp/node_modules"
 
     docker run --rm ${it} ${volumes} \
 	   -e REAL_UID="${real_uid}" \
