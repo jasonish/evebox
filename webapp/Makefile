@@ -26,7 +26,7 @@ build: gitrev
 	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH) --deploy-url "public/" $(PROGRESS)
 
 ./node_modules/_done: package.json
-	npm install
+	npm ci
 	touch $@
 
 install-deps: ./node_modules/_done
