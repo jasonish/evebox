@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.10.2 - 2019-01-30
 
 ### Fixed
 - If EveBox is installing the Elastic Search template, re-configure
@@ -27,7 +27,7 @@
 - Fix doc on adding a
   user. https://github.com/jasonish/evebox/issues/89
 
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..master)
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.1..0.10.2)
 
 ## 0.10.1 - 2018-12-20
 - Fix issue when behind a path on a reverse
