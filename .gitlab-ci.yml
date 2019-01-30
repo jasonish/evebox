@@ -24,6 +24,10 @@ release:
 
     mv dist/* .
 
+    # Generate checksums.
+    apk add openssl
+    openssl sha256 *.tar.gz *.zip *.rpm *.deb > CHECKSUMS
+
     docker tag evebox/builder:latest ${CONTAINER_IMAGE}
     docker push ${CONTAINER_IMAGE}
   artifacts:
@@ -31,4 +35,5 @@ release:
       - "*.zip"
       - "*.rpm"
       - "*.deb"
+      - "CHECKSUMS"
       - "resources-public.tar.gz"
