@@ -30,6 +30,9 @@ import {Injectable} from '@angular/core';
 
 let toastr = require('toastr');
 
+// Fixes toastr when Bootstrap 4.2 is present.
+toastr.options.toastClass = 'toastr';
+
 export interface ToastrOptions {
     title?: string;
     closeButton?: boolean;
