@@ -62,7 +62,7 @@ hosted on Docker hub.
 Example:
 
 ```
-docker pull jasonish/evebox
+docker pull jasonish/evebox:latest
 docker run -it -p 5636:5636 jasonish/evebox -e http://elasticsearch:9200
 ```
 
@@ -149,7 +149,7 @@ make dist
 If you don't want to bother with the required development tools, but do have
 Docker installed, you can build a release with the following command:
 ```
-./docker.sh release`
+./docker.sh release
 ```
 
 ## Run in Development Mode
