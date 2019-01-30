@@ -26,7 +26,7 @@ release:
 
     # Generate checksums.
     apk add openssl
-    openssl sha256 *.tar.gz *.zip *.rpm *.deb > CHECKSUMS
+    openssl sha256 *.tar.gz *.zip *.rpm *.deb > CHECKSUMS.txt
 
     docker tag evebox/builder:latest ${CONTAINER_IMAGE}
     docker push ${CONTAINER_IMAGE}
@@ -35,5 +35,5 @@ release:
       - "*.zip"
       - "*.rpm"
       - "*.deb"
-      - "CHECKSUMS"
+      - "CHECKSUMS.txt"
       - "resources-public.tar.gz"
