@@ -83,7 +83,7 @@
 
     <ul class="navbar-nav">
       <li class="nav-item"><a class="nav-link" href="#"
-                              (click)="showHelp()">Help</a></li>
+                              (click)="showHelp(); $event.preventDefault()">Help</a></li>
 
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle no-caret" href="#" id="toolDropdown"
