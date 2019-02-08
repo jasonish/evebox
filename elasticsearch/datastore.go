@@ -152,7 +152,6 @@ func (s *DataStore) buildAlertGroupQuery(p core.AlertGroupQueryParams) *EventQue
 // archive events with a query instead of updating each document. This is
 // only available in Elastic Search v5+.
 func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, tags []string, action HistoryEntry) error {
-	log.Println("AddTagsToAlertGroupsByQuery")
 	var mustNot []interface{}
 	for _, tag := range tags {
 		mustNot = append(mustNot, TermQuery("tags", tag))
@@ -194,8 +193,9 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 		log.Error("failed to update by query: %v", err)
 		return err
 	}
-	log.Info("Events updated: %v; failures=%d",
-		response.Get("updated"), len(response.GetMapList("failures")))
+	failures := response.GetMapList("failures")
+	log.Info("Events updated: %v; failures=%d {%+v}",
+		response.Get("updated"), len(failures), failures)
 
 	return nil
 }
@@ -266,8 +266,9 @@ func (s *DataStore) RemoveTagsFromAlertGroupsByQuery(p core.AlertGroupQueryParam
 		log.Error("failed to update by query: %v", err)
 		return err
 	}
-	log.Info("Events updated: %v; failures=%d",
-		response.Get("updated"), len(response.GetMapList("failures")))
+	failures := response.GetMapList("failures")
+	log.Info("Events updated: %v; failures=%d {%+v}",
+		response.Get("updated"), len(failures), failures)
 
 	return nil
 }
