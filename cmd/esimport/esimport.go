@@ -46,7 +46,7 @@ import (
 	"time"
 )
 
-const DEFAULT_INDEX = "evebox"
+const DEFAULT_INDEX = "logstash"
 const BATCH_SIZE = 1000
 
 var flagset *pflag.FlagSet

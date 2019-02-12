@@ -14,5 +14,5 @@ Command Line Options
 Configuration File
 ------------------
 
-.. literalinclude:: ../agent.yaml
+.. literalinclude:: ../agent.yaml.example
    :language: yaml

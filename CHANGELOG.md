@@ -2,11 +2,16 @@
 
 ## unreleased
 
+**Enhancements**
 - Handle Filebeat overriding the "host" field with its own object by
   normalizing the sensor name before rendering. If Filebeat is used,
   the Suricata provided sensor name is lost, so use the Filebeat
   provided host.name
   instead. https://github.com/jasonish/evebox/issues/100
+
+**Breaking Changes**
+- `esimport` now uses a default index of `logstash` instead of
+  `evebox` to match common usage.
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.2..master)
 
