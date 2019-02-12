@@ -67,14 +67,17 @@
                   </search-link>
                 </td>
               </tr>
-              <tr *ngIf="event._source.host">
+
+              <!-- Sensor name. -->
+              <tr *ngIf="normalized.sensor_name">
                 <td>Sensor</td>
                 <td>
-                  <search-link field="host" [search]="event._source.host"
-                               value="{{event._source.host}}">
+                  <search-link [field]="normalized.sensor_name_key" [search]="normalized.sensor_name"
+                               value="{{normalized.sensor_name}}">
                   </search-link>
                 </td>
               </tr>
+
               <tr>
                 <td>Protocol</td>
                 <td>{{event._source.proto}}</td>

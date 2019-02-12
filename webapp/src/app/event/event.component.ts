@@ -24,13 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {
-    Component,
-    EventEmitter,
-    OnDestroy,
-    OnInit,
-    Output
-} from "@angular/core";
+import {Component, OnDestroy, OnInit} from "@angular/core";
 import {Location} from "@angular/common";
 import {ActivatedRoute, Router} from "@angular/router";
 import {AlertGroup, ElasticSearchService} from "../elasticsearch.service";
@@ -61,6 +55,11 @@ export class EventComponent implements OnInit, OnDestroy {
     eventId: string;
     alertGroup: AlertGroup;
     public event: any = {};
+
+    // An object containing normalized fields from the event when they may
+    // differ in the real event based on input configuration.
+    normalized: any = {};
+
     params: any = {};
     flows: any[] = [];
 
@@ -90,6 +89,7 @@ export class EventComponent implements OnInit, OnDestroy {
         this.event = {};
         this.params = {};
         this.flows = [];
+        this.normalized = {};
     }
 
     setup() {
@@ -330,6 +330,21 @@ export class EventComponent implements OnInit, OnDestroy {
                     if (event._source.alert) {
                         if (!event._source.alert.rule && event._source.rule) {
                             event._source.alert.rule = event._source.rule;
+                        }
+                    }
+
+                    // Normalize the sensor name.
+                    // - Suricata put the name in the "host" field.
+                    // - Filebeat will overwrite the "host" field with its own "host" object,
+                    //       losing the Suricata sensor name. So use the Filebeat provided
+                    //       hostname instead.
+                    if (event._source.host) {
+                        if (event._source.host.name) {
+                            this.normalized.sensor_name = event._source.host.name;
+                            this.normalized.sensor_name_key = "host.name";
+                        } else if (typeof (event._source.host) === "string") {
+                            this.normalized.sensor_name = event._source.host;
+                            this.normalized.sensor_name_key = "host";
                         }
                     }
 
