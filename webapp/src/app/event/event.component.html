@@ -303,10 +303,10 @@
 
     <div *ngIf="features['comments'] && (!hasHistory() || commentInputVisible)">
       <br/>
-      <evebox-comment-input id="comment"
+      <app-comment-input id="comment"
                             *ngIf="!hasHistory() || commentInputVisible"
                             (on-close)="commentInputVisible = false"
-                            (on-submit)="onCommentSubmit($event)"></evebox-comment-input>
+                            (on-submit)="onCommentSubmit($event)"></app-comment-input>
     </div>
 
     <!-- HTTP. -->

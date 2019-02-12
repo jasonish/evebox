@@ -33,7 +33,7 @@ import {AppComponent} from "./app.component";
 import {RouterModule} from "@angular/router";
 import {AuthGuard, ConfigResolver, NeverActivate, routing} from "./app.routes";
 import {AlertsComponent} from "./alerts.component";
-import {EveboxCommentInput, EventComponent} from "./event/event.component";
+import {EventComponent} from "./event/event.component";
 import {EventsComponent} from "./events/events.component";
 import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {AlertReportComponent} from "./reports/alerts-report.component";
@@ -88,6 +88,7 @@ import {HttpClientModule} from "@angular/common/http";
 import {DebugComponent} from "./debug/debug.component";
 import {ClientService} from "./client.service";
 import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
+import { CommentInputComponent } from './comment-input/comment-input.component';
 
 @NgModule({
     declarations: [
@@ -116,7 +117,6 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         EveboxLoadingSpinnerComponent,
         LoginComponent,
         SettingsComponent,
-        EveboxCommentInput,
         DebugComponent,
 
         // Local pipes.
@@ -133,6 +133,7 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
         EveBoxEventDescriptionPrinterPipe,
         RuleHighlightPipe,
         EveboxPrintablePipe,
+        CommentInputComponent,
     ],
     imports: [
         // Angular modules.
