@@ -8,6 +8,9 @@
   the Suricata provided sensor name is lost, so use the Filebeat
   provided host.name
   instead. https://github.com/jasonish/evebox/issues/100
+- Allow `esimport` to read from multiple eve files. If bookmarking is
+  used, `--bookmark-dir` must be used instead of
+  `--bookmark-filename`. https://github.com/jasonish/evebox/issues/98
 
 **Breaking Changes**
 - `esimport` now uses a default index of `logstash` instead of
