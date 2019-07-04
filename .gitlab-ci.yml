@@ -1,6 +1,7 @@
 release:
   image: docker:stable
   variables:
+    CONTAINER_NAME: registry.gitlab.com/$CI_PROJECT_PATH
     CONTAINER_IMAGE: registry.gitlab.com/$CI_PROJECT_PATH:latest
     DOCKER_HOST: tcp://docker:2375
     DOCKER_DRIVER: overlay2
@@ -16,11 +17,15 @@ release:
     docker tag ${CONTAINER_IMAGE} evebox/builder:base
 
     ./docker.sh release
+    ./docker.sh release-windows
+
+    docker pull ${CONTAINER_NAME}:macos || true
+    export CACHE_FROM="--cache-from ${CONTAINER_NAME}:macos"
+    ./docker.sh release-macos
+    docker tag evebox/builder:macos ${CONTAINER_NAME}:macos
+    docker push ${CONTAINER_NAME}:macos
 
     tar zcvf resources-public.tar.gz ./resources/public
-
-    ./docker.sh release-windows
-    ./docker.sh release-macos
 
     mv dist/* .
 

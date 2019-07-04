@@ -5,11 +5,9 @@ set -e
 IMAGE="evebox/builder:latest"
 
 docker_build() {
-    DOCKERFILE=${DOCKERFILE:-Dockerfile}
     docker build ${CACHE_FROM} --rm \
-	   --build-arg WITH_MACOS=${WITH_MACOS-no} \
 	   -t ${IMAGE} \
-	   -f ./docker/builder/Dockerfile .
+	   -f ${DOCKERFILE} .
 }
 
 docker_run() {
@@ -49,18 +47,22 @@ docker_run() {
 }
 
 release() {
+    DOCKERFILE="./docker/builder/Dockerfile"
     docker_build
     docker_run "make install-deps dist rpm deb"
 }
 
 release_windows() {
+    DOCKERFILE="./docker/builder/Dockerfile"
     docker_build
     docker_run \
 	"make install-deps && GOOS=windows CC=x86_64-w64-mingw32-gcc make dist"
 }
 
 release_macos() {
-    WITH_MACOS=yes docker_build
+    IMAGE="evebox/builder:macos"
+    DOCKERFILE="./docker/builder-macos/Dockerfile"
+    docker_build
     docker_run \
 	 "make install-deps && GOOS=darwin CC=o64-clang make dist"
 }

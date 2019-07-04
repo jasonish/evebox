@@ -1,7 +1,6 @@
-FROM centos:7
+FROM fedora:29
 
-RUN yum -y install epel-release && \
-    yum -y install \
+RUN dnf -y install \
     	make \
 	git \
 	gcc \
@@ -12,15 +11,10 @@ RUN yum -y install epel-release && \
 	which \
 	mingw64-gcc \
 	clang \
-	patch
-
-# Install Ruby from SCL, and fpm.
-RUN yum -y install \
-    centos-release-scl \
-    yum-utils && \
-    yum-config-manager --enable rhel-server-rhscl-7-rpms && \
-    yum -y install rh-ruby23 rh-ruby23-ruby-devel
-RUN . /opt/rh/rh-ruby23/enable && gem install --bindir=/usr/local/bin fpm
+	patch \
+	cmake \
+	libxml2-devel \
+	openssl-devel
 
 ENV GO_V 1.11.4
 RUN cd /usr/local && \
@@ -38,5 +32,9 @@ RUN groupadd --gid 5000 builder
 RUN useradd --uid 5000 --gid 5000 --password "" --groups wheel builder
 RUN echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
 
-COPY /docker/builder/docker-entrypoint.sh /
+COPY /docker/builder-macos/install-osxcross.sh /
+RUN /install-osxcross.sh
+
+COPY /docker/builder-macos/docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
+
