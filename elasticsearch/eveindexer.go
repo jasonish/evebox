@@ -162,15 +162,17 @@ func (i *BulkEveIndexer) Submit(event eve.EveEvent) error {
 	index := fmt.Sprintf("%s-%s", i.es.EventIndexPrefix,
 		timestamp.UTC().Format("2006.01.02"))
 
-	docType, err := i.getDocType(index)
-	if err != nil {
-		log.Error("Failed to get document mapping type: %v", err)
-		return err
-	}
-
 	header := BulkCreateHeader{}
 	header.Create.Index = index
-	header.Create.Type = docType
+
+	if i.es.MajorVersion < 7 {
+		docType, err := i.getDocType(index)
+		if err != nil {
+			log.Error("Failed to get document mapping type: %v", err)
+			return err
+		}
+		header.Create.Type = docType
+	}
 
 	id := ulid.MustNew(ulid.Timestamp(timestamp), i.entropy).String()
 	header.Create.Id = id

@@ -55,7 +55,9 @@ func (es *ElasticSearch) LoadTemplate() error {
 	}
 	majorVersion := pingResponse.MajorVersion()
 
-	if majorVersion == 6 {
+	if majorVersion >= 7 {
+		templateFilename = "template-es7x.json"
+	} else if majorVersion == 6 {
 		templateFilename = "template-es6x.json"
 	} else if majorVersion == 5 {
 		templateFilename = "template-es5x.json"

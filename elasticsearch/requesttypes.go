@@ -47,7 +47,7 @@ type Bool struct {
 type BulkCreateHeader struct {
 	Create struct {
 		Index string `json:"_index"`
-		Type  string `json:"_type"`
+		Type  string `json:"_type,omitempty"`
 		Id    string `json:"_id"`
 	} `json:"create"`
 }

@@ -267,7 +267,10 @@ func (es *ElasticSearch) Search(query interface{}) (*Response, error) {
 		es.ConfigureIndex()
 	}
 
-	path := fmt.Sprintf("%s/_search", es.EventSearchIndex)
+	path := fmt.Sprintf("%s/_search?", es.EventSearchIndex)
+	if es.MajorVersion == 7 {
+		path = fmt.Sprintf("%srest_total_hits_as_int=true&", path)
+	}
 
 	if LOG_REQUEST_RESPONSE {
 		log.Debug("REQUEST: POST %s: %s", path, util.ToJson(query))
