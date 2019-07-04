@@ -60,7 +60,7 @@ release_windows() {
 }
 
 release_macos() {
-    IMAGE="evebox/builder-macos:latest"
+    IMAGE="evebox/builder:macos"
     DOCKERFILE="./docker/builder-macos/Dockerfile"
     docker_build
     docker_run \

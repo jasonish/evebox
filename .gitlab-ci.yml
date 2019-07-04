@@ -1,6 +1,7 @@
 release:
   image: docker:stable
   variables:
+    CONTAINER_NAME: registry.gitlab.com/$CI_PROJECT_PATH
     CONTAINER_IMAGE: registry.gitlab.com/$CI_PROJECT_PATH:latest
     DOCKER_HOST: tcp://docker:2375
     DOCKER_DRIVER: overlay2
@@ -16,17 +17,19 @@ release:
     docker tag ${CONTAINER_IMAGE} evebox/builder:base
 
     ./docker.sh release
-
-    tar zcvf resources-public.tar.gz ./resources/public
-
     ./docker.sh release-windows
     ./docker.sh release-macos
+
+    tar zcvf resources-public.tar.gz ./resources/public
 
     mv dist/* .
 
     # Generate checksums.
     apk add openssl
     openssl sha256 *.tar.gz *.zip *.rpm *.deb > CHECKSUMS.txt
+
+    docker tag evebox/builder:macos ${CONTAINER_NAME}:macos
+    docker push ${CONTAINER_NAME}:macos
 
     docker tag evebox/builder:latest ${CONTAINER_IMAGE}
     docker push ${CONTAINER_IMAGE}
