@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 set -e
 set -x
@@ -14,4 +14,4 @@ curl -L -o \
 
 sed -i -e 's|-march=native||g' ./build_clang.sh ./wrapper/build.sh
 
-printf "\n" | PORTABLE=true ./build.sh
+printf "\n" | PORTABLE=true bash -x ./build.sh
