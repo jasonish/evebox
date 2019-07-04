@@ -200,7 +200,7 @@ func Main(args []string) {
 	viper.BindPFlag("database.elasticsearch.index", flagset.Lookup("index"))
 	viper.BindEnv("index", "ELASTICSEARCH_INDEX")
 
-	flagset.StringP("elasticsearch-template", "", "","Elastic Search template name")
+	flagset.StringP("elasticsearch-template", "", "", "Elastic Search template name")
 	viper.BindPFlag("database.elasticsearch.template", flagset.Lookup("elasticsearch-template"))
 	viper.BindEnv("elasticsearch-template", "ELASTICSEARCH_TEMPLATE")
 
