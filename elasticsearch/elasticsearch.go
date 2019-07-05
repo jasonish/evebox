@@ -234,6 +234,25 @@ func (es *ElasticSearch) ConfigureIndex() error {
 			}
 		}
 
+		if !keywordFound {
+			dynamicTemplates := template.GetMap(index).
+				GetMap("mappings").
+				GetMapList("dynamic_templates")
+			for _, entry := range dynamicTemplates {
+				if entry["string_fields"] != nil {
+					mappingType := entry.GetMap("string_fields").
+						GetMap("mapping").
+						GetMap("fields").
+						GetMap("keyword").
+						Get("type")
+					if mappingType == "keyword" {
+						es.config.KeywordSuffix = "keyword"
+						keywordFound = true
+					}
+				}
+			}
+		}
+
 		if keywordFound {
 			log.Info("Found Elastic Search keyword suffix to be: %s",
 				es.config.KeywordSuffix)
