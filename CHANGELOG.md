@@ -11,6 +11,8 @@
 - Allow `esimport` to read from multiple eve files. If bookmarking is
   used, `--bookmark-dir` must be used instead of
   `--bookmark-filename`. https://github.com/jasonish/evebox/issues/98
+- Support Elastic
+  Search 7. https://github.com/jasonish/evebox/issues/112
 
 **Breaking Changes**
 - `esimport` now uses a default index of `logstash` instead of
