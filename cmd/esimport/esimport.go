@@ -334,10 +334,9 @@ func Main(args []string) {
 		Password:         viper.GetString("password"),
 		ForceTemplate:    viper.GetBool("force-template"),
 		DocType:          viper.GetString("doc-type"),
+		Index:            viper.GetString("index"),
 	}
-
 	es := elasticsearch.New(config)
-	es.EventIndexPrefix = viper.GetString("index")
 
 	response, err := es.Ping()
 	if err != nil {
