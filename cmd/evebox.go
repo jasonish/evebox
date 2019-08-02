@@ -38,7 +38,6 @@ import (
 	"github.com/jasonish/evebox/cmd/server"
 	"github.com/jasonish/evebox/cmd/sqliteimport"
 	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/log"
 	"os"
 	"runtime"
 )
@@ -67,50 +66,44 @@ Commands:
 
 func main() {
 
-	// Look for sub-commands, then fall back to server.
-	if len(os.Args) > 1 && os.Args[1][0] != '-' {
-		switch os.Args[1] {
-		case "version":
-			VersionMain()
-			return
-		case "esimport":
-			esimport.Main(os.Args[1:])
-			return
-		case "agent":
-			agent.Main(os.Args[2:])
-			return
-		case "evereader":
-			evereader.Main(os.Args[1:])
-			return
-		case "server":
-			server.Main(os.Args[2:])
-			return
-		case "oneshot":
-			oneshot.Main(os.Args[2:])
-			return
-		case "pgimport":
-			pgimport.Main(os.Args[2:])
-			return
-		case "sqliteimport":
-			sqliteimport.Main(os.Args[2:])
-			return
-		case "config":
-			config.Main(os.Args[2:])
-			return
-		case "gencert":
-			gencert.Main(os.Args[2:])
-			return
-		default:
-			log.Fatalf("Unknown command: %s", os.Args[1])
-		}
-	} else if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "-h":
-			Usage()
-			os.Exit(0)
-		}
+	if len(os.Args) == 1 || os.Args[1][0] == '-' {
+		Usage()
+		os.Exit(0)
 	}
 
-	log.Info("No command provided, defaulting to server.")
-	server.Main(os.Args[1:])
+	switch os.Args[1] {
+	case "version":
+		VersionMain()
+		return
+	case "esimport":
+		esimport.Main(os.Args[1:])
+		return
+	case "agent":
+		agent.Main(os.Args[2:])
+		return
+	case "evereader":
+		evereader.Main(os.Args[1:])
+		return
+	case "server":
+		server.Main(os.Args[2:])
+		return
+	case "oneshot":
+		oneshot.Main(os.Args[2:])
+		return
+	case "pgimport":
+		pgimport.Main(os.Args[2:])
+		return
+	case "sqliteimport":
+		sqliteimport.Main(os.Args[2:])
+		return
+	case "config":
+		config.Main(os.Args[2:])
+		return
+	case "gencert":
+		gencert.Main(os.Args[2:])
+		return
+	default:
+		fmt.Fprintf(os.Stderr, "error: unknown command: %s\n", os.Args[1])
+		os.Exit(1)
+	}
 }

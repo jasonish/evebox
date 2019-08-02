@@ -17,6 +17,8 @@
 **Breaking Changes**
 - `esimport` now uses a default index of `logstash` instead of
   `evebox` to match common usage.
+- The `evebox` application now requires a command name. It will not
+  fallback to the server command anymore.
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.2..master)
 
