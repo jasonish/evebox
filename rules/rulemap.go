@@ -30,7 +30,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/go-idsrules"
+	"github.com/jasonish/evebox/ruleparser"
 	"io"
 	"io/ioutil"
 	"os"
@@ -42,7 +42,7 @@ import (
 
 type RuleMap struct {
 	paths   []string
-	rules   map[uint64]idsrules.Rule
+	rules   map[uint64]ruleparser.Rule
 	watcher *fsnotify.Watcher
 	lock    sync.RWMutex
 }
@@ -92,7 +92,7 @@ func (r *RuleMap) watchFiles() {
 }
 
 func (r *RuleMap) reload() {
-	rules := make(map[uint64]idsrules.Rule)
+	rules := make(map[uint64]ruleparser.Rule)
 	filenames := findRuleFilenames(r.paths)
 	for _, filename := range filenames {
 		if err := loadRulesFromFile(&rules, filename); err != nil {
@@ -108,7 +108,7 @@ func (r *RuleMap) reload() {
 	log.Info("Loaded %d rules", len(rules))
 }
 
-func (r *RuleMap) FindById(id uint64) *idsrules.Rule {
+func (r *RuleMap) FindById(id uint64) *ruleparser.Rule {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if r == nil || r.rules == nil {
@@ -134,14 +134,14 @@ func (r *RuleMap) Filter(event eve.EveEvent) {
 	}
 }
 
-func loadRulesFromFile(ruleMap *map[uint64]idsrules.Rule, filename string) error {
+func loadRulesFromFile(ruleMap *map[uint64]ruleparser.Rule, filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	ruleReader := idsrules.NewRuleReader(file)
+	ruleReader := ruleparser.NewRuleReader(file)
 
 	count := 0
 
