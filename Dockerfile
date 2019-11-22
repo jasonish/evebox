@@ -2,7 +2,7 @@
 FROM centos:7
 
 RUN cd /usr/local && \
-    curl -o - -L https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz | \
+    curl -o - -L https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | \
         tar zxf -
 
 ENV N_V 10.14.2
@@ -13,9 +13,9 @@ RUN cd /usr/local && \
 ENV PATH /usr/local/go/bin:$PATH
 
 RUN yum -y install \
-    	make \
-	git \
-	gcc
+        make \
+        git \
+        gcc
 
 WORKDIR /src
 COPY / .
