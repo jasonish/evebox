@@ -19,6 +19,9 @@
   `evebox` to match common usage.
 - The `evebox` application now requires a command name. It will not
   fallback to the server command anymore.
+- The EveBox server will now bind to localhost by default instead of
+  being open. Use the `--host` command line option to accept connections
+  more openly. https://github.com/jasonish/evebox/issues/110
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.2..master)
 

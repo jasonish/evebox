@@ -270,7 +270,7 @@ func (s *Server) Start(host string, port uint16) error {
 	}
 
 	root := s.setupHandlers()
-	listenAddr := fmt.Sprintf("%s:%d", host, port)
+	listenAddr := fmt.Sprintf("[%s]:%d", host, port)
 
 	if !config.Http.TlsEnabled {
 		log.Info("Listening on %s", listenAddr)

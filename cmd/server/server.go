@@ -221,7 +221,7 @@ func Main(args []string) {
 	flagset.BoolVarP(&verbose, "verbose", "v", false, "Verbose (debug logging)")
 
 	flagset.Uint16VarP(&opts.Port, "port", "p", server.DEFAULT_PORT, "Port to bind to")
-	flagset.StringVarP(&opts.Host, "host", "", "0.0.0.0", "Host to bind to")
+	flagset.StringVarP(&opts.Host, "host", "", "127.0.0.1", "Host to bind to")
 	flagset.BoolVarP(&opts.Version, "version", "", false, "Show version")
 	flagset.StringVarP(&configFilename, "config", "c", "", "Configuration filename")
 	flagset.BoolVarP(&opts.NoCheckCertificate, "no-check-certificate", "k", false, "Disable certificate check for Elastic Search")
