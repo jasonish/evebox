@@ -34,3 +34,5 @@ require (
 )
 
 replace github.com/gobuffalo/packr => github.com/gobuffalo/packr v1.13.0
+
+go 1.13
