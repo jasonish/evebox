@@ -1,0 +1,14 @@
+name: Docker Image
+
+on: [push]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Build Docker Image
+        run: docker build --tag jasonish/evebox:master .
