@@ -61,7 +61,7 @@ release_windows() {
 
 release_macos() {
     IMAGE="evebox/builder:macos"
-    DOCKERFILE="./docker/builder-macos/Dockerfile"
+    DOCKERFILE="./docker/builder/Dockerfile.macos"
     docker_build
     docker_run \
 	 "make install-deps && GOOS=darwin CC=o64-clang make dist"

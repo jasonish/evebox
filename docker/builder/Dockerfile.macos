@@ -16,7 +16,7 @@ RUN dnf -y install \
 	libxml2-devel \
 	openssl-devel
 
-ENV GO_V 1.11.4
+ENV GO_V 1.13.4
 RUN cd /usr/local && \
     curl -o - -L https://dl.google.com/go/go${GO_V}.linux-amd64.tar.gz | \
         tar zxf -
@@ -32,9 +32,18 @@ RUN groupadd --gid 5000 builder
 RUN useradd --uid 5000 --gid 5000 --password "" --groups wheel builder
 RUN echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
 
-COPY /docker/builder-macos/install-osxcross.sh /
-RUN /install-osxcross.sh
+#COPY /docker/builder/install-osxcross.sh /
+#RUN /install-osxcross.sh
 
-COPY /docker/builder-macos/docker-entrypoint.sh /
+ENV OSXCROSS_SDK_VERSION "10.11"
+WORKDIR /opt
+RUN git clone https://github.com/tpoechtrager/osxcross.git
+WORKDIR /opt/osxcross
+RUN curl -L -o \
+        ./tarballs/MacOSX${OSXCROSS_SDK_VERSION}.sdk.tar.xz \
+        https://s3.amazonaws.com/andrew-osx-sdks/MacOSX${OSXCROSS_SDK_VERSION}.sdk.tar.xz
+RUN sed -i -e 's|-march=native||g' ./build_clang.sh ./wrapper/build_wrapper.sh
+RUN printf "\n" | PORTABLE=true bash -x ./build.sh
+
+COPY /docker/builder/docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
-

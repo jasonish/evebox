@@ -12,6 +12,6 @@ curl -L -o \
      ./tarballs/MacOSX${OSXCROSS_SDK_VERSION}.sdk.tar.xz \
      https://s3.amazonaws.com/andrew-osx-sdks/MacOSX${OSXCROSS_SDK_VERSION}.sdk.tar.xz
 
-sed -i -e 's|-march=native||g' ./build_clang.sh ./wrapper/build.sh
+sed -i -e 's|-march=native||g' ./build_clang.sh ./wrapper/build-wrapper.sh
 
 printf "\n" | PORTABLE=true bash -x ./build.sh

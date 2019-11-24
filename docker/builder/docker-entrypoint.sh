@@ -2,14 +2,16 @@
 
 set -e
 
+export PATH=/home/builder/go/bin:$PATH
+
 if [ "${REAL_UID}" != "0" ]; then
     groupmod --gid "${REAL_GID}" builder
     usermod --uid "${REAL_UID}" builder
 fi
 
-. /opt/rh/rh-ruby23/enable
-
-export PATH=/home/builder/go/bin:$PATH
+if [ -e /opt/rh/rh-ruby23/enable ]; then
+    . /opt/rh/rh-ruby23/enable
+fi
 
 if [ -e /opt/osxcross ]; then
     export PATH=/opt/osxcross/target/bin:$PATH
