@@ -341,14 +341,14 @@
               <div class="card-body">
                 <div class="row">
                   <div class="col-6">
-                    <div class="card bg-light">
+                    <div class="card bg-theme">
                       <div class="card-body">
                         <pre style="white-space: pre-wrap;">{{event._source.http.http_request_body | eveboxBase64Decode | printable}}</pre>
                       </div>
                     </div>
                   </div>
                   <div class="col-6">
-                    <div class="card bg-light">
+                    <div class="card bg-theme">
                       <div class="card-body">
                         <pre style="overflow-x: scroll;">{{event._source.http.http_request_body | eveboxBase64Decode | hex}}</pre>
                       </div>
@@ -370,14 +370,14 @@
               <div class="card-body">
                 <div class="row">
                   <div class="col-6">
-                    <div class="card bg-light">
+                    <div class="card bg-theme">
                       <div class="card-body">
                         <pre style="white-space: pre-wrap;">{{event._source.http.http_response_body | eveboxBase64Decode | printable}}</pre>
                       </div>
                     </div>
                   </div>
                   <div class="col-6">
-                    <div class="card bg-light">
+                    <div class="card bg-theme">
                       <div class="card-body">
                         <pre style="overflow-x: scroll;">{{event._source.http.http_response_body | eveboxBase64Decode | hex}}</pre>
                       </div>
@@ -471,14 +471,14 @@
         <div class="card-body">
           <div class="row">
             <div class="col-md-6 col-sm-6">
-              <div class="card bg-light">
+              <div class="card bg-theme">
                 <div class="card-body">
                   <pre style="white-space: pre-wrap;">{{event._source.payload | eveboxBase64Decode | printable}}</pre>
                 </div>
               </div>
             </div>
             <div class="col-md-6 col-sm-6">
-              <div class="card bg-light">
+              <div class="card bg-theme">
                 <div class="card-body">
                   <pre>{{event._source.payload | eveboxBase64Decode | hex}}</pre>
                 </div>
@@ -504,14 +504,14 @@
         <div class="card-body">
           <div class="row">
             <div class="col-md-6">
-              <div class="card bg-light">
+              <div class="card bg-theme">
                 <div class="card-body">
                   <pre style="white-space: pre-wrap;">{{event._source.packet | eveboxBase64Decode | printable}}</pre>
                 </div>
               </div>
             </div>
             <div class="col-md-6">
-              <div class="card bg-light">
+              <div class="card bg-theme">
                 <div class="card-body">
                   <pre>{{event._source.packet| eveboxBase64Decode | hex}}</pre>
                 </div>

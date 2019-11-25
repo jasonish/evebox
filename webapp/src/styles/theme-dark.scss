@@ -146,3 +146,7 @@ button {
     color: lawngreen;
   }
 }
+
+.bg-theme {
+  @extend .bg-dark;
+}

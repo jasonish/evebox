@@ -63,3 +63,6 @@ $event-table-border-color: #ddd;
     color: green;
   }
 }
+.bg-theme {
+  @extend .bg-light;
+}
