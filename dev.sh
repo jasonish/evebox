@@ -16,6 +16,8 @@ esac
 
 (cd webapp && make serve) &
 
+GO111MODULE=off go get github.com/cespare/reflex
+
 $HOME/go/bin/reflex -s -R -packr\.go -r \.go$ -- \
        sh -c "rm -f evebox && make evebox && \
-                 ./evebox -v ${command} ${args}"
+                 ./evebox ${command} ${args}"

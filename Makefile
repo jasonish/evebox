@@ -40,7 +40,6 @@ GOPATH ?=	$(HOME)/go
 all: public evebox
 
 install-deps:
-	go get github.com/cespare/reflex
 	go get github.com/gobuffalo/packr/packr
 	cd webapp && $(MAKE) install-deps
 
