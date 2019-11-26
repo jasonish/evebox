@@ -42,6 +42,7 @@ type SqlitePurger struct {
 }
 
 func (p *SqlitePurger) Run() {
+	log.Info("Initializing event retention scheduler: period = %d days", p.period)
 	if p.period == 0 {
 		return
 	}
@@ -59,7 +60,7 @@ func (p *SqlitePurger) Purge() (int64, error) {
 
 	now := time.Now()
 	then := now.AddDate(0, 0, (p.period+1)*-1)
-	log.Info("Deleting events prior to %v", eve.FormatTimestamp(then))
+	log.Debug("Deleting events prior to %v", eve.FormatTimestamp(then))
 
 	tx, err := p.db.GetTx()
 	if err != nil {
@@ -98,6 +99,6 @@ where rowid in
 		return 0, err
 	}
 
-	log.Info("Purged %d events in %v", count, time.Now().Sub(start))
+	log.Debug("Purged %d events in %v", count, time.Now().Sub(start))
 	return count, nil
 }
