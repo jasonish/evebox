@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2017 Jason Ish
+/* Copyright (c) 2016-2019 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,10 @@ package api
 import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
+	"github.com/jasonish/evebox/log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // AlertsHandler handles GET requests to /api/1/alerts. This is the handler
@@ -86,13 +88,18 @@ func (c *ApiContext) AlertsHandler(w *ResponseWriter, r *http.Request) error {
 		options.QueryString = r.FormValue("queryString")
 	}
 
+	startTime := time.Now()
 	alerts, err := c.appContext.DataStore.AlertQuery(options)
 	if err != nil {
 		return err
 	}
+	elapsedTime := time.Now().Sub(startTime)
+
+	log.Debug("Alert query time: %v", elapsedTime)
 
 	response := map[string]interface{}{
 		"alerts": alerts,
+		"duration": elapsedTime.Milliseconds(),
 	}
 
 	return w.OkJSON(response)

@@ -172,7 +172,6 @@ ORDER BY timestamp DESC`
 		return nil, err
 	}
 	defer tx.Commit()
-	queryStart := time.Now()
 	rows, err := tx.Query(query, builder.args...)
 	if err != nil {
 		log.Error("%v", err)
@@ -224,7 +223,6 @@ ORDER BY timestamp DESC`
 
 		alerts = append(alerts, alert)
 	}
-	log.Debug("Alert query execution time: %v", time.Now().Sub(queryStart))
 
 	return alerts, nil
 }
