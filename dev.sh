@@ -1,6 +1,5 @@
 #! /bin/sh
 
-set -x
 set -e
 
 trap 'echo "Killing background jobs..."; kill $(jobs -p)' EXIT
