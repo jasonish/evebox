@@ -19,11 +19,11 @@ matrix:
           - rpm
           - gcc-mingw-w64
     language: go
-    go: "1.12"
+    go: "1.13"
   - os: osx
     osx_image: xcode8.3
     language: go
-    go: "1.12"
+    go: "1.13"
 
 before_install:
 - nvm install ${NODE_VERSION}
