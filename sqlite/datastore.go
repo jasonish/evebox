@@ -272,7 +272,7 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.Us
 			}
 			tx.Commit()
 			if count > 0 {
-				log.Info("Archived %d events in %v", count, time.Now().Sub(execStart))
+				log.Debug("Archived %d events in %v", count, time.Now().Sub(execStart))
 			} else {
 				break
 			}
