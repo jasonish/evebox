@@ -29,25 +29,13 @@ import {Injectable} from "@angular/core";
 import {TopNavService} from "./topnav.service";
 import {AppService} from "./app.service";
 import {ConfigService} from "./config.service";
-import {ToastrService} from "./toastr.service";
 import {ApiService} from "./api.service";
-
 import * as moment from "moment";
 import {HttpParams} from "@angular/common/http";
-import {ClientService} from "./client.service";
 
 declare function require(name: string);
 
 let queue = require("queue");
-
-export interface ResultSet {
-    took: number;
-    timedOut: boolean;
-    count: number;
-    events: any[];
-    newestTimestamp?: string;
-    oldestTimestamp?: string;
-}
 
 export interface AlertGroup {
     count: number;
@@ -74,9 +62,7 @@ export class ElasticSearchService {
     constructor(private api: ApiService,
                 private topNavService: TopNavService,
                 private appService: AppService,
-                private config: ConfigService,
-                private client: ClientService,
-                private toastr: ToastrService) {
+                private config: ConfigService) {
         this.index = config.getConfig().ElasticSearchIndex;
 
         try {
@@ -256,17 +242,17 @@ export class ElasticSearchService {
         params = params.append("time_range", options.timeRange);
         params = params.append("query_string", options.queryString);
 
-        return this.client.get("api/1/alerts", params)
-                .toPromise()
-                .then((response: any) => {
-                    return response.alerts.map((alert: AlertGroup) => {
-                        return {
-                            event: alert,
-                            selected: false,
-                            date: moment(alert.maxTs).toDate()
-                        };
-                    });
-                });
+        return this.api.get("api/1/alerts", {
+            params: params,
+        }).then((response: any) => {
+            return response.alerts.map((alert: AlertGroup) => {
+                return {
+                    event: alert,
+                    selected: false,
+                    date: moment(alert.maxTs).toDate()
+                };
+            });
+        });
     }
 
     /**
