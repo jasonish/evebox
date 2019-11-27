@@ -13,6 +13,8 @@
   `--bookmark-filename`. https://github.com/jasonish/evebox/issues/98
 - Support Elastic
   Search 7. https://github.com/jasonish/evebox/issues/112
+- Reduce the amount of per minute logs by moving some message to debug
+  (verbose) mode. https://github.com/jasonish/evebox/issues/116
 
 **Breaking Changes**
 - `esimport` now uses a default index of `logstash` instead of
