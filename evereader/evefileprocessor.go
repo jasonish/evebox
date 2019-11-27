@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 Jason Ish
+/* Copyright (c) 2017-2019 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,6 +62,8 @@ type EveFileProcessor struct {
 	lastStatCount uint64
 	lastStatTime  time.Time
 	eofs          uint64
+	lastEof       time.Time
+	eofAlarm      bool
 
 	// Start reading at end of file if no valid bookmark exists.
 	End bool
@@ -79,7 +81,9 @@ func (p *EveFileProcessor) AddCustomField(field string, value interface{}) {
 }
 
 func (p *EveFileProcessor) Start() {
-	p.lastStatTime = time.Now()
+	now := time.Now()
+	p.lastStatTime = now
+	p.lastEof = now
 	p.wg.Add(1)
 	go p.Run()
 }
@@ -135,9 +139,11 @@ func (p *EveFileProcessor) process(reader *FollowingReader, bookmarker *Bookmark
 			if err == io.EOF {
 				eof = true
 				p.eofs++
+				p.lastEof = time.Now()
+				p.eofAlarm = false
 			} else {
 				if _, ok := err.(MalformedEventError); ok {
-					log.Error("Maleformed event error: %v", err)
+					log.Error("Malformed event error: %v", err)
 					continue
 				}
 				return err
@@ -173,13 +179,18 @@ func (p *EveFileProcessor) process(reader *FollowingReader, bookmarker *Bookmark
 		// Print stats.
 		now := time.Now()
 		if now.Sub(p.lastStatTime).Seconds() > 60 {
-			log.Info("Total: %d; last minute: %d; EOFs: %d",
+			log.Debug("Total: %d; last minute: %d; EOFs: %d",
 				p.count,
 				p.count-p.lastStatCount,
 				p.eofs)
 			p.lastStatCount = p.count
 			p.lastStatTime = now
 			p.eofs = 0
+		}
+
+		if !p.eofAlarm && now.Sub(p.lastEof).Seconds() > 60 {
+			log.Error("No EOF seen in 60 seconds of log processing. May be overloaded")
+			p.eofAlarm = true
 		}
 
 		if p.stop {
