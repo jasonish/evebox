@@ -93,6 +93,7 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     setup() {
+        this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
     }
 
     ngOnInit() {
@@ -348,10 +349,11 @@ export class EventComponent implements OnInit, OnDestroy {
                         }
                     }
 
-                    this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
                     this.event = event;
                     this.http = http;
                     this.loading = false;
+
+                    this.setup();
                 })
                 .catch((error: any) => {
                     console.log("error:");

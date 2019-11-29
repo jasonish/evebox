@@ -16,6 +16,11 @@
 - Reduce the amount of per minute logs by moving some message to debug
   (verbose) mode. https://github.com/jasonish/evebox/issues/116
 
+**Fixes**
+- Show event services on first click through to event, rather than having
+  to refresh to see them.
+  Issue: https://github.com/jasonish/evebox/issues/109
+
 **Breaking Changes**
 - `esimport` now uses a default index of `logstash` instead of
   `evebox` to match common usage.

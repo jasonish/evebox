@@ -135,6 +135,7 @@ export class EventServices {
     }
 
     getServicesForEvent(event: any) {
+        console.log("getServicesForEvent");
         let services = this.services.filter((service: CustomEventService) => {
             return service.isValidForEvent(event);
         });
