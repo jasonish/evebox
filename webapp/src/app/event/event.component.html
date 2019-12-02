@@ -313,7 +313,7 @@
     </div>
 
     <!-- HTTP. -->
-    <div *ngIf="event._source.http">
+    <div *ngIf="http">
       <br/>
       <div class="card">
         <div class="card-header">
@@ -321,7 +321,7 @@
         </div>
         <div class="card-body">
           <table class="table table-striped table-sm">
-            <tr *ngFor="let item of event._source.http | mapToItems">
+            <tr *ngFor="let item of http | mapToItems">
               <td style="border: 0px; white-space: nowrap">{{item.key |
                 eveboxGenericPrettyPrinter}}:
               </td>

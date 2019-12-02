@@ -122,6 +122,25 @@ export class EventComponent implements OnInit, OnDestroy {
                 this.normalized.sensor_name_key = "host";
             }
         }
+
+        // Fixup the HTTP object for display.
+        if (!event._source.http) {
+            this.http = null;
+        } else {
+            this.http = {};
+            for (let key of Object.keys(event._source.http)) {
+                switch (key) {
+                    case "http_response_body":
+                    case "http_response_body_printable":
+                    case "http_request_body":
+                    case "http_request_body_printable":
+                        break;
+                    default:
+                        this.http[key] = event._source.http[key];
+                        break;
+                }
+            }
+        }
     }
 
     ngOnInit() {
