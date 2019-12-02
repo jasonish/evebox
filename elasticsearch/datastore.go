@@ -31,6 +31,7 @@ import (
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
 	"github.com/pkg/errors"
+	"strings"
 	"time"
 )
 
@@ -62,7 +63,7 @@ func (d *DataStore) FindFlow(flowId uint64, proto string, timestamp string,
 
 	query.EventType("flow")
 	query.AddFilter(TermQuery("flow_id", flowId))
-	query.AddFilter(TermQuery("proto", proto))
+	query.AddFilter(TermQuery("proto", strings.ToUpper(proto)))
 	query.AddFilter(RangeLte("flow.start", timestamp))
 	query.AddFilter(RangeGte("flow.end", timestamp))
 	query.ShouldHaveIp(srcIp, d.es.GetKeyword())
