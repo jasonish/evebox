@@ -20,6 +20,8 @@
 - Show event services on first click through to event, rather than having
   to refresh to see them.
   Issue: https://github.com/jasonish/evebox/issues/109
+- Fix sensor name display when event is clicked on in inbox or alert
+  view. https://github.com/jasonish/evebox/issues/104
 
 **Breaking Changes**
 - `esimport` now uses a default index of `logstash` instead of
