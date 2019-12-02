@@ -61,6 +61,9 @@ function compare(a:any, b:any):any {
     return c;
 }
 
+const DEFAULT_SORT_ORDER = "desc";
+const DEFAULT_SORT_BY = "timestamp";
+
 @Component({
     templateUrl: "./alerts.component.html",
     animations: [
@@ -82,8 +85,8 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     silentRefresh = false;
 
-    sortBy: string = "timestamp";
-    sortOrder: string = "desc";
+    sortBy: string = DEFAULT_SORT_BY;
+    sortOrder: string = DEFAULT_SORT_ORDER;
 
     private params:any;
 
@@ -105,35 +108,19 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.windowSize = this.settings.getInt(SETTING_ALERTS_PER_PAGE, 100);
 
         this.ss.subscribe(this, this.route.params, (params: any) => {
-
-            let doReload = !this.params;
-
-            if (this.params) {
-                let newParams = compare(this.params, params);
-                for (let key in newParams) {
-                    switch (key) {
-                        case "sortBy":
-                        case "sortOrder":
-                            break;
-                        default:
-                            doReload = true;
-                    }
-                }
-            }
-
             if (params.sortBy) {
                 this.sortBy = params.sortBy;
+            } else {
+                this.sortBy = DEFAULT_SORT_BY;
             }
 
             if (params.sortOrder) {
                 this.sortOrder = params.sortOrder;
+            } else {
+                this.sortOrder = DEFAULT_SORT_ORDER;
             }
 
             this.params = params;
-
-            if (!doReload) {
-                return;
-            }
 
             this.queryString = params.q || "";
 
