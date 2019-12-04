@@ -33,7 +33,7 @@ existing Elastic Search server.
 
 Example:
 
-    ./evebox -e http://localhost:9200
+    ./evebox server -e http://localhost:9200
 
 Then visit http://localhost:5636 with your browser.
 
@@ -63,7 +63,7 @@ Example:
 
 ```
 docker pull jasonish/evebox:latest
-docker run -it -p 5636:5636 jasonish/evebox -e http://elasticsearch:9200
+docker run -it -p 5636:5636 jasonish/evebox:latest -e http://elasticsearch:9200
 ```
 
 replacing your __http://elasticsearch:9200__ with that of your Elastic
@@ -73,7 +73,7 @@ will be the localhost of the container, not of the host.
 OR if you want to link to an already running Elastic Search container:
 
 ```
-docker run -it -p 5636:5636 --link elasticsearch jasonish/evebox
+docker run -it -p 5636:5636 --link elasticsearch jasonish/evebox:latest
 ```
 
 Then visit http://localhost:5636 with your browser.
@@ -116,7 +116,7 @@ written in Go. To build Evebox the following requirements must first
 be satisfied:
 
 * Node.js v10.13.0 or newer installed.
-* Go 1.11.1 or new installed.
+* Go 1.13.0 or new installed.
 
 First checkout EveBox. As EveBox uses Go 1.11 modules, do not check it
 out into your GOPATH.
