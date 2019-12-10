@@ -130,13 +130,17 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
 
         this.mousetrap.bind(this, "/", () => this.focusFilterInput());
-        this.mousetrap.bind(this, "* a", () => this.selectAllRows());
-        this.mousetrap.bind(this, "* n", () => this.deselectAllRows());
         this.mousetrap.bind(this, "r", () => this.refresh());
         this.mousetrap.bind(this, "o", () => this.openActiveEvent());
         this.mousetrap.bind(this, "f8", () => this.archiveActiveEvent());
         this.mousetrap.bind(this, "s", () =>
             this.toggleEscalatedState(this.getActiveRow()));
+
+        this.mousetrap.bind(this, "* a", () => this.selectAllRows());
+        this.mousetrap.bind(this, "* n", () => this.deselectAllRows());
+        this.mousetrap.bind(this, "* 1", () => {
+            this.selectBySignatureId(this.rows[this.activeRow]);
+        });
 
         // Escalate then archive event.
         this.mousetrap.bind(this, "f9", () => {
@@ -173,14 +177,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.mousetrap.bind(this, ".", () => {
             this.openDropdownMenu();
         });
-
-        this.mousetrap.bind(this, "1", () => {
-            this.selectBySignatureId(this.rows[this.activeRow]);
-        });
-        this.mousetrap.bind(this, "2", () => {
-            this.filterBySignatureId(this.rows[this.activeRow]);
-        });
-
     }
 
     ngOnDestroy(): any {
@@ -741,7 +737,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     selectBySignatureId(row: any) {
-
         let signatureId = row.event.event._source.alert.signature_id;
 
         this.rows.forEach((row: any) => {

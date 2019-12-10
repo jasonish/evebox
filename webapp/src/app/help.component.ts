@@ -165,7 +165,23 @@ export class EveboxHelpComponent implements OnInit, OnDestroy {
         {
             shortcut: "u",
             help: "When in event view, go back to event listing."
-        }
+        },
+        {
+            shortcut: "* a",
+            help: "Select all alerts in view.",
+        },
+        {
+            shortcut: "* n",
+            help: "Deselect all alerts.",
+        },
+        {
+            shortcut: "* 1",
+            help: "Select all alerts with same SID as current alert.",
+        },
+        {
+            shortcut: ".",
+            help: "Dropdown alert menu.",
+        },
     ];
 
     versionInfo: any = {};
