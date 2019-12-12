@@ -1,14 +1,23 @@
 name: Docker Image
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - ".gitlab-ci.yml"
+    pull_request:
 
 jobs:
 
   build:
-
+    name: Docker Image
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v1
       - name: Build Docker Image
         run: docker build --tag jasonish/evebox:master .
+      - name: Push Docker image to hub.docker.com (only for master)
+        if: github.ref == 'refs/heads/master'
+        run: |
+          echo ${{secrets.DOCKER_HUB_TOKEN}} | \
+              docker login -u ${{secrets.DOCKER_HUB_USERNAME}} --password-stdin
+          docker push jasonish/evebox:master
