@@ -53,7 +53,8 @@ release() {
 }
 
 release_windows() {
-    DOCKERFILE="./docker/builder/Dockerfile"
+    IMAGE="evebox/builder:windows"
+    DOCKERFILE="./docker/builder/Dockerfile.windows"
     docker_build
     docker_run \
 	"make install-deps && GOOS=windows CC=x86_64-w64-mingw32-gcc make dist"
