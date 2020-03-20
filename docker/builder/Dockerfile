@@ -22,12 +22,12 @@ RUN yum -y install \
     yum -y install rh-ruby23 rh-ruby23-ruby-devel
 RUN . /opt/rh/rh-ruby23/enable && gem install --bindir=/usr/local/bin fpm
 
-ENV GO_V 1.13.4
+ENV GO_V 1.14.1
 RUN cd /usr/local && \
     curl -o - -L https://dl.google.com/go/go${GO_V}.linux-amd64.tar.gz | \
         tar zxf -
 
-ENV N_V 10.14.2
+ENV N_V 12.16.1
 RUN cd /usr/local && \
   curl -o - -L https://nodejs.org/dist/v${N_V}/node-v${N_V}-linux-x64.tar.gz | \
        tar zxf - --strip-components=1
