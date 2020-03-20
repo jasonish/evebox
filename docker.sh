@@ -11,11 +11,8 @@ docker_build() {
 }
 
 docker_run() {
-    it=""
-    if [ -t 1 ] ; then
-	it="-it"
-    fi
-
+    # If you need an interactive terminal you can set the environment
+    # variable "it" to "-it".
     volumes=""
     volumes="${volumes} -v $(pwd):/src"
 
