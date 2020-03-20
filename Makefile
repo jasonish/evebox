@@ -68,7 +68,7 @@ public: resources/public/_done
 # Build's EveBox for the host platform.
 evebox: Makefile $(GO_SRCS)
 	$(GOPATH)/bin/packr -z -i resources
-	CGO_ENABLED=$(CGO_ENABLED) go build --tags "$(TAGS)" \
+	CGO_ENABLED=$(CGO_ENABLED) go build ${RACE} --tags "$(TAGS)" \
 		-ldflags "$(LDFLAGS)" \
 		cmd/evebox.go
 
