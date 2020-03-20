@@ -59,7 +59,7 @@ func (s *SessionStore) Reap() {
 
 	s.sessions.Range(func(key interface{}, value interface{}) bool {
 		session, ok := value.(*Session)
-		if ok && now.After(session.Expires) {
+		if ok && now.After(session.GetExpires()) {
 			//log.Info("Expiring session %s", session.String())
 			log.InfoWithFields(log.Fields{
 				"username": session.User.Username,
@@ -112,7 +112,8 @@ func (s *SessionStore) GenerateID() string {
 }
 
 func (s *SessionStore) setSessionTimeout(session *Session) {
-	session.Expires = time.Now().Add(TIMEOUT * time.Second)
+	expires := time.Now().Add(TIMEOUT * time.Second)
+	session.UpdateExpires(expires)
 }
 
 // NewSession creates a new session with a session ID. It DOES NOT add the

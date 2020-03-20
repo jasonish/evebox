@@ -29,6 +29,7 @@ package sessions
 import (
 	"fmt"
 	"github.com/jasonish/evebox/core"
+	"sync"
 	"time"
 )
 
@@ -36,8 +37,9 @@ type Session struct {
 	Id         string
 	User       core.User
 	RemoteAddr string
-	Expires    time.Time
+	expires    time.Time
 	Other      map[string]interface{}
+	lock       sync.Mutex
 }
 
 func NewSession() *Session {
@@ -52,4 +54,16 @@ func (s *Session) Username() string {
 
 func (s *Session) String() string {
 	return fmt.Sprintf("{Id: %s; Username: %s}", s.Id, s.User.Username)
+}
+
+func (s *Session) UpdateExpires(newExpire time.Time) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.expires = newExpire
+}
+
+func (s *Session) GetExpires() time.Time {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.expires
 }
