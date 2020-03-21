@@ -102,9 +102,6 @@ func initViper() {
 	viper.BindEnv("authentication.login-message",
 		"EVEBOX_AUTHENTICATION_LOGIN_MESSAGE")
 
-	viper.BindEnv("authentication.github.client-id", "GITHUB_CLIENT_ID")
-	viper.BindEnv("authentication.github.client-secret", "GITHUB_CLIENT_SECRET")
-
 	// Defaults for PostgreSQL database.
 	viper.SetDefault("database.postgresql.managed", true)
 	viper.BindEnv("database.postgresql.managed", "PGMANAGED")
@@ -148,22 +145,10 @@ func configure(config *appcontext.Config) {
 
 	config.Authentication.Required = viper.GetBool("authentication.required")
 	if config.Authentication.Required {
-
 		config.Authentication.Type =
 			viper.GetString("authentication.type")
 		config.Authentication.LoginMessage =
 			viper.GetString("authentication.login-message")
-
-		// GitHub.
-		github := &config.Authentication.Github
-		github.Enabled = viper.GetBool("authentication.github.enabled")
-		if config.Authentication.Github.Enabled {
-			github.ClientSecret =
-				viper.GetString("authentication.github.client-secret")
-			github.ClientID =
-				viper.GetString("authentication.github.client-id")
-			github.Callback = viper.GetString("authentication.github.callback")
-		}
 	}
 }
 

@@ -33,13 +33,6 @@ import (
 	"github.com/jasonish/evebox/sqlite/configdb"
 )
 
-type GithubAuthConfig struct {
-	Enabled      bool
-	ClientID     string
-	ClientSecret string
-	Callback     string
-}
-
 type Config struct {
 	Http struct {
 		TlsEnabled     bool
@@ -58,9 +51,6 @@ type Config struct {
 		Type string
 
 		LoginMessage string
-
-		// GitHub Oauth2.
-		Github GithubAuthConfig
 	}
 }
 

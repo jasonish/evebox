@@ -57,27 +57,3 @@ Adding users is done with the config tool, for example::
 
 	    sudo evebox config -D /var/lib/evebox users add
 
-External Authenticators
------------------------
-
-GitHub Oauth2
-~~~~~~~~~~~~~
-
-EveBox can authenticate against GitHub using Oauth2. It is required
-that the user is first created in the configuration database, but with
-the ``--github-username`` parameters, for example::
-
-  evebox config -D /var/lib/evebox users add --username jason \
-      --github-username jasonish
-
-You will be prompted with user details retrieved from GitHub and must
-provide confirmation before the user is actually added to the
-database.
-
-GitHub must also be enabled in the configuration file with the
-``client-id``, ``client-secret`` and ``callback`` URLs configured.
-
-.. note:: The ``client-id`` and ``client-secret`` are obtained from
-          GitHub by registering a new application under your
-          "Developer settings", currently
-          https://github.com/settings/developers.

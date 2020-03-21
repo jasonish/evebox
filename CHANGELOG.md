@@ -31,11 +31,10 @@
 - The EveBox server will now bind to localhost by default instead of
   being open. Use the `--host` command line option to accept connections
   more openly. https://github.com/jasonish/evebox/issues/110
+- GitHub authentication has been removed. Looks like its been broken for
+  a little while now.
 
 ### Deprecations
-- GitHub authentication: Built-in authentication against oauth
-  provides will be removed. Authentication is better handled by other
-  tools, and not EveBox itself.
 - LetsEncrypt support: This is better done by a reverse proxy where
   LetsEncrypt support is more of a design goal.
 

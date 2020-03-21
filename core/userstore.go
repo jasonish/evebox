@@ -33,9 +33,6 @@ type User struct {
 	Email    string `json:"email,omitempty"`
 
 	Anonymous bool `json:"anonymous,omitempty"`
-
-	GitHubUsername string `json:"github_username,omitempty"`
-	GitHubID       int64  `json:"github_id,omitempty"`
 }
 
 func NewAnonymousUser(username string) User {
@@ -57,7 +54,6 @@ type UserStore interface {
 	AddUser(user User, password string) (string, error)
 	FindByUsername(username string) (User, error)
 	FindByUsernamePassword(username string, password string) (User, error)
-	FindByGitHubUsername(username string) (User, error)
 	UpdatePassword(username string, password string) error
 	FindAll() ([]User, error)
 }

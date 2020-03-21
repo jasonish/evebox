@@ -51,11 +51,6 @@ func (c *ApiContext) LoginOptions(w *ResponseWriter, r *http.Request) error {
 			config.Authentication.Type)
 
 		response.Message = config.Authentication.LoginMessage
-
-		if c.appContext.Config.Authentication.Github.Enabled {
-			response.Authentication.Types =
-				append(response.Authentication.Types, "github")
-		}
 	}
 
 	return w.OkJSON(response)

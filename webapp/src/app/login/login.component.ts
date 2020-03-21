@@ -27,8 +27,6 @@
 import {AfterViewInit, Component, OnInit} from "@angular/core";
 import {ActivatedRoute, Router} from "@angular/router";
 import {ApiService} from "../api.service";
-import {Http} from "@angular/http";
-import {URLSearchParams} from "@angular/http";
 import {ClientService} from "../client.service";
 
 declare var window: any;
@@ -45,7 +43,6 @@ export class LoginComponent implements OnInit, AfterViewInit {
 
     username = false;
     password = false;
-    github = false;
 
     error: string;
 
@@ -80,9 +77,6 @@ export class LoginComponent implements OnInit, AfterViewInit {
                             case "usernamepassword":
                                 this.username = true;
                                 this.password = true;
-                                break;
-                            case "github":
-                                this.github = true;
                                 break;
                         }
                     }
@@ -120,14 +114,5 @@ export class LoginComponent implements OnInit, AfterViewInit {
                     this.error = "Login failed: " + JSON.stringify(error);
                 }
             });
-    }
-
-    loginGithub() {
-        let params = new URLSearchParams();
-        params.set("fail-redirect", `${this.client.baseUrl}/#/login`);
-        params.set("success-redirect", this.client.baseUrl);
-        this.api.get("/auth/github", {search: params}).then((response) => {
-            window.location = response.redirect;
-        });
     }
 }

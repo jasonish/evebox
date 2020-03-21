@@ -28,16 +28,12 @@ package config
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"github.com/jasonish/evebox/core"
-	"github.com/jasonish/evebox/server/auth"
 	"github.com/jasonish/evebox/sqlite/configdb"
 	"github.com/jasonish/evebox/util"
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh/terminal"
-	"net/http"
 	"os"
 	"strings"
 	"syscall"
@@ -113,21 +109,13 @@ func readPassword(prompt string) string {
 func UsersAdd(db *configdb.ConfigDB, args []string) {
 	var username string
 	var password string
-	var githubUsername string
 
 	flagset := pflag.NewFlagSet("users add", pflag.ExitOnError)
 	flagset.StringVarP(&username, "username", "u", "",
 		"Username")
 	flagset.StringVarP(&password, "password", "p", "",
 		"Password")
-	flagset.StringVar(&githubUsername, "github-username", "",
-		"GitHub username (for Oauth2)")
 	flagset.Parse(args)
-
-	// Some validation.
-	if password != "" && githubUsername != "" {
-		fatal("error: password and external user-id may not be used together")
-	}
 
 	userstore := configdb.NewUserStore(db.DB)
 	user := core.User{}
@@ -140,34 +128,13 @@ func UsersAdd(db *configdb.ConfigDB, args []string) {
 	}
 	user.Username = username
 
-	if githubUsername != "" {
-		githubUser, err := getGitHubUser(githubUsername)
-		if err != nil {
-			fatal("Failed to get GitHub githubUser: %v", err)
-		}
-		println("Found GitHub githubUser: Username: %s; Email: %s; Name: %s.",
-			githubUser.Login, githubUser.Email, githubUser.Name)
-		r := readString("Add this githubUser [Y/n]")
-		switch strings.ToLower(r) {
-		case "", "y", "yes":
+	for {
+		password = readPassword("Enter password")
+		confirm := readPassword("Re-enter password")
+		if password == confirm {
 			break
-		default:
-			println("Exiting...")
-			return
 		}
-		user.GitHubUsername = githubUser.Login
-		user.GitHubID = githubUser.Id
-		user.FullName = githubUser.Name
-		user.Email = githubUser.Email
-	} else if password == "" {
-		for {
-			password = readPassword("Enter password")
-			confirm := readPassword("Re-enter password")
-			if password == confirm {
-				break
-			}
-			println("Passwords don't match, try again.")
-		}
+		println("Passwords don't match, try again.")
 	}
 
 	id, err := userstore.AddUser(user, password)
@@ -217,26 +184,6 @@ func usersRemove(db *configdb.ConfigDB, args []string) {
 		return
 	}
 	println("OK")
-}
-
-func getGitHubUser(username string) (user auth.GitHubUser, err error) {
-	response, err := http.Get(fmt.Sprintf("%s/%s",
-		"https://api.github.com/users",
-		username))
-	if err != nil {
-		return user, err
-	}
-	if response.StatusCode != 200 {
-		return user, errors.New(response.Status)
-	}
-	defer response.Body.Close()
-	decoder := json.NewDecoder(response.Body)
-	decoder.UseNumber()
-	err = decoder.Decode(&user)
-	if err != nil {
-		return user, errors.Wrap(err, "failed to decode GitHub response")
-	}
-	return user, nil
 }
 
 func usersPasswd(db *configdb.ConfigDB, args []string) {

@@ -174,23 +174,6 @@ func NewServer(appContext appcontext.AppContext) *Server {
 		context: appContext,
 	}
 
-	if appContext.Config.Authentication.Github.Enabled {
-		log.Warning("DEPRECATION WARNING: GitHub authentication will be removed in the next release")
-		githubAuthenticator := auth.NewGithub(
-			appContext.Config.Authentication.Github,
-			appContext.Userstore)
-		githubAuthenticator.SessionStore = sessionStore
-
-		router.Handle("/auth/github", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			githubAuthenticator.Handler(w, r)
-		}))
-
-		router.Handle("/auth/github/callback", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			githubAuthenticator.Callback(w, r)
-		}))
-		log.Info("GitHub Oauth2 authentication configured")
-	}
-
 	apiContext := api.NewApiContext(&appContext, sessionStore, authenticator)
 	apiContext.InitRoutes(router.Subrouter("/api/1"))
 
