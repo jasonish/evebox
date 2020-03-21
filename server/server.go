@@ -175,6 +175,7 @@ func NewServer(appContext appcontext.AppContext) *Server {
 	}
 
 	if appContext.Config.Authentication.Github.Enabled {
+		log.Warning("DEPRECATION WARNING: GitHub authentication will be removed in the next release")
 		githubAuthenticator := auth.NewGithub(
 			appContext.Config.Authentication.Github,
 			appContext.Userstore)
@@ -266,6 +267,7 @@ func (s *Server) Start(host string, port uint16) error {
 	config := s.context.Config
 
 	if config.LetsEncryptHostname != "" {
+		log.Warning("DEPRECATION WARNING: LetsEncrypt support will be removed in the next release")
 		return s.startWithAutoCert(host, port)
 	}
 

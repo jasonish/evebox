@@ -2,7 +2,7 @@
 
 ## unreleased
 
-**Enhancements**
+### Enhancements
 - Handle Filebeat overriding the "host" field with its own object by
   normalizing the sensor name before rendering. If Filebeat is used,
   the Suricata provided sensor name is lost, so use the Filebeat
@@ -16,14 +16,14 @@
 - Reduce the amount of per minute logs by moving some message to debug
   (verbose) mode. https://github.com/jasonish/evebox/issues/116
 
-**Fixes**
+### Fixes
 - Show event services on first click through to event, rather than having
   to refresh to see them.
   Issue: https://github.com/jasonish/evebox/issues/109
 - Fix sensor name display when event is clicked on in inbox or alert
   view. https://github.com/jasonish/evebox/issues/104
 
-**Breaking Changes**
+### Breaking Changes
 - `esimport` now uses a default index of `logstash` instead of
   `evebox` to match common usage.
 - The `evebox` application now requires a command name. It will not
@@ -31,6 +31,13 @@
 - The EveBox server will now bind to localhost by default instead of
   being open. Use the `--host` command line option to accept connections
   more openly. https://github.com/jasonish/evebox/issues/110
+
+### Deprecations
+- GitHub authentication: Built-in authentication against oauth
+  provides will be removed. Authentication is better handled by other
+  tools, and not EveBox itself.
+- LetsEncrypt support: This is better done by a reverse proxy where
+  LetsEncrypt support is more of a design goal.
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.2..master)
 
