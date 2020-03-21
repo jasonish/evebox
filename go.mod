@@ -9,9 +9,6 @@ require (
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.6.2
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/kr/pty v1.1.8 // indirect
 	github.com/lib/pq v0.0.0-20181016162627-9eb73efc1fcc
 	github.com/mattn/go-isatty v0.0.4
 	github.com/mattn/go-sqlite3 v1.10.0
@@ -30,10 +27,8 @@ require (
 	github.com/ua-parser/uap-go v0.0.0-20181003033359-705feb871b1a
 	golang.org/x/crypto v0.0.0-20181030022821-bc7917b19d8f
 	golang.org/x/net v0.0.0-20181029044818-c44066c5c816 // indirect
-	golang.org/x/oauth2 v0.0.0-20181017192945-9dcd33a902f4
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
 	golang.org/x/sys v0.0.0-20181029174526-d69651ed3497 // indirect
-	google.golang.org/appengine v1.2.0 // indirect
 )
 
 replace github.com/gobuffalo/packr => github.com/gobuffalo/packr v1.13.0
