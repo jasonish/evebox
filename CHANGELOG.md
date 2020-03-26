@@ -34,9 +34,19 @@
 - GitHub authentication has been removed. Looks like its been broken for
   a little while now.
 
+### Known Issues
+- Filebeat: The basic views work with Filebeat indices but searching
+  does not. This is due to Filebeat indexing fields as keywords which
+  complicates "free text" searching. This will probably not be fixed,
+  but instead focus will be on supporting Elastic Search ECS (or more
+  simply the Suricata plugin for filebeat) -
+  https://github.com/jasonish/evebox/issues/97
+
 ### Deprecations
 - LetsEncrypt support: This is better done by a reverse proxy where
   LetsEncrypt support is more of a design goal.
+- Plain Filebeat indices will likely be deprecated due to issues with
+  searching.
 
 [Full Changelog](https://github.com/jasonish/evebox/compare/0.10.2..master)
 
