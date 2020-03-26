@@ -23,13 +23,13 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-import {Component, OnInit, OnDestroy} from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {EveboxSubscriptionService} from '../../subscription.service';
 import {ElasticSearchService} from '../../elasticsearch.service';
 import {TopNavService} from '../../topnav.service';
 import {ReportsService} from '../reports.service';
-import {AppService, AppEvent, AppEventCode} from '../../app.service';
+import {AppEvent, AppEventCode, AppService} from '../../app.service';
 import {loadingAnimation} from '../../animations';
 import * as moment from 'moment';
 import {humanizeFileSize} from '../../humanize.service';
@@ -103,8 +103,6 @@ export class IpReportComponent implements OnInit, OnDestroy {
 
     queryString = '';
 
-    private useIpDatatype:boolean = false;
-
     constructor(private route: ActivatedRoute,
                 private elasticsearch: ElasticSearchService,
                 private appService: AppService,
@@ -115,8 +113,6 @@ export class IpReportComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
-        this.useIpDatatype = this.elasticsearch.useIpDatatype;
-
         this.ss.subscribe(this, this.route.params, (params: any) => {
             this.ip = params.ip;
             this.queryString = params.q;
@@ -129,8 +125,6 @@ export class IpReportComponent implements OnInit, OnDestroy {
                 this.refresh();
             }
         });
-
-        console.log("ipDataType: " + this.elasticsearch.useIpDatatype);
     }
 
     relatedAddresses: any[] = [];
@@ -158,8 +152,7 @@ export class IpReportComponent implements OnInit, OnDestroy {
                     name: parts.join(sep) + sep,
                 });
             }
-        }
-        else {
+        } else {
             // The above generic loop could be used for IPv4 as well, but
             // this gives better use about with CIDR notation.
             if (parts.length > 3) {
@@ -665,11 +658,11 @@ export class IpReportComponent implements OnInit, OnDestroy {
         });
     }
 
-    ipQuery(field: string, value:string):any {
+    ipQuery(field: string, value: string): any {
         let type = "term";
 
-        if (value[value.length -1] == ".") {
-           type = "prefix";
+        if (value[value.length - 1] == ".") {
+            type = "prefix";
         }
 
         field = this.asKeyword(field);

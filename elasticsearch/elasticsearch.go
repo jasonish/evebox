@@ -75,8 +75,6 @@ type ElasticSearch struct {
 	MajorVersion  int64
 	MinorVersion  int64
 
-	useIpDatatype bool
-
 	httpClient *httpclient.HttpClient
 }
 
@@ -168,10 +166,6 @@ func (es *ElasticSearch) GetTemplate(name string) (util.JsonMap, error) {
 	return template, nil
 }
 
-func (es *ElasticSearch) GetUseIpDatatype() bool {
-	return es.useIpDatatype
-}
-
 func (es *ElasticSearch) ConfigureIndex() error {
 	index := es.EventIndexPrefix
 
@@ -200,18 +194,6 @@ func (es *ElasticSearch) ConfigureIndex() error {
 
 	version := template.GetMap(index).Get("version")
 	log.Debug("Found template version %v", version)
-
-	// Check if we should use the IP datatype on src_ip and dest_ip.
-	properties := template.GetMap(index).
-		GetMap("mappings").GetMap("_default_").GetMap("properties")
-	if properties != nil {
-		destIpType := properties.GetMap("dest_ip").GetString("type")
-		sourceIpType := properties.GetMap("src_ip").GetString("type")
-		if destIpType == "ip" && sourceIpType == "ip" {
-			log.Info("Elastic Search EVE records are using IP datatype.")
-			es.useIpDatatype = true
-		}
-	}
 
 	// Determine keyword.
 	if !es.config.NoKeywordSuffix {

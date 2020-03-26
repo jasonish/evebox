@@ -51,7 +51,6 @@ func (c *ApiContext) ConfigHandler(w *ResponseWriter, r *http.Request) error {
 
 	if c.appContext.ElasticSearch != nil {
 		esKeyword = c.appContext.ElasticSearch.GetKeyword()
-		response.Extra["elasticSearchUseIpDatatype"] = c.appContext.ElasticSearch.GetUseIpDatatype()
 	}
 
 	// Make sure features is at least an empty list.
