@@ -167,81 +167,15 @@ func (es *ElasticSearch) GetTemplate(name string) (util.JsonMap, error) {
 }
 
 func (es *ElasticSearch) ConfigureIndex() error {
-	index := es.EventIndexPrefix
-
-	// Use a template name matching the index prefix unless explicitly set.
-	templateName := index
-	if es.config.Template != "" {
-		templateName = es.config.Template
-	}
-
-	if strings.HasPrefix(index, "filebeat") {
-		if es.config.KeywordSuffix == "" && !es.config.NoKeywordSuffix {
-			es.config.KeywordSuffix = ""
-			es.config.NoKeywordSuffix = true
-		}
+	if strings.HasPrefix(es.EventIndexPrefix, "filebeat") {
+		log.Warning("WARNING: Filebeat index detected: EveBox does not work well with Filebeat indexes");
+		es.config.KeywordSuffix = ""
+		es.config.NoKeywordSuffix = true
 		return nil
 	}
 
-	template, err := es.GetTemplate(templateName)
-	if err != nil {
-		log.Warning("Failed to get template from Elastic Search, keyword resolution delayed.")
-		return err
-	}
-
-	keys := template.GetKeys()
-	log.Info("Found templates %s", keys)
-
-	version := template.GetMap(index).Get("version")
-	log.Debug("Found template version %v", version)
-
-	// Determine keyword.
-	if !es.config.NoKeywordSuffix {
-		keywordFound := false
-		dynamicTemplates := template.GetMap(index).
-			GetMap("mappings").
-			GetMap("_default_").
-			GetMapList("dynamic_templates")
-		for _, entry := range dynamicTemplates {
-			if entry["string_fields"] != nil {
-				mappingType := entry.GetMap("string_fields").
-					GetMap("mapping").
-					GetMap("fields").
-					GetMap("keyword").
-					Get("type")
-				if mappingType == "keyword" {
-					es.config.KeywordSuffix = "keyword"
-					keywordFound = true
-				}
-			}
-		}
-
-		if !keywordFound {
-			dynamicTemplates := template.GetMap(index).
-				GetMap("mappings").
-				GetMapList("dynamic_templates")
-			for _, entry := range dynamicTemplates {
-				if entry["string_fields"] != nil {
-					mappingType := entry.GetMap("string_fields").
-						GetMap("mapping").
-						GetMap("fields").
-						GetMap("keyword").
-						Get("type")
-					if mappingType == "keyword" {
-						es.config.KeywordSuffix = "keyword"
-						keywordFound = true
-					}
-				}
-			}
-		}
-
-		if keywordFound {
-			log.Info("Found Elastic Search keyword suffix to be: %s",
-				es.config.KeywordSuffix)
-		} else {
-			log.Warning("Failed to determine Elastic Search keyword suffix, things may not work right.")
-		}
-	}
+	log.Info("Assuming Logstash style index")
+	es.config.KeywordSuffix = "keyword"
 
 	return nil
 }
