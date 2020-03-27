@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.11.0 - 2020-03-26
 
 ### Enhancements
 - Handle Filebeat overriding the "host" field with its own object by
@@ -48,7 +48,7 @@
 - Plain Filebeat indices will likely be deprecated due to issues with
   searching.
 
-[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.2..master)
+[Full Changelog](https://github.com/jasonish/evebox/compare/0.10.2..0.11.0)
 
 ## 0.10.2 - 2019-01-30
 
