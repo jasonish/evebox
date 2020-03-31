@@ -8,6 +8,19 @@ on:
 
 jobs:
 
+  dist:
+    name: Build Distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - run: ./docker.sh release
+      - run: ./docker.sh release-windows
+      - run: ./docker.sh release-macos
+      - uses: actions/upload-artifact@v1
+        with:
+          name: dist
+          path: dist
+
   build:
     name: Docker Image
     runs-on: ubuntu-latest
