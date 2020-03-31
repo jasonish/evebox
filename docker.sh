@@ -26,7 +26,7 @@ docker_run() {
     real_uid=$(id -u)
     real_gid=$(id -g)
 
-    if [[ "${real_uid}" = "0" ]]; then
+    if [ "${real_uid}" = "0" ]; then
 	image_home="/root"
     else
 	image_home="/home/builder"
@@ -95,7 +95,7 @@ case "$1" in
 	;;
 
     *)
-	if [[ "$1" ]]; then
+	if [ "$1" ]; then
 	    docker_build
 	    docker_run "$@"
 	else
