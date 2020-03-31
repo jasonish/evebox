@@ -155,6 +155,12 @@ rpm:
 	    --before-install=rpm/before-install.sh \
 	    --after-upgrade=rpm/after-upgrade.sh \
 	    --config-files /etc/sysconfig/evebox \
+	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox.service \
+	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox-agent.service \
+	    --rpm-attr 0755,root,root:/usr/bin/evebox \
+	    --rpm-attr 0644,root,root:/etc/evebox/evebox.yaml.example \
+	    --rpm-attr 0644,root,root:/etc/evebox/agent.yaml.example \
+	    --rpm-attr 0644,root,root:/etc/sysconfig/evebox.service \
 	    ${EVEBOX_BIN}=/usr/bin/evebox \
 	    evebox.yaml.example=/etc/evebox/evebox.yaml.example \
 	    agent.yaml.example=/etc/evebox/agent.yaml.example \
