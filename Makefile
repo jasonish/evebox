@@ -115,7 +115,18 @@ else
 deb: EVEBOX_BIN := dist/${APP}-${VERSION}-linux-x64/evebox
 deb: OUTPUT := dist/
 endif
+deb: STAGE := dist/_stage-deb
 deb:
+	rm -rf $(STAGE)
+	mkdir -p $(STAGE)
+	install -m 0644 \
+		evebox.yaml.example \
+		agent.yaml.example \
+		deb/evebox.default \
+		deb/evebox.service \
+		deb/evebox-agent.service \
+		$(STAGE)
+	install -m 0755 $(EVEBOX_BIN) $(STAGE)
 	fpm --force -s dir \
 		-t deb \
 		-p $(OUTPUT) \
@@ -126,12 +137,13 @@ deb:
 		--after-upgrade=deb/after-upgrade.sh \
 		--deb-no-default-config-files \
 		--config-files /etc/default/evebox \
-		${EVEBOX_BIN}=/usr/bin/evebox \
-	        evebox.yaml.example=/etc/evebox/evebox.yaml.example \
-		agent.yaml.example=/etc/evebox/agent.yaml.example \
-		deb/evebox.default=/etc/default/evebox \
-		deb/evebox.service=/lib/systemd/system/evebox.service \
-		deb/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+		$(STAGE)/evebox=/usr/bin/evebox \
+	        $(STAGE)/evebox.yaml.example=/etc/evebox/evebox.yaml.example \
+		$(STAGE)/agent.yaml.example=/etc/evebox/agent.yaml.example \
+		$(STAGE)/evebox.default=/etc/default/evebox \
+		$(STAGE)/evebox.service=/lib/systemd/system/evebox.service \
+		$(STAGE)/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+	ar p dist/*.deb data.tar.gz | tar ztvf -
 
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
