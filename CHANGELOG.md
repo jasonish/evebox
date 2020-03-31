@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.11.1 - 2020-03-31
+
+- Fix file permissions in RPM and Debian
+  packaging. https://github.com/jasonish/evebox/issues/128
+
 ## 0.11.0 - 2020-03-26
 
 ### Enhancements
