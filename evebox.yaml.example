@@ -69,7 +69,7 @@ database:
     # PostgreSQL port (default: 5432; env: PGPORT)
     #port:
 
-    # Database name (default: eveobox; env: PGDATABASE)
+    # Database name (default: evebox; env: PGDATABASE)
     #database:
 
     # Database user (default: evebox; env: PGUSER)
