@@ -1,15 +1,17 @@
-name: Docker Image
+name: Builds
 
 on:
   push:
     paths-ignore:
       - ".gitlab-ci.yml"
-    pull_request:
+  pull_request:
+    paths-ignore:
+      - ".gitlab-ci.yml"
 
 jobs:
 
-  dist:
-    name: Build Distributions
+  linux:
+    name: Linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -32,7 +34,7 @@ jobs:
           path: dist/*.rpm
 
   windows:
-    name: Building Windows Distribution
+    name: Window
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -42,7 +44,7 @@ jobs:
           path: dist/*.zip
 
   macos:
-    name: Building MacOS Distribution
+    name: MacOS
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -51,7 +53,7 @@ jobs:
         with:
           path: dist/*.zip
 
-  build:
+  docker:
     name: Docker Image
     runs-on: ubuntu-latest
     steps:
