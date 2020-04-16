@@ -12,20 +12,50 @@ jobs:
     name: Build Distributions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - run: ./docker.sh release
-      - run: ./docker.sh release-windows
-      - run: ./docker.sh release-macos
-      - uses: actions/upload-artifact@v1
+      - run: tar zcvf resources-public.tar.gz ./resources/public
+      - uses: actions/upload-artifact@v2-preview
         with:
-          name: dist
-          path: dist
+          path: resources-public.tar.gz
+      - uses: actions/upload-artifact@v2-preview
+        with:
+          path: dist/*.zip
+      - uses: actions/upload-artifact@v2-preview
+        with:
+          path: resources-public.tar.gz
+      - uses: actions/upload-artifact@v2-preview
+        with:
+          path: dist/*.deb
+      - uses: actions/upload-artifact@v2-preview
+        with:
+          path: dist/*.rpm
+
+  windows:
+    name: Building Windows Distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: ./docker.sh release-windows
+      - uses: actions/upload-artifact@v2-preview
+        with:
+          path: dist/*.zip
+
+  macos:
+    name: Building MacOS Distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: ./docker.sh release-macos
+      - uses: actions/upload-artifact@v2-preview
+        with:
+          path: dist/*.zip
 
   build:
     name: Docker Image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Build Docker Image
         run: docker build --tag jasonish/evebox:master .
       - name: Push Docker image to hub.docker.com (only for master)
