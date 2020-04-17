@@ -126,9 +126,13 @@ export class EveboxEventTableComponent implements OnInit, OnDestroy {
 
     isArchived(row: any) {
         try {
-            return row._source.tags.indexOf("archived") > -1;
-        }
-        catch (e) {
+            if (row._source.tags.indexOf("evebox.archived")) {
+                return true;
+            }
+            if (row._source.tags.indexOf("archived")) {
+                return true;
+            }
+        } finally {
             return false;
         }
     }

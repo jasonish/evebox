@@ -92,8 +92,8 @@ func (s *DataStore) get3TupleAggs() map[string]interface{} {
 								},
 								"escalated": map[string]interface{}{
 									"filter": map[string]interface{}{
-										"term": map[string]interface{}{
-											"tags": "escalated",
+										"terms": map[string]interface{}{
+											"tags": []interface{}{"evebox.escalated", "escalated"},
 										},
 									},
 								},
@@ -116,13 +116,25 @@ func (s *DataStore) AlertQuery(options core.AlertQueryOptions) ([]core.AlertGrou
 
 	// Set must have tags, for example to get escalated alerts.
 	for _, tag := range options.MustHaveTags {
-		query.AddFilter(TermQuery("tags", tag))
+		if tag == "archived" {
+			query.AddFilter(TermQuery("tags", "evebox.archived"))
+		} else if tag == "escalated" {
+			query.AddFilter(TermQuery("tags", "evebox.escalated"))
+		} else {
+			query.AddFilter(TermQuery("tags", tag))
+		}
 	}
 
 	// Set must not have tags. For example, the inbox must not have
 	// archive tags set.
 	for _, tag := range options.MustNotHaveTags {
-		query.MustNot(TermQuery("tags", tag))
+		if tag == "archived" {
+			query.MustNot(TermQuery("tags", "evebox.archived"))
+		} else if tag == "escalated" {
+			query.MustNot(TermQuery("tags", "evebox.escalated"))
+		} else {
+			query.MustNot(TermQuery("tags", tag))
+		}
 	}
 
 	if options.QueryString != "" {

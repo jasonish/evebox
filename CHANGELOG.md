@@ -1,5 +1,12 @@
 # Change Log
 
+## unreleased
+
+### Changes
+- Stop tagging events with "archived" and "escalated", and only use
+  "evebox.archived" and "evebox.escalated". This should not be noticed
+  as EveBox has been using both tags for a very long.
+
 ## 0.11.0 - 2020-03-26
 
 ### Enhancements

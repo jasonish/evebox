@@ -203,7 +203,7 @@ func (s *DataStore) AddTagsToAlertGroupsByQuery(p core.AlertGroupQueryParams, ta
 
 // ArchiveAlertGroup is a specialization of AddTagsToAlertGroup.
 func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
-	tags := []string{"archived", "evebox.archived"}
+	tags := []string{"evebox.archived"}
 	return s.AddTagsToAlertGroupsByQuery(p, tags, HistoryEntry{
 		Action:    ACTION_ARCHIVED,
 		Timestamp: FormatTimestampUTC(time.Now()),
@@ -213,7 +213,7 @@ func (s *DataStore) ArchiveAlertGroup(p core.AlertGroupQueryParams, user core.Us
 
 // EscalateAlertGroup is a specialization of AddTagsToAlertGroup.
 func (s *DataStore) EscalateAlertGroup(p core.AlertGroupQueryParams, user core.User) error {
-	tags := []string{"escalated", "evebox.escalated"}
+	tags := []string{"evebox.escalated"}
 	history := HistoryEntry{
 		Username:  user.Username,
 		Action:    ACTION_ESCALATED,
