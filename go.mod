@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.6.2
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/lib/pq v0.0.0-20181016162627-9eb73efc1fcc
 	github.com/mattn/go-isatty v0.0.4
 	github.com/mattn/go-sqlite3 v1.10.0
