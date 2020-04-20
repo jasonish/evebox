@@ -55,7 +55,6 @@ type Config struct {
 	KeywordSuffix    string
 	NoKeywordSuffix  bool
 	ForceTemplate    bool
-	DocType          string
 }
 
 type ElasticSearch struct {
@@ -263,15 +262,6 @@ func (es *ElasticSearch) DeleteScroll(scrollId string) (*http.Response, error) {
 		strings.NewReader(scrollId))
 }
 
-func (es *ElasticSearch) PartialUpdate(index string, doctype string, id string,
-	doc interface{}) (*http.Response, error) {
-	body := map[string]interface{}{
-		"doc": doc,
-	}
-	return es.httpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
-		index, doctype, id), body)
-}
-
 func IsError(response *http.Response) error {
 	if response.StatusCode < 400 {
 		return nil
@@ -283,10 +273,10 @@ func IsError(response *http.Response) error {
 	return errors.Errorf("%s %s", response.Status, string(body))
 }
 
-func (es *ElasticSearch) Update(index string, docType string, docId string,
+func (es *ElasticSearch) Update(index string, docId string,
 	body interface{}) (*Response, error) {
-	response, err := es.httpClient.PostJson(fmt.Sprintf("%s/%s/%s/_update?refresh=true",
-		index, docType, docId), body)
+	response, err := es.httpClient.PostJson(fmt.Sprintf("%s/%s/_update?refresh=true",
+		index, docId), body)
 	if err != nil {
 		return nil, errors.Wrap(err, "http request failed")
 	}

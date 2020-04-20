@@ -38,10 +38,6 @@ func (d Document) Id() string {
 	return d.GetString("_id")
 }
 
-func (d Document) Type() string {
-	return d.GetString("_type")
-}
-
 func (d Document) Index() string {
 	return d.GetString("_index")
 }
