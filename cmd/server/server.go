@@ -40,7 +40,6 @@ import (
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
 	"github.com/jasonish/evebox/postgres"
-	"github.com/jasonish/evebox/rules"
 	"github.com/jasonish/evebox/server"
 	"github.com/jasonish/evebox/sqlite"
 	"github.com/jasonish/evebox/sqlite/configdb"
@@ -465,12 +464,6 @@ func initInternalEveReader(appContext *appcontext.AppContext, inputStart bool) {
 	eveFileProcessor.AddFilter(&eve.TagsFilter{})
 	eveFileProcessor.AddFilter(eve.NewGeoipFilter(appContext.GeoIpService))
 	eveFileProcessor.AddFilter(&useragent.EveUserAgentFilter{})
-
-	inputRules := viper.GetStringSlice("input.rules")
-	if inputRules != nil {
-		ruleMap := rules.NewRuleMap(inputRules)
-		eveFileProcessor.AddFilter(ruleMap)
-	}
 
 	for field, value := range viper.GetStringMap("input.custom-fields") {
 		eveFileProcessor.AddCustomField(field, value)

@@ -42,10 +42,6 @@ bookmark: true
 # Change the amount of events to batch per bulk request.
 #batch-size: 1000
 
-# Location of Suricata rule files to add to events.
-#rules:
-#  - /etc/suricata/rules/*.rules
-
 geoip:
   # GeoIP is enabled by default if a database can be found.
   disabled: false

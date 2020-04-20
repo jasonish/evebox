@@ -31,7 +31,6 @@ import (
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/rules"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"os"
@@ -152,12 +151,6 @@ func Main(args []string) {
 	eveFileProcessor.AddFilter(&eve.TagsFilter{})
 	for field, value := range viper.GetStringMap("input.custom-fields") {
 		eveFileProcessor.AddCustomField(field, value)
-	}
-
-	ruleList := viper.GetStringSlice("input.rules")
-	if ruleList != nil {
-		ruleMap := rules.NewRuleMap(ruleList)
-		eveFileProcessor.AddFilter(ruleMap)
 	}
 
 	eveFileProcessor.Start()

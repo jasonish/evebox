@@ -35,7 +35,6 @@ import (
 	"github.com/jasonish/evebox/evereader"
 	"github.com/jasonish/evebox/geoip"
 	"github.com/jasonish/evebox/log"
-	"github.com/jasonish/evebox/rules"
 	"github.com/jasonish/evebox/useragent"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -111,10 +110,6 @@ func configure(args []string) []string {
 	flagset.String("geoip-database", "", "Path to GeoIP (v2) database file")
 	viper.BindPFlag("geoip.database-filename", flagset.Lookup("geoip-database"))
 
-	flagset.String("rules", "", "Path to Suricata IDS rules")
-	viper.BindPFlag("rules", flagset.Lookup("rules"))
-	viper.BindEnv("rules", "ESIMPORT_RULES")
-
 	flagset.Bool("force-template", false, "Force loading of template")
 	viper.BindPFlag("force-template", flagset.Lookup("force-template"))
 
@@ -139,12 +134,6 @@ func configure(args []string) []string {
 	}
 
 	return flagset.Args()
-}
-
-func loadRuleMap() *rules.RuleMap {
-	rulePatterns := viper.GetStringSlice("rules")
-	rulemap := rules.NewRuleMap(rulePatterns)
-	return rulemap
 }
 
 func readerRunner(filename string, useBookmark bool, indexer *elasticsearch.BulkEveIndexer, bookmarkFilename string, filters []eve.EveFilter) {
@@ -276,10 +265,6 @@ func readerRunner(filename string, useBookmark bool, indexer *elasticsearch.Bulk
 func buildFilters() []eve.EveFilter {
 	// Setup filters.
 	filters := make([]eve.EveFilter, 0)
-
-	// Add rule filter.
-	ruleMap := loadRuleMap()
-	filters = append(filters, ruleMap)
 
 	// Add geo-ip filter.
 	geoIpFilter := eve.NewGeoipFilter(geoip.NewGeoIpService())
