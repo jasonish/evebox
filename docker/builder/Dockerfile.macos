@@ -1,4 +1,4 @@
-FROM fedora:29
+FROM fedora:32
 
 RUN dnf -y install \
     	make \
@@ -16,24 +16,17 @@ RUN dnf -y install \
 	libxml2-devel \
 	openssl-devel
 
-ENV GO_V 1.14.1
-RUN cd /usr/local && \
-    curl -o - -L https://dl.google.com/go/go${GO_V}.linux-amd64.tar.gz | \
-        tar zxf -
-
 ENV N_V 12.16.1
 RUN cd /usr/local && \
   curl -o - -L https://nodejs.org/dist/v${N_V}/node-v${N_V}-linux-x64.tar.gz | \
        tar zxf - --strip-components=1
 
-ENV PATH /usr/local/go/bin:$PATH
+ARG REAL_UID=1000
+ARG REAL_GID=1000
 
-RUN groupadd --gid 5000 builder
-RUN useradd --uid 5000 --gid 5000 --password "" --groups wheel builder
+RUN groupadd --non-unique --gid ${REAL_GID} builder
+RUN useradd --non-unique --uid ${REAL_UID} --gid ${REAL_GID} --password "" --groups wheel builder
 RUN echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
-
-#COPY /docker/builder/install-osxcross.sh /
-#RUN /install-osxcross.sh
 
 ENV OSXCROSS_SDK_VERSION "10.11"
 WORKDIR /opt
@@ -43,7 +36,12 @@ RUN curl -L -o \
         ./tarballs/MacOSX${OSXCROSS_SDK_VERSION}.sdk.tar.xz \
         https://s3.amazonaws.com/andrew-osx-sdks/MacOSX${OSXCROSS_SDK_VERSION}.sdk.tar.xz
 RUN sed -i -e 's|-march=native||g' ./build_clang.sh ./wrapper/build_wrapper.sh
-RUN printf "\n" | PORTABLE=true bash -x ./build.sh
+RUN printf "\n" | OSX_VERSION_MIN="10.9" PORTABLE=true bash -x ./build.sh
+
+USER builder
+ENV PATH=/home/builder/.cargo/bin:/root/.cargo/bin:$PATH
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+RUN rustup target add x86_64-apple-darwin
 
 COPY /docker/builder/docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]

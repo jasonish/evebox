@@ -15,7 +15,7 @@ NG :=		./node_modules/.bin/ng
 
 PROGRESS :=	$(shell test -t || "--no-progress")
 
-all: build
+all: install-deps build
 
 gitrev:
 	@echo "Exporting GITREV = $(GITREV)."
@@ -26,15 +26,15 @@ build: gitrev
 	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH) --deploy-url "public/" $(PROGRESS)
 
 ./node_modules/_done: package.json
-	npm ci
+	npm ci --prefer-offline
 	touch $@
 
 install-deps: ./node_modules/_done
 
-distclean:
+clean:
 	rm -rf node_modules
 	rm -rf typings
 
 serve: gitrev
-	$(NG) serve --port 4636 --proxy-config proxy.conf.json
+	npm serve
 

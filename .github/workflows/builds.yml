@@ -10,36 +10,62 @@ on:
 
 jobs:
 
+  webapp:
+    name: Webapp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: ./docker.sh webapp
+      - uses: actions/upload-artifact@v2
+        with:
+          name: resources-public
+          path: resources/public
+
   linux:
     name: Linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: ./docker.sh release
+      - run: ./docker.sh release-linux
       - run: tar zcvf resources-public.tar.gz ./resources/public
-      - uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2
         with:
           path: resources-public.tar.gz
-      - uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2
         with:
           path: dist/*.zip
-      - uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2
         with:
           path: resources-public.tar.gz
-      - uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2
         with:
           path: dist/*.deb
-      - uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2
         with:
           path: dist/*.rpm
 
+  arm7:
+    name: Arm 7
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+      - run: echo "::add-path::$HOME/.cargo/bin"
+      - run: cargo install cross
+      - run: ./docker.sh webapp
+      - run: cross build --release --target armv7-unknown-linux-musleabihf
+      - uses: actions/upload-artifact@v2
+        with:
+          name: armv7-linux
+          path: target/armv7-unknown-linux-musleabihf/release/evebox
+      
   windows:
-    name: Window
+    name: Windows
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - run: ./docker.sh release-windows
-      - uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2
         with:
           path: dist/*.zip
 
@@ -49,7 +75,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: ./docker.sh release-macos
-      - uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2
         with:
           path: dist/*.zip
 

@@ -6,7 +6,7 @@
   "license": "BSD",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --port 4636 --proxy-config proxy.conf.json",
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",

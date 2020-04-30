@@ -1,6 +1,6 @@
+/Dockerfile*
 ./webapp/node_modules
 ./vendor
-./docker/release-builder/Dockerfile
 ./pgdata*
 ./eve*json
 ./*.sqlite
@@ -8,3 +8,4 @@
 /Dockerfile
 /.docker_cache
 /.gitlab-ci.yml
+/target
