@@ -11,15 +11,15 @@ http:
 
   tls:
     # Enable or disable TLS.
-    # env: EVEBOX_TLS_ENABLED
+    # env: EVEBOX_HTTP_TLS_ENABLED
     enabled: false
 
     # Path to certificate PEM file.
-    # env: EVEBOX_TLS_CERT
+    # env: EVEBOX_HTTP_TLS_CERTIFICATE
     #certificate: /path/to/cert.pem
 
     # Path to key PEM file.
-    # env: EVEBOX_TLS_KEY
+    # env: EVEBOX_HTTP_TLS_KEY
     #key: /path/to/key.pem
 
   # If behind a reverse proxy set to true so the proper IP address of
@@ -55,14 +55,6 @@ database:
 
     #username: username
     #password: password
-
-    # For loading the EveBox template (Logstash compatible) into
-    # Elasticsearch. It is recommended to turn this option on if only
-    # using EveBox to add events to Elasticsearch. Leave disabled if
-    # already using Logstash or Filebeat on the same index.
-    #
-    # Default: false
-    #force-template: false
 
   postgresql:
 
