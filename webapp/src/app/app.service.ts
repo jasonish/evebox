@@ -130,7 +130,8 @@ export class AppService {
             }
         });
 
-        this.router.navigate([activatedRoute.routeConfig.path, newParams], {
+        let path = this.router.url.split( /[;\?]/)[0];
+        this.router.navigate([path, newParams], {
             queryParams: newQueryParams
         });
     }
