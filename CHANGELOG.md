@@ -7,6 +7,10 @@
   "evebox.archived" and "evebox.escalated". This should not be noticed
   as EveBox has been using both tags for a very long.
 
+### Fixes
+- Fix the index_pattern when adding a template to Elasticsearch with a
+  non logstash index.
+
 ### Breaking Changes
 - Remove adding of Suricata rules to events on import. Suricata can
   now be configured to include the rule in an alert.
