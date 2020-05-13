@@ -188,7 +188,7 @@ func (s *ReportService) ReportAggs(agg string, options core.ReportOptions) (inte
 		query.ShouldHaveIp(options.AddressFilter, s.es.GetKeyword())
 	}
 
-	if options.TimeRange != "" {
+	if options.TimeRange != "" && options.TimeRange != "0s" {
 		err := query.AddTimeRangeFilter(options.TimeRange)
 		if err != nil {
 			return nil, err
