@@ -252,21 +252,35 @@ export class FlowReportComponent implements OnInit, OnDestroy {
     }
 
     private refreshEventsOverTime() {
+        let displayUnit = "minute";
+
         if (!this.interval) {
             this.interval = "1d";
 
-            if (this.range <= 60) {
+            if (this.range == 0) {
+                displayUnit = "day";
+            } else if (this.range <= 60) {
                 this.interval = "1s";
+                displayUnit = "second";
             } else if (this.range <= 3600) {
                 this.interval = "1m";
+                displayUnit = "minute";
             } else if (this.range <= (3600 * 3)) {
                 this.interval = "5m";
+                displayUnit = "minute";
             } else if (this.range <= 3600 * 24) {
                 this.interval = "15m";
+                displayUnit = "hour";
             } else if (this.range <= 3600 * 24 * 3) {
                 this.interval = "1h";
+                displayUnit = "hour";
+            } else if (this.range <= 3600 * 24 * 7) {
+                this.interval = "1h";
+                displayUnit = "hour";
             }
         }
+
+        console.log(`interval: ${this.interval}, displayUnit: ${displayUnit}`);
 
         let histogramOptions: any = {
             appProto: true,
@@ -279,118 +293,123 @@ export class FlowReportComponent implements OnInit, OnDestroy {
         }
 
         this.wrap(this.api.flowHistogram(histogramOptions))
-                .subscribe((response) => {
-                    let labels = [];
-                    let eventCounts = [];
-                    let protos = [];
+            .subscribe((response) => {
+                let labels = [];
+                let eventCounts = [];
+                let protos = [];
 
-                    response.data.forEach((elem) => {
-                        for (let proto in elem.app_proto) {
-                            if (protos.indexOf(proto) < 0) {
-                                protos.push(proto);
-                            }
+                response.data.forEach((elem) => {
+                    for (let proto in elem.app_proto) {
+                        if (protos.indexOf(proto) < 0) {
+                            protos.push(proto);
                         }
-                    });
-
-                    let data = {};
-
-                    let colours = chartjs.getColourPalette(protos.length + 1);
-
-                    let totals = [];
-
-                    response.data.forEach((elem) => {
-                        let proto_sum = 0;
-                        for (let proto of protos) {
-                            if (!data[proto]) {
-                                data[proto] = [];
-                            }
-                            if (proto in elem.app_proto) {
-                                let val = elem.app_proto[proto];
-                                data[proto].push(val);
-                                proto_sum += val;
-                            } else {
-                                data[proto].push(0);
-                            }
-                        }
-                        labels.push(moment(elem.key).toDate());
-
-                        totals.push(elem.events);
-                        eventCounts.push(elem.events - proto_sum);
-                    });
-
-                    let datasets: any[] = [{
-                        label: "Other",
-                        backgroundColor: colours[0],
-                        borderColor: colours[0],
-                        data: eventCounts,
-                        fill: false,
-                    }];
-
-                    let i = 1;
-
-                    for (let proto of protos) {
-                        let label = proto;
-                        if (proto === "failed") {
-                            label = "Unknown";
-                        } else {
-                            label = this.protoPrettyPrinter.transform(proto, null);
-                        }
-                        datasets.push({
-                            label: label,
-                            backgroundColor: colours[i],
-                            borderColor: colours[i],
-                            fill: false,
-                            data: data[proto],
-                        });
-                        i += 1;
                     }
+                });
 
-                    this.renderChart("eventsOverTimeChart", {
-                        type: "bar",
-                        data: {
-                            labels: labels,
-                            datasets: datasets,
+                let data = {};
+
+                let colours = chartjs.getColourPalette(protos.length + 1);
+
+                let totals = [];
+
+                response.data.forEach((elem) => {
+                    let proto_sum = 0;
+                    for (let proto of protos) {
+                        if (!data[proto]) {
+                            data[proto] = [];
+                        }
+                        if (proto in elem.app_proto) {
+                            let val = elem.app_proto[proto];
+                            data[proto].push(val);
+                            proto_sum += val;
+                        } else {
+                            data[proto].push(0);
+                        }
+                    }
+                    labels.push(moment(elem.key).toDate());
+
+                    totals.push(elem.events);
+                    eventCounts.push(elem.events - proto_sum);
+                });
+
+                let datasets: any[] = [{
+                    label: "Other",
+                    backgroundColor: colours[0],
+                    borderColor: colours[0],
+                    data: eventCounts,
+                    fill: false,
+                }];
+
+                let i = 1;
+
+                for (let proto of protos) {
+                    let label = proto;
+                    if (proto === "failed") {
+                        label = "Unknown";
+                    } else {
+                        label = this.protoPrettyPrinter.transform(proto, null);
+                    }
+                    datasets.push({
+                        label: label,
+                        backgroundColor: colours[i],
+                        borderColor: colours[i],
+                        fill: false,
+                        data: data[proto],
+                    });
+                    i += 1;
+                }
+
+                let chartOptions = {
+                    type: "bar",
+                    data: {
+                        labels: labels,
+                        datasets: datasets,
+                    },
+                    options: {
+                        title: {
+                            display: true,
+                            text: "Flow Events Over Time",
+                            padding: 0,
                         },
-                        options: {
-                            title: {
-                                display: true,
-                                text: "Flow Events Over Time",
-                                padding: 0,
-                            },
-                            legend: {
-                                position: "right",
-                            },
-                            scales: {
-                                xAxes: [
-                                    {
-                                        display: true,
-                                        type: "time",
-                                        stacked: true,
+                        legend: {
+                            position: "right",
+                        },
+                        scales: {
+                            xAxes: [
+                                {
+                                    display: true,
+                                    type: "time",
+                                    stacked: true,
+                                    time: {
+                                        unit: displayUnit,
                                     }
-                                ],
-                                yAxes: [
-                                    {
-                                        gridLines: false,
-                                        stacked: true,
-                                        ticks: {
-                                            padding: 5,
-                                        }
+                                }
+                            ],
+                            yAxes: [
+                                {
+                                    gridLines: false,
+                                    stacked: true,
+                                    ticks: {
+                                        padding: 5,
                                     }
-                                ]
-                            },
-                            maintainAspectRatio: false,
-                            responsive: true,
-                            tooltips: {
-                                callbacks: {
-                                    footer: function (a, b) {
-                                        let index = a[0].index;
-                                        return `Total: ${totals[index]}`;
-                                    }
+                                }
+                            ]
+                        },
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        tooltips: {
+                            callbacks: {
+                                footer: function (a, b) {
+                                    let index = a[0].index;
+                                    return `Total: ${totals[index]}`;
                                 }
                             }
                         }
-                    });
-                });
+                    }
+                };
+
+                this.renderChart("eventsOverTimeChart", chartOptions);
+            });
     }
 
     changeHistogramInterval(interval) {
@@ -410,89 +429,89 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         this.load(() => {
             return this.api.reportAgg("src_ip", aggOptions)
-                    .then((response: any) => {
-                        this.topClientsByFlows = response.data;
-                    });
+                .then((response: any) => {
+                    this.topClientsByFlows = response.data;
+                });
         });
 
         this.load(() => {
             return this.api.reportAgg("dest_ip", aggOptions)
-                    .then((response: any) => {
-                        this.topServersByFlows = response.data;
-                    });
+                .then((response: any) => {
+                    this.topServersByFlows = response.data;
+                });
         });
 
         this.load(() => {
             return this.api.reportAgg("traffic.id", aggOptions)
-                    .then((response: any) => {
+                .then((response: any) => {
 
-                        let labels = response.data.map((e) => e.key);
-                        let data = response.data.map((e) => e.count);
+                    let labels = response.data.map((e) => e.key);
+                    let data = response.data.map((e) => e.count);
 
-                        if (response.missing && response.missing > 0) {
-                            labels.push("<no-id>");
-                            data.push(response.missing);
+                    if (response.missing && response.missing > 0) {
+                        labels.push("<no-id>");
+                        data.push(response.missing);
+                    }
+
+                    if (response.other && response.other > 0) {
+                        labels.push("<other>");
+                        data.push(response.other);
+                    }
+
+                    let colours = chartjs.getColourPalette(labels.length + 1);
+
+                    let config = {
+                        type: "pie",
+                        data: {
+                            datasets: [
+                                {
+                                    data: data,
+                                    backgroundColor: colours,
+                                }
+                            ],
+                            labels: labels,
+                        },
+                        options: {
+                            responsive: true,
                         }
-
-                        if (response.other && response.other > 0) {
-                            labels.push("<other>");
-                            data.push(response.other);
-                        }
-
-                        let colours = chartjs.getColourPalette(labels.length + 1);
-
-                        let config = {
-                            type: "pie",
-                            data: {
-                                datasets: [
-                                    {
-                                        data: data,
-                                        backgroundColor: colours,
-                                    }
-                                ],
-                                labels: labels,
-                            },
-                            options: {
-                                responsive: true,
-                            }
-                        };
-                        this.renderChart("trafficIdChart", config);
-                    });
+                    };
+                    this.renderChart("trafficIdChart", config);
+                });
         });
 
         this.load(() => {
             return this.api.reportAgg("traffic.label", aggOptions)
-                    .then((response: any) => {
+                .then((response: any) => {
 
-                        let labels = response.data.map((e) => e.key);
-                        let data = response.data.map((e) => e.count);
+                    let labels = response.data.map((e) => e.key);
+                    let data = response.data.map((e) => e.count);
 
-                        if (response.missing && response.missing > 0) {
-                            labels.push("<unlabeled>");
-                            data.push(response.missing);
-                        }
+                    if (response.missing && response.missing > 0) {
+                        labels.push("<unlabeled>");
+                        data.push(response.missing);
+                    }
 
-                        if (response.other && response.other > 0) {
-                            labels.push("<other>");
-                            data.push(response.other);
-                        }
+                    if (response.other && response.other > 0) {
+                        labels.push("<other>");
+                        data.push(response.other);
+                    }
 
-                        let colours = chartjs.getColourPalette(labels.length + 1);
+                    let colours = chartjs.getColourPalette(labels.length + 1);
 
-                        let options = {
-                            type: "pie",
-                            data: {
-                                datasets: [
-                                    {
-                                        data: data,
-                                        backgroundColor: colours,
-                                    }
-                                ],
-                                labels: labels,
-                            },
-                        };
-                        this.renderChart("trafficLabelChart", options);
-                    });
+                    let options = {
+                        type: "pie",
+                        data: {
+                            datasets: [
+                                {
+                                    data: data,
+                                    backgroundColor: colours,
+                                }
+                            ],
+                            labels: labels,
+                        },
+                    };
+                    this.renderChart("trafficLabelChart", options);
+                });
         });
 
         this.wrap(this.api.eventQuery({
