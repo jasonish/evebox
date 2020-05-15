@@ -336,9 +336,9 @@ func Main(args []string) {
 			} else {
 				log.Info("Connected to Elastic Search (version: %s)",
 					ping.Version.Number)
-				major, _ := ping.ParseVersion()
-				if major < 5 {
-					log.Fatalf("Elastic Search versions less than 5 are not supported.")
+				major, minor := ping.ParseVersion()
+				if major < 7 || (major == 7 && minor < 7) {
+					log.Fatalf("Elastic Search versions less than 7.7 are not supported.")
 				}
 				break
 			}

@@ -19,9 +19,10 @@ EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
 And one of...
 
-- An existing ElasticSearch/Logstash (version 6 or greater) setup
+- An existing ElasticSearch/Logstash (version 7.7 or greater) setup
   already handling Suricata events (EveBox has issues with Filebeat
-  indices at this time).
+  indices at this time). For older versions of Elasticsearch continue
+  to use EveBox 0.11.x.
 - Just Elastic Search, using EveBox or the EveBox agent to add events.
 - Nothing - EveBox can use an embedded SQLite database suitable for
   lower load installations (note: not all features supported yet).
