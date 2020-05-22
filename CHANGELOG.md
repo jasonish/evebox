@@ -14,7 +14,7 @@
 ### Breaking Changes
 - Remove adding of Suricata rules to events on import. Suricata can
   now be configured to include the rule in an alert.
-- Remove support for Elasticsearch versions less than 7.7 due to the
+- Remove support for Elasticsearch versions less than 7.4 due to the
   upcoming doc type removal in 8.
 
 ## 0.11.0 - 2020-03-26

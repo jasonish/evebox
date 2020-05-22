@@ -326,8 +326,8 @@ func Main(args []string) {
 	log.Info("Connected to Elastic Search v%s (cluster:%s; name: %s)",
 		response.Version.Number, response.ClusterName, response.Name)
 	major, minor := response.ParseVersion()
-	if major < 7 || (major == 7 && minor < 7){
-		log.Fatalf("Elastic Search versions less than 7.7 are not supported.")
+	if major < 7 || (major == 7 && minor < 4){
+		log.Fatalf("Elastic Search versions less than 7.4 are not supported.")
 	}
 
 	bookmarkDirectory := viper.GetString("bookmark-dir")
