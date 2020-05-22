@@ -316,6 +316,6 @@ func (s *DataStore) CommentOnEventId(eventId string, user core.User, comment str
 		},
 	}
 
-	_, err = s.es.Update(doc.Index(), doc.Id(), query)
+	_, err = s.es.Update(doc.Index(), doc.Type(), doc.Id(), query)
 	return err
 }

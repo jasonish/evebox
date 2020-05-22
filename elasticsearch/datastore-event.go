@@ -75,7 +75,7 @@ func (s *DataStore) ArchiveEvent(eventId string, user core.User) error {
 		},
 	}
 
-	_, err = s.es.Update(eventDoc.Index(), eventDoc.Id(), request)
+	_, err = s.es.Update(eventDoc.Index(), eventDoc.Type(), eventDoc.Id(), request)
 	if err != nil {
 		log.Error("update error: %v", err)
 		return err
@@ -123,7 +123,7 @@ func (s *DataStore) EscalateEvent(eventId string, user core.User) error {
 		},
 	}
 
-	_, err = s.es.Update(eventDoc.Index(), eventDoc.Id(), request)
+	_, err = s.es.Update(eventDoc.Index(), eventDoc.Type(), eventDoc.Id(), request)
 	if err != nil {
 		log.Error("update error: %v", err)
 		return err
@@ -168,7 +168,7 @@ func (s *DataStore) DeEscalateEvent(eventId string, user core.User) error {
 		},
 	}
 
-	_, err = s.es.Update(eventDoc.Index(), eventDoc.Id(), request)
+	_, err = s.es.Update(eventDoc.Index(), eventDoc.Type(), eventDoc.Id(), request)
 	if err != nil {
 		log.Error("update error: %v", err)
 		return err

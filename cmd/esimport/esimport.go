@@ -113,6 +113,9 @@ func configure(args []string) []string {
 	flagset.Bool("force-template", false, "Force loading of template")
 	viper.BindPFlag("force-template", flagset.Lookup("force-template"))
 
+	flagset.String("doc-type", "", "Mapping type for events")
+	viper.BindPFlag("doc-type", flagset.Lookup("doc-type"))
+
 	if err := flagset.Parse(args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			os.Exit(0)
@@ -315,6 +318,7 @@ func Main(args []string) {
 		Username:         viper.GetString("username"),
 		Password:         viper.GetString("password"),
 		ForceTemplate:    viper.GetBool("force-template"),
+		DocType:          viper.GetString("doc-type"),
 		Index:            viper.GetString("index"),
 	}
 	es := elasticsearch.New(config)

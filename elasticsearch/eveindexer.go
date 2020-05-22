@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"github.com/jasonish/evebox/eve"
 	"github.com/jasonish/evebox/log"
+	"github.com/jasonish/evebox/util"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"math/rand"
@@ -38,6 +39,8 @@ import (
 	"sync"
 	"time"
 )
+
+const defaultDocType = "doc"
 
 const atTimestampFormat = "2006-01-02T15:04:05.999Z"
 
@@ -52,6 +55,9 @@ type BulkEveIndexer struct {
 	es      *ElasticSearch
 	queued  uint
 	buf     []byte
+	docType string
+
+	docTypeCache map[string]string
 
 	// The entropy source for ulid generation.
 	entropy *rand.Rand
@@ -61,9 +67,63 @@ func NewIndexer(es *ElasticSearch) *BulkEveIndexer {
 	indexer := BulkEveIndexer{
 		es: es,
 	}
+
+	if es.config.DocType != "" {
+		indexer.docType = es.config.DocType
+	} else {
+		indexer.docType = "doc"
+	}
+
+	indexer.docTypeCache = map[string]string{}
+
 	indexer.initEntropy()
+
 	initTemplateOnce.Do(indexer.initTemplate)
 	return &indexer
+}
+
+func (i *BulkEveIndexer) getDocType(index string) (string, error) {
+
+	if i.docType != "" {
+		return i.docType, nil
+	}
+
+	docType, ok := i.docTypeCache[index]
+	if ok {
+		return docType, nil
+	}
+
+	log.Debug("Looking up doc type for index %s.", index)
+	url := fmt.Sprintf("%s/_mapping", index)
+	response, err := i.es.httpClient.Get(url)
+	if err != nil {
+		return "", err
+	}
+
+	if response.StatusCode == 404 {
+		log.Debug("No mapping found for index %s.", index)
+		return "", fmt.Errorf("Index %s not found.", index)
+	}
+
+	mapping := util.JsonMap{}
+
+	if err := i.es.Decode(response, &mapping); err != nil {
+		return "", errors.Wrapf(err, "Failed to decode mapping for index %s.",
+			index)
+	}
+
+	mapTypes := mapping.GetMap(index).GetMap("mappings").GetKeys()
+	for _, mapType := range mapTypes {
+		if mapType != "_default_" {
+			i.docTypeCache[index] = mapType
+			return mapType, nil
+		}
+	}
+
+	log.Debug("No mapping types found for index %s, default to %s", index,
+		defaultDocType)
+	i.docTypeCache[index] = defaultDocType
+	return defaultDocType, nil
 }
 
 func (i *BulkEveIndexer) initTemplate() {
@@ -104,6 +164,15 @@ func (i *BulkEveIndexer) Submit(event eve.EveEvent) error {
 
 	header := BulkCreateHeader{}
 	header.Create.Index = index
+
+	if i.es.MajorVersion < 7 {
+		docType, err := i.getDocType(index)
+		if err != nil {
+			log.Error("Failed to get document mapping type: %v", err)
+			return err
+		}
+		header.Create.Type = docType
+	}
 
 	id := ulid.MustNew(ulid.Timestamp(timestamp), i.entropy).String()
 	header.Create.Id = id
