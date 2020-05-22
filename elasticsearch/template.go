@@ -78,6 +78,7 @@ func (es *ElasticSearch) LoadTemplate() error {
 	if err != nil {
 		return err
 	}
+	template["template"] = fmt.Sprintf("%s-*", es.EventIndexPrefix)
 	template["index_patterns"] = fmt.Sprintf("%s-*", es.EventIndexPrefix)
 
 	log.Info("Loading template %s for index %s", templateFilename, es.EventIndexPrefix)
