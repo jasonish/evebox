@@ -338,8 +338,11 @@ func Main(args []string) {
 					ping.Version.Number)
 				major, minor := ping.ParseVersion()
 				if major < 7 || (major == 7 && minor < 7) {
-					log.Fatalf("Elastic Search versions less than 7.7 are not supported.")
+					log.Warning("Support for Elasticsearch < 7.7 will be removed soon")
 				}
+                                if major < 6 {
+                                        log.Fatalf("Elasticsearch versions < 6 are not supported")
+                                }
 				break
 			}
 		}
