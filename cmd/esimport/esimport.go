@@ -329,8 +329,8 @@ func Main(args []string) {
 	}
 	log.Info("Connected to Elastic Search v%s (cluster:%s; name: %s)",
 		response.Version.Number, response.ClusterName, response.Name)
-	major, minor := response.ParseVersion()
-	if major < 7 || (major == 7 && minor < 4){
+	major, _ := response.ParseVersion()
+	if major < 6 {
 		log.Fatalf("Elastic Search versions less than 7.4 are not supported.")
 	}
 
