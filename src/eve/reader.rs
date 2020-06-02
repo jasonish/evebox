@@ -134,11 +134,12 @@ impl EveReader {
                 } else {
                     self.offset = pos + n as u64;
                     self.lineno += 1;
-                    return Ok(Some(&self.line));
+                    let line = self.line.trim();
+                    return Ok(Some(line));
                 }
             }
         }
-        Ok(None)
+        return Ok(None);
     }
 
     /// Not named next as we don't implement the iterator pattern (yet).
@@ -147,13 +148,19 @@ impl EveReader {
             self.open()?;
         }
         if self.reader.is_some() {
-            let line = self.next_line()?;
-            if line.is_some() {
-                let record: EveJson = serde_json::from_str(&self.line).map_err(|err| {
-                    log::error!("Failed to parse event: {}", err);
-                    EveReaderError::ParseError(self.line.clone())
-                })?;
-                return Ok(Some(record));
+            loop {
+                let line = self.next_line()?;
+                if let Some(line) = line {
+                    if line.is_empty() {
+                        continue;
+                    }
+                    let record: EveJson = serde_json::from_str(line).map_err(|err| {
+                        log::error!("Failed to parse event: {}", err);
+                        EveReaderError::ParseError(line.to_string())
+                    })?;
+                    return Ok(Some(record));
+                }
+                break;
             }
         }
         Ok(None)
