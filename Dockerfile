@@ -22,6 +22,7 @@ RUN rustup target add x86_64-unknown-linux-musl
 
 WORKDIR /src
 COPY / .
+ARG BUILD_REV
 RUN RELEASE="--release" TARGET="x86_64-unknown-linux-musl" make
 
 # State 2 - Copy in binary to clean container.

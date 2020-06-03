@@ -18,6 +18,7 @@ webapp() {
            -w /src/webapp \
            -e REAL_UID="$(id -u)" \
            -e REAL_GID="$(id -g)" \
+           -e BUILD_REV="${BUILD_REV}" \
            ${TAG} make
 }
 
@@ -55,6 +56,7 @@ release_windows() {
            -e REAL_GID="$(id -g)" \
            -e CC=x86_64-w64-mingw32-gcc \
            -e TARGET=x86_64-pc-windows-gnu \
+           -e BUILD_REV="${BUILD_REV}" \
            ${TAG} make dist
 }
 
@@ -73,6 +75,7 @@ release_macos() {
            -e REAL_GID="$(id -g)" \
            -e CC=o64-clang \
            -e TARGET=x86_64-apple-darwin \
+           -e BUILD_REV="${BUILD_REV}" \
            ${TAG} make dist
 }
 
