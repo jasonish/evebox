@@ -8,10 +8,6 @@ edition = "2018"
 lto = true
 opt-level = 3
 
-[features]
-default = []
-no-assets = []
-
 [dependencies]
 tokio = { version = "0.2.21", features = ["macros", "sync", "signal", "rt-threaded"] }
 warp = { version = "0.2.3", features = ["tls"] }
