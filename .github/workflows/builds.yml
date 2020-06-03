@@ -92,3 +92,12 @@ jobs:
           echo ${{secrets.DOCKER_HUB_TOKEN}} | \
               docker login -u ${{secrets.DOCKER_HUB_USERNAME}} --password-stdin
           docker push jasonish/evebox:master
+
+      # Temporary - push Rust branch as well.
+      - name: Push Docker image to hub.docker.com
+        if: github.ref == 'refs/heads/dev-rust'
+        run: |
+          echo ${{secrets.DOCKER_HUB_TOKEN}} | \
+              docker login -u ${{secrets.DOCKER_HUB_USERNAME}} --password-stdin
+          docker build --tag jasonish/evebox:rust .
+          docker push jasonish/evebox:rust
