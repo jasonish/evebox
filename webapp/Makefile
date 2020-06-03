@@ -1,4 +1,4 @@
-GITREV :=	$(shell git rev-parse --short HEAD)
+BUILD_REV ?=	$(shell git rev-parse --short HEAD)
 
 # Issues with Angular 5.
 #BUILD_ARGS +=	--sourcemaps
@@ -18,11 +18,11 @@ PROGRESS :=	$(shell test -t || "--no-progress")
 all: install-deps build
 
 gitrev:
-	@echo "Exporting GITREV = $(GITREV)."
-	@echo "export const GITREV = \"$(GITREV)\";" > src/environments/gitrev.ts
+	@echo "Exporting GITREV = $(BUILD_REV)."
+	@echo "export const GITREV = \"$(BUILD_REV)\";" > src/environments/gitrev.ts
 
 build: gitrev
-	@echo "Building EveBox webapp rev $(GITREV)."
+	@echo "Building EveBox webapp rev $(BUILD_REV)."
 	$(NG) build $(BUILD_ARGS) --output-path $(OUTPUT_PATH) --deploy-url "public/" $(PROGRESS)
 
 ./node_modules/_done: package.json

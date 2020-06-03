@@ -5,8 +5,11 @@ set -e
 DOCKER_NAME="jasonish/evebox"
 BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')
 
+BUILD_REV=$(git rev-parse --short HEAD)
+export BUILD_REV
+
 build_docker() {
-    docker build -t ${DOCKER_NAME}:${BRANCH_PREFIX} .
+    docker build --build-arg "BUILD_REV=${BUILD_REV}" -t ${DOCKER_NAME}:${BRANCH_PREFIX} .
 }
 
 build_all() {
