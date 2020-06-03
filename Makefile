@@ -30,7 +30,7 @@ public: resources/public/_done
 
 # Build's EveBox for the host platform.
 evebox: 
-	cargo build $(RELEASE) --target $(TARGET) --features "$(FEATURES)"
+	cargo build $(RELEASE) --target $(TARGET)
 
 release: RELEASE := "--release"
 release: evebox
@@ -50,7 +50,7 @@ dist: DISTARCH := $(shell rustc --target $(TARGET) --print cfg | awk -F'"' '/tar
 dist: DISTNAME ?= $(APP)-$(VERSION)-$(OS)-$(DISTARCH)
 dist: DISTDIR ?= dist/$(DISTNAME)
 dist: public
-	cargo build --release --target $(TARGET) --features "$(FEATURES)"
+	cargo build --release --target $(TARGET)
 	mkdir -p $(DISTDIR)
 	cp target/$(TARGET)/release/$(APP)$(APP_EXT) $(DISTDIR)/
 	cp agent.yaml.example $(DISTDIR)/
