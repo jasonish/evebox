@@ -28,12 +28,14 @@ resources/public/_done: $(WEBAPP_SRCS)
 	touch $@
 public: resources/public/_done
 
+CARGO_BUILD_ARGS :=
+ifdef TARGET
+CARGO_BUILD_ARGS += --target $(TARGET)
+endif
+
 # Build's EveBox for the host platform.
 evebox: 
-	cargo build $(RELEASE) --target $(TARGET)
-
-release: RELEASE := "--release"
-release: evebox
+	cargo build $(RELEASE) $(CARGO_BUILD_ARGS)
 
 HOST_TARGET := $(shell rustc -Vv| awk '/^host/ { print $$2 }')
 TARGET ?= $(HOST_TARGET)
@@ -43,43 +45,46 @@ APP_EXT := .exe
 endif
 
 ifneq ($(VERSION_SUFFIX),)
-dist: VERSION := latest
+DIST_VERSION := latest
+else
+DIST_VERSION :=	$(VERSION)
 endif
-dist: DISTARCH := $(shell rustc --target $(TARGET) --print cfg | awk -F'"' '/target_arch/ { print $$2 }' | \
-	sed -e 's/x86_64/x64/')
-dist: DISTNAME ?= $(APP)-$(VERSION)-$(OS)-$(DISTARCH)
-dist: DISTDIR ?= dist/$(DISTNAME)
+DIST_ARCH :=	$(shell rustc --target $(TARGET) --print cfg | \
+			awk -F'"' '/target_arch/ { print $$2 }' | \
+			sed -e 's/x86_64/x64/')
+DIST_NAME ?=	$(APP)-$(DIST_VERSION)-$(OS)-$(DIST_ARCH)
+EVEBOX_BIN :=	target/$(TARGET)/release/$(APP)$(APP_EXT)
+
+dist: DIST_DIR ?= dist/$(DIST_NAME)
 dist: public
-	cargo build --release --target $(TARGET)
-	mkdir -p $(DISTDIR)
-	cp target/$(TARGET)/release/$(APP)$(APP_EXT) $(DISTDIR)/
-	cp agent.yaml.example $(DISTDIR)/
-	cp evebox.yaml.example $(DISTDIR)/
-	cd dist && zip -r $(DISTNAME).zip $(DISTNAME)
+	cargo build --release $(CARGO_BUILD_ARGS)
+	mkdir -p $(DIST_DIR)
+	cp $(EVEBOX_BIN) $(DIST_DIR)/
+	cp agent.yaml.example $(DIST_DIR)/
+	cp evebox.yaml.example $(DIST_DIR)/
+	cd dist && zip -r $(DIST_NAME).zip $(DIST_NAME)
+	rm -rf dist/$(DIST_NAME)
 
 # Debian packaging. Due to a versioning screwup early on, we now need
 # to set the epoch to 1 for those updating with apt.
 deb: EPOCH := 1
 ifneq ($(VERSION_SUFFIX),)
 deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE)
-deb: EVEBOX_BIN := dist/$(APP)-latest-linux-x64/evebox
 deb: OUTPUT := dist/evebox-latest-amd64.deb
 else
-deb: EVEBOX_BIN := dist/$(APP)-$(VERSION)-linux-x64/evebox
 deb: OUTPUT := dist/
 endif
-deb: STAGE := dist/_stage-deb
+deb: STAGE_DIR := dist/_stage-deb
 deb:
-	rm -rf $(STAGE)
-	mkdir -p $(STAGE)
+	rm -rf $(STAGE_DIR) && mkdir -p $(STAGE_DIR)
 	install -m 0644 \
 		evebox.yaml.example \
 		agent.yaml.example \
 		deb/evebox.default \
 		deb/evebox.service \
 		deb/evebox-agent.service \
-		$(STAGE)
-	install -m 0755 $(EVEBOX_BIN) $(STAGE)
+		$(STAGE_DIR)
+	install -m 0755 $(EVEBOX_BIN) $(STAGE_DIR)
 	fpm --force -s dir \
 		-t deb \
 		-p $(OUTPUT) \
@@ -90,24 +95,23 @@ deb:
 		--after-upgrade=deb/after-upgrade.sh \
 		--deb-no-default-config-files \
 		--config-files /etc/default/evebox \
-		$(STAGE)/evebox=/usr/bin/evebox \
-	        $(STAGE)/evebox.yaml.example=/etc/evebox/evebox.yaml.example \
-		$(STAGE)/agent.yaml.example=/etc/evebox/agent.yaml.example \
-		$(STAGE)/evebox.default=/etc/default/evebox \
-		$(STAGE)/evebox.service=/lib/systemd/system/evebox.service \
-		$(STAGE)/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+		$(STAGE_DIR)/evebox=/usr/bin/evebox \
+	        $(STAGE_DIR)/evebox.yaml.example=/etc/evebox/evebox.yaml.example \
+		$(STAGE_DIR)/agent.yaml.example=/etc/evebox/agent.yaml.example \
+		$(STAGE_DIR)/evebox.default=/etc/default/evebox \
+		$(STAGE_DIR)/evebox.service=/lib/systemd/system/evebox.service \
+		$(STAGE_DIR)/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+	rm -rf $(STAGE_DIR)
 	ar p dist/*.deb data.tar.gz | tar ztvf -
 
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
 # Setup non-release versioning.
 rpm: RPM_ITERATION := 0.$(VERSION_SUFFIX)$(BUILD_DATE)
-rpm: EVEBOX_BIN := dist/$(APP)-latest-linux-x64/evebox
 rpm: OUTPUT := dist/evebox-latest-x86_64.rpm
 else
 # Setup release versioning.
 rpm: RPM_ITERATION := 1
-rpm: EVEBOX_BIN := dist/$(APP)-$(VERSION)-linux-x64/evebox
 rpm: OUTPUT := dist/
 endif
 rpm:
