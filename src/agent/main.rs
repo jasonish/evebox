@@ -41,9 +41,36 @@ struct InputConfig {
     other: HashMap<String, config::Value>,
 }
 
-pub async fn main(args: &clap::ArgMatches<'static>) {
+fn find_config_filename() -> Option<String> {
+    let paths = vec!["./agent.yaml", "/etc/evebox/agent.yaml"];
+    for path in paths {
+        log::debug!("Checking for {:?}", path);
+        let path_buf = PathBuf::from(path);
+        if path_buf.exists() {
+            return Some(path.to_string());
+        }
+    }
+    None
+}
+
+pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let mut settings = Settings::new(args);
-    let input: InputConfig = settings.get("input").unwrap();
+
+    if let None = settings.get_or_none::<Option<String>>("config")? {
+        log::info!("No configuration file provided, checking default locations");
+        if let Some(config_path) = find_config_filename() {
+            log::info!("Using configuration file {:?}", config_path);
+            settings.merge_file(&config_path)?;
+        }
+    }
+
+    let input: InputConfig = match settings.get("input") {
+        Ok(input) => input,
+        Err(err) => {
+            log::error!("Failed to load inputs: {}", err);
+            std::process::exit(1);
+        }
+    };
 
     if input.other.contains_key("rules") {
         log::warn!("WARNING: EveBox no longer supports adding rules to events");
@@ -127,6 +154,8 @@ pub async fn main(args: &clap::ArgMatches<'static>) {
         processor.run().await;
     });
     t.await.unwrap();
+
+    Ok(())
 }
 
 fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathBuf> {
