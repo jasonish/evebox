@@ -83,10 +83,25 @@ pub async fn handler(
         }
         line.truncate(0);
     }
+
+    // I've seen an issue in the Go agent where it sent 0 events, return early if we have
+    // nothing to commit.
+    if count == 0 {
+        // TODO: Log something or return an error to the client.
+        let response = json!({
+            "Count": 0,
+        });
+        return Ok(Response::Json(response));
+    }
+
     match importer.commit().await {
         Ok(n) => {
             log::debug!("Committed {} events (received {})", n, count);
-            return Ok(Response::Ok);
+            let response = json!({
+                // Kept capitolized for compatibility with the Go agent.
+                "Count": n,
+            });
+            return Ok(Response::Json(response));
         }
         Err(err) => {
             log::error!("Failed to commit events (received {}): {}", count, err);
