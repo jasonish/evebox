@@ -36,19 +36,29 @@ impl Settings {
     }
 
     fn load(&mut self) {
-        if self.args.is_present("config") {
-            if let Err(err) = self.config.merge(config::File::new(
-                self.args.value_of("config").unwrap(),
-                config::FileFormat::Yaml,
-            )) {
-                log::error!("Failed to load configuration file: {}", err);
-                std::process::exit(1);
+        let config_from_args: Option<String> = if let Some(config) = self.args.value_of("config") {
+            Some(config.to_string())
+        } else {
+            None
+        };
+        if let Some(config) = config_from_args {
+            self.merge_file(&config).unwrap();
+        } else {
+            // Check environment for configuration filename.
+            if let Ok(config) = std::env::var("EVEBOX_CONFIG") {
+                self.merge_file(&config).unwrap();
             }
         }
 
         self.config
             .merge(config::Environment::with_prefix("EVEBOX").separator("_"))
             .unwrap();
+    }
+
+    pub fn merge_file(&mut self, path: &str) -> Result<(), config::ConfigError> {
+        let config_file = config::File::new(path, config::FileFormat::Yaml);
+        self.config.merge(config_file)?;
+        Ok(())
     }
 
     pub fn merge_yaml_str(&mut self, yaml: &str) -> Result<(), config::ConfigError> {

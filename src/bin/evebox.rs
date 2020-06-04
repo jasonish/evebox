@@ -364,10 +364,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         ("oneshot", Some(args)) => evebox::commands::oneshot::main(&args).await,
-        ("agent", Some(args)) => {
-            evebox::agent::main(&args).await;
-            std::process::exit(1);
-        }
+        ("agent", Some(args)) => evebox::agent::main(&args).await,
         ("config", Some(args)) => evebox::commands::config::main(&args),
         ("", None) => {
             parser.print_help().ok();
