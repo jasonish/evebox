@@ -390,7 +390,7 @@ pub fn api_routes(
         .and_then(api::flow_histogram::handler)
         .boxed();
 
-    let content_length_limit = 1024 * 1024 * 32;
+    let content_length_limit = 1024 * 1024 * 256;
     let submit = api
         .clone()
         .and(warp::path("submit"))
