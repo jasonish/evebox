@@ -2,73 +2,95 @@
 
 set -e
 
-IMAGE="evebox/builder:latest"
+BUILD_REV=$(git rev-parse --short HEAD)
+export BUILD_REV
 
-docker_build() {
-    docker build ${CACHE_FROM} --rm \
-	   -t ${IMAGE} \
-	   -f ${DOCKERFILE} .
-}
-
-docker_run() {
-    # If you need an interactive terminal you can set the environment
-    # variable "it" to "-it".
-    volumes=""
-    volumes="${volumes} -v $(pwd):/src"
-
-    cache="$(pwd)/.docker_cache"
-
-    mkdir -p ${cache}/go
-    mkdir -p ${cache}/node_modules
-    mkdir -p ${cache}/npm
-    mkdir -p ./webapp/node_modules
-
-    real_uid=$(id -u)
-    real_gid=$(id -g)
-
-    if [ "${real_uid}" = "0" ]; then
-	image_home="/root"
-    else
-	image_home="/home/builder"
-    fi
-
-    volumes="${volumes} -v ${cache}/go:${image_home}/go"
-    volumes="${volumes} -v ${cache}/npm:${image_home}/npm"
-    #volumes="${volumes} -v ${cache}/node_modules:/src/webapp/node_modules"
-
-    docker run --rm ${it} ${volumes} \
-	   -e REAL_UID="${real_uid}" \
-	   -e REAL_GID="${real_gid}" \
-	   -w /src \
-	   "${IMAGE}" "$@"
-}
-
-release() {
+webapp() {
     DOCKERFILE="./docker/builder/Dockerfile"
-    docker_build
-    docker_run "make install-deps dist rpm deb"
+    TAG="evebox/builder:linux"
+    docker build ${CACHE_FROM} --rm \
+           --build-arg REAL_UID="$(id -u)" \
+           --build-arg REAL_GID="$(id -g)" \
+	   -t ${TAG} \
+	   -f ${DOCKERFILE} .
+    docker run ${IT} --rm \
+           -v "$(pwd):/src" \
+           -w /src/webapp \
+           -e REAL_UID="$(id -u)" \
+           -e REAL_GID="$(id -g)" \
+           -e BUILD_REV="${BUILD_REV}" \
+           ${TAG} make
+}
+
+release_musl() {
+    DOCKERFILE="./docker/builder/Dockerfile.musl"
+    TAG="evebox/builder:musl"
+    docker build --rm \
+           --build-arg REAL_UID="$(id -u)" \
+           --build-arg REAL_GID="$(id -g)" \
+	   -t ${TAG} \
+	   -f ${DOCKERFILE} .
+    docker run ${IT} --rm \
+           -v "$(pwd):/src" \
+           -v "$HOME/.cargo:/home/builder/.cargo" \
+           -w /src \
+           -e REAL_UID="$(id -u)" \
+           -e REAL_GID="$(id -g)" \
+           -e BUILD_REV="${BUILD_REV}" \
+           -e TARGET="x86_64-unknown-linux-musl" \
+           ${TAG} make dist rpm deb
 }
 
 release_windows() {
-    IMAGE="evebox/builder:windows"
+    TAG="evebox/builder:windows"
     DOCKERFILE="./docker/builder/Dockerfile.windows"
-    docker_build
-    docker_run \
-	"make install-deps && GOOS=windows CC=x86_64-w64-mingw32-gcc make dist"
+    docker build ${CACHE_FROM} --rm \
+           --build-arg REAL_UID="$(id -u)" \
+           --build-arg REAL_GID="$(id -g)" \
+	   -t ${TAG} \
+	   -f ${DOCKERFILE} .
+    docker run ${IT} --rm \
+           -v "$(pwd):/src" \
+           -w /src \
+           -e REAL_UID="$(id -u)" \
+           -e REAL_GID="$(id -g)" \
+           -e CC=x86_64-w64-mingw32-gcc \
+           -e TARGET=x86_64-pc-windows-gnu \
+           -e BUILD_REV="${BUILD_REV}" \
+           ${TAG} make dist
 }
 
 release_macos() {
-    IMAGE="evebox/builder:macos"
+    TAG="evebox/builder:macos"
     DOCKERFILE="./docker/builder/Dockerfile.macos"
-    docker_build
-    docker_run \
-	 "make install-deps && GOOS=darwin CC=o64-clang make dist"
+    docker build ${CACHE_FROM} --rm \
+           --build-arg REAL_UID="$(id -u)" \
+           --build-arg REAL_GID="$(id -g)" \
+	   -t ${TAG} \
+	   -f ${DOCKERFILE} .
+    docker run ${IT} --rm \
+           -v "$(pwd):/src" \
+           -w /src \
+           -e REAL_UID="$(id -u)" \
+           -e REAL_GID="$(id -g)" \
+           -e CC=o64-clang \
+           -e TARGET=x86_64-apple-darwin \
+           -e BUILD_REV="${BUILD_REV}" \
+           ${TAG} make dist
 }
 
 case "$1" in
 
-    release)
-	release
+    webapp)
+        webapp
+        ;;
+
+    release|release-linux|release-musl)
+	release_musl
+	;;
+
+    release-musl)
+	release_musl
 	;;
 
     release-windows)
@@ -79,35 +101,16 @@ case "$1" in
 	release_macos
 	;;
 
-    install-deps)
-	docker_build
-	docker_run make install-deps
-	;;
-
-    make)
-	docker_build
-	docker_run make
-	;;
-
-    shell)
-	docker_build
-	docker_run
-	;;
-
     *)
-	if [ "$1" ]; then
-	    docker_build
-	    docker_run "$@"
-	else
 	cat <<EOF
 usage: ./docker.sh <command>
 
 Commands:
-    release            Build x86_64 Linux release - zip/deb/rpm.
+    webapp             Just build the web application
+    release-linux      Build x86_64 Linux release - zip/deb/rpm.
     release-windows    Build x86_64 Windows release zip.
     release-macos      Build x86_64 MacOS release zip.
 EOF
-	fi
 	;;
 
 esac

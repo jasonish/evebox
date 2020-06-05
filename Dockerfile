@@ -1,29 +1,34 @@
 # Stage 1 - Build.
-FROM centos:7
+FROM fedora:32
 
-RUN cd /usr/local && \
-    curl -o - -L https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz | \
-        tar zxf -
+RUN dnf -y install \
+        curl \
+        findutils \
+        git \
+        gcc \
+        musl-gcc \
+        make \
+        zip
+
 
 ENV N_V 10.14.2
 RUN cd /usr/local && \
   curl -o - -L https://nodejs.org/dist/v${N_V}/node-v${N_V}-linux-x64.tar.gz | \
        tar zxf - --strip-components=1
 
-ENV PATH /usr/local/go/bin:$PATH
-
-RUN yum -y install \
-        make \
-        git \
-        gcc
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+ENV PATH /root/.cargo/bin:$PATH
+RUN rustup target add x86_64-unknown-linux-musl
 
 WORKDIR /src
 COPY / .
-RUN make install-deps && make
+ARG BUILD_REV
+RUN RELEASE="--release" TARGET="x86_64-unknown-linux-musl" make
 
 # State 2 - Copy in binary to clean container.
-FROM centos:7
-COPY --from=0 /src/evebox /bin/evebox
+FROM alpine:latest
+COPY --from=0 /src/target/x86_64-unknown-linux-musl/release/evebox /bin/evebox
+RUN /bin/evebox version
 COPY /docker/docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["/bin/evebox", "server"]

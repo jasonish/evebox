@@ -19,10 +19,9 @@ EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
 And one of...
 
-- An existing ElasticSearch/Logstash (version 7.7 or greater) setup
+- An existing ElasticSearch/Logstash (version 6 or greater) setup
   already handling Suricata events (EveBox has issues with Filebeat
-  indices at this time). For older versions of Elasticsearch continue
-  to use EveBox 0.11.x.
+  indices at this time).
 - Just Elastic Search, using EveBox or the EveBox agent to add events.
 - Nothing - EveBox can use an embedded SQLite database suitable for
   lower load installations (note: not all features supported yet).
@@ -118,25 +117,13 @@ written in Go. To build Evebox the following requirements must first
 be satisfied:
 
 * Node.js v12.16.1 or newer installed.
-* Go 1.14.1 or new installed.
+* Latest Rust stable.
 
-First checkout EveBox. As EveBox uses Go 1.11 modules, do not check it
-out into your GOPATH.
-
-For example:
+First checkout EveBox:
 
 ```
 git clone https://github.com/jasonish/evebox.git ~/projects/evebox
 ```
-
-If this is the first build the npm and Go dependencies must be
-installed, this can be done with:
-```
-make install-deps
-```
-
-```install-deps``` will also upgrade any dependencies, so its a good idea
-to re-run after git pulls.
 
 Then to build the binary:
 ```
@@ -184,4 +171,4 @@ See https://github.com/jasonish/evebox/blob/master/CHANGELOG.md .
 
 ## License
 
-BSD.
+Affergo GPL.
