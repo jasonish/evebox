@@ -50,6 +50,17 @@ impl Settings {
             }
         }
 
+        // Migrate some old environment variables if found.
+        if let Ok(val) = std::env::var("ELASTICSEARCH_URL") {
+            if let Err(_) = std::env::var("EVEBOX_DATABASE_ELASTICSEARCH_URL") {
+                log::debug!(
+                    "Setting EVEBOX_DATABASE_ELASTICSEARCH_URL to {} from ELASTICSEARCH_URL",
+                    val
+                );
+                std::env::set_var("EVEBOX_DATABASE_ELASTICSEARCH_URL", val);
+            }
+        }
+
         self.config
             .merge(config::Environment::with_prefix("EVEBOX").separator("_"))
             .unwrap();
