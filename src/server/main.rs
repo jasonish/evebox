@@ -62,7 +62,6 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
 
     config.authentication_required = settings.get_bool("authentication.required")?;
     if config.authentication_required {
-        log::info!("Authentication is required...");
         if let Some(auth_type) = settings.get_or_none::<String>("authentication.type")? {
             config.authentication_type = match auth_type.as_ref() {
                 "username" => AuthenticationType::Username,
@@ -270,7 +269,11 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
                             "Elasticsearch versions less than 6 are not supported"
                         ));
                     }
-                    log::info!("Found Elasticsearch version {}", version.version);
+                    log::info!(
+                        "Found Elasticsearch version {} at {}",
+                        version.version,
+                        &config.elastic_url
+                    );
                 }
             }
 
