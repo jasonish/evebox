@@ -43,7 +43,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     let mut settings = Settings::new(args);
     let mut config = ServerConfig::default();
     config.port = settings.get("http.port")?;
-    config.host = args.value_of("http.host").unwrap().to_string();
+    config.host = settings.get("http.host")?;
     config.tls_enabled = settings.get_bool("http.tls.enabled")?;
     config.tls_cert_filename = settings.get_or_none("http.tls.certificate")?;
     config.tls_key_filename = settings.get_or_none("http.tls.key")?;
