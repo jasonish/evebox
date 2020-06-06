@@ -171,4 +171,5 @@ See https://github.com/jasonish/evebox/blob/master/CHANGELOG.md .
 
 ## License
 
-Affergo GPL.
+Affero GPL.
+https://www.gnu.org/licenses/agpl-3.0.en.html
