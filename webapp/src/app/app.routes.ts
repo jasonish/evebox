@@ -37,10 +37,9 @@ import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 import {SshReportComponent} from "./reports/ssh-report.component";
 import {LoginComponent} from "./login/login.component";
 import {ConfigService} from "./config.service";
-import {ApiService} from "app/api.service";
+import {ApiService} from "./api.service";
 import {SettingsComponent} from "./settings/settings.component";
 import {DebugComponent} from "./debug/debug.component";
-import {Alert} from "selenium-webdriver";
 
 declare var window: any;
 
