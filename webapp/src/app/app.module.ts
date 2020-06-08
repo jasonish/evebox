@@ -31,7 +31,7 @@ import {BrowserAnimationsModule} from "@angular/platform-browser/animations";
 
 import {AppComponent} from "./app.component";
 import {RouterModule} from "@angular/router";
-import {AuthGuard, ConfigResolver, NeverActivate, routing} from "./app.routes";
+import {AppRoutingModule, AuthGuard, ConfigResolver, NeverActivate} from "./app.routes";
 import {AlertsComponent} from "./alerts.component";
 import {EventComponent} from "./event/event.component";
 import {EventsComponent} from "./events/events.component";
@@ -88,7 +88,7 @@ import {HttpClientModule} from "@angular/common/http";
 import {DebugComponent} from "./debug/debug.component";
 import {ClientService} from "./client.service";
 import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
-import { CommentInputComponent } from './comment-input/comment-input.component';
+import {CommentInputComponent} from './comment-input/comment-input.component';
 
 @NgModule({
     declarations: [
@@ -144,7 +144,7 @@ import { CommentInputComponent } from './comment-input/comment-input.component';
         HttpClientModule,
 
         // Evebox modules.
-        routing,
+        AppRoutingModule,
     ],
     providers: [
         AlertService,

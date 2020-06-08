@@ -32,7 +32,7 @@ import {AlertReportComponent} from "./reports/alerts-report.component";
 import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {FlowReportComponent} from "./reports/flow-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
-import {Injectable, ModuleWithProviders} from "@angular/core";
+import {Injectable, NgModule} from "@angular/core";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 import {SshReportComponent} from "./reports/ssh-report.component";
 import {LoginComponent} from "./login/login.component";
@@ -183,4 +183,8 @@ const routes: Routes = [
     },
 ];
 
-export const routing: ModuleWithProviders = RouterModule.forRoot(routes, {useHash: true});
+@NgModule({
+    imports: [RouterModule.forRoot(routes, { useHash: true})],
+    exports: [RouterModule]
+})
+export class AppRoutingModule { }
