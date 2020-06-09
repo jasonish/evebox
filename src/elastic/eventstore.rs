@@ -567,8 +567,6 @@ impl EventStore {
             }
         });
 
-        println!("{}", serde_json::to_string_pretty(&body).unwrap());
-
         let response: JsonValue = self.search(&body).await?.json().await?;
         let buckets = &response["aggregations"]["events_over_time"]["buckets"];
         let mut data = Vec::new();
@@ -617,8 +615,6 @@ impl EventStore {
             }
         }
 
-        let dump_request = params.agg == "alert.signature";
-
         let is_keyword = match &params.agg[..] {
             "src_ip" => true,
             "dest_ip" => true,
@@ -665,10 +661,6 @@ impl EventStore {
                 }
             }
         });
-
-        if dump_request {
-            println!("{}", query.to_string());
-        }
 
         let response: JsonValue = self.search(&query).await?.json().await?;
 

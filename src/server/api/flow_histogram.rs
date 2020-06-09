@@ -39,7 +39,6 @@ pub async fn handler(
     query: Query,
     _session: Arc<Session>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    dbg!(&query);
     helpers::log_unknown_parameters("flow-histogram", &query.other);
     let params = FlowHistogramParameters {
         mints: helpers::mints_from_time_range(query.time_range, None)?,
