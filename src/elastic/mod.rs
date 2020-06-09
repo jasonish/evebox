@@ -176,26 +176,46 @@ where
     dt.format(TIME_FORMAT).to_string()
 }
 
-pub fn timestamp_gte_query<Tz: chrono::offset::TimeZone>(dt: chrono::DateTime<Tz>) -> JsonValue
+pub fn range_gte_query<Tz: chrono::offset::TimeZone>(
+    field: &str,
+    ts: chrono::DateTime<Tz>,
+) -> JsonValue
 where
     Tz::Offset: std::fmt::Display,
 {
     json!({
         "range": {
-            "@timestamp": {"gte": format_timestamp(dt)}
+            field: {"gte": format_timestamp(ts)}
         }
     })
 }
 
-pub fn timestamp_lte_query<Tz: chrono::offset::TimeZone>(dt: chrono::DateTime<Tz>) -> JsonValue
+pub fn timestamp_gte_query<Tz: chrono::offset::TimeZone>(ts: chrono::DateTime<Tz>) -> JsonValue
+where
+    Tz::Offset: std::fmt::Display,
+{
+    range_gte_query("@timestamp", ts)
+}
+
+pub fn range_lte_query<Tz: chrono::offset::TimeZone>(
+    field: &str,
+    ts: chrono::DateTime<Tz>,
+) -> JsonValue
 where
     Tz::Offset: std::fmt::Display,
 {
     json!({
         "range": {
-            "@timestamp": {"lte": format_timestamp(dt)}
+            field: {"lte": format_timestamp(ts)}
         }
     })
+}
+
+pub fn timestamp_lte_query<Tz: chrono::offset::TimeZone>(ts: chrono::DateTime<Tz>) -> JsonValue
+where
+    Tz::Offset: std::fmt::Display,
+{
+    range_lte_query("@timestamp", ts)
 }
 
 pub fn query_string_query(query_string: &str) -> JsonValue {
