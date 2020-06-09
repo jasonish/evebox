@@ -214,10 +214,6 @@ export class ElasticSearchService {
                 });
     }
 
-    findFlow(params: any): Promise<any> {
-        return this.api.post("api/1/find-flow", params);
-    }
-
     getAlerts(options: any = {}): Promise<any> {
         let params = new HttpParams();
         let tags: string[] = [];

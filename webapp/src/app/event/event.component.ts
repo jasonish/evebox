@@ -95,10 +95,6 @@ export class EventComponent implements OnInit, OnDestroy {
     setupEvent(event: any) {
         this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
 
-        if (event._source.event_type != "flow") {
-            this.findFlow(event);
-        }
-
         // If the Suricata provided rule doesn't exist, check for
         // an EveBox added one and put it where the Suricata one
         // would be found.
@@ -301,32 +297,6 @@ export class EventComponent implements OnInit, OnDestroy {
         }
 
         return false;
-    }
-
-    findFlow(event: any) {
-        if (!event._source.flow_id) {
-            console.log("Unable to find flow for event, event does not have a flow id.");
-            console.log(event);
-            return;
-        }
-
-        this.elasticSearch.findFlow({
-            flowId: event._source.flow_id,
-            proto: event._source.proto.toLowerCase(),
-            timestamp: event._source.timestamp,
-            srcIp: event._source.src_ip,
-            destIp: event._source.dest_ip,
-        }).then(response => {
-            console.log(response);
-            if (response.flows.length > 0) {
-                this.flows = response.flows;
-            } else {
-                console.log("No flows found for event.");
-            }
-        }, error => {
-            console.log("Failed to find flows for event:");
-            console.log(error);
-        });
     }
 
     refresh() {

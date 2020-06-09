@@ -431,31 +431,6 @@
       </div>
     </div>
 
-    <!-- Flows, if any. -->
-    <div *ngFor="let flow of flows">
-      <br/>
-      <div class="card">
-        <div class="card-header">
-          <span class="pull-right">
-            [
-            <a [routerLink]="['/event', flow._id]">Open</a>
-            ]
-          </span>
-          <b>Flow - {{flow._source.proto}} {{flow._source.src_ip}} ->
-            {{flow._source.dest_ip}}</b>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div *ngFor="let item of flow._source.flow | mapToItems"
-                 class="col-md-4">
-              <em>{{item.key | eveboxGenericPrettyPrinter}}:</em>
-              <search-link [value]="item.val"></search-link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Payload -->
     <div *ngIf="event._source.payload">
       <br/>
