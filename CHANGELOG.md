@@ -3,6 +3,7 @@
 ## unreleased
 
 ### Changes
+- Server rewritten in Rust. Ideally this should not be noticed.
 - Stop tagging events with "archived" and "escalated", and only use
   "evebox.archived" and "evebox.escalated". This should not be noticed
   as EveBox has been using both tags for a very long.
@@ -14,6 +15,7 @@
 ### Breaking Changes
 - Remove adding of Suricata rules to events on import. Suricata can
   now be configured to include the rule in an alert.
+- License: AGPL
 
 ## 0.11.0 - 2020-03-26
 
