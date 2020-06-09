@@ -67,9 +67,9 @@ export class ThemeService {
     loadTheme(theme: string) {
         switch (theme) {
             case "dark":
-                return require("../../styles/theme-dark.scss");
+                return require("../../styles/theme-dark.scss").default;
             default:
-                return require("../../styles/theme-light.scss");
+                return require("../../styles/theme-light.scss").default;
         }
     }
 
