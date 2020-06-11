@@ -10,6 +10,8 @@ BUILD_REV	?=	$(shell git rev-parse --short HEAD)
 BUILD_DATE	?=	$(shell date +%s)
 export BUILD_DATE
 
+CARGO ?=		cargo
+
 APP :=		evebox
 
 WEBAPP_SRCS :=	$(shell find webapp -type f | grep -v node_modules)
@@ -35,7 +37,7 @@ endif
 
 # Build's EveBox for the host platform.
 evebox: 
-	cargo build $(RELEASE) $(CARGO_BUILD_ARGS)
+	$(CARGO) build $(RELEASE) $(CARGO_BUILD_ARGS)
 
 HOST_TARGET := $(shell rustc -Vv| awk '/^host/ { print $$2 }')
 TARGET ?= $(HOST_TARGET)
@@ -57,7 +59,8 @@ EVEBOX_BIN :=	target/$(TARGET)/release/$(APP)$(APP_EXT)
 
 dist: DIST_DIR ?= dist/$(DIST_NAME)
 dist: public
-	cargo build --release $(CARGO_BUILD_ARGS)
+	echo "Building $(DIST_NAME)..."
+	$(CARGO) build --release $(CARGO_BUILD_ARGS)
 	mkdir -p $(DIST_DIR)
 	cp $(EVEBOX_BIN) $(DIST_DIR)/
 	cp agent.yaml.example $(DIST_DIR)/

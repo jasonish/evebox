@@ -44,21 +44,19 @@ jobs:
         with:
           path: dist/*.rpm
 
-  arm7:
-    name: Arm 7
+  arm:
+    name: Arm
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
       - run: echo "::add-path::$HOME/.cargo/bin"
       - run: cargo install cross
-      - run: ./docker.sh webapp
-      - run: cross build --release --target armv7-unknown-linux-musleabihf
+      - run: CARGO=cross TARGET=armv7-unknown-linux-musleabihf make dist
       - uses: actions/upload-artifact@v2
         with:
-          name: armv7-linux
-          path: target/armv7-unknown-linux-musleabihf/release/evebox
-      
+          path: dist/*.zip
+
   windows:
     name: Windows
     runs-on: ubuntu-latest
