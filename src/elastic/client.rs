@@ -42,7 +42,7 @@ impl From<serde_json::error::Error> for ClientError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Client {
     url: String,
     disable_certificate_validation: bool,
@@ -65,6 +65,13 @@ impl Clone for Client {
 }
 
 impl Client {
+    pub fn new(url: &str) -> Self {
+        Self {
+            url: url.to_string(),
+            ..Default::default()
+        }
+    }
+
     pub fn get_http_client(&self) -> Result<reqwest::Client, reqwest::Error> {
         let mut builder = reqwest::Client::builder();
         if self.disable_certificate_validation {
