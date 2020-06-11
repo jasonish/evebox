@@ -328,7 +328,8 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(oneshot)
         .subcommand(agent)
         .subcommand(sqlite_import)
-        .subcommand(evebox::commands::config::config_subcommand());
+        .subcommand(evebox::commands::config::config_subcommand())
+        .subcommand(elastic_debug());
 
     let matches = parser.clone().get_matches();
 
@@ -363,6 +364,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(())
         }
+        ("elastic-debug", Some(args)) => evebox::commands::elastic_debug::main(args).await,
         ("oneshot", Some(args)) => evebox::commands::oneshot::main(&args).await,
         ("agent", Some(args)) => evebox::agent::main(&args).await,
         ("config", Some(args)) => evebox::commands::config::main(&args),
@@ -383,4 +385,14 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Ok(())
     }
+}
+
+fn elastic_debug() -> clap::App<'static, 'static> {
+    SubCommand::with_name("elastic-debug").arg(
+        Arg::with_name("elasticsearch")
+            .long("elasticsearch")
+            .short("e")
+            .takes_value(true)
+            .default_value("127.0.0.1"),
+    )
 }
