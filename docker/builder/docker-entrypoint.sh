@@ -11,4 +11,10 @@ if [ -e /opt/osxcross ]; then
     export PATH=/opt/osxcross/target/bin:$PATH
 fi
 
-exec $@
+$@
+
+if [ "${FIX_PERMS}" = "true" ]; then
+    if [ "${REAL_UID}" -a "${REAL_GID}" ]; then
+        chown -R "${REAL_UID}:${REAL_GID}" dist target
+    fi
+fi

@@ -1,0 +1,26 @@
+FROM fedora:32
+
+RUN dnf -y install \
+        curl \
+        findutils \
+        gcc \
+        git \
+        make \
+        moby-engine \
+        zip
+
+ENV N_V 12.16.1
+RUN cd /usr/local && \
+  curl -o - -L https://nodejs.org/dist/v${N_V}/node-v${N_V}-linux-x64.tar.gz | \
+       tar zxf - --strip-components=1
+
+ENV PATH=/root/.cargo/bin:$PATH
+ENV CROSS_DOCKER_IN_DOCKER=true
+ENV FIX_PERMS=true
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+RUN cargo install --git https://github.com/rust-embedded/cross.git
+COPY / /src
+
+COPY /docker/builder/docker-entrypoint.sh /
+ENTRYPOINT ["/docker-entrypoint.sh"]

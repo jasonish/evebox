@@ -3,10 +3,12 @@ name: Builds
 on:
   push:
     paths-ignore:
-      - ".gitlab-ci.yml"
+      - "CHANGELOG.md"
+      - "README.md"
   pull_request:
     paths-ignore:
-      - ".gitlab-ci.yml"
+      - "CHANGELOG.md"
+      - "README.md"
 
 jobs:
 
@@ -15,10 +17,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: ./docker.sh webapp
+
+      - run: echo "::set-env name=BUILDER_TAG::docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-linux:webapp"
+      - run: echo "::set-env name=BRANCH_PREFIX::$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')"
+
+      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
+      - run: docker pull ${BUILDER_TAG} || true
+      - run: ./build.sh webapp
+      - run: docker push ${BUILDER_TAG} || true
       - uses: actions/upload-artifact@v2
         with:
-          name: resources-public
+          name: ${{ env.BRANCH_PREFIX }}-resources-public
           path: resources/public
 
   linux:
@@ -26,35 +35,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: ./docker.sh release-linux
-      - run: tar zcvf resources-public.tar.gz ./resources/public
+
+      - run: echo "::set-env name=BUILDER_TAG::docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-linux:latest"
+      - run: echo "::set-env name=BRANCH_PREFIX::$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')"
+
+      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
+      - run: docker pull ${BUILDER_TAG} || true
+      - run: ./build.sh linux
+      - run: docker push ${BUILDER_TAG} || true
+
       - uses: actions/upload-artifact@v2
         with:
-          path: resources-public.tar.gz
-      - uses: actions/upload-artifact@v2
-        with:
+          name: ${{ env.BRANCH_PREFIX }}-build
           path: dist/*.zip
       - uses: actions/upload-artifact@v2
         with:
-          path: resources-public.tar.gz
-      - uses: actions/upload-artifact@v2
-        with:
+          name: ${{ env.BRANCH_PREFIX }}-build
           path: dist/*.deb
       - uses: actions/upload-artifact@v2
         with:
+          name: ${{ env.BRANCH_PREFIX }}-build
           path: dist/*.rpm
 
-  arm:
-    name: Arm
+  linux-armv7:
+    name: Arm v7
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
-      - run: echo "::add-path::$HOME/.cargo/bin"
-      - run: cargo install cross
-      - run: CARGO=cross TARGET=armv7-unknown-linux-musleabihf make dist
+
+      - run: echo "::set-env name=BUILDER_TAG::docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder--armv7:latest"
+      - run: echo "::set-env name=BRANCH_PREFIX::$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')"
+      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
+      - run: docker pull ${BUILDER_TAG} || true
+      - run: ./build.sh linux-arm
+      - run: docker push ${BUILDER_TAG} || true
       - uses: actions/upload-artifact@v2
         with:
+          name: ${{ env.BRANCH_PREFIX }}-build
           path: dist/*.zip
 
   windows:
@@ -62,9 +79,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: ./docker.sh release-windows
+
+      - run: echo "::set-env name=BUILDER_TAG::docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-windows:latest"
+      - run: echo "::set-env name=BRANCH_PREFIX::$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')"
+      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
+      - run: docker pull ${BUILDER_TAG} || true
+      - run: ./build.sh windows
+      - run: docker push ${BUILDER_TAG} || true
       - uses: actions/upload-artifact@v2
         with:
+          name: ${{ env.BRANCH_PREFIX }}-build
           path: dist/*.zip
 
   macos:
@@ -72,21 +96,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: ./docker.sh release-macos
+
+      - run: echo "::set-env name=BUILDER_TAG::docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-macos:latest"
+      - run: echo "::set-env name=BRANCH_PREFIX::$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')"
+
+      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
+      - run: docker pull ${BUILDER_TAG} || true
+      - run: ./build.sh macos
+      - run: docker push ${BUILDER_TAG} || true
       - uses: actions/upload-artifact@v2
         with:
+          name: ${{ env.BRANCH_PREFIX }}-build
           path: dist/*.zip
 
   docker:
-    name: Docker Image
+    name: Docker
     runs-on: ubuntu-latest
+    needs: [linux, linux-armv7]
     steps:
       - uses: actions/checkout@v2
-      - name: Build Docker Image
-        run: docker build --tag jasonish/evebox:master .
-      - name: Push Docker image to hub.docker.com (only for master)
+      - uses: actions/download-artifact@v2
+
+      - run: echo "::set-env name=BRANCH_PREFIX::$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')"
+
+      - run: ls -lR
+      - uses: crazy-max/ghaction-docker-buildx@v3
+      - run: |
+          mkdir -p ~/.docker
+          echo '{"experimental": "enabled"}' > ~/.docker/config.json
+      - run: |
+          mkdir -p dist
+          cd dist
+          unzip ../${BRANCH_PREFIX}-build/evebox-latest-linux-x64.zip
+          unzip ../${BRANCH_PREFIX}-build/evebox-latest-linux-arm.zip
+      - run: ./build.sh docker
+      - name: Push Docker images and manifest
         if: github.ref == 'refs/heads/master'
         run: |
-          echo ${{secrets.DOCKER_HUB_TOKEN}} | \
-              docker login -u ${{secrets.DOCKER_HUB_USERNAME}} --password-stdin
-          docker push jasonish/evebox:master
+          echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+          ./build.sh docker-push

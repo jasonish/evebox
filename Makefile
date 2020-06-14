@@ -66,7 +66,6 @@ dist: public
 	cp agent.yaml.example $(DIST_DIR)/
 	cp evebox.yaml.example $(DIST_DIR)/
 	cd dist && zip -r $(DIST_NAME).zip $(DIST_NAME)
-	rm -rf dist/$(DIST_NAME)
 
 # Debian packaging. Due to a versioning screwup early on, we now need
 # to set the epoch to 1 for those updating with apt.

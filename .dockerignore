@@ -9,3 +9,4 @@
 /.docker_cache
 /.gitlab-ci.yml
 /target
+/build.sh
