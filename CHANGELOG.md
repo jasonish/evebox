@@ -16,6 +16,8 @@
 - Remove adding of Suricata rules to events on import. Suricata can
   now be configured to include the rule in an alert.
 - License: AGPL
+- The Docker image is now based on "scratch" and only contains the
+  EveBox binary, nothing else.
 
 ## 0.11.0 - 2020-03-26
 
