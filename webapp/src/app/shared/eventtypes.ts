@@ -37,4 +37,5 @@ export const EVENT_TYPES: any[] = [
     {name: "SSH", eventType: "ssh"},
     {name: "SMB", eventType: "smb"},
     {name: "NFS", eventType: "nfs"},
+    {name: "DHCP", eventType: "dhcp"},
 ];

@@ -220,8 +220,27 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 return `${eve.fileinfo.filename} ${extraInfo}`;
             case "smb":
                 return this.formatSmb(eve);
+            case "dhcp":
+                return this.formatDhcp(event);
             default:
                 return JSON.stringify(event._source[event._source.event_type]);
         }
+    }
+
+    formatDhcp(event: any): string {
+        const dhcp = event._source["dhcp"];
+        const hostname = dhcp.hostname || "[no-hostname]";
+        if (dhcp.dhcp_type == "ack") {
+            return `ACK: ${hostname} assigned ${dhcp.assigned_ip}`;
+        } else if (dhcp.dhcp_type == "request") {
+            return `Request from ${hostname}: client_ip=${dhcp.client_ip} mac=${dhcp.client_mac}`;
+        } else if (dhcp.dhcp_type == "offer") {
+            return `Offer to ${dhcp.client_mac} with ${dhcp.assigned_ip}`;
+        } else if (dhcp.dhcp_type == "discover") {
+            return `Discover from ${dhcp.client_mac}`;
+        } else {
+            console.log("Unknown DHCP type: " + dhcp.dhcp_type);
+        }
+        return JSON.stringify(event._source["dhcp"]);
     }
 }
