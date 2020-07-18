@@ -229,15 +229,36 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
 
     formatDhcp(event: any): string {
         const dhcp = event._source["dhcp"];
-        const hostname = dhcp.hostname || "[no-hostname]";
+        let client_mac = dhcp.client_mac;
+
+        let with_fields = [];
+        if (dhcp.assigned_ip && dhcp.assigned_ip != "0.0.0.0") {
+            with_fields.push(`assigned-ip=${dhcp.assigned_ip}`);
+        }
+        if (dhcp.client_ip && dhcp.client_ip != "0.0.0.0") {
+            with_fields.push(`client-ip=${dhcp.client_ip}`);
+        }
+        if (dhcp.hostname) {
+            with_fields.push(`hostname=${dhcp.hostname}`);
+        }
+
+        let with_string = "";
+        if (with_fields.length > 0) {
+            with_string = "with " + with_fields.join(", ");
+        }
+
         if (dhcp.dhcp_type == "ack") {
-            return `ACK: ${hostname} assigned ${dhcp.assigned_ip}`;
+            return `Ack to ${client_mac} ${with_string}`;
         } else if (dhcp.dhcp_type == "request") {
-            return `Request from ${hostname}: client_ip=${dhcp.client_ip} mac=${dhcp.client_mac}`;
+            return `Request from ${client_mac} ${with_string}`;
         } else if (dhcp.dhcp_type == "offer") {
-            return `Offer to ${dhcp.client_mac} with ${dhcp.assigned_ip}`;
+            return `Offer to ${client_mac} ${with_string}`;
         } else if (dhcp.dhcp_type == "discover") {
-            return `Discover from ${dhcp.client_mac}`;
+            return `Discover from ${client_mac} ${with_string}`;
+        } else if (dhcp.dhcp_type == "inform") {
+            return `Inform from ${client_mac} ${with_string}`;
+        } else if (dhcp.dhcp_type == "release") {
+            return `Release from ${client_mac} ${with_string}`
         } else {
             console.log("Unknown DHCP type: " + dhcp.dhcp_type);
         }
