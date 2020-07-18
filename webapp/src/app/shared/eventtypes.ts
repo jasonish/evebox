@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 Jason Ish
+/* Copyright (c) 2018-2020 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,15 +27,15 @@
 export const EVENT_TYPES: any[] = [
     {name: "All", eventType: ""},
     {name: "Alerts", eventType: "alert"},
-    {name: "HTTP", eventType: "http"},
-    {name: "Flow", eventType: "flow"},
-    {name: "NetFlow", eventType: "netflow"},
+    {name: "DHCP", eventType: "dhcp"},
     {name: "DNS", eventType: "dns"},
-    {name: "TLS", eventType: "tls"},
     {name: "Drop", eventType: "drop"},
     {name: "FileInfo", eventType: "fileinfo"},
+    {name: "Flow", eventType: "flow"},
+    {name: "HTTP", eventType: "http"},
+    {name: "NetFlow", eventType: "netflow"},
+    {name: "NFS", eventType: "nfs"},
     {name: "SSH", eventType: "ssh"},
     {name: "SMB", eventType: "smb"},
-    {name: "NFS", eventType: "nfs"},
-    {name: "DHCP", eventType: "dhcp"},
+    {name: "TLS", eventType: "tls"},
 ];
