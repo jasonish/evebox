@@ -7,6 +7,8 @@
 - Stop tagging events with "archived" and "escalated", and only use
   "evebox.archived" and "evebox.escalated". This should not be noticed
   as EveBox has been using both tags for a very long.
+- The Docker image is now based on Alpine Linux. Scratch could be
+  used, but it would break compatibility with previous images.
 
 ### Fixes
 - Fix the index_pattern when adding a template to Elasticsearch with a
@@ -16,8 +18,6 @@
 - Remove adding of Suricata rules to events on import. Suricata can
   now be configured to include the rule in an alert.
 - License: AGPL
-- The Docker image is now based on "scratch" and only contains the
-  EveBox binary, nothing else.
 
 ## 0.11.0 - 2020-03-26
 
