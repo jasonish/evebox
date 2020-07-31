@@ -110,6 +110,7 @@ build_macos() {
 
 build_docker() {
     docker buildx build \
+           --build-arg "HASH=sha256:a15790640a6690aa1730c38cf0a440e2aa44aaca9b0e8931a9f2b0d7cc90fd65" \
            --build-arg "BUILD_REV=${BUILD_REV}" \
            --build-arg "SRC=./dist/evebox-latest-linux-x64/evebox" \
            --load \
@@ -118,6 +119,7 @@ build_docker() {
            -f docker/Dockerfile .
 
     docker buildx build \
+           --build-arg "HASH=sha256:71465c7d45a086a2181ce33bb47f7eaef5c233eace65704da0c5e5454a79cee5" \
            --build-arg "BUILD_REV=${BUILD_REV}" \
            --build-arg "SRC=./dist/evebox-latest-linux-arm/evebox" \
            --load \
@@ -189,6 +191,10 @@ case "$1" in
     docker-push)
         build_docker
         docker_push
+        ;;
+
+    push)
+        push
         ;;
 
     all)

@@ -1,7 +1,11 @@
-FROM scratch
+ARG HASH
+FROM alpine@$HASH
 
 ARG SRC="SRC_--build-arg_must_be_set"
-COPY $SRC /evebox
+COPY $SRC /bin/evebox
 
 ENV EVEBOX_HTTP_HOST=0.0.0.0
-ENTRYPOINT ["/evebox"]
+
+COPY /docker/docker-entrypoint.sh /docker-entrypoint.sh
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["/bin/evebox"]
