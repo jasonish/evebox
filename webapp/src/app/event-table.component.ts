@@ -71,8 +71,12 @@ import {ElasticSearchService} from "./elasticsearch.service";
               <label>D:</label>
               {{row._source.dest_ip | eveboxFormatIpAddress}}
             </td>
-            <td style="word-break: break-all;">{{row |
-            eveboxEventDescriptionPrinter}}
+            <td style="word-break: break-all;">
+              {{row | eveboxEventDescriptionPrinter}}
+              <span class="badge badge-secondary" 
+                  *ngIf="row._source.app_proto && row._source.app_proto != 'failed'">
+               {{row._source.app_proto}}
+              </span>
               <div *ngIf="getEventType(row) == 'alert' && ! isArchived(row)"
                    class="pull-right"
                    (click)="$event.stopPropagation()">

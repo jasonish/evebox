@@ -263,6 +263,10 @@
           | uppercase}}</span>
           <span
               [innerHTML]="row.event.event | eveboxEventDescriptionPrinter"></span>
+          <span class="badge badge-secondary mx-2"
+                *ngIf="row.event.event._source.app_proto && row.event.event._source.app_proto != 'failed'">
+            {{row.event.event._source.app_proto}}
+          </span>
         </td>
       </tr>
       </tbody>
