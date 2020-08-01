@@ -307,9 +307,57 @@
     <div *ngIf="features['comments'] && (!hasHistory() || commentInputVisible)">
       <br/>
       <app-comment-input id="comment"
-                            *ngIf="!hasHistory() || commentInputVisible"
-                            (on-close)="commentInputVisible = false"
-                            (on-submit)="onCommentSubmit($event)"></app-comment-input>
+                         *ngIf="!hasHistory() || commentInputVisible"
+                         (on-close)="commentInputVisible = false"
+                         (on-submit)="onCommentSubmit($event)"></app-comment-input>
+    </div>
+
+    <!-- DNS -->
+    <div *ngIf="event._source.event_type != 'dns'">
+      <div *ngIf="event._source.dns">
+        <br/>
+        <div class="card">
+          <div class="card-header">
+            <b>DNS</b>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div *ngIf="event._source.dns.query" class="col">
+              <table class="table">
+                <thead>
+                <tr>
+                  <th style="border-top: 0;">Request</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr *ngFor="let query of event._source.dns.query">
+                  <td>{{query.rrtype}}</td>
+                  <td>{{query.rrname}}</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div *ngIf="event._source.dns.answers" class="col">
+              <table class="table">
+                <thead>
+                <tr>
+                  <th style="border-top: 0;">Type</th>
+                  <th style="border-top: 0;">RRname</th>
+                  <th style="border-top: 0;">Rdata</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr *ngFor="let answer of event._source.dns.answers">
+                  <td>{{answer.rrtype}}</td>
+                  <td>{{answer.rrname}}</td>
+                  <td>{{answer.rdata}}</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- HTTP. -->
