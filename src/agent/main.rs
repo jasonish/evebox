@@ -90,6 +90,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         .get_bool("disable-certificate-check")
         .unwrap_or(false);
     let bookmark_directory: Option<String> = settings.get_or_none("bookmark-directory").unwrap();
+    let data_directory: Option<String> = settings.get_or_none("data-directory").unwrap();
     let enable_geoip = settings.get_bool("geoip.enabled").unwrap();
 
     let mut filters = Vec::new();
@@ -127,7 +128,14 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let reader = crate::eve::reader::EveReader::new(&input.filename);
     let client = Client::new(&server, username, password, disable_certificate_validation);
     let importer = EveboxImporter::new(client.clone());
-    let bookmark_filename = get_bookmark_filename(&input.filename, bookmark_directory);
+    let bookmark_filename = get_bookmark_filename(
+        &input.filename,
+        if bookmark_directory.is_some() {
+            bookmark_directory
+        } else {
+            data_directory
+        },
+    );
     if let Some(bookmark_filename) = &bookmark_filename {
         log::info!("Using bookmark file: {:?}", bookmark_filename);
     } else {

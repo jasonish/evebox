@@ -194,6 +194,12 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::with_name("stdout")
                 .long("stdout")
                 .help("Print events to stdout"),
+        )
+        .arg(
+            Arg::with_name("bookmark-directory")
+                .long("bookmark-directory")
+                .takes_value(true)
+                .hidden(true),
         );
 
     let oneshot = SubCommand::with_name("oneshot")
