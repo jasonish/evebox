@@ -55,9 +55,11 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     config.data_directory = settings.get_or_none("data-directory")?;
     config.database_retention_period = settings.get_or_none("database.retention-period")?;
     if let Ok(val) = settings.get_bool("database.elasticsearch.disable-certificate-check") {
-        config.no_check_certificate = val;
-    } else {
-        config.no_check_certificate = settings.get_bool("no-check-certificate")?;
+        if val {
+            config.no_check_certificate = true;
+        } else {
+            config.no_check_certificate = settings.get_bool("no-check-certificate")?;
+        }
     }
 
     config.authentication_required = settings.get_bool("authentication.required")?;
