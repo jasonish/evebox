@@ -24,11 +24,20 @@ pub mod log {
     pub use tracing::warn;
 }
 
-pub fn init_logger(level: tracing::Level) {
+use tracing::Level;
+
+pub fn init_logger(level: Level) {
+    let level = match level {
+        Level::TRACE => "trace",
+        Level::DEBUG => "debug",
+        Level::INFO => "info",
+        Level::WARN => "warn",
+        Level::ERROR => "error",
+    };
     let timer =
         tracing_subscriber::fmt::time::ChronoLocal::with_format("%Y-%m-%d %H:%M:%S".to_string());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_max_level(level)
+        .with_env_filter(format!("{},hyper=off", level))
         .with_writer(std::io::stderr)
         .with_timer(timer)
         .finish();
