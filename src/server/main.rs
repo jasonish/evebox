@@ -62,6 +62,11 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         }
     }
 
+    log::debug!(
+        "Certificate checks disabled: {}",
+        config.no_check_certificate,
+    );
+
     config.authentication_required = settings.get_bool("authentication.required")?;
     if config.authentication_required {
         if let Some(auth_type) = settings.get_or_none::<String>("authentication.type")? {
