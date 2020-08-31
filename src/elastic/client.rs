@@ -129,9 +129,17 @@ impl Client {
                 return Ok(version.clone());
             }
         }
-        let response = self.get("")?.send().await?.text().await?;
-        let version_response: VersionResponse = serde_json::from_str(&response)?;
-        let version = Version::parse(&version_response.version.number)?;
+        let body = self.get("")?.send().await?.text().await?;
+        let response: super::ElasticResponse = serde_json::from_str(&body)?;
+        if let Some(error) = response.error {
+            return Err(ClientError::StringError(error.reason));
+        }
+        if response.version.is_none() {
+            return Err(ClientError::StringError(
+                "request for version did not return a version".to_string(),
+            ));
+        }
+        let version = Version::parse(&response.version.unwrap().number)?;
         let mut locked = self.version.write().unwrap();
         *locked = Some(version.clone());
         Ok(version)
@@ -263,16 +271,6 @@ impl ClientBuilder {
             version: RwLock::new(None),
         }
     }
-}
-
-#[derive(Debug, Deserialize)]
-struct VersionResponse {
-    pub version: VersionObject,
-}
-
-#[derive(Debug, Deserialize)]
-struct VersionObject {
-    pub number: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

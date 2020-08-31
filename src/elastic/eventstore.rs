@@ -329,30 +329,38 @@ impl EventStore {
 
         let body = self.search(&query).await?.text().await?;
 
-        let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+        let response: ElasticResponse = serde_json::from_str(&body)?;
+        if let Some(error) = response.error {
+            return Err(DatastoreError::ElasticSearchError(error.reason));
+        }
+
         let mut alerts = Vec::new();
-        if let JsonValue::Array(buckets) = &json["aggregations"]["signatures"]["buckets"] {
-            for bucket in buckets {
-                if let JsonValue::Array(buckets) = &bucket["sources"]["buckets"] {
-                    for bucket in buckets {
-                        if let JsonValue::Array(buckets) = &bucket["destinations"]["buckets"] {
-                            for bucket in buckets {
-                                let newest = &bucket["newest"]["hits"]["hits"][0];
-                                let oldest = &bucket["oldest"]["hits"]["hits"][0];
-                                let escalated = &bucket["escalated"]["doc_count"];
-                                let record = json!({
-                                    "count": bucket["doc_count"],
-                                    "event": newest,
-                                    "escalatedCount": escalated,
-                                    "maxTs": &newest["_source"]["@timestamp"],
-                                    "minTs": &oldest["_source"]["@timestamp"],
-                                });
-                                alerts.push(record);
+        if let Some(aggregrations) = response.aggregations {
+            if let JsonValue::Array(buckets) = &aggregrations["signatures"]["buckets"] {
+                for bucket in buckets {
+                    if let JsonValue::Array(buckets) = &bucket["sources"]["buckets"] {
+                        for bucket in buckets {
+                            if let JsonValue::Array(buckets) = &bucket["destinations"]["buckets"] {
+                                for bucket in buckets {
+                                    let newest = &bucket["newest"]["hits"]["hits"][0];
+                                    let oldest = &bucket["oldest"]["hits"]["hits"][0];
+                                    let escalated = &bucket["escalated"]["doc_count"];
+                                    let record = json!({
+                                        "count": bucket["doc_count"],
+                                        "event": newest,
+                                        "escalatedCount": escalated,
+                                        "maxTs": &newest["_source"]["@timestamp"],
+                                        "minTs": &oldest["_source"]["@timestamp"],
+                                    });
+                                    alerts.push(record);
+                                }
                             }
                         }
                     }
                 }
             }
+        } else {
+            log::warn!("Elasticsearch response has no aggregations");
         }
 
         // TODO: Parse out errors before we look for alert groups in the response

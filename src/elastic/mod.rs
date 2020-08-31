@@ -244,9 +244,19 @@ pub struct ElasticResponse {
     pub failures: Option<Vec<JsonValue>>,
     pub total: Option<u64>,
     pub updated: Option<u64>,
+    pub aggregations: Option<serde_json::Value>,
+    pub version: Option<response::Version>,
 
     #[serde(flatten)]
     pub other: std::collections::HashMap<String, JsonValue>,
+}
+
+pub mod response {
+    use super::Deserialize;
+    #[derive(Deserialize, Debug)]
+    pub struct Version {
+        pub number: String,
+    }
 }
 
 #[derive(Deserialize, Debug)]
