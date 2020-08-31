@@ -2,7 +2,11 @@
 
 set -e
 
-DOCKER_NAME="jasonish/evebox"
+if [ "${REGISTRY}" = "" ]; then
+    REGISTRY="docker.io"
+fi
+
+DOCKER_NAME="${REGISTRY}/jasonish/evebox"
 BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')
 
 BUILD_REV=$(git rev-parse --short HEAD)
