@@ -37,7 +37,7 @@ pub fn init_logger(level: Level) {
     let timer =
         tracing_subscriber::fmt::time::ChronoLocal::with_format("%Y-%m-%d %H:%M:%S".to_string());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(format!("{},hyper=off", level))
+        .with_env_filter(format!("{},hyper=off,warp=off", level))
         .with_writer(std::io::stderr)
         .with_timer(timer)
         .finish();
