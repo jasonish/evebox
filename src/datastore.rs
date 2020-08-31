@@ -51,7 +51,7 @@ pub enum DatastoreError {
     SQLiteError(rusqlite::Error),
     #[error("generic datastore error")]
     GenericError(Box<dyn std::error::Error + Sync + Send>),
-    #[error("elastic search error")]
+    #[error("elasticsearch: {0}")]
     ElasticSearchError(String),
     #[error("elasticsearch: {0}")]
     ElasticError(elastic::ElasticError),
