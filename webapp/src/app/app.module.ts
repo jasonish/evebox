@@ -89,6 +89,7 @@ import {DebugComponent} from "./debug/debug.component";
 import {ClientService} from "./client.service";
 import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
 import {CommentInputComponent} from './comment-input/comment-input.component';
+import { AboutComponent } from './about/about.component';
 
 @NgModule({
     declarations: [
@@ -134,6 +135,7 @@ import {CommentInputComponent} from './comment-input/comment-input.component';
         RuleHighlightPipe,
         EveboxPrintablePipe,
         CommentInputComponent,
+        AboutComponent,
     ],
     imports: [
         // Angular modules.
