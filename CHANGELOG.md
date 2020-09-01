@@ -13,11 +13,18 @@
 ### Fixes
 - Fix the index_pattern when adding a template to Elasticsearch with a
   non logstash index.
+- Fix disabling of certificate checks for connecting to an Elasticsearch
+  server with a self-signed certificate.
+  https://github.com/jasonish/evebox/issues/144
 
 ### Breaking Changes
 - Remove adding of Suricata rules to events on import. Suricata can
   now be configured to include the rule in an alert.
 - License: AGPL
+
+### Known Issue
+- When using a self-signed certificate, the hostname being connected
+  to must match the hostname in the certificate.
 
 ## 0.11.0 - 2020-03-26
 
