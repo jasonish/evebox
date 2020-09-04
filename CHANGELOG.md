@@ -9,6 +9,12 @@
   as EveBox has been using both tags for a very long.
 - The Docker image is now based on Alpine Linux. Scratch could be
   used, but it would break compatibility with previous images.
+- Agent: The baheaviour of using the log filename suffixed with ".bookmark
+  has been removed. The agent will prefer to use the configured bookmark
+  directory (aka data-directory) instead, or if not set, the current
+  directory where EveBox is being run from. However, if these deprecated
+  bookmark filenames exist (like after an upgrade), they will continue
+  to be used.
 
 ### Fixes
 - Fix the index_pattern when adding a template to Elasticsearch with a

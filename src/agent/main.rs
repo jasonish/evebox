@@ -213,16 +213,25 @@ fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathB
         return Some(bookmark::bookmark_filename(input, &directory));
     } else {
         let filename = PathBuf::from(format!("{}.bookmark", input));
-        match std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&filename)
-        {
-            Ok(_) => {
+
+        if filename.exists() {
+            log::info!(
+                "Legacy bookmark filename exists, will check if writable: {:?}",
+                &filename
+            );
+            if let Err(err) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&filename)
+            {
+                log::warn!(
+                    "Failed open deprecated bookmark file {:?}, will not use: {}",
+                    &filename,
+                    err
+                );
+            } else {
+                log::info!("Using deprecated bookmark file {:?}", &filename);
                 return Some(filename);
-            }
-            Err(err) => {
-                log::warn!("Error using {:?} as bookmark filename: {}", filename, err);
             }
         }
 
