@@ -290,7 +290,7 @@ impl EveboxImporter {
         let n = self.queue.len();
         let body = self.queue.join("\n");
         let size = body.len();
-        log::debug!("Committing {} events (bytes: {})", n, size);
+        log::trace!("Committing {} events (bytes: {})", n, size);
         let r = self.client.post("api/1/submit")?.body(body).send().await?;
         let status_code = r.status();
         if status_code != 200 {
