@@ -65,6 +65,11 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         return Err("--bookmark-filename and --bookmark-dir not allowed together".into());
     }
 
+    // If multiple inputs are used, --bookmark-filename cannot be used.
+    if inputs.len() > 1 && args.occurrences_of("bookmark-filename") > 0 {
+        return Err("--bookmark-filename cannot be used with multiple inputs".into());
+    }
+
     if config.use_bookmark {
         let path = PathBuf::from(&bookmark_dir);
         if !path.exists() {
