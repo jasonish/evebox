@@ -24,6 +24,7 @@ use crate::eve::reader::EveReader;
 use crate::importer::Importer;
 use crate::logger::log;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 const DEFAULT_BATCH_SIZE: usize = 300;
@@ -31,7 +32,7 @@ const DEFAULT_BATCH_SIZE: usize = 300;
 pub struct Processor {
     pub reader: EveReader,
     pub importer: Importer,
-    pub filters: Vec<EveFilter>,
+    pub filters: Arc<Mutex<Vec<EveFilter>>>,
     pub bookmark_filename: Option<PathBuf>,
     pub report_interval: Duration,
 
@@ -50,7 +51,7 @@ impl Processor {
         Self {
             reader: reader,
             importer: importer,
-            filters: Vec::new(),
+            filters: Arc::new(Mutex::new(Vec::new())),
             bookmark_filename: None,
             report_interval: Duration::from_secs(0),
             end: false,
@@ -149,8 +150,10 @@ impl Processor {
                     self.sleep_for(1000).await;
                 }
                 Ok(Some(mut event)) => {
-                    for filter in &self.filters {
-                        filter.run(&mut event);
+                    if let Ok(filters) = self.filters.lock() {
+                        for filter in &(*filters)[..] {
+                            filter.run(&mut event);
+                        }
                     }
                     count += 1;
                     self.importer.submit(event).await.unwrap();
@@ -177,7 +180,7 @@ impl Processor {
                     break;
                 }
                 Err(err) => {
-                    log::error!("Failed to commit events: {}", err);
+                    log::error!("Failed to commit events (will try again): {}", err);
                     self.sleep_for(1000).await;
                 }
             }

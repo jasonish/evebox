@@ -283,6 +283,10 @@ pub struct BulkResponse {
 }
 
 impl BulkResponse {
+    pub fn is_error(&self) -> bool {
+        self.error.is_some()
+    }
+
     pub fn has_error(&self) -> bool {
         if let Some(errors) = self.errors {
             return errors;

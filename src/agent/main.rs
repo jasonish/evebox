@@ -15,6 +15,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde::Deserialize;
@@ -54,6 +55,13 @@ fn find_config_filename() -> Option<String> {
 }
 
 pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to register CTRL-C handler");
+        std::process::exit(0);
+    });
+
     let mut settings = Settings::new(args);
 
     if let None = settings.get_or_none::<Option<String>>("config")? {
@@ -122,46 +130,80 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         }
     }
 
+    let filters = Arc::new(Mutex::new(filters));
+
     log::info!("Server: {}", server);
 
-    let mut end = false;
-    let reader = crate::eve::reader::EveReader::new(&input.filename);
-    let client = Client::new(&server, username, password, disable_certificate_validation);
-    let importer = EveboxImporter::new(client.clone());
-    let bookmark_filename = get_bookmark_filename(
-        &input.filename,
-        if bookmark_directory.is_some() {
-            bookmark_directory
-        } else {
-            data_directory
-        },
-    );
-    if let Some(bookmark_filename) = &bookmark_filename {
-        log::info!("Using bookmark file: {:?}", bookmark_filename);
-    } else {
-        log::warn!(
-            "Failed to determine usable bookmark filename, will start reading at end of file"
-        );
-        end = true;
+    let mut filenames = Vec::new();
+    match glob::glob(&input.filename) {
+        Err(_) => {
+            log::error!(
+                "The provided input filename is an invalid pattern: {}",
+                &input.filename
+            );
+            std::process::exit(1);
+        }
+        Ok(entries) => {
+            for entry in entries {
+                match entry {
+                    Ok(path) => {
+                        let path = path.display().to_string();
+                        if !path.ends_with(".bookmark") {
+                            log::debug!("Found input file {}", &path);
+                            filenames.push(path);
+                        }
+                    }
+                    Err(_) => {}
+                }
+            }
+        }
+    }
+    if filenames.is_empty() {
+        filenames.push(input.filename.clone());
     }
 
-    let mut processor = eve::Processor::new(reader, Importer::EveBox(importer));
-    processor.end = end;
-    processor.filters = filters;
-    processor.report_interval = Duration::from_secs(60);
-    processor.bookmark_filename = bookmark_filename;
+    let mut tasks = Vec::new();
+    for filename in filenames {
+        log::info!("Starting file processor on {}", filename);
+        let mut end = false;
+        let reader = crate::eve::reader::EveReader::new(&filename);
+        let client = Client::new(
+            &server,
+            username.clone(),
+            password.clone(),
+            disable_certificate_validation,
+        );
+        let importer = EveboxImporter::new(client.clone());
+        let bookmark_filename = get_bookmark_filename(
+            &filename,
+            if bookmark_directory.is_some() {
+                bookmark_directory.clone()
+            } else {
+                data_directory.clone()
+            },
+        );
+        if let Some(bookmark_filename) = &bookmark_filename {
+            log::info!("Using bookmark file: {:?}", bookmark_filename);
+        } else {
+            log::warn!(
+                "Failed to determine usable bookmark filename, will start reading at end of file"
+            );
+            end = true;
+        }
+        let mut processor = eve::Processor::new(reader, Importer::EveBox(importer));
+        processor.end = end;
+        processor.filters = filters.clone();
+        processor.report_interval = Duration::from_secs(60);
+        processor.bookmark_filename = bookmark_filename;
+        let t = tokio::spawn(async move {
+            processor.run().await;
+        });
+        tasks.push(t);
+    }
 
-    tokio::spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Failed to register CTRL-C handler");
-        std::process::exit(0);
-    });
-
-    let t = tokio::spawn(async move {
-        processor.run().await;
-    });
-    t.await.unwrap();
+    for task in tasks {
+        task.await.unwrap();
+    }
 
     Ok(())
 }

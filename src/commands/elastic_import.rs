@@ -15,6 +15,7 @@
 
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::bookmark;
@@ -255,6 +256,8 @@ async fn import_task(
             filename: Some(filename.to_string()),
         },
     ));
+
+    let filters = Arc::new(Mutex::new(filters));
 
     let mut processor = Processor::new(reader, importer);
     if config.use_bookmark {

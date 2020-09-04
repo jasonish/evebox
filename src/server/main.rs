@@ -134,6 +134,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
             }
             .into(),
         );
+
+        let filters = Arc::new(Mutex::new(filters));
+
         let reader = EveReader::new(input_filename);
         let mut processor = Processor::new(reader, importer.clone());
         processor.report_interval = Duration::from_secs(60);
