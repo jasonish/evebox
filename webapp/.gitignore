@@ -9,9 +9,15 @@ src/environments/gitrev.ts
 /dist
 /tmp
 /out-tsc
+# Only exists if Bazel was run
+/bazel-out
 
 # dependencies
 /node_modules
+
+# profiling files
+chrome-profiler-events*.json
+speed-measure-plugin*.json
 
 # IDEs and editors
 /.idea
@@ -28,6 +34,7 @@ src/environments/gitrev.ts
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+.history/*
 
 # misc
 /.sass-cache
