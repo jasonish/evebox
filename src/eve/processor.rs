@@ -112,7 +112,7 @@ impl Processor {
             if self.report_interval > Duration::from_secs(0)
                 && last_report.elapsed() > self.report_interval
             {
-                log::debug!("count={}, commits={}, eofs={}", count, commits, eofs);
+                log::debug!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
                 count = 0;
                 commits = 0;
                 eofs = 0;
@@ -164,7 +164,7 @@ impl Processor {
                 }
             }
         }
-        log::info!("count={}, commits={}, eofs={}", count, commits, eofs);
+        log::info!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
     }
 
     async fn sleep_for(&self, millis: u64) {
