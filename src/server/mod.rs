@@ -70,6 +70,7 @@ pub struct ServerContext {
     pub features: Features,
     pub session_store: session::SessionStore,
     pub config_repo: Arc<ConfigRepo>,
+    pub event_services: Option<serde_json::Value>,
 }
 
 impl ServerContext {
@@ -81,6 +82,7 @@ impl ServerContext {
             features: Features::default(),
             session_store: SessionStore::new(),
             config_repo: config_repo,
+            event_services: None,
         }
     }
 }

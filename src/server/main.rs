@@ -37,8 +37,17 @@ use crate::sqlite::configrepo::ConfigRepo;
 
 use super::{ServerConfig, ServerContext};
 
+fn load_event_services(filename: &str) -> anyhow::Result<serde_json::Value> {
+    let finput = std::fs::File::open(filename)?;
+    let yaml_value: serde_yaml::Value = serde_yaml::from_reader(finput)?;
+    let json_value = serde_json::to_value(&yaml_value["event-services"])?;
+    Ok(json_value)
+}
+
 pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     crate::version::log_version();
+
+    let config_filename = args.value_of("config");
 
     let mut settings = Settings::new(args);
     let mut config = ServerConfig::default();
@@ -102,7 +111,18 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         std::process::exit(0);
     });
 
-    let context = build_context(config.clone(), None).await?;
+    let mut context = build_context(config.clone(), None).await?;
+
+    if let Some(filename) = config_filename {
+        match load_event_services(&filename) {
+            Err(err) => {
+                log::error!("Failed to load event-services: {}", err);
+            },
+            Ok(event_services) => {
+                context.event_services = Some(event_services);
+            },
+        }
+    }
 
     let input_filename: Option<String> = settings.get_or_none("input.filename")?;
     if let Some(input_filename) = &input_filename {

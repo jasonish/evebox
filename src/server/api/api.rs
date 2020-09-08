@@ -48,7 +48,7 @@ pub async fn config(
 ) -> Result<impl warp::Reply, Infallible> {
     let config = json!({
        "ElasticSearchIndex": context.config.elastic_index,
-       "event-services": [],
+       "event-services": context.event_services,
        "extra": {
             "elasticSearchKeywordSuffix": ".keyword",
        },
