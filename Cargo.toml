@@ -47,3 +47,4 @@ bcrypt = "0.8.0"
 rpassword = "4.0.5"
 uuid = { version = "0.8.1", features = ["v4"] }
 glob = "0.3.0"
+serde_yaml = "0.8.13"
