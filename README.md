@@ -105,7 +105,7 @@ events and is suitable for ligher loads. Currently SQLite does not
 support reporting.
 
 ```
-evebox server --datastore sqlite --input /var/log/suricata/eve.json
+evebox server -D . --datastore sqlite --input /var/log/suricata/eve.json
 ```
 
 More documentation can be found at http://evebox.readthedocs.io/en/latest/.
@@ -136,9 +136,9 @@ make dist
 ```
 
 If you don't want to bother with the required development tools, but do have
-Docker installed, you can build a release with the following command:
+Docker installed, you can build a Linux release with the following command:
 ```
-./docker.sh release
+./build.sh linux
 ```
 
 ## Run in Development Mode
@@ -158,12 +158,6 @@ being proxied to the Go application.
 In development mode changes to Go files will trigger a
 recompile/restart, and changes to the web app will trigger a recompile
 of the javascript and a browser refresh.
-
-## A Note on Authentication
-
-While the latest development versions of EveBox support
-authentication, TLS support is not included. Therefore it is advised
-to run EveBox behind a reverse proxy that terminals TLS/SSL.
 
 ## Change Log
 
