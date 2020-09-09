@@ -1,5 +1,5 @@
-ARG HASH
-FROM alpine@$HASH
+ARG BASE
+FROM $BASE
 
 ARG SRC="SRC_--build-arg_must_be_set"
 COPY $SRC /bin/evebox

@@ -114,18 +114,20 @@ build_macos() {
 
 build_docker() {
     docker buildx build \
-           --build-arg "HASH=sha256:a15790640a6690aa1730c38cf0a440e2aa44aaca9b0e8931a9f2b0d7cc90fd65" \
+	   --build-arg "BASE=amd64/alpine" \
            --build-arg "BUILD_REV=${BUILD_REV}" \
            --build-arg "SRC=./dist/evebox-latest-linux-x64/evebox" \
+	   --pull \
            --load \
            --platform linux/amd64 \
            -t ${DOCKER_NAME}:${BRANCH_PREFIX}-x86_64 \
            -f docker/Dockerfile .
 
     docker buildx build \
-           --build-arg "HASH=sha256:71465c7d45a086a2181ce33bb47f7eaef5c233eace65704da0c5e5454a79cee5" \
+	   --build-arg "BASE=arm32v6/alpine" \
            --build-arg "BUILD_REV=${BUILD_REV}" \
            --build-arg "SRC=./dist/evebox-latest-linux-arm/evebox" \
+	   --pull \
            --load \
            --platform linux/arm/v7 \
            -t ${DOCKER_NAME}:${BRANCH_PREFIX}-armv7 \
