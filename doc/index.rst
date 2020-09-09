@@ -13,7 +13,7 @@ EveBox
    install
    server
    agent
-   esimport
+   elastic-import
    api
 
 * :ref:`genindex`

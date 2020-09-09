@@ -15,6 +15,7 @@
   directory where EveBox is being run from. However, if these deprecated
   bookmark filenames exist (like after an upgrade), they will continue
   to be used.
+- The command "esimport" has been renamed to "elastic-import".
 
 ### Fixes
 - Fix the index_pattern when adding a template to Elasticsearch with a
