@@ -59,8 +59,8 @@ build_linux_armv7() {
 	   -t ${TAG} \
 	   -f ${DOCKERFILE} .
     docker run ${IT} --rm \
-         -v "$(pwd)/target:/src/target" \
-         -v "$(pwd)/dist:/src/dist" \
+         -v "$(pwd)/target:/src/target:z" \
+         -v "$(pwd)/dist:/src/dist:z" \
          -v /var/run/docker.sock:/var/run/docker.sock \
          -w /src \
          -e REAL_UID="$(id -u)" \
@@ -113,33 +113,29 @@ build_macos() {
 }
 
 build_docker() {
-    docker buildx build \
+    docker build \
 	   --build-arg "BASE=amd64/alpine" \
-           --build-arg "BUILD_REV=${BUILD_REV}" \
            --build-arg "SRC=./dist/evebox-latest-linux-x64/evebox" \
-	   --pull \
-           --load \
-           --platform linux/amd64 \
-           -t ${DOCKER_NAME}:${BRANCH_PREFIX}-x86_64 \
+           -t ${DOCKER_NAME}:${BRANCH_PREFIX}-amd64 \
            -f docker/Dockerfile .
 
-    docker buildx build \
-	   --build-arg "BASE=arm32v6/alpine" \
-           --build-arg "BUILD_REV=${BUILD_REV}" \
+    docker build \
+	   --build-arg "BASE=arm32v7/alpine" \
            --build-arg "SRC=./dist/evebox-latest-linux-arm/evebox" \
-	   --pull \
-           --load \
-           --platform linux/arm/v7 \
-           -t ${DOCKER_NAME}:${BRANCH_PREFIX}-armv7 \
+           -t ${DOCKER_NAME}:${BRANCH_PREFIX}-arm32v7 \
            -f docker/Dockerfile .
 }
 
 docker_push() {
-    docker push ${DOCKER_NAME}:${BRANCH_PREFIX}-x86_64
-    docker push ${DOCKER_NAME}:${BRANCH_PREFIX}-armv7
+    docker push ${DOCKER_NAME}:${BRANCH_PREFIX}-amd64
+    docker push ${DOCKER_NAME}:${BRANCH_PREFIX}-arm32v7
+
     docker manifest create -a ${DOCKER_NAME}:${BRANCH_PREFIX} \
-           ${DOCKER_NAME}:${BRANCH_PREFIX}-x86_64 \
-           ${DOCKER_NAME}:${BRANCH_PREFIX}-armv7
+           ${DOCKER_NAME}:${BRANCH_PREFIX}-amd64 \
+           ${DOCKER_NAME}:${BRANCH_PREFIX}-arm32v7
+    docker manifest annotate --arch arm --variant v7 \
+           ${DOCKER_NAME}:${BRANCH_PREFIX} \
+           ${DOCKER_NAME}:${BRANCH_PREFIX}-arm32v7
     docker manifest push --purge ${DOCKER_NAME}:${BRANCH_PREFIX}
 }
 
