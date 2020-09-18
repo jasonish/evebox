@@ -38,6 +38,7 @@ pub mod logger;
 pub mod packet;
 pub mod pcap;
 pub mod resource;
+mod rules;
 pub mod server;
 pub mod settings;
 pub mod sqlite;

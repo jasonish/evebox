@@ -8,6 +8,9 @@ edition = "2018"
 lto = true
 opt-level = 3
 
+[workspace]
+members = [".", "./suricata-rule-parser"]
+
 [dependencies]
 tokio = { version = "0.2.21", features = ["macros", "sync", "signal", "rt-threaded"] }
 warp = { version = "0.2.3", features = ["tls"] }
@@ -48,3 +51,7 @@ rpassword = "4.0.5"
 uuid = { version = "0.8.1", features = ["v4"] }
 glob = "0.3.0"
 serde_yaml = "0.8.13"
+
+suricata-rule-parser = { path = "./suricata-rule-parser" }
+filetime = "0.2.12"
+notify = "4.0.15"

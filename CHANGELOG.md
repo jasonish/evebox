@@ -25,8 +25,6 @@
   https://github.com/jasonish/evebox/issues/144
 
 ### Breaking Changes
-- Remove adding of Suricata rules to events on import. Suricata can
-  now be configured to include the rule in an alert.
 - License: AGPL
 
 ### Known Issue

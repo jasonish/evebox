@@ -118,6 +118,13 @@ input:
     # Suricata if the Suricata "sensor-name" option is set.
     #host: "evebox-server"
 
+  # The event reader can also add the rule to alert events. Do not enable
+  # if you already have Suricata logging the rule.
+  #rules:
+  #  - /var/lib/suricata/rules/*.rules
+  #  - /usr/share/suricata/rules/*.rules
+  #  - /etc/suricata/rules/*.rules
+
 geoip:
   disabled: false
   # Path to the MaxMind database. This must be the version 2 database

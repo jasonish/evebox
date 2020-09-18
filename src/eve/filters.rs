@@ -14,12 +14,18 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::eve::eve::EveJson;
+use crate::logger::log;
+use crate::rules::RuleMap;
+
 use serde_json::json;
+use std::sync::Arc;
 
 pub enum EveFilter {
     GeoIP(crate::geoip::GeoIP),
     EveBoxMetadataFilter(EveBoxMetadataFilter),
     CustomFieldFilter(CustomFieldFilter),
+    AddRuleFilter(AddRuleFilter),
+    Filters(Arc<Vec<EveFilter>>),
 }
 
 impl EveFilter {
@@ -33,6 +39,14 @@ impl EveFilter {
             }
             EveFilter::CustomFieldFilter(filter) => {
                 filter.run(&mut event);
+            }
+            EveFilter::AddRuleFilter(filter) => {
+                filter.run(&mut event);
+            }
+            EveFilter::Filters(filters) => {
+                for filter in filters.iter() {
+                    filter.run(&mut event);
+                }
             }
         }
     }
@@ -89,5 +103,24 @@ impl CustomFieldFilter {
 impl From<CustomFieldFilter> for EveFilter {
     fn from(filter: CustomFieldFilter) -> Self {
         EveFilter::CustomFieldFilter(filter)
+    }
+}
+
+pub struct AddRuleFilter {
+    pub map: Arc<RuleMap>,
+}
+
+impl AddRuleFilter {
+    pub fn run(&self, event: &mut EveJson) {
+        if let EveJson::String(_) = event["alert"]["rule"] {
+            return;
+        }
+        if let Some(sid) = &event["alert"]["signature_id"].as_u64() {
+            if let Some(rule) = self.map.find_by_sid(*sid) {
+                event["alert"]["rule"] = rule.into();
+            } else {
+                log::trace!("Failed to find rule for SID {}", sid);
+            }
+        }
     }
 }

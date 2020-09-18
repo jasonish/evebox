@@ -15,13 +15,14 @@
 
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::bookmark;
 use crate::elastic;
 use crate::elastic::template_installer;
 use crate::eve;
+use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::eve::Processor;
 use crate::importer::Importer;
 use crate::logger::log;
@@ -168,6 +169,29 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         );
     }
 
+    let mut filters = Vec::new();
+
+    match settings.get::<Vec<String>>("rules") {
+        Ok(rules) => {
+            let rulemap = crate::rules::load_rules(&rules);
+            let rulemap = Arc::new(rulemap);
+            filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
+                AddRuleFilter {
+                    map: rulemap.clone(),
+                },
+            ));
+            crate::rules::watch_rules(rulemap);
+        }
+        Err(err) => match err {
+            config::ConfigError::NotFound(_) => {}
+            _ => {
+                log::error!("Failed to read input.rules configuration: {}", err);
+            }
+        },
+    }
+
+    let filters = Arc::new(filters);
+
     let is_oneshot = config.oneshot;
     let (done_tx, mut done_rx) = tokio::sync::mpsc::unbounded_channel::<bool>(); // tokio::sync::oneshot::channel::<bool>();
 
@@ -210,8 +234,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         }
 
         let done_tx = done_tx.clone();
+        let filters = filters.clone();
         let t = tokio::spawn(async move {
-            if let Err(err) = import_task(importer, &input, &config).await {
+            if let Err(err) = import_task(importer, &input, &config, filters).await {
                 log::error!("{}: {}", input, err);
             }
             if !config.oneshot {
@@ -237,12 +262,14 @@ async fn import_task(
     importer: Importer,
     filename: &str,
     config: &ElasticImportConfig,
+    root_filters: Arc<Vec<EveFilter>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     log::info!("Starting reader on {}", filename);
     let reader = eve::EveReader::new(filename);
     let bookmark_path = PathBuf::from(&config.bookmark_filename);
 
     let mut filters = Vec::new();
+    filters.push(EveFilter::Filters(root_filters));
     if config.disable_geoip {
         log::debug!("GeoIP disabled")
     } else {
@@ -262,7 +289,7 @@ async fn import_task(
         },
     ));
 
-    let filters = Arc::new(Mutex::new(filters));
+    let filters = Arc::new(filters);
 
     let mut processor = Processor::new(reader, importer);
     if config.use_bookmark {

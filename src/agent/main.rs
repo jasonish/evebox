@@ -15,12 +15,13 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use serde::Deserialize;
 
 use crate::eve::eve::EveJson;
+use crate::eve::filters::AddRuleFilter;
 use crate::importer::Importer;
 use crate::logger::log;
 use crate::settings::Settings;
@@ -38,6 +39,7 @@ struct InputConfig {
     filename: String,
     #[serde(rename = "custom-fields")]
     custom_fields: Option<HashMap<String, String>>,
+    rules: Option<Vec<String>>,
     #[serde(flatten, rename = "other")]
     other: HashMap<String, config::Value>,
 }
@@ -80,11 +82,6 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         }
     };
 
-    if input.other.contains_key("rules") {
-        log::warn!("WARNING: EveBox no longer supports adding rules to events");
-        log::warn!("WARNING: This can now be enabled in Suricata");
-    }
-
     let server: String = match settings.get("server.url") {
         Ok(server) => server,
         Err(_) => {
@@ -102,6 +99,17 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let enable_geoip = settings.get_bool("geoip.enabled").unwrap();
 
     let mut filters = Vec::new();
+
+    if let Some(rule_files) = &input.rules {
+        let rulemap = crate::rules::load_rules(&rule_files);
+        let rulemap = Arc::new(rulemap);
+        filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
+            AddRuleFilter {
+                map: rulemap.clone(),
+            },
+        ));
+        crate::rules::watch_rules(rulemap);
+    }
 
     if enable_geoip {
         match crate::geoip::GeoIP::open(None) {
@@ -130,7 +138,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         }
     }
 
-    let filters = Arc::new(Mutex::new(filters));
+    let filters = Arc::new(filters);
 
     log::info!("Server: {}", server);
 

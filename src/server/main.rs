@@ -25,7 +25,7 @@ use warp::{self, Filter, Future};
 use crate::bookmark;
 use crate::datastore::Datastore;
 use crate::elastic;
-use crate::eve::filters::EveBoxMetadataFilter;
+use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
 use crate::eve::processor::Processor;
 use crate::eve::EveReader;
 use crate::logger::log;
@@ -117,10 +117,10 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         match load_event_services(&filename) {
             Err(err) => {
                 log::error!("Failed to load event-services: {}", err);
-            },
+            }
             Ok(event_services) => {
                 context.event_services = Some(event_services);
-            },
+            }
         }
     }
 
@@ -155,7 +155,26 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
             .into(),
         );
 
-        let filters = Arc::new(Mutex::new(filters));
+        match settings.get::<Vec<String>>("input.rules") {
+            Ok(rules) => {
+                let rulemap = crate::rules::load_rules(&rules);
+                let rulemap = Arc::new(rulemap);
+                filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
+                    AddRuleFilter {
+                        map: rulemap.clone(),
+                    },
+                ));
+                crate::rules::watch_rules(rulemap);
+            }
+            Err(err) => match err {
+                config::ConfigError::NotFound(_) => {}
+                _ => {
+                    log::error!("Failed to read input.rules configuration: {}", err);
+                }
+            },
+        }
+
+        let filters = Arc::new(filters);
 
         let reader = EveReader::new(input_filename);
         let mut processor = Processor::new(reader, importer.clone());
