@@ -1,0 +1,9 @@
+[package]
+name = "suricata-rule-parser"
+version = "0.1.0"
+authors = ["Jason Ish <ish@unx.ca>"]
+edition = "2018"
+
+[dependencies]
+nom = "5.0.1"
+anyhow = "1.0.32"
