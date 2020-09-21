@@ -227,6 +227,16 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .default_value("./oneshot.sqlite")
                 .help("Database filename"),
         )
+        // --host, but keep th name as http.host to be campatible with the
+        // EVEBOX_HTTP_HOST environment variable.
+        .arg(
+            clap::Arg::with_name("http.host")
+                .long("host")
+                .value_name("HOSTNAME")
+                .takes_value(true)
+                .default_value("127.0.0.1")
+                .help("Hostname/IP address to bind to"),
+        )
         .arg(Arg::with_name("INPUT").required(true).index(1));
 
     let elastic_import = SubCommand::with_name("elastic-import")

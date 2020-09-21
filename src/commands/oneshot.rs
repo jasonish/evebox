@@ -31,6 +31,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let no_wait: bool = settings.get_bool("no-wait")?;
     let db_filename: String = settings.get("database-filename")?;
     let input = args.value_of("INPUT").unwrap().to_string();
+    let host: String = settings.get("http.host")?;
 
     log::info!("Using database filename {}", &db_filename);
 
@@ -60,6 +61,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     let server = {
         let db_filename = db_filename.clone();
+        let host = host.clone();
         tokio::spawn(async move {
             let mut port = 5636;
             loop {
@@ -67,7 +69,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
                 let ds = crate::datastore::Datastore::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port: port.to_string(),
-                    host: "127.0.0.1".to_string(),
+                    host: host.clone(),
                     elastic_url: "".to_string(),
                     elastic_index: "".to_string(),
                     no_check_certificate: false,
@@ -105,13 +107,24 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     };
 
     let port = port_rx.recv().await.unwrap();
-    let url = format!("http://127.0.0.1:{}", port);
+    let url = format!("http://{}:{}", host, port);
     log::info!("Server started at {}", url);
 
+    let connect_url = if host == "0.0.0.0" {
+        format!("http://127.0.0.1:{}", port)
+    } else {
+        format!("http://{}:{}", host, port)
+    };
+
     if !no_open {
-        if let Err(err) = webbrowser::open(&url) {
+        if let Err(err) = webbrowser::open(&connect_url) {
             log::error!("Failed to open {} in browser: {}", url, err);
         }
+
+        log::info!(
+            "If your browser didn't open, try connecting to {}",
+            connect_url
+        );
     }
 
     tokio::spawn(async move {
