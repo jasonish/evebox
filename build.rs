@@ -7,14 +7,20 @@ fn main() {
         std::env::var("TARGET").unwrap()
     );
 
-    if env::var_os("BUILD_REV").is_none() {
-        match get_git_rev() {
+    match env::var_os("BUILD_REV") {
+        None => match get_git_rev() {
             Err(err) => {
                 eprintln!("Failed to get git revision: {}", err);
             }
             Ok(rev) => {
                 println!("cargo:rustc-env=BUILD_REV={}", rev);
             }
+        },
+        Some(_) => {
+            println!(
+                "cargo:rustc-env=BUILD_REV={}",
+                std::env::var("BUILD_REV").unwrap()
+            );
         }
     }
 }
