@@ -7,10 +7,23 @@ if [ "${REGISTRY}" = "" ]; then
 fi
 
 DOCKER_NAME="${REGISTRY}/jasonish/evebox"
-BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')
 
 BUILD_REV=$(git rev-parse --short HEAD)
 export BUILD_REV
+
+VERSION=$(cat Cargo.toml | awk '/^version/ { gsub(/"/, "", $3); print $3 }')
+GIT_BRANCH=$(git rev-parse --abrev-ref HEAD)
+
+# Set the container tag prefix to "dev" if not on the master branch.
+if [ "${DOCKER_TAG_PREFIX}" = "" ]; then
+    if [ "${GIT_BRANCH}" = "master" ]; then
+        DOCKER_TAG_PREFIX="master"
+    else
+        DOCKER_TAG_PREFIX="dev"
+    fi
+fi
+
+echo "BUILD_REV=${BUILD_REV}"
 
 build_webapp() {
     DOCKERFILE="./docker/builder/Dockerfile.musl"
@@ -113,30 +126,35 @@ build_macos() {
 }
 
 build_docker() {
+    if test -e ./dist/evebox-${VERSION}-linux-x64/evebox; then
+        version=${VERSION}
+    else
+        version="latest"
+    fi
     docker build \
 	   --build-arg "BASE=amd64/alpine" \
-           --build-arg "SRC=./dist/evebox-latest-linux-x64/evebox" \
-           -t ${DOCKER_NAME}:${BRANCH_PREFIX}-amd64 \
+           --build-arg "SRC=./dist/evebox-${version}-linux-x64/evebox" \
+           -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
            -f docker/Dockerfile .
 
     docker build \
 	   --build-arg "BASE=arm32v7/alpine" \
-           --build-arg "SRC=./dist/evebox-latest-linux-arm/evebox" \
-           -t ${DOCKER_NAME}:${BRANCH_PREFIX}-arm32v7 \
+           --build-arg "SRC=./dist/evebox-${version}-linux-arm/evebox" \
+           -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
            -f docker/Dockerfile .
 }
 
 docker_push() {
-    docker push ${DOCKER_NAME}:${BRANCH_PREFIX}-amd64
-    docker push ${DOCKER_NAME}:${BRANCH_PREFIX}-arm32v7
+    docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64
+    docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
 
-    docker manifest create -a ${DOCKER_NAME}:${BRANCH_PREFIX} \
-           ${DOCKER_NAME}:${BRANCH_PREFIX}-amd64 \
-           ${DOCKER_NAME}:${BRANCH_PREFIX}-arm32v7
+    docker manifest create -a ${DOCKER_NAME}:${DOCKER_TAG_PREFIX} \
+           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
+           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
     docker manifest annotate --arch arm --variant v7 \
-           ${DOCKER_NAME}:${BRANCH_PREFIX} \
-           ${DOCKER_NAME}:${BRANCH_PREFIX}-arm32v7
-    docker manifest push --purge ${DOCKER_NAME}:${BRANCH_PREFIX}
+           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX} \
+           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
+    docker manifest push --purge ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}
 }
 
 build_all() {
