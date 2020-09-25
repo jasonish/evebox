@@ -127,8 +127,8 @@ jobs:
       - run: |
           mkdir -p dist
           cd dist
-          unzip ../${BRANCH_PREFIX}-build/evebox-latest-linux-x64.zip
-          unzip ../${BRANCH_PREFIX}-build/evebox-latest-linux-arm.zip
+          unzip ../${BRANCH_PREFIX}-build/evebox-*-linux-x64.zip
+          unzip ../${BRANCH_PREFIX}-build/evebox-*-linux-arm.zip
       - run: ./build.sh docker
       - name: Push Docker images and manifest
         if: github.ref == 'refs/heads/master'
