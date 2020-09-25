@@ -27,7 +27,7 @@
 ### Breaking Changes
 - License: AGPL
 
-### Known Issue
+### Known Issues
 - When using a self-signed certificate, the hostname being connected
   to must match the hostname in the certificate.
 
