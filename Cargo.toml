@@ -1,6 +1,7 @@
 [package]
 name = "evebox"
-version = "0.12.0-dev"
+# Suffix with -dev when not a release.
+version = "0.12.0"
 authors = ["Jason Ish <ish@unx.ca>"]
 edition = "2018"
 

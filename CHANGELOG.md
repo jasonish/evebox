@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.12.0 - 2020-09-25
 
 ### Changes
 - Server rewritten in Rust. Ideally this should not be noticed.
