@@ -231,8 +231,13 @@ case "$1" in
 usage: $0 <command>
 
 Commands:
-    release-linux      Build x86_64 Linux release - zip/deb/rpm.
-    release-arm7       Build arm7 Linux Release (RPi) - zip
+    webapp
+    linux
+    linux-arm
+    windows
+    macos
+    docker
+    docker-push
     all
 EOF
         exit 1
