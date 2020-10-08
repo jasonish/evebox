@@ -2,6 +2,9 @@
 
 set -e
 
+RELEASE="no"
+LATEST="no"
+
 if [ "${REGISTRY}" = "" ]; then
     REGISTRY="docker.io"
 fi
@@ -131,6 +134,7 @@ build_docker() {
     else
         version="latest"
     fi
+
     docker build \
 	   --build-arg "BASE=amd64/alpine" \
            --build-arg "SRC=./dist/evebox-${version}-linux-x64/evebox" \
@@ -155,6 +159,16 @@ docker_push() {
            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX} \
            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
     docker manifest push --purge ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}
+
+    if [ "${LATEST}" = "yes" ]; then
+        docker manifest create -a ${DOCKER_NAME}:latest \
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
+        docker manifest annotate --arch arm --variant v7 \
+               ${DOCKER_NAME}:latest \
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
+        docker manifest push --purge ${DOCKER_NAME}:latest
+    fi
 }
 
 build_all() {
@@ -182,6 +196,23 @@ push() {
         echo "error: EVEBOX_RSYNC_PUSH_DEST environment variable not set"
     fi
 }
+
+for arg in $@; do
+    case "${arg}" in
+        --release)
+            RELEASE="yes"
+            shift
+            ;;
+        --latest)
+            LATEST="yes"
+            shift
+            ;;
+    esac
+done
+
+if [ "${RELEASE}" = "yes" ]; then
+    DOCKER_TAG_PREFIX="${VERSION}"
+fi
 
 case "$1" in
     webapp)
