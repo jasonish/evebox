@@ -4,12 +4,10 @@ $event-table-border-color: #ddd;
 
 @import "common";
 
-.evebox-top-navbar {
-  @extend .navbar;
-  @extend .navbar-expand-lg;
+// Light navbar.
+.navbar {
   @extend .navbar-light;
   @extend .bg-light;
-  @extend .fixed-top;
 }
 
 .evebox-bg-danger {
