@@ -51,13 +51,13 @@ impl<I> ParseError<I> for InternalError<I> {
 
 #[derive(Debug, PartialEq, Default)]
 pub struct RuleHeader {
-    action: String,
-    proto: String,
-    src_addr: String,
-    src_port: String,
-    direction: String,
-    dst_addr: String,
-    dst_port: String,
+    pub action: String,
+    pub proto: String,
+    pub src_addr: String,
+    pub src_port: String,
+    pub direction: String,
+    pub dst_addr: String,
+    pub dst_port: String,
 }
 
 #[derive(Debug, PartialEq)]
