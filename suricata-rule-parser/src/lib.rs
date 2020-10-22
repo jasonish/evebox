@@ -26,7 +26,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::multispace0,
     error::{ErrorKind, ParseError},
-    multi::many0,
+    multi::{many0, many0_count},
     sequence::{preceded, tuple},
     IResult,
 };
@@ -68,6 +68,7 @@ pub struct RuleOption {
 
 #[derive(Debug)]
 pub struct TokenizedRule {
+    pub disabled: bool,
     pub header: RuleHeader,
     pub options: Vec<RuleOption>,
     pub original: String,
@@ -244,6 +245,7 @@ fn strip_quotes(input: &str) -> String {
 
 fn internal_parse_rule(input: &str) -> IResult<&str, TokenizedRule, InternalError<&str>> {
     let original = String::from(input);
+    let (input, disabled) = preceded(multispace0, many0_count(tag("#")))(input)?;
     let (input, header) = parse_header(input)?;
     let (input, _) = preceded(multispace0, tag("("))(input)?;
     let (input, options) = many0(parse_option)(input)?;
@@ -252,6 +254,7 @@ fn internal_parse_rule(input: &str) -> IResult<&str, TokenizedRule, InternalErro
     Ok((
         input,
         TokenizedRule {
+            disabled: disabled > 0,
             header,
             options,
             original,
@@ -437,6 +440,23 @@ mod tests {
     #[test]
     fn test_parse_rule() {
         let rule = parse_rule(r#"alert ip any any -> any any (msg:"Some Message with a \" Quote"; metadata: key, val; sid:1; rev:1;)"#).unwrap();
+        assert_eq!(rule.disabled, false);
+        assert_eq!(rule.header.action, "alert");
+
+        let rule = parse_rule(r#"  alert ip any any -> any any (msg:"Some Message with a \" Quote"; metadata: key, val; sid:1; rev:1;)"#).unwrap();
+        assert_eq!(rule.disabled, false);
+        assert_eq!(rule.header.action, "alert");
+
+        let rule = parse_rule(r#"#alert ip any any -> any any (msg:"Some Message with a \" Quote"; metadata: key, val; sid:1; rev:1;)"#).unwrap();
+        assert_eq!(rule.disabled, true);
+        assert_eq!(rule.header.action, "alert");
+
+        let rule = parse_rule(r#"# alert ip any any -> any any (msg:"Some Message with a \" Quote"; metadata: key, val; sid:1; rev:1;)"#).unwrap();
+        assert_eq!(rule.disabled, true);
+        assert_eq!(rule.header.action, "alert");
+
+        let rule = parse_rule(r#"###   alert ip any any -> any any (msg:"Some Message with a \" Quote"; metadata: key, val; sid:1; rev:1;)"#).unwrap();
+        assert_eq!(rule.disabled, true);
         assert_eq!(rule.header.action, "alert");
     }
 
