@@ -81,10 +81,10 @@ impl ConfigRepo {
                         username: username,
                     })
                 } else {
-                    Err(ConfigRepoError::BadPassword(username.to_string()))
+                    Err(ConfigRepoError::BadPassword(username))
                 }
             } else {
-                Err(ConfigRepoError::UsernameNotFound(username.to_string()))
+                Err(ConfigRepoError::UsernameNotFound(username))
             }
         })
         .await?

@@ -264,8 +264,8 @@ fn internal_parse_rule(input: &str) -> IResult<&str, TokenizedRule, InternalErro
 
 pub fn parse_rule(input: &str) -> anyhow::Result<TokenizedRule> {
     match internal_parse_rule(input) {
-        Ok((_, rule)) => return Ok(rule),
-        Err(err) => return Err(anyhow::anyhow!(err.to_string())),
+        Ok((_, rule)) => Ok(rule),
+        Err(err) => Err(anyhow::anyhow!(err.to_string())),
     }
 }
 

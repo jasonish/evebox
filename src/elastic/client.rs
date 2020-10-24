@@ -291,7 +291,7 @@ impl BulkResponse {
         if let Some(errors) = self.errors {
             return errors;
         }
-        if let Some(_) = self.error {
+        if self.error.is_some() {
             return true;
         }
         return false;

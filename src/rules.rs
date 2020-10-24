@@ -37,23 +37,13 @@ impl Inner {
     }
 
     fn load_path(&mut self, path: &PathBuf) {
-        match std::fs::File::open(&path) {
-            Ok(file) => {
-                let mut reader = std::io::BufReader::new(file);
-                loop {
-                    match parser::read_next_rule(&mut reader) {
-                        Ok(Some(line)) => {
-                            if let Some(rule) = parse_line(&line) {
-                                self.map.insert(rule.0, rule.1);
-                            }
-                        }
-                        _ => {
-                            break;
-                        }
-                    }
+        if let Ok(file) = std::fs::File::open(&path) {
+            let mut reader = std::io::BufReader::new(file);
+            while let Ok(Some(line)) = parser::read_next_rule(&mut reader) {
+                if let Some(rule) = parse_line(&line) {
+                    self.map.insert(rule.0, rule.1);
                 }
             }
-            _ => {}
         }
     }
 }
@@ -81,7 +71,7 @@ impl RuleMap {
 
     pub fn filenames(&self) -> Vec<PathBuf> {
         let inner = self.inner.read().unwrap();
-        (*inner).files.keys().map(|k| k.clone()).collect()
+        (*inner).files.keys().cloned().collect()
     }
 
     pub fn find_by_sid(&self, sid: u64) -> Option<String> {
@@ -168,7 +158,7 @@ fn parse_sid(tokenized_rule: &parser::TokenizedRule) -> Result<Option<u64>, Pars
     Ok(sid)
 }
 
-pub fn load_rules(filenames: &Vec<String>) -> RuleMap {
+pub fn load_rules(filenames: &[String]) -> RuleMap {
     let mut map = RuleMap::new();
 
     for path in filenames {
@@ -193,15 +183,14 @@ pub fn watch_rules(rulemap: Arc<RuleMap>) {
                     .unwrap();
             }
             loop {
-                match rx.recv() {
-                    Ok(event) => match event {
+                if let Ok(event) = rx.recv() {
+                    match event {
                         notify::DebouncedEvent::Write(_path)
                         | notify::DebouncedEvent::Create(_path) => {
                             break;
                         }
                         _ => {}
-                    },
-                    _ => {}
+                    }
                 }
             }
             rulemap.rescan();

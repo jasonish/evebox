@@ -25,6 +25,7 @@
 #![allow(clippy::implicit_hasher)]
 #![allow(clippy::module_inception)]
 #![allow(clippy::cognitive_complexity)]
+#![allow(clippy::new_without_default)]
 
 pub mod agent;
 pub mod bookmark;

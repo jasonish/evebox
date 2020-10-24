@@ -52,7 +52,7 @@ impl Settings {
 
         // Migrate some old environment variables if found.
         if let Ok(val) = std::env::var("ELASTICSEARCH_URL") {
-            if let Err(_) = std::env::var("EVEBOX_DATABASE_ELASTICSEARCH_URL") {
+            if std::env::var("EVEBOX_DATABASE_ELASTICSEARCH_URL").is_err() {
                 log::debug!(
                     "Setting EVEBOX_DATABASE_ELASTICSEARCH_URL to {} from ELASTICSEARCH_URL",
                     val
@@ -130,7 +130,7 @@ impl Settings {
         if self.args.occurrences_of(key) > 0 {
             return self.args.occurrences_of(key);
         }
-        if let Ok(_) = self.config.get::<config::Value>(key) {
+        if self.config.get::<config::Value>(key).is_ok() {
             return 1;
         }
         return 0;
@@ -168,7 +168,7 @@ impl Settings {
         if self.args.value_of(key).is_some() {
             return true;
         }
-        if let Ok(_) = self.config.get::<config::Value>(key) {
+        if self.config.get::<config::Value>(key).is_ok() {
             return true;
         }
         return false;

@@ -67,7 +67,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     let mut settings = Settings::new(args);
 
-    if let None = settings.get_or_none::<Option<String>>("config")? {
+    if settings.get_or_none::<Option<String>>("config")?.is_none() {
         log::info!("No configuration file provided, checking default locations");
         if let Some(config_path) = find_config_filename() {
             log::info!("Using configuration file {:?}", config_path);
@@ -86,7 +86,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     };
 
     if let Some(filename) = input.filename {
-        input_paths.push(filename.clone());
+        input_paths.push(filename);
     }
 
     if let Some(paths) = input.paths {

@@ -32,7 +32,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         .json()
         .await?;
     for index in indices {
-        if ignore_dot && index.index.starts_with(".") {
+        if ignore_dot && index.index.starts_with('.') {
             continue;
         }
         println!("Found index: {}", index.index);
@@ -41,7 +41,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     let templates: HashMap<String, Template> =
         client.get("_template")?.send().await?.json().await?;
     for (name, template) in templates {
-        if ignore_dot && name.starts_with(".") {
+        if ignore_dot && name.starts_with('.') {
             continue;
         }
         println!("Template: {} => {:?}", name, template);

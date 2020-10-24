@@ -92,15 +92,13 @@ impl Processor {
     }
 
     pub async fn run(&mut self) {
-        if !self.init_from_bookmark() {
-            if self.end {
-                match self.reader.goto_end() {
-                    Ok(n) => {
-                        log::info!("Skipped {} lines jumping to end of file", n);
-                    }
-                    Err(err) => {
-                        log::error!("Failed to skip to end of file: {}", err);
-                    }
+        if !self.init_from_bookmark() && self.end {
+            match self.reader.goto_end() {
+                Ok(n) => {
+                    log::info!("Skipped {} lines jumping to end of file", n);
+                }
+                Err(err) => {
+                    log::error!("Failed to skip to end of file: {}", err);
                 }
             }
         }

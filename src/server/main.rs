@@ -90,11 +90,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     }
 
     // Do we need a data-directory? If so, make sure its set.
-    let data_directory_required = if config.datastore == "sqlite" {
-        true
-    } else {
-        false
-    };
+    let data_directory_required = config.datastore == "sqlite";
 
     if data_directory_required && config.data_directory.is_none() {
         log::error!("A data-directory is required");
@@ -181,7 +177,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
 
         let mut filters = Vec::new();
 
-        filters.push(crate::eve::filters::EveFilter::Filters(shared_filters.clone()));
+        filters.push(crate::eve::filters::EveFilter::Filters(
+            shared_filters.clone(),
+        ));
 
         filters.push(
             EveBoxMetadataFilter {
@@ -348,7 +346,7 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
             context.features.reporting = true;
             context.features.comments = true;
             context.elastic = Some(eventstore.clone());
-            context.datastore = Datastore::Elastic(eventstore.clone());
+            context.datastore = Datastore::Elastic(eventstore);
         }
         "sqlite" => {
             let db_filename = if let Some(dir) = &config.data_directory {
@@ -376,7 +374,7 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
                 if period > 0 {
                     log::info!("Setting data retention period to {} days", period);
                     let retention_config = sqlite::retention::RetentionConfig { days: period };
-                    let connection = connection.clone();
+                    let connection = connection;
                     tokio::task::spawn_blocking(|| {
                         sqlite::retention::retention_task(retention_config, connection);
                     });
@@ -424,12 +422,12 @@ pub fn build_session_filter(
     let context = warp::any().map(move || context.clone());
 
     let session_id = warp::header("x-evebox-session-id")
-        .map(|session_id: String| Some(session_id))
+        .map(Some)
         .or(warp::any().map(|| None))
         .unify();
 
     let remote_user = warp::header("REMOTE_USER")
-        .map(|remote_user: String| Some(remote_user))
+        .map(Some)
         .or(warp::any().map(|| None))
         .unify();
 

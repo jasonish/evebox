@@ -38,7 +38,7 @@ pub async fn main(args: &clap::ArgMatches<'_>) -> anyhow::Result<()> {
     let mut eve_reader = eve::EveReader::new(&input);
     if end {
         let mut count = 0;
-        while let Some(_) = eve_reader.next_record()? {
+        if eve_reader.next_record()?.is_some() {
             count += 1;
         }
         log::info!("Skipped {} records", count);

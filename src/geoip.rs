@@ -73,7 +73,7 @@ impl GeoIP {
         };
 
         let geoip = GeoIP {
-            filename: filename.to_string(),
+            filename: filename,
             inner: Mutex::new(inner),
         };
         return Ok(geoip);

@@ -135,7 +135,7 @@ impl Importer {
                             err,
                             source
                         );
-                        return Err(IndexError::SQLiteError(err))?;
+                        return Err(IndexError::SQLiteError(err).into());
                     }
                     self.queue.truncate(0);
                     return Ok(n);

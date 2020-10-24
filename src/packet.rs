@@ -69,7 +69,7 @@ impl UdpBuilder {
     }
 
     pub fn build(self) -> Vec<u8> {
-        let payload = self.payload.unwrap_or(vec![]);
+        let payload = self.payload.unwrap_or_default();
         let mut buf = BytesMut::new();
         buf.put_u16(self.source_port);
         buf.put_u16(self.destination_port);

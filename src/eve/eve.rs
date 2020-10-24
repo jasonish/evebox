@@ -48,7 +48,7 @@ pub fn add_evebox_metadata(event: &mut EveJson, filename: Option<String>) {
     }
     if let EveJson::Object(_) = &event["evebox"] {
         if let Some(filename) = filename {
-            event["evebox"]["filename"] = filename.to_string().into();
+            event["evebox"]["filename"] = filename.into();
         }
     }
 
