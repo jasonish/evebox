@@ -155,28 +155,12 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     let mut input_filenames = Vec::new();
 
-    for path in input_paths {
-        match glob::glob(&path) {
-            Err(_) => {
-                log::error!(
-                    "The provided input filename is an invalid pattern: {}",
-                    &path
-                );
-                std::process::exit(1);
-            }
-            Ok(entries) => {
-                for entry in entries {
-                    match entry {
-                        Ok(path) => {
-                            let path = path.display().to_string();
-                            if !path.ends_with(".bookmark") {
-                                log::debug!("Found input file {}", &path);
-                                input_filenames.push(path);
-                            }
-                        }
-                        Err(_) => {}
-                    }
-                }
+    for input_path in input_paths {
+        for path in crate::path::expand(&input_path)? {
+            let path = path.display().to_string();
+            if !path.ends_with(".bookmark") {
+                log::debug!("Found input file {}", &path);
+                input_filenames.push(path);
             }
         }
     }

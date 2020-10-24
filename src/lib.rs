@@ -36,6 +36,7 @@ pub mod geoip;
 pub mod importer;
 pub mod logger;
 pub mod packet;
+mod path;
 pub mod pcap;
 pub mod resource;
 mod rules;
