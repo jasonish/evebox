@@ -15,7 +15,7 @@ BUILD_REV=$(git rev-parse --short HEAD)
 export BUILD_REV
 
 VERSION=$(cat Cargo.toml | awk '/^version/ { gsub(/"/, "", $3); print $3 }')
-GIT_BRANCH=$(git rev-parse --abrev-ref HEAD)
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 # Set the container tag prefix to "dev" if not on the master branch.
 if [ "${DOCKER_TAG_PREFIX}" = "" ]; then
