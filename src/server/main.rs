@@ -125,9 +125,40 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     }
 
     let input_filename: Option<String> = settings.get_or_none("input.filename")?;
-    if let Some(input_filename) = &input_filename {
-        let end = settings.get_bool("end")?;
 
+    let mut input_filenames = Vec::new();
+    if let Some(input_filename) = &input_filename {
+        for path in crate::path::expand(&input_filename)? {
+            let path = path.display().to_string();
+            input_filenames.push(path);
+        }
+    }
+
+    let mut shared_filters = Vec::new();
+
+    match settings.get::<Vec<String>>("input.rules") {
+        Ok(rules) => {
+            let rulemap = crate::rules::load_rules(&rules);
+            let rulemap = Arc::new(rulemap);
+            shared_filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
+                AddRuleFilter {
+                    map: rulemap.clone(),
+                },
+            ));
+            crate::rules::watch_rules(rulemap);
+        }
+        Err(err) => match err {
+            config::ConfigError::NotFound(_) => {}
+            _ => {
+                log::error!("Failed to read input.rules configuration: {}", err);
+            }
+        },
+    }
+
+    let shared_filters = Arc::new(shared_filters);
+
+    for input_filename in &input_filenames {
+        let end = settings.get_bool("end")?;
         let bookmark_directory: Option<String> =
             settings.get_or_none("input.bookmark-directory")?;
         let bookmark_filename = get_bookmark_filename(
@@ -147,7 +178,11 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
             log::error!("No importer implementation for this database.");
             std::process::exit(1);
         };
+
         let mut filters = Vec::new();
+
+        filters.push(crate::eve::filters::EveFilter::Filters(shared_filters.clone()));
+
         filters.push(
             EveBoxMetadataFilter {
                 filename: Some(input_filename.clone()),
@@ -155,31 +190,10 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
             .into(),
         );
 
-        match settings.get::<Vec<String>>("input.rules") {
-            Ok(rules) => {
-                let rulemap = crate::rules::load_rules(&rules);
-                let rulemap = Arc::new(rulemap);
-                filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
-                    AddRuleFilter {
-                        map: rulemap.clone(),
-                    },
-                ));
-                crate::rules::watch_rules(rulemap);
-            }
-            Err(err) => match err {
-                config::ConfigError::NotFound(_) => {}
-                _ => {
-                    log::error!("Failed to read input.rules configuration: {}", err);
-                }
-            },
-        }
-
-        let filters = Arc::new(filters);
-
         let reader = EveReader::new(input_filename);
         let mut processor = Processor::new(reader, importer.clone());
         processor.report_interval = Duration::from_secs(60);
-        processor.filters = filters;
+        processor.filters = Arc::new(filters);
         processor.end = end;
         processor.bookmark_filename = bookmark_filename;
         log::info!("Starting reader for {}", input_filename);
