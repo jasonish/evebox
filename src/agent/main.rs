@@ -36,7 +36,8 @@ struct ServerConfig {
 
 #[derive(Debug, Deserialize)]
 struct InputConfig {
-    filename: String,
+    paths: Option<Vec<String>>,
+    filename: Option<String>,
     #[serde(rename = "custom-fields")]
     custom_fields: Option<HashMap<String, String>>,
     rules: Option<Vec<String>>,
@@ -74,6 +75,8 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         }
     }
 
+    let mut input_paths = Vec::new();
+
     let input: InputConfig = match settings.get("input") {
         Ok(input) => input,
         Err(err) => {
@@ -81,6 +84,19 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
             std::process::exit(1);
         }
     };
+
+    if let Some(filename) = input.filename {
+        input_paths.push(filename.clone());
+    }
+
+    if let Some(paths) = input.paths {
+        input_paths.extend(paths);
+    }
+
+    if input_paths.is_empty() {
+        log::error!("no inputs, aborting");
+        std::process::exit(1);
+    }
 
     let server: String = match settings.get("server.url") {
         Ok(server) => server,
@@ -121,11 +137,6 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
             }
         }
     }
-    filters.push(crate::eve::filters::EveFilter::EveBoxMetadataFilter(
-        crate::eve::filters::EveBoxMetadataFilter {
-            filename: Some(input.filename.to_string()),
-        },
-    ));
 
     if let Some(custom_fields) = &input.custom_fields {
         for (field, value) in custom_fields {
@@ -142,36 +153,36 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     log::info!("Server: {}", server);
 
-    let mut filenames = Vec::new();
-    match glob::glob(&input.filename) {
-        Err(_) => {
-            log::error!(
-                "The provided input filename is an invalid pattern: {}",
-                &input.filename
-            );
-            std::process::exit(1);
-        }
-        Ok(entries) => {
-            for entry in entries {
-                match entry {
-                    Ok(path) => {
-                        let path = path.display().to_string();
-                        if !path.ends_with(".bookmark") {
-                            log::debug!("Found input file {}", &path);
-                            filenames.push(path);
+    let mut input_filenames = Vec::new();
+
+    for path in input_paths {
+        match glob::glob(&path) {
+            Err(_) => {
+                log::error!(
+                    "The provided input filename is an invalid pattern: {}",
+                    &path
+                );
+                std::process::exit(1);
+            }
+            Ok(entries) => {
+                for entry in entries {
+                    match entry {
+                        Ok(path) => {
+                            let path = path.display().to_string();
+                            if !path.ends_with(".bookmark") {
+                                log::debug!("Found input file {}", &path);
+                                input_filenames.push(path);
+                            }
                         }
+                        Err(_) => {}
                     }
-                    Err(_) => {}
                 }
             }
         }
     }
-    if filenames.is_empty() {
-        filenames.push(input.filename.clone());
-    }
 
     let mut tasks = Vec::new();
-    for filename in filenames {
+    for filename in input_filenames {
         log::info!("Starting file processor on {}", filename);
         let mut end = false;
         let reader = crate::eve::reader::EveReader::new(&filename);
@@ -200,7 +211,16 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         }
         let mut processor = eve::Processor::new(reader, Importer::EveBox(importer));
         processor.end = end;
-        processor.filters = filters.clone();
+
+        let mut local_filters = Vec::new();
+        local_filters.push(crate::eve::filters::EveFilter::Filters(filters.clone()));
+        local_filters.push(crate::eve::filters::EveFilter::EveBoxMetadataFilter(
+            crate::eve::filters::EveBoxMetadataFilter {
+                filename: Some(filename.to_string()),
+            },
+        ));
+
+        processor.filters = Arc::new(local_filters);
         processor.report_interval = Duration::from_secs(60);
         processor.bookmark_filename = bookmark_filename;
         let t = tokio::spawn(async move {

@@ -25,6 +25,14 @@ server:
 input:
   filename: "/var/log/suricata/eve.json"
 
+  # The filename parameter can also contain a wildcard.
+  #filename: "/var/log/suricata/eve.*.json"
+
+  # If multiple paths are required, use "paths" instead of filename.
+  #paths:
+  #  - "/var/log/suricata/sensor1/eve.json"
+  #  - "/var/log/suricata/sensor2/eve.*.json"
+
   # Custom fields to add to the event. Only top level fields can be set,
   # and only simple values (string, integer) can be set.
   custom-fields:
