@@ -2,6 +2,16 @@
 
 ## unreleased
 
+### Fixes
+- Flow report fixes.
+- Netflow report fixes.
+- Capitalization of app_proto's in web.
+
+### Changes
+- Server: Allow wildcard in input filename to allow the usage of threaded eve
+  output. For example: /var/log/suricata/eve.*.json.
+- Agent: Allow multiple input paths to be specified.
+
 ## 0.12.0 - 2020-09-25
 
 ### Changes
