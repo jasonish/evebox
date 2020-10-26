@@ -442,6 +442,7 @@ impl EventStore {
 
         let sort_by = params.sort_by.unwrap_or_else(|| "@timestamp".to_string());
         let sort_order = params.order.unwrap_or_else(|| "desc".to_string());
+        let size = params.size.unwrap_or(500);
 
         let body = json!({
             "query": {
@@ -451,7 +452,7 @@ impl EventStore {
                 }
             },
             "sort": [{sort_by: {"order": sort_order}}],
-            "size": 500,
+            "size": size,
         });
         let response: JsonValue = self.search(&body).await?.json().await?;
         let hits = &response["hits"]["hits"];
