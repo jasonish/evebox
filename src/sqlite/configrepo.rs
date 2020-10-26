@@ -19,8 +19,6 @@ use std::sync::Mutex;
 
 use rusqlite::params;
 
-use crate::logger::log;
-use crate::resource::Resource;
 use crate::sqlite::ConnectionBuilder;
 
 #[derive(thiserror::Error, Debug)]
@@ -163,37 +161,6 @@ impl ConfigRepo {
 }
 
 pub fn init_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
-    let version = db.query_row("select max(version) from schema", params![], |row| {
-        let version: i64 = row.get(0).unwrap();
-        Ok(version)
-    });
-    let mut version = match version {
-        Ok(version) => version + 1,
-        Err(_) => 0,
-    };
-
-    loop {
-        let filename = format!("configdb/V{}.sql", version);
-        let asset = Resource::get(&filename);
-        if let Some(asset) = asset {
-            if version == 0 {
-                log::info!("Initializing SQLite database")
-            } else {
-                log::info!("Updating SQLite database to schema version {}", version);
-            }
-            let asset = String::from_utf8_lossy(&asset);
-            let tx = db.transaction()?;
-            tx.execute_batch(&asset)?;
-            tx.execute(
-                "INSERT INTO schema (version, timestamp) VALUES (?1, date('now'))",
-                params![version],
-            )?;
-            tx.commit()?;
-        } else {
-            break;
-        }
-        version += 1;
-    }
-
+    crate::sqlite::init::init_db(db, "configdb")?;
     Ok(())
 }

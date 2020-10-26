@@ -15,15 +15,12 @@
 
 use std::path::PathBuf;
 
-use rusqlite::params;
 use rusqlite::OpenFlags;
-
-use crate::logger::log;
-use crate::resource::Resource;
 
 pub mod configrepo;
 pub mod eventstore;
 pub mod importer;
+pub mod init;
 pub mod queryparser;
 pub mod retention;
 
@@ -57,38 +54,7 @@ impl ConnectionBuilder {
 }
 
 pub fn init_event_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
-    let version = db.query_row("select max(version) from schema", params![], |row| {
-        let version: i64 = row.get(0).unwrap();
-        Ok(version)
-    });
-    let mut version = match version {
-        Ok(version) => version + 1,
-        Err(_) => 0,
-    };
-
-    loop {
-        let filename = format!("sqlite/V{}.sql", version);
-        let asset = Resource::get(&filename);
-        if let Some(asset) = asset {
-            if version == 0 {
-                log::info!("Initializing SQLite database")
-            } else {
-                log::info!("Updating SQLite database to schema version {}", version);
-            }
-            let asset = String::from_utf8_lossy(&asset);
-            let tx = db.transaction()?;
-            tx.execute_batch(&asset)?;
-            tx.execute(
-                "INSERT INTO schema (version, timestamp) VALUES (?1, date('now'))",
-                params![version],
-            )?;
-            tx.commit()?;
-        } else {
-            break;
-        }
-        version += 1;
-    }
-
+    crate::sqlite::init::init_db(db, "sqlite")?;
     Ok(())
 }
 
