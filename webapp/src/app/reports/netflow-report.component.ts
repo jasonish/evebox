@@ -35,6 +35,8 @@ import {EveboxSubscriptionTracker} from "../subscription-tracker";
 import {loadingAnimation} from "../animations";
 import {humanizeFileSize} from "../humanize.service";
 import {ApiService} from "../api.service";
+import { finalize } from "rxjs/operators";
+import { Observable } from "rxjs";
 
 import * as moment from "moment";
 
@@ -224,11 +226,18 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         });
     }
 
-    wrapLoad(fn: any) {
+    private wrapPromise(fn: any) {
         this.loading++;
         fn().then(() => {
             this.loading--;
         });
+    }
+
+    private wrapObservable(observable: Observable<any>) {
+        this.loading++;
+        return observable.pipe(finalize(() => {
+            this.loading--;
+        }));
     }
 
     load() {
@@ -238,7 +247,7 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         let range = this.topNavService.getTimeRangeAsSeconds();
         let now = moment();
 
-        this.wrapLoad(() => {
+        this.wrapPromise(() => {
             return this.api.reportHistogram({
                 timeRange: range,
                 interval: this.reportsService.histogramTimeInterval(range),
@@ -254,28 +263,27 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
             });
         });
 
-        let params: any = {
+
+        this.wrapObservable(this.api.eventQuery({
             queryString: this.queryString,
-        };
-
-        if (range > 0) {
-            params.timeRange = `${range}s`;
-        }
-
-        this.wrapLoad(() => {
-            params.sortBy = "netflow.pkts";
-            return this.api.getWithParams("api/1/netflow", params)
-                .then((response: any) => {
-                    this.topFlowsByPackets = response.data;
-                });
+            eventType: "netflow",
+            size: 10,
+            timeRange: range,
+            sortBy: "netflow.pkts",
+            sortOrder: "desc",
+        })).subscribe((response) => {
+            this.topFlowsByPackets = response.data;
         });
 
-        this.wrapLoad(() => {
-            params.sortBy = "netflow.bytes";
-            return this.api.getWithParams("api/1/netflow", params)
-                .then((response: any) => {
-                    this.topByBytes = response.data;
-                });
+        this.wrapObservable(this.api.eventQuery({
+            queryString: this.queryString,
+            eventType: "netflow",
+            size: 10,
+            timeRange: range,
+            sortBy: "netflow.bytes",
+            sortOrder: "desc",
+        })).subscribe((response) => {
+            this.topByBytes = response.data;
         });
 
         let query: any = {
