@@ -40,6 +40,13 @@ pub async fn handler(
         .map_err(|err| ApiError::BadRequest(format!("failed to decode event: {}", err)))?;
     match form.what.as_ref() {
         "packet" => {
+            let linktype = if let Some(linktype) = &event["xpacket_info"]["linktype"].as_u64() {
+                *linktype as u32
+            } else {
+                log::warn!("No usable link-type in event, will use ethernet");
+                pcap::LinkType::Ethernet as u32
+            };
+
             let packet = &event["packet"]
                 .as_str()
                 .map(base64::decode)
@@ -50,7 +57,7 @@ pub async fn handler(
             let ts = event.timestamp().ok_or_else(|| {
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
             })?;
-            let pcap_buffer = pcap::create(pcap::LinkType::Ethernet, ts, packet);
+            let pcap_buffer = pcap::create(linktype, ts, packet);
             let response = warp::reply::with_header(
                 warp::reply::with_header(
                     pcap_buffer,
@@ -71,7 +78,7 @@ pub async fn handler(
                 log::warn!("{}", msg);
                 ApiError::BadRequest(msg)
             })?;
-            let pcap_buffer = pcap::create(pcap::LinkType::Raw, ts, &packet);
+            let pcap_buffer = pcap::create(pcap::LinkType::Raw as u32, ts, &packet);
             let response = warp::reply::with_header(
                 warp::reply::with_header(
                     pcap_buffer,

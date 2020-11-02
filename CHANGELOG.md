@@ -6,6 +6,9 @@
 - Flow report fixes.
 - Netflow report fixes.
 - Capitalization of app_proto's in web.
+- When converting a packet to pcap, use the linktype from the packet info if
+  available. If not available use ethernet. Fixes the case where the packet is
+  from nfqueue, where its DLT_RAW.
 
 ### Changes
 - Server: Allow wildcard in input filename to allow the usage of threaded eve
