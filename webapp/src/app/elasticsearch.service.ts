@@ -201,7 +201,7 @@ export class ElasticSearchService {
     }
 
     getEventById(id: string): Promise<any> {
-        return this.api.get(`api/1/event/${id}`)
+        return this.api.client.get(`api/1/event/${id}`).toPromise()
                 .then((response: any) => {
                     let event = response;
 
@@ -234,9 +234,7 @@ export class ElasticSearchService {
         params = params.append("time_range", options.timeRange);
         params = params.append("query_string", options.queryString);
 
-        return this.api.get("api/1/alerts", {
-            params: params,
-        }).then((response: any) => {
+        return this.api.client.get("api/1/alerts", params).toPromise().then((response: any) => {
             return response.alerts.map((alert: AlertGroup) => {
                 return {
                     event: alert,

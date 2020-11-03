@@ -35,6 +35,10 @@ import {Observable, throwError} from "rxjs";
 import {catchError, finalize, map} from "rxjs/operators";
 import {BehaviorSubject} from 'rxjs/internal/BehaviorSubject';
 import {of} from 'rxjs/internal/observable/of';
+import { ToastrService } from './toastr.service';
+import { GITREV } from "../environments/gitrev";
+
+const SESSION_HEADER = "x-evebox-session-id";
 
 declare var localStorage: any;
 
@@ -45,16 +49,19 @@ export interface LoginResponse {
 @Injectable()
 export class ClientService {
 
+    private versionWarned = false;
+
     private _baseUrl: string = window.location.pathname;
 
     private authenticated: boolean = false;
 
-    private _sessionId: string = null;
+    public _sessionId: string = null;
 
     private _isAuthenticated$: BehaviorSubject<boolean> =
             new BehaviorSubject<boolean>(this.authenticated);
 
-    constructor(private http: HttpClient) {
+    constructor(private http: HttpClient, private toastr: ToastrService,
+    ) {
         if (localStorage._sessionId) {
             console.log("Restoring session-id from local storage.");
             this._sessionId = localStorage._sessionId;
@@ -176,6 +183,7 @@ export class ClientService {
 
         let options: any = {
             headers: headers,
+            observe: "response",
         };
 
         if (params) {
@@ -183,13 +191,53 @@ export class ClientService {
         }
 
         return this.http.get(this.buildUrl(path), options)
-                .pipe(catchError((error: HttpErrorResponse) => {
-                    if (error.error instanceof ErrorEvent) {
-                        console.log("This error is an ErrorEvent.");
-                        return throwError(error.error.message);
-                    } else {
-                        return throwError(error.error.error.message);
+            .pipe(map((response: any) => {
+                this.updateSessionId(response);
+                this.checkVersion(response);
+                return response.body;
+            }), catchError((error: HttpErrorResponse) => {
+                if (error.error instanceof ErrorEvent) {
+                    // Client side or network error.
+                } else {
+                    if (error.status === 401) {
+                        this.handle401();
                     }
-                }))
+                }
+                return throwError(error);
+        }))
     }
+
+    public updateSessionId(response: any) {
+        let sessionId = response.headers.get(SESSION_HEADER);
+        if (sessionId && sessionId != this._sessionId) {
+            console.log("Updating session ID from response header.");
+            this.setSessionId(sessionId);
+        }
+    }
+
+    private handle401() {
+        this.setAuthenticated(false);
+    }
+
+    checkVersion(response: any) {
+        if (this.versionWarned) {
+            return;
+        }
+        let webappRev: string = GITREV;
+        let serverRev: string = response.headers.get("x-evebox-git-revision");
+        if (webappRev !== serverRev) {
+            console.log(`Server version: ${serverRev}; webapp version: ${webappRev}`);
+            this.toastr.warning(
+                `The EveBox server has been updated.
+             Please reload</a>.
+             <br><a href="javascript:window.location.reload()"
+             class="btn btn-primary btn-block">Reload Now</a>`, {
+                closeButton: true,
+                timeOut: 0,
+                extendedTimeOut: 0,
+            });
+            this.versionWarned = true;
+        }
+    }
+
 }

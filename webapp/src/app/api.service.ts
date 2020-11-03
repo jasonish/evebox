@@ -51,14 +51,12 @@ export class ApiService {
 
     private versionWarned = false;
 
-    private sessionId: string;
-
     constructor(private httpClient: HttpClient,
-                private client: ClientService,
-                private toastr: ToastrService,
-                private router: Router,
-                private configService: ConfigService) {
-        this.sessionId = localStorage.sessionId;
+        public client: ClientService,
+        private toastr: ToastrService,
+        private router: Router,
+        private configService: ConfigService) {
+        this.client._sessionId = localStorage.sessionId;
     }
 
     isAuthenticated(): boolean {
@@ -66,8 +64,6 @@ export class ApiService {
     }
 
     setSessionId(sessionId: string | null) {
-        this.sessionId = sessionId;
-        localStorage.sessionId = sessionId;
         this.client.setSessionId(sessionId);
     }
 
@@ -93,16 +89,16 @@ export class ApiService {
     }
 
     applySessionHeader(options: any) {
-        if (this.sessionId) {
+        if (this.client._sessionId) {
             let headers = options.headers || new Headers();
-            headers.append(SESSION_HEADER, this.sessionId);
+            headers.append(SESSION_HEADER, this.client._sessionId);
             options.headers = headers;
         }
     }
 
     setSessionHeader(headers: HttpHeaders): HttpHeaders {
-        if (this.sessionId) {
-            return headers.set(SESSION_HEADER, this.sessionId);
+        if (this.client._sessionId) {
+            return headers.set(SESSION_HEADER, this.client._sessionId);
         }
         return headers;
     }
@@ -113,14 +109,6 @@ export class ApiService {
         if (!authenticated) {
             this.setSessionId(null);
             this.router.navigate(["/login"]);
-        }
-    }
-
-    private updateSessionId(response: any) {
-        let sessionId = response.headers.get(SESSION_HEADER);
-        if (sessionId && sessionId != this.sessionId) {
-            console.log("Updating session ID from response header.");
-            this.setSessionId(sessionId);
         }
     }
 
@@ -141,7 +129,7 @@ export class ApiService {
         options.observe = "response";
         return this.httpClient.request<any>(method, path, options)
                 .pipe(map((response: any) => {
-                    this.updateSessionId(response);
+                    this.client.updateSessionId(response);
                     this.checkVersion(response);
                     return response.body;
                 }), catchError((error) => {
@@ -161,12 +149,8 @@ export class ApiService {
         return this.doRequest("POST", path, options).toPromise();
     }
 
-    get(path: string, options: any = {}): Promise<any> {
-        return this.doRequest("GET", path, options).toPromise();
-    }
-
     updateConfig(): Promise<any> {
-        return this.get("api/1/config")
+        return this.client.get("api/1/config").toPromise()
                 .then((config) => {
                     this.configService.setConfig(config);
                     return config;
@@ -175,12 +159,15 @@ export class ApiService {
 
     checkAuth() {
         return this.updateConfig()
-                .then(config => {
-                    this.setAuthenticated(true);
-                    this.client.setAuthenticated(true);
-                    return true;
-                })
-                .catch(() => false);
+            .then(config => {
+                this.setAuthenticated(true);
+                return true;
+            })
+            .catch((error) => {
+                console.log("updateConfig failed:");
+                console.log(error);
+                return false
+            });
     }
 
     login(username: string = "", password: string = ""): Promise<boolean> {
@@ -211,17 +198,17 @@ export class ApiService {
             qsb.push(`${param}=${params[param]}`);
         }
 
-        return this.get(`${path}?${qsb.join("&")}`);
+        return this.client.get(`${path}?${qsb.join("&")}`).toPromise();
     }
 
-    getVersion() {
-        return this.get("api/1/version");
+    getVersion(): Promise<any> {
+        return this.client.get("api/1/version").toPromise();
     }
 
     eventToPcap(what: any, event: any) {
         // Set a cook with the session key to expire in 60 seconds from now.
         const expires = new Date(new Date().getTime() + 60000);
-        const cookie = `${SESSION_HEADER}=${this.sessionId}; expires=${expires.toUTCString()}`;
+        const cookie = `${SESSION_HEADER}=${this.client._sessionId}; expires=${expires.toUTCString()}`;
         console.log("Setting cookie: " + cookie);
         document.cookie = cookie;
 
@@ -276,7 +263,7 @@ export class ApiService {
             query.push(`eventType=${options.eventType}`);
         }
 
-        return this.get(`api/1/report/histogram?${query.join("&")}`);
+        return this.client.get(`api/1/report/histogram?${query.join("&")}`).toPromise();
     }
 
     reportAgg(agg: string, options: ReportAggOptions = {}) {

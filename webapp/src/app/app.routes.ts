@@ -76,7 +76,7 @@ export class ConfigResolver implements CanActivate {
             return Promise.resolve(true);
         }
 
-        return this.api.get("api/1/config")
+        return this.api.client.get("api/1/config").toPromise()
                 .then((config) => {
                     console.log(config);
                     this.configService.setConfig(config);
