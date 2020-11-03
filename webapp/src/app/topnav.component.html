@@ -67,6 +67,7 @@
 
     <form name=" dateSelectorForm" class="form-inline my-2 my-lg-0">
       <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control"
+              id="timeRangeSelector"
               [ngModel]="topNavService.timeRange" name="timeRange"
               (change)="timeRangeChanged($event)">
         <option value="1m">Last minute</option>

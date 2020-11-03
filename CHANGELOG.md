@@ -9,11 +9,14 @@
 - When converting a packet to pcap, use the linktype from the packet info if
   available. If not available use ethernet. Fixes the case where the packet is
   from nfqueue, where its DLT_RAW.
+- Unfocus time range selector after a new range is selected allowing keyboard
+  shortcuts to work again without having to click somewhere in the page.
 
 ### Changes
 - Server: Allow wildcard in input filename to allow the usage of threaded eve
   output. For example: /var/log/suricata/eve.*.json.
 - Agent: Allow multiple input paths to be specified.
+- New keyboard shortcut, '\' to open time range selector.
 
 ## 0.12.0 - 2020-09-25
 

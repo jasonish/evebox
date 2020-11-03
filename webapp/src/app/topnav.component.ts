@@ -62,9 +62,6 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     ngOnInit() {
-
-        console.log("TopNavService.ngOnInit");
-
         if (this.configService.hasFeature(FEATURE_REPORTING)) {
             this.features["reporting"] = true;
         }
@@ -83,6 +80,10 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
         this.mousetrap.bind(this, "?", () => {
             this.showHelp();
+        });
+        this.mousetrap.bind(this, "\\", () => {
+            let e = document.getElementById("timeRangeSelector");
+            document.getElementById("timeRangeSelector").focus();
         });
 
         // Re-enable the time picker after each route change.
@@ -132,6 +133,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     timeRangeChanged($event: any) {
+        (<HTMLElement>document.activeElement).blur();
         this.topNavService.setTimeRange($event.target.value);
         this.appService.dispatch({
             event: AppEventCode.TIME_RANGE_CHANGED,
