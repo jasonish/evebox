@@ -274,6 +274,6 @@ mod test {
 
         let packet = builder.build();
         let now = chrono::Utc::now();
-        let _pcap_buffer = pcap::create(pcap::LinkType::Raw, now, &packet);
+        let _pcap_buffer = pcap::create(pcap::LinkType::Raw as u32, now, &packet);
     }
 }

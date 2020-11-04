@@ -189,7 +189,7 @@ mod test {
             "oDafTEwo2MuK7aFGCABFAAAobXBAAEAGMBcKEAELzE/F3qMmAbtL2EhIK8jWtFAQAenVIwAAAAAAAAAA";
         let ts = crate::eve::parse_eve_timestamp(eve_timestamp).unwrap();
         let packet = base64::decode(packet_base64).unwrap();
-        let _pcap_buffer = super::create(linktype, ts, &packet);
+        let _pcap_buffer = super::create(linktype as u32, ts, &packet);
     }
 
     #[test]
@@ -197,7 +197,7 @@ mod test {
         let event: EveJson = serde_json::from_str(TEST_EVE_RECORD).unwrap();
         let packet = super::packet_from_payload(&event).unwrap();
         let ts = event.timestamp().unwrap();
-        let _pcap_buffer = super::create(LinkType::Raw, ts, &packet);
+        let _pcap_buffer = super::create(LinkType::Raw as u32, ts, &packet);
     }
 
     const TEST_EVE_RECORD: &str = r#"
