@@ -19,11 +19,11 @@
     </tr>
     </thead>
     <tbody>
-    <tr *ngFor="let entry of report">
+    <tr *ngFor="let entry of report" [ngClass]="{'table-secondary': entry.active == false}">
         <td>{{entry.timestamp | eveboxFormatTimestamp}}</td>
-        <td>{{entry.client_mac}}</td>
-        <td>{{entry.assigned_ip}}</td>
-        <td>{{entry.hostname}}</td>
+        <td><a [routerLink]="['/events', {q: quote(entry.client_mac)}]">{{entry.client_mac}}</a></td>
+        <td><a [routerLink]="['/reports/ip', {ip: entry.assigned_ip}]">{{entry.assigned_ip}}</a></td>
+        <td><a [routerLink]="['/events', {q: quote(entry.hostname)}]">{{entry.hostname}}</a></td>
         <td>{{entry.lease_time}}</td>
         <td>{{entry.active}}</td>
     </tr>

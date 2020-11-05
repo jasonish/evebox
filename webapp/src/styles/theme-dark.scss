@@ -107,6 +107,14 @@ $pre-color:                         inherit !default;
 // Set the border colour around event tables to a dark gray provided by the slate theme.
 $event-table-border-color: $gray-800;
 
+.table {
+  &-secondary {
+    &, > th, > td {
+      background-color: $primary;
+    }
+  }
+}
+
 @import "common";
 
 // The idea here is to darken up the "white" text and backgrounds a little,

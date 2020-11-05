@@ -97,4 +97,8 @@ export class DhcpReportComponent implements OnInit, OnDestroy {
             });
         });
     }
+
+    quote(val: string): string {
+        return `"${val}"`;
+    }
 }
