@@ -175,7 +175,7 @@ export class ClientService {
                 );
     }
 
-    get(path: string, params?: any): Observable<any> {
+    get(path: string, params?: HttpParams): Observable<any> {
         let headers = new HttpHeaders();
         if (this._sessionId) {
             headers = this.addSessionIdHeader(headers);

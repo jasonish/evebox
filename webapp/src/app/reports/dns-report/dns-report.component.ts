@@ -56,7 +56,6 @@ export class DNSReportComponent implements OnInit, OnDestroy {
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
     constructor(private route: ActivatedRoute,
-                private reports: ReportsService,
                 private appService: AppService,
                 private api: ApiService,
                 private topNavService: TopNavService,

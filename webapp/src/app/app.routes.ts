@@ -40,6 +40,7 @@ import {ConfigService} from "./config.service";
 import {ApiService} from "./api.service";
 import {SettingsComponent} from "./settings/settings.component";
 import {DebugComponent} from "./debug/debug.component";
+import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
 
 declare var window: any;
 
@@ -167,6 +168,10 @@ const routes: Routes = [
                         path: "ssh",
                         component: SshReportComponent
                     },
+                    {
+                        path: "dhcp",
+                        component: DhcpReportComponent,
+                    }
                 ]
             },
             {

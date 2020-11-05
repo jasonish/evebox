@@ -90,6 +90,7 @@ import {ClientService} from "./client.service";
 import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
 import {CommentInputComponent} from './comment-input/comment-input.component';
 import { AboutComponent } from './about/about.component';
+import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
 
 @NgModule({
     declarations: [
@@ -136,6 +137,7 @@ import { AboutComponent } from './about/about.component';
         EveboxPrintablePipe,
         CommentInputComponent,
         AboutComponent,
+        DhcpReportComponent,
     ],
     imports: [
         // Angular modules.
