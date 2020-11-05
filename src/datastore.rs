@@ -61,6 +61,8 @@ pub enum DatastoreError {
     EventParseError,
     #[error("failed to parse histogram interval: {0}")]
     HistogramIntervalParseError(String),
+    #[error("error: {0}")]
+    AnyhowError(anyhow::Error),
 }
 
 impl warp::reject::Reject for DatastoreError {}
@@ -80,6 +82,12 @@ impl From<Box<dyn std::error::Error + Sync + Send>> for DatastoreError {
 impl From<chrono::format::ParseError> for DatastoreError {
     fn from(err: chrono::format::ParseError) -> Self {
         DatastoreError::TimestampParseError(err)
+    }
+}
+
+impl From<anyhow::Error> for DatastoreError {
+    fn from(err: anyhow::Error) -> Self {
+        DatastoreError::AnyhowError(err)
     }
 }
 
@@ -219,7 +227,6 @@ impl Datastore {
     pub async fn agg(&self, params: AggParameters) -> Result<JsonValue, DatastoreError> {
         match self {
             Datastore::Elastic(ds) => ds.agg(params).await,
-            //Datastore::SQLite(ds) => ds.agg(params).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -230,6 +237,17 @@ impl Datastore {
     ) -> Result<JsonValue, DatastoreError> {
         match self {
             Datastore::Elastic(ds) => ds.flow_histogram(params).await,
+            _ => Err(DatastoreError::Unimplemented),
+        }
+    }
+
+    pub async fn report_dhcp(
+        &self,
+        what: &str,
+        params: &EventQueryParams,
+    ) -> Result<JsonValue, DatastoreError> {
+        match self {
+            Datastore::Elastic(ds) => elastic::report::dhcp::dhcp_report(ds, what, params).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }

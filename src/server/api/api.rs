@@ -21,17 +21,17 @@ use serde::Deserialize;
 use serde_json::json;
 use warp::Reply;
 
-use crate::datastore;
-use crate::datastore::HistogramInterval;
+use crate::datastore::{self, EventQueryParams};
 use crate::elastic;
 use crate::logger::log;
 use crate::server::filters::GenericQuery;
 use crate::server::response::Response;
 use crate::server::session::Session;
 use crate::server::ServerContext;
-
-pub type JsonValue = serde_json::Value;
-pub type DateTime = chrono::DateTime<chrono::Utc>;
+use crate::{
+    datastore::HistogramInterval,
+    types::{DateTime, JsonValue},
+};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AlertGroupSpec {
@@ -59,6 +59,36 @@ pub async fn config(
         "x-evebox-session-id",
         &session.session_id,
     ))
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ReportDhcpAckRequest {
+    pub time_range: Option<String>,
+}
+
+pub async fn report_dhcp(
+    context: Arc<ServerContext>,
+    _session: Arc<Session>,
+    what: String,
+    request: ReportDhcpAckRequest,
+) -> Result<impl warp::Reply, Infallible> {
+    let mut params = EventQueryParams::default();
+    if let Some(time_range) = request.time_range {
+        let now = chrono::Utc::now();
+        match parse_then_from_duration(&now, &time_range) {
+            Some(then) => {
+                params.min_timestamp = Some(then);
+            }
+            None => {
+                log::warn!("Failed to parse time range: {}", time_range);
+            }
+        }
+    }
+
+    match context.datastore.report_dhcp(&what, &params).await {
+        Ok(response) => Ok(Response::Json(response)),
+        Err(err) => Ok(Response::InternalError(err.to_string())),
+    }
 }
 
 pub async fn alert_group_star(

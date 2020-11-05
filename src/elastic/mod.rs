@@ -28,6 +28,8 @@ pub use importer::Importer;
 pub mod eventstore;
 pub use client::Version;
 pub use eventstore::EventStore;
+pub mod report;
+pub mod request;
 
 pub mod template_installer;
 pub const TIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S.%3fZ";

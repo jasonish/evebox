@@ -44,6 +44,7 @@ mod rules;
 pub mod server;
 pub mod settings;
 pub mod sqlite;
+pub mod types;
 pub mod version;
 
 #[macro_use]

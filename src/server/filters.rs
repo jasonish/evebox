@@ -390,6 +390,21 @@ pub fn api_routes(
         .and_then(api::flow_histogram::handler)
         .boxed();
 
+    // An example of a filter that deserializes either the query string, or the
+    // json request body to the same struct.
+    let report_dhcp_ack = api
+        .clone()
+        .and(session.clone())
+        .and(warp::path!("report" / "dhcp" / String))
+        .and(
+            warp::get()
+                .and(warp::query())
+                .or(warp::post().and(warp::body::json()))
+                .unify(),
+        )
+        .and_then(api::report_dhcp)
+        .boxed();
+
     let content_length_limit = 1024 * 1024 * 256;
     let submit = api
         .clone()
@@ -424,5 +439,6 @@ pub fn api_routes(
         .or(login_options)
         .or(login_post)
         .or(logout)
+        .or(report_dhcp_ack)
         .boxed()
 }
