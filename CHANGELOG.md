@@ -18,6 +18,10 @@
 - Agent: Allow multiple input paths to be specified.
 - New keyboard shortcut, '\' to open time range selector.
 
+### Features
+- New DHCP report that attempts to give you a picture of the devices that have 
+  been assigned an IP(v4) address over the requested period of time.
+
 ## 0.12.0 - 2020-09-25
 
 ### Changes
