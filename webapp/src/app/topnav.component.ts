@@ -34,6 +34,7 @@ import {Subscription} from "rxjs";
 import {ConfigService} from "./config.service";
 import {ApiService} from "./api.service";
 import {EVENT_TYPES} from './shared/eventtypes';
+import {ClientService} from "./client.service";
 
 declare var $: any;
 
@@ -56,6 +57,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
                 private mousetrap: MousetrapService,
                 private topNavService: TopNavService,
                 public appService: AppService,
+                public client: ClientService,
                 private api: ApiService,
                 private route: ActivatedRoute,
                 private configService: ConfigService) {

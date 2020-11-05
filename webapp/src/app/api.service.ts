@@ -1,32 +1,19 @@
-/* Copyright (c) 2014-2016 Jason Ish
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+// Copyright (C) 2014-2020 Jason Ish
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {Injectable} from "@angular/core";
-import {ToastrService} from "./toastr.service";
-import {GITREV} from "../environments/gitrev";
 import {Router} from "@angular/router";
 import {ConfigService} from "./config.service";
 import {Observable} from "rxjs";
@@ -34,7 +21,7 @@ import {Observable} from "rxjs";
 import {ClientService, LoginResponse} from "./client.service";
 import {catchError, finalize, map} from "rxjs/operators";
 import {HttpClient, HttpHeaders, HttpParams} from "@angular/common/http";
-import {throwError} from 'rxjs/internal/observable/throwError';
+import {throwError} from "rxjs/internal/observable/throwError";
 
 declare var localStorage: any;
 
@@ -49,11 +36,8 @@ export class ApiService {
 
     private authenticated = false;
 
-    private versionWarned = false;
-
     constructor(private httpClient: HttpClient,
         public client: ClientService,
-        private toastr: ToastrService,
         private router: Router,
         private configService: ConfigService) {
         this.client._sessionId = localStorage.sessionId;
@@ -67,25 +51,8 @@ export class ApiService {
         this.client.setSessionId(sessionId);
     }
 
-    checkVersion(response: any) {
-        if (this.versionWarned) {
-            return;
-        }
-        let webappRev: string = GITREV;
-        let serverRev: string = response.headers.get("x-evebox-git-revision");
-        if (webappRev !== serverRev) {
-            console.log(`Server version: ${serverRev}; webapp version: ${webappRev}`);
-            this.toastr.warning(
-                    `The EveBox server has been updated.
-             Please reload</a>.
-             <br><a href="javascript:window.location.reload()"
-             class="btn btn-primary btn-block">Reload Now</a>`, {
-                        closeButton: true,
-                        timeOut: 0,
-                        extendedTimeOut: 0,
-                    });
-            this.versionWarned = true;
-        }
+    checkVersion(response: any): void {
+        this.client.checkVersion(response);
     }
 
     applySessionHeader(options: any) {
@@ -166,7 +133,7 @@ export class ApiService {
             .catch((error) => {
                 console.log("updateConfig failed:");
                 console.log(error);
-                return false
+                return false;
             });
     }
 

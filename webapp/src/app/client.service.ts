@@ -1,28 +1,17 @@
-/* Copyright (c) 2018 Jason Ish
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+// Copyright (C) 2018-2020 Jason Ish
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {Injectable} from "@angular/core";
 import {
@@ -33,10 +22,9 @@ import {
 } from "@angular/common/http";
 import {Observable, throwError} from "rxjs";
 import {catchError, finalize, map} from "rxjs/operators";
-import {BehaviorSubject} from 'rxjs/internal/BehaviorSubject';
-import {of} from 'rxjs/internal/observable/of';
-import { ToastrService } from './toastr.service';
-import { GITREV } from "../environments/gitrev";
+import {BehaviorSubject} from "rxjs/internal/BehaviorSubject";
+import {of} from "rxjs/internal/observable/of";
+import {GITREV} from "../environments/gitrev";
 
 const SESSION_HEADER = "x-evebox-session-id";
 
@@ -58,10 +46,11 @@ export class ClientService {
     public _sessionId: string = null;
 
     private _isAuthenticated$: BehaviorSubject<boolean> =
-            new BehaviorSubject<boolean>(this.authenticated);
+        new BehaviorSubject<boolean>(this.authenticated);
 
-    constructor(private http: HttpClient, private toastr: ToastrService,
-    ) {
+    public reloadRequired = false;
+
+    constructor(private http: HttpClient) {
         if (localStorage._sessionId) {
             console.log("Restoring session-id from local storage.");
             this._sessionId = localStorage._sessionId;
@@ -134,22 +123,22 @@ export class ClientService {
 
     login(username: string = "", password: string = ""): Observable<LoginResponse> {
         let params = new HttpParams()
-                .append("username", username)
-                .append("password", password);
+            .append("username", username)
+            .append("password", password);
         return this.http.post(this.buildUrl("api/1/login"), params)
-                .pipe(
-                        map((response: LoginResponse) => {
-                            console.log(`Got session ID: ${response.session_id}`);
-                            this.setAuthenticated(true);
-                            this.setSessionId(response.session_id);
-                            return response;
-                        }),
-                        catchError((error: any) => {
-                            this.setAuthenticated(false);
-                            this.setSessionId(null);
-                            return throwError(error);
-                        })
-                );
+            .pipe(
+                map((response: LoginResponse) => {
+                    console.log(`Got session ID: ${response.session_id}`);
+                    this.setAuthenticated(true);
+                    this.setSessionId(response.session_id);
+                    return response;
+                }),
+                catchError((error: any) => {
+                    this.setAuthenticated(false);
+                    this.setSessionId(null);
+                    return throwError(error);
+                })
+            );
     }
 
     logout(): Observable<boolean> {
@@ -158,21 +147,21 @@ export class ClientService {
             headers = this.addSessionIdHeader(headers);
         }
         return this.http.get(this.buildUrl("api/1/logout"), {headers: headers})
-                .pipe(
-                        map(() => {
-                            return true;
-                        }),
-                        catchError((error: any) => {
-                            console.log("logout error:");
-                            console.log(error);
-                            return of(true);
-                        }),
-                        finalize(() => {
-                            console.log("Clearing session ID.");
-                            this.setAuthenticated(false);
-                            this.setSessionId(null);
-                        })
-                );
+            .pipe(
+                map(() => {
+                    return true;
+                }),
+                catchError((error: any) => {
+                    console.log("logout error:");
+                    console.log(error);
+                    return of(true);
+                }),
+                finalize(() => {
+                    console.log("Clearing session ID.");
+                    this.setAuthenticated(false);
+                    this.setSessionId(null);
+                })
+            );
     }
 
     get(path: string, params?: HttpParams): Observable<any> {
@@ -204,7 +193,7 @@ export class ClientService {
                     }
                 }
                 return throwError(error);
-        }))
+            }))
     }
 
     public updateSessionId(response: any) {
@@ -219,24 +208,16 @@ export class ClientService {
         this.setAuthenticated(false);
     }
 
-    checkVersion(response: any) {
+    checkVersion(response: any): void {
         if (this.versionWarned) {
             return;
         }
-        let webappRev: string = GITREV;
-        let serverRev: string = response.headers.get("x-evebox-git-revision");
+        const webappRev: string = GITREV;
+        const serverRev: string = response.headers.get("x-evebox-git-revision");
         if (webappRev !== serverRev) {
-            console.log(`Server version: ${serverRev}; webapp version: ${webappRev}`);
-            this.toastr.warning(
-                `The EveBox server has been updated.
-             Please reload</a>.
-             <br><a href="javascript:window.location.reload()"
-             class="btn btn-primary btn-block">Reload Now</a>`, {
-                closeButton: true,
-                timeOut: 0,
-                extendedTimeOut: 0,
-            });
+            console.log(`Client: server version: ${serverRev}; webapp version: ${webappRev}`);
             this.versionWarned = true;
+            this.reloadRequired = true;
         }
     }
 

@@ -1,28 +1,28 @@
 <nav class="navbar navbar-expand-lg fixed-top">
-  <a class="navbar-brand" href="#">EveBox</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse"
-          data-target="#navbarSupportedContent"
-          aria-controls="navbarSupportedContent" aria-expanded="false"
-          aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
+    <a class="navbar-brand" href="#">EveBox</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false"
+            aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
 
-  <div class="collapse navbar-collapse" id="navbarSupportedContent">
-    <ul class="navbar-nav mr-auto">
-      <li class="nav-item" [routerLink]="['/inbox']"
-          [routerLinkActive]="['active']">
-        <a class="nav-link" href="#">Inbox</a>
-      </li>
-      <li class="nav-item" [routerLink]="['/escalated']"
-          [routerLinkActive]="['active']">
-        <a class="nav-link" href="#/escalated">Escalated</a>
-      </li>
-      <li class="nav-item" [routerLink]="['/alerts']"
-          [routerLinkActive]="['active']">
-        <a class="nav-link" href="#/alerts">Alerts</a>
-      </li>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item" [routerLink]="['/inbox']"
+                [routerLinkActive]="['active']">
+                <a class="nav-link" href="#">Inbox</a>
+            </li>
+            <li class="nav-item" [routerLink]="['/escalated']"
+                [routerLinkActive]="['active']">
+                <a class="nav-link" href="#/escalated">Escalated</a>
+            </li>
+            <li class="nav-item" [routerLink]="['/alerts']"
+                [routerLinkActive]="['active']">
+                <a class="nav-link" href="#/alerts">Alerts</a>
+            </li>
 
-      <li class="nav-item dropdown">
+            <li class="nav-item dropdown">
         <span class="nav-link">
           <a [routerLink]="['/events']"
              [routerLinkActive]="['active']"
@@ -41,75 +41,81 @@
                *ngFor="let eventType of EVENT_TYPES">{{eventType.name}}</a>
           </div>
         </span>
-      </li>
+            </li>
 
-      <li *ngIf="features['reporting']" class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle"
-           href="#"
-           id="navbarReportsDownload"
-           role="button"
-           data-toggle="dropdown"
-           aria-haspopup="true"
-           [ngClass]="{'active': reportsActive}"
-           aria-expanded="false">
-          Reports
-        </a>
-        <div class="dropdown-menu" aria-labelledby="navbarReportsDownload">
-          <a class="dropdown-item" [routerLink]="['/reports/alerts']">Alerts</a>
-          <a class="dropdown-item" [routerLink]="['/reports/dns']">DNS</a>
-          <a class="dropdown-item" [routerLink]="['/reports/ssh']">SSH</a>
-          <a class="dropdown-item" [routerLink]="['/reports/flow']">Flow</a>
-          <a class="dropdown-item" [routerLink]="['/reports/netflow']">Netflow</a>
-          <a class="dropdown-item" [routerLink]="['/reports/dhcp']">DHCP</a>
-        </div>
-      </li>
+            <li *ngIf="features['reporting']" class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle"
+                   href="#"
+                   id="navbarReportsDownload"
+                   role="button"
+                   data-toggle="dropdown"
+                   aria-haspopup="true"
+                   [ngClass]="{'active': reportsActive}"
+                   aria-expanded="false">
+                    Reports
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarReportsDownload">
+                    <a class="dropdown-item" [routerLink]="['/reports/alerts']">Alerts</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/dns']">DNS</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/ssh']">SSH</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/flow']">Flow</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/netflow']">Netflow</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/dhcp']">DHCP</a>
+                </div>
+            </li>
 
-    </ul>
+        </ul>
 
-    <form name=" dateSelectorForm" class="form-inline my-2 my-lg-0">
-      <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control"
-              id="timeRangeSelector"
-              [ngModel]="topNavService.timeRange" name="timeRange"
-              (change)="timeRangeChanged($event)">
-        <option value="1m">Last minute</option>
-        <option value="1h">Last hour</option>
-        <option value="3h">Last 3 hours</option>
-        <option value="6h">Last 6 hours</option>
-        <option value="12h">Last 12 hours</option>
-        <option value="24h">Last 24 hours</option>
-        <option value="3d">Last 3 days</option>
-        <option value="7d">Last week</option>
-        <option value="">All</option>
-      </select>
-    </form>
+        <form name=" dateSelectorForm" class="form-inline my-2 my-lg-0">
+            <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control"
+                    id="timeRangeSelector"
+                    [ngModel]="topNavService.timeRange" name="timeRange"
+                    (change)="timeRangeChanged($event)">
+                <option value="1m">Last minute</option>
+                <option value="1h">Last hour</option>
+                <option value="3h">Last 3 hours</option>
+                <option value="6h">Last 6 hours</option>
+                <option value="12h">Last 12 hours</option>
+                <option value="24h">Last 24 hours</option>
+                <option value="3d">Last 3 days</option>
+                <option value="7d">Last week</option>
+                <option value="">All</option>
+            </select>
+        </form>
 
-    <ul class="navbar-nav">
-      <li class="nav-item"><a class="nav-link" href="#"
-                              (click)="showHelp(); $event.preventDefault()">Help</a></li>
+        <ul class="navbar-nav">
+            <li class="nav-item"><a class="nav-link" href="#"
+                                    (click)="showHelp(); $event.preventDefault()">Help</a></li>
 
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle no-caret" href="#" id="toolDropdown"
-           role="button" data-toggle="dropdown" aria-haspopup="true"
-           aria-expanded="false">
-          <i class="fa fa-gear"></i>
-        </a>
-        <div class="dropdown-menu dropdown-menu-right"
-             aria-labelledby="toolDropdown">
-          <a class="dropdown-item" href="#/settings">
-            Settings
-          </a>
-          <div class="dropdown-divider"></div>
-          <a class="dropdown-item" href="#" (click)="logout()">Logout</a>
-        </div>
-      </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle no-caret" href="#" id="toolDropdown"
+                   role="button" data-toggle="dropdown" aria-haspopup="true"
+                   aria-expanded="false">
+                    <i class="fa fa-gear"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right"
+                     aria-labelledby="toolDropdown">
+                    <a class="dropdown-item" href="#/settings">
+                        Settings
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="#" (click)="logout()">Logout</a>
+                </div>
+            </li>
 
-    </ul>
+        </ul>
 
-    <!-- TODO Using button here as it looks better than a bade. -->
-    <button type="button" class="btn btn-secondary">
-      {{elasticSearchService.jobCount$ | async}}
-    </button>
+        <!-- TODO Using button here as it looks better than a bade. -->
+        <button type="button" class="btn btn-secondary">
+            {{elasticSearchService.jobCount$ | async}}
+        </button>
 
-  </div>
+    </div>
 
 </nav>
+
+<div class="alert alert-danger row p-0 m-0 b-0" style="border-radius: 0;" *ngIf="client.reloadRequired">
+    <div class="col-12 text-center">
+        <a href="javascript:window.location.reload()">The EveBox server has been updated. Reload Now.</a>
+    </div>
+</div>
