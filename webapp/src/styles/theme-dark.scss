@@ -117,6 +117,10 @@ $event-table-border-color: $gray-800;
     }
 }
 
+.alert-danger {
+  background-color: $danger;
+}
+
 @import "common";
 
 // The idea here is to darken up the "white" text and backgrounds a little,
