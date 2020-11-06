@@ -48,6 +48,7 @@
 
 ### Breaking Changes
 - License: AGPL
+- LetsEncrypt support has been removed.
 
 ### Known Issues
 - When using a self-signed certificate, the hostname being connected
