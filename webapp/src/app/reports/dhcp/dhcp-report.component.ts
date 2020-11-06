@@ -71,10 +71,14 @@ export class DhcpReportComponent implements OnInit, OnDestroy {
                     };
                 }
                 for (const ack of acks.data) {
-                    const record = merged[ack.dhcp.client_mac];
+                    let record = merged[ack.dhcp.client_mac];
                     if (!record) {
-                        console.log(`Failed to find request for client-mac ${ack.client_mac}`);
-                        continue;
+                        // This is most likely due to DHCP extended logs not being enabled.
+                        record = {
+                            timestamp: ack.timestamp,
+                            client_mac: ack.dhcp.client_mac,
+                        }
+                        merged[record.client_mac] = record;
                     }
                     record.assigned_ip = ack.dhcp.assigned_ip;
                     if (ack.dhcp.hostname) {
