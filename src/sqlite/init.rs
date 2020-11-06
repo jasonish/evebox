@@ -28,15 +28,14 @@ pub fn init_db(db: &mut rusqlite::Connection, prefix: &str) -> Result<(), rusqli
 
     loop {
         let filename = format!("{}/V{}.sql", prefix, next_version);
-        let asset = Resource::get(&filename);
-        if let Some(asset) = asset {
-            if version == 0 {
-                log::info!("Initializing SQLite database")
+        if let Some(asset) = Resource::get(&filename) {
+            if next_version == 0 {
+                log::info!("Initializing SQLite database ({})", prefix)
             } else {
                 log::info!(
-                    prefix = prefix,
-                    "Updating SQLite database to schema version {}",
-                    version
+                    "Updating SQLite database to schema version {} ({})",
+                    next_version,
+                    prefix
                 );
             }
             let asset = String::from_utf8_lossy(&asset);
@@ -47,10 +46,10 @@ pub fn init_db(db: &mut rusqlite::Connection, prefix: &str) -> Result<(), rusqli
                 params![next_version],
             )?;
             tx.commit()?;
+            next_version += 1;
         } else {
             break;
         }
-        next_version += 1;
     }
 
     Ok(())
