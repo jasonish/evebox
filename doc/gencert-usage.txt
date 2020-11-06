@@ -1,5 +1,0 @@
-Usage of gencert:
-      --duration int            Duration that certificate is valid for in days (default 365)
-      --hostname string         Hostname or IP address (one or more, comma separated)
-      --org string              Organization name (default "EveBox User")
-  -o, --outputFilename string   Output file (eg. evebox.pem)

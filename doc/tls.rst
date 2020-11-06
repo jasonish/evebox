@@ -4,9 +4,7 @@ TLS
 Starting the EveBox Server with TLS
 -----------------------------------
 
-Before TLS can be used a private key and certificate must be
-obtained. EveBox provides a tool to generate a self signed certificate
-if a certificate cannot be obtained through other means.
+Before TLS can be used a private key and certificate must be obtained.
 
 Enabling TLS on the Command Line
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,15 +39,9 @@ TLS can be enabled in the configuration file under ``http.tls``:
        certificate: /path/to/cert.pem
        key: /path/to/key.pem
 
-Creating a Self Signed Certificate
-----------------------------------
+Creating a Self Signed Certificate and Key File
+-----------------------------------------------
 
-EveBox ships with a tool to generate self signed TLS certificates.
+::
 
-Example::
-
-  evebox gencert -o evebox.pem
-
-Full usage of ``evebox gencert``:
-  
-.. literalinclude:: gencert-usage.txt
+  openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
