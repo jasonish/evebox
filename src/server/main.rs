@@ -211,17 +211,18 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         config.tls_enabled
     );
     if config.tls_enabled {
+        log::debug!("TLS key filename: {:?}", config.tls_key_filename);
+        log::debug!("TLS cert filename: {:?}", config.tls_cert_filename);
         let cert_path = if let Some(filename) = config.tls_cert_filename {
             filename
         } else {
-            log::error!("TLS request but not certificate filename provided");
+            log::error!("TLS requested but no certificate filename provided");
             std::process::exit(1);
         };
         let key_path = if let Some(filename) = config.tls_key_filename {
             filename
         } else {
-            log::error!("TLS requested but not key filename provided");
-            std::process::exit(1);
+            cert_path.clone()
         };
         server
             .tls()
