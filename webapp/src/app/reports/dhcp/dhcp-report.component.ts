@@ -13,11 +13,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import {HttpParams} from "@angular/common/http";
-import {Component, OnDestroy, OnInit} from "@angular/core";
-import {AppEventCode, AppService} from "src/app/app.service";
-import {ClientService} from "src/app/client.service";
-import {TopNavService} from "src/app/topnav.service";
+import { HttpParams } from "@angular/common/http";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { AppEventCode, AppService } from "src/app/app.service";
+import { ClientService } from "src/app/client.service";
+import { TopNavService } from "src/app/topnav.service";
 import * as moment from "moment";
 
 @Component({
