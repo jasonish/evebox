@@ -10,13 +10,13 @@ work if pointed at your Elastic Search server.
 
 Example::
 
-  evebox -v -e http://elasticsearch:9200
+  evebox server -v -e http://elasticsearch:9200
 
 This assumes the use of the default Logstash index
 logstash-{YYYY.MM.DD}. If another index name is being used it must be
 specified with the ``-i`` option::
 
-  evebox -v -e http://elasticsearch:9200 -i indexprefix
+  evebox server -v -e http://elasticsearch:9200 -i indexprefix
 
 Consuming Events and Using Elastic Search
 -----------------------------------------
@@ -26,7 +26,7 @@ Elastic Search, EveBox can ship the events to Elastic Search itself.
 
 Example usage::
 
-  evebox -v -e http://elasticsearch:9200 --input /var/log/suricata/eve.json
+  evebox server -v -e http://elasticsearch:9200 --input /var/log/suricata/eve.json
 
 .. note:: If you do not wish to run EveBox on the same machine as
           Suricata you can use the :doc:`agent` to ship alerts to the
@@ -38,7 +38,7 @@ Using the Embedded SQLite Database
 If installing Elastic Search is not an option the embedded SQLite
 database can be used instead::
 
-  evebox -v -D . --datastore sqlite --input /var/log/suricata/eve.json
+  evebox server -v -D . --datastore sqlite --input /var/log/suricata/eve.json
   
 .. note:: Note the -D parameter that tells EveBox where to store data
           files such as the file for the SQLite database. While using
