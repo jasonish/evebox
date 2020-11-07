@@ -6,6 +6,5 @@ Server
    :caption: Contents:
 
    server-running
-   server-oneshot
    authentication
    tls

@@ -12,6 +12,7 @@ EveBox
 
    install
    server
+   oneshot
    agent
    elastic-import
    api
