@@ -51,9 +51,11 @@ export class DhcpReportComponent implements OnInit, OnDestroy {
     }
 
     refresh(): void {
-        const range = this.topNavService.getTimeRangeAsSeconds();
         let params = new HttpParams();
-        params = params.append("time_range", `${range}s`);
+        const range = this.topNavService.getTimeRangeAsSeconds();
+        if (range > 0) {
+            params = params.append("time_range", `${range}s`);
+        }
 
         const now = moment().unix();
 
