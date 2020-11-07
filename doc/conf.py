@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'EveBox'
-copyright = u'2017, Jason Ish'
+copyright = u'2020, Jason Ish'
 author = u'Jason Ish'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -136,7 +136,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'evebo', u'EveBox Documentation',
+    (master_doc, 'evebox', u'EveBox Documentation',
      [author], 1)
 ]
 
@@ -151,6 +151,3 @@ texinfo_documents = [
      author, 'EveBox', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-
-
