@@ -28,6 +28,7 @@ pub async fn dhcp_report(
     match what {
         "ack" => dhcp_report_ack(ds, params).await,
         "request" => dhcp_report_request(ds, params).await,
+        "servers" => servers(ds, params).await,
         _ => Err(anyhow::anyhow!("No DHCP report for {}", what).into()),
     }
 }
@@ -130,6 +131,49 @@ pub async fn dhcp_report_request(
         for bucket in buckets {
             let latest = &bucket["latest"]["hits"]["hits"][0]["_source"];
             results.push(latest);
+        }
+    }
+
+    Ok(json!({
+        "data": results,
+    }))
+}
+
+pub async fn servers(
+    ds: &EventStore,
+    params: &EventQueryParams,
+) -> Result<JsonValue, DatastoreError> {
+    let mut request = elastic::request::new_request();
+    request.push_filter(elastic::request::term_filter("event_type", "dhcp"));
+    request.push_filter(elastic::request::term_filter("dhcp.type", "reply"));
+
+    if let Some(dt) = params.min_timestamp {
+        request.push_filter(elastic::request::timestamp_gte_filter(dt));
+    }
+
+    let aggs = json!({
+        "servers": {
+          "terms": {
+            "field": "src_ip.keyword",
+            "size": 10000
+          },
+        }
+    });
+
+    request["aggs"] = aggs;
+    request.size(0);
+
+    let response: JsonValue = ds.search(&request).await?.json().await?;
+
+    let mut results = Vec::new();
+
+    if let Some(buckets) = response["aggregations"]["servers"]["buckets"].as_array() {
+        for bucket in buckets {
+            let entry = json!({
+                "ip": bucket["key"],
+                "count": bucket["doc_count"],
+            });
+            results.push(entry);
         }
     }
 
