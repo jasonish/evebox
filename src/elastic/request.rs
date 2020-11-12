@@ -20,6 +20,7 @@ const TIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S.%3fZ";
 pub trait Request {
     fn push_filter(&mut self, filter: JsonValue);
     fn size(&mut self, size: u64);
+    fn set_filters(&mut self, filters: Vec<JsonValue>);
 }
 
 impl Request for JsonValue {
@@ -31,6 +32,10 @@ impl Request for JsonValue {
 
     fn size(&mut self, size: u64) {
         self["size"] = size.into();
+    }
+
+    fn set_filters(&mut self, filters: Vec<JsonValue>) {
+        self["query"]["bool"]["filter"] = filters.into();
     }
 }
 

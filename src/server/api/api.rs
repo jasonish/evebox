@@ -62,15 +62,16 @@ pub async fn config(
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ReportDhcpAckRequest {
+pub struct ReportDhcpRequest {
     pub time_range: Option<String>,
+    pub query_string: Option<String>,
 }
 
 pub async fn report_dhcp(
     context: Arc<ServerContext>,
     _session: Arc<Session>,
     what: String,
-    request: ReportDhcpAckRequest,
+    request: ReportDhcpRequest,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut params = EventQueryParams::default();
     if let Some(time_range) = request.time_range {
@@ -82,6 +83,12 @@ pub async fn report_dhcp(
             None => {
                 log::warn!("Failed to parse time range: {}", time_range);
             }
+        }
+    }
+
+    if let Some(query_string) = request.query_string {
+        if !query_string.is_empty() {
+            params.query_string = Some(query_string);
         }
     }
 
