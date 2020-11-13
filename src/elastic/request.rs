@@ -64,3 +64,7 @@ pub fn timestamp_gte_filter(dt: DateTime) -> JsonValue {
 pub fn term_filter(field: &str, value: &str) -> JsonValue {
     json!({"term": {field: value}})
 }
+
+pub fn exists_filter(field: &str) -> JsonValue {
+    json!({"exists": {"field": field}})
+}
