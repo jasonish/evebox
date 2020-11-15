@@ -37,6 +37,7 @@ import {loadingAnimation} from "../animations";
 import {ToastrService} from "../toastr.service";
 import {FEATURE_COMMENTS} from "../app.service";
 import {ConfigService} from "../config.service";
+import { transformEcsEvent } from "../events/events.component";
 
 /**
  * Component to show a single event.
@@ -93,6 +94,7 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     setupEvent(event: any) {
+        transformEcsEvent(event);
         this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
 
         // If the Suricata provided rule doesn't exist, check for

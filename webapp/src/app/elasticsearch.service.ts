@@ -32,6 +32,7 @@ import {ConfigService} from "./config.service";
 import {ApiService} from "./api.service";
 import * as moment from "moment";
 import {HttpParams} from "@angular/common/http";
+import { transformEcsEvent } from "./events/events.component";
 
 declare function require(name: string);
 
@@ -239,7 +240,8 @@ export class ElasticSearchService {
                 return {
                     event: alert,
                     selected: false,
-                    date: moment(alert.maxTs).toDate()
+                    date: moment(alert.maxTs).toDate(),
+                    ecs: response.ecs,
                 };
             });
         });

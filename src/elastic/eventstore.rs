@@ -13,11 +13,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::exists_query;
 use super::format_timestamp;
 use super::query_string_query;
-use super::term_query;
-use super::timestamp_gte_query;
 use super::Client;
 use super::ElasticError;
 use super::HistoryEntry;
@@ -28,9 +25,8 @@ use crate::datastore::HistogramInterval;
 use crate::datastore::{self, DatastoreError};
 use crate::elastic::importer::Importer;
 use crate::elastic::{
-    build_alert_group_filter, build_inbox_query, timestamp_lte_query, AlertQueryOptions,
-    ElasticResponse, ACTION_DEESCALATED, ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED,
-    TAG_ARCHIVED,
+    request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED, ACTION_ESCALATED,
+    TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::logger::log;
 use crate::server::api;
@@ -46,6 +42,7 @@ pub struct EventStore {
     pub base_index: String,
     pub index_pattern: String,
     pub client: Client,
+    pub ecs: bool,
 }
 
 impl EventStore {
@@ -68,6 +65,40 @@ impl EventStore {
     ) -> Result<reqwest::Response, reqwest::Error> {
         let path = "_search?rest_total_hits_as_int=true&";
         self.post(path, body).await
+    }
+
+    /// Map field names to ECS names if required.
+    pub fn map_field<'a>(&self, name: &'a str) -> &'a str {
+        if !self.ecs {
+            return name;
+        } else {
+            match name {
+                "alert.signature_id" => "suricata.eve.alert.signature_id",
+                "alert.signature.keyword" => "suricata.eve.alert.signature",
+                "alert.category.keyword" => "suricata.eve.alert.category",
+                "dest_ip.keyword" => "destination.address",
+                "dest_port" => "destination.port",
+                "dhcp.dhcp_type" => "suricata.eve.dhcp.dhcp_type",
+                "dhcp.client_mac.keyword" => "suricata.eve.dhcp.client_mac",
+                "dhcp.type" => "suricata.eve.dhcp.type",
+                "dhcp.assigned_ip.keyword" => "suricata.eve.dhcp.assigned_ip",
+                "dns.rrname.keyword" => "dns.question.name",
+                "dns.rrtype.keyword" => "dns.question.type",
+                "dns.rcode.keyword" => "dns.response_code",
+                "dns.type" => name,
+                "event_type" => "suricata.eve.event_type",
+                "src_ip.keyword" => "source.address",
+                "src_port" => "source.port",
+                "ssh.client.software_version.keyword" => "suricata.eve.ssh.client.software_version",
+                "ssh.server.software_version.keyword" => "suricata.eve.ssh.server.software_version",
+                "traffic.id.keyword" => "suricata.eve.traffic.id",
+                "traffic.label.keyword" => "suricata.eve.traffic.label",
+                _ => {
+                    log::info!("No ECS mapping for {}", name);
+                    name
+                }
+            }
+        }
     }
 
     async fn add_tag_by_query(
@@ -188,7 +219,7 @@ impl EventStore {
 
         let query = json!({
             "bool": {
-                "filter": build_alert_group_filter(&alert_group),
+                "filter": self.build_alert_group_filter(&alert_group),
                 "must_not": must_not,
             }
         });
@@ -202,7 +233,7 @@ impl EventStore {
         tags: &[&str],
         action: &HistoryEntry,
     ) -> Result<(), DatastoreError> {
-        let mut filters = build_alert_group_filter(&alert_group);
+        let mut filters = self.build_alert_group_filter(&alert_group);
         for tag in tags {
             filters.push(json!({"term": {"tags": tag}}));
         }
@@ -321,14 +352,80 @@ impl EventStore {
         Ok(None)
     }
 
+    pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
+        let mut filters = Vec::new();
+        filters.push(json!({"exists": {"field": self.map_field("event_type")}}));
+        filters.push(json!({"term": {self.map_field("event_type"): "alert"}}));
+        if let Some(timestamp_gte) = options.timestamp_gte {
+            filters
+                .push(json!({"range": {"@timestamp": {"gte": format_timestamp(timestamp_gte)}}}));
+        }
+        if let Some(query_string) = options.query_string {
+            if !query_string.is_empty() {
+                log::info!("Setting query string to: {}", query_string);
+                filters.push(query_string_query(&query_string));
+            }
+        }
+
+        let mut must_not = Vec::new();
+        for tag in options.tags {
+            if tag.starts_with('-') {
+                if tag == "-archived" {
+                    log::debug!("Rewriting tag {} to {}", tag, "evebox.archived");
+                    must_not.push(json!({"term": {"tags": "evebox.archived"}}));
+                } else {
+                    let j = json!({"term": {"tags": tag[1..]}});
+                    must_not.push(j);
+                }
+            } else if tag == "escalated" {
+                log::debug!("Rewriting tag {} to {}", tag, "evebox.escalated");
+                let j = json!({"term": {"tags": "evebox.escalated"}});
+                filters.push(j);
+            } else {
+                let j = json!({"term": {"tags": tag}});
+                filters.push(j);
+            }
+        }
+
+        let query = json!({
+            "query": {
+                "bool": {
+                    "filter": filters,
+                    "must_not": must_not,
+                }
+            },
+            "sort": [{"@timestamp": {"order": "desc"}}],
+            "aggs": {
+                "signatures": {
+                    "terms": {"field": self.map_field("alert.signature_id"), "size": 10000},
+                    "aggs": {
+                        "sources": {
+                            "terms": {"field": self.map_field("src_ip.keyword"), "size": 10000},
+                            "aggs": {
+                                "destinations": {
+                                    "terms": {"field": self.map_field("dest_ip.keyword"), "size": 10000},
+                                    "aggs": {
+                                        "escalated": {"filter": {"term": {"tags": "evebox.escalated"}}},
+                                        "newest": {"top_hits": {"size": 1, "sort": [{"@timestamp": {"order": "desc"}}]}},
+                                        "oldest": {"top_hits": {"size": 1, "sort": [{"@timestamp": {"order": "asc"}}]}}
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }
+            }
+        });
+
+        query
+    }
+
     pub async fn alert_query(
         &self,
         options: AlertQueryOptions,
     ) -> Result<serde_json::Value, DatastoreError> {
-        let query = build_inbox_query(options);
-
+        let query = self.build_inbox_query(options);
         let body = self.search(&query).await?.text().await?;
-
         let response: ElasticResponse = serde_json::from_str(&body)?;
         if let Some(error) = response.error {
             return Err(DatastoreError::ElasticSearchError(error.reason));
@@ -366,6 +463,7 @@ impl EventStore {
         // TODO: Parse out errors before we look for alert groups in the response
         // above.
         let response = json!({
+            "ecs": self.ecs,
             "alerts": alerts,
         });
 
@@ -422,10 +520,13 @@ impl EventStore {
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut filters: Vec<JsonValue> = Vec::new();
 
-        filters.push(exists_query("event_type"));
+        filters.push(request::exists_filter(self.map_field("event_type")));
 
         if let Some(event_type) = params.event_type {
-            filters.push(term_query("event_type", &event_type));
+            filters.push(request::term_filter(
+                self.map_field("event_type"),
+                &event_type,
+            ));
         }
 
         if let Some(query_string) = params.query_string {
@@ -433,11 +534,11 @@ impl EventStore {
         }
 
         if let Some(timestamp) = params.min_timestamp {
-            filters.push(timestamp_gte_query(timestamp));
+            filters.push(request::timestamp_gte_filter(timestamp));
         }
 
         if let Some(timestamp) = params.max_timestamp {
-            filters.push(timestamp_lte_query(timestamp));
+            filters.push(request::timestamp_lte_filter(timestamp));
         }
 
         let sort_by = params.sort_by.unwrap_or_else(|| "@timestamp".to_string());
@@ -448,7 +549,7 @@ impl EventStore {
             "query": {
                 "bool": {
                     "filter": filters,
-                    "must_not": [{"term": {"event_type": "stats"}}]
+                    "must_not": [{"term": {self.map_field("event_type"): "stats"}}]
                 }
             },
             "sort": [{sort_by: {"order": sort_order}}],
@@ -458,6 +559,7 @@ impl EventStore {
         let hits = &response["hits"]["hits"];
 
         let response = json!({
+            "ecs": self.ecs,
             "data": hits,
         });
 
@@ -485,9 +587,9 @@ impl EventStore {
         let mut bound_max = None;
         let mut bound_min = None;
         let mut filters = Vec::new();
-        filters.push(json!({"exists":{"field":"event_type"}}));
+        filters.push(request::exists_filter(self.map_field("event_type")));
         if let Some(ts) = params.min_timestamp {
-            filters.push(json!({"range":{"@timestamp":{"gte":format_timestamp(ts)}}}));
+            filters.push(request::timestamp_gte_filter(ts));
             bound_min = Some(format_timestamp(ts));
         }
         if let Some(ts) = params.max_timestamp {
@@ -495,10 +597,13 @@ impl EventStore {
             bound_max = Some(format_timestamp(ts));
         }
         if let Some(event_type) = params.event_type {
-            filters.push(json!({"term": {"event_type": event_type}}));
+            filters.push(request::term_filter(
+                self.map_field("event_type"),
+                &event_type,
+            ));
         }
         if let Some(dns_type) = params.dns_type {
-            filters.push(json!({"term": {"dns.type": dns_type}}));
+            filters.push(request::term_filter(self.map_field("dns.type"), &dns_type));
         }
 
         if let Some(query_string) = params.query_string {
@@ -507,17 +612,25 @@ impl EventStore {
             }
         }
 
-        if let Some(sensor_name) = params.sensor_name {
-            if !sensor_name.is_empty() {
-                filters.push(term_query("host.keyword", &sensor_name));
+        if !self.ecs {
+            if let Some(sensor_name) = params.sensor_name {
+                if !sensor_name.is_empty() {
+                    filters.push(request::term_filter("host.keyword", &sensor_name));
+                }
             }
         }
 
         let mut should = Vec::new();
         let mut min_should_match = 0;
         if let Some(address_filter) = params.address_filter {
-            should.push(term_query("src_ip", &address_filter));
-            should.push(term_query("dest_ip", &address_filter));
+            should.push(request::term_filter(
+                self.map_field("src_ip"),
+                &address_filter,
+            ));
+            should.push(request::term_filter(
+                self.map_field("dest_ip"),
+                &address_filter,
+            ));
             min_should_match = 1;
         }
 
@@ -564,7 +677,7 @@ impl EventStore {
             "query": {
                 "bool": {
                     "filter": filters,
-                    "must_not": [{"term": {"event_type": "stats"}}],
+                    "must_not": [{"term": {self.map_field("event_type"): "stats"}}],
                     "should": should,
                     "minimum_should_match": min_should_match,
                 },
@@ -598,23 +711,32 @@ impl EventStore {
 
     pub async fn agg(&self, params: datastore::AggParameters) -> Result<JsonValue, DatastoreError> {
         let mut filters = Vec::new();
-        filters.push(json!({"exists":{"field":"event_type"}}));
+        filters.push(request::exists_filter(self.map_field("event_type")));
         if let Some(event_type) = params.event_type {
-            filters.push(term_query("event_type", &event_type));
+            filters.push(request::term_filter(
+                self.map_field("event_type"),
+                &event_type,
+            ));
         }
         if let Some(dns_type) = params.dns_type {
-            filters.push(term_query("dns.type", &dns_type));
+            filters.push(request::term_filter(self.map_field("dns.type"), &dns_type));
         }
         if let Some(ts) = params.min_timestamp {
-            filters.push(json!({"range":{"@timestamp":{"gte":format_timestamp(ts)}}}));
+            filters.push(request::timestamp_gte_filter(ts));
         }
 
         let mut should = Vec::new();
         let mut min_should_match = 0;
 
         if let Some(address_filter) = params.address_filter {
-            should.push(term_query("src_ip", &address_filter));
-            should.push(term_query("dest_ip", &address_filter));
+            should.push(request::term_filter(
+                self.map_field("src_ip"),
+                &address_filter,
+            ));
+            should.push(request::term_filter(
+                self.map_field("dest_ip"),
+                &address_filter,
+            ));
             min_should_match = 1;
         }
 
@@ -659,13 +781,13 @@ impl EventStore {
             "aggs": {
                 "agg": {
                     "terms": {
-                        "field": agg,
+                        "field": self.map_field(&agg),
                         "size": params.size,
                     }
                 },
                 "missing": {
                     "missing": {
-                        "field": agg,
+                        "field": self.map_field(&agg),
                     }
                 }
             }
@@ -696,10 +818,10 @@ impl EventStore {
         params: datastore::FlowHistogramParameters,
     ) -> Result<JsonValue, datastore::DatastoreError> {
         let mut filters = Vec::new();
-        filters.push(term_query("event_type", "flow"));
-        filters.push(exists_query("event_type"));
+        filters.push(request::term_filter(self.map_field("event_type"), "flow"));
+        filters.push(request::exists_filter(self.map_field("event_type")));
         if let Some(mints) = params.mints {
-            filters.push(timestamp_gte_query(mints));
+            filters.push(request::timestamp_gte_filter(mints));
         }
         if let Some(query_string) = params.query_string {
             filters.push(query_string_query(&query_string));
@@ -755,5 +877,23 @@ impl EventStore {
         });
 
         return Ok(response);
+    }
+
+    fn build_alert_group_filter(&self, request: &api::AlertGroupSpec) -> Vec<JsonValue> {
+        let mut filter = Vec::new();
+        filter.push(json!({"exists": {"field": self.map_field("event_type")}}));
+        filter.push(json!({"term": {self.map_field("event_type"): "alert"}}));
+        filter.push(json!({
+            "range": {
+                "@timestamp": {
+                    "gte": request.min_timestamp,
+                    "lte": request.max_timestamp,
+                }
+            }
+        }));
+        filter.push(json!({"term": {self.map_field("src_ip.keyword"): request.src_ip}}));
+        filter.push(json!({"term": {self.map_field("dest_ip.keyword"): request.dest_ip}}));
+        filter.push(json!({"term": {self.map_field("alert.signature_id"): request.signature_id}}));
+        return filter;
     }
 }

@@ -102,6 +102,7 @@ pub struct ServerConfig {
     pub elastic_index: String,
     pub elastic_username: Option<String>,
     pub elastic_password: Option<String>,
+    pub elastic_ecs: bool,
     pub data_directory: Option<String>,
     pub authentication_required: bool,
     pub authentication_type: AuthenticationType,

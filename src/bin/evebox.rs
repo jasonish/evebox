@@ -109,6 +109,11 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Elastic Search index prefix"),
         )
         .arg(
+            Arg::with_name("database.elasticsearch.ecs")
+                .long("ecs")
+                .help("Enable Elastic ECS support"),
+        )
+        .arg(
             Arg::with_name("database.type")
                 .long("database")
                 .aliases(&["datastore"])

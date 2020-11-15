@@ -98,33 +98,33 @@ export class DhcpReportComponent implements OnInit, OnDestroy, AfterViewInit {
                 this.requests = requests.data;
                 this.acks = acks.data;
                 for (const request of requests.data) {
-                    merged[request.dhcp.client_mac] = {
+                    merged[request.client_mac] = {
                         timestamp: request.timestamp,
-                        client_mac: request.dhcp.client_mac,
-                        hostname: request.dhcp.hostname,
+                        client_mac: request.client_mac,
+                        hostname: request.hostname,
                     };
                 }
                 for (const ack of acks.data) {
-                    if (ack.host) {
+                    if (ack.sensor) {
                         haveSensorName = true;
                     }
-                    let record = merged[ack.dhcp.client_mac];
+                    let record = merged[ack.client_mac];
                     if (!record) {
                         // This is most likely due to DHCP extended logs not being enabled.
                         record = {
                             timestamp: ack.timestamp,
-                            client_mac: ack.dhcp.client_mac,
+                            client_mac: ack.client_mac,
                         };
                         merged[record.client_mac] = record;
                     }
-                    record.assigned_ip = ack.dhcp.assigned_ip;
-                    record.sensor = ack.host;
-                    if (ack.dhcp.hostname) {
-                        record.hostname = ack.dhcp.hostname;
+                    record.assigned_ip = ack.assigned_ip;
+                    record.sensor = ack.sensor;
+                    if (ack.hostname) {
+                        record.hostname = ack.hostname;
                     }
 
                     const ackTs = moment(ack.timestamp).unix();
-                    const lease_time = ack.dhcp.lease_time;
+                    const lease_time = ack.lease_time;
                     const active = ackTs + lease_time > now;
                     record.active = active;
                     record.lease_time = lease_time;

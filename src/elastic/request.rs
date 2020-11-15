@@ -61,6 +61,14 @@ pub fn timestamp_gte_filter(dt: DateTime) -> JsonValue {
     })
 }
 
+pub fn timestamp_lte_filter(dt: DateTime) -> JsonValue {
+    json!({
+        "range": {
+            "@timestamp": {"lte": format_datetime(dt)}
+        }
+    })
+}
+
 pub fn term_filter(field: &str, value: &str) -> JsonValue {
     json!({"term": {field: value}})
 }

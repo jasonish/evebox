@@ -27,7 +27,10 @@ pub async fn dhcp_report(
 ) -> Result<JsonValue, DatastoreError> {
     let mut filters = Vec::new();
 
-    filters.push(elastic::request::term_filter("event_type", "dhcp"));
+    filters.push(elastic::request::term_filter(
+        ds.map_field("event_type"),
+        "dhcp",
+    ));
 
     if let Some(dt) = params.min_timestamp {
         filters.push(elastic::request::timestamp_gte_filter(dt));
@@ -52,13 +55,16 @@ pub async fn dhcp_report_ack(
     mut filters: Vec<JsonValue>,
 ) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
-    filters.push(elastic::request::term_filter("dhcp.dhcp_type", "ack"));
+    filters.push(elastic::request::term_filter(
+        ds.map_field("dhcp.dhcp_type"),
+        "ack",
+    ));
     request.set_filters(filters);
 
     let aggs = json!({
         "client_mac": {
           "terms": {
-            "field": "dhcp.client_mac.keyword",
+            "field": ds.map_field("dhcp.client_mac.keyword"),
             "size": 10000
           },
           "aggs": {
@@ -86,7 +92,8 @@ pub async fn dhcp_report_ack(
     if let Some(buckets) = response["aggregations"]["client_mac"]["buckets"].as_array() {
         for bucket in buckets {
             let latest = &bucket["latest"]["hits"]["hits"][0]["_source"];
-            results.push(latest);
+            let entry = map_dhcp_event(latest, ds.ecs);
+            results.push(entry);
         }
     }
 
@@ -100,13 +107,16 @@ pub async fn dhcp_report_request(
     mut filters: Vec<JsonValue>,
 ) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
-    filters.push(elastic::request::term_filter("dhcp.dhcp_type", "request"));
+    filters.push(elastic::request::term_filter(
+        ds.map_field("dhcp.dhcp_type"),
+        "request",
+    ));
     request.set_filters(filters);
 
     let aggs = json!({
         "client_mac": {
           "terms": {
-            "field": "dhcp.client_mac.keyword",
+            "field": ds.map_field("dhcp.client_mac.keyword"),
             "size": 10000
           },
           "aggs": {
@@ -136,7 +146,8 @@ pub async fn dhcp_report_request(
     if let Some(buckets) = response["aggregations"]["client_mac"]["buckets"].as_array() {
         for bucket in buckets {
             let latest = &bucket["latest"]["hits"]["hits"][0]["_source"];
-            results.push(latest);
+            let entry = map_dhcp_event(latest, ds.ecs);
+            results.push(entry);
         }
     }
 
@@ -151,13 +162,16 @@ pub async fn servers(
     mut filters: Vec<JsonValue>,
 ) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
-    filters.push(elastic::request::term_filter("dhcp.type", "reply"));
+    filters.push(elastic::request::term_filter(
+        ds.map_field("dhcp.type"),
+        "reply",
+    ));
     request.set_filters(filters);
 
     let aggs = json!({
         "servers": {
           "terms": {
-            "field": "src_ip.keyword",
+            "field": ds.map_field("src_ip.keyword"),
             "size": 10000
           },
         }
@@ -167,7 +181,6 @@ pub async fn servers(
     request.size(0);
 
     let response: JsonValue = ds.search(&request).await?.json().await?;
-
     let mut results = Vec::new();
 
     if let Some(buckets) = response["aggregations"]["servers"]["buckets"].as_array() {
@@ -192,19 +205,22 @@ pub async fn mac(
     mut filters: Vec<JsonValue>,
 ) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
-    filters.push(elastic::request::term_filter("dhcp.type", "reply"));
+    filters.push(elastic::request::term_filter(
+        ds.map_field("dhcp.type"),
+        "reply",
+    ));
     request.set_filters(filters);
 
     let aggs = json!({
         "client_mac": {
           "terms": {
-            "field": "dhcp.client_mac.keyword",
+            "field": ds.map_field("dhcp.client_mac.keyword"),
             "size": 10000
           },
           "aggs": {
             "assigned_ip": {
                 "terms": {
-                    "field": "dhcp.assigned_ip.keyword"
+                    "field": ds.map_field("dhcp.assigned_ip.keyword"),
                 }
             }
           }
@@ -249,19 +265,22 @@ pub async fn mac(
 /// assigned that IP address.
 pub async fn ip(ds: &EventStore, mut filters: Vec<JsonValue>) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
-    filters.push(elastic::request::term_filter("dhcp.type", "reply"));
+    filters.push(elastic::request::term_filter(
+        ds.map_field("dhcp.type"),
+        "reply",
+    ));
     request.set_filters(filters);
 
     let aggs = json!({
         "assigned_ip": {
           "terms": {
-            "field": "dhcp.assigned_ip.keyword",
+            "field": ds.map_field("dhcp.assigned_ip.keyword"),
             "size": 10000,
           },
           "aggs": {
             "client_mac": {
                 "terms": {
-                    "field": "dhcp.client_mac.keyword",
+                    "field": ds.map_field("dhcp.client_mac.keyword"),
                 }
             }
           }
@@ -303,4 +322,26 @@ pub async fn ip(ds: &EventStore, mut filters: Vec<JsonValue>) -> Result<JsonValu
     Ok(json!({
         "data": results,
     }))
+}
+
+fn map_dhcp_event(event: &JsonValue, ecs: bool) -> JsonValue {
+    if ecs {
+        json!({
+            "timestamp": event["@timestamp"],
+            "sensor": event["agent"]["hostname"],
+            "client_mac": event["suricata"]["eve"]["dhcp"]["client_mac"],
+            "hostname": event["suricata"]["eve"]["dhcp"]["hostname"],
+            "lease_time": event["suricata"]["eve"]["dhcp"]["lease_time"],
+            "assigned_ip": event["suricata"]["eve"]["dhcp"]["assigned_ip"],
+        })
+    } else {
+        json!({
+            "timestamp": event["timestamp"],
+            "sensor": event["host"],
+            "client_mac": event["dhcp"]["client_mac"],
+            "hostname": event["dhcp"]["hostname"],
+            "lease_time": event["dhcp"]["lease_time"],
+            "assigned_ip": event["dhcp"]["assigned_ip"],
+        })
+    }
 }

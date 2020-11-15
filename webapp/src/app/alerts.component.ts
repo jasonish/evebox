@@ -16,7 +16,7 @@
 import { AlertService } from "./alert.service";
 import { AfterViewChecked, Component, OnDestroy, OnInit } from "@angular/core";
 import { AlertGroup, ElasticSearchService } from "./elasticsearch.service";
-import { ActivatedRoute, Params, Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { MousetrapService } from "./mousetrap.service";
 import { AppEvent, AppEventCode, AppService } from "./app.service";
 import { EventService } from "./event.service";
@@ -26,6 +26,7 @@ import { loadingAnimation } from "./animations";
 import { SETTING_ALERTS_PER_PAGE, SettingsService } from "./settings.service";
 import { debounce } from "rxjs/operators";
 import { combineLatest, interval } from "rxjs";
+import { transformEcsEvent } from "./events/events.component";
 
 declare var window: any;
 declare var $: any;
@@ -661,6 +662,13 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
 
         return this.elasticSearchService.getAlerts(queryOptions).then((rows: any) => {
+            rows.forEach((event) => {
+                if (event.ecs) {
+                    let e = event.event.event;
+                    transformEcsEvent(e);
+                    event.event.event = e;
+                }
+            })
             this.allRows = rows;
             this.offset = 0;
             this.rows = this.allRows.slice(this.offset, this.windowSize);

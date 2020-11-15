@@ -59,6 +59,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     config.datastore = settings.get("database.type")?;
     config.elastic_url = settings.get("database.elasticsearch.url")?;
     config.elastic_index = settings.get("database.elasticsearch.index")?;
+    config.elastic_ecs = settings.get_bool("database.elasticsearch.ecs")?;
     config.elastic_username = settings.get_or_none("database.elasticsearch.username")?;
     config.elastic_password = settings.get_or_none("database.elasticsearch.password")?;
     config.data_directory = settings.get_or_none("data-directory")?;
@@ -343,6 +344,7 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
                 base_index: config.elastic_index.clone(),
                 index_pattern: format!("{}-*", config.elastic_index),
                 client: client,
+                ecs: config.elastic_ecs,
             };
             context.features.reporting = true;
             context.features.comments = true;
