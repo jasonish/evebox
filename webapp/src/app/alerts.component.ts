@@ -40,9 +40,9 @@ export interface AlertsState {
 }
 
 function compare(a: any, b: any): any {
-    let c = {};
+    const c = {};
 
-    for (let key in b) {
+    for (const key in b) {
         if (a[key] != b[key]) {
             c[key] = b[key];
         }
@@ -179,7 +179,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     buildState(): any {
-        let state: AlertsState = {
+        const state: AlertsState = {
             rows: this.rows,
             allRows: this.allRows,
             activeRow: this.activeRow,
@@ -191,7 +191,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     restoreState(): boolean {
-        let state: AlertsState = this.alertService.popState();
+        const state: AlertsState = this.alertService.popState();
         if (!state) {
             return false;
         }
@@ -213,7 +213,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         // If in inbox, remove any archived events.
         if (this.isInbox()) {
-            let archived = this.rows.filter((row: any) => {
+            const archived = this.rows.filter((row: any) => {
                 return row.event.event._source.tags.indexOf("archived") > -1;
             });
 
@@ -223,7 +223,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                 this.removeRow(row);
             });
         } else if (this.appService.getRoute() == "/escalated") {
-            let deEscalated = this.rows.filter(row => {
+            const deEscalated = this.rows.filter(row => {
                 return row.event.escalatedCount == 0;
             });
 
@@ -416,7 +416,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     escalateSelected() {
-        let selected = this.rows.filter((row: any) => {
+        const selected = this.rows.filter((row: any) => {
             return row.selected;
         });
         selected.forEach((row: any) => {
@@ -429,7 +429,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     archiveSelected() {
-        let selected = this.rows.filter((row: any) => {
+        const selected = this.rows.filter((row: any) => {
             return row.selected &&
                 row.event.event._source.tags &&
                 row.event.event._source.tags.indexOf("archived") < 0;
@@ -470,7 +470,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     removeRow(row: any) {
-        let rowIndex = this.rows.indexOf(row);
+        const rowIndex = this.rows.indexOf(row);
 
         if (this.rows === this.allRows) {
             this.allRows = this.allRows.filter((_row: any) => {
@@ -597,7 +597,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             event.stopPropagation();
         }
 
-        let alertGroup: AlertGroup = row.event;
+        const alertGroup: AlertGroup = row.event;
 
         if (alertGroup.escalatedCount < alertGroup.count) {
 
@@ -616,7 +616,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     escalateAlertGroup(row: any) {
 
-        let alertGroup: any = row.event;
+        const alertGroup: any = row.event;
 
         // Optimistically mark as all escalated.
         alertGroup.escalatedCount = alertGroup.count;
@@ -628,7 +628,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         console.log("Refreshing...");
         this.loading = true;
 
-        let queryOptions: any = {
+        const queryOptions: any = {
             mustHaveTags: [],
             mustNotHaveTags: [],
             timeRange: "",
@@ -719,11 +719,12 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     selectBySignatureId(row: any) {
-        let signatureId = row.event.event._source.alert.signature_id;
+        const signatureId = row.event.event._source.alert.signature_id;
 
         this.rows.forEach((row: any) => {
-            if (row.event.event._source.alert.signature_id === signatureId)
+            if (row.event.event._source.alert.signature_id === signatureId) {
                 row.selected = true;
+            }
         });
 
         // Close the dropdown. Bootstraps toggle method didn't work quite
@@ -732,7 +733,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     filterBySignatureId(row: any) {
-        let signatureId = row.event.event._source.alert.signature_id;
+        const signatureId = row.event.event._source.alert.signature_id;
         this.appService.updateParams(this.route, {
             q: `alert.signature_id:${signatureId}`
         });
