@@ -567,6 +567,12 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.router.navigate([], {
             queryParams,
         });
+        document.getElementById("filter-input").blur();
+    }
+
+    clearFilter() {
+        this.queryString = "";
+        this.submitFilter();
     }
 
     openEvent(event: AlertGroup) {
@@ -583,11 +589,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     rowClicked(row: any) {
         this.openEvent(row.event);
-    }
-
-    clearFilter() {
-        this.queryString = "";
-        this.submitFilter();
     }
 
     toggleEscalatedState(row: any, event?: any) {
