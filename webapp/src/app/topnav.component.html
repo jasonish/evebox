@@ -9,38 +9,46 @@
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
-            <li class="nav-item" [routerLink]="['/inbox']"
-                [routerLinkActive]="['active']">
-                <a class="nav-link" href="#">Inbox</a>
+            <li class="nav-item">
+                <a class="nav-link" href="#/inbox"
+                   [routerLink]="['/inbox']"
+                   [routerLinkActive]="['active']"
+                   queryParamsHandling="merge">Inbox</a>
             </li>
-            <li class="nav-item" [routerLink]="['/escalated']"
-                [routerLinkActive]="['active']">
-                <a class="nav-link" href="#/escalated">Escalated</a>
+            <li class="nav-item">
+                <a class="nav-link" href="#/escalated"
+                   [routerLink]="['/escalated']"
+                   [routerLinkActive]="['active']"
+                   queryParamsHandling="merge">Escalated</a>
             </li>
-            <li class="nav-item" [routerLink]="['/alerts']"
-                [routerLinkActive]="['active']">
-                <a class="nav-link" href="#/alerts">Alerts</a>
+            <li class="nav-item">
+                <a class="nav-link" href="#/alerts"
+                   [routerLink]="['/alerts']"
+                   [routerLinkActive]="['active']"
+                   queryParamsHandling="merge">Alerts</a>
             </li>
-
             <li class="nav-item dropdown">
-        <span class="nav-link">
-          <a [routerLink]="['/events']"
-             [routerLinkActive]="['active']"
-             class="nav-link"
-             style="display: inline; padding: 0px;">Events</a>
-          <a class="nav-link dropdown-toggle ml-1" href="#"
-             id="topNavEventsDropdown"
-             [routerLinkActive]="['active']"
-             style="display: inline; padding: 0px;"
-             role="button" data-toggle="dropdown" aria-haspopup="true"
-             aria-expanded="false">
-          </a>
-          <div class="dropdown-menu" aria-labelledby="topNavEventsDropdown">
-            <a class="dropdown-item"
-               [routerLink]="['/events', {'eventType': eventType.eventType}]"
-               *ngFor="let eventType of EVENT_TYPES">{{eventType.name}}</a>
-          </div>
-        </span>
+                <span class="nav-link">
+                    <a [routerLink]="['/events']"
+                       [routerLinkActive]="['active']"
+                       queryParamsHandling="merge"
+                       class="nav-link"
+                       style="display: inline; padding: 0px;">Events</a>
+                    <a class="nav-link dropdown-toggle ml-1" href="#"
+                       id="topNavEventsDropdown"
+                       [routerLinkActive]="['active']"
+                       queryParamsHandling="merge"
+                       style="display: inline; padding: 0px;"
+                       role="button" data-toggle="dropdown" aria-haspopup="true"
+                       aria-expanded="false">
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="topNavEventsDropdown">
+                        <a class="dropdown-item"
+                           [routerLink]="['/events', {'eventType': eventType.eventType}]"
+                           queryParamsHandling="merge"
+                           *ngFor="let eventType of EVENT_TYPES">{{eventType.name}}</a>
+                    </div>
+                </span>
             </li>
 
             <li *ngIf="features['reporting']" class="nav-item dropdown">
@@ -55,12 +63,12 @@
                     Reports
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarReportsDownload">
-                    <a class="dropdown-item" [routerLink]="['/reports/alerts']">Alerts</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/dns']">DNS</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/ssh']">SSH</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/flow']">Flow</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/netflow']">Netflow</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/dhcp']">DHCP</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/alerts']" queryParamsHandling="merge">Alerts</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/dns']" queryParamsHandling="merge">DNS</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/ssh']" queryParamsHandling="merge">SSH</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/flow']" queryParamsHandling="merge">Flow</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/netflow']" queryParamsHandling="merge">Netflow</a>
+                    <a class="dropdown-item" [routerLink]="['/reports/dhcp']" queryParamsHandling="merge">DHCP</a>
                 </div>
             </li>
 

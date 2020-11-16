@@ -151,7 +151,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
             this.queryString = this.route.snapshot.queryParams["q"];
         }
 
-        this.subTracker.subscribe(this.route.params, (params: Params) => {
+        this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
             this.queryString = params["q"] || "";
             this.refresh();
         });

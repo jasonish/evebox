@@ -175,13 +175,13 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
 
-        this.subTracker.subscribe(this.route.params, (params: Params) => {
+        this.route.queryParams.subscribe((params: Params) => {
             this.queryString = params["q"] || "";
             this.refresh();
         });
 
         this.subTracker.subscribe(this.appService, (event: AppEvent) => {
-            if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
+            if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
         });

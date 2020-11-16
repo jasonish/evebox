@@ -13,18 +13,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import {AlertService} from "./alert.service";
-import {AfterViewChecked, Component, OnDestroy, OnInit} from "@angular/core";
-import {AlertGroup, ElasticSearchService} from "./elasticsearch.service";
-import {ActivatedRoute, Router} from "@angular/router";
-import {MousetrapService} from "./mousetrap.service";
-import {AppEvent, AppEventCode, AppService} from "./app.service";
-import {EventService} from "./event.service";
-import {ToastrService} from "./toastr.service";
-import {TopNavService} from "./topnav.service";
-import {EveboxSubscriptionService} from "./subscription.service";
-import {loadingAnimation} from "./animations";
-import {SETTING_ALERTS_PER_PAGE, SettingsService} from "./settings.service";
+import { AlertService } from "./alert.service";
+import { AfterViewChecked, Component, OnDestroy, OnInit } from "@angular/core";
+import { AlertGroup, ElasticSearchService } from "./elasticsearch.service";
+import { ActivatedRoute, Params, Router } from "@angular/router";
+import { MousetrapService } from "./mousetrap.service";
+import { AppEvent, AppEventCode, AppService } from "./app.service";
+import { EventService } from "./event.service";
+import { ToastrService } from "./toastr.service";
+import { TopNavService } from "./topnav.service";
+import { loadingAnimation } from "./animations";
+import { SETTING_ALERTS_PER_PAGE, SettingsService } from "./settings.service";
+import { debounce } from "rxjs/operators";
+import { combineLatest, interval } from "rxjs";
 
 declare var window: any;
 declare var $: any;
@@ -38,7 +39,7 @@ export interface AlertsState {
     scrollOffset: number;
 }
 
-function compare(a:any, b:any):any {
+function compare(a: any, b: any): any {
     let c = {};
 
     for (let key in b) {
@@ -77,8 +78,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     sortBy: string = DEFAULT_SORT_BY;
     sortOrder: string = DEFAULT_SORT_ORDER;
 
-    private params:any;
-
     constructor(private alertService: AlertService,
                 private elasticSearchService: ElasticSearchService,
                 private router: Router,
@@ -87,16 +86,18 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                 private appService: AppService,
                 private eventService: EventService,
                 private toastr: ToastrService,
-                private ss: EveboxSubscriptionService,
                 private topNavService: TopNavService,
                 private settings: SettingsService) {
     }
 
     ngOnInit(): any {
-
         this.windowSize = this.settings.getInt(SETTING_ALERTS_PER_PAGE, 100);
 
-        this.ss.subscribe(this, this.route.params, (params: any) => {
+        combineLatest([
+            this.route.queryParams,
+            this.route.params,
+        ]).pipe(debounce(() => interval(100))).subscribe(([queryParams, params]) => {
+            console.log("Got params and query params...");
             if (params.sortBy) {
                 this.sortBy = params.sortBy;
             } else {
@@ -109,9 +110,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                 this.sortOrder = DEFAULT_SORT_ORDER;
             }
 
-            this.params = params;
-
-            this.queryString = params.q || "";
+            this.queryString = queryParams.q || "";
 
             if (!this.restoreState()) {
                 this.refresh();
@@ -170,7 +169,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     ngOnDestroy(): any {
         this.mousetrap.unbind(this);
-        this.ss.unsubscribe(this);
         this.dispatcherSubscription.unsubscribe();
     }
 
@@ -193,7 +191,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     restoreState(): boolean {
-
         let state: AlertsState = this.alertService.popState();
         if (!state) {
             return false;
@@ -225,8 +222,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             archived.forEach((row: any) => {
                 this.removeRow(row);
             });
-        }
-        else if (this.appService.getRoute() == "/escalated") {
+        } else if (this.appService.getRoute() == "/escalated") {
             let deEscalated = this.rows.filter(row => {
                 return row.event.escalatedCount == 0;
             });
@@ -267,8 +263,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     newer() {
         if (this.offset > this.windowSize) {
             this.offset -= this.windowSize;
-        }
-        else {
+        } else {
             this.offset = 0;
         }
         this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
@@ -285,8 +280,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     private compare(a: any, b: any): number {
         if (a < b) {
             return -1;
-        }
-        else if (a > b) {
+        } else if (a > b) {
             return 1;
         }
         return 0;
@@ -299,12 +293,10 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         if (column != this.sortBy) {
             this.sortBy = column;
             this.sortOrder = "desc";
-        }
-        else {
+        } else {
             if (this.sortOrder == "desc") {
                 this.sortOrder = "asc";
-            }
-            else {
+            } else {
                 this.sortOrder = "desc";
             }
         }
@@ -362,7 +354,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     appEventHandler(event: AppEvent) {
-
         switch (event.event) {
             case AppEventCode.TIME_RANGE_CHANGED:
                 this.refresh();
@@ -473,8 +464,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         // the current active event.
         if (this.getSelectedCount() > 0) {
             this.archiveSelected();
-        }
-        else if (this.getActiveRowIndex() > -1) {
+        } else if (this.getActiveRowIndex() > -1) {
             this.archiveAlertGroup(this.getActiveRow());
         }
     }
@@ -570,10 +560,13 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     submitFilter() {
-        //this.appService.updateQueryParameters({q: this.queryString});
-        this.appService.updateParams(this.route, {q: this.queryString});
-        document.getElementById("filter-input").blur();
-        this.refresh();
+        const queryParams: any = {};
+        if (this.queryString !== "") {
+            queryParams.q = this.queryString;
+        }
+        this.router.navigate([], {
+            queryParams,
+        });
     }
 
     openEvent(event: AlertGroup) {
@@ -611,9 +604,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             alertGroup.escalatedCount = alertGroup.count;
 
             this.elasticSearchService.escalateAlertGroup(alertGroup);
-        }
-
-        else if (alertGroup.escalatedCount == alertGroup.count) {
+        } else if (alertGroup.escalatedCount == alertGroup.count) {
 
             // Optimistically mark all as de-escalated.
             alertGroup.escalatedCount = 0;
@@ -633,7 +624,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     refresh() {
-
+        console.log("Refreshing...");
         this.loading = true;
 
         let queryOptions: any = {
@@ -662,7 +653,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             case "/escalated":
                 break;
             default:
-                //queryOptions.timeRange = this.topNavService.timeRange;
                 if (this.topNavService.timeRange) {
                     queryOptions.timeRange = `${this.topNavService.getTimeRangeAsSeconds()}s`;
                 }
@@ -693,8 +683,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             // Check for a reason.
             try {
                 this.toastr.error(error.message);
-            }
-            catch (err) {
+            } catch (err) {
                 this.toastr.error("An error occurred while executing query.");
             }
 

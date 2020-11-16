@@ -115,10 +115,6 @@ const routes: Routes = [
                 path: "inbox", component: AlertsComponent, pathMatch: "prefix",
             },
             {
-                path: "inbox", component: AlertsComponent, pathMatch: "prefix",
-            }
-            ,
-            {
                 path: "escalated",
                 component: AlertsComponent,
                 pathMatch: "prefix",

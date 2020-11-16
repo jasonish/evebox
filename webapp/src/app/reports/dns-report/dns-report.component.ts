@@ -65,7 +65,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
 
-        this.subTracker.subscribe(this.route.params, (params: Params) => {
+        this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
             this.queryString = params["q"] || "";
             this.refresh();
         });

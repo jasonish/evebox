@@ -25,16 +25,16 @@
  */
 
 import {Component, OnDestroy, OnInit} from "@angular/core";
-import {ActivatedRoute} from "@angular/router";
+import { ActivatedRoute, Params, Router } from "@angular/router";
 import {ElasticSearchService} from "../elasticsearch.service";
 import {MousetrapService} from "../mousetrap.service";
 import {AppService} from "../app.service";
 import {ToastrService} from "../toastr.service";
-import {EveboxSubscriptionService} from "../subscription.service";
 import {loadingAnimation} from "../animations";
 import {ApiService} from "../api.service";
-import {finalize} from "rxjs/operators";
+import { debounce, finalize } from "rxjs/operators";
 import {EVENT_TYPES} from '../shared/eventtypes';
+import { combineLatest, interval } from "rxjs";
 
 @Component({
     templateUrl: "./events.component.html",
@@ -66,19 +66,22 @@ export class EventsComponent implements OnInit, OnDestroy {
     private order: string;
 
     constructor(private route: ActivatedRoute,
+                private router: Router,
                 private elasticsearch: ElasticSearchService,
                 private mousetrap: MousetrapService,
                 private appService: AppService,
                 private toastr: ToastrService,
-                private api: ApiService,
-                private ss: EveboxSubscriptionService) {
+                private api: ApiService) {
     }
 
     ngOnInit(): any {
-        this.ss.subscribe(this, this.route.params, (params: any) => {
+
+        combineLatest([
+            this.route.queryParams,
+            this.route.params,
+        ]).pipe(debounce(() => interval(100))).subscribe(([queryParams, params]) => {
             let qp: any = this.route.snapshot.queryParams;
 
-            this.queryString = params.q || qp.q || "";
             this.timeStart = params.timeStart || qp.timeStart;
             this.timeEnd = params.timeEnd || qp.timeEnd;
 
@@ -87,6 +90,8 @@ export class EventsComponent implements OnInit, OnDestroy {
             }
 
             this.order = params.order;
+
+            this.queryString = queryParams.q;
             this.refresh();
         });
 
@@ -115,7 +120,6 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         this.mousetrap.unbind(this);
-        this.ss.unsubscribe(this);
     }
 
     focusFilterInput() {
@@ -124,8 +128,10 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     submitFilter() {
         document.getElementById("filter-input").blur();
-        this.appService.updateParams(this.route, {
-            q: this.queryString
+        this.router.navigate([], {
+            queryParams: {
+                q: this.queryString,
+            }
         });
     }
 

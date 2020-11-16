@@ -60,7 +60,7 @@ export class DhcpReportComponent implements OnInit, OnDestroy, AfterViewInit {
             }
         }));
 
-        this.route.params.subscribe((params: Params) => {
+        this.route.queryParams.subscribe((params: Params) => {
             console.log("Got new route parameters...");
             this.queryString = params.q || "";
             this.refresh();

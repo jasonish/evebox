@@ -14,7 +14,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { Component, Input, OnDestroy, OnInit } from "@angular/core";
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { AppService } from "../app.service";
 import { MousetrapService } from "../mousetrap.service";
 
@@ -43,6 +43,7 @@ export class EveboxFilterInputComponent implements OnInit, OnDestroy {
 
     constructor(private route: ActivatedRoute,
                 private mousetrap: MousetrapService,
+                private router: Router,
                 private appService: AppService) {
     }
 
@@ -58,7 +59,13 @@ export class EveboxFilterInputComponent implements OnInit, OnDestroy {
 
     submitFilter(): void {
         document.getElementById("filterInput").blur();
-        this.appService.updateParams(this.route, {q: this.queryString});
+        const queryParams: any = {};
+        if (this.queryString !== "") {
+            queryParams.q = this.queryString;
+        }
+        this.router.navigate([], {
+            queryParams,
+        });
     }
 
     clearFilter(): void {

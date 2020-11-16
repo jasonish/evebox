@@ -192,7 +192,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         this.range = this.topNavService.getTimeRangeAsSeconds();
 
-        this.subTracker.subscribe(this.route.params, (params: Params) => {
+        this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
             this.queryString = params["q"] || "";
             this.refresh();
         });

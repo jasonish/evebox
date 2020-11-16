@@ -45,6 +45,10 @@ export class EveboxSubscriptionService {
 
     unsubscribe(id: any) {
 
+        if (!this.subscriptions[id]) {
+            return;
+        }
+
         this.subscriptions[id].forEach((subscription: any) => {
             subscription.unsubscribe();
         });
