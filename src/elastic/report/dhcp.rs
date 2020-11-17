@@ -64,7 +64,7 @@ pub async fn dhcp_report_ack(
     let aggs = json!({
         "client_mac": {
           "terms": {
-            "field": ds.map_field("dhcp.client_mac.keyword"),
+            "field": ds.map_field("dhcp.client_mac"),
             "size": 10000
           },
           "aggs": {
@@ -116,7 +116,7 @@ pub async fn dhcp_report_request(
     let aggs = json!({
         "client_mac": {
           "terms": {
-            "field": ds.map_field("dhcp.client_mac.keyword"),
+            "field": ds.map_field("dhcp.client_mac"),
             "size": 10000
           },
           "aggs": {
@@ -171,7 +171,7 @@ pub async fn servers(
     let aggs = json!({
         "servers": {
           "terms": {
-            "field": ds.map_field("src_ip.keyword"),
+            "field": ds.map_field("src_ip"),
             "size": 10000
           },
         }
@@ -214,13 +214,13 @@ pub async fn mac(
     let aggs = json!({
         "client_mac": {
           "terms": {
-            "field": ds.map_field("dhcp.client_mac.keyword"),
+            "field": ds.map_field("dhcp.client_mac"),
             "size": 10000
           },
           "aggs": {
             "assigned_ip": {
                 "terms": {
-                    "field": ds.map_field("dhcp.assigned_ip.keyword"),
+                    "field": ds.map_field("dhcp.assigned_ip"),
                 }
             }
           }
@@ -274,13 +274,13 @@ pub async fn ip(ds: &EventStore, mut filters: Vec<JsonValue>) -> Result<JsonValu
     let aggs = json!({
         "assigned_ip": {
           "terms": {
-            "field": ds.map_field("dhcp.assigned_ip.keyword"),
+            "field": ds.map_field("dhcp.assigned_ip"),
             "size": 10000,
           },
           "aggs": {
             "client_mac": {
                 "terms": {
-                    "field": ds.map_field("dhcp.client_mac.keyword"),
+                    "field": ds.map_field("dhcp.client_mac"),
                 }
             }
           }

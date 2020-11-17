@@ -70,29 +70,47 @@ impl EventStore {
     /// Map field names to ECS names if required.
     pub fn map_field<'a>(&self, name: &'a str) -> &'a str {
         if !self.ecs {
-            return name;
+            match name {
+                "alert.category" => "alert.category.keyword",
+                "alert.signature" => "alert.signature.keyword",
+                "app_proto" => "app_proto.keyword",
+                "dest_ip" => "dest_ip.keyword",
+                "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword",
+                "dhcp.client_mac" => "dhcp.client_mac.keyword",
+                "dns.rrname" => "dns.rrname.keyword",
+                "dns.rrtype" => "dns.rrtype.keyword",
+                "dns.rcode" => "dns.rcode.keyword",
+                "dns.rdata" => "dns.rdata.keyword",
+                "host" => "host.keyword",
+                "src_ip" => "src_ip.keyword",
+                "ssh.client.software_version" => "ssh.client.software_version.keyword",
+                "ssh.server.software_version" => "ssh.server.software_version.keyword",
+                "traffic.id" => "traffic.id.keyword",
+                "traffic.label" => "traffic.label.keyword",
+                _ => name,
+            }
         } else {
             match name {
                 "alert.signature_id" => "suricata.eve.alert.signature_id",
-                "alert.signature.keyword" => "suricata.eve.alert.signature",
-                "alert.category.keyword" => "suricata.eve.alert.category",
-                "dest_ip.keyword" => "destination.address",
+                "alert.signature" => "suricata.eve.alert.signature",
+                "alert.category" => "suricata.eve.alert.category",
+                "dest_ip" => "destination.address",
                 "dest_port" => "destination.port",
                 "dhcp.dhcp_type" => "suricata.eve.dhcp.dhcp_type",
-                "dhcp.client_mac.keyword" => "suricata.eve.dhcp.client_mac",
+                "dhcp.client_mac" => "suricata.eve.dhcp.client_mac",
                 "dhcp.type" => "suricata.eve.dhcp.type",
-                "dhcp.assigned_ip.keyword" => "suricata.eve.dhcp.assigned_ip",
-                "dns.rrname.keyword" => "dns.question.name",
-                "dns.rrtype.keyword" => "dns.question.type",
-                "dns.rcode.keyword" => "dns.response_code",
+                "dhcp.assigned_ip" => "suricata.eve.dhcp.assigned_ip",
+                "dns.rrname" => "dns.question.name",
+                "dns.rrtype" => "dns.question.type",
+                "dns.rcode" => "dns.response_code",
                 "dns.type" => name,
                 "event_type" => "suricata.eve.event_type",
-                "src_ip.keyword" => "source.address",
+                "src_ip" => "source.address",
                 "src_port" => "source.port",
-                "ssh.client.software_version.keyword" => "suricata.eve.ssh.client.software_version",
-                "ssh.server.software_version.keyword" => "suricata.eve.ssh.server.software_version",
-                "traffic.id.keyword" => "suricata.eve.traffic.id",
-                "traffic.label.keyword" => "suricata.eve.traffic.label",
+                "ssh.client.software_version" => "suricata.eve.ssh.client.software_version",
+                "ssh.server.software_version" => "suricata.eve.ssh.server.software_version",
+                "traffic.id" => "suricata.eve.traffic.id",
+                "traffic.label" => "suricata.eve.traffic.label",
                 _ => {
                     log::info!("No ECS mapping for {}", name);
                     name
@@ -400,10 +418,10 @@ impl EventStore {
                     "terms": {"field": self.map_field("alert.signature_id"), "size": 10000},
                     "aggs": {
                         "sources": {
-                            "terms": {"field": self.map_field("src_ip.keyword"), "size": 10000},
+                            "terms": {"field": self.map_field("src_ip"), "size": 10000},
                             "aggs": {
                                 "destinations": {
-                                    "terms": {"field": self.map_field("dest_ip.keyword"), "size": 10000},
+                                    "terms": {"field": self.map_field("dest_ip"), "size": 10000},
                                     "aggs": {
                                         "escalated": {"filter": {"term": {"tags": "evebox.escalated"}}},
                                         "newest": {"top_hits": {"size": 1, "sort": [{"@timestamp": {"order": "desc"}}]}},
@@ -615,7 +633,7 @@ impl EventStore {
         if !self.ecs {
             if let Some(sensor_name) = params.sensor_name {
                 if !sensor_name.is_empty() {
-                    filters.push(request::term_filter("host.keyword", &sensor_name));
+                    filters.push(request::term_filter(self.map_field("host"), &sensor_name));
                 }
             }
         }
@@ -746,27 +764,7 @@ impl EventStore {
             }
         }
 
-        let is_keyword = match &params.agg[..] {
-            "src_ip" => true,
-            "dest_ip" => true,
-            "alert.category" => true,
-            "alert.signature" => true,
-            "dns.rrname" => true,
-            "dns.rrtype" => true,
-            "dns.rcode" => true,
-            "dns.rdata" => true,
-            "ssh.client.software_version" => true,
-            "ssh.server.software_version" => true,
-            "traffic.id" => true,
-            "traffic.label" => true,
-            _ => false,
-        };
-
-        let agg = if is_keyword {
-            format!("{}.keyword", params.agg)
-        } else {
-            params.agg
-        };
+        let agg = self.map_field(&params.agg);
 
         let query = json!({
             "query": {
@@ -781,13 +779,13 @@ impl EventStore {
             "aggs": {
                 "agg": {
                     "terms": {
-                        "field": self.map_field(&agg),
+                        "field": agg,
                         "size": params.size,
                     }
                 },
                 "missing": {
                     "missing": {
-                        "field": self.map_field(&agg),
+                        "field": agg,
                     }
                 }
             }
@@ -838,7 +836,7 @@ impl EventStore {
                     "aggs": {
                         "app_proto": {
                             "terms":{
-                                "field":"app_proto.keyword"
+                                "field": self.map_field("app_proto"),
                             }
                         }
                     },
@@ -891,8 +889,8 @@ impl EventStore {
                 }
             }
         }));
-        filter.push(json!({"term": {self.map_field("src_ip.keyword"): request.src_ip}}));
-        filter.push(json!({"term": {self.map_field("dest_ip.keyword"): request.dest_ip}}));
+        filter.push(json!({"term": {self.map_field("src_ip"): request.src_ip}}));
+        filter.push(json!({"term": {self.map_field("dest_ip"): request.dest_ip}}));
         filter.push(json!({"term": {self.map_field("alert.signature_id"): request.signature_id}}));
         return filter;
     }
