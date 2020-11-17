@@ -28,7 +28,7 @@ import {Component, Input, OnInit} from '@angular/core';
 
 @Component({
     selector: 'search-link',
-    template: `<a [routerLink]="[route, {q: queryString}]" style="word-break: break-all">{{value}}</a>`
+    template: `<a [routerLink]="[route]" [queryParams]="{'q': queryString}" style="word-break: break-all">{{value}}</a>`
 })
 export class EveboxSearchLinkComponent implements OnInit {
 
