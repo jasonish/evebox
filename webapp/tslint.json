@@ -143,6 +143,7 @@
       "element",
       "app",
       "kebab-case"
-    ]
+    ],
+    "object-literal-shorthand": false
   }
 }
