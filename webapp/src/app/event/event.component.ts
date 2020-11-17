@@ -93,8 +93,10 @@ export class EventComponent implements OnInit, OnDestroy {
         this.normalized = {};
     }
 
-    setupEvent(event: any) {
-        transformEcsEvent(event);
+    setupEvent(event: any): void {
+        if (event._source.ecs) {
+            transformEcsEvent(event);
+        }
         this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
 
         // If the Suricata provided rule doesn't exist, check for
