@@ -192,9 +192,9 @@ pub async fn histogram(
 
 pub async fn alert_query(
     context: Arc<ServerContext>,
-    _session: Arc<Session>,
+    session: Arc<Session>,
     query: GenericQuery,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<impl warp::Reply, Infallible> {
     let mut options = elastic::AlertQueryOptions::default();
     options.query_string = query.query_string;
 
@@ -228,13 +228,10 @@ pub async fn alert_query(
     }
 
     match context.datastore.alert_query(options).await {
-        Ok(v) => Ok(Response::Json(v).with_session(_session)),
+        Ok(v) => Ok(Response::Json(v).with_session(session)),
         Err(err) => {
             log::error!("alert query failed: {}", err);
-            Ok(
-                Response::StatusCode(warp::http::StatusCode::INTERNAL_SERVER_ERROR)
-                    .with_session(_session),
-            )
+            Ok(Response::InternalError(err.to_string()).with_session(session))
         }
     }
 }

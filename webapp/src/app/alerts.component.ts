@@ -668,13 +668,11 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                     transformEcsEvent(e);
                     event.event.event = e;
                 }
-            })
+            });
             this.allRows = rows;
             this.offset = 0;
             this.rows = this.allRows.slice(this.offset, this.windowSize);
         }, (error: any) => {
-            console.log("error handler");
-
             if (error === false) {
                 console.log("Got error 'false', ignoring.");
                 return;
@@ -682,11 +680,12 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
             this.rows = [];
 
-            if (typeof error === "object") {
-                if (error.error.message) {
-                    this.toastr.error(error.error.message);
+            try {
+                if (error.error.error) {
+                    this.toastr.error(error.error.error);
                     return;
                 }
+            } catch (e) {
             }
 
             // Check for a reason.
@@ -695,8 +694,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             } catch (err) {
                 this.toastr.error("An error occurred while executing query.");
             }
-
-
         }).then(() => {
             this.sort();
             this.activeRow = 0;
