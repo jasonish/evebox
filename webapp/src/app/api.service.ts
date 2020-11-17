@@ -13,15 +13,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import {Injectable} from "@angular/core";
-import {Router} from "@angular/router";
-import {ConfigService} from "./config.service";
-import {Observable} from "rxjs";
+import { Injectable } from "@angular/core";
+import { Router } from "@angular/router";
+import { ConfigService } from "./config.service";
+import { Observable } from "rxjs";
 
-import {ClientService, LoginResponse} from "./client.service";
-import {catchError, finalize, map} from "rxjs/operators";
-import {HttpClient, HttpHeaders, HttpParams} from "@angular/common/http";
-import {throwError} from "rxjs/internal/observable/throwError";
+import { ClientService, LoginResponse } from "./client.service";
+import { catchError, finalize, map } from "rxjs/operators";
+import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
+import { throwError } from "rxjs/internal/observable/throwError";
 
 declare var localStorage: any;
 
@@ -37,9 +37,9 @@ export class ApiService {
     private authenticated = false;
 
     constructor(private httpClient: HttpClient,
-        public client: ClientService,
-        private router: Router,
-        private configService: ConfigService) {
+                public client: ClientService,
+                private router: Router,
+                private configService: ConfigService) {
         this.client._sessionId = localStorage.sessionId;
     }
 
@@ -47,7 +47,7 @@ export class ApiService {
         return this.authenticated;
     }
 
-    setSessionId(sessionId: string | null) {
+    setSessionId(sessionId: string | null): void {
         this.client.setSessionId(sessionId);
     }
 
@@ -55,9 +55,9 @@ export class ApiService {
         this.client.checkVersion(response);
     }
 
-    applySessionHeader(options: any) {
+    applySessionHeader(options: any): void {
         if (this.client._sessionId) {
-            let headers = options.headers || new Headers();
+            const headers = options.headers || new Headers();
             headers.append(SESSION_HEADER, this.client._sessionId);
             options.headers = headers;
         }
@@ -70,16 +70,17 @@ export class ApiService {
         return headers;
     }
 
-    setAuthenticated(authenticated: boolean) {
+    setAuthenticated(authenticated: boolean): void {
         this.authenticated = authenticated;
         this.client.setAuthenticated(authenticated);
         if (!authenticated) {
             this.setSessionId(null);
-            this.router.navigate(["/login"]);
+            this.router.navigate(["/login"]).then(() => {
+            });
         }
     }
 
-    private handle401() {
+    private handle401(): void {
         this.setAuthenticated(false);
     }
 
@@ -87,28 +88,28 @@ export class ApiService {
      * Low level options request, just fixup the URL.
      */
     _options(path: string): Observable<any> {
-        return this.httpClient.options(this.client.buildUrl(path))
+        return this.httpClient.options(this.client.buildUrl(path));
     }
 
     doRequest(method: string, path: string, options: any = {}): Observable<any> {
-        let headers = options.headers || new HttpHeaders();
+        const headers = options.headers || new HttpHeaders();
         options.headers = this.setSessionHeader(headers);
         options.observe = "response";
         return this.httpClient.request<any>(method, path, options)
-                .pipe(map((response: any) => {
-                    this.client.updateSessionId(response);
-                    this.checkVersion(response);
-                    return response.body;
-                }), catchError((error) => {
-                    if (error.error instanceof ErrorEvent) {
-                        // Client side or network error.
-                    } else {
-                        if (error.status === 401) {
-                            this.handle401();
-                        }
+            .pipe(map((response: any) => {
+                this.client.updateSessionId(response);
+                this.checkVersion(response);
+                return response.body;
+            }), catchError((error) => {
+                if (error.error instanceof ErrorEvent) {
+                    // Client side or network error.
+                } else {
+                    if (error.status === 401) {
+                        this.handle401();
                     }
-                    return throwError(error);
-                }));
+                }
+                return throwError(error);
+            }));
     }
 
     post(path: string, body: any, options: any = {}): Promise<any> {
@@ -118,15 +119,15 @@ export class ApiService {
 
     updateConfig(): Promise<any> {
         return this.client.get("api/1/config").toPromise()
-                .then((config) => {
-                    this.configService.setConfig(config);
-                    return config;
-                });
+            .then((config) => {
+                this.configService.setConfig(config);
+                return config;
+            });
     }
 
-    checkAuth() {
+    checkAuth(): Promise<true | false> {
         return this.updateConfig()
-            .then(config => {
+            .then(() => {
                 this.setAuthenticated(true);
                 return true;
             })
@@ -139,29 +140,29 @@ export class ApiService {
 
     login(username: string = "", password: string = ""): Promise<boolean> {
         return this.client.login(username, password).toPromise()
-                .then((response: LoginResponse) => {
-                    this.setSessionId(response.session_id);
-                    this.setAuthenticated(true);
-                    return this.updateConfig()
-                            .then(() => {
-                                return true;
-                            });
-                });
+            .then((response: LoginResponse) => {
+                this.setSessionId(response.session_id);
+                this.setAuthenticated(true);
+                return this.updateConfig()
+                    .then(() => {
+                        return true;
+                    });
+            });
     }
 
-    logout() : Promise<any> {
+    logout(): Promise<any> {
         return this.client.logout().pipe(
-                finalize(() => {
-                    this.setAuthenticated(false);
-                })
+            finalize(() => {
+                this.setAuthenticated(false);
+            })
         ).toPromise();
     }
 
     getWithParams(path: string, params = {}): Promise<any> {
 
-        let qsb: any = [];
+        const qsb: any = [];
 
-        for (let param in params) {
+        for (const param of Object.keys(params)) {
             qsb.push(`${param}=${params[param]}`);
         }
 
@@ -172,24 +173,24 @@ export class ApiService {
         return this.client.get("api/1/version").toPromise();
     }
 
-    eventToPcap(what: any, event: any) {
+    eventToPcap(what: any, event: any): void {
         // Set a cook with the session key to expire in 60 seconds from now.
         const expires = new Date(new Date().getTime() + 60000);
         const cookie = `${SESSION_HEADER}=${this.client._sessionId}; expires=${expires.toUTCString()}`;
         console.log("Setting cookie: " + cookie);
         document.cookie = cookie;
 
-        let form = <HTMLFormElement>document.createElement("form");
+        const form = document.createElement("form") as HTMLFormElement;
         form.setAttribute("method", "post");
         form.setAttribute("action", "api/1/eve2pcap");
 
-        let whatField = <HTMLElement>document.createElement("input");
+        const whatField = document.createElement("input") as HTMLElement;
         whatField.setAttribute("type", "hidden");
         whatField.setAttribute("name", "what");
         whatField.setAttribute("value", what);
         form.appendChild(whatField);
 
-        let eventField = <HTMLElement>document.createElement("input");
+        const eventField = document.createElement("input") as HTMLElement;
         eventField.setAttribute("type", "hidden");
         eventField.setAttribute("name", "event");
         eventField.setAttribute("value", JSON.stringify(event));
@@ -199,8 +200,8 @@ export class ApiService {
         form.submit();
     }
 
-    reportHistogram(options: ReportHistogramOptions = {}) {
-        let query: any = [];
+    reportHistogram(options: ReportHistogramOptions = {}): Promise<any> {
+        const query: any = [];
 
         if (options.timeRange && options.timeRange > 0) {
             query.push(`timeRange=${options.timeRange}s`);
@@ -233,16 +234,16 @@ export class ApiService {
         return this.client.get(`api/1/report/histogram?${query.join("&")}`).toPromise();
     }
 
-    reportAgg(agg: string, options: ReportAggOptions = {}) {
+    reportAgg(agg: string, options: ReportAggOptions = {}): Promise<any> {
         let params = new HttpParams().append("agg", agg);
 
-        for (let option in options) {
-            switch (option) {
+        for (const key of Object.keys(options)) {
+            switch (key) {
                 case "timeRange":
-                    params = params.append("timeRange", `${options[option]}s`);
+                    params = params.append("timeRange", `${options[key]}s`);
                     break;
                 default:
-                    params = params.append(option, options[option]);
+                    params = params.append(key, options[key]);
                     break;
             }
         }
@@ -269,7 +270,7 @@ export class ApiService {
             params = params.append("min_ts", options.minTs);
         }
 
-        if (options.eventType && options.eventType != "all") {
+        if (options.eventType && options.eventType !== "all") {
             params = params.append("event_type", options.eventType);
         }
 
@@ -295,7 +296,7 @@ export class ApiService {
     flowHistogram(args: any = {}): any {
         let params = new HttpParams();
 
-        let subAggs = [];
+        const subAggs = [];
         if (args.appProto) {
             subAggs.push("app_proto");
         }
@@ -318,19 +319,19 @@ export class ApiService {
         return this.client.get("api/1/flow/histogram", params);
     }
 
-    commentOnEvent(eventId: string, comment: string) {
+    commentOnEvent(eventId: string, comment: string): Promise<any> {
         console.log(`Commenting on event ${eventId}.`);
         return this.post(`api/1/event/${eventId}/comment`, {
-            "event_id": eventId,
-            "comment": comment,
+            event_id: eventId,
+            comment,
         });
     }
 
-    commentOnAlertGroup(alertGroup: any, comment: string) {
+    commentOnAlertGroup(alertGroup: any, comment: string): Promise<any> {
         console.log(`Commenting on alert group:`);
         console.log(alertGroup);
 
-        let request = {
+        const request = {
             signature_id: alertGroup.event._source.alert.signature_id,
             src_ip: alertGroup.event._source.src_ip,
             dest_ip: alertGroup.event._source.dest_ip,
@@ -339,8 +340,8 @@ export class ApiService {
         };
 
         return this.post(`api/1/alert-group/comment`, {
-            "alert_group": request,
-            "comment": comment,
+            alert_group: request,
+            comment: comment,
         });
     }
 
