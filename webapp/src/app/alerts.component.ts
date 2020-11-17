@@ -40,18 +40,6 @@ export interface AlertsState {
     scrollOffset: number;
 }
 
-function compare(a: any, b: any): any {
-    const c = {};
-
-    for (const key in b) {
-        if (a[key] != b[key]) {
-            c[key] = b[key];
-        }
-    }
-
-    return c;
-}
-
 const DEFAULT_SORT_ORDER = "desc";
 const DEFAULT_SORT_BY = "timestamp";
 
@@ -173,7 +161,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.dispatcherSubscription.unsubscribe();
     }
 
-    ngAfterViewChecked() {
+    ngAfterViewChecked(): void {
         // This seems to be required to activate the dropdowns when used in
         // an event table row. Probably something to do with the stopPropagations.
         $(".dropdown-toggle").dropdown();
@@ -199,11 +187,11 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         console.log("Restoring previous state.");
 
-        if (state.route != this.appService.getRoute()) {
+        if (state.route !== this.appService.getRoute()) {
             console.log("Saved state route differs.");
             return false;
         }
-        if (state.queryString != this.queryString) {
+        if (state.queryString !== this.queryString) {
             console.log("Query strings differ, previous state not being restored.");
             return false;
         }
@@ -223,9 +211,9 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             archived.forEach((row: any) => {
                 this.removeRow(row);
             });
-        } else if (this.appService.getRoute() == "/escalated") {
+        } else if (this.appService.getRoute() === "/escalated") {
             const deEscalated = this.rows.filter(row => {
-                return row.event.escalatedCount == 0;
+                return row.event.escalatedCount === 0;
             });
 
             deEscalated.forEach(row => {
@@ -240,28 +228,28 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         return true;
     }
 
-    isInbox() {
-        return this.appService.getRoute() == "/inbox";
+    isInbox(): boolean {
+        return this.appService.getRoute() === "/inbox";
     }
 
-    older() {
+    older(): void {
         this.offset += this.windowSize;
         this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
     }
 
-    oldest() {
+    oldest(): void {
         while (this.offset + this.windowSize < this.allRows.length) {
             this.offset += this.windowSize;
         }
         this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
     }
 
-    newest() {
+    newest(): void {
         this.offset = 0;
         this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
     }
 
-    newer() {
+    newer(): void {
         if (this.offset > this.windowSize) {
             this.offset -= this.windowSize;
         } else {
@@ -270,7 +258,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.rows = this.allRows.slice(this.offset, this.offset + this.windowSize);
     }
 
-    showAll() {
+    showAll(): void {
         this.rows = this.allRows;
     }
 
@@ -287,15 +275,15 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         return 0;
     }
 
-    onSort(column: string) {
+    onSort(column: string): void {
         console.log("Sorting by: " + column);
 
 
-        if (column != this.sortBy) {
+        if (column !== this.sortBy) {
             this.sortBy = column;
             this.sortOrder = "desc";
         } else {
-            if (this.sortOrder == "desc") {
+            if (this.sortOrder === "desc") {
                 this.sortOrder = "asc";
             } else {
                 this.sortOrder = "desc";
@@ -306,7 +294,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.sort();
     }
 
-    sort() {
+    sort(): void {
         switch (this.sortBy) {
             case "signature":
                 this.allRows.sort((a: any, b: any) => {
@@ -348,13 +336,13 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.rows = this.allRows.slice(this.offset, this.windowSize);
     }
 
-    escalateAndArchiveEvent(row: any) {
+    escalateAndArchiveEvent(row: any): void {
         this.archiveAlertGroup(row).then(() => {
             this.escalateAlertGroup(row);
         });
     }
 
-    appEventHandler(event: AppEvent) {
+    appEventHandler(event: AppEvent): void {
         switch (event.event) {
             case AppEventCode.TIME_RANGE_CHANGED:
                 this.refresh();
@@ -368,7 +356,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                     return;
                 }
 
-                if (this.rows.length == 0 && event.data < 5) {
+                if (this.rows.length === 0 && event.data < 5) {
                     return;
                 }
 
@@ -394,29 +382,29 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     }
 
-    openActiveEvent() {
+    openActiveEvent(): void {
         this.openEvent(this.getActiveRow().event);
     }
 
-    archiveActiveEvent() {
+    archiveActiveEvent(): void {
         if (this.getActiveRowIndex() >= 0) {
             this.archiveAlertGroup(this.getActiveRow());
         }
     }
 
-    getActiveRow() {
+    getActiveRow(): any {
         return this.rows[this.getActiveRowIndex()];
     }
 
-    getActiveRowIndex() {
+    getActiveRowIndex(): number {
         return this.activeRow;
     }
 
-    toggleSelectedState(row: any) {
+    toggleSelectedState(row: any): void {
         row.selected = !row.selected;
     }
 
-    escalateSelected() {
+    escalateSelected(): void {
         const selected = this.rows.filter((row: any) => {
             return row.selected;
         });
@@ -429,7 +417,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
     }
 
-    archiveSelected() {
+    archiveSelected(): void {
         const selected = this.rows.filter((row: any) => {
             return row.selected &&
                 row.event.event._source.tags &&
@@ -440,7 +428,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
     }
 
-    archiveAlertGroup(row: any) {
+    archiveAlertGroup(row: any): Promise<any> {
 
         if (!row) {
             return;
@@ -453,14 +441,14 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         row.event.event._source.tags.push("archived");
 
         // If in inbox, also remove it from view.
-        if (this.appService.getRoute() == "/inbox") {
+        if (this.appService.getRoute() === "/inbox") {
             this.removeRow(row);
         }
 
         return this.elasticSearchService.archiveAlertGroup(row.event);
     }
 
-    archiveEvents() {
+    archiveEvents(): void {
         // If rows are selected, archive the selected rows, otherwise archive
         // the current active event.
         if (this.getSelectedCount() > 0) {
@@ -470,12 +458,12 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
     }
 
-    removeRow(row: any) {
+    removeRow(row: any): void {
         const rowIndex = this.rows.indexOf(row);
 
         if (this.rows === this.allRows) {
-            this.allRows = this.allRows.filter((_row: any) => {
-                if (_row == row) {
+            this.allRows = this.allRows.filter((row0: any) => {
+                if (row0 === row) {
                     return false;
                 }
                 return true;
@@ -483,16 +471,16 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.rows = this.allRows;
         } else {
             // Remove the list of all alerts.
-            this.allRows = this.allRows.filter((_row: any) => {
-                if (_row == row) {
+            this.allRows = this.allRows.filter((row0: any) => {
+                if (row0 === row) {
                     return false;
                 }
                 return true;
             });
 
             // Remove the event from the visible alerts.
-            this.rows = this.rows.filter((_row: any) => {
-                if (_row == row) {
+            this.rows = this.rows.filter((row0: any) => {
+                if (row0 === row) {
                     return false;
                 }
                 return true;
@@ -504,7 +492,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         // If out of rows, attempt to slide in a portion of the complete result
         // set.
-        if (this.rows.length == 0) {
+        if (this.rows.length === 0) {
             if (this.offset > 0) {
                 this.offset -= this.windowSize;
             }
@@ -525,42 +513,42 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
     }
 
-    focusFilterInput() {
+    focusFilterInput(): void {
         document.getElementById("filter-input").focus();
     }
 
     /**
      * Return true if all rows are selected.
      */
-    allSelected() {
+    allSelected(): boolean {
         return this.rows.every((row: any) => {
             return row.selected;
         });
     }
 
-    getSelectedRows() {
+    getSelectedRows(): any[] {
         return this.rows.filter((row: any) => {
             return row.selected;
         });
     }
 
-    getSelectedCount() {
+    getSelectedCount(): number {
         return this.getSelectedRows().length;
     }
 
-    selectAllRows() {
+    selectAllRows(): void {
         this.rows.forEach((row: any) => {
             row.selected = true;
         });
     }
 
-    deselectAllRows() {
+    deselectAllRows(): void {
         this.rows.forEach((row: any) => {
             row.selected = false;
         });
     }
 
-    submitFilter() {
+    submitFilter(): void {
         const queryParams: any = {};
         if (this.queryString !== "") {
             queryParams.q = this.queryString;
@@ -571,12 +559,12 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         document.getElementById("filter-input").blur();
     }
 
-    clearFilter() {
+    clearFilter(): void {
         this.queryString = "";
         this.submitFilter();
     }
 
-    openEvent(event: AlertGroup) {
+    openEvent(event: AlertGroup): void {
 
         // Save the current state of this.
         this.alertService.pushState(this.buildState());
@@ -588,11 +576,11 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     }
 
-    rowClicked(row: any) {
+    rowClicked(row: any): void {
         this.openEvent(row.event);
     }
 
-    toggleEscalatedState(row: any, event?: any) {
+    toggleEscalatedState(row: any, event?: any): void {
 
         if (event) {
             event.stopPropagation();
@@ -615,7 +603,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
     }
 
-    escalateAlertGroup(row: any) {
+    escalateAlertGroup(row: any): Promise<string> {
 
         const alertGroup: any = row.event;
 
@@ -625,7 +613,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         return this.elasticSearchService.escalateAlertGroup(alertGroup);
     }
 
-    refresh() {
+    refresh(): Promise<void> {
         console.log("Refreshing...");
         this.loading = true;
 
@@ -705,7 +693,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     // Event handler to show the dropdown menu for the active row.
-    openDropdownMenu() {
+    openDropdownMenu(): void {
         // Toggle.
         const element = $("#row-" + this.activeRow + " .dropdown-toggle");
         element.dropdown("toggle");
@@ -714,7 +702,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         element.next().find("a:first").focus();
     }
 
-    isArchived(row: any) {
+    isArchived(row: any): boolean {
         if (row.event.event._source.tags) {
             if (row.event.event._source.tags.indexOf("archived") > -1) {
                 return true;
@@ -723,7 +711,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         return false;
     }
 
-    selectBySignatureId(row: any) {
+    selectBySignatureId(row: any): void {
         const signatureId = row.event.event._source.alert.signature_id;
 
         this.rows.forEach((row: any) => {
@@ -737,7 +725,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         $(".dropdown-menu.show").removeClass("show");
     }
 
-    filterBySignatureId(row: any) {
+    filterBySignatureId(row: any): void {
         const signatureId = row.event.event._source.alert.signature_id;
         this.appService.updateParams(this.route, {
             q: `alert.signature_id:${signatureId}`
@@ -747,5 +735,4 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         // right here, so remove the "show" class.
         $(".dropdown-menu.show").removeClass("show");
     }
-
 }
