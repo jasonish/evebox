@@ -478,8 +478,6 @@ impl EventStore {
             log::warn!("Elasticsearch response has no aggregations");
         }
 
-        // TODO: Parse out errors before we look for alert groups in the response
-        // above.
         let response = json!({
             "ecs": self.ecs,
             "alerts": alerts,
