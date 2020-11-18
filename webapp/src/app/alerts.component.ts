@@ -27,6 +27,8 @@ import { SETTING_ALERTS_PER_PAGE, SettingsService } from "./settings.service";
 import { debounce } from "rxjs/operators";
 import { combineLatest, interval } from "rxjs";
 import { transformEcsEvent } from "./events/events.component";
+import * as moment from "moment";
+import { ApiService } from "./api.service";
 
 declare var window: any;
 declare var $: any;
@@ -76,6 +78,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                 private eventService: EventService,
                 private toastr: ToastrService,
                 private topNavService: TopNavService,
+                private api: ApiService,
                 private settings: SettingsService) {
     }
 
@@ -372,11 +375,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                     return;
                 }
 
-                this.silentRefresh = true;
-                this.refresh().then(() => {
-                    this.silentRefresh = false;
-                });
-
+                this.refresh(true);
                 break;
         }
 
@@ -613,9 +612,9 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         return this.elasticSearchService.escalateAlertGroup(alertGroup);
     }
 
-    refresh(): Promise<void> {
-        console.log("Refreshing...");
+    refresh(silent = false): void {
         this.loading = true;
+        this.silentRefresh = silent;
 
         const queryOptions: any = {
             mustHaveTags: [],
@@ -649,18 +648,32 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
                 break;
         }
 
-        return this.elasticSearchService.getAlerts(queryOptions).then((rows: any) => {
-            rows.forEach((event) => {
-                if (event.ecs) {
-                    let e = event.event.event;
-                    transformEcsEvent(e);
-                    event.event.event = e;
+        this.api.alertQuery(queryOptions).toPromise().then((response: any) => {
+            const rows = response.alerts.map((alert: AlertGroup) => {
+                if (response.ecs) {
+                    transformEcsEvent(alert.event);
                 }
+                return {
+                    event: alert,
+                    selected: false,
+                    date: moment(alert.maxTs).toDate(),
+                    ecs: response.ecs,
+                };
             });
+
             this.allRows = rows;
-            this.offset = 0;
             this.rows = this.allRows.slice(this.offset, this.windowSize);
+            this.offset = 0;
+            this.activeRow = 0;
+            this.sort();
+            setTimeout(() => {
+                this.loading = false;
+            }, 0);
+            this.appService.resetIdleTime();
+            this.silentRefresh = false;
         }, (error: any) => {
+            this.silentRefresh = false;
+            this.loading = false;
             if (error === false) {
                 console.log("Got error 'false', ignoring.");
                 return;
@@ -670,6 +683,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
             try {
                 if (error.error.error) {
+                    console.log(error.error.error);
                     this.toastr.error(error.error.error);
                     return;
                 }
@@ -682,13 +696,6 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
             } catch (err) {
                 this.toastr.error("An error occurred while executing query.");
             }
-        }).then(() => {
-            this.sort();
-            this.activeRow = 0;
-            setTimeout(() => {
-                this.loading = false;
-            }, 0);
-            this.appService.resetIdleTime();
         });
     }
 

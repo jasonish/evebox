@@ -13,18 +13,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import {Injectable} from "@angular/core";
+import { Injectable } from "@angular/core";
 import {
     HttpClient,
     HttpErrorResponse,
     HttpHeaders,
     HttpParams
 } from "@angular/common/http";
-import {Observable, throwError} from "rxjs";
-import {catchError, finalize, map} from "rxjs/operators";
-import {BehaviorSubject} from "rxjs/internal/BehaviorSubject";
-import {of} from "rxjs/internal/observable/of";
-import {GITREV} from "../environments/gitrev";
+import { Observable, throwError } from "rxjs";
+import { catchError, finalize, map } from "rxjs/operators";
+import { BehaviorSubject } from "rxjs/internal/BehaviorSubject";
+import { of } from "rxjs/internal/observable/of";
+import { GITREV } from "../environments/gitrev";
 
 const SESSION_HEADER = "x-evebox-session-id";
 
@@ -193,7 +193,7 @@ export class ClientService {
                     }
                 }
                 return throwError(error);
-            }))
+            }));
     }
 
     public updateSessionId(response: any) {

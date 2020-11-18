@@ -17,7 +17,6 @@ import { Injectable } from "@angular/core";
 import { Router } from "@angular/router";
 import { ConfigService } from "./config.service";
 import { Observable } from "rxjs";
-
 import { ClientService, LoginResponse } from "./client.service";
 import { catchError, finalize, map } from "rxjs/operators";
 import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
@@ -343,6 +342,34 @@ export class ApiService {
             alert_group: request,
             comment: comment,
         });
+    }
+
+    alertQuery(options: {
+        queryString?: string;
+        mustHaveTags?: any[];
+        mustNotHaveTags?: any[];
+        timeRange?: string;
+    }): Observable<any> {
+        let params = new HttpParams();
+        const tags: string[] = [];
+
+        if (options.mustHaveTags) {
+            options.mustHaveTags.forEach((tag: string) => {
+                tags.push(tag);
+            });
+        }
+
+        if (options.mustNotHaveTags) {
+            options.mustNotHaveTags.forEach((tag: string) => {
+                tags.push(`-${tag}`);
+            });
+        }
+
+        params = params.append("tags", tags.join(","));
+        params = params.append("time_range", options.timeRange);
+        params = params.append("query_string", options.queryString);
+
+        return this.client.get("api/1/alerts", params);
     }
 
 
