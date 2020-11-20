@@ -34,6 +34,7 @@ import * as moment from "moment";
 import { HttpParams } from "@angular/common/http";
 import { transformEcsEvent } from "./events/events.component";
 import { map } from "rxjs/operators";
+import { indexOf } from './utils';
 
 declare function require(name: string);
 
@@ -137,12 +138,20 @@ export class ElasticSearchService {
         return this.api.post(`api/1/event/${event._id}/escalate`, {});
     }
 
+    private indexOf(array: any, what: any): number {
+        if (array && Array.isArray(array)) {
+            return array.indexOf(what);
+        } else {
+            return -1;
+        }
+    }
+
     deEscalateEvent(event: any): Promise<any> {
-        let idx = event._source.tags.indexOf("escalated");
+        let idx = indexOf(event._source.tags, "escalated");
         if (idx > -1) {
             event._source.tags.splice(idx, 1);
         }
-        idx = event._source.tags.indexOf("evebox.escalated");
+        idx = indexOf(event._source.tags, "evebox.escalated");
         if (idx > -1) {
             event._source.tags.splice(idx, 1);
         }

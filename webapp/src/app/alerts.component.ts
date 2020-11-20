@@ -206,7 +206,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         // If in inbox, remove any archived events.
         if (this.isInbox()) {
             const archived = this.rows.filter((row: any) => {
-                return row.event.event._source.tags.indexOf("archived") > -1;
+                return row.event.event._source.tags && row.event.event._source.tags.indexOf("archived") > -1;
             });
 
             console.log(`Found ${archived.length} archived events.`);

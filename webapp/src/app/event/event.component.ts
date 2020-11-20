@@ -38,6 +38,7 @@ import {ToastrService} from "../toastr.service";
 import {FEATURE_COMMENTS} from "../app.service";
 import {ConfigService} from "../config.service";
 import { transformEcsEvent } from "../events/events.component";
+import { indexOf } from "../utils";
 
 /**
  * Component to show a single event.
@@ -183,8 +184,16 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     showArchiveButton(): boolean {
-        return this.event._source.event_type == "alert" &&
-            this.event._source.tags.indexOf("archived") == -1;
+        if (this.event._source.event_type === "alert") {
+            if (indexOf(this.event._source.tags, "archived") > -1) {
+                return false;
+            }
+            if (indexOf(this.event._source.tags, "evebox.archived") > -1) {
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     eventType(): string {
@@ -292,11 +301,11 @@ export class EventComponent implements OnInit, OnDestroy {
             return false;
         }
 
-        if (this.event._source.tags.indexOf("escalated") > -1) {
+        if (indexOf(this.event._source.tags, "escalated") > -1) {
             return true;
         }
 
-        if (this.event._source.tags.indexOf("evebox.escalated") > -1) {
+        if (indexOf(this.event._source.tags, "evebox.escalated") > -1) {
             return true;
         }
 

@@ -34,6 +34,7 @@ import {EveboxDurationComponent} from './duration.component';
 import {EventSeverityToBootstrapClass} from './pipes/event-severity-to-bootstrap-class.pipe';
 import {MousetrapService} from './mousetrap.service';
 import {ElasticSearchService} from './elasticsearch.service';
+import { indexOf } from "./utils";
 
 @Component({
     selector: 'eveboxEventTable2',
@@ -114,7 +115,7 @@ export class EveboxEventTable2Component {
 
     isArchived(row: any) {
         try {
-            return row._source.tags.indexOf('archived') > -1;
+            return indexOf(row._source.tags, "archived") > -1;
         }
         catch (e) {
             return false;
