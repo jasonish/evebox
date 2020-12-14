@@ -387,12 +387,12 @@ impl EventStore {
 
         let mut must_not = Vec::new();
         for tag in options.tags {
-            if tag.starts_with('-') {
-                if tag == "-archived" {
+            if let Some(tag) = tag.strip_prefix('-') {
+                if tag == "archived" {
                     log::debug!("Rewriting tag {} to {}", tag, "evebox.archived");
                     must_not.push(json!({"term": {"tags": "evebox.archived"}}));
                 } else {
-                    let j = json!({"term": {"tags": tag[1..]}});
+                    let j = json!({"term": {"tags": tag}});
                     must_not.push(j);
                 }
             } else if tag == "escalated" {

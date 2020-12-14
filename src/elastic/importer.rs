@@ -69,7 +69,7 @@ impl Importer {
         let n = self.pending();
         self.queue.push("".to_string());
         let mut body = self.queue.join("\n");
-        body.push_str("\n");
+        body.push('\n');
         log::trace!(
             "Sending Elasticsearch bulk request: bytes={}, events={}",
             body.len(),
