@@ -148,19 +148,15 @@ impl EveReader {
             self.open()?;
         }
         if self.reader.is_some() {
-            loop {
-                let line = self.next_line()?;
-                if let Some(line) = line {
-                    if line.is_empty() {
-                        continue;
-                    }
+            let line = self.next_line()?;
+            if let Some(line) = line {
+                if !line.is_empty() {
                     let record: EveJson = serde_json::from_str(line).map_err(|err| {
                         log::error!("Failed to parse event: {}", err);
                         EveReaderError::ParseError(line.to_string())
                     })?;
                     return Ok(Some(record));
                 }
-                break;
             }
         }
         Ok(None)
