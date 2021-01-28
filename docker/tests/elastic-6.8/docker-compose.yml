@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.13
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=false"
+  logstash:
+    image: docker.elastic.co/logstash/logstash:6.8.13
+    volumes:
+      - "./logstash.conf:/etc/logstash.conf"
+      - "./eve.json:/var/log/suricata/eve.json"
+    command: -f /etc/logstash.conf
