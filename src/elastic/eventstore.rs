@@ -47,7 +47,7 @@ pub struct EventStore {
 
 impl EventStore {
     pub fn get_importer(&self) -> Importer {
-        super::importer::Importer::new(&self.base_index, self.client.clone())
+        super::importer::Importer::new(self.client.clone(), &self.base_index, false)
     }
 
     async fn post<T: Serialize + ?Sized>(
