@@ -49,6 +49,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
 
     let elastic_url: String = settings.get("elasticsearch")?;
     let index: String = settings.get("index")?;
+    let no_index_suffix: bool = settings.get_bool("no-index-suffix")?;
     config.end = settings.get_bool("end")?;
     config.use_bookmark = settings.get_bool("bookmark")?;
     config.bookmark_filename = settings.get("bookmark-filename")?;
@@ -120,7 +121,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         client.with_password(&password);
     }
 
-    let importer = crate::elastic::importer::Importer::new(&index, client.build());
+    let importer = crate::elastic::importer::Importer::new(client.build(), &index, no_index_suffix);
 
     let mut elastic_client = crate::elastic::ClientBuilder::new(&elastic_url);
     elastic_client.disable_certificate_validation(disable_certificate_validation);

@@ -22,14 +22,16 @@ pub struct Importer {
     index: String,
     queue: Vec<String>,
     client: crate::elastic::Client,
+    no_index_suffix: bool,
 }
 
 impl Importer {
-    pub fn new(index: &str, client: crate::elastic::Client) -> Self {
+    pub fn new(client: crate::elastic::Client, index: &str, no_index_suffix: bool) -> Self {
         Self {
             index: index.to_string(),
             queue: Vec::new(),
             client: client,
+            no_index_suffix,
         }
     }
 
@@ -42,7 +44,11 @@ impl Importer {
         mut event: serde_json::Value,
     ) -> anyhow::Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ts = event.timestamp().unwrap();
-        let index = format!("{}-{}", self.index, ts.format("%Y.%m.%d"));
+        let index = if self.no_index_suffix {
+            self.index.clone()
+        } else {
+            format!("{}-{}", self.index, ts.format("%Y.%m.%d"))
+        };
         let event_id = ulid::Ulid::from_datetime(ts).to_string();
         let at_timestamp = crate::elastic::format_timestamp(ts);
         event["@timestamp"] = at_timestamp.into();
