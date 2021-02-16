@@ -48,7 +48,7 @@ impl Importer {
         event["@timestamp"] = at_timestamp.into();
 
         let mut header = serde_json::json!({
-            "index": {
+            "create": {
                 "_index": index,
                 "_id": event_id,
             }
@@ -56,7 +56,7 @@ impl Importer {
 
         let version = self.client.get_version().await?;
         if version.major < 7 {
-            header["index"]["_type"] = "_doc".into();
+            header["create"]["_type"] = "_doc".into();
         }
 
         self.queue.push(header.to_string());
