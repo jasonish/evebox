@@ -20,23 +20,23 @@ RUN cd /usr/local && \
   curl -o - -L https://nodejs.org/dist/v${N_V}/node-v${N_V}-linux-x64.tar.gz | \
        tar zxf - --strip-components=1
 
-ARG REAL_UID=1000
-ARG REAL_GID=1000
-RUN groupadd --non-unique --gid ${REAL_GID} builder
-RUN useradd --non-unique --uid ${REAL_UID} --gid ${REAL_GID} --password "" --groups wheel builder
-RUN echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
+ENV BUILD_USER root
 
-USER builder
+# USER builder
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 ENV PATH=/home/builder/.cargo/bin:/root/.cargo/bin:$PATH
 RUN rustup target add x86_64-pc-windows-gnu
 
+
 # Hack?
 RUN cp /usr/x86_64-w64-mingw32/sys-root/mingw/lib/crt2.o \
-/home/builder/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/
+/root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/
 
 RUN cp /usr/x86_64-w64-mingw32/sys-root/mingw/lib/dllcrt2.o \
-/home/builder/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/
+/root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/
 
+ENV FIX_PERMS=true
+
+COPY / /src
 COPY /docker/builder/docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
