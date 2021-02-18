@@ -70,12 +70,13 @@ build_linux() {
 build_linux_armv7() {
     DOCKERFILE="./docker/builder/Dockerfile.armv7"
     TAG=${BUILDER_TAG:-"evebox/builder:armv7"}
+    TARGET="armv7-unknown-linux-musleabihf"
     docker build --rm \
            --cache-from ${TAG} \
 	   -t ${TAG} \
 	   -f ${DOCKERFILE} .
     docker run ${IT} --rm \
-         -v "$(pwd)/target:/src/target:z" \
+         -v "$(pwd)/target/docker/${TARGET}:/src/target:z" \
          -v "$(pwd)/dist:/src/dist:z" \
          -v /var/run/docker.sock:/var/run/docker.sock \
          -w /src \
@@ -91,6 +92,7 @@ build_linux_armv7() {
 build_windows() {
     TAG=${BUILDER_TAG:-"evebox/builder:windows"}
     DOCKERFILE="./docker/builder/Dockerfile.windows"
+    TARGET="x86_64-pc-windows-gnu"
     docker build ${CACHE_FROM} --rm \
            --build-arg REAL_UID="$(id -u)" \
            --build-arg REAL_GID="$(id -g)" \
@@ -98,7 +100,8 @@ build_windows() {
 	   -t ${TAG} \
 	   -f ${DOCKERFILE} .
     docker run ${IT} --rm \
-           -v "$(pwd):/src" \
+           -v "$(pwd)/target/docker/${TARGET}:/src/target:z" \
+           -v "$(pwd)/dist:/src/dist:z" \
            -w /src \
            -e REAL_UID="$(id -u)" \
            -e REAL_GID="$(id -g)" \
@@ -111,6 +114,7 @@ build_windows() {
 build_macos() {
     TAG=${BUILDER_TAG:-"evebox/builder:macos"}
     DOCKERFILE="./docker/builder/Dockerfile.macos"
+    TARGET="x86_64-apple-darwin"
     docker build ${CACHE_FROM} --rm \
            --build-arg REAL_UID="$(id -u)" \
            --build-arg REAL_GID="$(id -g)" \
@@ -118,12 +122,13 @@ build_macos() {
 	   -t ${TAG} \
 	   -f ${DOCKERFILE} .
     docker run ${IT} --rm \
-           -v "$(pwd):/src" \
+           -v "$(pwd)/target/docker/${TARGET}:/src/target:z" \
+           -v "$(pwd)/dist:/src/dist:z" \
            -w /src \
            -e REAL_UID="$(id -u)" \
            -e REAL_GID="$(id -g)" \
            -e CC=o64-clang \
-           -e TARGET=x86_64-apple-darwin \
+           -e TARGET=${TARGET} \
            -e BUILD_REV="${BUILD_REV}" \
            ${TAG} make dist
 }

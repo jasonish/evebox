@@ -1,4 +1,4 @@
-FROM fedora:32
+FROM fedora:33
 
 RUN dnf -y update
 
@@ -20,7 +20,7 @@ RUN dnf -y install \
         ruby-devel \
         rubygem-ffi \
         ruby-devel
-RUN gem install --no-document --bindir=/usr/local/bin fpm
+RUN gem install --no-document --bindir=/usr/local/bin fpm -v 1.11.0
 
 ARG REAL_UID=1000
 ARG REAL_GID=1000
