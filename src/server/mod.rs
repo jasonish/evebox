@@ -100,6 +100,7 @@ pub struct ServerConfig {
     pub tls_key_filename: Option<String>,
     pub elastic_url: String,
     pub elastic_index: String,
+    pub elastic_no_index_suffix: bool,
     pub elastic_username: Option<String>,
     pub elastic_password: Option<String>,
     pub elastic_ecs: bool,

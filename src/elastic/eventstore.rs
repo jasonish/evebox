@@ -43,6 +43,7 @@ pub struct EventStore {
     pub index_pattern: String,
     pub client: Client,
     pub ecs: bool,
+    pub no_index_suffix: bool,
 }
 
 impl EventStore {
