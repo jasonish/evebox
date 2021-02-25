@@ -59,6 +59,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     config.datastore = settings.get("database.type")?;
     config.elastic_url = settings.get("database.elasticsearch.url")?;
     config.elastic_index = settings.get("database.elasticsearch.index")?;
+    config.elastic_no_index_suffix = settings.get_bool("database.elasticsearch.no-index-suffix")?;
     config.elastic_ecs = settings.get_bool("database.elasticsearch.ecs")?;
     config.elastic_username = settings.get_or_none("database.elasticsearch.username")?;
     config.elastic_password = settings.get_or_none("database.elasticsearch.password")?;
@@ -340,12 +341,25 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
                 }
             }
 
+            let index_pattern = if config.elastic_no_index_suffix {
+                config.elastic_index.clone()
+            } else {
+                format!("{}-*", config.elastic_index)
+            };
+
             let eventstore = elastic::EventStore {
                 base_index: config.elastic_index.clone(),
-                index_pattern: format!("{}-*", config.elastic_index),
+                index_pattern: index_pattern,
                 client: client,
                 ecs: config.elastic_ecs,
+                no_index_suffix: config.elastic_no_index_suffix,
             };
+            log::debug!("Elasticsearch base index: {}", &eventstore.base_index);
+            log::debug!(
+                "Elasticsearch search index pattern: {}",
+                &eventstore.index_pattern
+            );
+            log::debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
             context.features.reporting = true;
             context.features.comments = true;
             context.elastic = Some(eventstore.clone());

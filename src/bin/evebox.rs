@@ -109,6 +109,12 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Elastic Search index prefix"),
         )
         .arg(
+            Arg::with_name("database.elasticsearch.no-index-suffix")
+                .long("no-index-suffix")
+                .takes_value(false)
+                .help("Do not add a suffix to the index name"),
+        )
+        .arg(
             Arg::with_name("database.elasticsearch.ecs")
                 .long("ecs")
                 .help("Enable Elastic ECS support"),

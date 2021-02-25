@@ -121,6 +121,11 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         client.with_password(&password);
     }
 
+    log::debug!(
+        "Elasticsearch index: {}, no-index-suffix={}",
+        &index,
+        no_index_suffix
+    );
     let importer = crate::elastic::importer::Importer::new(client.build(), &index, no_index_suffix);
 
     let mut elastic_client = crate::elastic::ClientBuilder::new(&elastic_url);
