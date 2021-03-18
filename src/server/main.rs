@@ -122,15 +122,32 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         }
     }
 
-    let input_filename: Option<String> = settings.get_or_none("input.filename")?;
-
-    let mut input_filenames = Vec::new();
-    if let Some(input_filename) = &input_filename {
-        for path in crate::path::expand(&input_filename)? {
-            let path = path.display().to_string();
-            input_filenames.push(path);
+    let input_enabled = {
+        if settings.args.occurrences_of("input.filename") > 0 {
+            true
+        } else if settings.get_bool("input.enabled")? {
+            true
+        } else {
+            false
         }
-    }
+    };
+
+    // This needs some cleanup. We load the input file names here, but configure
+    // it later down.  Also, the filters (rules) are unlikely required if we
+    // don't have an input enabled.
+    let input_filenames = if input_enabled {
+        let input_filename: Option<String> = settings.get_or_none("input.filename")?;
+        let mut input_filenames = Vec::new();
+        if let Some(input_filename) = &input_filename {
+            for path in crate::path::expand(&input_filename)? {
+                let path = path.display().to_string();
+                input_filenames.push(path);
+            }
+        }
+        input_filenames
+    } else {
+        Vec::new()
+    };
 
     let mut shared_filters = Vec::new();
 

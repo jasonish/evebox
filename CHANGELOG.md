@@ -11,12 +11,15 @@
   from nfqueue, where its DLT_RAW.
 - Unfocus time range selector after a new range is selected allowing keyboard
   shortcuts to work again without having to click somewhere in the page.
+- Fix issue where the input section in the configuration file was being used
+  even if enabled was set to false. This only happened when using a configuration
+  file with an input section: https://github.com/jasonish/evebox/issues/159
 
 ### Changes
 - Server: Allow wildcard in input filename to allow the usage of threaded eve
   output. For example: /var/log/suricata/eve.*.json.
 - Agent: Allow multiple input paths to be specified.
-- New keyboard shortcut, '\' to open time range selector.
+- New keyboard shortcut, '\\' to open time range selector.
 
 ### Features
 - New DHCP report that attempts to give you a picture of the devices that have 
