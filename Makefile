@@ -4,13 +4,18 @@
 #    - GNU Make
 
 # Version info.
-#VERSION_SUFFIX	:=	dev
-VERSION		:=	0.13.0
+CARGO_VERSION	:=	$(shell cat Cargo.toml | \
+			    awk '/^version/ { gsub(/"/, "", $#3); print $$3 }')
+VERSION	:=		$(shell echo $(CARGO_VERSION) | \
+				sed 's/\(.*\)\-.*/\1/')
+VERSION_SUFFIX	:=	$(shell echo $(CARGO_VERSION) | \
+				sed -n 's/.*-\(.*\)/\1/p')
+
 BUILD_REV	?=	$(shell git rev-parse --short HEAD)
 BUILD_DATE	?=	$(shell date +%s)
 export BUILD_DATE
 
-CARGO ?=		cargo
+CARGO ?=	cargo
 
 APP :=		evebox
 
