@@ -1,8 +1,13 @@
 [package]
-name = "suricata-rule-parser"
+name = "evebox-suricata-rule-parser"
 version = "0.1.0"
 authors = ["Jason Ish <ish@unx.ca>"]
 edition = "2018"
+description = "Suricata rule parser for EveBox"
+license = "MIT"
+homepage = "https://evebox.org"
+repository = "https://github.com/jasonish/evebox"
+documentation = "https://evebox.org"
 
 [dependencies]
 nom = "5.0.1"

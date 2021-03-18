@@ -269,6 +269,7 @@ dependencies = [
  "clap",
  "config",
  "error-chain",
+ "evebox-suricata-rule-parser",
  "filetime",
  "futures",
  "glob",
@@ -288,7 +289,6 @@ dependencies = [
  "serde_json",
  "serde_urlencoded 0.6.1",
  "serde_yaml",
- "suricata-rule-parser",
  "thiserror",
  "tokio",
  "tracing",
@@ -298,6 +298,14 @@ dependencies = [
  "uuid",
  "warp",
  "webbrowser",
+]
+
+[[package]]
+name = "evebox-suricata-rule-parser"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "nom",
 ]
 
 [[package]]
@@ -1785,14 +1793,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "suricata-rule-parser"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "nom",
-]
 
 [[package]]
 name = "syn"
