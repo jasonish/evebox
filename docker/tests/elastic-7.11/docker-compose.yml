@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.11.2
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=false"
+
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:7.11.2
+  #   volumes:
+  #     - "./logstash.conf:/etc/logstash.conf"
+  #     - "./eve.json:/var/log/suricata/eve.json"
+  #   command: -f /etc/logstash.conf
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.11.2
+    volumes:
+      - ./filebeat.yml:/config/filebeat.yml:z
+      - /var/log/suricata:/var/log/suricata:z
+    command: -c /config/filebeat.yml -e -v
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.11.2
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
