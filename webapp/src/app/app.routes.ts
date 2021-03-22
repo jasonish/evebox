@@ -50,18 +50,19 @@ export class AuthGuard implements CanActivate {
     constructor(private api: ApiService) {
     }
 
-    canActivate() {
+    canActivate(): Promise<boolean> {
         if (this.api.isAuthenticated()) {
             return Promise.resolve(true);
         }
+        console.log("authguard.canactivate: checking auth");
         return this.api.checkAuth();
     }
 }
 
 @Injectable()
 export class NeverActivate implements CanActivate {
-    canActivate() {
-        return false;
+    canActivate(): Promise<boolean> {
+        return Promise.resolve(false);
     }
 }
 

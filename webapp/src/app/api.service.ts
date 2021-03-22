@@ -39,7 +39,7 @@ export class ApiService {
                 public client: ClientService,
                 private router: Router,
                 private configService: ConfigService) {
-        this.client._sessionId = localStorage.sessionId;
+        this.client._sessionId = localStorage._sessionId;
     }
 
     isAuthenticated(): boolean {
@@ -70,6 +70,7 @@ export class ApiService {
     }
 
     setAuthenticated(authenticated: boolean): void {
+        console.log(`Setting authenticated to ${authenticated}`);
         this.authenticated = authenticated;
         this.client.setAuthenticated(authenticated);
         if (!authenticated) {
@@ -119,20 +120,23 @@ export class ApiService {
     updateConfig(): Promise<any> {
         return this.client.get("api/1/config").toPromise()
             .then((config) => {
+                console.log("got config");
+                console.log(config);
                 this.configService.setConfig(config);
                 return config;
             });
     }
 
     checkAuth(): Promise<true | false> {
+        console.log(this.client._sessionId);
         return this.updateConfig()
             .then(() => {
                 this.setAuthenticated(true);
                 return true;
             })
             .catch((error) => {
-                console.log("updateConfig failed:");
-                console.log(error);
+                console.log(`Authentication failed: ${error.message}`);
+                this.router.navigate(["/login"]);
                 return false;
             });
     }
@@ -141,9 +145,10 @@ export class ApiService {
         return this.client.login(username, password).toPromise()
             .then((response: LoginResponse) => {
                 this.setSessionId(response.session_id);
-                this.setAuthenticated(true);
+                console.log("Login successful, updating configuration");
                 return this.updateConfig()
                     .then(() => {
+                        this.setAuthenticated(true);
                         return true;
                     });
             });

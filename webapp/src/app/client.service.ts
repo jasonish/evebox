@@ -63,17 +63,19 @@ export class ClientService {
     }
 
     setAuthenticated(authenticated: boolean) {
+        console.log(`ClientService.setAuthenticated: ${authenticated}`);
         this.authenticated = authenticated;
         this.isAuthenticated$.next(authenticated);
     }
 
     setSessionId(sessionId: string | null) {
+        console.log(`ClientService.setSessionId: sessionId = ${sessionId}`);
         this._sessionId = sessionId;
         localStorage._sessionId = this._sessionId;
     }
 
     get sessionId(): string | null {
-        return this.sessionId;
+        return this._sessionId;
     }
 
     get baseUrl(): string {
@@ -129,7 +131,7 @@ export class ClientService {
             .pipe(
                 map((response: LoginResponse) => {
                     console.log(`Got session ID: ${response.session_id}`);
-                    this.setAuthenticated(true);
+    //                this.setAuthenticated(true);
                     this.setSessionId(response.session_id);
                     return response;
                 }),

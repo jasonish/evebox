@@ -102,11 +102,15 @@ export class LoginComponent implements OnInit, AfterViewInit {
     }
 
     login() {
+        console.log("Calling api.login...");
         this.api.login(this.model.username, this.model.password)
             .then(() => {
+                console.log("Login successful, redirecting to /");
                 this.router.navigate(["/"]);
             })
             .catch(error => {
+                console.log(`Login failed:`);
+                console.log(error);
                 if (error.status === 401) {
                     this.error = "Login failed";
                 }
