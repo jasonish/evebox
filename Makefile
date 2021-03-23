@@ -5,7 +5,7 @@
 
 # Version info.
 CARGO_VERSION	:=	$(shell cat Cargo.toml | \
-			    awk '/^version/ { gsub(/"/, "", $#3); print $$3 }')
+			    awk '/^version/ { gsub(/"/, "", $$3); print $$3 }')
 VERSION	:=		$(shell echo $(CARGO_VERSION) | \
 				sed 's/\(.*\)\-.*/\1/')
 VERSION_SUFFIX	:=	$(shell echo $(CARGO_VERSION) | \
@@ -21,6 +21,29 @@ APP :=		evebox
 
 WEBAPP_SRCS :=	$(shell find webapp -type f | grep -v node_modules)
 
+HOST_TARGET := $(shell rustc -Vv| awk '/^host/ { print $$2 }')
+TARGET ?= $(HOST_TARGET)
+OS := $(shell rustc --target $(TARGET) --print cfg | awk -F'"' '/target_os/ { print $$2 }')
+ifeq ($(OS),windows)
+APP_EXT := .exe
+endif
+
+CARGO_BUILD_ARGS :=
+ifdef TARGET
+CARGO_BUILD_ARGS += --target $(TARGET)
+endif
+
+ifneq ($(VERSION_SUFFIX),)
+DIST_VERSION := latest
+else
+DIST_VERSION :=	$(VERSION)
+endif
+DIST_ARCH :=	$(shell rustc --target $(TARGET) --print cfg | \
+			awk -F'"' '/target_arch/ { print $$2 }' | \
+			sed -e 's/x86_64/x64/')
+DIST_NAME ?=	$(APP)-$(DIST_VERSION)-$(OS)-$(DIST_ARCH)
+EVEBOX_BIN :=	target/$(TARGET)/release/$(APP)$(APP_EXT)
+
 all: public evebox
 
 clean:
@@ -35,32 +58,9 @@ resources/public/_done: $(WEBAPP_SRCS)
 	touch $@
 public: resources/public/_done
 
-CARGO_BUILD_ARGS :=
-ifdef TARGET
-CARGO_BUILD_ARGS += --target $(TARGET)
-endif
-
 # Build's EveBox for the host platform.
-evebox: 
+evebox:
 	$(CARGO) build $(RELEASE) $(CARGO_BUILD_ARGS)
-
-HOST_TARGET := $(shell rustc -Vv| awk '/^host/ { print $$2 }')
-TARGET ?= $(HOST_TARGET)
-OS := $(shell rustc --target $(TARGET) --print cfg | awk -F'"' '/target_os/ { print $$2 }')
-ifeq ($(OS),windows)
-APP_EXT := .exe
-endif
-
-ifneq ($(VERSION_SUFFIX),)
-DIST_VERSION := latest
-else
-DIST_VERSION :=	$(VERSION)
-endif
-DIST_ARCH :=	$(shell rustc --target $(TARGET) --print cfg | \
-			awk -F'"' '/target_arch/ { print $$2 }' | \
-			sed -e 's/x86_64/x64/')
-DIST_NAME ?=	$(APP)-$(DIST_VERSION)-$(OS)-$(DIST_ARCH)
-EVEBOX_BIN :=	target/$(TARGET)/release/$(APP)$(APP_EXT)
 
 dist: DIST_DIR ?= dist/$(DIST_NAME)
 dist: public

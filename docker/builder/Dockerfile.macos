@@ -38,10 +38,12 @@ RUN curl -L -o \
 RUN sed -i -e 's|-march=native||g' ./build_clang.sh ./wrapper/build_wrapper.sh
 RUN printf "\n" | OSX_VERSION_MIN="10.9" PORTABLE=true bash -x ./build.sh
 
-USER builder
 ENV PATH=/home/builder/.cargo/bin:/root/.cargo/bin:$PATH
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 RUN rustup target add x86_64-apple-darwin
 
+ENV FIX_PERMS=true
+
+COPY / /src
 COPY /docker/builder/docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
