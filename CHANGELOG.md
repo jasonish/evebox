@@ -1,5 +1,12 @@
 # Change Log
 
+## unreleased
+
+- Fix http request logging, and logging the remote IP address when behind a
+  reverse proxy: https://github.com/jasonish/evebox/issues/163
+- Fix client side authentication issue:
+  https://github.com/jasonish/evebox/issues/160
+
 ## 0.13.0 - 2021-03-18
 
 ### Fixes
