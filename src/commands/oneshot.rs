@@ -75,7 +75,6 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
                     no_check_certificate: false,
                     datastore: "sqlite".to_string(),
                     sqlite_filename: Some(db_filename.clone()),
-                    http_log: false,
                     ..crate::server::ServerConfig::default()
                 };
                 let context = match crate::server::build_context(config.clone(), Some(ds)).await {

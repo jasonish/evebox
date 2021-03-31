@@ -143,8 +143,9 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Disable TLS certificate validation"),
         )
         .arg(
-            Arg::with_name("access-log")
-                .long("access-log")
+            Arg::with_name("http.request-logging")
+                .long("http-request-logging")
+                .env("EVEBOX_HTTP_REQUEST_LOGGING")
                 .help("Enable HTTP access logging"),
         )
         .arg(

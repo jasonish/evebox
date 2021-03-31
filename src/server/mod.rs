@@ -94,7 +94,6 @@ pub struct ServerConfig {
     pub no_check_certificate: bool,
     pub datastore: String,
     pub sqlite_filename: Option<String>,
-    pub http_log: bool,
     pub tls_enabled: bool,
     pub tls_cert_filename: Option<String>,
     pub tls_key_filename: Option<String>,
@@ -108,4 +107,6 @@ pub struct ServerConfig {
     pub authentication_required: bool,
     pub authentication_type: AuthenticationType,
     pub database_retention_period: Option<u64>,
+    pub http_reverse_proxy: bool,
+    pub http_request_logging: bool,
 }

@@ -36,6 +36,7 @@ use crate::sqlite;
 use crate::sqlite::configrepo::ConfigRepo;
 
 use super::{ServerConfig, ServerContext};
+use warp::filters::log::{Info, Log};
 
 fn load_event_services(filename: &str) -> anyhow::Result<serde_json::Value> {
     let finput = std::fs::File::open(filename)?;
@@ -72,6 +73,8 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
             config.no_check_certificate = settings.get_bool("no-check-certificate")?;
         }
     }
+    config.http_request_logging = settings.get_bool("http.request-logging")?;
+    config.http_reverse_proxy = settings.get_bool("http.reverse-proxy")?;
 
     log::debug!(
         "Certificate checks disabled: {}",
@@ -98,9 +101,6 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         log::error!("A data-directory is required");
         std::process::exit(1);
     }
-
-    // Command line only.
-    config.http_log = args.occurrences_of("access-log") > 0;
 
     tokio::spawn(async move {
         tokio::signal::ctrl_c()
@@ -291,14 +291,48 @@ pub fn build_server(
     );
 
     let routes = routes.with(warp::reply::with::headers(headers));
-    let do_log_http = config.http_log;
-    let http_log = warp::log::custom(move |info| {
-        if do_log_http {
-            log::info!("{:?}", info.remote_addr());
-        }
-    });
+    let http_log =
+        build_http_request_logger(config.http_request_logging, config.http_reverse_proxy);
+
     let routes = routes.with(http_log);
     warp::serve(routes.boxed())
+}
+
+fn build_http_request_logger(enabled: bool, reverse_proxy: bool) -> Log<impl Fn(Info) + Clone> {
+    warp::log::custom(move |info| {
+        if enabled {
+            http_request_logger(info, reverse_proxy);
+        }
+    })
+}
+
+fn http_request_logger(info: Info, reverse_proxy: bool) {
+    let mut xff = None;
+    if reverse_proxy {
+        for (header, value) in info.request_headers() {
+            if header == "x-forwarded-for" {
+                // First convert value to a string, which could fail, then take the first
+                // address from the comma seaparated list of addresses.
+                if let Ok(val) = value.to_str() {
+                    if let Some(val) = val.split(",").next() {
+                        xff = Some(val.trim().to_string());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    let remote_addr = get_remote_addr(info.remote_addr(), xff, reverse_proxy);
+
+    log::info!(
+        "{} {:?} {} {} {}",
+        remote_addr,
+        info.version(),
+        info.status(),
+        info.method(),
+        info.path()
+    );
 }
 
 pub async fn build_context(
@@ -444,9 +478,23 @@ pub enum GenericError {
 
 impl warp::reject::Reject for GenericError {}
 
+pub fn get_remote_addr(
+    socket_addr: Option<SocketAddr>,
+    xff: Option<String>,
+    enable_xff: bool,
+) -> String {
+    if enable_xff && xff.is_some() {
+        return xff.unwrap().split(",").next().unwrap().trim().to_string();
+    } else if let Some(addr) = socket_addr {
+        return addr.ip().to_string();
+    }
+    return "<unknown-remote>".to_string();
+}
+
 pub fn build_session_filter(
     context: Arc<ServerContext>,
 ) -> impl Filter<Extract = (Arc<Session>,), Error = warp::Rejection> + Clone {
+    let enable_reverse_proxy = context.config.http_reverse_proxy;
     let context = warp::any().map(move || context.clone());
 
     let session_id = warp::header("x-evebox-session-id")
@@ -459,18 +507,20 @@ pub fn build_session_filter(
         .or(warp::any().map(|| None))
         .unify();
 
+    let remote_addr = warp::filters::addr::remote()
+        .and(warp::filters::header::optional("x-forwarded-for"))
+        .map(move |a, b| get_remote_addr(a, b, enable_reverse_proxy));
+
     warp::any()
         .and(session_id)
         .and(context)
-        .and(warp::filters::addr::remote())
-        .and(warp::filters::path::full())
         .and(remote_user)
+        .and(remote_addr)
         .and_then(
             move |session_id: Option<String>,
                   context: Arc<ServerContext>,
-                  addr,
-                  _path,
-                  remote_user: Option<String>| async move {
+                  remote_user: Option<String>,
+                  remote_addr: String| async move {
                 if let Some(session_id) = session_id {
                     let session = context.session_store.get(&session_id);
                     if let Some(session) = session {
@@ -486,8 +536,8 @@ pub fn build_session_filter(
                             "<anonymous>".to_string()
                         };
                         log::info!(
-                            "Creating anonymous session for user from {:?} with name {}",
-                            addr,
+                            "Creating anonymous session for user from {} with name {}",
+                            remote_addr,
                             username
                         );
                         let mut session = Session::new();
