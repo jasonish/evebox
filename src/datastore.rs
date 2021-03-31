@@ -67,12 +67,6 @@ pub enum DatastoreError {
 
 impl warp::reject::Reject for DatastoreError {}
 
-impl From<DatastoreError> for warp::Rejection {
-    fn from(err: DatastoreError) -> Self {
-        warp::reject::custom(err)
-    }
-}
-
 impl From<Box<dyn std::error::Error + Sync + Send>> for DatastoreError {
     fn from(err: Box<dyn std::error::Error + Sync + Send>) -> Self {
         DatastoreError::GenericError(err)

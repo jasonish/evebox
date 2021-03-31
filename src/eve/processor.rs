@@ -165,7 +165,7 @@ impl Processor {
 
     async fn sleep_for(&self, millis: u64) {
         let d = std::time::Duration::from_millis(millis);
-        tokio::time::delay_for(d).await;
+        tokio::time::sleep(d).await;
     }
 
     async fn commit(&mut self) {

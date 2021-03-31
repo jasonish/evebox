@@ -444,12 +444,6 @@ pub enum GenericError {
 
 impl warp::reject::Reject for GenericError {}
 
-impl From<GenericError> for warp::Rejection {
-    fn from(err: GenericError) -> Self {
-        warp::reject::custom(err)
-    }
-}
-
 pub fn build_session_filter(
     context: Arc<ServerContext>,
 ) -> impl Filter<Extract = (Arc<Session>,), Error = warp::Rejection> + Clone {

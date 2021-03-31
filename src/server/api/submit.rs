@@ -20,6 +20,7 @@ use crate::eve::eve::EveJson;
 use crate::logger::log;
 use crate::server::response::Response;
 use crate::server::ServerContext;
+use std::convert::Infallible;
 
 struct Reader<'a> {
     buf: &'a [u8],
@@ -40,8 +41,8 @@ impl<'a> Reader<'a> {
 
 pub async fn handler(
     context: Arc<ServerContext>,
-    body: bytes::Bytes,
-) -> Result<impl warp::Reply, warp::Rejection> {
+    body: warp::hyper::body::Bytes,
+) -> Result<impl warp::Reply, Infallible> {
     let mut importer = match context.datastore.get_importer() {
         Some(importer) => importer,
         None => {

@@ -443,12 +443,6 @@ pub enum ApiError {
 
 impl warp::reject::Reject for ApiError {}
 
-impl From<ApiError> for warp::Rejection {
-    fn from(err: ApiError) -> Self {
-        warp::reject::custom(err)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use crate::server::filters::GenericQuery;
