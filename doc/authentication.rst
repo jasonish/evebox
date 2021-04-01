@@ -51,7 +51,7 @@ Adding users is done with the config tool, for example::
           `/var/lib/evebox` to be owned by the user ``evebox``, so you
           may need use sudo to add users, for example::
 
-	    sudo -u evebox config -D /var/lib/evebox users add
+	    sudo -u evebox evebox config -D /var/lib/evebox users add
 
 	  or as root::
 
