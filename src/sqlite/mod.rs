@@ -54,7 +54,7 @@ impl ConnectionBuilder {
 }
 
 pub fn init_event_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
-    crate::sqlite::init::init_db(db, "events")
+    crate::sqlite::init::init_db(db, "sqlite")
 }
 
 /// Format a DateTime object into the SQLite format.

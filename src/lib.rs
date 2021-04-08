@@ -39,6 +39,7 @@ pub mod logger;
 pub mod packet;
 mod path;
 pub mod pcap;
+pub mod prelude;
 pub mod resource;
 mod rules;
 pub mod server;

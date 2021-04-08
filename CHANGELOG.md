@@ -6,6 +6,8 @@
   reverse proxy: https://github.com/jasonish/evebox/issues/163
 - Fix client side authentication issue:
   https://github.com/jasonish/evebox/issues/160
+- Fix initialization of SQLite events database:
+  https://github.com/jasonish/evebox/issues/166
 
 ## 0.13.0 - 2021-03-18
 
