@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp::Ordering;
@@ -129,7 +130,16 @@ impl Client {
                 return Ok(version.clone());
             }
         }
-        let body = self.get("")?.send().await?.text().await?;
+
+        let r = self.get("")?.send().await?;
+        let status_code = r.status();
+        if status_code != StatusCode::OK {
+            let body = r.text().await?;
+            let err = format!("{} -- {}", status_code.as_u16(), body.trim());
+            return Err(ClientError::StringError(err));
+        }
+
+        let body = r.text().await?;
         let response: super::ElasticResponse = serde_json::from_str(&body)?;
         if let Some(error) = response.error {
             return Err(ClientError::StringError(error.reason));
