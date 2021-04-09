@@ -253,6 +253,10 @@ case "$1" in
         push
         ;;
 
+    push-release)
+        push_release
+        ;;
+
     all)
         build_webapp
         build_linux

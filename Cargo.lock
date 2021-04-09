@@ -259,7 +259,7 @@ dependencies = [
 
 [[package]]
 name = "evebox"
-version = "0.13.1-dev"
+version = "0.13.1"
 dependencies = [
  "anyhow",
  "base64 0.12.3",

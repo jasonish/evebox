@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.13.1 - 2021-04-09
 
 - Fix http request logging, and logging the remote IP address when behind a
   reverse proxy: https://github.com/jasonish/evebox/issues/163
