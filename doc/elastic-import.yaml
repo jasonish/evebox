@@ -3,7 +3,7 @@ input:
   - /var/log/suricata/eve.json
 
 # Elastic Search URL
-elasticsearch: http://10.16.1.10:9200
+elasticsearch: http://elasticsearch:9200
 
 # Elastic Search username and password.
 #username: admin
@@ -27,12 +27,12 @@ index: logstash
 # When no bookmark is present start reading at the end of the file.
 end: true
 
-# Enable bookmarking so esimport can continue reading from where it
-# left off after a restart.
+# Enable bookmarking so elastic-import can continue reading from where
+# it left off after a restart.
 bookmark: true
 
-# Set a filename to keep the bookmark in case esimport cannot write to
-# the log directory.
+# Set a filename to keep the bookmark in case elastic-import cannot
+# write to the log directory.
 #bookmark-filename: /var/tmp/eve.json.bookmark
 
 # If reading from multiple eve files, a bookmark directory is
@@ -44,16 +44,8 @@ bookmark: true
 
 geoip:
   # GeoIP is enabled by default if a database can be found.
-  disabled: false
+  disabled: true
 
   # Path to the database, if not set some standard locations are
   # checked.
-  #
-  # The database used is the MaxMind GeoLite2 database. See:
-  #    http://dev.maxmind.com/geoip/geoip2/geolite2/
-  # Quick setup:
-  #    cd /etc/evebox
-  #    curl -OL http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
-  #
-  #database-filename: /etc/evebox/GeoLite2-City.mmdb.gz
   #database-filename: /etc/evebox/GeoLite2-City.mmdb
