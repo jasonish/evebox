@@ -338,7 +338,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Disable TLS certificate validation"),
         )
         .arg(
-            Arg::with_name("geoip.disable")
+            Arg::with_name("geoip.disabled")
                 .long("no-geoip")
                 .help("Disable GeoIP"),
         )
