@@ -1,5 +1,9 @@
 # Change Log
 
+## unreleased
+
+- Relicense under MIT, oops.
+
 ## 0.13.1 - 2021-04-09
 
 - Fix http request logging, and logging the remote IP address when behind a
