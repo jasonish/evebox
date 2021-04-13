@@ -50,9 +50,8 @@ impl GeoIP {
         let dt = chrono::NaiveDateTime::from_timestamp(reader.metadata.build_epoch as i64, 0);
         if (reader.metadata.build_epoch as i64) < now.timestamp() - DAYS_28 {
             log::warn!("GeoIP database older than 4 weeks: {}", dt);
-        } else {
-            log::info!("Loaded GeoIP database: {}: {}", filename, dt);
         }
+        log::info!("Loaded GeoIP database: {}: {}", filename, dt);
 
         let last_modified = match Self::get_last_modified(&filename) {
             Ok(last_modified) => last_modified,
