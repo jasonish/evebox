@@ -6,6 +6,9 @@
 EveBox
 ======
 
+EveBox: A web based alert and event management tool for the Suricata
+network security monitoring engine.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -16,6 +19,3 @@ EveBox
    agent
    elastic-import
    api
-
-* :ref:`genindex`
-* :ref:`search`
