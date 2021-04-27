@@ -1,28 +1,23 @@
-/* Copyright (c) 2014-2016 Jason Ish
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+// Copyright (C) 2014-2021 Jason Ish
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import {Pipe, PipeTransform} from '@angular/core';
 import {EveboxFormatIpAddressPipe} from './format-ipaddress.pipe';
@@ -102,22 +97,20 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
         return msg;
     }
 
-    transform(value: any, args: any): any {
-
-        let event = value;
+    transform(event: any, args: any): string {
 
         if (!event._source.event_type) {
             return '[Error: This does not look like an event]';
         }
 
-        let eve = event._source;
+        const eve = event._source;
 
-        let srcAddr = this.ipFormatter.transform(eve.src_ip);
-        let destAddr = this.ipFormatter.transform(eve.dest_ip);
+        const srcAddr = this.ipFormatter.transform(eve.src_ip);
+        const destAddr = this.ipFormatter.transform(eve.dest_ip);
 
         switch (event._source.event_type) {
             case 'alert': {
-                let alert = event._source.alert;
+                const alert = event._source.alert;
                 if (alert.signature) {
                     return alert.signature;
                 }
@@ -127,18 +120,18 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 }
             }
             case 'http': {
-                let http = event._source.http;
+                const http = event._source.http;
                 return `${http.http_method} - ${http.hostname} - ${http.url}`;
             }
             case 'ssh': {
-                let ssh = eve.ssh;
+                const ssh = eve.ssh;
                 return `${ssh.client.software_version} -> ${ssh.server.software_version}`;
             }
             case 'tls': {
                 return `${eve.tls.version} - ${eve.tls.sni || "[no sni]"} - ${eve.tls.subject || "[no subject]"}`;
             }
             case 'flow': {
-                let flow = eve.flow;
+                const flow = eve.flow;
                 let sport = '';
                 let dport = '';
                 switch (eve.proto.toLowerCase()) {
@@ -154,7 +147,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                         + `; Packets: ${flow.pkts_toserver + flow.pkts_toclient}`;
             }
             case 'netflow': {
-                let netflow = eve.netflow;
+                const netflow = eve.netflow;
                 let sport = '';
                 let dport = '';
                 switch (eve.proto.toLowerCase()) {
@@ -173,7 +166,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 return this.formatDns(eve);
             }
             case 'drop':
-                let drop: any = eve.drop;
+                const drop: any = eve.drop;
                 let srcPort = '';
                 let dstPort = '';
                 if (eve.src_port) {
@@ -202,11 +195,11 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 if (drop.fin) {
                     flags.push('FIN');
                 }
-                let flagInfo = flags.join(',');
+                const flagInfo = flags.join(',');
 
                 return `${eve.proto} - ${eve.src_ip}${srcPort} -> ${eve.dest_ip}${dstPort} [${flagInfo}]`;
             case 'fileinfo':
-                let extra: string[] = [];
+                const extra: string[] = [];
 
                 if (eve.http && eve.http.hostname) {
                     extra.push(`Hostname: ${eve.http.hostname}`);
@@ -215,16 +208,25 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                     extra.push(`Content-Type: ${eve.http.http_content_type}`);
                 }
 
-                let extraInfo = '- ' + extra.join('; ');
+                const extraInfo = '- ' + extra.join('; ');
 
                 return `${eve.fileinfo.filename} ${extraInfo}`;
             case "smb":
                 return this.formatSmb(eve);
             case "dhcp":
                 return this.formatDhcp(event);
+            case "anomaly": {
+                const anom = eve.anomaly;
+                if (anom.event) {
+                    return `${anom.type.toUpperCase()}: ${anom.event}`;
+                } else if (anom.code) {
+                    return `${anom.type.toUpperCase()}: ${anom.code}`;
+                }
+            }
             default:
-                return JSON.stringify(event._source[event._source.event_type]);
+                break;
         }
+        return JSON.stringify(event._source[event._source.event_type]);
     }
 
     formatDhcp(event: any): string {
