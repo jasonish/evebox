@@ -40,7 +40,7 @@ DIST_VERSION :=	$(VERSION)
 endif
 DIST_ARCH :=	$(shell rustc --target $(TARGET) --print cfg | \
 			awk -F'"' '/target_arch/ { print $$2 }' | \
-			sed -e 's/x86_64/x64/')
+			sed -e 's/x86_64/x64/' | sed -e 's/aarch64/arm64/')
 DIST_NAME ?=	$(APP)-$(DIST_VERSION)-$(OS)-$(DIST_ARCH)
 EVEBOX_BIN :=	target/$(TARGET)/release/$(APP)$(APP_EXT)
 

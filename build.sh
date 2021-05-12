@@ -83,7 +83,28 @@ build_linux_armv7() {
          -e REAL_UID="$(id -u)" \
          -e REAL_GID="$(id -g)" \
          -e BUILD_REV="${BUILD_REV}" \
-         -e TARGET="armv7-unknown-linux-musleabihf" \
+         -e TARGET="${TARGET}" \
+         -e CARGO="cross" \
+         ${TAG} make dist
+}
+
+build_linux_armv8() {
+    DOCKERFILE="./docker/builder/Dockerfile.armv7"
+    TAG=${BUILDER_TAG:-"evebox/builder:armv8"}
+    TARGET="aarch64-unknown-linux-musl"
+    docker build --rm \
+           --cache-from ${TAG} \
+	   -t ${TAG} \
+	   -f ${DOCKERFILE} .
+    docker run ${IT} --rm \
+         -v "$(pwd)/target/docker/${TARGET}:/src/target:z" \
+         -v "$(pwd)/dist:/src/dist:z" \
+         -v /var/run/docker.sock:/var/run/docker.sock \
+         -w /src \
+         -e REAL_UID="$(id -u)" \
+         -e REAL_GID="$(id -g)" \
+         -e BUILD_REV="${BUILD_REV}" \
+         -e TARGET="${TARGET}" \
          -e CARGO="cross" \
          ${TAG} make dist
 }
@@ -151,15 +172,23 @@ build_docker() {
            --build-arg "SRC=./dist/evebox-${version}-linux-arm/evebox" \
            -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
            -f docker/Dockerfile .
+
+    docker build \
+	   --build-arg "BASE=arm64v8/alpine" \
+           --build-arg "SRC=./dist/evebox-${version}-linux-arm64/evebox" \
+           -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8 \
+           -f docker/Dockerfile .
 }
 
 docker_push() {
     docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64
     docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
+    docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
 
     docker manifest create -a ${DOCKER_NAME}:${DOCKER_TAG_PREFIX} \
            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
-           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
+           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
+           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
     docker manifest annotate --arch arm --variant v7 \
            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX} \
            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
@@ -168,7 +197,8 @@ docker_push() {
     if [ "${LATEST}" = "yes" ]; then
         docker manifest create -a ${DOCKER_NAME}:latest \
                ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
         docker manifest annotate --arch arm --variant v7 \
                ${DOCKER_NAME}:latest \
                ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
@@ -229,6 +259,7 @@ case "$1" in
         ;;
 
     linux-arm)
+        build_linux_armv8
         build_linux_armv7
         ;;
 
@@ -261,6 +292,7 @@ case "$1" in
         build_webapp
         build_linux
         build_linux_armv7
+        build_linux_armv8
         build_windows
         build_macos
         build_docker
