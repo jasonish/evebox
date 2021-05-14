@@ -36,6 +36,7 @@
 pub mod agent;
 pub mod bookmark;
 pub mod commands;
+pub mod config;
 mod datastore;
 mod elastic;
 pub mod eve;

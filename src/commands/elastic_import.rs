@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Jason Ish
+// Copyright (C) 2020-2021 Jason Ish
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -25,6 +25,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::bookmark;
+use crate::config::Config;
 use crate::elastic;
 use crate::elastic::template_installer;
 use crate::eve;
@@ -32,7 +33,6 @@ use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::eve::Processor;
 use crate::importer::Importer;
 use crate::logger::log;
-use crate::settings::Settings;
 
 pub const DEFAULT_BATCH_SIZE: u64 = 300;
 pub const NO_CHECK_CERTIFICATE: &str = "no-check-certificate";
@@ -51,22 +51,25 @@ struct ElasticImportConfig {
 
 pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::error::Error>> {
     let mut config = ElasticImportConfig::default();
-    let mut settings = Settings::new(args);
+    let settings = Config::from_args(args.clone(), Some("config"))?;
 
-    let elastic_url: String = settings.get("elasticsearch")?;
-    let index: String = settings.get("index")?;
+    let elastic_url: String = settings.get_string("elasticsearch")?.unwrap();
+    let index: String = settings.get_string("index")?.unwrap();
     let no_index_suffix: bool = settings.get_bool("no-index-suffix")?;
     config.end = settings.get_bool("end")?;
     config.use_bookmark = settings.get_bool("bookmark")?;
-    config.bookmark_filename = settings.get("bookmark-filename")?;
+
+    config.bookmark_filename = settings.get_string("bookmark-filename")?.unwrap().into();
     config.oneshot = settings.get_bool("oneshot")?;
     config.stdout = settings.get_bool("stdout")?;
     config.disable_geoip = settings.get_bool("geoip.disabled")?;
-    config.geoip_filename = settings.get_or_none("geoip.database-filename")?;
-    config.batch_size = settings.get("batch-size").unwrap_or(DEFAULT_BATCH_SIZE);
-    let bookmark_dir: String = settings.get("bookmark-dir")?;
+    config.geoip_filename = settings.get_string("geoip.database-filename")?;
+    config.batch_size = settings
+        .get_u64("batch-size")?
+        .unwrap_or(DEFAULT_BATCH_SIZE);
+    let bookmark_dir: String = settings.get_string("bookmark-dir")?.unwrap();
     let disable_certificate_validation = settings.get_bool(NO_CHECK_CERTIFICATE)?;
-    let inputs: Vec<String> = settings.get_string_array("input")?;
+    let inputs: Vec<String> = settings.get_strings("input")?;
 
     // Bookmark filename and bookmark directory can't be used together.
     if args.occurrences_of("bookmark-filename") > 0 && args.occurrences_of("bookmark-dir") > 0 {
@@ -115,8 +118,8 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         }
     }
 
-    let username: Option<String> = settings.get_or_none("username")?;
-    let password: Option<String> = settings.get_or_none("password")?;
+    let username: Option<String> = settings.get_string("username")?;
+    let password: Option<String> = settings.get_string("password")?;
 
     let mut client = crate::elastic::ClientBuilder::new(&elastic_url);
     client.disable_certificate_validation(disable_certificate_validation);
@@ -183,23 +186,22 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
 
     let mut filters = Vec::new();
 
-    match settings.get::<Vec<String>>("rules") {
+    match settings.get_strings("rules") {
         Ok(rules) => {
-            let rulemap = crate::rules::load_rules(&rules);
-            let rulemap = Arc::new(rulemap);
-            filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
-                AddRuleFilter {
-                    map: rulemap.clone(),
-                },
-            ));
-            crate::rules::watch_rules(rulemap);
-        }
-        Err(err) => match err {
-            config::ConfigError::NotFound(_) => {}
-            _ => {
-                log::error!("Failed to read input.rules configuration: {}", err);
+            if !rules.is_empty() {
+                let rulemap = crate::rules::load_rules(&rules);
+                let rulemap = Arc::new(rulemap);
+                filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
+                    AddRuleFilter {
+                        map: rulemap.clone(),
+                    },
+                ));
+                crate::rules::watch_rules(rulemap);
             }
-        },
+        }
+        Err(err) => {
+            log::error!("Failed to read input.rules configuration: {}", err);
+        }
     }
 
     let filters = Arc::new(filters);
@@ -283,7 +285,7 @@ async fn import_task(
     let mut filters = Vec::new();
     filters.push(EveFilter::Filters(root_filters));
     if config.disable_geoip {
-        log::debug!("GeoIP disabled")
+        log::debug!("GeoIP disabled");
     } else {
         match crate::geoip::GeoIP::open(config.geoip_filename.clone()) {
             Err(err) => {

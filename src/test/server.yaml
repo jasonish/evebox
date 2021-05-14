@@ -1,0 +1,10 @@
+http:
+  tls:
+    enabled: true
+
+database:
+  elasticsearch:
+    url: http://10.16.1.10:9200
+    username: elastic
+
+database.elasticsearch.port: 9200

@@ -3,6 +3,10 @@ input:
   - /var/log/suricata/eve.json
 
 # Elastic Search URL
+#
+# Environment variables are supported for all configuration paramters with
+# the EVEBOX_ prefix. For example this value could be set with the
+# environment variable EVEBOX_ELASTICSEARCH.
 elasticsearch: http://elasticsearch:9200
 
 # Elastic Search username and password.
@@ -36,6 +40,9 @@ bookmark: true
 
 geoip:
   # GeoIP is enabled by default if a database can be found.
+  #
+  # Nested values can also be set with an environment variable. For example:
+  #    EVEBOX_GEOIP_DISABLED=true
   disabled: true
 
   # Path to the database, if not set some standard locations are
