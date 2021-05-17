@@ -19,13 +19,12 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use rusqlite::params;
-
-use crate::logger::log;
 
 const DELAY: u64 = 60;
 const LIMIT: u64 = 1000;
@@ -54,11 +53,11 @@ pub fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connect
                 count += n;
             }
             Err(err) => {
-                log::error!("Database retention job failed: {}", err);
+                error!("Database retention job failed: {}", err);
             }
         }
         if last_report.elapsed() > report_interval {
-            log::debug!("Events purged in last {:?}: {}", report_interval, count);
+            debug!("Events purged in last {:?}: {}", report_interval, count);
             count = 0;
             last_report = Instant::now();
         }

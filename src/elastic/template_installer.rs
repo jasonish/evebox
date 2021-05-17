@@ -20,21 +20,21 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::elastic::client::Client;
-use crate::logger::log;
+use crate::prelude::*;
 use anyhow::anyhow;
 use anyhow::Result;
 
 pub async fn install_template(client: &Client, template: &str) -> Result<()> {
-    log::debug!("Checking for template \"{}\"", template);
+    debug!("Checking for template \"{}\"", template);
     match client.get_template(template).await {
         Err(err) => {
-            log::warn!("Failed to check if template {} exists: {}", template, err);
+            warn!("Failed to check if template {} exists: {}", template, err);
         }
         Ok(None) => {
-            log::debug!("Did not find template for \"{}\", will install", template);
+            debug!("Did not find template for \"{}\", will install", template);
         }
         Ok(Some(_)) => {
-            log::debug!("Found template for \"{}\"", template);
+            debug!("Found template for \"{}\"", template);
             return Ok(());
         }
     };
@@ -63,7 +63,7 @@ pub async fn install_template(client: &Client, template: &str) -> Result<()> {
         }
     };
 
-    log::info!("Installing template {}", &template);
+    info!("Installing template {}", &template);
     let mut templatejs: serde_json::Value = serde_json::from_str(&template_string)?;
     templatejs["index_patterns"] = format!("{}-*", template).into();
     client

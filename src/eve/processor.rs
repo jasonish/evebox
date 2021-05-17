@@ -28,7 +28,7 @@ use crate::bookmark;
 use crate::eve::filters::EveFilter;
 use crate::eve::reader::EveReader;
 use crate::importer::Importer;
-use crate::logger::log;
+use crate::prelude::*;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -72,20 +72,20 @@ impl Processor {
         if let Some(bookmark_filename) = &self.bookmark_filename {
             match bookmark::Bookmark::from_file(&bookmark_filename) {
                 Err(err) => {
-                    log::warn!("Fail to load bookmark: {}", err);
+                    warn!("Fail to load bookmark: {}", err);
                     return false;
                 }
                 Ok(bookmark) => {
                     if let Err(err) = bookmark.is_valid() {
-                        log::info!("Invalid bookmark found: {}", err);
+                        info!("Invalid bookmark found: {}", err);
                         return false;
                     } else {
-                        log::info!(
+                        info!(
                             "Valid bookmark found, jumping to record: {}",
                             bookmark.offset
                         );
                         if let Err(err) = self.reader.goto_lineno(bookmark.offset) {
-                            log::warn!("Failed to skip to line {}, error={}", bookmark.offset, err);
+                            warn!("Failed to skip to line {}, error={}", bookmark.offset, err);
                             return false;
                         }
                         return true;
@@ -101,10 +101,10 @@ impl Processor {
         if !self.init_from_bookmark() && self.end {
             match self.reader.goto_end() {
                 Ok(n) => {
-                    log::info!("Skipped {} lines jumping to end of file", n);
+                    info!("Skipped {} lines jumping to end of file", n);
                 }
                 Err(err) => {
-                    log::error!("Failed to skip to end of file: {}", err);
+                    error!("Failed to skip to end of file: {}", err);
                 }
             }
         }
@@ -116,7 +116,7 @@ impl Processor {
             if self.report_interval > Duration::from_secs(0)
                 && last_report.elapsed() > self.report_interval
             {
-                log::debug!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
+                debug!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
                 count = 0;
                 commits = 0;
                 eofs = 0;
@@ -124,7 +124,7 @@ impl Processor {
             }
             match self.reader.next_record() {
                 Err(err) => {
-                    log::error!("Failed to read event: {}", err);
+                    error!("Failed to read event: {}", err);
                     self.sleep_for(1000).await;
                 }
                 Ok(None) => {
@@ -133,16 +133,12 @@ impl Processor {
                         self.commit().await;
                         commits += 1;
                     } else if !self.oneshot && self.reader.is_file_changed() {
-                        log::info!(
+                        info!(
                             "File may have been rotated, will reopen: filename={:?}",
                             self.reader.filename
                         );
                         if let Err(err) = self.reader.reopen() {
-                            log::error!(
-                                "Failed to reopen {:?}, error={}",
-                                self.reader.filename,
-                                err
-                            );
+                            error!("Failed to reopen {:?}, error={}", self.reader.filename, err);
                         }
                     }
 
@@ -166,7 +162,7 @@ impl Processor {
                 }
             }
         }
-        log::info!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
+        info!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
     }
 
     async fn sleep_for(&self, millis: u64) {
@@ -182,7 +178,7 @@ impl Processor {
                     break;
                 }
                 Err(err) => {
-                    log::error!("Failed to commit events (will try again): {}", err);
+                    error!("Failed to commit events (will try again): {}", err);
                     self.sleep_for(1000).await;
                 }
             }
@@ -194,7 +190,7 @@ impl Processor {
             if let Some(meta) = self.reader.metadata() {
                 let bookmark = bookmark::Bookmark::from_metadata(&meta);
                 if let Err(err) = bookmark.write(&bookmark_filename) {
-                    log::error!(
+                    error!(
                         "Failed to write bookmark: filename={}, err={}",
                         bookmark_filename.display(),
                         err

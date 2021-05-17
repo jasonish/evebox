@@ -19,12 +19,12 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::convert::Infallible;
 use std::sync::Arc;
 
 use serde::Deserialize;
 
-use crate::logger::log;
 use crate::server::response::Response;
 use crate::server::session::Session;
 use crate::server::AuthenticationType;
@@ -76,7 +76,7 @@ pub async fn post(
                 Some(session)
             }
             Err(err) => {
-                log::warn!("Login failed for username {}: error={}", username, err);
+                warn!("Login failed for username {}: error={}", username, err);
                 None
             }
         },
@@ -86,7 +86,7 @@ pub async fn post(
     if let Some(session) = session {
         let session = Arc::new(session);
         if let Err(err) = context.session_store.put(session.clone()) {
-            log::error!("Failed to add new session to session store: {}", err);
+            error!("Failed to add new session to session store: {}", err);
             return Ok(Response::InternalError(err.to_string()));
         }
         let response = json!({
@@ -103,9 +103,9 @@ pub async fn logout(
     session: Arc<Session>,
 ) -> Result<impl warp::Reply, Infallible> {
     if !context.session_store.delete(&session.session_id) {
-        log::warn!("Logout request for unknown session ID");
+        warn!("Logout request for unknown session ID");
     } else {
-        log::info!("User logged out: {:}", session.username());
+        info!("User logged out: {:}", session.username());
     }
     Ok(Response::Ok)
 }

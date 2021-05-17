@@ -19,6 +19,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -26,7 +27,6 @@ use tokio::sync;
 
 use crate::eve;
 use crate::geoip;
-use crate::logger::log;
 use crate::settings::Settings;
 use crate::sqlite;
 
@@ -39,7 +39,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let input = args.value_of("INPUT").unwrap().to_string();
     let host: String = settings.get("http.host")?;
 
-    log::info!("Using database filename {}", &db_filename);
+    info!("Using database filename {}", &db_filename);
 
     let mut db = sqlite::ConnectionBuilder::filename(Some(&PathBuf::from(&db_filename))).open()?;
     sqlite::init_event_db(&mut db)?;
@@ -49,7 +49,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         let db = db.clone();
         tokio::spawn(async move {
             if let Err(err) = run_import(db, limit, &input).await {
-                log::error!("Import failure: {}", err);
+                error!("Import failure: {}", err);
             }
         })
     };
@@ -57,7 +57,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     if !no_wait {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
-                log::info!("Got CTRL-C, will start server now. Hit CTRL-C again to exit");
+                info!("Got CTRL-C, will start server now. Hit CTRL-C again to exit");
             }
             _ = import_task => {}
         }
@@ -86,20 +86,20 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
                 let context = match crate::server::build_context(config.clone(), Some(ds)).await {
                     Ok(context) => Arc::new(context),
                     Err(err) => {
-                        log::error!("Failed to build server context: {}", err);
+                        error!("Failed to build server context: {}", err);
                         std::process::exit(1);
                     }
                 };
-                log::debug!("Successfully build server context");
+                debug!("Successfully build server context");
                 match crate::server::build_server_try_bind(&config, context).await {
                     Ok(server) => {
-                        log::debug!("Looks like a successful bind to port {}", port);
+                        debug!("Looks like a successful bind to port {}", port);
                         port_tx.send(port).unwrap();
                         server.await;
                         break;
                     }
                     Err(_) => {
-                        log::warn!(
+                        warn!(
                             "Failed to start server on port {}, will try {}",
                             port,
                             port + 1
@@ -113,7 +113,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     let port = port_rx.recv().await.unwrap();
     let url = format!("http://{}:{}", host, port);
-    log::info!("Server started at {}", url);
+    info!("Server started at {}", url);
 
     let connect_url = if host == "0.0.0.0" {
         format!("http://127.0.0.1:{}", port)
@@ -123,10 +123,10 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     if !no_open {
         if let Err(err) = webbrowser::open(&connect_url) {
-            log::error!("Failed to open {} in browser: {}", url, err);
+            error!("Failed to open {} in browser: {}", url, err);
         }
 
-        log::info!(
+        info!(
             "If your browser didn't open, try connecting to {}",
             connect_url
         );
@@ -136,7 +136,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         tokio::signal::ctrl_c()
             .await
             .expect("Failed to register CTRL-C handler");
-        log::info!("Got CTRL-C, exiting");
+        info!("Got CTRL-C, exiting");
         let _ = std::fs::remove_file(&db_filename);
         std::process::exit(0);
     });
@@ -156,7 +156,7 @@ async fn run_import(
     };
     let mut indexer = sqlite::importer::Importer::new(db);
     let mut reader = eve::reader::EveReader::new(&input);
-    log::info!("Reading {} ({} bytes)", input, reader.file_size());
+    info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;
     let mut count = 0;
     loop {
@@ -174,7 +174,7 @@ async fn run_import(
                 let offset = reader.offset();
                 let pct = ((offset as f64 / size as f64) * 100.0) as u64;
                 if pct != last_percent {
-                    log::info!("{}: {} events ({}%)", input, count, pct);
+                    info!("{}: {} events ({}%)", input, count, pct);
                     last_percent = pct;
                 }
                 if indexer.pending() > 300 {
@@ -187,6 +187,6 @@ async fn run_import(
         }
     }
     indexer.commit().await?;
-    log::info!("Read {} events", count);
+    info!("Read {} events", count);
     Ok(())
 }

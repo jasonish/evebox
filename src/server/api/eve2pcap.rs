@@ -21,11 +21,11 @@
 
 use std::sync::Arc;
 
+use crate::prelude::*;
 use serde::Deserialize;
 
 use crate::eve::eve::EveJson;
 use crate::eve::Eve;
-use crate::logger::log;
 use crate::pcap;
 use crate::server::api::ApiError;
 use crate::server::session::Session;
@@ -49,7 +49,7 @@ pub async fn handler(
             let linktype = if let Some(linktype) = &event["xpacket_info"]["linktype"].as_u64() {
                 *linktype as u32
             } else {
-                log::warn!("No usable link-type in event, will use ethernet");
+                warn!("No usable link-type in event, will use ethernet");
                 pcap::LinkType::Ethernet as u32
             };
 
@@ -81,7 +81,7 @@ pub async fn handler(
             })?;
             let packet = pcap::packet_from_payload(&event).map_err(|err| {
                 let msg = format!("Failed to create packet from payload: {}", err);
-                log::warn!("{}", msg);
+                warn!("{}", msg);
                 ApiError::BadRequest(msg)
             })?;
             let pcap_buffer = pcap::create(pcap::LinkType::Raw as u32, ts, &packet);

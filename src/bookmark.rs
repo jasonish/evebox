@@ -20,7 +20,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::eve;
-use crate::logger::log;
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
 #[cfg(unix)]
@@ -62,7 +62,7 @@ impl Bookmark {
         &self,
         filename: &PathBuf,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        log::trace!("Writing bookmark {}", filename.to_str().unwrap());
+        trace!("Writing bookmark {}", filename.to_str().unwrap());
         let mut file = std::fs::File::create(filename)?;
         file.write_all(serde_json::to_string(self).unwrap().as_bytes())?;
         file.write_all(b"\n")?;
@@ -100,7 +100,7 @@ pub fn bookmark_filename(input_filename: &str, bookmark_dir: &str) -> std::path:
     let directory = match std::fs::canonicalize(bookmark_dir) {
         Ok(directory) => directory,
         Err(err) => {
-            log::warn!("Failed to canonicalize directory {}: {}", bookmark_dir, err);
+            warn!("Failed to canonicalize directory {}: {}", bookmark_dir, err);
             std::path::PathBuf::from(bookmark_dir)
         }
     };

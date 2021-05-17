@@ -21,7 +21,7 @@
 
 use super::client::BulkResponse;
 use crate::eve::Eve;
-use crate::logger::log;
+use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct Importer {
@@ -82,7 +82,7 @@ impl Importer {
         self.queue.push("".to_string());
         let mut body = self.queue.join("\n");
         body.push('\n');
-        log::trace!(
+        trace!(
             "Sending Elasticsearch bulk request: bytes={}, events={}",
             body.len(),
             self.queue.len() / 2,
@@ -93,13 +93,13 @@ impl Importer {
         let body: BulkResponse = serde_json::from_str(&body_text)?;
         if body.has_error() {
             if let Some(error) = body.first_error() {
-                log::error!(
+                error!(
                     "Elasticsearch one of more errors to the commit operation, first error: {}",
                     error
                 );
                 return Err(anyhow!("elasticsearch commit error: {}", error));
             } else {
-                log::error!("Elasticsearch reported errors during commit: {}", body_text);
+                error!("Elasticsearch reported errors during commit: {}", body_text);
                 return Err(anyhow!("elasticsearch commit error: {}", body_text));
             }
         }

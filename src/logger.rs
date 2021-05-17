@@ -19,16 +19,11 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-// Export the standard log style marcros under the log module. To use:
-//    use crate::logger::log;
-//    log::info("Something info...");
-pub mod log {
-    pub use tracing::debug;
-    pub use tracing::error;
-    pub use tracing::info;
-    pub use tracing::trace;
-    pub use tracing::warn;
-}
+pub use tracing::debug;
+pub use tracing::error;
+pub use tracing::info;
+pub use tracing::trace;
+pub use tracing::warn;
 
 use tracing::Level;
 

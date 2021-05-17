@@ -22,13 +22,13 @@
 #![allow(clippy::redundant_field_names)]
 
 use clap::{Arg, SubCommand};
-use evebox::logger::{self, log};
-use evebox::version;
+use evebox::prelude::*;
+use evebox::{logger, version};
 
 #[tokio::main]
 async fn main() {
     if let Err(err) = _main().await {
-        log::error!("{}", err);
+        error!("{}", err);
         std::process::exit(1);
     }
 }
@@ -399,7 +399,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         ("sqlite-import", Some(args)) => evebox::commands::sqlite_import::main(args).await,
         ("elastic-import", Some(args)) => {
             if let Err(err) = evebox::commands::elastic_import::main(&args).await {
-                log::error!("{}", err);
+                error!("{}", err);
                 std::process::exit(1);
             }
             Ok(())
@@ -415,12 +415,12 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         }
         (command, _) => {
-            log::error!("command \"{}\" not implemented yet", command);
+            error!("command \"{}\" not implemented yet", command);
             std::process::exit(1);
         }
     };
     if let Err(err) = rc {
-        log::error!("error: {}", err);
+        error!("error: {}", err);
         std::process::exit(1);
     } else {
         Ok(())

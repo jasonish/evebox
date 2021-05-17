@@ -22,7 +22,7 @@
 use std::path::PathBuf;
 
 use crate::eve;
-use crate::logger::log;
+use crate::prelude::*;
 use crate::sqlite;
 use crate::sqlite::ConnectionBuilder;
 use std::sync::{Arc, Mutex};
@@ -32,7 +32,7 @@ pub async fn main(args: &clap::ArgMatches<'_>) -> anyhow::Result<()> {
     let oneshot = args.occurrences_of("oneshot") > 0;
     let end = args.occurrences_of("end") > 0;
     if oneshot {
-        log::info!("sqlite-import: running in oneshot mode");
+        info!("sqlite-import: running in oneshot mode");
     }
 
     let mut c = ConnectionBuilder::filename(Some(&PathBuf::from("./oneshote.sqlite"))).open()?;
@@ -40,14 +40,14 @@ pub async fn main(args: &clap::ArgMatches<'_>) -> anyhow::Result<()> {
     let c = Arc::new(Mutex::new(c));
     let mut indexer = crate::sqlite::importer::Importer::new(c);
 
-    log::info!("Opening {}", input);
+    info!("Opening {}", input);
     let mut eve_reader = eve::EveReader::new(&input);
     if end {
         let mut count = 0;
         if eve_reader.next_record()?.is_some() {
             count += 1;
         }
-        log::info!("Skipped {} records", count);
+        info!("Skipped {} records", count);
     }
 
     loop {
@@ -61,7 +61,7 @@ pub async fn main(args: &clap::ArgMatches<'_>) -> anyhow::Result<()> {
                 }
                 Some(next) => {
                     if let Err(err) = indexer.submit(next.clone()).await {
-                        log::error!("Failed to submit event to SQLite: {}", err);
+                        error!("Failed to submit event to SQLite: {}", err);
                     }
                 }
             }
@@ -70,7 +70,7 @@ pub async fn main(args: &clap::ArgMatches<'_>) -> anyhow::Result<()> {
                 break;
             }
         }
-        log::info!("Committing {} events", count);
+        info!("Committing {} events", count);
         indexer.commit().await?;
         if eof {
             if oneshot {

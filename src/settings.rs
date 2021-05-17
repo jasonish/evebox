@@ -19,7 +19,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-use crate::logger::log;
+use crate::prelude::*;
 use serde::Deserialize;
 
 /// Somewhat of an abstraction/combination of command line arguments and a
@@ -59,7 +59,7 @@ impl Settings {
         // Migrate some old environment variables if found.
         if let Ok(val) = std::env::var("ELASTICSEARCH_URL") {
             if std::env::var("EVEBOX_DATABASE_ELASTICSEARCH_URL").is_err() {
-                log::debug!(
+                debug!(
                     "Setting EVEBOX_DATABASE_ELASTICSEARCH_URL to {} from ELASTICSEARCH_URL",
                     val
                 );
@@ -188,10 +188,9 @@ fn fix_deprecated_env_vars() {
     vars.insert("EVEBOX_TLS_KEY", "EVEBOX_HTTP_TLS_KEY");
     for (old, new) in vars {
         if let Ok(val) = std::env::var(old) {
-            log::info!(
+            info!(
                 "Found deprecated environment variable {}, setting {}",
-                old,
-                new
+                old, new
             );
             std::env::set_var(new, val);
         }

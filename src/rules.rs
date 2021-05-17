@@ -19,6 +19,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::collections::HashMap;
 use std::num::ParseIntError;
 use std::path::PathBuf;
@@ -26,7 +27,6 @@ use std::sync::{Arc, RwLock};
 
 use suricata_rule_parser as parser;
 
-use crate::logger::log;
 use notify::{RecursiveMode, Watcher};
 
 struct Inner {
@@ -92,21 +92,17 @@ impl RuleMap {
         for path in &self.paths.clone() {
             match glob::glob(&path) {
                 Err(err) => {
-                    log::error!("Bad rule path: {}: {}", path, err);
+                    error!("Bad rule path: {}: {}", path, err);
                 }
                 Ok(entries) => {
                     for entry in entries {
                         match entry {
                             Err(err) => {
-                                log::error!("Globbing error loading rules: {}", err);
+                                error!("Globbing error loading rules: {}", err);
                             }
                             Ok(path) => match std::fs::metadata(&path) {
                                 Err(err) => {
-                                    log::error!(
-                                        "Failed to load metadata for file {:?}: {}",
-                                        path,
-                                        err
-                                    );
+                                    error!("Failed to load metadata for file {:?}: {}", path, err);
                                 }
                                 Ok(meta) => {
                                     let mtime =
@@ -116,11 +112,11 @@ impl RuleMap {
                                     let prev = (*inner).files.insert(path.clone(), mtime);
                                     if let Some(prev) = prev {
                                         if mtime > prev {
-                                            log::info!("Reloading rules from {:?}", path);
+                                            info!("Reloading rules from {:?}", path);
                                             (*inner).load_path(&path);
                                         }
                                     } else {
-                                        log::info!("Loading rules from file {:?}", path);
+                                        info!("Loading rules from file {:?}", path);
                                         (*inner).load_path(&path);
                                     }
                                 }
@@ -145,7 +141,7 @@ fn parse_line(line: &str) -> Option<(u64, String)> {
             }
         }
         Err(err) => {
-            log::trace!("Failed to parse as a rule ({}): {}", err, line);
+            trace!("Failed to parse as a rule ({}): {}", err, line);
         }
     }
     return None;
@@ -172,7 +168,7 @@ pub fn load_rules(filenames: &[String]) -> RuleMap {
     }
 
     map.rescan();
-    log::info!("Loaded {} rules", map.count());
+    info!("Loaded {} rules", map.count());
 
     return map;
 }

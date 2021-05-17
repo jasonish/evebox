@@ -19,6 +19,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use crate::eve::eve::EveJson;
@@ -28,7 +29,6 @@ use serde_json::json;
 use crate::datastore::DatastoreError;
 use crate::elastic::AlertQueryOptions;
 use crate::eve;
-use crate::logger::log;
 use crate::server::api::AlertGroupSpec;
 
 impl From<rusqlite::Error> for DatastoreError {
@@ -130,7 +130,7 @@ impl SQLiteEventStore {
             loop {
                 counter += 1;
                 if counter > 128 {
-                    log::error!(
+                    error!(
                         "Aborting query string parsing, too many iterations: {}",
                         query_string
                     );
@@ -206,7 +206,7 @@ impl SQLiteEventStore {
             });
             alerts.push(alert);
         }
-        log::debug!("alert-query: query time: {:?}", t.elapsed());
+        debug!("alert-query: query time: {:?}", t.elapsed());
 
         let response = json!({
             "alerts": alerts,
@@ -357,7 +357,7 @@ impl SQLiteEventStore {
         &self,
         alert_group: AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
-        log::debug!("Archiving alert group: {:?}", alert_group);
+        debug!("Archiving alert group: {:?}", alert_group);
         let sql = "
             UPDATE events
             SET archived = 1
@@ -394,7 +394,7 @@ impl SQLiteEventStore {
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
         let conn = self.connection.lock().unwrap();
         let n = conn.execute(&sql, &params)?;
-        log::debug!("Archived {} alerts", n);
+        debug!("Archived {} alerts", n);
         Ok(())
     }
 
@@ -436,7 +436,7 @@ impl SQLiteEventStore {
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
         let conn = self.connection.lock().unwrap();
         let n = conn.execute(&sql, &params)?;
-        log::info!("Escalated {} alerts in alert group", n);
+        info!("Escalated {} alerts in alert group", n);
         Ok(())
     }
 
@@ -478,7 +478,7 @@ impl SQLiteEventStore {
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
         let conn = self.connection.lock().unwrap();
         let n = conn.execute(&sql, &params)?;
-        log::info!("De-escalated {} alerts in alert group", n);
+        info!("De-escalated {} alerts in alert group", n);
         Ok(())
     }
 

@@ -19,11 +19,11 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::io::BufRead;
 use std::sync::Arc;
 
 use crate::eve::eve::EveJson;
-use crate::logger::log;
 use crate::server::response::Response;
 use crate::server::ServerContext;
 use std::convert::Infallible;
@@ -82,7 +82,7 @@ pub async fn handler(
                     Ok(event) => {
                         count += 1;
                         if let Err(err) = importer.submit(event).await {
-                            log::error!("Failed to submit event to importer: {}", err);
+                            error!("Failed to submit event to importer: {}", err);
                         }
                     }
                 }
@@ -103,7 +103,7 @@ pub async fn handler(
 
     match importer.commit().await {
         Ok(n) => {
-            log::debug!("Committed {} events (received {})", n, count);
+            debug!("Committed {} events (received {})", n, count);
             let response = json!({
                 // Kept capitolized for compatibility with the Go agent.
                 "Count": n,
@@ -111,7 +111,7 @@ pub async fn handler(
             return Ok(Response::Json(response));
         }
         Err(err) => {
-            log::error!("Failed to commit events (received {}): {}", count, err);
+            error!("Failed to commit events (received {}): {}", count, err);
             return Ok(Response::InternalError(err.to_string()));
         }
     }

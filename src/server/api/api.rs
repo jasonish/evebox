@@ -23,13 +23,13 @@ use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use crate::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 use warp::Reply;
 
 use crate::datastore::{self, EventQueryParams};
 use crate::elastic;
-use crate::logger::log;
 use crate::server::filters::GenericQuery;
 use crate::server::response::Response;
 use crate::server::session::Session;
@@ -87,7 +87,7 @@ pub async fn report_dhcp(
                 params.min_timestamp = Some(then);
             }
             None => {
-                log::warn!("Failed to parse time range: {}", time_range);
+                warn!("Failed to parse time range: {}", time_range);
             }
         }
     }
@@ -109,7 +109,7 @@ pub async fn alert_group_star(
     session: Arc<Session>,
     request: AlertGroupSpec,
 ) -> Result<impl warp::Reply, Infallible> {
-    log::info!("Escalated alert group: {:?}", request);
+    info!("Escalated alert group: {:?}", request);
     context
         .datastore
         .escalate_by_alert_group(request, session)
@@ -123,7 +123,7 @@ pub async fn alert_group_unstar(
     _session: Arc<Session>,
     request: AlertGroupSpec,
 ) -> Result<impl warp::Reply, Infallible> {
-    log::info!("De-escalating alert group: {:?}", request);
+    info!("De-escalating alert group: {:?}", request);
     context
         .datastore
         .deescalate_by_alert_group(request)
@@ -140,7 +140,7 @@ pub async fn alert_group_archive(
     match context.datastore.archive_by_alert_group(request).await {
         Ok(_) => Ok(Response::Ok),
         Err(err) => {
-            log::error!("Failed to archive by alert group: {}", err);
+            error!("Failed to archive by alert group: {}", err);
             Ok(Response::InternalError(err.to_string()))
         }
     }
@@ -216,7 +216,7 @@ pub async fn alert_query(
             let now = chrono::Utc::now();
             match parse_then_from_duration(&now, &time_range) {
                 None => {
-                    log::error!("Failed to parse time_range: {}", time_range);
+                    error!("Failed to parse time_range: {}", time_range);
                 }
                 Some(then) => {
                     options.timestamp_gte = Some(then);
@@ -226,17 +226,17 @@ pub async fn alert_query(
     }
 
     if let Some(_ts) = query.min_ts {
-        log::error!("alert_query: min_ts query argument not implemented");
+        error!("alert_query: min_ts query argument not implemented");
     }
 
     if let Some(_ts) = query.max_ts {
-        log::error!("alert_query: max_ts query argument not implemented");
+        error!("alert_query: max_ts query argument not implemented");
     }
 
     match context.datastore.alert_query(options).await {
         Ok(v) => Ok(Response::Json(v).with_session(session)),
         Err(err) => {
-            log::error!("alert query failed: {}", err);
+            error!("alert query failed: {}", err);
             Ok(Response::InternalError(err.to_string()).with_session(session))
         }
     }
@@ -362,10 +362,9 @@ pub async fn event_query(
         match parse_timestamp(&ts) {
             Ok(ts) => params.max_timestamp = Some(ts),
             Err(err) => {
-                log::error!(
+                error!(
                     "event_query: failed to parse max timestamp: \"{}\": error={}",
-                    &ts,
-                    err
+                    &ts, err
                 );
                 return Ok(Response::TimestampParseError(ts));
             }
@@ -378,7 +377,7 @@ pub async fn event_query(
 
     match context.datastore.event_query(params).await {
         Err(err) => {
-            log::error!("error: {}", err);
+            error!("error: {}", err);
             Ok(Response::StatusCode(
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             ))
@@ -418,7 +417,7 @@ fn parse_then_from_duration(now: &DateTime, duration: &str) -> Option<DateTime> 
     let duration = match humantime::Duration::from_str(duration) {
         Ok(duration) => duration,
         Err(err) => {
-            log::error!("Failed to parse duration: {}: {}", duration, err);
+            error!("Failed to parse duration: {}: {}", duration, err);
             return None;
         }
     };
@@ -426,10 +425,9 @@ fn parse_then_from_duration(now: &DateTime, duration: &str) -> Option<DateTime> 
     let duration = match chrono::Duration::from_std(*duration.as_ref()) {
         Ok(x) => x,
         Err(err) => {
-            log::error!(
+            error!(
                 "Failed to convert duration from humantime to chrono: {}: {}",
-                duration,
-                err
+                duration, err
             );
             return None;
         }

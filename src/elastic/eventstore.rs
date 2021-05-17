@@ -34,7 +34,7 @@ use crate::elastic::{
     request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED, ACTION_ESCALATED,
     TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
-use crate::logger::log;
+use crate::prelude::*;
 use crate::server::api;
 use crate::server::session::Session;
 use serde::Serialize;
@@ -119,7 +119,7 @@ impl EventStore {
                 "traffic.id" => "suricata.eve.traffic.id",
                 "traffic.label" => "suricata.eve.traffic.label",
                 _ => {
-                    log::info!("No ECS mapping for {}", name);
+                    info!("No ECS mapping for {}", name);
                     name
                 }
             }
@@ -180,7 +180,7 @@ impl EventStore {
             0
         };
         if updated == 0 {
-            log::warn!(?response, "No events updated");
+            warn!(?response, "No events updated");
         }
 
         Ok(())
@@ -370,7 +370,7 @@ impl EventStore {
         }
 
         // If we get here something in the response was unexpected.
-        log::warn!(
+        warn!(
             "Received unexpected response for get_event_by_id from Elastic Search: {:?}",
             response
         );
@@ -387,7 +387,7 @@ impl EventStore {
         }
         if let Some(query_string) = options.query_string {
             if !query_string.is_empty() {
-                log::info!("Setting query string to: {}", query_string);
+                info!("Setting query string to: {}", query_string);
                 filters.push(query_string_query(&query_string));
             }
         }
@@ -396,14 +396,14 @@ impl EventStore {
         for tag in options.tags {
             if let Some(tag) = tag.strip_prefix('-') {
                 if tag == "archived" {
-                    log::debug!("Rewriting tag {} to {}", tag, "evebox.archived");
+                    debug!("Rewriting tag {} to {}", tag, "evebox.archived");
                     must_not.push(json!({"term": {"tags": "evebox.archived"}}));
                 } else {
                     let j = json!({"term": {"tags": tag}});
                     must_not.push(j);
                 }
             } else if tag == "escalated" {
-                log::debug!("Rewriting tag {} to {}", tag, "evebox.escalated");
+                debug!("Rewriting tag {} to {}", tag, "evebox.escalated");
                 let j = json!({"term": {"tags": "evebox.escalated"}});
                 filters.push(j);
             } else {
@@ -482,7 +482,7 @@ impl EventStore {
                 }
             }
         } else {
-            log::warn!("Elasticsearch response has no aggregations");
+            warn!("Elasticsearch response has no aggregations");
         }
 
         let response = json!({

@@ -19,11 +19,11 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-use crate::logger::log;
+use crate::prelude::*;
 use warp::http::StatusCode;
 
 pub fn new_static_or_404(path: &str) -> Box<dyn warp::Reply> {
-    log::debug!("Loading asset {}", path);
+    debug!("Loading asset {}", path);
     let path = format!("public/{}", path);
     let asset = crate::resource::Resource::get(&path);
     if let Some(asset) = asset {
@@ -45,6 +45,6 @@ pub fn new_static_or_404(path: &str) -> Box<dyn warp::Reply> {
         return Box::new(reply);
     }
 
-    log::warn!("Failed to find static asset: {}", path);
+    warn!("Failed to find static asset: {}", path);
     Box::new(warp::reply::with_status("", StatusCode::NOT_FOUND))
 }

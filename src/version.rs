@@ -19,7 +19,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-use crate::logger::log;
+use crate::prelude::*;
 
 pub const VERSION: &str = std::env!("CARGO_PKG_VERSION");
 pub const TARGET: Option<&str> = std::option_env!("TARGET");
@@ -38,7 +38,7 @@ pub fn build_rev() -> &'static str {
 }
 
 pub fn log_version() {
-    log::info!(
+    info!(
         "This is EveBox version {} (rev: {}); {}",
         version(),
         build_rev(),

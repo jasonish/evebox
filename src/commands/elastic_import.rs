@@ -19,6 +19,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -32,7 +33,6 @@ use crate::eve;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::eve::Processor;
 use crate::importer::Importer;
-use crate::logger::log;
 
 pub const DEFAULT_BATCH_SIZE: u64 = 300;
 pub const NO_CHECK_CERTIFICATE: &str = "no-check-certificate";
@@ -84,7 +84,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
     if config.use_bookmark {
         let path = PathBuf::from(&bookmark_dir);
         if !path.exists() {
-            log::warn!(
+            warn!(
                 "Bookmark directory does not exist: {}",
                 &path.to_str().unwrap()
             );
@@ -95,24 +95,24 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
                     err
                 )
             })?;
-            log::info!("Bookmark directory created: {}", &path.display());
+            info!("Bookmark directory created: {}", &path.display());
         }
 
         // Attempt to write a file into the bookmark directory to make sure its writable
         // by us.
         let tmpfile = path.join(".evebox");
-        log::debug!(
+        debug!(
             "Testing for bookmark directory writability with file: {}",
             tmpfile.display(),
         );
         match std::fs::File::create(&tmpfile) {
             Ok(file) => {
-                log::debug!(directory = ?path, "Bookmark directory is writable:");
+                debug!(directory = ?path, "Bookmark directory is writable:");
                 std::mem::drop(file);
                 let _ = std::fs::remove_file(&tmpfile);
             }
             Err(err) => {
-                log::error!(directory = ?path, "Bookmark directory is not writable: {}:", err);
+                error!(directory = ?path, "Bookmark directory is not writable: {}:", err);
                 std::process::exit(1);
             }
         }
@@ -130,10 +130,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         client.with_password(&password);
     }
 
-    log::debug!(
+    debug!(
         "Elasticsearch index: {}, no-index-suffix={}",
-        &index,
-        no_index_suffix
+        &index, no_index_suffix
     );
     let importer = crate::elastic::importer::Importer::new(client.build(), &index, no_index_suffix);
 
@@ -155,7 +154,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
                 break;
             }
             Err(err) => {
-                log::error!(
+                error!(
                     "Failed to get Elasticsearch version, will try again: error={}",
                     err
                 );
@@ -163,10 +162,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
             }
         }
     }
-    log::info!(
+    info!(
         "Found Elasticsearch version {} at {}",
-        version.version,
-        &elastic_url
+        version.version, &elastic_url
     );
     if version < elastic::Version::parse("7.4.0").unwrap() {
         return Err(format!(
@@ -177,10 +175,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
     }
 
     if let Err(err) = template_installer::install_template(&elastic_client, &index).await {
-        log::error!(
+        error!(
             "Failed to install Elasticsearch template \"{}\": {}",
-            &index,
-            err
+            &index, err
         );
     }
 
@@ -200,7 +197,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
             }
         }
         Err(err) => {
-            log::error!("Failed to read input.rules configuration: {}", err);
+            error!("Failed to read input.rules configuration: {}", err);
         }
     }
 
@@ -217,13 +214,12 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         let mut config = config.clone();
 
         if inputs.len() > 1 && config.use_bookmark {
-            log::debug!("Getting bookmark filename for {}", &input);
+            debug!("Getting bookmark filename for {}", &input);
             let bookmark_filename = bookmark::bookmark_filename(&input, &bookmark_dir);
             config.bookmark_filename = bookmark_filename;
-            log::debug!(
+            debug!(
                 "Bookmark filename for {}: {:?}",
-                input,
-                config.bookmark_filename
+                input, config.bookmark_filename
             );
         } else {
             // Determine bookmark filename for single file.
@@ -251,7 +247,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
         let filters = filters.clone();
         let t = tokio::spawn(async move {
             if let Err(err) = import_task(importer, &input, &config, filters).await {
-                log::error!("{}: {}", input, err);
+                error!("{}: {}", input, err);
             }
             if !config.oneshot {
                 done_tx.send(true).expect("Failed to send done signal");
@@ -260,7 +256,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
 
         // If one shot mode, we process each file sequentially.
         if is_oneshot {
-            log::info!("In oneshot mode, waiting for task to finish.");
+            info!("In oneshot mode, waiting for task to finish.");
             t.await.unwrap();
         }
     }
@@ -278,18 +274,18 @@ async fn import_task(
     config: &ElasticImportConfig,
     root_filters: Arc<Vec<EveFilter>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    log::info!("Starting reader on {}", filename);
+    info!("Starting reader on {}", filename);
     let reader = eve::EveReader::new(filename);
     let bookmark_path = PathBuf::from(&config.bookmark_filename);
 
     let mut filters = Vec::new();
     filters.push(EveFilter::Filters(root_filters));
     if config.disable_geoip {
-        log::debug!("GeoIP disabled");
+        debug!("GeoIP disabled");
     } else {
         match crate::geoip::GeoIP::open(config.geoip_filename.clone()) {
             Err(err) => {
-                log::warn!("Failed to open GeoIP database: {}", err);
+                warn!("Failed to open GeoIP database: {}", err);
             }
             Ok(geoipdb) => {
                 filters.push(crate::eve::filters::EveFilter::GeoIP(geoipdb));

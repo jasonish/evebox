@@ -19,6 +19,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -29,7 +30,6 @@ use serde::Deserialize;
 use crate::eve::eve::EveJson;
 use crate::eve::filters::AddRuleFilter;
 use crate::importer::Importer;
-use crate::logger::log;
 use crate::settings::Settings;
 use crate::{bookmark, eve};
 
@@ -54,7 +54,7 @@ struct InputConfig {
 fn find_config_filename() -> Option<String> {
     let paths = vec!["./agent.yaml", "/etc/evebox/agent.yaml"];
     for path in paths {
-        log::debug!("Checking for {:?}", path);
+        debug!("Checking for {:?}", path);
         let path_buf = PathBuf::from(path);
         if path_buf.exists() {
             return Some(path.to_string());
@@ -74,9 +74,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let mut settings = Settings::new(args);
 
     if settings.get_or_none::<Option<String>>("config")?.is_none() {
-        log::info!("No configuration file provided, checking default locations");
+        info!("No configuration file provided, checking default locations");
         if let Some(config_path) = find_config_filename() {
-            log::info!("Using configuration file {:?}", config_path);
+            info!("Using configuration file {:?}", config_path);
             settings.merge_file(&config_path)?;
         }
     }
@@ -86,7 +86,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let input: InputConfig = match settings.get("input") {
         Ok(input) => input,
         Err(err) => {
-            log::error!("Failed to load inputs: {}", err);
+            error!("Failed to load inputs: {}", err);
             std::process::exit(1);
         }
     };
@@ -100,14 +100,14 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     }
 
     if input_paths.is_empty() {
-        log::error!("no inputs, aborting");
+        error!("no inputs, aborting");
         std::process::exit(1);
     }
 
     let server: String = match settings.get("server.url") {
         Ok(server) => server,
         Err(_) => {
-            log::error!("error: no EveBox server specified");
+            error!("error: no EveBox server specified");
             std::process::exit(1);
         }
     };
@@ -136,7 +136,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     if enable_geoip {
         match crate::geoip::GeoIP::open(None) {
             Err(err) => {
-                log::warn!("Failed to open GeoIP database: {}", err);
+                warn!("Failed to open GeoIP database: {}", err);
             }
             Ok(geoipdb) => {
                 filters.push(crate::eve::filters::EveFilter::GeoIP(geoipdb));
@@ -146,7 +146,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     if let Some(custom_fields) = &input.custom_fields {
         for (field, value) in custom_fields {
-            log::info!("Adding custom field: {} -> {:?}", field, value);
+            info!("Adding custom field: {} -> {:?}", field, value);
             let filter = crate::eve::filters::CustomFieldFilter {
                 field: field.to_string(),
                 value: value.to_string(),
@@ -157,7 +157,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     let filters = Arc::new(filters);
 
-    log::info!("Server: {}", server);
+    info!("Server: {}", server);
 
     let mut input_filenames = Vec::new();
 
@@ -165,7 +165,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         for path in crate::path::expand(&input_path)? {
             let path = path.display().to_string();
             if !path.ends_with(".bookmark") {
-                log::debug!("Found input file {}", &path);
+                debug!("Found input file {}", &path);
                 input_filenames.push(path);
             }
         }
@@ -173,7 +173,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     let mut tasks = Vec::new();
     for filename in input_filenames {
-        log::info!("Starting file processor on {}", filename);
+        info!("Starting file processor on {}", filename);
         let mut end = false;
         let reader = crate::eve::reader::EveReader::new(&filename);
         let client = Client::new(
@@ -192,9 +192,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
             },
         );
         if let Some(bookmark_filename) = &bookmark_filename {
-            log::info!("Using bookmark file: {:?}", bookmark_filename);
+            info!("Using bookmark file: {:?}", bookmark_filename);
         } else {
-            log::warn!(
+            warn!(
                 "Failed to determine usable bookmark filename, will start reading at end of file"
             );
             end = true;
@@ -233,7 +233,7 @@ fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathB
         let filename = PathBuf::from(format!("{}.bookmark", input));
 
         if filename.exists() {
-            log::info!(
+            info!(
                 "Legacy bookmark filename exists, will check if writable: {:?}",
                 &filename
             );
@@ -242,19 +242,18 @@ fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathB
                 .append(true)
                 .open(&filename)
             {
-                log::warn!(
+                warn!(
                     "Failed open deprecated bookmark file {:?}, will not use: {}",
-                    &filename,
-                    err
+                    &filename, err
                 );
             } else {
-                log::info!("Using deprecated bookmark file {:?}", &filename);
+                info!("Using deprecated bookmark file {:?}", &filename);
                 return Some(filename);
             }
         }
 
         let filename = bookmark::bookmark_filename(input, ".");
-        log::info!("Testing bookmark filename {:?}", filename);
+        info!("Testing bookmark filename {:?}", filename);
         match std::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -266,11 +265,11 @@ fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathB
                         let _ = std::fs::remove_file(&filename);
                     }
                 }
-                log::info!("Bookmark file {:?} looks OK", filename);
+                info!("Bookmark file {:?} looks OK", filename);
                 return Some(filename);
             }
             Err(err) => {
-                log::warn!("Error using {:?} as bookmark filename: {}", filename, err);
+                warn!("Error using {:?} as bookmark filename: {}", filename, err);
             }
         }
     }
@@ -308,7 +307,7 @@ impl EveboxImporter {
         let n = self.queue.len();
         let body = self.queue.join("\n");
         let size = body.len();
-        log::trace!("Committing {} events (bytes: {})", n, size);
+        trace!("Committing {} events (bytes: {})", n, size);
         let r = self.client.post("api/1/submit")?.body(body).send().await?;
         let status_code = r.status();
         if status_code != 200 {

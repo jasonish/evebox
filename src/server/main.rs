@@ -19,6 +19,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -34,7 +35,6 @@ use crate::elastic;
 use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
 use crate::eve::processor::Processor;
 use crate::eve::EveReader;
-use crate::logger::log;
 use crate::server::session::Session;
 use crate::server::AuthenticationType;
 use crate::settings::Settings;
@@ -82,7 +82,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     config.http_request_logging = settings.get_bool("http.request-logging")?;
     config.http_reverse_proxy = settings.get_bool("http.reverse-proxy")?;
 
-    log::debug!(
+    debug!(
         "Certificate checks disabled: {}",
         config.no_check_certificate,
     );
@@ -104,7 +104,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     let data_directory_required = config.datastore == "sqlite";
 
     if data_directory_required && config.data_directory.is_none() {
-        log::error!("A data-directory is required");
+        error!("A data-directory is required");
         std::process::exit(1);
     }
 
@@ -120,7 +120,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     if let Some(filename) = config_filename {
         match load_event_services(&filename) {
             Err(err) => {
-                log::error!("Failed to load event-services: {}", err);
+                error!("Failed to load event-services: {}", err);
             }
             Ok(event_services) => {
                 context.event_services = Some(event_services);
@@ -171,7 +171,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         Err(err) => match err {
             config::ConfigError::NotFound(_) => {}
             _ => {
-                log::error!("Failed to read input.rules configuration: {}", err);
+                error!("Failed to read input.rules configuration: {}", err);
             }
         },
     }
@@ -187,16 +187,15 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
             bookmark_directory.as_deref(),
             config.data_directory.as_deref(),
         );
-        log::info!(
+        info!(
             "Using bookmark filename {:?} for input {:?}",
-            bookmark_filename,
-            input_filename
+            bookmark_filename, input_filename
         );
 
         let importer = if let Some(importer) = context.datastore.get_importer() {
             importer
         } else {
-            log::error!("No importer implementation for this database.");
+            error!("No importer implementation for this database.");
             std::process::exit(1);
         };
 
@@ -219,7 +218,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         processor.filters = Arc::new(filters);
         processor.end = end;
         processor.bookmark_filename = bookmark_filename;
-        log::info!("Starting reader for {}", input_filename);
+        info!("Starting reader for {}", input_filename);
         tokio::spawn(async move {
             processor.run().await;
         });
@@ -229,19 +228,17 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     let addr: SocketAddr = format!("{}:{}", config.host, config.port).parse()?;
     let server = build_server(&config, context.clone());
 
-    log::info!(
+    info!(
         "Starting server on {}:{}, tls={}",
-        config.host,
-        config.port,
-        config.tls_enabled
+        config.host, config.port, config.tls_enabled
     );
     if config.tls_enabled {
-        log::debug!("TLS key filename: {:?}", config.tls_key_filename);
-        log::debug!("TLS cert filename: {:?}", config.tls_cert_filename);
+        debug!("TLS key filename: {:?}", config.tls_key_filename);
+        debug!("TLS cert filename: {:?}", config.tls_cert_filename);
         let cert_path = if let Some(filename) = config.tls_cert_filename {
             filename
         } else {
-            log::error!("TLS requested but no certificate filename provided");
+            error!("TLS requested but no certificate filename provided");
             std::process::exit(1);
         };
         let key_path = if let Some(filename) = config.tls_key_filename {
@@ -258,7 +255,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     } else {
         match server.try_bind_ephemeral(addr) {
             Err(err) => {
-                log::error!("Failed to start server: {}", err);
+                error!("Failed to start server: {}", err);
                 std::process::exit(1);
             }
             Ok((_, bound)) => {
@@ -331,7 +328,7 @@ fn http_request_logger(info: Info, reverse_proxy: bool) {
 
     let remote_addr = get_remote_addr(info.remote_addr(), xff, reverse_proxy);
 
-    log::info!(
+    info!(
         "{} {:?} {} {} {}",
         remote_addr,
         info.version(),
@@ -347,10 +344,10 @@ pub async fn build_context(
 ) -> anyhow::Result<ServerContext> {
     let config_repo = if let Some(directory) = &config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
-        log::info!("Configuration database filename: {:?}", filename);
+        info!("Configuration database filename: {:?}", filename);
         ConfigRepo::new(Some(&filename))?
     } else {
-        log::info!("Using temporary in-memory configuration database");
+        info!("Using temporary in-memory configuration database");
         ConfigRepo::new(None)?
     };
     let mut context = ServerContext::new(config, Arc::new(config_repo));
@@ -379,7 +376,7 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
 
             match client.get_version().await {
                 Err(err) => {
-                    log::error!(
+                    error!(
                         "Failed to get Elasticsearch version, things may not work right: error={}",
                         err
                     );
@@ -390,10 +387,9 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
                             "Elasticsearch versions less than 6 are not supported"
                         ));
                     }
-                    log::info!(
+                    info!(
                         "Found Elasticsearch version {} at {}",
-                        version.version,
-                        &config.elastic_url
+                        version.version, &config.elastic_url
                     );
                 }
             }
@@ -411,12 +407,12 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
                 ecs: config.elastic_ecs,
                 no_index_suffix: config.elastic_no_index_suffix,
             };
-            log::debug!("Elasticsearch base index: {}", &eventstore.base_index);
-            log::debug!(
+            debug!("Elasticsearch base index: {}", &eventstore.base_index);
+            debug!(
                 "Elasticsearch search index pattern: {}",
                 &eventstore.index_pattern
             );
-            log::debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
+            debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
             context.features.reporting = true;
             context.features.comments = true;
             context.elastic = Some(eventstore.clone());
@@ -446,7 +442,7 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
             // Setup retention job.
             if let Some(period) = config.database_retention_period {
                 if period > 0 {
-                    log::info!("Setting data retention period to {} days", period);
+                    info!("Setting data retention period to {} days", period);
                     let retention_config = sqlite::retention::RetentionConfig { days: period };
                     let connection = connection;
                     tokio::task::spawn_blocking(|| {
@@ -541,10 +537,9 @@ pub fn build_session_filter(
                         } else {
                             "<anonymous>".to_string()
                         };
-                        log::info!(
+                        info!(
                             "Creating anonymous session for user from {} with name {}",
-                            remote_addr,
-                            username
+                            remote_addr, username
                         );
                         let mut session = Session::new();
                         session.username = Some(username);
@@ -574,20 +569,19 @@ fn get_bookmark_filename(
     // suffixed with ".bookmark".
     let legacy_filename = format!("{}.bookmark", input_filename);
     if let Ok(_meta) = std::fs::metadata(&legacy_filename) {
-        log::warn!(
+        warn!(
             "Found legacy bookmark file, checking if writable: {}",
             &legacy_filename
         );
         match test_writable(&legacy_filename) {
             Ok(_) => {
-                log::warn!("Using legacy bookmark filename: {}", &legacy_filename);
+                warn!("Using legacy bookmark filename: {}", &legacy_filename);
                 return Some(PathBuf::from(&legacy_filename));
             }
             Err(err) => {
-                log::error!(
+                error!(
                     "Legacy bookmark filename not writable, will not use: filename={}, error={}",
-                    legacy_filename,
-                    err
+                    legacy_filename, err
                 );
             }
         }
@@ -596,9 +590,9 @@ fn get_bookmark_filename(
     // Do we have a global data-directory, and is it writable?
     if let Some(directory) = data_directory {
         let bookmark_filename = bookmark::bookmark_filename(input_filename, directory);
-        log::debug!("Checking {:?} for writability", &bookmark_filename);
+        debug!("Checking {:?} for writability", &bookmark_filename);
         if let Err(err) = test_writable(&bookmark_filename) {
-            log::error!("{:?} not writable: {}", &bookmark_filename, err);
+            error!("{:?} not writable: {}", &bookmark_filename, err);
         } else {
             return Some(bookmark_filename);
         }

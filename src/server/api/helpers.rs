@@ -20,7 +20,8 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use super::ApiError;
-use crate::logger::log;
+use crate::prelude::*;
+
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -47,6 +48,6 @@ pub fn mints_from_time_range(
 
 pub fn log_unknown_parameters(handler: &str, map: &HashMap<String, String>) {
     for (key, val) in map {
-        log::warn!("{}: unknown query string key/val: {}={}", handler, key, val);
+        warn!("{}: unknown query string key/val: {}={}", handler, key, val);
     }
 }

@@ -19,10 +19,10 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+pub use crate::logger::debug;
+pub use crate::logger::error;
+pub use crate::logger::info;
+pub use crate::logger::trace;
+pub use crate::logger::warn;
 pub use anyhow::bail;
 pub use anyhow::Result;
-pub use tracing::debug;
-pub use tracing::error;
-pub use tracing::info;
-pub use tracing::trace;
-pub use tracing::warn;

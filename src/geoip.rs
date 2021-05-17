@@ -20,7 +20,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::eve::eve::EveJson;
-use crate::logger::log;
+use crate::prelude::*;
 use maxminddb::{geoip2, Reader};
 use std::sync::Mutex;
 use std::time::{Duration, UNIX_EPOCH};
@@ -55,17 +55,16 @@ impl GeoIP {
         let now = chrono::offset::Utc::now();
         let dt = chrono::NaiveDateTime::from_timestamp(reader.metadata.build_epoch as i64, 0);
         if (reader.metadata.build_epoch as i64) < now.timestamp() - DAYS_28 {
-            log::warn!("GeoIP database older than 4 weeks: {}", dt);
+            warn!("GeoIP database older than 4 weeks: {}", dt);
         }
-        log::info!("Loaded GeoIP database: {}: {}", filename, dt);
+        info!("Loaded GeoIP database: {}: {}", filename, dt);
 
         let last_modified = match Self::get_last_modified(&filename) {
             Ok(last_modified) => last_modified,
             Err(err) => {
-                log::error!(
+                error!(
                     "Failed to get last modified time for {}, file watch will not be enabled: {}",
-                    filename,
-                    err
+                    filename, err
                 );
                 0
             }
@@ -99,22 +98,21 @@ impl GeoIP {
         let last_modified = match Self::get_last_modified(&self.filename) {
             Ok(last_modified) => last_modified,
             Err(err) => {
-                log::warn!(
+                warn!(
                     "Failed to get modification time for GeoIP database file {}: {}: ",
-                    self.filename,
-                    err
+                    self.filename, err
                 );
                 return false;
             }
         };
         let mut updated = false;
         if last_modified <= inner.last_modified {
-            log::debug!("GeoIP database file has not been updated");
+            debug!("GeoIP database file has not been updated");
         } else {
-            log::debug!("GeoIP database file on disk has been updated");
+            debug!("GeoIP database file on disk has been updated");
             match Reader::open_readfile(&self.filename) {
                 Err(err) => {
-                    log::error!("Failed to open new GeoIP database file: {}", err);
+                    error!("Failed to open new GeoIP database file: {}", err);
                 }
                 Ok(new_reader) => {
                     inner.reader = new_reader;
@@ -135,7 +133,7 @@ impl GeoIP {
         if self.check_for_update(&mut inner) {
             let build_time =
                 chrono::NaiveDateTime::from_timestamp(inner.reader.metadata.build_epoch as i64, 0);
-            log::info!("GeoIP database has been updated to {}", build_time);
+            info!("GeoIP database has been updated to {}", build_time);
         }
         let ip: std::net::IpAddr = std::str::FromStr::from_str(addr)?;
         let city = inner.reader.lookup(ip)?;
@@ -225,7 +223,7 @@ lazy_static! {
 fn find_database() -> Option<String> {
     for filename in PATHS.iter() {
         if maxminddb::Reader::open_readfile(filename).is_ok() {
-            log::debug!("Found geoip database file {}", filename);
+            debug!("Found geoip database file {}", filename);
             return Some(filename.to_string());
         }
     }

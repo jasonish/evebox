@@ -20,7 +20,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::eve::eve::EveJson;
-use crate::logger::log;
+use crate::prelude::*;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -132,7 +132,7 @@ impl EveReader {
             let n = reader.read_line(&mut self.line)?;
             if n > 0 {
                 if !self.line.ends_with('\n') {
-                    log::info!(
+                    info!(
                         "Line does not end with new line character, seeking back to {}",
                         pos
                     );
@@ -158,7 +158,7 @@ impl EveReader {
             if let Some(line) = line {
                 if !line.is_empty() {
                     let record: EveJson = serde_json::from_str(line).map_err(|err| {
-                        log::error!("Failed to parse event: {}", err);
+                        error!("Failed to parse event: {}", err);
                         EveReaderError::ParseError(line.to_string())
                     })?;
                     return Ok(Some(record));
@@ -172,7 +172,7 @@ impl EveReader {
         if let Some(reader) = &self.reader {
             match reader.get_ref().metadata() {
                 Err(err) => {
-                    log::error!("Failed to get metadata for open reader: {}", err);
+                    error!("Failed to get metadata for open reader: {}", err);
                     return None;
                 }
                 Ok(meta) => {
@@ -195,7 +195,7 @@ impl EveReader {
         let open: Option<std::fs::Metadata> = if let Some(reader) = &self.reader {
             match reader.get_ref().metadata() {
                 Err(err) => {
-                    log::debug!("Failed to get metadata for open file: {}", err);
+                    debug!("Failed to get metadata for open file: {}", err);
                     None
                 }
                 Ok(m) => Some(m),
@@ -205,7 +205,7 @@ impl EveReader {
         };
         let disk: Option<std::fs::Metadata> = match std::fs::metadata(&self.filename) {
             Err(err) => {
-                log::trace!("Failed to get metadata for file on disk: {}", err);
+                trace!("Failed to get metadata for file on disk: {}", err);
                 None
             }
             Ok(m) => Some(m),
@@ -213,13 +213,13 @@ impl EveReader {
 
         // If neither, then return false.
         if open.is_none() && disk.is_none() {
-            log::trace!("open is none, disk is none -> false");
+            trace!("open is none, disk is none -> false");
             return false;
         }
 
         // If we don't have an open file, but there is an on disk file, return true.
         if open.is_none() && disk.is_some() {
-            log::trace!("open is none, disk is some -> true");
+            trace!("open is none, disk is some -> true");
             return true;
         }
 
@@ -227,7 +227,7 @@ impl EveReader {
         // be in the process of being rotated, or simply deleted with the current file still
         // being written to.
         if open.is_some() && disk.is_none() {
-            log::trace!("open is some, disk is none -> false");
+            trace!("open is some, disk is none -> false");
             return false;
         }
 
@@ -236,14 +236,14 @@ impl EveReader {
         let disk = disk.unwrap();
 
         if self.inode(&disk) != self.inode(&open) {
-            log::trace!("on disk inode differs from open inode -> true");
+            trace!("on disk inode differs from open inode -> true");
             return true;
         }
 
         // If the file on disk is smaller than the open file, it has been rotated
         // or truncated.
         if disk.len() < self.offset {
-            log::trace!("file on disk is smaller than open file -> true");
+            trace!("file on disk is smaller than open file -> true");
             return true;
         }
 

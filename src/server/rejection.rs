@@ -19,13 +19,13 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
 use std::convert::Infallible;
 
 use serde_json::json;
 use warp::reply::Reply;
 
 use crate::datastore::DatastoreError;
-use crate::logger::log;
 use crate::server::api;
 use crate::server::response;
 
@@ -78,7 +78,7 @@ pub async fn rejection_handler(err: warp::Rejection) -> Result<impl warp::Reply,
         ));
     }
 
-    log::warn!(
+    warn!(
         "Unhandled rejection, returning internal server error: {:?}",
         err
     );

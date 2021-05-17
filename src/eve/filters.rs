@@ -20,7 +20,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::eve::eve::EveJson;
-use crate::logger::log;
+use crate::prelude::*;
 use crate::rules::RuleMap;
 
 use serde_json::json;
@@ -125,7 +125,7 @@ impl AddRuleFilter {
             if let Some(rule) = self.map.find_by_sid(*sid) {
                 event["alert"]["rule"] = rule.into();
             } else {
-                log::trace!("Failed to find rule for SID {}", sid);
+                trace!("Failed to find rule for SID {}", sid);
             }
         }
     }

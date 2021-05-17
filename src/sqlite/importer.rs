@@ -21,7 +21,7 @@
 
 use crate::eve::eve::EveJson;
 use crate::eve::{self, Eve};
-use crate::logger::log;
+use crate::prelude::*;
 use rusqlite::types::ToSqlOutput;
 use rusqlite::ToSql;
 use std::error::Error;
@@ -121,12 +121,12 @@ impl Importer {
     }
 
     pub async fn commit(&mut self) -> anyhow::Result<usize> {
-        log::debug!("Commiting {} events", self.pending());
+        debug!("Commiting {} events", self.pending());
         let mut conn = self.conn.lock().unwrap();
         loop {
             match conn.transaction() {
                 Err(err) => {
-                    log::error!("Failed to start transaction, will try again: {}", err);
+                    error!("Failed to start transaction, will try again: {}", err);
                     std::thread::sleep(std::time::Duration::from_secs(1));
                 }
                 Ok(tx) => {
@@ -136,10 +136,9 @@ impl Importer {
                     }
                     if let Err(err) = tx.commit() {
                         let source = err.source();
-                        log::error!(
+                        error!(
                             "Failed to commit events: error={}, source={:?}",
-                            err,
-                            source
+                            err, source
                         );
                         return Err(IndexError::SQLiteError(err).into());
                     }
