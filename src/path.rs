@@ -20,13 +20,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 pub fn expand(path: &str) -> anyhow::Result<Vec<std::path::PathBuf>> {
-    let mut paths = Vec::new();
-    for path in glob::glob(path)? {
-        if let Ok(path) = path {
-            paths.push(path);
-        }
-    }
-    Ok(paths)
+    Ok(glob::glob(path)?.flatten().collect())
 }
 
 #[cfg(test)]

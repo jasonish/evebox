@@ -42,11 +42,10 @@ impl Settings {
     }
 
     fn load(&mut self) {
-        let config_from_args: Option<String> = if let Some(config) = self.args.value_of("config") {
-            Some(config.to_string())
-        } else {
-            None
-        };
+        let config_from_args = self
+            .args
+            .value_of("config")
+            .map(|config| config.to_string());
         if let Some(config) = config_from_args {
             self.merge_file(&config).unwrap();
         } else {

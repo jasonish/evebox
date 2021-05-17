@@ -131,10 +131,8 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     let input_enabled = {
         if settings.args.occurrences_of("input.filename") > 0 {
             true
-        } else if settings.get_bool("input.enabled")? {
-            true
         } else {
-            false
+            settings.get_bool("input.enabled")?
         }
     };
 
@@ -199,18 +197,13 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
             std::process::exit(1);
         };
 
-        let mut filters = Vec::new();
-
-        filters.push(crate::eve::filters::EveFilter::Filters(
-            shared_filters.clone(),
-        ));
-
-        filters.push(
+        let filters = vec![
+            crate::eve::filters::EveFilter::Filters(shared_filters.clone()),
             EveBoxMetadataFilter {
                 filename: Some(input_filename.clone()),
             }
             .into(),
-        );
+        ];
 
         let reader = EveReader::new(input_filename);
         let mut processor = Processor::new(reader, importer.clone());
@@ -317,7 +310,7 @@ fn http_request_logger(info: Info, reverse_proxy: bool) {
                 // First convert value to a string, which could fail, then take the first
                 // address from the comma seaparated list of addresses.
                 if let Ok(val) = value.to_str() {
-                    if let Some(val) = val.split(",").next() {
+                    if let Some(val) = val.split(',').next() {
                         xff = Some(val.trim().to_string());
                         break;
                     }
@@ -485,9 +478,12 @@ pub fn get_remote_addr(
     xff: Option<String>,
     enable_xff: bool,
 ) -> String {
-    if enable_xff && xff.is_some() {
-        return xff.unwrap().split(",").next().unwrap().trim().to_string();
-    } else if let Some(addr) = socket_addr {
+    if enable_xff {
+        if let Some(xff) = xff {
+            return xff.split(',').next().unwrap().trim().to_string();
+        }
+    }
+    if let Some(addr) = socket_addr {
         return addr.ip().to_string();
     }
     return "<unknown-remote>".to_string();

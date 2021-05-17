@@ -48,11 +48,7 @@ impl SessionStore {
 
     pub fn get(&self, session_id: &str) -> Option<Arc<Session>> {
         let cache = self.cache.lock().unwrap();
-        if let Some(session) = cache.get(session_id) {
-            Some(session.clone())
-        } else {
-            None
-        }
+        cache.get(session_id).cloned()
     }
 
     pub fn delete(&self, session_id: &str) -> bool {

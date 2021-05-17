@@ -32,6 +32,7 @@
 #![allow(clippy::module_inception)]
 #![allow(clippy::cognitive_complexity)]
 #![allow(clippy::new_without_default)]
+#![allow(clippy::field_reassign_with_default)]
 
 #[macro_use]
 pub mod logger;

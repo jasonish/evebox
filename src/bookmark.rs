@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
-use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Bookmark {
@@ -50,7 +50,7 @@ impl Bookmark {
         }
     }
 
-    pub fn from_file(filename: &PathBuf) -> Result<Bookmark, Box<dyn std::error::Error>> {
+    pub fn from_file(filename: &Path) -> Result<Bookmark, Box<dyn std::error::Error>> {
         let mut file = std::fs::File::open(filename)?;
         let mut body = String::new();
         file.read_to_string(&mut body)?;
@@ -58,10 +58,7 @@ impl Bookmark {
         Ok(bookmark)
     }
 
-    pub fn write(
-        &self,
-        filename: &PathBuf,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub fn write(&self, filename: &Path) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         trace!("Writing bookmark {}", filename.to_str().unwrap());
         let mut file = std::fs::File::create(filename)?;
         file.write_all(serde_json::to_string(self).unwrap().as_bytes())?;

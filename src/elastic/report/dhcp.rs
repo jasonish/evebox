@@ -31,12 +31,10 @@ pub async fn dhcp_report(
     what: &str,
     params: &EventQueryParams,
 ) -> Result<JsonValue, DatastoreError> {
-    let mut filters = Vec::new();
-
-    filters.push(elastic::request::term_filter(
+    let mut filters = vec![elastic::request::term_filter(
         ds.map_field("event_type"),
         "dhcp",
-    ));
+    )];
 
     if let Some(dt) = params.min_timestamp {
         filters.push(elastic::request::timestamp_gte_filter(dt));

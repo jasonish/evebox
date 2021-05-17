@@ -201,8 +201,10 @@ pub async fn alert_query(
     session: Arc<Session>,
     query: GenericQuery,
 ) -> Result<impl warp::Reply, Infallible> {
-    let mut options = elastic::AlertQueryOptions::default();
-    options.query_string = query.query_string;
+    let mut options = elastic::AlertQueryOptions {
+        query_string: query.query_string,
+        ..elastic::AlertQueryOptions::default()
+    };
 
     if let Some(tags) = query.tags {
         if !tags.is_empty() {

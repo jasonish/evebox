@@ -202,13 +202,14 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         let mut processor = eve::Processor::new(reader, Importer::EveBox(importer));
         processor.end = end;
 
-        let mut local_filters = Vec::new();
-        local_filters.push(crate::eve::filters::EveFilter::Filters(filters.clone()));
-        local_filters.push(crate::eve::filters::EveFilter::EveBoxMetadataFilter(
-            crate::eve::filters::EveBoxMetadataFilter {
-                filename: Some(filename.to_string()),
-            },
-        ));
+        let local_filters = vec![
+            crate::eve::filters::EveFilter::Filters(filters.clone()),
+            crate::eve::filters::EveFilter::EveBoxMetadataFilter(
+                crate::eve::filters::EveBoxMetadataFilter {
+                    filename: Some(filename.to_string()),
+                },
+            ),
+        ];
 
         processor.filters = Arc::new(local_filters);
         processor.report_interval = Duration::from_secs(60);
@@ -312,7 +313,7 @@ impl EveboxImporter {
         let status_code = r.status();
         if status_code != 200 {
             let response_body = r.text().await?;
-            if response_body != "" {
+            if !response_body.is_empty() {
                 if let Ok(error) = serde_json::from_str::<serde_json::Value>(&response_body) {
                     if let serde_json::Value::String(error) = &error["error"] {
                         return Err(anyhow!("{}", error));

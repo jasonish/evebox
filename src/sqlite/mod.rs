@@ -37,11 +37,7 @@ pub struct ConnectionBuilder {
 impl ConnectionBuilder {
     pub fn filename<T: Into<PathBuf>>(filename: Option<T>) -> ConnectionBuilder {
         ConnectionBuilder {
-            filename: if let Some(filename) = filename {
-                Some(filename.into())
-            } else {
-                None
-            },
+            filename: filename.map(|filename| filename.into()),
         }
     }
 
@@ -51,8 +47,7 @@ impl ConnectionBuilder {
             | OpenFlags::SQLITE_OPEN_SHARED_CACHE
             | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
         if let Some(filename) = &self.filename {
-            let c = rusqlite::Connection::open_with_flags(&filename, flags)?;
-            Ok(c)
+            Ok(rusqlite::Connection::open_with_flags(&filename, flags)?)
         } else {
             rusqlite::Connection::open_in_memory()
         }

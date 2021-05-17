@@ -100,9 +100,10 @@ impl Importer {
 
         // Queue event insert.
         let sql = "INSERT INTO events (timestamp, source) VALUES (?1, ?2)";
-        let mut params: Vec<Value> = Vec::new();
-        params.push(Value::I64(ts.timestamp_nanos()));
-        params.push(Value::String(event.to_string()));
+        let params = vec![
+            Value::I64(ts.timestamp_nanos()),
+            Value::String(event.to_string()),
+        ];
         self.queue.push(QueuedRecord {
             sql: sql.to_string(),
             params,
@@ -110,8 +111,7 @@ impl Importer {
 
         // Queue FTS insert.
         let sql = "INSERT INTO events_fts (rowid, source) VALUES (last_insert_rowid(), ?1)";
-        let mut params = Vec::new();
-        params.push(Value::String(values.join(" ")));
+        let params = vec![Value::String(values.join(" "))];
         self.queue.push(QueuedRecord {
             sql: sql.to_string(),
             params,

@@ -44,12 +44,12 @@ impl Protocol {
     }
 }
 
-impl Into<u8> for Protocol {
-    fn into(self) -> u8 {
-        match self {
-            Self::Tcp => 6,
-            Self::Udp => 17,
-            Self::Other(n) => n,
+impl From<Protocol> for u8 {
+    fn from(p: Protocol) -> Self {
+        match p {
+            Protocol::Tcp => 6,
+            Protocol::Udp => 17,
+            Protocol::Other(n) => n,
         }
     }
 }
@@ -229,7 +229,7 @@ impl Ip4Builder {
         pseudo.extend_from_slice(&input[12..20]);
         pseudo.put_u8(0);
         pseudo.put_u8(proto.into());
-        pseudo.put_u16(input.len() as u16 - 20 as u16);
+        pseudo.put_u16(input.len() as u16 - 20_u16);
 
         while pseudo.remaining() > 0 {
             result += pseudo.get_u16() as u32;

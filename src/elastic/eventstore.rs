@@ -541,9 +541,7 @@ impl EventStore {
         &self,
         params: datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
-        let mut filters: Vec<JsonValue> = Vec::new();
-
-        filters.push(request::exists_filter(self.map_field("event_type")));
+        let mut filters = vec![request::exists_filter(self.map_field("event_type"))];
 
         if let Some(event_type) = params.event_type {
             filters.push(request::term_filter(
@@ -609,8 +607,7 @@ impl EventStore {
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut bound_max = None;
         let mut bound_min = None;
-        let mut filters = Vec::new();
-        filters.push(request::exists_filter(self.map_field("event_type")));
+        let mut filters = vec![request::exists_filter(self.map_field("event_type"))];
         if let Some(ts) = params.min_timestamp {
             filters.push(request::timestamp_gte_filter(ts));
             bound_min = Some(format_timestamp(ts));
@@ -733,8 +730,7 @@ impl EventStore {
     }
 
     pub async fn agg(&self, params: datastore::AggParameters) -> Result<JsonValue, DatastoreError> {
-        let mut filters = Vec::new();
-        filters.push(request::exists_filter(self.map_field("event_type")));
+        let mut filters = vec![request::exists_filter(self.map_field("event_type"))];
         if let Some(event_type) = params.event_type {
             filters.push(request::term_filter(
                 self.map_field("event_type"),
@@ -820,9 +816,10 @@ impl EventStore {
         &self,
         params: datastore::FlowHistogramParameters,
     ) -> Result<JsonValue, datastore::DatastoreError> {
-        let mut filters = Vec::new();
-        filters.push(request::term_filter(self.map_field("event_type"), "flow"));
-        filters.push(request::exists_filter(self.map_field("event_type")));
+        let mut filters = vec![
+            request::term_filter(self.map_field("event_type"), "flow"),
+            request::exists_filter(self.map_field("event_type")),
+        ];
         if let Some(mints) = params.mints {
             filters.push(request::timestamp_gte_filter(mints));
         }

@@ -283,8 +283,7 @@ async fn import_task(
     let reader = eve::EveReader::new(filename);
     let bookmark_path = PathBuf::from(&config.bookmark_filename);
 
-    let mut filters = Vec::new();
-    filters.push(EveFilter::Filters(root_filters));
+    let mut filters = vec![EveFilter::Filters(root_filters)];
     if config.disable_geoip {
         debug!("GeoIP disabled");
     } else {

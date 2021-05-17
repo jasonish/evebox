@@ -212,11 +212,11 @@ impl GeoIP {
 
 lazy_static! {
     static ref PATHS: Vec<&'static str> = {
-        let mut v = Vec::new();
-        v.push("/etc/evebox/GeoLite2-City.mmdb");
-        v.push("/usr/local/share/GeoIP/GeoLite2-City.mmdb");
-        v.push("/usr/share/GeoIP/GeoLite2-City.mmdb");
-        v
+        vec![
+            "/etc/evebox/GeoLite2-City.mmdb",
+            "/usr/local/share/GeoIP/GeoLite2-City.mmdb",
+            "/usr/share/GeoIP/GeoLite2-City.mmdb",
+        ]
     };
 }
 

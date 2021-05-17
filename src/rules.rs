@@ -22,7 +22,7 @@
 use crate::prelude::*;
 use std::collections::HashMap;
 use std::num::ParseIntError;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use suricata_rule_parser as parser;
@@ -42,7 +42,7 @@ impl Inner {
         }
     }
 
-    fn load_path(&mut self, path: &PathBuf) {
+    fn load_path(&mut self, path: &Path) {
         if let Ok(file) = std::fs::File::open(&path) {
             let mut reader = std::io::BufReader::new(file);
             while let Ok(Some(line)) = parser::read_next_rule(&mut reader) {
