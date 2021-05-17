@@ -94,9 +94,9 @@ export class ElasticSearchService {
         this.jobCount$.next(this.jobSize());
     }
 
-    submit(func: any) {
+    submit(func: any): Promise<void> {
 
-        let p = new Promise<any>((resolve, reject) => {
+        const p = new Promise<void>((resolve, reject) => {
 
             this.jobs.push((cb: any) => {
                 func().then(() => {
@@ -169,9 +169,9 @@ export class ElasticSearchService {
         });
     }
 
-    escalateAlertGroup(alertGroup: AlertGroup): Promise<string> {
+    escalateAlertGroup(alertGroup: AlertGroup): Promise<void> {
         return this.submit(() => {
-            let request = {
+            const request = {
                 signature_id: alertGroup.event._source.alert.signature_id,
                 src_ip: alertGroup.event._source.src_ip,
                 dest_ip: alertGroup.event._source.dest_ip,
@@ -196,9 +196,9 @@ export class ElasticSearchService {
         });
     }
 
-    removeEscalatedStateFromAlertGroup(alertGroup: AlertGroup): Promise<string> {
+    removeEscalatedStateFromAlertGroup(alertGroup: AlertGroup): Promise<void> {
         return this.submit(() => {
-            let request = {
+            const request = {
                 signature_id: alertGroup.event._source.alert.signature_id,
                 src_ip: alertGroup.event._source.src_ip,
                 dest_ip: alertGroup.event._source.dest_ip,
@@ -213,7 +213,7 @@ export class ElasticSearchService {
     getEventById(id: string): Promise<any> {
         return this.api.client.get(`api/1/event/${id}`).toPromise()
             .then((response: any) => {
-                let event = response;
+                const event = response;
 
                 // Make sure tags exists.
                 if (!event._source.tags) {

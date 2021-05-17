@@ -607,7 +607,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
     }
 
-    escalateAlertGroup(row: any): Promise<string> {
+    escalateAlertGroup(row: any): Promise<void> {
 
         const alertGroup: any = row.event;
 

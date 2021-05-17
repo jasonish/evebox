@@ -2,7 +2,7 @@
 BUILD_REV ?=	$(shell git rev-parse --short HEAD)
 
 BUILD_ARGS +=	--aot
-BUILD_ARGS +=	--prod
+BUILD_ARGS +=	--configuration production
 OUTPUT_PATH =	../resources/public
 
 all: install-deps build
