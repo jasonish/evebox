@@ -22,8 +22,9 @@
 #![allow(clippy::redundant_field_names)]
 
 use clap::{Arg, SubCommand};
+use evebox::logger;
 use evebox::prelude::*;
-use evebox::{logger, version};
+use evebox::version;
 
 #[tokio::main]
 async fn main() {

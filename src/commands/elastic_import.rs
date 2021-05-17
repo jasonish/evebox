@@ -71,6 +71,11 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
     let disable_certificate_validation = settings.get_bool(NO_CHECK_CERTIFICATE)?;
     let inputs: Vec<String> = settings.get_strings("input")?;
 
+    // Bail now if there are no files to read.
+    if inputs.is_empty() {
+        fatal!("no input files provided");
+    }
+
     // Bookmark filename and bookmark directory can't be used together.
     if args.occurrences_of("bookmark-filename") > 0 && args.occurrences_of("bookmark-dir") > 0 {
         return Err("--bookmark-filename and --bookmark-dir not allowed together".into());

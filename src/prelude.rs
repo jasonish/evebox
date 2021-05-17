@@ -21,6 +21,7 @@
 
 pub use crate::logger::debug;
 pub use crate::logger::error;
+//pub use crate::logger::fatal;
 pub use crate::logger::info;
 pub use crate::logger::trace;
 pub use crate::logger::warn;

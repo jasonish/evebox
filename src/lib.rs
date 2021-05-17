@@ -33,6 +33,9 @@
 #![allow(clippy::cognitive_complexity)]
 #![allow(clippy::new_without_default)]
 
+#[macro_use]
+pub mod logger;
+
 pub mod agent;
 pub mod bookmark;
 pub mod commands;
@@ -42,7 +45,6 @@ mod elastic;
 pub mod eve;
 pub mod geoip;
 pub mod importer;
-pub mod logger;
 pub mod packet;
 mod path;
 pub mod pcap;

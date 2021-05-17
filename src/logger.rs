@@ -51,3 +51,10 @@ pub fn init_stdlog() {
         .init()
         .unwrap();
 }
+
+macro_rules! fatal {
+    ($($arg:tt)+) => {
+        error!($($arg),*);
+        std::process::exit(1);
+    };
+}
