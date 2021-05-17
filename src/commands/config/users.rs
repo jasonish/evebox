@@ -107,18 +107,28 @@ fn get_input(prompt: &str) -> Result<String> {
 
 fn add(args: &clap::ArgMatches) -> Result<()> {
     let repo = open_config_repo(args.value_of("data-directory"))?;
-    let username = get_input("Username: ")?;
+
+    let username = if let Some(username) = args.value_of("username") {
+        username.to_string()
+    } else {
+        get_input("Username: ")?
+    };
     if username.is_empty() {
         return Err(anyhow!("empty username not allowed"));
     }
-    let password = rpassword::read_password_from_tty(Some("Password: "))?;
-    if password.is_empty() {
-        return Err(anyhow!("empty password not allowed"));
-    }
-    let confirm = rpassword::read_password_from_tty(Some("Confirm password: "))?;
-    if password != confirm {
-        return Err(anyhow!("passwords to not match"));
-    }
+
+    let password = if let Some(password) = args.value_of("password") {
+        password.to_string()
+    } else {
+        // Yes, we're allowing empty passwords.
+        let password = rpassword::read_password_from_tty(Some("Password: "))?;
+        let confirm = rpassword::read_password_from_tty(Some("Confirm password: "))?;
+        if password != confirm {
+            return Err(anyhow!("passwords to not match"));
+        }
+        password
+    };
+
     repo.add_user(&username, &password)?;
     println!("User added: username=\"{}\"", username);
     Ok(())
