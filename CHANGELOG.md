@@ -3,6 +3,8 @@
 ## unreleased
 
 - Relicense under MIT, oops.
+- Server: Wait for Elasticsearch to be ready:
+  https://github.com/jasonish/evebox/issues/170
 
 ## 0.13.1 - 2021-04-09
 

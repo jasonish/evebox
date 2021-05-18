@@ -42,6 +42,7 @@ use crate::sqlite;
 use crate::sqlite::configrepo::ConfigRepo;
 
 use super::{ServerConfig, ServerContext};
+use crate::elastic::Client;
 use warp::filters::log::{Info, Log};
 
 fn load_event_services(filename: &str) -> anyhow::Result<serde_json::Value> {
@@ -352,6 +353,23 @@ pub async fn build_context(
     Ok(context)
 }
 
+async fn wait_for_version(client: &Client) -> elastic::client::Version {
+    loop {
+        match client.get_version().await {
+            Err(err) => {
+                warn!(
+                    "Failed to get Elasticsearch version, will try again: {}",
+                    err
+                );
+            }
+            Ok(version) => {
+                return version;
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
+}
+
 async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> {
     let config = &context.config;
     match config.datastore.as_ref() {
@@ -367,25 +385,16 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
 
             let client = client.build();
 
-            match client.get_version().await {
-                Err(err) => {
-                    error!(
-                        "Failed to get Elasticsearch version, things may not work right: error={}",
-                        err
-                    );
-                }
-                Ok(version) => {
-                    if version.major < 6 {
-                        return Err(anyhow!(
-                            "Elasticsearch versions less than 6 are not supported"
-                        ));
-                    }
-                    info!(
-                        "Found Elasticsearch version {} at {}",
-                        version.version, &config.elastic_url
-                    );
-                }
+            let version = wait_for_version(&client).await;
+            if version.major < 6 {
+                return Err(anyhow!(
+                    "Elasticsearch versions less than 6 are not supported"
+                ));
             }
+            info!(
+                "Found Elasticsearch version {} at {}",
+                version.version, &config.elastic_url
+            );
 
             let index_pattern = if config.elastic_no_index_suffix {
                 config.elastic_index.clone()
