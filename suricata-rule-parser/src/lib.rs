@@ -225,18 +225,21 @@ fn strip_quotes(input: &str) -> String {
     let mut out: Vec<char> = Vec::new();
 
     for c in input.chars() {
-        if escaped {
-            out.push(c);
-            escaped = false;
-        } else {
-            match c {
-                '"' => {}
-                '\\' => {
-                    escaped = true;
+        match c {
+            '"' if escaped => {
+                out.push(c);
+                escaped = false;
+            }
+            '"' => {}
+            '\\' => {
+                escaped = true;
+            }
+            _ => {
+                if escaped {
+                    out.push('\\');
+                    escaped = false;
                 }
-                _ => {
-                    out.push(c);
-                }
+                out.push(c);
             }
         }
     }
@@ -433,6 +436,17 @@ mod tests {
                 RuleOption {
                     key: String::from("msg"),
                     val: Some(r#"A Quoted Message with escaped " quotes."#.to_string()),
+                }
+            ))
+        );
+
+        assert_eq!(
+            parse_option(r#"pcre:"/^/index\.html/$/U";"#),
+            Ok((
+                "",
+                RuleOption {
+                    key: String::from("pcre"),
+                    val: Some(r#"/^/index\.html/$/U"#.to_string()),
                 }
             ))
         );
