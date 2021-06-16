@@ -1,10 +1,14 @@
 # Change Log
 
-## unreleased
+## 0.14.0 - 2021-06-16
 
 - Relicense under MIT, oops.
 - Server: Wait for Elasticsearch to be ready:
   https://github.com/jasonish/evebox/issues/170
+- Fix add users command to take parameters from command line as
+  documented: https://github.com/jasonish/evebox/issues/173
+- Rule parser: Fix stripping of quotes:
+  https://github.com/jasonish/evebox/issues/177
 
 ## 0.13.1 - 2021-04-09
 
