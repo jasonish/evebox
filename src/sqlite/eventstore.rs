@@ -215,7 +215,6 @@ impl SQLiteEventStore {
         Ok(response)
     }
 
-    // TODO: query string...
     pub async fn event_query(
         &self,
         options: crate::datastore::EventQueryParams,
@@ -254,6 +253,49 @@ impl SQLiteEventStore {
         if let Some(dt) = options.min_timestamp {
             filters.push("timestamp >= ?".to_string());
             params.push(Box::new(dt.timestamp_nanos()));
+        }
+
+        // Query string.
+        let mut use_fts = false;
+        if let Some(query_string) = options.query_string {
+            let mut query_string = query_string.as_str();
+            let mut counter = 0;
+            loop {
+                if query_string.is_empty() {
+                    // Nothing left to parse.
+                    break;
+                }
+
+                // Escape hatch in case of an infinite loop bug in the query parser as it could
+                // use more testing.
+                if counter > 100 {
+                    error!(
+                        "Aborting query string parsing, too many iterations: {}",
+                        query_string
+                    );
+                    break;
+                }
+
+                let (key, val, rem) = crate::sqlite::queryparser::parse_query_string(query_string);
+                if let Some(key) = key {
+                    if let Ok(val) = val.parse::<i64>() {
+                        filters.push(format!("json_extract(events.source, '$.{}') = ?", key));
+                        params.push(Box::new(val));
+                    } else {
+                        filters.push(format!("json_extract(events.source, '$.{}') LIKE ?", key));
+                        params.push(Box::new(format!("%{}%", val)));
+                    }
+                } else if !val.is_empty() {
+                    use_fts = true;
+                    filters.push(format!("events_fts MATCH '{}'", val));
+                }
+                query_string = rem;
+                counter += 1;
+            }
+        }
+        if use_fts {
+            from.push("events_fts");
+            filters.push("events.rowid = events_fts.rowid".to_string());
         }
 
         let order = if let Some(order) = options.order {
