@@ -63,8 +63,22 @@ pub struct RuleHeader {
 
 #[derive(Debug, PartialEq)]
 pub struct RuleOption {
+    /// The name of the rule option.
+    ///
+    /// TODO: Rename to name.
     pub key: String,
+
+    /// The rule option value.
+    ///
+    /// This is optional as not all rule options require a value.
     pub val: Option<String>,
+
+    /// The value prefix.
+    ///
+    /// In the case of a quoted value, this will contain the text
+    /// preceding the first quote.  A common case of this is negated
+    /// content such as: content:!"something";
+    pub prefix: Option<String>,
 }
 
 #[derive(Debug)]
@@ -95,6 +109,7 @@ fn get_option_value(input: &str) -> IResult<&str, String, InternalError<&str>> {
     let mut output = Vec::new();
     let mut escaped = false;
     let mut end = 0;
+    #[allow(clippy::branches_sharing_code)]
     for (i, c) in input.chars().enumerate() {
         end = i;
         if c == '\\' {
@@ -201,6 +216,7 @@ fn parse_option(input: &str) -> IResult<&str, RuleOption, InternalError<&str>> {
             RuleOption {
                 key: String::from(key),
                 val: None,
+                prefix: None,
             },
         ));
     }
@@ -209,20 +225,24 @@ fn parse_option(input: &str) -> IResult<&str, RuleOption, InternalError<&str>> {
     // escaped occurrences of ';'.
     let (input, _) = multispace0(input)?;
     let (input, val) = get_option_value(input)?;
+    let (prefix, val) = strip_quotes(&val);
 
     Ok((
         input,
         RuleOption {
             key: String::from(key),
-            val: Some(strip_quotes(&val)),
+            val: Some(val),
+            prefix,
         },
     ))
 }
 
 /// Remove quotes from a string, but preserve any escaped quotes.
-fn strip_quotes(input: &str) -> String {
+fn strip_quotes(input: &str) -> (Option<String>, String) {
     let mut escaped = false;
+    let mut prefix = None;
     let mut out: Vec<char> = Vec::new();
+    let mut count = 0;
 
     for c in input.chars() {
         match c {
@@ -230,7 +250,13 @@ fn strip_quotes(input: &str) -> String {
                 out.push(c);
                 escaped = false;
             }
-            '"' => {}
+            '"' => {
+                if count == 0 && !out.is_empty() {
+                    prefix = Some(out.iter().collect());
+                    out.truncate(0);
+                }
+                count += 1;
+            }
             '\\' => {
                 escaped = true;
             }
@@ -244,7 +270,7 @@ fn strip_quotes(input: &str) -> String {
         }
     }
 
-    out.iter().collect()
+    (prefix, out.iter().collect())
 }
 
 fn internal_parse_rule(input: &str) -> IResult<&str, TokenizedRule, InternalError<&str>> {
@@ -317,7 +343,7 @@ mod tests {
     fn test_parse_quoted_string() {
         assert_eq!(
             strip_quotes(r#""some quoted \" string""#),
-            r#"some quoted " string"#
+            (None, r#"some quoted " string"#.to_string())
         );
     }
 
@@ -366,9 +392,25 @@ mod tests {
                 RuleOption {
                     key: String::from("http_uri"),
                     val: None,
+                    prefix: None,
                 }
             )),
             parse_option("http_uri;")
+        );
+    }
+
+    #[test]
+    fn test_parse_negated_content() {
+        assert_eq!(
+            parse_option("content:!\"evebox\\\"\";"),
+            Ok((
+                "",
+                RuleOption {
+                    key: String::from("content"),
+                    val: Some("evebox\"".to_string()),
+                    prefix: Some("!".to_string()),
+                }
+            ))
         );
     }
 
@@ -381,6 +423,7 @@ mod tests {
                 RuleOption {
                     key: String::from("msg"),
                     val: Some("value".to_string()),
+                    prefix: None,
                 }
             ))
         );
@@ -392,6 +435,7 @@ mod tests {
                 RuleOption {
                     key: String::from("msg"),
                     val: Some("value with spaces".to_string()),
+                    prefix: None,
                 }
             ))
         );
@@ -403,6 +447,7 @@ mod tests {
                 RuleOption {
                     key: String::from("msg"),
                     val: Some("terminated value with spaces".to_string()),
+                    prefix: None,
                 }
             ))
         );
@@ -414,6 +459,7 @@ mod tests {
                 RuleOption {
                     key: String::from("msg"),
                     val: Some("an escaped ; terminant".to_string()),
+                    prefix: None,
                 }
             ))
         );
@@ -425,6 +471,7 @@ mod tests {
                 RuleOption {
                     key: String::from("msg"),
                     val: Some(r#"A Quoted Message"#.to_string()),
+                    prefix: None,
                 }
             ))
         );
@@ -436,6 +483,7 @@ mod tests {
                 RuleOption {
                     key: String::from("msg"),
                     val: Some(r#"A Quoted Message with escaped " quotes."#.to_string()),
+                    prefix: None,
                 }
             ))
         );
@@ -447,6 +495,7 @@ mod tests {
                 RuleOption {
                     key: String::from("pcre"),
                     val: Some(r#"/^/index\.html/$/U"#.to_string()),
+                    prefix: None,
                 }
             ))
         );
