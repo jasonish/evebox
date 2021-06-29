@@ -12,6 +12,14 @@ on:
 
 jobs:
 
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    container: rust:latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: cargo test --all
+
   webapp:
     name: Webapp
     runs-on: ubuntu-latest
