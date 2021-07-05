@@ -422,13 +422,13 @@ impl EventStore {
             "sort": [{"@timestamp": {"order": "desc"}}],
             "aggs": {
                 "signatures": {
-                    "terms": {"field": self.map_field("alert.signature_id"), "size": 10000},
+                    "terms": {"field": self.map_field("alert.signature_id"), "size": 2000},
                     "aggs": {
                         "sources": {
-                            "terms": {"field": self.map_field("src_ip"), "size": 10000},
+                            "terms": {"field": self.map_field("src_ip"), "size": 1000},
                             "aggs": {
                                 "destinations": {
-                                    "terms": {"field": self.map_field("dest_ip"), "size": 10000},
+                                    "terms": {"field": self.map_field("dest_ip"), "size": 500},
                                     "aggs": {
                                         "escalated": {"filter": {"term": {"tags": "evebox.escalated"}}},
                                         "newest": {"top_hits": {"size": 1, "sort": [{"@timestamp": {"order": "desc"}}]}},
