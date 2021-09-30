@@ -129,8 +129,6 @@ impl SQLiteEventStore {
             params.push(Box::new(ts.timestamp_nanos()));
         }
 
-        let mut use_fts = false;
-
         if let Some(query_string) = options.query_string {
             let mut query_string = query_string.as_str();
             let mut counter = 0;
@@ -153,18 +151,13 @@ impl SQLiteEventStore {
                         params.push(Box::new(format!("%{}%", val)));
                     }
                 } else if !val.is_empty() {
-                    use_fts = true;
-                    filters.push(format!("events_fts MATCH '{}'", val));
+                    filters.push("events.source LIKE ?".into());
+                    params.push(Box::new(format!("%{}%", val)));
                 } else {
                     break;
                 }
                 query_string = rem;
             }
-        }
-
-        if use_fts {
-            from.push("events_fts");
-            filters.push("events.rowid = events_fts.rowid".to_string());
         }
 
         let query = query.replace("%WHERE%", &filters.join(" AND "));
@@ -310,7 +303,6 @@ impl SQLiteEventStore {
         }
 
         // Query string.
-        let mut use_fts = false;
         if let Some(query_string) = options.query_string {
             let mut query_string = query_string.as_str();
             let mut counter = 0;
@@ -340,16 +332,12 @@ impl SQLiteEventStore {
                         params.push(Box::new(format!("%{}%", val)));
                     }
                 } else if !val.is_empty() {
-                    use_fts = true;
-                    filters.push(format!("events_fts MATCH '{}'", val));
+                    filters.push("events.source LIKE ?".into());
+                    params.push(Box::new(format!("%{}%", val)));
                 }
                 query_string = rem;
                 counter += 1;
             }
-        }
-        if use_fts {
-            from.push("events_fts");
-            filters.push("events.rowid = events_fts.rowid".to_string());
         }
 
         let order = if let Some(order) = options.order {

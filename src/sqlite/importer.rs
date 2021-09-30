@@ -109,14 +109,6 @@ impl Importer {
             params,
         });
 
-        // Queue FTS insert.
-        let sql = "INSERT INTO events_fts (rowid, source) VALUES (last_insert_rowid(), ?1)";
-        let params = vec![Value::String(values.join(" "))];
-        self.queue.push(QueuedRecord {
-            sql: sql.to_string(),
-            params,
-        });
-
         Ok(())
     }
 

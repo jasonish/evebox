@@ -1,5 +1,10 @@
 # Change Log
 
+## unreleased
+
+- [sqlite] Remove full text search engine. It provided little benefit on search
+  and was very expensive to add events to.
+
 ## 0.14.0 - 2021-06-16
 
 - Relicense under MIT, oops.
