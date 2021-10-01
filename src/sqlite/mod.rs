@@ -23,6 +23,8 @@ use std::path::PathBuf;
 
 use rusqlite::OpenFlags;
 
+use crate::prelude::*;
+
 pub mod configrepo;
 pub mod eventstore;
 pub mod importer;
@@ -47,7 +49,34 @@ impl ConnectionBuilder {
             | OpenFlags::SQLITE_OPEN_SHARED_CACHE
             | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
         if let Some(filename) = &self.filename {
-            Ok(rusqlite::Connection::open_with_flags(&filename, flags)?)
+            let conn = rusqlite::Connection::open_with_flags(&filename, flags)?;
+
+            // Set WAL mode.
+            let mode = conn.pragma_update_and_check(None, "journal_mode", &"WAL", |row| {
+                let mode: String = row.get(0)?;
+                Ok(mode)
+            });
+            debug!("Result of setting database to WAL mode: {:?}", mode);
+
+            // Set synchronous to NORMAL.
+            if let Err(err) = conn.pragma_update(None, "synchronous", &"NORMAL") {
+                error!("Failed to set pragma synchronous = NORMAL: {:?}", err);
+            }
+            match conn.pragma_query_value(None, "synchronous", |row| {
+                let val: i32 = row.get(0)?;
+                Ok(val)
+            }) {
+                Ok(mode) => {
+                    if mode != 1 {
+                        warn!("Database not in synchronous mode normal, instead: {}", mode);
+                    }
+                }
+                Err(err) => {
+                    warn!("Failed to query pragma synchronous: {:?}", err);
+                }
+            }
+
+            Ok(conn)
         } else {
             rusqlite::Connection::open_in_memory()
         }

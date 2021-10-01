@@ -428,17 +428,13 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
             } else {
                 panic!("data-directory required");
             };
-            let connection_builder = sqlite::ConnectionBuilder {
-                filename: Some(db_filename),
-            };
-            let mut connection = connection_builder.open().unwrap();
-            sqlite::init_event_db(&mut connection).unwrap();
+            let connection_builder =
+                Arc::new(sqlite::ConnectionBuilder::filename(Some(db_filename)));
+            let connection = connection_builder.open()?;
+            sqlite::init_event_db(&mut connection_builder.open()?)?;
             let connection = Arc::new(Mutex::new(connection));
 
-            let eventstore = sqlite::eventstore::SQLiteEventStore {
-                connection: connection.clone(),
-                importer: sqlite::importer::Importer::new(connection.clone()),
-            };
+            let eventstore = sqlite::eventstore::SQLiteEventStore::new(connection_builder);
             context.datastore = Datastore::SQLite(eventstore);
 
             // Setup retention job.

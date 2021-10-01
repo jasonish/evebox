@@ -23,7 +23,7 @@ use crate::eve::eve::EveJson;
 use crate::eve::{self, Eve};
 use crate::prelude::*;
 use rusqlite::types::ToSqlOutput;
-use rusqlite::ToSql;
+use rusqlite::{ToSql, TransactionBehavior};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
@@ -124,7 +124,7 @@ impl Importer {
         debug!("Commiting {} events", self.pending());
         let mut conn = self.conn.lock().unwrap();
         loop {
-            match conn.transaction() {
+            match conn.transaction_with_behavior(TransactionBehavior::Immediate) {
                 Err(err) => {
                     error!("Failed to start transaction, will try again: {}", err);
                     std::thread::sleep(std::time::Duration::from_secs(1));
@@ -132,7 +132,24 @@ impl Importer {
                 Ok(tx) => {
                     let n = self.queue.len();
                     for r in &self.queue {
-                        tx.execute(&r.sql, &r.params)?;
+                        // Run the execute in a loop as we can get lock errors here as well.
+                        //
+                        // TODO: Break out to own function, but need to replace (or get rid of)
+                        //    the mutex with an async aware mutex.
+                        loop {
+                            match tx.execute(&r.sql, rusqlite::params_from_iter(&r.params)) {
+                                Ok(_) => {
+                                    break;
+                                }
+                                Err(err) => {
+                                    if err.to_string().contains("locked") {
+                                        std::thread::sleep(std::time::Duration::from_millis(10));
+                                    } else {
+                                        return Err(anyhow!("execute: {:?}", err));
+                                    }
+                                }
+                            }
+                        }
                     }
                     if let Err(err) = tx.commit() {
                         let source = err.source();

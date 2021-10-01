@@ -23,13 +23,14 @@ use crate::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use crate::eve::eve::EveJson;
-use rusqlite::{params, Connection, Error};
+use rusqlite::{params, Connection, Error, ToSql};
 use serde_json::json;
 
 use crate::datastore::DatastoreError;
 use crate::elastic::AlertQueryOptions;
 use crate::eve;
 use crate::server::api::AlertGroupSpec;
+use crate::sqlite::ConnectionBuilder;
 
 impl From<rusqlite::Error> for DatastoreError {
     fn from(err: Error) -> Self {
@@ -47,13 +48,19 @@ impl From<serde_json::Error> for DatastoreError {
 pub struct SQLiteEventStore {
     pub connection: Arc<Mutex<Connection>>,
     pub importer: super::importer::Importer,
+    pub connection_builder: Arc<ConnectionBuilder>,
 }
 
+type QueryParam = dyn ToSql + Send + Sync + 'static;
+
 impl SQLiteEventStore {
-    pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
+    pub fn new(connection_builder: Arc<ConnectionBuilder>) -> Self {
         Self {
-            connection: conn.clone(),
-            importer: super::importer::Importer::new(conn),
+            connection: Arc::new(Mutex::new(connection_builder.open().unwrap())),
+            importer: super::importer::Importer::new(Arc::new(Mutex::new(
+                connection_builder.open().unwrap(),
+            ))),
+            connection_builder,
         }
     }
 
@@ -65,7 +72,7 @@ impl SQLiteEventStore {
         &self,
         options: AlertQueryOptions,
     ) -> Result<serde_json::Value, DatastoreError> {
-        let mut conn = self.connection.lock().unwrap();
+        let mut conn = self.connection_builder.open().unwrap();
 
         let query = r#"
             SELECT b.count,
@@ -97,12 +104,12 @@ impl SQLiteEventStore {
 
         let mut from: Vec<&str> = Vec::new();
         let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        let mut params: Vec<Box<QueryParam>> = Vec::new();
 
         from.push("events");
 
         filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
-        params.push(Box::new("alert".to_string()));
+        params.push(Box::new("alert"));
 
         for tag in options.tags {
             if tag == "archived" {
@@ -163,18 +170,11 @@ impl SQLiteEventStore {
         let query = query.replace("%WHERE%", &filters.join(" AND "));
         let query = query.replace("%FROM%", &from.join(", "));
 
-        let tx = conn.transaction()?;
-        let mut stmt = tx.prepare(&query)?;
-        let t = std::time::Instant::now();
-
-        let mut rows = stmt.query(params)?;
-
-        let mut alerts = Vec::new();
-
-        while let Some(row) = rows.next()? {
+        let map = |row: &rusqlite::Row| -> Result<serde_json::Value, rusqlite::Error> {
             let count: i64 = row.get(0)?;
             let id: i64 = row.get(1)?;
             let min_ts_nanos: i64 = row.get(2)?;
+
             let escalated_count: i64 = row.get(3)?;
             let archived: i8 = row.get(4)?;
             let mut parsed: serde_json::Value = row.get(5)?;
@@ -204,22 +204,76 @@ impl SQLiteEventStore {
                 "maxTs": &parsed["timestamp"],
                 "escalatedCount": escalated_count,
             });
-            alerts.push(alert);
-        }
-        debug!("alert-query: query time: {:?}", t.elapsed());
 
+            Ok(alert)
+        };
+
+        let alerts = self
+            .retry_query_loop(&mut conn, &query, &params, map)
+            .await
+            .unwrap();
         let response = json!({
             "alerts": alerts,
         });
+        return Ok(response);
+    }
 
-        Ok(response)
+    /// Run a database query in a loop as lock errors can occur, and we should retry those.
+    async fn retry_query_loop<'a, F, T>(
+        &'a self,
+        conn: &'a mut Connection,
+        query: &'a str,
+        params: &Vec<Box<QueryParam>>,
+        f: F,
+    ) -> anyhow::Result<Vec<T>>
+    where
+        F: FnMut(&rusqlite::Row<'_>) -> Result<T, rusqlite::Error> + Copy,
+    {
+        let mut trys = 0;
+        loop {
+            match self.query_and_then(conn, query, params, f) {
+                Ok(result) => {
+                    return Ok(result);
+                }
+                Err(err) => {
+                    if trys < 100 && err.to_string().contains("lock") {
+                        trys += 1;
+                    } else {
+                        return Err(err.into());
+                    }
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }
+
+    /// Wrapper around Rusqlite's query_and_then but encapsulates its all to make it easier
+    /// to run from a retry loop.
+    fn query_and_then<F, T>(
+        &self,
+        conn: &mut Connection,
+        query: &str,
+        params: &Vec<Box<QueryParam>>,
+        f: F,
+    ) -> anyhow::Result<Vec<T>>
+    where
+        F: FnMut(&rusqlite::Row<'_>) -> Result<T, rusqlite::Error>,
+    {
+        let tx = conn.transaction()?;
+        let mut stmt = tx.prepare(&query)?;
+        let rows = stmt.query_and_then(rusqlite::params_from_iter(params), f)?;
+        let mut out_rows = Vec::new();
+        for row in rows {
+            out_rows.push(row?);
+        }
+        return Ok(out_rows);
     }
 
     pub async fn event_query(
         &self,
         options: crate::datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
-        let conn = self.connection.lock().unwrap();
+        let mut conn = self.connection_builder.open()?;
 
         let query = r#"
             SELECT 
@@ -235,7 +289,7 @@ impl SQLiteEventStore {
 
         let mut from: Vec<&str> = Vec::new();
         let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        let mut params: Vec<Box<QueryParam>> = Vec::new();
 
         from.push("events");
         filters.push("json_extract(events.source, '$.event_type') != 'stats'".to_string());
@@ -308,12 +362,7 @@ impl SQLiteEventStore {
         let query = query.replace("%WHERE%", &filters.join(" AND "));
         let query = query.replace("%ORDER%", &order);
 
-        let mut stmt = conn.prepare(&query)?;
-        let mut rows = stmt.query(params)?;
-
-        let mut events = Vec::new();
-
-        while let Some(row) = rows.next()? {
+        let mapper = |row: &rusqlite::Row| -> Result<serde_json::Value, rusqlite::Error> {
             let id: i64 = row.get(0)?;
             let archived: i8 = row.get(1)?;
             let escalated: i8 = row.get(2)?;
@@ -343,8 +392,12 @@ impl SQLiteEventStore {
                 "_id": id,
                 "_source": parsed,
             });
-            events.push(event);
-        }
+            Ok(event)
+        };
+
+        let events = self
+            .retry_query_loop(&mut conn, &query, &params, mapper)
+            .await?;
 
         let response = json!({
             "data": events,
@@ -407,7 +460,7 @@ impl SQLiteEventStore {
         ";
 
         let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        let mut params: Vec<Box<QueryParam>> = Vec::new();
 
         filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
         params.push(Box::new("alert".to_string()));
@@ -434,10 +487,33 @@ impl SQLiteEventStore {
         params.push(Box::new(maxts_nanos));
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-        let conn = self.connection.lock().unwrap();
-        let n = conn.execute(&sql, &params)?;
+
+        let mut conn = self.connection_builder.open()?;
+        let n = self.retry_execute_loop(&mut conn, &sql, &params).await?;
         debug!("Archived {} alerts", n);
         Ok(())
+    }
+
+    async fn retry_execute_loop(
+        &self,
+        conn: &mut Connection,
+        sql: &str,
+        params: &Vec<Box<QueryParam>>,
+    ) -> Result<usize, rusqlite::Error> {
+        let start_time = std::time::Instant::now();
+        loop {
+            match conn.execute(&sql, rusqlite::params_from_iter(params)) {
+                Ok(n) => {
+                    return Ok(n);
+                }
+                Err(err) => {
+                    if start_time.elapsed().as_millis() > 1000 {
+                        return Err(err);
+                    }
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
     }
 
     pub async fn escalate_by_alert_group(
@@ -477,7 +553,7 @@ impl SQLiteEventStore {
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
         let conn = self.connection.lock().unwrap();
-        let n = conn.execute(&sql, &params)?;
+        let n = conn.execute(&sql, rusqlite::params_from_iter(params))?;
         info!("Escalated {} alerts in alert group", n);
         Ok(())
     }
@@ -519,7 +595,7 @@ impl SQLiteEventStore {
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
         let conn = self.connection.lock().unwrap();
-        let n = conn.execute(&sql, &params)?;
+        let n = conn.execute(&sql, rusqlite::params_from_iter(params))?;
         info!("De-escalated {} alerts in alert group", n);
         Ok(())
     }

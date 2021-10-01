@@ -37,7 +37,7 @@ stdlog = { package = "log", version = "0.4.8" }
 thiserror = "1.0.19"
 anyhow = "1.0.31"
 
-rusqlite = { version = "0.23.1", default-features = false, features = ["bundled", "serde_json"] }
+rusqlite = { version = "0.25.3", default-features = false, features = ["bundled", "serde_json"] }
 
 percent-encoding = "2.1.0"
 ulid = "0.3.1"

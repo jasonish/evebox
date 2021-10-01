@@ -41,6 +41,9 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
 
     info!("Using database filename {}", &db_filename);
 
+    let db_connection_builder = Arc::new(sqlite::ConnectionBuilder::filename(Some(
+        &PathBuf::from(&db_filename),
+    )));
     let mut db = sqlite::ConnectionBuilder::filename(Some(&PathBuf::from(&db_filename))).open()?;
     sqlite::init_event_db(&mut db)?;
     let db = Arc::new(Mutex::new(db));
@@ -71,7 +74,8 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         tokio::spawn(async move {
             let mut port = 5636;
             loop {
-                let sqlite_datastore = sqlite::eventstore::SQLiteEventStore::new(db.clone());
+                let sqlite_datastore =
+                    sqlite::eventstore::SQLiteEventStore::new(db_connection_builder.clone());
                 let ds = crate::datastore::Datastore::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port: port.to_string(),
@@ -138,6 +142,8 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
             .expect("Failed to register CTRL-C handler");
         info!("Got CTRL-C, exiting");
         let _ = std::fs::remove_file(&db_filename);
+        let _ = std::fs::remove_file(&format!("{}-shm", &db_filename));
+        let _ = std::fs::remove_file(&format!("{}-wal", &db_filename));
         std::process::exit(0);
     });
 
