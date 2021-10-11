@@ -37,7 +37,7 @@ stdlog = { package = "log", version = "0.4.8" }
 thiserror = "1.0.19"
 anyhow = "1.0.31"
 
-rusqlite = { version = "0.25.3", default-features = false, features = ["bundled", "serde_json"] }
+rusqlite = { version = "= 0.25.3", default-features = false, features = ["bundled", "serde_json"] }
 
 percent-encoding = "2.1.0"
 ulid = "0.3.1"
@@ -59,3 +59,6 @@ serde_yaml = "0.8.13"
 suricata-rule-parser = { path = "./suricata-rule-parser", package = "evebox-suricata-rule-parser", version = "0.2.0" }
 filetime = "0.2.12"
 notify = "4.0.15"
+
+refinery = { version = "0.6.0", features = ["rusqlite"] }
+#refinery = { git = "https://github.com/rust-db/refinery", features = ["rusqlite"] }

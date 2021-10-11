@@ -25,6 +25,7 @@ use std::sync::Mutex;
 
 use rusqlite::params;
 
+use crate::prelude::*;
 use crate::sqlite::ConnectionBuilder;
 
 #[derive(thiserror::Error, Debug)]
@@ -167,6 +168,41 @@ impl ConfigRepo {
 }
 
 pub fn init_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
-    crate::sqlite::init::init_db(db, "configdb")?;
+    let version = db
+        .query_row("select max(version) from schema", params![], |row| {
+            let version: i64 = row.get(0).unwrap();
+            Ok(version)
+        })
+        .unwrap_or(-1);
+    if version == 1 {
+        // We may have to provide the refinery table, unless it was already created.
+        debug!("SQLite configuration DB at v1, checking if setup required for Refinery migrations");
+        let fake_refinery_setup = "CREATE TABLE refinery_schema_history(
+            version INT4 PRIMARY KEY,
+            name VARCHAR(255),
+            applied_on VARCHAR(255),
+            checksum VARCHAR(255))";
+        if let Ok(_) = db.execute(fake_refinery_setup, params![]) {
+            let now = chrono::Local::now();
+            println!("{}", now);
+            if let Err(err) = db.execute(
+                "INSERT INTO refinery_schema_history VALUES (?, ?, ?, ?)",
+                params![1, "Initial", now.to_rfc3339(), "866978575299187291"],
+            ) {
+                error!("Failed to initialize schema history table: {:?}", err);
+            } else {
+                debug!("SQLite configuration DB now setup for refinery migrations");
+            }
+        } else {
+            debug!("Refinery migrations already exist for SQLite configuration DB");
+        }
+    }
+
+    embedded::migrations::runner().run(db).unwrap();
     Ok(())
+}
+
+mod embedded {
+    use refinery::embed_migrations;
+    embed_migrations!("./resources/configdb/migrations");
 }
