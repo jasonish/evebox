@@ -21,6 +21,7 @@
 
 use std::path::PathBuf;
 
+use rusqlite::params;
 use rusqlite::OpenFlags;
 
 use crate::prelude::*;
@@ -28,7 +29,6 @@ use crate::prelude::*;
 pub mod configrepo;
 pub mod eventstore;
 pub mod importer;
-pub mod init;
 pub mod queryparser;
 pub mod retention;
 
@@ -84,11 +84,64 @@ impl ConnectionBuilder {
 }
 
 pub fn init_event_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
-    crate::sqlite::init::init_db(db, "sqlite")
+    let version = db
+        .query_row("select max(version) from schema", params![], |row| {
+            let version: i64 = row.get(0).unwrap();
+            Ok(version)
+        })
+        .unwrap_or(-1);
+    if version > -1 && version <= 3 {
+        // We may have to provide the refinery table, unless it was already created.
+        debug!("SQLite configuration DB at v1, checking if setup required for Refinery migrations");
+        let fake_refinery_setup = "CREATE TABLE refinery_schema_history(
+            version INT4 PRIMARY KEY,
+            name VARCHAR(255),
+            applied_on VARCHAR(255),
+            checksum VARCHAR(255))";
+        if let Ok(_) = db.execute(fake_refinery_setup, params![]) {
+            let now = chrono::Local::now();
+
+            // 1|Initial|2021-10-11T23:13:56.840335347-06:00|13384621929958573416
+            // 2|Indices|2021-10-11T23:13:56.841740878-06:00|18013925364710952777
+            // 3|RemoveFTS|2021-10-11T23:13:56.842433252-06:00|16609115521065592815
+
+            if version > 0 {
+                let params = params![1, "Initial", now.to_rfc3339(), "13384621929958573416"];
+                db.execute(
+                    "INSERT INTO refinery_schema_history VALUES (?, ?, ?, ?)",
+                    params,
+                )?;
+            }
+            if version > 1 {
+                let params = params![2, "Indices", now.to_rfc3339(), "18013925364710952777"];
+                db.execute(
+                    "INSERT INTO refinery_schema_history VALUES (?, ?, ?, ?)",
+                    params,
+                )?;
+            }
+            if version > 2 {
+                let params = params![3, "RemoveFTS", now.to_rfc3339(), "16609115521065592815"];
+                db.execute(
+                    "INSERT INTO refinery_schema_history VALUES (?, ?, ?, ?)",
+                    params,
+                )?;
+            }
+        } else {
+            debug!("Refinery migrations already exist for SQLite configuration DB");
+        }
+    }
+
+    embedded::migrations::runner().run(db).unwrap();
+    Ok(())
 }
 
 /// Format a DateTime object into the SQLite format.
 pub fn format_sqlite_timestamp(dt: &chrono::DateTime<chrono::Utc>) -> String {
     let dt = dt.with_timezone(&chrono::Utc);
     dt.format("%Y-%m-%dT%H:%M:%S.%6f%z").to_string()
+}
+
+mod embedded {
+    use refinery::embed_migrations;
+    embed_migrations!("./resources/sqlite/migrations");
 }
