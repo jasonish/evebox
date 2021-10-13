@@ -45,7 +45,6 @@ import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 import {EveboxFilterInputComponent} from "./shared/filter-input.component";
 import {TopNavComponent} from "./topnav.component";
 import {EveboxHelpComponent} from "./help.component";
-import {AceEditor} from "./ace-editor.component";
 import {EveboxEventTableComponent} from "./event-table.component";
 import {KeyTableDirective} from "./keytable.directive";
 import {EveboxDurationComponent} from "./duration.component";
@@ -110,7 +109,6 @@ import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
         EveboxFilterInputComponent,
         TopNavComponent,
         EveboxHelpComponent,
-        AceEditor,
         EveboxEventTableComponent,
         KeyTableDirective,
         EveboxDurationComponent,
