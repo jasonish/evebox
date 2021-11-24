@@ -67,14 +67,16 @@ export class ThemeService {
     loadTheme(theme: string) {
         switch (theme) {
             case "dark":
-                return require("../../styles/theme-dark.scss").default;
+                document.getElementsByTagName("html")[0].setAttribute("class", "dark");
+                break;
             default:
-                return require("../../styles/theme-light.scss").default;
+                document.getElementsByTagName("html")[0].setAttribute("class", "light");
+                break;
         }
     }
 
     applyTheme(theme: string) {
-        applyTheme(this.loadTheme(theme));
+        this.loadTheme(theme);
 
         // Fixup colors for "Chart" based on theme.
         switch (theme) {
