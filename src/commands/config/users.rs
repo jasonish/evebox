@@ -68,10 +68,10 @@ pub fn users_subcommand() -> clap::App<'static, 'static> {
 
 pub fn main(args: &clap::ArgMatches) -> Result<()> {
     match args.subcommand() {
-        ("list", Some(args)) => list(&args),
-        ("add", Some(args)) => add(&args),
-        ("rm", Some(args)) => remove(&args),
-        ("passwd", Some(args)) => password(&args),
+        ("list", Some(args)) => list(args),
+        ("add", Some(args)) => add(args),
+        ("rm", Some(args)) => remove(args),
+        ("passwd", Some(args)) => password(args),
         _ => {
             return Err(anyhow!("config users: no subcommand provided"));
         }

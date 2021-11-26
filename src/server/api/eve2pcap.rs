@@ -86,7 +86,7 @@ pub(crate) async fn handler(
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
             })?;
             let packet = pcap::packet_from_payload(&event).map_err(|err| {
-                let msg = format!("Failed to create packet from payload: {}", err);
+                let msg = format!("Failed to create packet from payload: {:?}", err);
                 warn!("{}", msg);
                 ApiError::BadRequest(msg)
             })?;
@@ -94,7 +94,7 @@ pub(crate) async fn handler(
             return Ok((headers, pcap_buffer));
         }
         _ => {
-            return Err(ApiError::BadRequest("invalid value for what".to_string()).into());
+            return Err(ApiError::BadRequest("invalid value for what".to_string()));
         }
     }
 }

@@ -216,7 +216,7 @@ impl SQLiteEventStore {
         &'a self,
         conn: &'a mut Connection,
         query: &'a str,
-        params: &Vec<Box<QueryParam>>,
+        params: &[Box<QueryParam>],
         f: F,
     ) -> anyhow::Result<Vec<T>>
     where
@@ -232,7 +232,7 @@ impl SQLiteEventStore {
                     if trys < 100 && err.to_string().contains("lock") {
                         trys += 1;
                     } else {
-                        return Err(err.into());
+                        return Err(err);
                     }
                 }
             }
@@ -246,14 +246,14 @@ impl SQLiteEventStore {
         &self,
         conn: &mut Connection,
         query: &str,
-        params: &Vec<Box<QueryParam>>,
+        params: &[Box<QueryParam>],
         f: F,
     ) -> anyhow::Result<Vec<T>>
     where
         F: FnMut(&rusqlite::Row<'_>) -> Result<T, rusqlite::Error>,
     {
         let tx = conn.transaction()?;
-        let mut stmt = tx.prepare(&query)?;
+        let mut stmt = tx.prepare(query)?;
         let rows = stmt.query_and_then(rusqlite::params_from_iter(params), f)?;
         let mut out_rows = Vec::new();
         for row in rows {
@@ -486,11 +486,11 @@ impl SQLiteEventStore {
         &self,
         conn: &mut Connection,
         sql: &str,
-        params: &Vec<Box<QueryParam>>,
+        params: &[Box<QueryParam>],
     ) -> Result<usize, rusqlite::Error> {
         let start_time = std::time::Instant::now();
         loop {
-            match conn.execute(&sql, rusqlite::params_from_iter(params)) {
+            match conn.execute(sql, rusqlite::params_from_iter(params)) {
                 Ok(n) => {
                     return Ok(n);
                 }
@@ -592,7 +592,7 @@ impl SQLiteEventStore {
         let conn = self.connection.lock().unwrap();
         let query = "UPDATE events SET archived = 1 WHERE rowid = ?";
         let params = params![event_id];
-        let n = conn.execute(&query, params)?;
+        let n = conn.execute(query, params)?;
         if n == 0 {
             Err(DatastoreError::EventNotFound)
         } else {
@@ -604,7 +604,7 @@ impl SQLiteEventStore {
         let conn = self.connection.lock().unwrap();
         let query = "UPDATE events SET escalated = 1 WHERE rowid = ?";
         let params = params![event_id];
-        let n = conn.execute(&query, params)?;
+        let n = conn.execute(query, params)?;
         if n == 0 {
             Err(DatastoreError::EventNotFound)
         } else {
@@ -616,7 +616,7 @@ impl SQLiteEventStore {
         let conn = self.connection.lock().unwrap();
         let query = "UPDATE events SET escalated = 0 WHERE rowid = ?";
         let params = params![event_id];
-        let n = conn.execute(&query, params)?;
+        let n = conn.execute(query, params)?;
         if n == 0 {
             Err(DatastoreError::EventNotFound)
         } else {

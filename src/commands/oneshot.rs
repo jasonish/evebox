@@ -161,7 +161,7 @@ async fn run_import(
         Err(_) => None,
     };
     let mut indexer = sqlite::importer::Importer::new(db);
-    let mut reader = eve::reader::EveReader::new(&input);
+    let mut reader = eve::reader::EveReader::new(input);
     info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;
     let mut count = 0;

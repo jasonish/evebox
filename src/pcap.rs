@@ -177,7 +177,7 @@ pub fn create(linktype: u32, ts: chrono::DateTime<chrono::Utc>, packet: &[u8]) -
     buf.put_u32_le(ts.timestamp_subsec_micros());
     buf.put_u32_le(packet.len() as u32);
     buf.put_u32_le(packet.len() as u32);
-    buf.put_slice(&packet);
+    buf.put_slice(packet);
 
     buf.to_vec()
 }

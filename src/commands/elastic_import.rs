@@ -129,10 +129,10 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
     let mut client = crate::elastic::ClientBuilder::new(&elastic_url);
     client.disable_certificate_validation(disable_certificate_validation);
     if let Some(username) = &username {
-        client.with_username(&username);
+        client.with_username(username);
     }
     if let Some(password) = &password {
-        client.with_password(&password);
+        client.with_password(password);
     }
 
     debug!(
@@ -144,10 +144,10 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::e
     let mut elastic_client = crate::elastic::ClientBuilder::new(&elastic_url);
     elastic_client.disable_certificate_validation(disable_certificate_validation);
     if let Some(username) = &username {
-        elastic_client.with_username(&username);
+        elastic_client.with_username(username);
     }
     if let Some(password) = &password {
-        elastic_client.with_password(&password);
+        elastic_client.with_password(password);
     }
     let elastic_client = elastic_client.build();
 

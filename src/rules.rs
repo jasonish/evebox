@@ -90,7 +90,7 @@ impl RuleMap {
 
     pub fn rescan(&self) {
         for path in &self.paths.clone() {
-            match glob::glob(&path) {
+            match glob::glob(path) {
                 Err(err) => {
                     error!("Bad rule path: {}: {}", path, err);
                 }

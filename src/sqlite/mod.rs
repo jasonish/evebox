@@ -98,7 +98,7 @@ pub fn init_event_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Erro
             name VARCHAR(255),
             applied_on VARCHAR(255),
             checksum VARCHAR(255))";
-        if let Ok(_) = db.execute(fake_refinery_setup, params![]) {
+        if db.execute(fake_refinery_setup, params![]).is_ok() {
             let now = chrono::Local::now();
 
             // 1|Initial|2021-10-11T23:13:56.840335347-06:00|13384621929958573416

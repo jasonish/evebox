@@ -80,7 +80,7 @@ impl Session {
 
     pub fn username(&self) -> &str {
         if let Some(username) = &self.username {
-            return &username;
+            return username;
         } else {
             return "<anonymous>";
         }

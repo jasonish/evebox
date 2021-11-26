@@ -209,15 +209,15 @@ fn extract_values(eve: &EveJson, values: &mut Vec<String>) {
 
 fn reformat_timestamps(eve: &mut EveJson) {
     if let EveJson::String(ts) = &eve["timestamp"] {
-        eve["timestamp"] = reformat_timestamp(&ts).into();
+        eve["timestamp"] = reformat_timestamp(ts).into();
     }
 
     if let EveJson::String(ts) = &eve["flow"]["start"] {
-        eve["flow"]["start"] = reformat_timestamp(&ts).into();
+        eve["flow"]["start"] = reformat_timestamp(ts).into();
     }
 
     if let EveJson::String(ts) = &eve["flow"]["end"] {
-        eve["flow"]["end"] = reformat_timestamp(&ts).into();
+        eve["flow"]["end"] = reformat_timestamp(ts).into();
     }
 }
 

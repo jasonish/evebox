@@ -70,7 +70,7 @@ impl Processor {
     /// from the bookmark (invalid bookmark, file does not exist...).
     fn init_from_bookmark(&mut self) -> bool {
         if let Some(bookmark_filename) = &self.bookmark_filename {
-            match bookmark::Bookmark::from_file(&bookmark_filename) {
+            match bookmark::Bookmark::from_file(bookmark_filename) {
                 Err(err) => {
                     warn!("Fail to load bookmark: {}", err);
                     return false;
@@ -189,7 +189,7 @@ impl Processor {
         if let Some(bookmark_filename) = &self.bookmark_filename {
             if let Some(meta) = self.reader.metadata() {
                 let bookmark = bookmark::Bookmark::from_metadata(&meta);
-                if let Err(err) = bookmark.write(&bookmark_filename) {
+                if let Err(err) = bookmark.write(bookmark_filename) {
                     error!(
                         "Failed to write bookmark: filename={}, err={}",
                         bookmark_filename.display(),

@@ -399,16 +399,16 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         }
         ("sqlite-import", Some(args)) => evebox::commands::sqlite_import::main(args).await,
         ("elastic-import", Some(args)) => {
-            if let Err(err) = evebox::commands::elastic_import::main(&args).await {
+            if let Err(err) = evebox::commands::elastic_import::main(args).await {
                 error!("{}", err);
                 std::process::exit(1);
             }
             Ok(())
         }
         ("elastic-debug", Some(args)) => evebox::commands::elastic_debug::main(args).await,
-        ("oneshot", Some(args)) => evebox::commands::oneshot::main(&args).await,
-        ("agent", Some(args)) => evebox::agent::main(&args).await,
-        ("config", Some(args)) => evebox::commands::config::main(&args),
+        ("oneshot", Some(args)) => evebox::commands::oneshot::main(args).await,
+        ("agent", Some(args)) => evebox::agent::main(args).await,
+        ("config", Some(args)) => evebox::commands::config::main(args),
         ("", None) => {
             parser.print_help().ok();
             // print_help doesn't output a new line at the end, so fix that up...

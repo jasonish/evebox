@@ -41,7 +41,7 @@ pub async fn dhcp_report(
     }
 
     if let Some(query_string) = &params.query_string {
-        filters.push(query_string_query(&query_string));
+        filters.push(query_string_query(query_string));
     }
 
     match what {

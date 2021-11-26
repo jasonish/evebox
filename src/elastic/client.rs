@@ -28,24 +28,24 @@ use std::sync::RwLock;
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
     #[error("request: {0}")]
-    ReqwestError(reqwest::Error),
+    Reqwest(reqwest::Error),
     #[error("json: {0}")]
-    JsonError(serde_json::error::Error),
+    Json(serde_json::error::Error),
     #[error("failed to parse version: {0}")]
-    VersionParseError(String),
+    VersionParse(String),
     #[error("{0}")]
-    StringError(String),
+    String(String),
 }
 
 impl From<reqwest::Error> for ClientError {
     fn from(err: reqwest::Error) -> Self {
-        ClientError::ReqwestError(err)
+        ClientError::Reqwest(err)
     }
 }
 
 impl From<serde_json::error::Error> for ClientError {
     fn from(err: serde_json::error::Error) -> Self {
-        ClientError::JsonError(err)
+        ClientError::Json(err)
     }
 }
 
@@ -142,16 +142,16 @@ impl Client {
         if status_code != StatusCode::OK {
             let body = r.text().await?;
             let err = format!("{} -- {}", status_code.as_u16(), body.trim());
-            return Err(ClientError::StringError(err));
+            return Err(ClientError::String(err));
         }
 
         let body = r.text().await?;
         let response: super::ElasticResponse = serde_json::from_str(&body)?;
         if let Some(error) = response.error {
-            return Err(ClientError::StringError(error.reason));
+            return Err(ClientError::String(error.reason));
         }
         if response.version.is_none() {
-            return Err(ClientError::StringError(
+            return Err(ClientError::String(
                 "request for version did not return a version".to_string(),
             ));
         }
@@ -168,7 +168,7 @@ impl Client {
             return Ok(());
         }
         let body = response.text().await?;
-        return Err(ClientError::StringError(body));
+        return Err(ClientError::String(body));
     }
 
     pub async fn get_template(
@@ -204,15 +204,15 @@ impl Version {
             if i == 0 {
                 major = part
                     .parse::<u64>()
-                    .map_err(|_| ClientError::VersionParseError(s.to_string()))?;
+                    .map_err(|_| ClientError::VersionParse(s.to_string()))?;
             } else if i == 1 {
                 minor = part
                     .parse::<u64>()
-                    .map_err(|_| ClientError::VersionParseError(s.to_string()))?;
+                    .map_err(|_| ClientError::VersionParse(s.to_string()))?;
             } else if i == 2 {
                 patch = part
                     .parse::<u64>()
-                    .map_err(|_| ClientError::VersionParseError(s.to_string()))?;
+                    .map_err(|_| ClientError::VersionParse(s.to_string()))?;
             }
         }
         let version = Version {

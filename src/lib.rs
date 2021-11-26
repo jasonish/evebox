@@ -21,7 +21,7 @@
 
 // Compiler suppressions.
 #![allow(dead_code)]
-// #![allow(unused_imports)]
+//#![allow(unused_imports)]
 
 // Clippy suppressions.
 #![allow(clippy::needless_return)]

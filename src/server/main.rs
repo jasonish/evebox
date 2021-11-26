@@ -127,7 +127,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     let mut context = build_context(config.clone(), None).await?;
 
     if let Some(filename) = config_filename {
-        match load_event_services(&filename) {
+        match load_event_services(filename) {
             Err(err) => {
                 error!("Failed to load event-services: {}", err);
             }
@@ -152,7 +152,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         let input_filename: Option<String> = settings.get_or_none("input.filename")?;
         let mut input_filenames = Vec::new();
         if let Some(input_filename) = &input_filename {
-            for path in crate::path::expand(&input_filename)? {
+            for path in crate::path::expand(input_filename)? {
                 let path = path.display().to_string();
                 input_filenames.push(path);
             }
@@ -310,7 +310,7 @@ pub(crate) async fn build_axum_server(
 ) -> Result<Server<AddrIncoming, IntoMakeServiceWithConnectInfo<Router, SocketAddr>>> {
     let port: u16 = config.port.parse()?;
     let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
-    let service = build_axum_service(context.clone());
+    let service = build_axum_service(context);
     info!("Starting Axum server on {}", &addr);
     let server = axum::Server::try_bind(&addr)?.serve(service);
     Ok(server)
@@ -349,7 +349,7 @@ pub(crate) async fn run_axum_server(
 async fn fallback_handler(uri: Uri) -> impl IntoResponse {
     use axum::http::Response;
 
-    let mut path = uri.path().trim_start_matches("/").to_string();
+    let mut path = uri.path().trim_start_matches('/').to_string();
 
     if path.starts_with("api") {
         return (StatusCode::NOT_FOUND, "api endpoint not found").into_response();
@@ -358,7 +358,6 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
     if path.is_empty() {
         path = "index.html".into();
     }
-    let mut path = format!("{}", path);
     let resource = crate::resource::Resource::get(&path).or_else(|| {
         info!("No resource found for {}, trying public/index.html", &path);
         path = "public/index.html".into();
@@ -552,7 +551,7 @@ impl FromRequest for AxumSessionExtractor {
         let _remote_addr = forwarded_for.unwrap_or_else(|| remote_addr.to_string());
 
         if let Some(session_id) = session_id {
-            let session = context.session_store.get(&session_id);
+            let session = context.session_store.get(session_id);
             if let Some(session) = session {
                 return Ok(AxumSessionExtractor(session));
             }

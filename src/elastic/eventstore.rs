@@ -249,7 +249,7 @@ impl EventStore {
             }
         });
 
-        self.add_tags_by_query(query, tags, &action).await
+        self.add_tags_by_query(query, tags, action).await
     }
 
     async fn remove_tags_by_alert_group(

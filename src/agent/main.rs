@@ -123,7 +123,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let mut filters = Vec::new();
 
     if let Some(rule_files) = &input.rules {
-        let rulemap = crate::rules::load_rules(&rule_files);
+        let rulemap = crate::rules::load_rules(rule_files);
         let rulemap = Arc::new(rulemap);
         filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
             AddRuleFilter {

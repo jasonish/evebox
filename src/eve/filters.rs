@@ -35,23 +35,23 @@ pub enum EveFilter {
 }
 
 impl EveFilter {
-    pub fn run(&self, mut event: &mut EveJson) {
+    pub fn run(&self, event: &mut EveJson) {
         match self {
             EveFilter::GeoIP(geoip) => {
-                geoip.add_geoip_to_eve(&mut event);
+                geoip.add_geoip_to_eve(event);
             }
             EveFilter::EveBoxMetadataFilter(filter) => {
-                filter.run(&mut event);
+                filter.run(event);
             }
             EveFilter::CustomFieldFilter(filter) => {
-                filter.run(&mut event);
+                filter.run(event);
             }
             EveFilter::AddRuleFilter(filter) => {
-                filter.run(&mut event);
+                filter.run(event);
             }
             EveFilter::Filters(filters) => {
                 for filter in filters.iter() {
-                    filter.run(&mut event);
+                    filter.run(event);
                 }
             }
         }

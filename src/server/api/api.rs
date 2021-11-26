@@ -172,7 +172,7 @@ pub(crate) async fn agg(
             error!("api/agg: {:?}", err);
             return (
                 StatusCode::BAD_REQUEST,
-                format!("failed to parse time range"),
+                "failed to parse time range".to_string(),
             )
                 .into_response();
         }
@@ -523,8 +523,8 @@ impl IntoResponse for ApiError {
 
     fn into_response(self) -> Response<Self::Body> {
         let (status, message) = match self {
-            ApiError::TimeRangeParseError(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
-            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            ApiError::TimeRangeParseError(msg) => (StatusCode::BAD_REQUEST, msg),
+            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             ApiError::QueryStringParseError => (
                 StatusCode::BAD_REQUEST,
                 "query string parse error".to_string(),

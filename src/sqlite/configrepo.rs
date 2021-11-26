@@ -182,7 +182,7 @@ pub fn init_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
             name VARCHAR(255),
             applied_on VARCHAR(255),
             checksum VARCHAR(255))";
-        if let Ok(_) = db.execute(fake_refinery_setup, params![]) {
+        if db.execute(fake_refinery_setup, params![]).is_ok() {
             let now = chrono::Local::now();
             println!("{}", now);
             if let Err(err) = db.execute(
