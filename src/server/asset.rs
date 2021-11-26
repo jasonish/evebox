@@ -18,33 +18,3 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-use crate::prelude::*;
-use warp::http::StatusCode;
-
-pub fn new_static_or_404(path: &str) -> Box<dyn warp::Reply> {
-    debug!("Loading asset {}", path);
-    let path = format!("public/{}", path);
-    let asset = crate::resource::Resource::get(&path);
-    if let Some(asset) = asset {
-        let content_type = {
-            if path.ends_with(".html") {
-                "text/html"
-            } else if path.ends_with(".js") {
-                "application/javascript"
-            } else if path.ends_with(".css") {
-                "text/css"
-            } else if path.ends_with(".ico") {
-                "image/x-icon"
-            } else {
-                "application/octet-stream"
-            }
-        };
-        let reply =
-            warp::reply::with_header(asset.into_owned(), "content-type", content_type.to_string());
-        return Box::new(reply);
-    }
-
-    warn!("Failed to find static asset: {}", path);
-    Box::new(warp::reply::with_status("", StatusCode::NOT_FOUND))
-}

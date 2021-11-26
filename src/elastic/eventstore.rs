@@ -270,7 +270,7 @@ impl EventStore {
         self.remove_tags_by_query(query, tags, action).await
     }
 
-    pub async fn archive_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -287,7 +287,7 @@ impl EventStore {
         self.add_tag_by_query(query, TAG_ARCHIVED, &action).await
     }
 
-    pub async fn escalate_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -304,7 +304,7 @@ impl EventStore {
         self.add_tag_by_query(query, TAG_ESCALATED, &action).await
     }
 
-    pub async fn deescalate_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -324,7 +324,7 @@ impl EventStore {
 
     pub async fn comment_event_by_id(
         &self,
-        event_id: String,
+        event_id: &str,
         comment: String,
     ) -> Result<(), DatastoreError> {
         let query = json!({

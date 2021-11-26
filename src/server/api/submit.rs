@@ -20,13 +20,17 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::prelude::*;
+use axum::body::Bytes;
+use axum::extract::{ContentLengthLimit, Extension};
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
+use serde_json::json;
 use std::io::BufRead;
 use std::sync::Arc;
 
 use crate::eve::eve::EveJson;
-use crate::server::response::Response;
 use crate::server::ServerContext;
-use std::convert::Infallible;
 
 struct Reader<'a> {
     buf: &'a [u8],
@@ -45,14 +49,14 @@ impl<'a> Reader<'a> {
     }
 }
 
-pub async fn handler(
-    context: Arc<ServerContext>,
-    body: warp::hyper::body::Bytes,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn handler_new(
+    Extension(context): Extension<Arc<ServerContext>>,
+    ContentLengthLimit(body): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
+) -> impl IntoResponse {
     let mut importer = match context.datastore.get_importer() {
         Some(importer) => importer,
         None => {
-            return Ok(crate::server::response::Response::Unimplemented);
+            return (StatusCode::NOT_IMPLEMENTED, "").into_response();
         }
     };
     let mut errors = Vec::new();
@@ -98,7 +102,7 @@ pub async fn handler(
         let response = json!({
             "Count": 0,
         });
-        return Ok(Response::Json(response));
+        return Json(response).into_response();
     }
 
     match importer.commit().await {
@@ -108,11 +112,11 @@ pub async fn handler(
                 // Kept capitolized for compatibility with the Go agent.
                 "Count": n,
             });
-            return Ok(Response::Json(response));
+            return Json(response).into_response();
         }
         Err(err) => {
             error!("Failed to commit events (received {}): {}", count, err);
-            return Ok(Response::InternalError(err.to_string()));
+            return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
         }
     }
 }

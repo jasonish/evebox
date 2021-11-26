@@ -588,7 +588,7 @@ impl SQLiteEventStore {
         Ok(())
     }
 
-    pub async fn archive_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         let conn = self.connection.lock().unwrap();
         let query = "UPDATE events SET archived = 1 WHERE rowid = ?";
         let params = params![event_id];
@@ -600,7 +600,7 @@ impl SQLiteEventStore {
         }
     }
 
-    pub async fn escalate_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         let conn = self.connection.lock().unwrap();
         let query = "UPDATE events SET escalated = 1 WHERE rowid = ?";
         let params = params![event_id];
@@ -612,7 +612,7 @@ impl SQLiteEventStore {
         }
     }
 
-    pub async fn deescalate_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         let conn = self.connection.lock().unwrap();
         let query = "UPDATE events SET escalated = 0 WHERE rowid = ?";
         let params = params![event_id];

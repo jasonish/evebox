@@ -19,6 +19,10 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use axum::extract::{Extension, Form, Path};
+use axum::http::{Response, StatusCode};
+use axum::response::IntoResponse;
+use axum::Json;
 use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -26,13 +30,11 @@ use std::sync::Arc;
 use crate::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
-use warp::Reply;
 
 use crate::datastore::{self, EventQueryParams};
 use crate::elastic;
 use crate::server::filters::GenericQuery;
-use crate::server::response::Response;
-use crate::server::session::Session;
+use crate::server::main::AxumSessionExtractor;
 use crate::server::ServerContext;
 use crate::{
     datastore::HistogramInterval,
@@ -48,10 +50,10 @@ pub struct AlertGroupSpec {
     pub max_timestamp: String,
 }
 
-pub async fn config(
-    context: Arc<ServerContext>,
-    session: Arc<Session>,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn config(
+    context: Extension<Arc<ServerContext>>,
+    _session: AxumSessionExtractor,
+) -> impl axum::response::IntoResponse {
     let config = json!({
        "ElasticSearchIndex": context.config.elastic_index,
        "event-services": context.event_services,
@@ -60,11 +62,24 @@ pub async fn config(
        },
        "features": &context.features,
     });
-    Ok(warp::reply::with_header(
-        Response::Json(config).into_response(),
-        "x-evebox-session-id",
-        &session.session_id,
-    ))
+    axum::response::Json(config)
+}
+
+pub(crate) async fn get_user(
+    AxumSessionExtractor(session): AxumSessionExtractor,
+) -> impl IntoResponse {
+    let user = serde_json::json!({
+        "username": session.username(),
+    });
+    Json(user)
+}
+
+pub(crate) async fn get_version() -> impl IntoResponse {
+    let version = serde_json::json!({
+        "version": crate::version::version(),
+        "revision": crate::version::build_rev(),
+    });
+    axum::Json(version)
 }
 
 #[derive(Deserialize, Debug)]
@@ -73,12 +88,12 @@ pub struct ReportDhcpRequest {
     pub query_string: Option<String>,
 }
 
-pub async fn report_dhcp(
-    context: Arc<ServerContext>,
-    _session: Arc<Session>,
-    what: String,
-    request: ReportDhcpRequest,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn report_dhcp(
+    Extension(context): Extension<Arc<ServerContext>>,
+    AxumSessionExtractor(_session): AxumSessionExtractor,
+    Path(what): Path<String>,
+    Form(request): Form<ReportDhcpRequest>,
+) -> impl IntoResponse {
     let mut params = EventQueryParams::default();
     if let Some(time_range) = request.time_range {
         let now = chrono::Utc::now();
@@ -99,63 +114,73 @@ pub async fn report_dhcp(
     }
 
     match context.datastore.report_dhcp(&what, &params).await {
-        Ok(response) => Ok(Response::Json(response)),
-        Err(err) => Ok(Response::InternalError(err.to_string())),
+        Ok(response) => Json(response).into_response(),
+        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
     }
 }
 
-pub async fn alert_group_star(
-    context: Arc<ServerContext>,
-    session: Arc<Session>,
-    request: AlertGroupSpec,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn alert_group_star(
+    Extension(context): Extension<Arc<ServerContext>>,
+    AxumSessionExtractor(session): AxumSessionExtractor,
+    Json(request): Json<AlertGroupSpec>,
+) -> impl IntoResponse {
     info!("Escalated alert group: {:?}", request);
     context
         .datastore
         .escalate_by_alert_group(request, session)
         .await
         .unwrap();
-    Ok(Response::Ok)
+    StatusCode::OK
 }
 
-pub async fn alert_group_unstar(
-    context: Arc<ServerContext>,
-    _session: Arc<Session>,
-    request: AlertGroupSpec,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn alert_group_unstar(
+    Extension(context): Extension<Arc<ServerContext>>,
+    AxumSessionExtractor(_session): AxumSessionExtractor,
+    Json(request): Json<AlertGroupSpec>,
+) -> impl IntoResponse {
     info!("De-escalating alert group: {:?}", request);
     context
         .datastore
         .deescalate_by_alert_group(request)
         .await
         .unwrap();
-    Ok(Response::Ok)
+    StatusCode::OK
 }
 
-pub async fn alert_group_archive(
-    context: Arc<ServerContext>,
-    _session: Arc<Session>,
-    request: AlertGroupSpec,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn alert_group_archive(
+    Extension(context): Extension<Arc<ServerContext>>,
+    AxumSessionExtractor(_session): AxumSessionExtractor,
+    Json(request): Json<AlertGroupSpec>,
+) -> impl IntoResponse {
     match context.datastore.archive_by_alert_group(request).await {
-        Ok(_) => Ok(Response::Ok),
+        Ok(_) => StatusCode::OK,
         Err(err) => {
-            error!("Failed to archive by alert group: {}", err);
-            Ok(Response::InternalError(err.to_string()))
+            error!("Failed to archive by alert group: {:?}", err);
+            StatusCode::INTERNAL_SERVER_ERROR
         }
     }
 }
 
-pub async fn agg(
-    context: Arc<ServerContext>,
-    query: GenericQuery,
-    _session: Arc<Session>,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let min_timestamp = query.mints_from_time_range(&chrono::Utc::now())?;
+pub(crate) async fn agg(
+    Extension(context): Extension<Arc<ServerContext>>,
+    AxumSessionExtractor(_session): AxumSessionExtractor,
+    Form(query): Form<GenericQuery>,
+) -> impl IntoResponse {
+    let min_timestamp = match query.mints_from_time_range(&chrono::Utc::now()) {
+        Ok(ts) => ts,
+        Err(err) => {
+            error!("api/agg: {:?}", err);
+            return (
+                StatusCode::BAD_REQUEST,
+                format!("failed to parse time range"),
+            )
+                .into_response();
+        }
+    };
     let agg = if let Some(agg) = query.agg {
         agg
     } else {
-        return Err(ApiError::BadRequest("agg is a required parameter".to_string()).into());
+        return (StatusCode::BAD_REQUEST, "agg is a required parameter").into_response();
     };
     let params = datastore::AggParameters {
         min_timestamp: min_timestamp,
@@ -166,24 +191,30 @@ pub async fn agg(
         size: query.size.unwrap_or(10),
         agg: agg,
     };
-    let agg = context.datastore.agg(params).await?;
-    Ok(Response::Json(agg))
+    match context.datastore.agg(params).await {
+        Err(err) => {
+            error!("Aggregation failed: {:?}", err);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
+        }
+        Ok(agg) => Json(agg).into_response(),
+    }
 }
 
-pub async fn histogram(
-    context: Arc<ServerContext>,
-    query: GenericQuery,
-    _session: Arc<Session>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn histogram(
+    Extension(context): Extension<Arc<ServerContext>>,
+    AxumSessionExtractor(_session): AxumSessionExtractor,
+    Form(query): Form<GenericQuery>,
+) -> impl IntoResponse {
     let mut params = datastore::HistogramParameters::default();
     let now = chrono::Utc::now();
-    params.min_timestamp = query.mints_from_time_range(&now)?;
+    params.min_timestamp = query.mints_from_time_range(&now).unwrap();
     if params.min_timestamp.is_some() {
         params.max_timestamp = Some(now);
     }
     if let Some(interval) = query.interval {
         let interval = HistogramInterval::from_str(&interval)
-            .map_err(|_| ApiError::BadRequest(format!("failed to parse interval: {}", interval)))?;
+            .map_err(|_| ApiError::BadRequest(format!("failed to parse interval: {}", interval)))
+            .unwrap();
         params.interval = Some(interval);
     }
     params.event_type = query.event_type;
@@ -192,15 +223,16 @@ pub async fn histogram(
     params.query_string = query.query_string;
     params.sensor_name = query.sensor_name;
 
-    let response = context.datastore.histogram(params).await?;
-    Ok(Response::Json(response))
+    let response = context.datastore.histogram(params).await.unwrap();
+    Json(response)
 }
 
-pub async fn alert_query(
-    context: Arc<ServerContext>,
-    session: Arc<Session>,
-    query: GenericQuery,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn alert_query(
+    Extension(context): Extension<Arc<ServerContext>>,
+    // Session required to get here.
+    _session: AxumSessionExtractor,
+    axum::extract::Form(query): axum::extract::Form<GenericQuery>,
+) -> impl IntoResponse {
     let mut options = elastic::AlertQueryOptions {
         query_string: query.query_string,
         ..elastic::AlertQueryOptions::default()
@@ -236,104 +268,130 @@ pub async fn alert_query(
     }
 
     match context.datastore.alert_query(options).await {
-        Ok(v) => Ok(Response::Json(v).with_session(session)),
+        Ok(v) => axum::Json(v).into_response(),
         Err(err) => {
             error!("alert query failed: {}", err);
-            Ok(Response::InternalError(err.to_string()).with_session(session))
+            (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
         }
     }
 }
 
-pub async fn get_event_by_id(
-    context: Arc<ServerContext>,
-    event_id: String,
-    _session: Arc<Session>,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn get_event_by_id(
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(event_id): axum::extract::Path<String>,
+    _session: AxumSessionExtractor,
+) -> impl IntoResponse {
     match context.datastore.get_event_by_id(event_id.clone()).await {
-        Err(err) => Ok(Response::InternalError(err.to_string())),
-        Ok(Some(event)) => Ok(Response::Json(event)),
-        Ok(None) => Ok(Response::NotFound),
+        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+        Ok(Some(event)) => Json(event).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "not found").into_response(),
     }
 }
 
-pub async fn archive_event_by_id(
-    context: Arc<ServerContext>,
-    event_id: String,
-    _session: Arc<Session>,
-) -> Result<impl warp::Reply, Infallible> {
-    match context.datastore.archive_event_by_id(event_id).await {
-        Ok(()) => Ok(Response::Ok),
-        Err(err) => Ok(Response::InternalError(err.to_string())),
+pub(crate) async fn archive_event_by_id(
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(event_id): axum::extract::Path<String>,
+    _session: AxumSessionExtractor,
+) -> impl IntoResponse {
+    match context.datastore.archive_event_by_id(&event_id).await {
+        Ok(()) => StatusCode::OK,
+        Err(err) => {
+            error!(
+                "Failed to archive event by ID: id={}, err={:?}",
+                event_id, err
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     }
 }
 
-pub async fn escalate_event_by_id(
-    context: Arc<ServerContext>,
-    event_id: String,
-    _session: Arc<Session>,
-) -> Result<impl warp::Reply, Infallible> {
-    match context.datastore.escalate_event_by_id(event_id).await {
-        Ok(()) => Ok(Response::Ok),
-        Err(err) => Ok(Response::InternalError(err.to_string())),
+pub(crate) async fn escalate_event_by_id(
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(event_id): axum::extract::Path<String>,
+    _session: AxumSessionExtractor,
+) -> impl IntoResponse {
+    match context.datastore.escalate_event_by_id(&event_id).await {
+        Ok(()) => StatusCode::OK,
+        Err(err) => {
+            error!(
+                "Failed to escalate event by ID: id={}, err={:?}",
+                event_id, err
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     }
 }
 
-pub async fn deescalate_event_by_id(
-    context: Arc<ServerContext>,
-    event_id: String,
-    _session: Arc<Session>,
-) -> Result<impl warp::Reply, Infallible> {
-    match context.datastore.deescalate_event_by_id(event_id).await {
-        Ok(()) => Ok(Response::Ok),
-        Err(err) => Ok(Response::InternalError(err.to_string())),
+pub(crate) async fn deescalate_event_by_id(
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(event_id): axum::extract::Path<String>,
+    _session: AxumSessionExtractor,
+) -> impl IntoResponse {
+    match context.datastore.deescalate_event_by_id(&event_id).await {
+        Ok(()) => StatusCode::OK,
+        Err(err) => {
+            error!(
+                "Failed to de-escalate event by ID: id={}, err={:?}",
+                event_id, err
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     }
 }
 
-pub async fn comment_by_event_id(
-    context: Arc<ServerContext>,
-    event_id: String,
-    _session: Arc<Session>,
-    body: EventCommentRequestBody,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn comment_by_event_id(
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(event_id): axum::extract::Path<String>,
+    _session: AxumSessionExtractor,
+    Json(body): Json<EventCommentRequestBody>,
+) -> impl IntoResponse {
     match context
         .datastore
-        .comment_event_by_id(event_id, body.comment)
+        .comment_event_by_id(&event_id, body.comment.to_string())
         .await
     {
-        Ok(()) => Ok(Response::Ok),
-        Err(err) => Ok(Response::InternalError(err.to_string())),
+        Ok(()) => StatusCode::OK,
+        Err(err) => {
+            error!(
+                "Failed to add comment by event ID: id={}, err={:?}",
+                event_id, err
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     }
 }
 
 /// REST API handler to perform a raw query against the Elastic Search server.
-pub async fn query_elastic(
-    context: Arc<ServerContext>,
-    _session: Arc<Session>,
-    body: serde_json::Value,
-) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn query_elastic(
+    Extension(context): Extension<Arc<ServerContext>>,
+    _session: AxumSessionExtractor,
+    Json(body): Json<serde_json::Value>,
+) -> impl IntoResponse {
     if let Some(elastic) = &context.elastic {
         let response = match elastic.search(&body).await {
             Err(err) => {
-                return Ok(Response::InternalError(err.to_string()));
+                error!("Failed to query elasticsearch: {:?}", err);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
             }
             Ok(response) => response,
         };
         let response: JsonValue = match response.json().await {
             Err(err) => {
-                return Ok(Response::InternalError(err.to_string()));
+                error!("Failed to query elasticsearch: {:?}", err);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
             }
             Ok(response) => response,
         };
-        return Ok(Response::Json(response));
+        return Json(response).into_response();
     }
-    Ok(Response::Ok)
+    (StatusCode::OK, "").into_response()
 }
 
-pub async fn event_query(
-    context: Arc<ServerContext>,
-    _session: Arc<Session>,
-    query: GenericQuery,
-) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn event_query(
+    _session: AxumSessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+    axum::extract::Form(query): axum::extract::Form<GenericQuery>,
+) -> impl IntoResponse {
     let mut params = datastore::EventQueryParams {
         size: query.size,
         sort_by: query.sort_by,
@@ -355,7 +413,7 @@ pub async fn event_query(
         match parse_timestamp(&ts) {
             Ok(ts) => params.min_timestamp = Some(ts),
             Err(_) => {
-                return Ok(Response::TimestampParseError(ts));
+                return (StatusCode::BAD_REQUEST, "failed to parse timestamp").into_response();
             }
         }
     }
@@ -368,23 +426,32 @@ pub async fn event_query(
                     "event_query: failed to parse max timestamp: \"{}\": error={}",
                     &ts, err
                 );
-                return Ok(Response::TimestampParseError(ts));
+                return (StatusCode::BAD_REQUEST, "failed to parse timestamp").into_response();
             }
         }
     }
 
     if query.time_range.is_some() {
-        params.min_timestamp = super::helpers::mints_from_time_range(query.time_range, None)?;
+        match super::helpers::mints_from_time_range(query.time_range.clone(), None) {
+            Ok(ts) => {
+                params.min_timestamp = ts;
+            }
+            Err(err) => {
+                error!(
+                    "Failed to parse time_range to timestamp: {:?}: {:?}",
+                    query.time_range, err
+                );
+                return (StatusCode::BAD_REQUEST, "failed to parse time range").into_response();
+            }
+        }
     }
 
     match context.datastore.event_query(params).await {
         Err(err) => {
-            error!("error: {}", err);
-            Ok(Response::StatusCode(
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            ))
+            error!("error: {:?}", err);
+            (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
         }
-        Ok(v) => Ok(Response::Json(v)),
+        Ok(v) => axum::Json(v).into_response(),
     }
 }
 
@@ -399,18 +466,21 @@ pub struct AlertGroupCommentRequest {
     pub comment: String,
 }
 
-pub async fn alert_group_comment(
-    context: Arc<ServerContext>,
-    _session: Arc<Session>,
-    request: AlertGroupCommentRequest,
-) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn alert_group_comment(
+    Extension(context): Extension<Arc<ServerContext>>,
+    _session: AxumSessionExtractor,
+    Json(request): Json<AlertGroupCommentRequest>,
+) -> impl IntoResponse {
     match context
         .datastore
         .comment_by_alert_group(request.alert_group, request.comment)
         .await
     {
-        Ok(()) => Ok(Response::Ok),
-        Err(err) => Ok(Response::InternalError(err.to_string())),
+        Ok(()) => StatusCode::OK,
+        Err(err) => {
+            info!("Failed to apply command to alert-group: {:?}", err);
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     }
 }
 
@@ -447,7 +517,25 @@ pub enum ApiError {
     QueryStringParseError,
 }
 
-impl warp::reject::Reject for ApiError {}
+impl IntoResponse for ApiError {
+    type Body = axum::body::Full<axum::body::Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
+        let (status, message) = match self {
+            ApiError::TimeRangeParseError(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            ApiError::QueryStringParseError => (
+                StatusCode::BAD_REQUEST,
+                "query string parse error".to_string(),
+            ),
+        };
+        let body = Json(serde_json::json!({
+            "error": message,
+        }));
+        (status, body).into_response()
+    }
+}
 
 #[cfg(test)]
 mod test {

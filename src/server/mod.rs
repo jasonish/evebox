@@ -23,8 +23,8 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
+pub(crate) use main::build_axum_server;
 pub use main::build_context;
-pub use main::build_server_try_bind;
 pub use main::main;
 use session::SessionStore;
 
@@ -39,7 +39,7 @@ mod rejection;
 mod response;
 pub mod session;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AuthenticationType {
     Anonymous,
     Username,

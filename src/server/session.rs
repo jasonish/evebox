@@ -19,13 +19,10 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
 use anyhow::Result;
 use rand::RngCore;
-
-use crate::sqlite::configrepo::User;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 pub struct SessionStore {
     cache: Mutex<HashMap<String, Arc<Session>>>,
@@ -40,8 +37,10 @@ impl SessionStore {
 
     pub fn put(&self, session: Arc<Session>) -> Result<()> {
         let mut cache = self.cache.lock().unwrap();
-        if cache.insert(session.session_id.clone(), session).is_some() {
-            return Err(anyhow!("duplicate session-id"));
+        if let Some(session_id) = &session.session_id {
+            if cache.insert(session_id.to_string(), session).is_some() {
+                return Err(anyhow!("duplicate session-id"));
+            }
         }
         Ok(())
     }
@@ -57,32 +56,26 @@ impl SessionStore {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Session {
-    pub session_id: String,
-    pub user: Option<User>,
+    pub session_id: Option<String>,
     pub username: Option<String>,
-    pub inner: Mutex<SessionInner>,
-}
-
-#[derive(Debug)]
-pub struct SessionInner {
-    pub hits: u64,
 }
 
 impl Session {
     pub fn new() -> Session {
         let session_id = generate_session_id();
         Session {
-            session_id,
+            session_id: Some(session_id),
             username: None,
-            inner: Mutex::new(SessionInner { hits: 0 }),
-            user: None,
         }
     }
 
-    pub fn is_anonymous(&self) -> bool {
-        self.user.is_none()
+    pub fn anonymous(username: Option<String>) -> Session {
+        Session {
+            username,
+            ..Default::default()
+        }
     }
 
     pub fn username(&self) -> &str {

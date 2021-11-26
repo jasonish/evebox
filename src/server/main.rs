@@ -26,8 +26,17 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::Result;
-use warp::filters::BoxedFilter;
-use warp::{self, Filter, Future};
+use axum::async_trait;
+use axum::body::Body;
+use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
+use axum::extract::{ConnectInfo, Extension, FromRequest, RequestParts};
+use axum::http::header::HeaderName;
+use axum::http::{HeaderValue, StatusCode, Uri};
+use axum::response::IntoResponse;
+use axum::{AddExtensionLayer, Router, Server};
+use hyper::server::conn::AddrIncoming;
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
+use tracing::Level;
 
 use crate::bookmark;
 use crate::datastore::Datastore;
@@ -36,14 +45,13 @@ use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
 use crate::eve::processor::Processor;
 use crate::eve::EveReader;
 use crate::server::session::Session;
-use crate::server::AuthenticationType;
+use crate::server::{api, AuthenticationType};
 use crate::settings::Settings;
 use crate::sqlite;
 use crate::sqlite::configrepo::ConfigRepo;
 
 use super::{ServerConfig, ServerContext};
 use crate::elastic::Client;
-use warp::filters::log::{Info, Log};
 
 fn load_event_services(filename: &str) -> anyhow::Result<serde_json::Value> {
     let finput = std::fs::File::open(filename)?;
@@ -219,8 +227,6 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     }
 
     let context = Arc::new(context);
-    let addr: SocketAddr = format!("{}:{}", config.host, config.port).parse()?;
-    let server = build_server(&config, context.clone());
 
     info!(
         "Starting server on {}:{}, tls={}",
@@ -229,107 +235,152 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     if config.tls_enabled {
         debug!("TLS key filename: {:?}", config.tls_key_filename);
         debug!("TLS cert filename: {:?}", config.tls_cert_filename);
-        let cert_path = if let Some(filename) = config.tls_cert_filename {
-            filename
-        } else {
-            error!("TLS requested but no certificate filename provided");
-            std::process::exit(1);
-        };
-        let key_path = if let Some(filename) = config.tls_key_filename {
-            filename
-        } else {
-            cert_path.clone()
-        };
-        server
-            .tls()
-            .cert_path(cert_path)
-            .key_path(key_path)
-            .run(addr)
-            .await;
+        run_axum_server_with_tls(&config, context).await.unwrap();
     } else {
-        match server.try_bind_ephemeral(addr) {
-            Err(err) => {
-                error!("Failed to start server: {}", err);
-                std::process::exit(1);
-            }
-            Ok((_, bound)) => {
-                bound.await;
-            }
-        }
+        run_axum_server(&config, context).await.unwrap();
     }
     Ok(())
 }
 
-pub async fn build_server_try_bind(
+pub(crate) fn build_axum_service(
+    context: Arc<ServerContext>,
+) -> IntoMakeServiceWithConnectInfo<Router, SocketAddr> {
+    use axum::routing::{get, post};
+    use tower_http::trace::TraceLayer;
+
+    let response_header_layer =
+        tower_http::set_header::SetResponseHeaderLayer::<_, Body>::if_not_present(
+            HeaderName::from_static("x-evebox-git-revision"),
+            HeaderValue::from_static(crate::version::build_rev()),
+        );
+
+    let request_tracing = TraceLayer::new_for_http()
+        .make_span_with(DefaultMakeSpan::new().include_headers(false))
+        .on_response(DefaultOnResponse::new().level(Level::INFO))
+        .on_request(());
+
+    let app = axum::Router::new()
+        .route(
+            "/api/1/login",
+            post(crate::server::api::login::post).options(api::login::options_new),
+        )
+        .route("/api/1/logout", post(crate::server::api::login::logout_new))
+        .route("/api/1/config", get(api::config))
+        .route("/api/1/version", get(api::get_version))
+        .route("/api/1/user", get(api::get_user))
+        .route("/api/1/alerts", get(api::alert_query))
+        .route("/api/1/event-query", get(api::event_query))
+        .route("/api/1/event/:id", get(api::get_event_by_id))
+        .route("/api/1/alert-group/star", post(api::alert_group_star))
+        .route("/api/1/alert-group/unstar", post(api::alert_group_unstar))
+        .route("/api/1/alert-group/archive", post(api::alert_group_archive))
+        .route("/api/1/alert-group/comment", post(api::alert_group_comment))
+        .route("/api/1/event/:id/archive", post(api::archive_event_by_id))
+        .route("/api/1/event/:id/escalate", post(api::escalate_event_by_id))
+        .route("/api/1/event/:id/comment", post(api::comment_by_event_id))
+        .route(
+            "/api/1/event/:id/de-escalate",
+            post(api::deescalate_event_by_id),
+        )
+        .route("/api/1/report/agg", get(api::agg))
+        .route("/api/1/report/histogram", get(api::histogram))
+        .route("/api/1/query", post(api::query_elastic))
+        .route("/api/1/flow/histogram", get(api::flow_histogram::handler))
+        .route("/api/1/report/dhcp/:what", get(api::report_dhcp))
+        .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
+        .route("/api/1/submit", post(api::submit::handler_new))
+        .layer(AddExtensionLayer::new(context.clone()))
+        .layer(response_header_layer)
+        .fallback(axum::routing::get(fallback_handler));
+
+    let app = if context.config.http_request_logging {
+        app.layer(request_tracing)
+    } else {
+        app
+    };
+
+    let service: IntoMakeServiceWithConnectInfo<Router, SocketAddr> =
+        app.into_make_service_with_connect_info();
+    service
+}
+
+pub(crate) async fn build_axum_server(
     config: &ServerConfig,
     context: Arc<ServerContext>,
-) -> Result<
-    impl Future<Output = ()> + Send + Sync + 'static,
-    Box<dyn std::error::Error + Sync + Send>,
-> {
-    let server = build_server(config, context);
-    let addr: SocketAddr = format!("{}:{}", config.host, config.port).parse()?;
-    let server = server.try_bind_ephemeral(addr)?.1;
+) -> Result<Server<AddrIncoming, IntoMakeServiceWithConnectInfo<Router, SocketAddr>>> {
+    let port: u16 = config.port.parse()?;
+    let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
+    let service = build_axum_service(context.clone());
+    info!("Starting Axum server on {}", &addr);
+    let server = axum::Server::try_bind(&addr)?.serve(service);
     Ok(server)
 }
 
-pub fn build_server(
+pub(crate) async fn run_axum_server_with_tls(
     config: &ServerConfig,
     context: Arc<ServerContext>,
-) -> warp::Server<BoxedFilter<(impl warp::Reply,)>> {
-    let session_filter = build_session_filter(context.clone()).boxed();
-    let routes = super::filters::api_routes(context, session_filter)
-        .or(resource_filters())
-        .recover(super::rejection::rejection_handler);
-    let mut headers = warp::http::header::HeaderMap::new();
-    headers.insert(
-        "X-EveBox-Git-Revision",
-        warp::http::header::HeaderValue::from_static(crate::version::build_rev()),
-    );
-
-    let routes = routes.with(warp::reply::with::headers(headers));
-    let http_log =
-        build_http_request_logger(config.http_request_logging, config.http_reverse_proxy);
-
-    let routes = routes.with(http_log);
-    warp::serve(routes.boxed())
+) -> anyhow::Result<()> {
+    let port: u16 = config.port.parse()?;
+    let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
+    let service = build_axum_service(context.clone());
+    use axum_server::tls_rustls::RustlsConfig;
+    let tls_config = RustlsConfig::from_pem_file(
+        config.tls_cert_filename.as_ref().unwrap(),
+        config.tls_key_filename.as_ref().unwrap(),
+    )
+    .await?;
+    axum_server::bind_rustls(addr, tls_config)
+        .serve(service)
+        .await?;
+    Ok(())
 }
 
-fn build_http_request_logger(enabled: bool, reverse_proxy: bool) -> Log<impl Fn(Info) + Clone> {
-    warp::log::custom(move |info| {
-        if enabled {
-            http_request_logger(info, reverse_proxy);
-        }
-    })
+pub(crate) async fn run_axum_server(
+    config: &ServerConfig,
+    context: Arc<ServerContext>,
+) -> anyhow::Result<()> {
+    let port: u16 = config.port.parse()?;
+    let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
+    let service = build_axum_service(context.clone());
+    axum_server::bind(addr).serve(service).await?;
+    Ok(())
 }
 
-fn http_request_logger(info: Info, reverse_proxy: bool) {
-    let mut xff = None;
-    if reverse_proxy {
-        for (header, value) in info.request_headers() {
-            if header == "x-forwarded-for" {
-                // First convert value to a string, which could fail, then take the first
-                // address from the comma seaparated list of addresses.
-                if let Ok(val) = value.to_str() {
-                    if let Some(val) = val.split(',').next() {
-                        xff = Some(val.trim().to_string());
-                        break;
-                    }
-                }
-            }
-        }
+async fn fallback_handler(uri: Uri) -> impl IntoResponse {
+    use axum::http::Response;
+
+    let mut path = uri.path().trim_start_matches("/").to_string();
+
+    if path.starts_with("api") {
+        return (StatusCode::NOT_FOUND, "api endpoint not found").into_response();
     }
 
-    let remote_addr = get_remote_addr(info.remote_addr(), xff, reverse_proxy);
+    if path.is_empty() {
+        path = "index.html".into();
+    }
+    let mut path = format!("{}", path);
+    let resource = crate::resource::Resource::get(&path).or_else(|| {
+        info!("No resource found for {}, trying public/index.html", &path);
+        path = "public/index.html".into();
+        crate::resource::Resource::get(&path)
+    });
 
-    info!(
-        "{} {:?} {} {} {}",
-        remote_addr,
-        info.version(),
-        info.status(),
-        info.method(),
-        info.path()
-    );
+    match resource {
+        None => {
+            let response = serde_json::json!({
+                "error": "no resource at path",
+                "path": &path,
+            });
+            return (StatusCode::NOT_FOUND, axum::Json(response)).into_response();
+        }
+        Some(body) => {
+            let mime = mime_guess::from_path(&path).first_or_octet_stream();
+            return Response::builder()
+                .header(axum::http::header::CONTENT_TYPE, mime.as_ref())
+                .body(body.into())
+                .unwrap();
+        }
+    }
 }
 
 pub async fn build_context(
@@ -454,106 +505,73 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
     Ok(())
 }
 
-pub fn resource_filters(
-) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    let index = warp::get()
-        .and(warp::path::end())
-        .map(|| super::asset::new_static_or_404("index.html"));
-    let favicon = warp::get()
-        .and(warp::path("favicon.ico"))
-        .and(warp::path::end())
-        .map(|| super::asset::new_static_or_404("favicon.ico"));
-    let public = warp::get()
-        .and(warp::path("public"))
-        .and(warp::path::tail())
-        .map(|path: warp::filters::path::Tail| super::asset::new_static_or_404(path.as_str()));
-    return index.or(favicon).or(public);
-}
-
 #[derive(Debug)]
 pub enum GenericError {
     NotFound,
     AuthenticationRequired,
 }
 
-impl warp::reject::Reject for GenericError {}
+#[derive(Debug)]
+pub(crate) struct AxumSessionExtractor(pub(crate) Arc<Session>);
 
-pub fn get_remote_addr(
-    socket_addr: Option<SocketAddr>,
-    xff: Option<String>,
-    enable_xff: bool,
-) -> String {
-    if enable_xff {
-        if let Some(xff) = xff {
-            return xff.split(',').next().unwrap().trim().to_string();
+#[async_trait]
+impl FromRequest for AxumSessionExtractor {
+    type Rejection = (StatusCode, &'static str);
+
+    async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
+        let axum::extract::Extension(context) =
+            axum::extract::Extension::<Arc<ServerContext>>::from_request(req)
+                .await
+                .unwrap();
+        let enable_reverse_proxy = context.config.http_reverse_proxy;
+        let Extension(ConnectInfo(remote_addr)) =
+            axum::extract::Extension::<ConnectInfo<SocketAddr>>::from_request(req)
+                .await
+                .unwrap();
+        let headers = req.headers().expect("other extractor taken headers");
+
+        let session_id = headers
+            .get("x-evebox-session-id")
+            .map(|h| h.to_str().ok())
+            .flatten();
+
+        let remote_user = headers
+            .get("remote_user")
+            .map(|h| h.to_str().map(|h| h.to_string()).ok())
+            .flatten();
+
+        let forwarded_for = if enable_reverse_proxy {
+            headers
+                .get("x-forwarded-for")
+                .map(|h| h.to_str().map(|h| h.to_string()).ok())
+                .flatten()
+        } else {
+            None
+        };
+
+        let _remote_addr = forwarded_for.unwrap_or_else(|| remote_addr.to_string());
+
+        if let Some(session_id) = session_id {
+            let session = context.session_store.get(&session_id);
+            if let Some(session) = session {
+                return Ok(AxumSessionExtractor(session));
+            }
+        }
+
+        match context.config.authentication_type {
+            AuthenticationType::Anonymous => {
+                return Ok(Self(Arc::new(Session::anonymous(remote_user))));
+            }
+            _ => {
+                // Any authentication type requires a session.
+                info!("Authentication required but not session found.");
+                return Err((
+                    axum::http::StatusCode::UNAUTHORIZED,
+                    "authentication required",
+                ));
+            }
         }
     }
-    if let Some(addr) = socket_addr {
-        return addr.ip().to_string();
-    }
-    return "<unknown-remote>".to_string();
-}
-
-pub fn build_session_filter(
-    context: Arc<ServerContext>,
-) -> impl Filter<Extract = (Arc<Session>,), Error = warp::Rejection> + Clone {
-    let enable_reverse_proxy = context.config.http_reverse_proxy;
-    let context = warp::any().map(move || context.clone());
-
-    let session_id = warp::header("x-evebox-session-id")
-        .map(Some)
-        .or(warp::any().map(|| None))
-        .unify();
-
-    let remote_user = warp::header("REMOTE_USER")
-        .map(Some)
-        .or(warp::any().map(|| None))
-        .unify();
-
-    let remote_addr = warp::filters::addr::remote()
-        .and(warp::filters::header::optional("x-forwarded-for"))
-        .map(move |a, b| get_remote_addr(a, b, enable_reverse_proxy));
-
-    warp::any()
-        .and(session_id)
-        .and(context)
-        .and(remote_user)
-        .and(remote_addr)
-        .and_then(
-            move |session_id: Option<String>,
-                  context: Arc<ServerContext>,
-                  remote_user: Option<String>,
-                  remote_addr: String| async move {
-                if let Some(session_id) = session_id {
-                    let session = context.session_store.get(&session_id);
-                    if let Some(session) = session {
-                        return Ok(session);
-                    }
-                }
-
-                match context.config.authentication_type {
-                    AuthenticationType::Anonymous => {
-                        let username = if let Some(username) = remote_user {
-                            username
-                        } else {
-                            "<anonymous>".to_string()
-                        };
-                        info!(
-                            "Creating anonymous session for user from {} with name {}",
-                            remote_addr, username
-                        );
-                        let mut session = Session::new();
-                        session.username = Some(username);
-                        let session = Arc::new(session);
-                        context.session_store.put(session.clone()).unwrap();
-                        Ok::<_, warp::Rejection>(session)
-                    }
-                    _ => Err::<_, warp::Rejection>(warp::reject::custom(
-                        GenericError::AuthenticationRequired,
-                    )),
-                }
-            },
-        )
 }
 
 fn get_bookmark_filename(

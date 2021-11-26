@@ -19,14 +19,19 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use crate::prelude::*;
+
+use axum::extract::{Extension, Form};
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Deserialize;
 
 use crate::datastore::FlowHistogramParameters;
-use crate::server::response::Response;
-use crate::server::session::Session;
+use crate::server::main::AxumSessionExtractor;
 use crate::server::ServerContext;
 
 use super::helpers;
@@ -40,20 +45,22 @@ pub struct Query {
     pub other: HashMap<String, String>,
 }
 
-pub async fn handler(
-    context: Arc<ServerContext>,
-    query: Query,
-    _session: Arc<Session>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn handler(
+    Extension(context): Extension<Arc<ServerContext>>,
+    AxumSessionExtractor(_session): AxumSessionExtractor,
+    Form(query): Form<Query>,
+) -> impl IntoResponse {
     helpers::log_unknown_parameters("flow-histogram", &query.other);
     let params = FlowHistogramParameters {
-        mints: helpers::mints_from_time_range(query.time_range, None)?,
+        mints: helpers::mints_from_time_range(query.time_range, None).unwrap(),
         interval: query.interval,
         query_string: query.query_string,
     };
-    context
-        .datastore
-        .flow_histogram(params)
-        .await
-        .map(|r| Ok(Response::Json(r)))?
+    match context.datastore.flow_histogram(params).await {
+        Err(err) => {
+            error!("Flow histogram failed: {:?}", err);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
+        }
+        Ok(response) => Json(response).into_response(),
+    }
 }

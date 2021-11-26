@@ -71,8 +71,6 @@ pub enum DatastoreError {
     AnyhowError(anyhow::Error),
 }
 
-impl warp::reject::Reject for DatastoreError {}
-
 impl From<Box<dyn std::error::Error + Sync + Send>> for DatastoreError {
     fn from(err: Box<dyn std::error::Error + Sync + Send>) -> Self {
         DatastoreError::GenericError(err)
@@ -101,7 +99,7 @@ impl Datastore {
         }
     }
 
-    pub async fn archive_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         match self {
             Datastore::Elastic(ds) => ds.archive_event_by_id(event_id).await,
             Datastore::SQLite(ds) => ds.archive_event_by_id(event_id).await,
@@ -109,7 +107,7 @@ impl Datastore {
         }
     }
 
-    pub async fn escalate_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         match self {
             Datastore::Elastic(ds) => ds.escalate_event_by_id(event_id).await,
             Datastore::SQLite(ds) => ds.escalate_event_by_id(event_id).await,
@@ -117,7 +115,7 @@ impl Datastore {
         }
     }
 
-    pub async fn deescalate_event_by_id(&self, event_id: String) -> Result<(), DatastoreError> {
+    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         match self {
             Datastore::Elastic(ds) => ds.deescalate_event_by_id(event_id).await,
             Datastore::SQLite(ds) => ds.deescalate_event_by_id(event_id).await,
@@ -205,7 +203,7 @@ impl Datastore {
 
     pub async fn comment_event_by_id(
         &self,
-        event_id: String,
+        event_id: &str,
         comment: String,
     ) -> Result<(), DatastoreError> {
         match self {

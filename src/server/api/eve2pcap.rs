@@ -19,6 +19,10 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+use axum::extract::{Extension, Form};
+use axum::http::header::HeaderName;
+use axum::http::HeaderValue;
+use axum::response::{Headers, IntoResponse};
 use std::sync::Arc;
 
 use crate::prelude::*;
@@ -28,20 +32,31 @@ use crate::eve::eve::EveJson;
 use crate::eve::Eve;
 use crate::pcap;
 use crate::server::api::ApiError;
-use crate::server::session::Session;
+use crate::server::main::AxumSessionExtractor;
 use crate::server::ServerContext;
 
 #[derive(Deserialize, Debug)]
-pub struct Form {
+pub struct PcapForm {
     pub what: String,
     pub event: String,
 }
 
-pub async fn handler(
-    _context: Arc<ServerContext>,
-    _session: Arc<Session>,
-    form: Form,
-) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn handler(
+    Extension(_context): Extension<Arc<ServerContext>>,
+    _session: AxumSessionExtractor,
+    Form(form): Form<PcapForm>,
+) -> Result<impl IntoResponse, ApiError> {
+    let headers = Headers(vec![
+        (
+            HeaderName::from_static("content-type"),
+            HeaderValue::from_static("application/vnc.tcpdump.pcap"),
+        ),
+        (
+            HeaderName::from_static("content-disposition"),
+            HeaderValue::from_static("attachment; filename=event.pcap"),
+        ),
+    ]);
+
     let event: EveJson = serde_json::from_str(&form.event)
         .map_err(|err| ApiError::BadRequest(format!("failed to decode event: {}", err)))?;
     match form.what.as_ref() {
@@ -64,16 +79,7 @@ pub async fn handler(
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
             })?;
             let pcap_buffer = pcap::create(linktype, ts, packet);
-            let response = warp::reply::with_header(
-                warp::reply::with_header(
-                    pcap_buffer,
-                    "content-type",
-                    "application/vnc.tcpdump.pcap",
-                ),
-                "content-disposition",
-                "attachment; filename=event.pcap",
-            );
-            return Ok(response);
+            return Ok((headers, pcap_buffer));
         }
         "payload" => {
             let ts = event.timestamp().ok_or_else(|| {
@@ -85,16 +91,7 @@ pub async fn handler(
                 ApiError::BadRequest(msg)
             })?;
             let pcap_buffer = pcap::create(pcap::LinkType::Raw as u32, ts, &packet);
-            let response = warp::reply::with_header(
-                warp::reply::with_header(
-                    pcap_buffer,
-                    "content-type",
-                    "application/vnc.tcpdump.pcap",
-                ),
-                "content-disposition",
-                "attachment; filename=event.pcap",
-            );
-            return Ok(response);
+            return Ok((headers, pcap_buffer));
         }
         _ => {
             return Err(ApiError::BadRequest("invalid value for what".to_string()).into());

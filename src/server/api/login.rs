@@ -20,12 +20,14 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::prelude::*;
-use std::convert::Infallible;
+use axum::extract::Extension;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
+use serde::Deserialize;
 use std::sync::Arc;
 
-use serde::Deserialize;
-
-use crate::server::response::Response;
+use crate::server::main::AxumSessionExtractor;
 use crate::server::session::Session;
 use crate::server::AuthenticationType;
 use crate::server::ServerContext;
@@ -36,76 +38,108 @@ pub struct LoginForm {
     pub password: Option<String>,
 }
 
-pub async fn options(context: Arc<ServerContext>) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn options_new(
+    Extension(context): Extension<Arc<ServerContext>>,
+) -> impl IntoResponse {
     let response = json!({
         "authentication": {
             "required": context.config.authentication_required,
             "types": [context.config.authentication_type.to_string()],
         }
     });
-    Ok(Response::Json(response))
+    Json(response)
 }
 
-pub async fn post(
-    context: Arc<ServerContext>,
-    form: LoginForm,
-) -> Result<impl warp::Reply, Infallible> {
-    let session = match (
-        &context.config.authentication_type,
-        &form.username,
-        &form.password,
-    ) {
-        (AuthenticationType::Anonymous, _, _) => {
-            let session = Session::new();
-            Some(session)
-        }
-        (AuthenticationType::Username, Some(username), _) => {
-            let mut session = Session::new();
-            session.username = Some(username.to_string());
-            Some(session)
-        }
-        (AuthenticationType::UsernamePassword, Some(username), Some(password)) => match context
-            .config_repo
-            .get_user_by_username_password(username, password)
-            .await
-        {
-            Ok(user) => {
-                let mut session = Session::new();
-                session.username = Some(user.username.clone());
-                session.user = Some(user);
-                Some(session)
-            }
-            Err(err) => {
-                warn!("Login failed for username {}: error={}", username, err);
-                None
-            }
-        },
-        _ => None,
-    };
+pub(crate) async fn post(
+    context: Extension<Arc<ServerContext>>,
+    _session: Option<AxumSessionExtractor>,
+    form: axum::extract::Form<LoginForm>,
+) -> impl IntoResponse {
+    // No authentication required.
+    if context.config.authentication_type == AuthenticationType::Anonymous {
+        return (StatusCode::OK, Json(serde_json::json!({}))).into_response();
+    }
 
-    if let Some(session) = session {
+    // We just take the username.
+    if context.config.authentication_type == AuthenticationType::Username {}
+
+    if context.config.authentication_type == AuthenticationType::UsernamePassword {
+        let mut session = Session::new();
+        session.username = Some(form.username.as_ref().unwrap().to_string());
         let session = Arc::new(session);
-        if let Err(err) = context.session_store.put(session.clone()) {
-            error!("Failed to add new session to session store: {}", err);
-            return Ok(Response::InternalError(err.to_string()));
-        }
-        let response = json!({
-            "session_id": session.session_id,
-        });
-        return Ok(Response::Json(response));
+        context.session_store.put(session.clone()).unwrap();
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "session_id": session.session_id,
+            })),
+        )
+            .into_response();
     }
 
-    return Ok(Response::Unauthorized);
+    // let session = match (
+    //     &context.config.authentication_type,
+    //     &form.username,
+    //     &form.password,
+    // ) {
+    //     (AuthenticationType::Anonymous, _, _) => {
+    //         let session = Session::new();
+    //         Some(session)
+    //     }
+    //     (AuthenticationType::Username, Some(username), _) => {
+    //         let mut session = Session::new();
+    //         session.username = Some(username.to_string());
+    //         Some(session)
+    //     }
+    //     (AuthenticationType::UsernamePassword, Some(username), Some(password)) => match context
+    //         .config_repo
+    //         .get_user_by_username_password(username, password)
+    //         .await
+    //     {
+    //         Ok(user) => {
+    //             let mut session = Session::new();
+    //             session.username = Some(user.username.clone());
+    //             Some(session)
+    //         }
+    //         Err(err) => {
+    //             warn!("Login failed for username {}: error={}", username, err);
+    //             None
+    //         }
+    //     },
+    //     _ => None,
+    // };
+    //
+    // if let Some(session) = session {
+    //     let session = Arc::new(session);
+    //     if let Err(err) = context.session_store.put(session.clone()) {
+    //         error!("Failed to add new session to session store: {}", err);
+    //         return Ok(Response::InternalError(err.to_string()));
+    //     }
+    //     let response = json!({
+    //         "session_id": session.session_id,
+    //     });
+    //     return Ok(Response::Json(response));
+    // }
+    //
+    // return Ok(Response::Unauthorized);
+
+    return (
+        StatusCode::UNAUTHORIZED,
+        Json(json!({"error": "login failed"})),
+    )
+        .into_response();
 }
 
-pub async fn logout(
-    context: Arc<ServerContext>,
-    session: Arc<Session>,
-) -> Result<impl warp::Reply, Infallible> {
-    if !context.session_store.delete(&session.session_id) {
-        warn!("Logout request for unknown session ID");
-    } else {
-        info!("User logged out: {:}", session.username());
+pub(crate) async fn logout_new(
+    context: Extension<Arc<ServerContext>>,
+    AxumSessionExtractor(session): AxumSessionExtractor,
+) -> impl IntoResponse {
+    if let Some(session_id) = &session.session_id {
+        if !context.session_store.delete(session_id) {
+            warn!("Logout request for unknown session ID");
+        } else {
+            info!("User logged out: {:}", session.username());
+        }
     }
-    Ok(Response::Ok)
+    StatusCode::OK
 }

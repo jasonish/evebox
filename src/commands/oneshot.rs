@@ -95,11 +95,11 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
                     }
                 };
                 debug!("Successfully build server context");
-                match crate::server::build_server_try_bind(&config, context).await {
+                match crate::server::build_axum_server(&config, context).await {
                     Ok(server) => {
                         debug!("Looks like a successful bind to port {}", port);
                         port_tx.send(port).unwrap();
-                        server.await;
+                        server.await.unwrap();
                         break;
                     }
                     Err(_) => {
