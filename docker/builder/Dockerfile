@@ -15,7 +15,7 @@ RUN yum -y install epel-release && \
 	which \
 	zip
 
-ENV N_V 12.16.1
+ENV N_V 16.13.0
 RUN cd /usr/local && \
   curl -o - -L https://nodejs.org/dist/v${N_V}/node-v${N_V}-linux-x64.tar.gz | \
        tar zxf - --strip-components=1
