@@ -39,9 +39,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.48"
+version = "1.0.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62e1f47f7dc0422027a4e370dd4548d4d66b26782e513e98dca1e689e058a80e"
+checksum = "0a03e93e97a28fbc9f42fbc5ba0886a3c67eb637b476dbee711f80a6ffe8223d"
 
 [[package]]
 name = "arc-swap"
@@ -1350,9 +1350,9 @@ dependencies = [
 
 [[package]]
 name = "refinery"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f3a3d4976479c5e9a50352cf9117896b581c939e81f4169295cb9b353d30bc8"
+checksum = "de2a0a9966144318c334d16695b334ba4dee3b90337c912155f7e2af66b380aa"
 dependencies = [
  "refinery-core",
  "refinery-macros",
@@ -1360,9 +1360,9 @@ dependencies = [
 
 [[package]]
 name = "refinery-core"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1eb7989daaee90c44763f644bfa2c3ce46b0a241b9966c1c2be9e65b4918815b"
+checksum = "fc4c3887ff1f8383cc69e202dcfff2287c989492ab3937bcd9383ca660f73721"
 dependencies = [
  "async-trait",
  "cfg-if 1.0.0",
@@ -1381,9 +1381,9 @@ dependencies = [
 
 [[package]]
 name = "refinery-macros"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e2d142a0c173f7e096ae1297d677cb4bb056fc80f25f31d6b0d2a82da07beee"
+checksum = "5db653c7045bd8c22952798d1906eda05905bec0650f4bfd97c43c1e6640e79d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1651,9 +1651,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "063bf466a64011ac24040a49009724ee60a57da1b437617ceb32e53ad61bfb19"
+checksum = "d0ffa0837f2dfa6fb90868c2b5468cad482e175f7dad97e7421951e663f2b527"
 dependencies = [
  "itoa",
  "ryu",
@@ -1765,9 +1765,9 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "syn"
-version = "1.0.81"
+version = "1.0.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2afee18b8beb5a596ecb4a2dce128c719b4ba399d34126b9e4396e3f9860966"
+checksum = "8daf5dd0bb60cbd4137b1b587d2fc0ae729bc07cf01cd70b36a1ed5ade3b9d59"
 dependencies = [
  "proc-macro2",
  "quote",
