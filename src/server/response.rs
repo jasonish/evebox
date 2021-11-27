@@ -21,20 +21,6 @@
 
 use serde::Serialize;
 
-pub enum Response {
-    // Successful responses.
-    Ok,
-    Json(serde_json::Value),
-
-    // Error responses.
-    QueryStringParseError,
-    NotFound,
-    InternalError(String),
-    Unimplemented,
-    TimestampParseError(String),
-    Unauthorized,
-}
-
 #[derive(Serialize)]
 struct ErrorResponse {
     pub code: u16,

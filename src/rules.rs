@@ -35,13 +35,6 @@ struct Inner {
 }
 
 impl Inner {
-    fn new() -> Self {
-        Self {
-            map: HashMap::new(),
-            files: HashMap::new(),
-        }
-    }
-
     fn load_path(&mut self, path: &Path) {
         if let Ok(file) = std::fs::File::open(&path) {
             let mut reader = std::io::BufReader::new(file);

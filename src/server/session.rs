@@ -28,8 +28,14 @@ pub struct SessionStore {
     cache: Mutex<HashMap<String, Arc<Session>>>,
 }
 
+impl Default for SessionStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionStore {
-    pub fn new() -> SessionStore {
+    pub fn new() -> Self {
         SessionStore {
             cache: Mutex::new(HashMap::new()),
         }

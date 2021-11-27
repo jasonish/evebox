@@ -138,6 +138,12 @@ pub struct Ip4Builder {
     payload: Vec<u8>,
 }
 
+impl Default for Ip4Builder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Ip4Builder {
     pub fn new() -> Self {
         Self {

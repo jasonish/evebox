@@ -179,7 +179,4 @@ struct Index {
 }
 
 #[derive(Debug, Deserialize)]
-struct Template {
-    pub version: Option<u64>,
-    pub index_patterns: Option<Vec<String>>,
-}
+struct Template {}

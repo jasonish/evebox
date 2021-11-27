@@ -60,6 +60,7 @@ fn load_event_services(filename: &str) -> anyhow::Result<serde_json::Value> {
     Ok(json_value)
 }
 
+#[allow(clippy::field_reassign_with_default)]
 pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
     crate::version::log_version();
 
@@ -505,10 +506,7 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
 }
 
 #[derive(Debug)]
-pub enum GenericError {
-    NotFound,
-    AuthenticationRequired,
-}
+pub enum GenericError {}
 
 #[derive(Debug)]
 pub(crate) struct AxumSessionExtractor(pub(crate) Arc<Session>);

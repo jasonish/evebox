@@ -19,20 +19,9 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-// Compiler suppressions.
-#![allow(dead_code)]
-//#![allow(unused_imports)]
-
-// Clippy suppressions.
+// Clippy suppressions. These are the global ones I don't care about.
 #![allow(clippy::needless_return)]
 #![allow(clippy::redundant_field_names)]
-#![allow(clippy::len_without_is_empty)]
-#![allow(clippy::needless_update)]
-#![allow(clippy::implicit_hasher)]
-#![allow(clippy::module_inception)]
-#![allow(clippy::cognitive_complexity)]
-#![allow(clippy::new_without_default)]
-#![allow(clippy::field_reassign_with_default)]
 
 #[macro_use]
 pub mod logger;

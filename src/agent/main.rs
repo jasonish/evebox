@@ -34,11 +34,7 @@ use crate::settings::Settings;
 use crate::{bookmark, eve};
 
 #[derive(Debug, Deserialize)]
-struct ServerConfig {
-    url: Option<String>,
-    username: Option<String>,
-    password: Option<String>,
-}
+struct ServerConfig {}
 
 #[derive(Debug, Deserialize)]
 struct InputConfig {
@@ -47,8 +43,6 @@ struct InputConfig {
     #[serde(rename = "custom-fields")]
     custom_fields: Option<HashMap<String, String>>,
     rules: Option<Vec<String>>,
-    #[serde(flatten, rename = "other")]
-    other: HashMap<String, config::Value>,
 }
 
 fn find_config_filename() -> Option<String> {

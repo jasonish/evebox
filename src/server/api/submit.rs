@@ -32,23 +32,6 @@ use std::sync::Arc;
 use crate::eve::eve::EveJson;
 use crate::server::ServerContext;
 
-struct Reader<'a> {
-    buf: &'a [u8],
-}
-
-impl<'a> Reader<'a> {
-    fn next_record(&mut self) -> Result<Option<EveJson>, Box<dyn std::error::Error>> {
-        let mut line = String::new();
-        let n = self.buf.read_line(&mut line)?;
-        if n == 0 {
-            Ok(None)
-        } else {
-            let event: EveJson = serde_json::from_str(&line)?;
-            Ok(Some(event))
-        }
-    }
-}
-
 pub(crate) async fn handler_new(
     Extension(context): Extension<Arc<ServerContext>>,
     ContentLengthLimit(body): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb

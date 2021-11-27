@@ -48,47 +48,6 @@ pub struct GenericQuery {
 }
 
 impl GenericQuery {
-    pub fn from_str(input: &str) -> Result<GenericQuery, ApiError> {
-        let mut query: GenericQuery =
-            serde_urlencoded::from_str(input).map_err(|_| ApiError::QueryStringParseError)?;
-        query.fixup();
-        Ok(query)
-    }
-
-    pub fn from_string(input: String) -> Result<GenericQuery, ApiError> {
-        let mut query: GenericQuery =
-            serde_urlencoded::from_str(&input).map_err(|_| ApiError::QueryStringParseError)?;
-        query.fixup();
-        Ok(query)
-    }
-
-    fn fixup(&mut self) {
-        if self.time_range.is_none() {
-            self.time_range = self.other.get("timeRange").map(String::from);
-            self.other.remove("timeRange");
-        }
-        if self.event_type.is_none() {
-            self.event_type = self.other.get("eventType").map(String::from);
-            self.other.remove("eventType");
-        }
-        if self.address_filter.is_none() {
-            self.address_filter = self.other.get("addressFilter").map(String::from);
-            self.other.remove("addressFilter");
-        }
-        if self.dns_type.is_none() {
-            self.dns_type = self.other.get("dnsType").map(String::from);
-            self.other.remove("dnsType");
-        }
-        if self.query_string.is_none() {
-            self.query_string = self.other.get("queryString").map(String::from);
-            self.other.remove("queryString");
-        }
-        if self.sensor_name.is_none() {
-            self.sensor_name = self.other.get("sensorFilter").map(String::from);
-            self.other.remove("sensorFilter");
-        }
-    }
-
     pub fn mints_from_time_range(&self, now: &DateTime) -> Result<Option<DateTime>, ApiError> {
         if let Some(time_range) = &self.time_range {
             if time_range == "0s" {
