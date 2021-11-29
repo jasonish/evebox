@@ -97,7 +97,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
         return msg;
     }
 
-    transform(event: any, args: any): string {
+    transform(event: any): string {
 
         if (!event._source.event_type) {
             return '[Error: This does not look like an event]';
@@ -222,6 +222,10 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 } else if (anom.code) {
                     return `${anom.type.toUpperCase()}: ${anom.code}`;
                 }
+            }
+            case "stats": {
+                const captureStats = event._source.stats.capture;
+                return `Packets: ${captureStats.kernel_packets}, Drops: ${captureStats.kernel_drops}`;
             }
             default:
                 break;

@@ -570,7 +570,6 @@ impl EventStore {
             "query": {
                 "bool": {
                     "filter": filters,
-                    "must_not": [{"term": {self.map_field("event_type"): "stats"}}]
                 }
             },
             "sort": [{sort_by: {"order": sort_order}}],

@@ -32,12 +32,12 @@
         <br/>
 
         <div class="card">
-            <div
-                    style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"
-                    class="card-header {{event | eventSeverityToBootstrapClass:'evebox-bg-':'success'}}">
+            <div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"
+                 class="card-header {{event | eventSeverityToBootstrapClass:'evebox-bg-':'success'}}">
                 <b>{{event._source.event_type | uppercase}}:
-                    <span [innerHTML]="event |
-        eveboxEventDescriptionPrinter"></span>
+                    <div style="display: inline;" [innerHTML]="event | eveboxEventDescriptionPrinter"></div>
+                    <span *ngIf="event._source.event_type == 'stats'"
+                          class="float-right">{{ event._source.timestamp | date : 'medium'}}</span>
                 </b>
                 <span class="pull-right" *ngIf="alertGroup">
                     &nbsp;<a href="#" (click)="sessionSearch()">
@@ -57,7 +57,7 @@
                     ]
                 </span>
             </div>
-            <div class="card-body">
+            <div *ngIf="event._source.event_type != 'stats'" class="card-body">
                 <div class="row">
                     <div class="col">
 
@@ -82,11 +82,11 @@
                                 </td>
                             </tr>
 
-                            <tr>
+                            <tr *ngIf="event._source.proto">
                                 <td>Protocol</td>
                                 <td>{{event._source.proto}}</td>
                             </tr>
-                            <tr>
+                            <tr *ngIf="event._source.src_ip">
                                 <td>Source</td>
                                 <td>
                                     <!-- @formatter:off -->
@@ -112,7 +112,7 @@
                                     <!-- @formatter:on -->
                                 </td>
                             </tr>
-                            <tr>
+                            <tr *ngIf="event._source.dest_ip">
                                 <td>Destination</td>
                                 <td>
                                     <search-link field="dest_ip"
@@ -269,7 +269,7 @@
         </div>
 
         <!-- History. -->
-        <div *ngIf="event._source.evebox && event._source.evebox.history">
+        <div *ngIf="event._source.evebox && event._source.evebox.history && (event._source.event_type != 'stats')">
             <br/>
             <div class="card">
                 <div class="card-header">
@@ -311,7 +311,7 @@
             </div>
         </div>
 
-        <div *ngIf="features['comments'] && (!hasHistory() || commentInputVisible)">
+        <div *ngIf="event._source.event_type != 'stats' && features['comments'] && (!hasHistory() || commentInputVisible)">
             <br/>
             <app-comment-input id="comment"
                                *ngIf="!hasHistory() || commentInputVisible"
@@ -363,6 +363,26 @@
                             </table>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="event._source.event_type == 'stats'">
+            <br/>
+            <div class="card">
+                <div class="card-header">
+                    <b>Stats</b>
+                </div>
+                <div class="card-body">
+
+                    <table
+                            class="table table-sm table-striped table-hover info-table">
+                        <tr *ngFor="let item of event._source.stats | mapToItems">
+                            <td><b>{{item.key}}</b></td>
+                            <td>{{item.val}}</td>
+                        </tr>
+                    </table>
+
                 </div>
             </div>
         </div>
@@ -561,7 +581,8 @@
                 <b>JSON</b>
             </div>
             <div class="card-body m-2" style="padding: 0px;">
-<pre class="pb-0 mb-0"  style="white-space: pre-wrap; word-wrap: anywhere;"><output [innerHTML]="event | eveboxJsonPretty"></output></pre>
+                <pre class="pb-0 mb-0" style="white-space: pre-wrap; word-wrap: anywhere;"><output
+                        [innerHTML]="event | eveboxJsonPretty"></output></pre>
             </div>
         </div>
 

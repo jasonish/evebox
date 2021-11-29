@@ -285,7 +285,6 @@ impl SQLiteEventStore {
         let mut params: Vec<Box<QueryParam>> = Vec::new();
 
         from.push("events");
-        filters.push("json_extract(events.source, '$.event_type') != 'stats'".to_string());
 
         if let Some(event_type) = options.event_type {
             filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
@@ -349,6 +348,14 @@ impl SQLiteEventStore {
         let query = query.replace("%FROM%", &from.join(", "));
         let query = query.replace("%WHERE%", &filters.join(" AND "));
         let query = query.replace("%ORDER%", &order);
+
+        // TODO: Cleanup query building.
+        let mut query = query.to_string();
+        if filters.is_empty() {
+            query = query.replace("WHERE", "");
+        }
+
+        dbg!(&query);
 
         let mapper = |row: &rusqlite::Row| -> Result<serde_json::Value, rusqlite::Error> {
             let id: i64 = row.get(0)?;

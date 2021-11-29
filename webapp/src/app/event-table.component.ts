@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016 Jason Ish
+/* Copyright (c) 2014-2021 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -66,11 +66,13 @@ import { indexOf } from "./utils";
                         </td>
                         <td>{{row._source.event_type | uppercase}}</td>
                         <td class="text-nowrap">
-                            <label>S:</label>
-                            {{row._source.src_ip | eveboxFormatIpAddress}}
-                            <br/>
-                            <label>D:</label>
-                            {{row._source.dest_ip | eveboxFormatIpAddress}}
+                            <div *ngIf="row._source.src_ip || row._source.dest_ip">
+                                <label>S:</label>
+                                {{row._source.src_ip | eveboxFormatIpAddress}}
+                                <br/>
+                                <label>D:</label>
+                                {{row._source.dest_ip | eveboxFormatIpAddress}}
+                            </div>
                         </td>
                         <td style="word-break: break-all;">
                             {{row | eveboxEventDescriptionPrinter}}
