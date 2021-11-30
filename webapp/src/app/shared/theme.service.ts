@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016 Jason Ish
+/* Copyright (c) 2014-2021 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,27 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-declare function require(name:string);
+import { Injectable } from '@angular/core';
+import { SETTING_THEME, SettingsService } from '../settings.service';
 
-import {Injectable} from '@angular/core';
-import {SETTING_THEME, SettingsService} from '../settings.service';
-
-declare var localStorage: any;
 declare var Chart: any;
-
-function applyTheme(style: string) {
-    // Remove the current theme.
-    try {
-        document.body.removeChild(document.getElementById("theme"));
-    }
-    catch (e) {
-    }
-
-    let node = <HTMLElement>document.createElement('style');
-    node.id = "theme";
-    node.innerHTML = style;
-    document.body.appendChild(node);
-}
 
 @Injectable()
 export class ThemeService {
@@ -52,8 +35,8 @@ export class ThemeService {
     constructor(private settings?: SettingsService) {
     }
 
-    init() {
-        this.applyTheme(this.currentTheme());
+    init(): void {
+        this.setTheme(this.currentTheme());
     }
 
     currentTheme(): string {
@@ -64,34 +47,17 @@ export class ThemeService {
         return theme;
     }
 
-    loadTheme(theme: string) {
+    setTheme(theme: string): void {
         switch (theme) {
             case "dark":
-                document.getElementsByTagName("html")[0].setAttribute("class", "dark");
-                break;
-            default:
-                document.getElementsByTagName("html")[0].setAttribute("class", "light");
-                break;
-        }
-    }
-
-    applyTheme(theme: string) {
-        this.loadTheme(theme);
-
-        // Fixup colors for "Chart" based on theme.
-        switch (theme) {
-            case "dark":
+                document.getElementsByTagName("html")[0].setAttribute("class", "dark dark-mode");
                 Chart.defaults.global.defaultFontColor = "#fff";
                 break;
             default:
+                document.getElementsByTagName("html")[0].setAttribute("class", "light");
                 Chart.defaults.global.defaultFontColor = "#666";
                 break;
         }
-    }
-
-    setTheme(theme: string) {
-        this.applyTheme(theme);
         this.settings.set(SETTING_THEME, theme);
     }
-
 }

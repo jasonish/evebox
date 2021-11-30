@@ -3,10 +3,9 @@
 @import "~font-awesome/css/font-awesome.css";
 @import "~toastr/build/toastr.css";
 @import "~metrics-graphics/dist/metricsgraphics.css";
+@import "~pretty-print-json/dist/pretty-print-json.css";
 
 .dark {
-  @import "~pretty-print-json/dist/pretty-print-json.dark-mode.css";
-
   // Custom colors by Anne-Fleur.
   $evebox-warning-color: #3d5f5f;
   $evebox-info-color: #50656f;
@@ -115,6 +114,7 @@
 
   // Set the border colour around event tables to a dark gray provided by the slate theme.
   $event-table-border-color: $gray-800;
+  @import "styles/common";
 
   .table {
     &-secondary {
@@ -130,7 +130,6 @@
     background-color: $danger;
   }
 
-  @import "styles/common";
 
   // The idea here is to darken up the "white" text and backgrounds a little,
   // to be a bit more like the slate theme from Bootswatch for Bootstrap 3.
@@ -244,9 +243,6 @@
   $event-table-border-color: #ddd;
 
   @import "~bootstrap/scss/bootstrap";
-  @import "~pretty-print-json/dist/pretty-print-json.css";
-
-
   @import "styles/common";
 
   // Light navbar.
@@ -310,3 +306,4 @@
     @extend .bg-light;
   }
 }
+
