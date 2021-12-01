@@ -19,18 +19,18 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import {Component, OnDestroy, OnInit} from "@angular/core";
-import {ReportsService} from "../reports.service";
-import {AppEventCode, AppService} from "../../app.service";
-import {EveboxFormatIpAddressPipe} from "../../pipes/format-ipaddress.pipe";
-import {ActivatedRoute, Params} from "@angular/router";
-import {EveboxSubscriptionService} from "../../subscription.service";
-import {loadingAnimation} from "../../animations";
-import {EveboxSubscriptionTracker} from "../../subscription-tracker";
-import {ApiService, ReportAggOptions} from "../../api.service";
-import {TopNavService} from "../../topnav.service";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { ReportsService } from "../reports.service";
+import { AppEventCode, AppService } from "../../app.service";
+import { EveboxFormatIpAddressPipe } from "../../pipes/format-ipaddress.pipe";
+import { ActivatedRoute, Params } from "@angular/router";
+import { EveboxSubscriptionService } from "../../subscription.service";
+import { loadingAnimation } from "../../animations";
+import { EveboxSubscriptionTracker } from "../../subscription-tracker";
+import { ApiService, ReportAggOptions } from "../../api.service";
+import { TopNavService } from "../../topnav.service";
 import * as moment from "moment";
-import {ElasticSearchService} from "../../elasticsearch.service";
+import { ElasticSearchService } from "../../elasticsearch.service";
 
 @Component({
     templateUrl: "alerts-report.component.html",
@@ -66,49 +66,49 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                 private formatIpAddressPipe: EveboxFormatIpAddressPipe) {
     }
 
-    ngOnInit() {
+    ngOnInit(): void {
 
-        if (this.route.snapshot.queryParams["q"]) {
-            this.queryString = this.route.snapshot.queryParams["q"];
+        if (this.route.snapshot.queryParams.q) {
+            this.queryString = this.route.snapshot.queryParams.q;
         }
 
         this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
-            this.queryString = params["q"] || "";
+            this.queryString = params.q || "";
             this.refresh();
         });
 
         this.subTracker.subscribe(this.appService, (event: any) => {
-            if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
+            if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
         });
 
     }
 
-    ngOnDestroy() {
+    ngOnDestroy(): void {
         this.subTracker.unsubscribe();
     }
 
-    load(fn: any) {
+    load(fn: any): void {
         this.loading++;
         fn().then(() => {
         }).catch((err) => {
         }).then(() => {
             this.loading--;
-        })
+        });
     }
 
-    refresh() {
+    refresh(): void {
 
-        let size = 10;
+        const size = 10;
 
         this.sourceRows = undefined;
         this.destinationRows = undefined;
         this.signatureRows = undefined;
 
-        let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
+        const timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
 
-        let aggOptions: ReportAggOptions = {
+        const aggOptions: ReportAggOptions = {
             queryString: this.queryString,
             timeRange: timeRangeSeconds,
             size: size,
@@ -191,7 +191,5 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                 });
             });
         });
-
     }
-
 }
