@@ -24,28 +24,29 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnChanges, OnDestroy, OnInit} from "@angular/core";
-import {ReportsService} from "./reports.service";
-import {AppEventCode, AppService} from "../app.service";
-import {ActivatedRoute, Params} from "@angular/router";
-import {EveboxSubscriptionService} from "../subscription.service";
-import {loadingAnimation} from "../animations";
-import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {ApiService, ReportAggOptions} from "../api.service";
-import {TopNavService} from "../topnav.service";
+import { Component, Input, OnChanges, OnDestroy, OnInit } from "@angular/core";
+import { ReportsService } from "../reports.service";
+import { AppEventCode, AppService } from "../../app.service";
+import { ActivatedRoute, Params } from "@angular/router";
+import { EveboxSubscriptionService } from "../../subscription.service";
+import { loadingAnimation } from "../../animations";
+import { EveboxSubscriptionTracker } from "../../subscription-tracker";
+import { ApiService, ReportAggOptions } from "../../api.service";
+import { TopNavService } from "../../topnav.service";
 import * as moment from "moment";
-import {ElasticSearchService} from "../elasticsearch.service";
+import { ElasticSearchService } from "../../elasticsearch.service";
 import * as palette from "google-palette";
 
-declare var Chart: any;
+import { Chart } from 'chart.js';
+import { getCanvasElementById } from "../../shared/chartjs";
 
 @Component({
     selector: "evebox-ip-addr-data-table",
     template: `
-      <report-data-table *ngIf="rows"
-                         [title]="title"
-                         [rows]="rows"
-                         [headers]="headers"></report-data-table>
+        <report-data-table *ngIf="rows"
+                           [title]="title"
+                           [rows]="rows"
+                           [headers]="headers"></report-data-table>
     `,
 })
 export class IpAddrDataTableComponent implements OnInit, OnChanges {
@@ -84,94 +85,7 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
 }
 
 @Component({
-    template: `
-      <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
-        <loading-spinner [loading]="loading > 0"></loading-spinner>
-        <br/>
-        <div class="row">
-          <div class="col-sm">
-            <button type="button" class="btn btn-secondary"
-                    (click)="refresh()"> Refresh
-            </button>
-          </div>
-          <div class="col-sm">
-            <evebox-filter-input
-                [queryString]="queryString"></evebox-filter-input>
-          </div>
-        </div>
-
-        <br/>
-
-        <div class="row">
-          <div class="col">
-            <div style="height: 225px"
-                 [hidden]="!eventsOverTime || eventsOverTime.values.length == 0">
-              <canvas id="eventsOverTimeChart"></canvas>
-            </div>
-          </div>
-        </div>
-
-        <br/>
-
-        <div class="row">
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header"> SSH Client Software</div>
-              <div class="card-body">
-                <canvas [hidden]="!clientSoftware || clientSoftware.length == 0"
-                        id="clientVersionsPie" style="height: 300px;"></canvas>
-                <div *ngIf="!clientSoftware || clientSoftware.length == 0">No
-                  data.
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header"> SSH Server Software</div>
-              <div class="card-body">
-                <canvas [hidden]="!serverSoftware || serverSoftware.length == 0"
-                        id="serverVersionsPie" style="height: 300px;"></canvas>
-                <div *ngIf="!serverSoftware || serverSoftware.length == 0">No
-                  data.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <br/>
-
-        <div class="row">
-          <div class="col-md-6">
-            <report-data-table *ngIf="clientSoftware"
-                               title="SSH Client Software"
-                               [rows]="clientSoftware"
-                               [headers]="['#', 'Software']"></report-data-table>
-          </div>
-          <div class="col-md-6">
-            <report-data-table *ngIf="serverSoftware"
-                               title="SSH Server Software"
-                               [rows]="serverSoftware"
-                               [headers]="['#', 'Software']"></report-data-table>
-          </div>
-        </div>
-        <br/>
-        <div class="row">
-          <div class="col-sm">
-            <evebox-ip-addr-data-table *ngIf="topSourceAddresses"
-                                       title="Top SSH Client Hosts"
-                                       [rows]="topSourceAddresses"
-                                       [headers]="['#', 'Address']"></evebox-ip-addr-data-table>
-          </div>
-          <div class="col-sm">
-            <evebox-ip-addr-data-table *ngIf="topDestinationAddresses"
-                                       title="Top SSH Server Hosts"
-                                       [rows]="topDestinationAddresses"
-                                       [headers]="['#', 'Address']"></evebox-ip-addr-data-table>
-          </div>
-        </div>
-      </div>`,
+    templateUrl: "ssh-report.component.html",
     animations: [
         loadingAnimation,
     ]
@@ -192,7 +106,10 @@ export class SshReportComponent implements OnInit, OnDestroy {
 
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    charts: any = {};
+    charts: { [index: string]: any } = {};
+
+    topDestinationAddresses: any[] = [];
+    topSourceAddresses: any[] = [];
 
     constructor(private appService: AppService,
                 private ss: EveboxSubscriptionService,
@@ -202,30 +119,30 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 private topNavService: TopNavService) {
     }
 
-    ngOnInit() {
+    ngOnInit(): void {
 
-        if (this.route.snapshot.queryParams["q"]) {
-            this.queryString = this.route.snapshot.queryParams["q"];
+        if (this.route.snapshot.queryParams.q) {
+            this.queryString = this.route.snapshot.queryParams.q;
         }
 
         this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
-            this.queryString = params["q"] || "";
+            this.queryString = params.q || "";
             this.refresh();
         });
 
         this.subTracker.subscribe(this.appService, (event: any) => {
-            if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
+            if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
         });
 
     }
 
-    ngOnDestroy() {
+    ngOnDestroy(): void {
         this.subTracker.unsubscribe();
     }
 
-    load(fn: any) {
+    load(fn: any): void {
         this.loading++;
         fn().then(() => {
         }).catch((err) => {
@@ -236,16 +153,14 @@ export class SshReportComponent implements OnInit, OnDestroy {
         });
     }
 
-    topDestinationAddresses: any[] = [];
-    topSourceAddresses: any[] = [];
 
-    refresh() {
+    refresh(): void {
 
-        let size = 100;
+        const size = 100;
 
-        let timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
+        const timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
 
-        let aggOptions: ReportAggOptions = {
+        const aggOptions: ReportAggOptions = {
             queryString: this.queryString,
             timeRange: timeRangeSeconds,
             size: size,
@@ -282,8 +197,8 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 };
 
                 let nonZeroCount = 0;
-                for (let item of response.data) {
-                    let count = item.count;
+                for (const item of response.data) {
+                    const count = item.count;
                     this.eventsOverTime.labels.push(moment(item.key).toDate());
                     this.eventsOverTime.values.push(count);
                     if (count > 0) {
@@ -291,7 +206,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                     }
                 }
 
-                if (nonZeroCount == 0) {
+                if (nonZeroCount === 0) {
                     this.eventsOverTime = {
                         labels: [],
                         values: [],
@@ -299,13 +214,13 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 }
 
                 setTimeout(() => {
-                    let ctx = document.getElementById("eventsOverTimeChart");
+                    const ctx = getCanvasElementById("eventsOverTimeChart");
 
-                    if (this.charts["eventsOverTimeChart"]) {
-                        this.charts["eventsOverTimeChart"].destroy();
+                    if (this.charts.eventsOverTimeChart) {
+                        this.charts.eventsOverTimeChart.destroy();
                     }
 
-                    this.charts["eventsOverTimeChart"] = new Chart(ctx, {
+                    this.charts.eventsOverTimeChart = new Chart(ctx, {
                         type: "bar",
                         data: {
                             labels: this.eventsOverTime.labels,
@@ -317,44 +232,25 @@ export class SshReportComponent implements OnInit, OnDestroy {
                             ]
                         },
                         options: {
-                            response: true,
-                            title: {
-                                display: true,
-                                text: "SSH Connections Over Time",
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                },
+                                title: {
+                                    display: true,
+                                    text: "SSH Connections Over Time",
+                                    padding: 0,
+                                }
                             },
                             scales: {
-                                xAxes: [
-                                    {
-                                        type: "time",
-                                        distribution: "series",
-                                        ticks: {
-                                            maxRotation: 0,
-                                        },
-                                        gridLines: {
-                                            tickMarkLength: 10,
-                                        }
-                                    }
-                                ]
-                            },
-                            legend: {
-                                display: false,
+                                x: {
+                                    type: "time",
+                                },
                             },
                             layout: {},
                             maintainAspectRatio: false,
-                            tooltips: {
-                                enabled: true,
-                                intersect: false,
-                                displayColors: false,
-                                callbacks: {
-                                    title: function (t) {
-                                        return moment(t[0].xLabel).format("YYYY-MM-DD");
-                                    }
-                                }
-                            }
                         },
                     });
-
-
                 }, 0);
 
             });
@@ -392,13 +288,13 @@ export class SshReportComponent implements OnInit, OnDestroy {
                     this.serverSoftware = response.data;
 
                     // Only graph the top 10 then sum up the rest under "Other".
-                    let versions: any = [];
+                    const versions: any = [];
 
                     for (let i = 0; i < response.data.length; i++) {
                         if (i < 10) {
                             versions.push(response.data[i]);
                         }
-                        if (i == 10) {
+                        if (i === 10) {
                             versions.push({key: "Other", count: 0});
                         }
                         if (i >= 10) {
@@ -412,22 +308,22 @@ export class SshReportComponent implements OnInit, OnDestroy {
 
     }
 
-    renderPieChart(canvasId: string, data: any[]) {
-        let labels: string[] = [];
-        let values: number[] = [];
+    renderPieChart(canvasId: string, data: any[]): void {
+        const labels: string[] = [];
+        const values: number[] = [];
 
         data.forEach((version: any) => {
             labels.push(version.key);
             values.push(version.count);
         });
 
-        let ctx = document.getElementById(canvasId);
+        const ctx = getCanvasElementById(canvasId);
 
         if (this.charts[canvasId]) {
             this.charts[canvasId].destroy();
         }
 
-        let colours = this.getColours(data.length);
+        const colours = this.getColours(data.length);
 
         this.charts[canvasId] = new Chart(ctx, {
             type: "pie",
@@ -441,17 +337,17 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 ]
             },
             options: {
-                legend: {
-                    display: true,
-                    position: "right",
-                },
+                // legend: {
+                //     display: true,
+                //     position: "right",
+                // },
             }
         });
 
     }
 
     private getColours(count: number): string[] {
-        let colours = palette("qualitative", count);
+        const colours = palette("qualitative", count);
         return colours.map(colour => {
             return "#" + colour;
         });

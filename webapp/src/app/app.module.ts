@@ -38,7 +38,7 @@ import {EventsComponent} from "./events/events.component";
 import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {AlertReportComponent} from "./reports/alerts-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
-import {FlowReportComponent} from "./reports/flow-report.component";
+import {FlowReportComponent} from "./reports/flow/flow-report.component";
 import {EveboxMetricsGraphicComponent} from "./metricgraphics.component";
 import {EveboxReportDataTable} from "./reports/report-data-table";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
@@ -76,7 +76,7 @@ import {EveboxSubscriptionService} from "./subscription.service";
 import {
     IpAddrDataTableComponent,
     SshReportComponent
-} from "./reports/ssh-report.component";
+} from "./reports/ssh/ssh-report.component";
 import {LoginComponent} from "./login/login.component";
 import {SettingsComponent} from "./settings/settings.component";
 import {ThemeService} from "./shared/theme.service";

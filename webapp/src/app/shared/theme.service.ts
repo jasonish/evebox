@@ -27,7 +27,7 @@
 import { Injectable } from '@angular/core';
 import { SETTING_THEME, SettingsService } from '../settings.service';
 
-declare var Chart: any;
+import { Chart } from 'chart.js';
 
 @Injectable()
 export class ThemeService {
@@ -51,11 +51,13 @@ export class ThemeService {
         switch (theme) {
             case "dark":
                 document.getElementsByTagName("html")[0].setAttribute("class", "dark dark-mode");
-                Chart.defaults.global.defaultFontColor = "#fff";
+                //Chart.defaults.global.defaultFontColor = "#fff";
+                Chart.defaults.color = "#fff";
                 break;
             default:
                 document.getElementsByTagName("html")[0].setAttribute("class", "light");
-                Chart.defaults.global.defaultFontColor = "#666";
+                //Chart.defaults.global.defaultFontColor = "#666";
+                Chart.defaults.color = "#666";
                 break;
         }
         this.settings.set(SETTING_THEME, theme);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016 Jason Ish
+/* Copyright (c) 2014-2021 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,27 +24,28 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-declare function require(name:string);
+
+declare function require(name: string): any;
 
 import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
-
 import { AppModule } from './app/app.module';
 import { environment } from './environments/environment';
-
-import {ThemeService} from './app/shared/theme.service';
-import {SettingsService} from './app/settings.service';
+import { ThemeService } from './app/shared/theme.service';
+import { SettingsService } from './app/settings.service';
+import { initChartjs } from "./app/shared/chartjs";
 
 require('!!script-loader!jquery/dist/jquery.min.js');
 require('!!script-loader!bootstrap/dist/js/bootstrap.bundle.min.js');
-require('chart.js');
 
 if (environment.production) {
     console.log('Enabling production mode from ng cli environment.');
     enableProdMode();
 }
 
+initChartjs();
+
 new ThemeService(new SettingsService()).init();
 
 platformBrowserDynamic().bootstrapModule(AppModule)
-  .catch(err => console.log(err));
+    .catch(err => console.log(err));

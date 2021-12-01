@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Jason Ish
+/* Copyright (c) 2016-2021 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,123 +24,26 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, HostListener, OnDestroy, OnInit} from "@angular/core";
-import {ActivatedRoute, Params} from "@angular/router";
-import {ReportsService} from "./reports.service";
-import {AppEvent, AppEventCode, AppService} from "../app.service";
-import {TopNavService} from "../topnav.service";
-import {ElasticSearchService} from "../elasticsearch.service";
-import {loadingAnimation} from "../animations";
-import {EveboxSubscriptionTracker} from "../subscription-tracker";
-import {ApiService, ReportAggOptions} from "../api.service";
-import {EveBoxProtoPrettyPrinter} from "../pipes/proto-pretty-printer.pipe";
+import { Component, HostListener, OnDestroy, OnInit } from "@angular/core";
+import { ActivatedRoute, Params } from "@angular/router";
+import { ReportsService } from "../reports.service";
+import { AppEvent, AppEventCode, AppService } from "../../app.service";
+import { TopNavService } from "../../topnav.service";
+import { ElasticSearchService } from "../../elasticsearch.service";
+import { loadingAnimation } from "../../animations";
+import { EveboxSubscriptionTracker } from "../../subscription-tracker";
+import { ApiService, ReportAggOptions } from "../../api.service";
+import { EveBoxProtoPrettyPrinter } from "../../pipes/proto-pretty-printer.pipe";
 
-import * as chartjs from "../shared/chartjs";
+import * as chartjs from "../../shared/chartjs";
 import * as moment from "moment";
-import {finalize} from "rxjs/operators";
-import {Observable} from "rxjs";
+import { finalize } from "rxjs/operators";
+import { Observable } from "rxjs";
 
-declare var Chart: any;
+import { Chart } from 'chart.js';
 
 @Component({
-    template: `
-      <div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
-
-        <br/>
-
-        <loading-spinner [loading]="loading > 0"></loading-spinner>
-
-        <div class="row">
-          <div class="col-md-6 col-sm-6">
-            <button type="button" class="btn btn-secondary" (click)="refresh()">
-              Refresh
-            </button>
-          </div>
-          <div class="col-md-6 col-sm-6">
-            <evebox-filter-input
-                [queryString]="queryString"></evebox-filter-input>
-          </div>
-        </div>
-
-        <br/>
-
-        <div class="row">
-          <div class="col">
-            <div *ngIf="showCharts" style="height: 250px;">
-              <canvas id="eventsOverTimeChart"
-                      style="padding-top: 0px;"></canvas>
-            </div>
-            <div *ngIf="interval != ''" class="dropdown"
-                 style="text-align:center;">
-              <span class="mx-auto" data-toggle="dropdown">
-                <small><a
-                    href="#">{{interval}} intervals</a></small>
-              </span>
-              <div class="dropdown-menu">
-                <a class="dropdown-item" href="#"
-                   (click)="changeHistogramInterval(item.value)"
-                   *ngFor="let item of histogramIntervals">{{item.msg}}</a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <br/>
-
-        <div *ngIf="showCharts" class="row mb-4">
-
-          <div class="col-lg mb-4 mb-lg-0">
-            <div class="card">
-              <div class="card-header">Traffic ID</div>
-              <div class="card-body">
-                <canvas id="trafficIdChart"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg">
-            <div class="card">
-              <div class="card-header">Traffic Labels</div>
-              <div class="card-body">
-                <canvas id="trafficLabelChart"></canvas>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="row">
-
-          <div class="col-md-6">
-            <report-data-table *ngIf="topClientsByFlows"
-                               title="Top Clients By Flow Count"
-                               [rows]="topClientsByFlows"
-                               [headers]="['Flows', 'Client IP']"></report-data-table>
-          </div>
-
-          <div class="col-md-6">
-            <report-data-table *ngIf="topServersByFlows"
-                               title="Top Servers By Flow Count"
-                               [rows]="topServersByFlows"
-                               [headers]="['Flows', 'Server IP']"></report-data-table>
-          </div>
-
-        </div>
-
-        <br/>
-
-        <div *ngIf="topFlowsByAge" class="card">
-          <div class="card-header">
-            <b>Top Flows by Age</b>
-          </div>
-          <eveboxEventTable2 [rows]="topFlowsByAge"
-                             [showEventType]="false"
-                             [showActiveEvent]="false"></eveboxEventTable2>
-        </div>
-
-        <br/>
-
-      </div>`,
+    templateUrl: "flow-report.component.html",
     animations: [
         loadingAnimation,
     ]
@@ -188,12 +91,11 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 private protoPrettyPrinter: EveBoxProtoPrettyPrinter) {
     }
 
-    ngOnInit() {
-
+    ngOnInit(): void {
         this.range = this.topNavService.getTimeRangeAsSeconds();
 
         this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
-            this.queryString = params["q"] || "";
+            this.queryString = params.q || "";
             this.refresh();
         });
 
@@ -207,11 +109,11 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
     }
 
-    ngOnDestroy() {
+    ngOnDestroy(): void {
         this.subTracker.unsubscribe();
     }
 
-    load(fn: any) {
+    load(fn: any): void {
         this.loading++;
         fn().then(() => {
         }).catch((_) => {
@@ -220,13 +122,8 @@ export class FlowReportComponent implements OnInit, OnDestroy {
         });
     }
 
-    private renderChart(id: string, options: any) {
-        let element = document.getElementById(id);
-        if (!element) {
-            console.log(`No element with ID ${id}`);
-            return;
-        }
-        let ctx = (<HTMLCanvasElement>element).getContext("2d");
+    private renderChart(id: string, options: any): void {
+        const ctx = chartjs.getCanvasElementById(id);
         if (this.charts[id]) {
             this.charts[id].chart.destroy();
         }
@@ -234,12 +131,11 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             chart: new Chart(ctx, options),
             id: id,
             options: options,
-        }
+        };
     }
 
-
     @HostListener("window:resize", ["$event"])
-    private onResize(event) {
+    private onResize(event): void {
         this.showCharts = false;
         setTimeout(() => {
             this.showCharts = true;
@@ -247,17 +143,17 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 for (const key of Object.keys(this.charts)) {
                     this.renderChart(this.charts[key].id, this.charts[key].options);
                 }
-            })
+            });
         }, 0);
     }
 
-    private refreshEventsOverTime() {
+    private refreshEventsOverTime(): void {
         let displayUnit = "minute";
 
         if (!this.interval) {
             this.interval = "1d";
 
-            if (this.range == 0) {
+            if (this.range === 0) {
                 displayUnit = "day";
             } else if (this.range <= 60) {
                 this.interval = "1s";
@@ -282,7 +178,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         console.log(`interval: ${this.interval}, displayUnit: ${displayUnit}`);
 
-        let histogramOptions: any = {
+        const histogramOptions: any = {
             appProto: true,
             queryString: this.queryString,
             interval: this.interval,
@@ -294,34 +190,34 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
         this.wrap(this.api.flowHistogram(histogramOptions))
             .subscribe((response) => {
-                let labels = [];
-                let eventCounts = [];
-                let protos = [];
+                const labels = [];
+                const eventCounts = [];
+                const protos = [];
 
                 response.data.forEach((elem) => {
-                    for (let proto in elem.app_proto) {
+                    for (const proto in elem.app_proto) {
                         if (protos.indexOf(proto) < 0) {
                             protos.push(proto);
                         }
                     }
                 });
 
-                let data = {};
+                const data = {};
 
-                let colours = chartjs.getColourPalette(protos.length + 1);
+                const colours = chartjs.getColourPalette(protos.length + 1);
 
-                let totals = [];
+                const totals = [];
 
                 response.data.forEach((elem) => {
-                    let proto_sum = 0;
-                    for (let proto of protos) {
+                    let protoSum = 0;
+                    for (const proto of protos) {
                         if (!data[proto]) {
                             data[proto] = [];
                         }
                         if (proto in elem.app_proto) {
-                            let val = elem.app_proto[proto];
+                            const val = elem.app_proto[proto];
                             data[proto].push(val);
-                            proto_sum += val;
+                            protoSum += val;
                         } else {
                             data[proto].push(0);
                         }
@@ -329,10 +225,10 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                     labels.push(moment(elem.key).toDate());
 
                     totals.push(elem.events);
-                    eventCounts.push(elem.events - proto_sum);
+                    eventCounts.push(elem.events - protoSum);
                 });
 
-                let datasets: any[] = [{
+                const datasets: any[] = [{
                     label: "Other",
                     backgroundColor: colours[0],
                     borderColor: colours[0],
@@ -342,7 +238,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
                 let i = 1;
 
-                for (let proto of protos) {
+                for (const proto of protos) {
                     let label = proto;
                     if (proto === "failed") {
                         label = "Unknown";
@@ -359,52 +255,45 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                     i += 1;
                 }
 
-                let chartOptions = {
+                const chartOptions = {
                     type: "bar",
                     data: {
                         labels: labels,
                         datasets: datasets,
                     },
                     options: {
+                        plugins: {
+                            legend: {
+                                position: "right",
+                            },
+                            title: {
+                                display: true,
+                                text: "Flow Events Over Time",
+                                padding: 0,
+                            }
+                        },
                         title: {
                             display: true,
                             text: "Flow Events Over Time",
-                            padding: 0,
-                        },
-                        legend: {
-                            position: "right",
                         },
                         scales: {
-                            xAxes: [
-                                {
-                                    display: true,
-                                    type: "time",
-                                    stacked: true,
-                                    time: {
-                                        unit: displayUnit,
-                                    }
+                            x: {
+                                display: true,
+                                type: "time",
+                                stacked: true,
+                            },
+                            y: {
+                                stacked: true,
+                                grid: {
+                                    display: false,
+                                },
+                                ticks: {
+                                    padding: 5,
                                 }
-                            ],
-                            yAxes: [
-                                {
-                                    gridLines: false,
-                                    stacked: true,
-                                    ticks: {
-                                        padding: 5,
-                                    }
-                                }
-                            ]
+                            },
                         },
                         maintainAspectRatio: false,
                         responsive: true,
-                        tooltips: {
-                            callbacks: {
-                                footer: function (a, b) {
-                                    let index = a[0].index;
-                                    return `Total: ${totals[index]}`;
-                                }
-                            }
-                        }
                     }
                 };
 
@@ -412,15 +301,15 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             });
     }
 
-    changeHistogramInterval(interval) {
+    changeHistogramInterval(interval): void {
         this.interval = interval;
         this.refreshEventsOverTime();
     }
 
-    refresh() {
+    refresh(): void {
         this.refreshEventsOverTime();
 
-        let aggOptions: ReportAggOptions = {
+        const aggOptions: ReportAggOptions = {
             timeRange: this.range,
             eventType: "flow",
             size: 10,
@@ -445,8 +334,8 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             return this.api.reportAgg("traffic.id", aggOptions)
                 .then((response: any) => {
 
-                    let labels = response.data.map((e) => e.key);
-                    let data = response.data.map((e) => e.count);
+                    const labels = response.data.map((e) => e.key);
+                    const data = response.data.map((e) => e.count);
 
                     if (response.missing && response.missing > 0) {
                         labels.push("<no-id>");
@@ -458,9 +347,9 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                         data.push(response.other);
                     }
 
-                    let colours = chartjs.getColourPalette(labels.length + 1);
+                    const colours = chartjs.getColourPalette(labels.length + 1);
 
-                    let config = {
+                    const config = {
                         type: "pie",
                         data: {
                             datasets: [
@@ -483,8 +372,8 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             return this.api.reportAgg("traffic.label", aggOptions)
                 .then((response: any) => {
 
-                    let labels = response.data.map((e) => e.key);
-                    let data = response.data.map((e) => e.count);
+                    const labels = response.data.map((e) => e.key);
+                    const data = response.data.map((e) => e.count);
 
                     if (response.missing && response.missing > 0) {
                         labels.push("<unlabeled>");
@@ -496,9 +385,9 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                         data.push(response.other);
                     }
 
-                    let colours = chartjs.getColourPalette(labels.length + 1);
+                    const colours = chartjs.getColourPalette(labels.length + 1);
 
-                    let options = {
+                    const options = {
                         type: "pie",
                         data: {
                             datasets: [
@@ -526,7 +415,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
         });
     }
 
-    private wrap(observable: Observable<any>) {
+    private wrap(observable: Observable<any>): Observable<any> {
         this.loading++;
         return observable.pipe(finalize(() => {
             this.loading--;
