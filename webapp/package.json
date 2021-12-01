@@ -29,7 +29,7 @@
     "humanize-plus": "^1.8.2",
     "jquery": "^3.5.1",
     "metrics-graphics": "2.10.1",
-    "moment": "^2.26.0",
+    "moment": "^2.29.1",
     "mousetrap": "^1.6.5",
     "pretty-print-json": "^1.1.1",
     "queue": "^4.2.1",
