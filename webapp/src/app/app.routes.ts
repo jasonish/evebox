@@ -28,7 +28,7 @@ import {CanActivate, RouterModule, Routes} from "@angular/router";
 import {EventsComponent} from "./events/events.component";
 import {EventComponent} from "./event/event.component";
 import {AlertsComponent} from "./alerts.component";
-import {AlertReportComponent} from "./reports/alerts-report.component";
+import {AlertReportComponent} from "./reports/alerts/alerts-report.component";
 import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {FlowReportComponent} from "./reports/flow/flow-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";

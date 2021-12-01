@@ -1,0 +1,74 @@
+<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
+
+    <br/>
+
+    <loading-spinner [loading]="loading > 0"></loading-spinner>
+
+    <div class="row">
+        <div class="col">
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+                Refresh
+            </button>
+        </div>
+        <div class="col">
+            <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+        </div>
+    </div>
+
+    <br/>
+
+    <metrics-graphic *ngIf="eventsOverTime"
+                     graphId="alertsOverTimeGraph"
+                     title="Alerts Over Time"
+                     [data]="eventsOverTime"></metrics-graphic>
+
+    <div class="row">
+        <div class="col-md">
+            <report-data-table *ngIf="signatureRows"
+                               title="Top Alert Signatures"
+                               [rows]="signatureRows"
+                               [headers]="['#', 'Signature']"></report-data-table>
+        </div>
+        <div class="col-md">
+            <report-data-table *ngIf="categoryRows"
+                               title="Top Alert Categories"
+                               [rows]="categoryRows"
+                               [headers]="['#', 'Category']"></report-data-table>
+        </div>
+    </div>
+
+    <br/>
+
+    <div class="row">
+        <div class="col-md">
+            <report-data-table *ngIf="sourceRows"
+                               title="Top Alerting Source IPs"
+                               [rows]="sourceRows"
+                               [headers]="['#', 'Source']"></report-data-table>
+        </div>
+        <div class="col-md">
+            <report-data-table *ngIf="destinationRows"
+                               title="Top Alerting Destination IPs"
+                               [rows]="destinationRows"
+                               [headers]="['#', 'Destination']"></report-data-table>
+        </div>
+    </div>
+
+    <br/>
+
+    <div class="row">
+        <div class="col-md">
+            <report-data-table *ngIf="srcPorts"
+                               title="Top Alerting Source Ports"
+                               [rows]="srcPorts"
+                               [headers]="['#', 'Port']"></report-data-table>
+        </div>
+        <div class="col-md">
+            <report-data-table *ngIf="destPorts"
+                               title="Top Alerting Destination Ports"
+                               [rows]="destPorts"
+                               [headers]="['#', 'Port']"></report-data-table>
+        </div>
+    </div>
+
+</div>

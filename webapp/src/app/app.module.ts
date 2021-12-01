@@ -36,7 +36,7 @@ import {AlertsComponent} from "./alerts.component";
 import {EventComponent} from "./event/event.component";
 import {EventsComponent} from "./events/events.component";
 import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
-import {AlertReportComponent} from "./reports/alerts-report.component";
+import {AlertReportComponent} from "./reports/alerts/alerts-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
 import {FlowReportComponent} from "./reports/flow/flow-report.component";
 import {EveboxMetricsGraphicComponent} from "./metricgraphics.component";
