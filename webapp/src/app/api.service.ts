@@ -213,7 +213,7 @@ export class ApiService {
         const query: any = [];
 
         if (options.timeRange && options.timeRange > 0) {
-            query.push(`timeRange=${options.timeRange}s`);
+            query.push(`time_range=${options.timeRange}s`);
         }
 
         if (options.interval) {
@@ -221,23 +221,23 @@ export class ApiService {
         }
 
         if (options.addressFilter) {
-            query.push(`addressFilter=${options.addressFilter}`);
+            query.push(`address_filter=${options.addressFilter}`);
         }
 
         if (options.queryString) {
-            query.push(`queryString=${options.queryString}`);
+            query.push(`query_string=${options.queryString}`);
         }
 
         if (options.sensorFilter) {
-            query.push(`sensorFilter=${options.sensorFilter}`);
+            query.push(`sensor_name=${options.sensorFilter}`);
         }
 
         if (options.dnsType) {
-            query.push(`dnsType=${options.dnsType}`);
+            query.push(`dns_type=${options.dnsType}`);
         }
 
         if (options.eventType) {
-            query.push(`eventType=${options.eventType}`);
+            query.push(`event_type=${options.eventType}`);
         }
 
         return this.client.get(`api/1/report/histogram?${query.join("&")}`).toPromise();
@@ -249,7 +249,13 @@ export class ApiService {
         for (const key of Object.keys(options)) {
             switch (key) {
                 case "timeRange":
-                    params = params.append("timeRange", `${options[key]}s`);
+                    params = params.append("time_range", `${options[key]}s`);
+                    break;
+                case "queryString":
+                    params = params.append("query_string", `${options[key]}`);
+                    break;
+                    case "eventType":
+                    params = params.append("event_type", `${options[key]}`);
                     break;
                 default:
                     params = params.append(key, options[key]);
