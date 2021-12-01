@@ -22,7 +22,6 @@
 import { Component, OnDestroy, OnInit } from "@angular/core";
 import { ReportsService } from "../reports.service";
 import { AppEventCode, AppService } from "../../app.service";
-import { EveboxFormatIpAddressPipe } from "../../pipes/format-ipaddress.pipe";
 import { ActivatedRoute, Params } from "@angular/router";
 import { EveboxSubscriptionService } from "../../subscription.service";
 import { loadingAnimation } from "../../animations";
@@ -31,6 +30,8 @@ import { ApiService, ReportAggOptions } from "../../api.service";
 import { TopNavService } from "../../topnav.service";
 import * as moment from "moment";
 import { ElasticSearchService } from "../../elasticsearch.service";
+import { getCanvasElementById, getColourPalette } from "../../shared/chartjs";
+import { Chart, ChartConfiguration } from "chart.js";
 
 @Component({
     templateUrl: "alerts-report.component.html",
@@ -54,6 +55,10 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     queryString = "";
 
+    private charts = {
+        eventsOverTime: null,
+    };
+
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
     constructor(private appService: AppService,
@@ -62,8 +67,7 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                 private reports: ReportsService,
                 private api: ApiService,
                 private topNavService: TopNavService,
-                private elasticSearch: ElasticSearchService,
-                private formatIpAddressPipe: EveboxFormatIpAddressPipe) {
+                private elasticSearch: ElasticSearchService) {
     }
 
     ngOnInit(): void {
@@ -86,6 +90,9 @@ export class AlertReportComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
+        if (this.charts.eventsOverTime) {
+            this.charts.eventsOverTime.destroy();
+        }
         this.subTracker.unsubscribe();
     }
 
@@ -183,12 +190,44 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                 eventType: "alert",
                 queryString: this.queryString,
             }).then((response: any) => {
-                this.eventsOverTime = response.data.map((x: any) => {
-                    return {
-                        date: moment(x.key).toDate(),
-                        value: x.count,
-                    };
+                const dataValues = [];
+                const dataLabels = [];
+                response.data.forEach((e: any) => {
+                    dataValues.push(e.count);
+                    dataLabels.push(moment(e.key).toDate());
                 });
+                const ctx = getCanvasElementById("eventsOverTimeChart");
+                const config: ChartConfiguration = {
+                    type: "bar",
+                    data: {
+                        labels: dataLabels,
+                        datasets: [{
+                            data: dataValues,
+                            backgroundColor: getColourPalette(dataValues.length),
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: "Alerts Over Time",
+                                padding: 0,
+                            },
+                            legend: {
+                                display: false,
+                            },
+                        },
+                        scales: {
+                            x: {
+                                type: "time",
+                            }
+                        }
+                    },
+                };
+                if (this.charts.eventsOverTime) {
+                    this.charts.eventsOverTime.destroy();
+                }
+                this.charts.eventsOverTime = new Chart(ctx, config);
             });
         });
     }

@@ -219,7 +219,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                     if (this.charts.eventsOverTimeChart) {
                         this.charts.eventsOverTimeChart.destroy();
                     }
-
+                    
                     this.charts.eventsOverTimeChart = new Chart(ctx, {
                         type: "bar",
                         data: {
@@ -336,12 +336,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                     }
                 ]
             },
-            options: {
-                // legend: {
-                //     display: true,
-                //     position: "right",
-                // },
-            }
+            options: {}
         });
 
     }

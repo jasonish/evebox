@@ -2,7 +2,6 @@
 
 @import "~font-awesome/css/font-awesome.css";
 @import "~toastr/build/toastr.css";
-@import "~metrics-graphics/dist/metricsgraphics.css";
 @import "~pretty-print-json/dist/pretty-print-json.css";
 
 .dark {
@@ -170,24 +169,6 @@
 
     tr.evebox-success {
       background-color: $gray-800;
-    }
-  }
-
-  // Styles for the Metrics Graphics in dark mode.
-  .evebox-metrics-graphic {
-    // Lighten up the font used in the metrics graphics.
-    text {
-      fill: white;
-    }
-
-    // Lighten up the color of the actual graph lines and area.
-    .mg-line1-color {
-      stroke: lightblue;
-    }
-
-    .mg-area1-color {
-      fill: lightblue;
-      opacity: 1;
     }
   }
 

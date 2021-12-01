@@ -39,7 +39,6 @@ import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {AlertReportComponent} from "./reports/alerts/alerts-report.component";
 import {NetflowReportComponent} from "./reports/netflow-report.component";
 import {FlowReportComponent} from "./reports/flow/flow-report.component";
-import {EveboxMetricsGraphicComponent} from "./metricgraphics.component";
 import {EveboxReportDataTable} from "./reports/report-data-table";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 import {EveboxFilterInputComponent} from "./shared/filter-input.component";
@@ -101,7 +100,6 @@ import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
         AlertReportComponent,
         NetflowReportComponent,
         FlowReportComponent,
-        EveboxMetricsGraphicComponent,
         EveboxReportDataTable,
         IpReportComponent,
         SshReportComponent,

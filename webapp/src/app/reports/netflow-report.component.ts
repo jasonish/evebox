@@ -68,11 +68,6 @@ import * as moment from "moment";
           <hr/>
         </div>
 
-        <metrics-graphic *ngIf="eventsOverTime"
-                         graphId="eventsOverTime"
-                         title="Netflow Events Over Time"
-                         [data]="eventsOverTime"></metrics-graphic>
-
         <div class="row">
 
           <div class="col-md-6">

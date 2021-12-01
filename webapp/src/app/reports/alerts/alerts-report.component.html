@@ -17,10 +17,11 @@
 
     <br/>
 
-    <metrics-graphic *ngIf="eventsOverTime"
-                     graphId="alertsOverTimeGraph"
-                     title="Alerts Over Time"
-                     [data]="eventsOverTime"></metrics-graphic>
+    <div class="row">
+        <div class="col-12">
+            <canvas id="eventsOverTimeChart" style="max-height: 250px; height: 300px;"></canvas>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-md">

@@ -1,46 +1,41 @@
-/* Copyright (c) 2016-2019 Jason Ish
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+// Copyright (C) 2016-2021 Jason Ish
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import {Component, OnDestroy, OnInit} from "@angular/core";
-import {ReportsService} from "../reports.service";
-import {AppEventCode, AppService} from "../../app.service";
-import {EveboxFormatIpAddressPipe} from "../../pipes/format-ipaddress.pipe";
-import {EveboxSubscriptionTracker} from "../../subscription-tracker";
-import {ActivatedRoute, Params} from "@angular/router";
-import {ApiService, ReportAggOptions} from "../../api.service";
-import {TopNavService} from "../../topnav.service";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { ReportsService } from "../reports.service";
+import { AppEventCode, AppService } from "../../app.service";
+import { EveboxFormatIpAddressPipe } from "../../pipes/format-ipaddress.pipe";
+import { EveboxSubscriptionTracker } from "../../subscription-tracker";
+import { ActivatedRoute, Params } from "@angular/router";
+import { ApiService, ReportAggOptions } from "../../api.service";
+import { TopNavService } from "../../topnav.service";
 
 import * as moment from "moment";
+import { getCanvasElementById, getColourPalette } from "../../shared/chartjs";
+import { Chart, ChartConfiguration } from "chart.js";
 
 @Component({
     templateUrl: "./dns-report.component.html",
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
-
-    eventsOverTime: any[];
 
     topRrnames: any[];
     topRdata: any[];
@@ -55,6 +50,10 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
+    private charts = {
+        eventsOverTime: null,
+    };
+
     constructor(private route: ActivatedRoute,
                 private appService: AppService,
                 private api: ApiService,
@@ -63,26 +62,29 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 private formatIpAddressPipe: EveboxFormatIpAddressPipe) {
     }
 
-    ngOnInit() {
+    ngOnInit(): void {
 
         this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
-            this.queryString = params["q"] || "";
+            this.queryString = params.q || "";
             this.refresh();
         });
 
         this.subTracker.subscribe(this.appService, (event: any) => {
-            if (event.event == AppEventCode.TIME_RANGE_CHANGED) {
+            if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
                 this.refresh();
             }
         });
 
     }
 
-    ngOnDestroy() {
+    ngOnDestroy(): void {
         this.subTracker.unsubscribe();
+        if (this.charts.eventsOverTime != null) {
+            this.charts.eventsOverTime.destroy();
+        }
     }
 
-    mapAddressAggregation(items: any[]) {
+    mapAddressAggregation(items: any[]): { count: any; key: any }[] {
         return items.map((item: any) => {
 
             let key = item.key;
@@ -100,7 +102,7 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         });
     }
 
-    mapAggregation(items: any[]) {
+    mapAggregation(items: any[]): { count: any; key: any }[] {
         return items.map((item: any) => {
             return {
                 key: item.key,
@@ -109,20 +111,20 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         });
     }
 
-    load(fn: any) {
+    load(fn: any): void {
         this.loading++;
         fn().then(() => {
         }).catch((err) => {
         }).then(() => {
             this.loading--;
-        })
+        });
     }
 
-    refresh() {
-        let size = 10;
-        let range = this.topNavService.getTimeRangeAsSeconds();
+    refresh(): void {
+        const size = 10;
+        const range = this.topNavService.getTimeRangeAsSeconds();
 
-        let aggOptions: ReportAggOptions = {
+        const aggOptions: ReportAggOptions = {
             eventType: "dns",
             dnsType: "answer",
             timeRange: range,
@@ -184,14 +186,49 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 dnsType: "query",
                 queryString: this.queryString,
             }).then((response: any) => {
-                this.eventsOverTime = response.data.map((x: any) => {
-                    return {
-                        date: moment(x.key).toDate(),
-                        value: x.count
-                    };
-                });
+                this.buildChart(response.data);
             });
         });
+    }
 
+    private buildChart(response: any[]): void {
+        const values = [];
+        const labels = [];
+        response.forEach((e) => {
+            labels.push(moment(e.key).toDate());
+            values.push(e.count);
+        });
+        const ctx = getCanvasElementById("eventsOverTimeChart");
+        const config: ChartConfiguration = {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: getColourPalette(values.length),
+                }]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: "DNS Requests Over Time",
+                        padding: 0,
+                    },
+                    legend: {
+                        display: false,
+                    },
+                },
+                scales: {
+                    x: {
+                        type: "time",
+                    }
+                }
+            },
+        };
+        if (this.charts.eventsOverTime) {
+            this.charts.eventsOverTime.destroy();
+        }
+        this.charts.eventsOverTime = new Chart(ctx, config);
     }
 }
