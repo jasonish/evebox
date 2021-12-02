@@ -89,6 +89,15 @@ impl From<anyhow::Error> for DatastoreError {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct StatsAggQueryParams {
+    pub field: String,
+    pub duration: time::Duration,
+    pub interval: time::Duration,
+    pub sensor_name: Option<String>,
+    pub start_time: time::OffsetDateTime,
+}
+
 #[allow(unreachable_patterns)]
 impl Datastore {
     pub fn get_importer(&self) -> Option<Importer> {

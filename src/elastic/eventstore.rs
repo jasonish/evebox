@@ -37,7 +37,7 @@ use crate::elastic::{
 use crate::prelude::*;
 use crate::server::api;
 use crate::server::session::Session;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value as JsonValue;
 use std::sync::Arc;
@@ -895,4 +895,189 @@ impl EventStore {
         filter.push(json!({"term": {self.map_field("alert.signature_id"): request.signature_id}}));
         return filter;
     }
+
+    pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
+        let request = json!({
+            "size": 0,
+            "aggs": {
+                "sensors": {
+                    "terms": {
+                        "field": "host.keyword",
+                    }
+                }
+            }
+        });
+        let mut response: serde_json::Value = self.search(&request).await?.json().await?;
+        let buckets = response["aggregations"]["sensors"]["buckets"].take();
+
+        #[derive(Deserialize, Debug)]
+        struct Bucket {
+            key: String,
+        }
+
+        let buckets: Vec<Bucket> = serde_json::from_value(buckets)?;
+        let sensors: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
+        return Ok(sensors);
+    }
+
+    pub async fn stats_agg(
+        &self,
+        params: datastore::StatsAggQueryParams,
+    ) -> anyhow::Result<serde_json::Value> {
+        let start_time = params
+            .start_time
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap();
+        let interval = elastic_format_interval(params.interval);
+        let mut filters = vec![];
+        filters.push(json!({"term": {"event_type": "stats"}}));
+        filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
+        if let Some(sensor_name) = params.sensor_name {
+            filters.push(json!({"term": {"host": sensor_name}}));
+        }
+
+        let query = json!({
+           "query": {
+                "bool": {
+                    "filter": filters,
+                }
+            },
+            "size": 0,
+            "sort": [{"@timestamp": {"order": "asc"}}],
+            "aggs": {
+               "histogram": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "fixed_interval": interval,
+                    },
+              "aggs": {
+                "memuse": {
+                  "max": {
+                    "field": &params.field,
+                  }
+                },
+            }}}
+        });
+        let mut response: serde_json::Value = self.search(&query).await?.json().await?;
+
+        #[derive(Debug, Deserialize, Serialize, Default)]
+        struct Value {
+            value: Option<f64>,
+        }
+
+        #[derive(Debug, Deserialize, Serialize, Default)]
+        struct Bucket {
+            key_as_string: String,
+            memuse: Value,
+        }
+
+        let buckets = response["aggregations"]["histogram"]["buckets"].take();
+        let buckets: Vec<Bucket> = serde_json::from_value(buckets)?;
+        let buckets: Vec<serde_json::Value> = buckets
+            .iter()
+            .map(|b| {
+                json!({
+                    "timestamp": b.key_as_string,
+                    "value": b.memuse.value.unwrap_or(0.0) as u64,
+                })
+            })
+            .collect();
+        let response = json!({
+            "data": buckets,
+        });
+
+        return Ok(response);
+    }
+
+    pub async fn stats_agg_deriv(
+        &self,
+        params: datastore::StatsAggQueryParams,
+    ) -> anyhow::Result<serde_json::Value> {
+        let start_time = params
+            .start_time
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap();
+        let interval = elastic_format_interval(params.interval);
+        let mut filters = vec![];
+        filters.push(json!({"term": {"event_type": "stats"}}));
+        filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
+        if let Some(sensor_name) = params.sensor_name {
+            filters.push(json!({"term": {"host": sensor_name}}));
+        }
+        let query = json!({
+          "query": {
+            "bool": {
+              "filter": filters,
+            }
+          },
+          "size": 0,
+          "sort": [{"@timestamp": {"order": "asc"}}],
+          "aggs": {
+            "histogram": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "fixed_interval": interval,
+              },
+              "aggs": {
+                "values": {
+                  "max": {
+                    "field": &params.field,
+                  }
+                },
+                "values_deriv": {
+                  "derivative": {
+                    "buckets_path": "values"
+                  }
+                }
+              }
+            }
+          }
+        });
+        let mut response: serde_json::Value = self.search(&query).await?.json().await?;
+
+        #[derive(Debug, Deserialize, Serialize, Default)]
+        struct Value {
+            value: Option<f64>,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct Bucket {
+            key_as_string: String,
+            key: u64,
+            values_deriv: Option<Value>,
+        }
+
+        let buckets = response["aggregations"]["histogram"]["buckets"].take();
+        let buckets: Vec<Bucket> = serde_json::from_value(buckets)?;
+        let response_data: Vec<serde_json::Value> = buckets
+            .iter()
+            .map(|b| {
+                let bytes = b
+                    .values_deriv
+                    .as_ref()
+                    .map(|v| v.value.as_ref())
+                    .flatten()
+                    .copied()
+                    .unwrap_or(0.0) as u64;
+                json!({
+                    "timestamp": b.key_as_string,
+                    "value": bytes,
+                })
+            })
+            .collect();
+        let response = json!({
+            "data": response_data,
+        });
+        Ok(response)
+    }
+}
+
+fn elastic_format_interval(duration: time::Duration) -> String {
+    let result = if duration < time::Duration::minutes(1) {
+        format!("{}s", duration.whole_seconds())
+    } else {
+        format!("{}m", duration.whole_minutes())
+    };
+    debug!("Formatted duration of {:?} as {}", duration, &result);
+    result
 }

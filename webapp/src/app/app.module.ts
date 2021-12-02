@@ -89,6 +89,7 @@ import {EveBoxProtoPrettyPrinter} from "./pipes/proto-pretty-printer.pipe";
 import {CommentInputComponent} from './comment-input/comment-input.component';
 import { AboutComponent } from './about/about.component';
 import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
+import { StatsComponent } from './reports/stats/stats.component';
 
 @NgModule({
     declarations: [
@@ -134,6 +135,7 @@ import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
         CommentInputComponent,
         AboutComponent,
         DhcpReportComponent,
+        StatsComponent,
     ],
     imports: [
         // Angular modules.

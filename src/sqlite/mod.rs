@@ -32,6 +32,45 @@ pub mod importer;
 pub mod queryparser;
 pub mod retention;
 
+pub async fn open_pool<T: Into<PathBuf>>(filename: T) -> anyhow::Result<deadpool_sqlite::Pool> {
+    use deadpool_sqlite::{Config, Runtime};
+    let config = Config::new(filename);
+    let pool = config.create_pool(Runtime::Tokio1)?;
+    let conn = pool.get().await?;
+    if let Err(err) = conn
+        .interact(|conn| {
+            debug!("set journal mode to WAL");
+            let mode = conn.pragma_update_and_check(None, "ournal_mode", &"WAL", |row| {
+                let mode: String = row.get(0)?;
+                Ok(mode)
+            });
+            info!("Result of setting database to WAL mode: {:?}", mode);
+
+            // Set synchronous to NORMAL.
+            if let Err(err) = conn.pragma_update(None, "synchronous", &"NORMAL") {
+                error!("Failed to set pragma synchronous = NORMAL: {:?}", err);
+            }
+            match conn.pragma_query_value(None, "synchronous", |row| {
+                let val: i32 = row.get(0)?;
+                Ok(val)
+            }) {
+                Ok(mode) => {
+                    if mode != 1 {
+                        warn!("Database not in synchronous mode normal, instead: {}", mode);
+                    }
+                }
+                Err(err) => {
+                    warn!("Failed to query pragma synchronous: {:?}", err);
+                }
+            }
+        })
+        .await
+    {
+        return Err(anyhow::anyhow!("{:?}", err));
+    }
+    Ok(pool)
+}
+
 pub struct ConnectionBuilder {
     pub filename: Option<PathBuf>,
 }

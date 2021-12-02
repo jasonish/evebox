@@ -41,6 +41,7 @@ import {ApiService} from "./api.service";
 import {SettingsComponent} from "./settings/settings.component";
 import {DebugComponent} from "./debug/debug.component";
 import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
+import { StatsComponent } from "./reports/stats/stats.component";
 
 declare var window: any;
 
@@ -176,7 +177,10 @@ const routes: Routes = [
                 component: IpReportComponent,
                 pathMatch: "prefix",
             },
-
+            {
+                path: "stats",
+                component: StatsComponent,
+            },
             {
                 path: "settings", component: SettingsComponent,
             }

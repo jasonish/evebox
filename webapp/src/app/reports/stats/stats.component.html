@@ -1,0 +1,49 @@
+<div class="row pt-2">
+    <div class="col">
+        <form class="form-inline">
+
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+                Refresh
+            </button>
+
+            <select *ngIf="sensors" class="form-control ml-2" [(ngModel)]="sensorName"
+                    (ngModelChange)="refresh()" name="sensorSelector">
+                <option value="">All Sensors</option>
+                <option *ngFor="let sensor of sensors" [value]="sensor">
+                    {{sensor}}
+                </option>
+            </select>
+
+        </form>
+    </div>
+</div>
+
+<div class="row pt-2">
+    <div class="col-12">
+        <canvas height="200" id="chart-decoder-bytes" style="height: 200px;"></canvas>
+    </div>
+</div>
+
+<div class="row pt-2">
+    <div class="col-12">
+        <canvas height="200" id="chart-kernel-packets" style="height: 200px;"></canvas>
+    </div>
+</div>
+
+<div class="row pt-2">
+    <div class="col-12">
+        <canvas height="200" id="chart-kernel-drops" style="height: 200px;"></canvas>
+    </div>
+</div>
+
+<div class="row pt-2">
+    <div class="col-12">
+        <canvas height="200" id="chart-flow-memuse" style="height: 200px;"></canvas>
+    </div>
+</div>
+
+<div class="row pt-2">
+    <div class="col-12">
+        <canvas height="200" id="chart-tcp-memuse" style="height: 200px;"></canvas>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Jason Ish
+// Copyright (C) 2020-2021 Jason Ish
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -515,6 +515,8 @@ pub enum ApiError {
     BadRequest(String),
     #[error("failed to decode query string")]
     QueryStringParseError,
+    #[error("internal server error")]
+    InternalServerError,
 }
 
 impl IntoResponse for ApiError {
@@ -528,6 +530,10 @@ impl IntoResponse for ApiError {
             ApiError::QueryStringParseError => (
                 StatusCode::BAD_REQUEST,
                 "query string parse error".to_string(),
+            ),
+            ApiError::InternalServerError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal server error".to_string(),
             ),
         };
         let body = Json(serde_json::json!({

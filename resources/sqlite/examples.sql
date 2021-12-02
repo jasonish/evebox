@@ -15,3 +15,27 @@ FROM events
 WHERE json_extract(events.source, '$.event_type') = 'dhcp'
   AND json_extract(events.source, '$.dhcp.type') = 'reply'
 ;
+
+-- Stats: Date from timestamp, selecting the max value in each one minute interval.
+SELECT strftime('%Y%m%d%H%M', timestamp / 1000000000, 'unixepoch') AS d
+     , MAX(json_extract(events.source, '$.stats.capture.kernel_packets'))
+FROM events
+WHERE json_extract(events.source, '$.event_type') = 'stats'
+GROUP BY d
+;
+
+--- Group into 5 minute buckets.
+SELECT datetime((timestamp / 1000000000 / 300) * 300, 'unixepoch') AS d
+     , MAX(json_extract(events.source, '$.stats.capture.kernel_packets'))
+FROM events
+WHERE json_extract(events.source, '$.event_type') = 'stats'
+GROUP BY d
+;
+
+--- Group into 5 minute buckets.
+SELECT datetime((timestamp / 1000000000 / 300) * 300, 'unixepoch') AS d
+     , SUM(json_extract(events.source, '$.stats.flow.memuse'))
+FROM events
+WHERE json_extract(events.source, '$.event_type') = 'stats'
+GROUP BY d
+;

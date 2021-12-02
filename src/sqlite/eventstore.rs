@@ -28,9 +28,9 @@ use serde_json::json;
 
 use crate::datastore::DatastoreError;
 use crate::elastic::AlertQueryOptions;
-use crate::eve;
 use crate::server::api::AlertGroupSpec;
 use crate::sqlite::ConnectionBuilder;
+use crate::{datastore, eve};
 
 impl From<rusqlite::Error> for DatastoreError {
     fn from(err: Error) -> Self {
@@ -49,18 +49,20 @@ pub struct SQLiteEventStore {
     pub connection: Arc<Mutex<Connection>>,
     pub importer: super::importer::Importer,
     pub connection_builder: Arc<ConnectionBuilder>,
+    pub pool: deadpool_sqlite::Pool,
 }
 
 type QueryParam = dyn ToSql + Send + Sync + 'static;
 
 impl SQLiteEventStore {
-    pub fn new(connection_builder: Arc<ConnectionBuilder>) -> Self {
+    pub fn new(connection_builder: Arc<ConnectionBuilder>, pool: deadpool_sqlite::Pool) -> Self {
         Self {
             connection: Arc::new(Mutex::new(connection_builder.open().unwrap())),
             importer: super::importer::Importer::new(Arc::new(Mutex::new(
                 connection_builder.open().unwrap(),
             ))),
             connection_builder,
+            pool,
         }
     }
 
@@ -355,8 +357,6 @@ impl SQLiteEventStore {
             query = query.replace("WHERE", "");
         }
 
-        dbg!(&query);
-
         let mapper = |row: &rusqlite::Row| -> Result<serde_json::Value, rusqlite::Error> {
             let id: i64 = row.get(0)?;
             let archived: i8 = row.get(1)?;
@@ -630,4 +630,129 @@ impl SQLiteEventStore {
             Ok(())
         }
     }
+
+    pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
+        let start_time = time::OffsetDateTime::now_utc() - time::Duration::hours(24);
+        let start_time = start_time.unix_timestamp_nanos() as i64;
+        let result = self
+            .pool
+            .get()
+            .await?
+            .interact(move |conn| -> Result<Vec<String>, rusqlite::Error> {
+                let sql = r#"
+                    SELECT DISTINCT json_extract(events.source, '$.host')
+                    FROM events
+                    WHERE timestamp >= ?
+                "#;
+                let mut st = conn.prepare(sql).unwrap();
+                let rows = st.query_map([&start_time], |row| row.get(0))?;
+                let mut values = vec![];
+                for row in rows {
+                    values.push(row?);
+                }
+                Ok(values)
+            })
+            .await
+            .map_err(|err| anyhow::anyhow!("sqlite interact error:: {:?}", err))??;
+        Ok(result)
+    }
+
+    async fn get_stats(
+        &self,
+        qp: datastore::StatsAggQueryParams,
+    ) -> anyhow::Result<Vec<(u64, u64)>> {
+        let conn = self.pool.get().await?;
+        let field = format!("$.{}", &qp.field);
+        let start_time = qp.start_time.unix_timestamp_nanos() as i64;
+        let interval = sqlite_format_interval(qp.interval);
+        let result = conn
+            .interact(move |conn| -> Result<Vec<(u64, u64)>, rusqlite::Error> {
+                let sql = r#"
+                        SELECT
+                            (timestamp / 1000000000 / :interval) * :interval AS a,
+                            MAX(json_extract(events.source, :field))
+                        FROM events
+                        WHERE %WHERE%
+                        GROUP BY a
+                        ORDER BY a
+                    "#;
+
+                let mut filters = vec![
+                    "json_extract(events.source, '$.event_type') == 'stats'",
+                    "timestamp >= :start_time",
+                ];
+                let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![
+                    (":interval", &interval),
+                    (":field", &field),
+                    (":start_time", &start_time),
+                ];
+                if let Some(sensor_name) = qp.sensor_name.as_ref() {
+                    filters.push("json_extract(events.source, '$.host') = :sensor_name");
+                    params.push((":sensor_name", sensor_name));
+                }
+                let sql = sql.replace("%WHERE%", &filters.join(" AND "));
+                let mut stmt = conn.prepare(&sql)?;
+                let rows =
+                    stmt.query_map(params.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?;
+                let mut entries = vec![];
+                for row in rows {
+                    entries.push(row?);
+                }
+                Ok(entries)
+            })
+            .await
+            .map_err(|err| anyhow::anyhow!("sqlite interact error:: {:?}", err))??;
+        Ok(result)
+    }
+
+    pub async fn stats_agg(
+        &self,
+        params: datastore::StatsAggQueryParams,
+    ) -> anyhow::Result<serde_json::Value> {
+        let rows = self.get_stats(params).await?;
+        let response_data: Vec<serde_json::Value> = rows
+            .iter()
+            .map(|(timestamp, value)| {
+                json!({
+                    "value": value,
+                    "timestamp": nanos_to_rfc3339((timestamp * 1000000000) as i128).unwrap(),
+                })
+            })
+            .collect();
+        return Ok(json!({
+            "data": response_data,
+        }));
+    }
+
+    pub async fn stats_agg_deriv(
+        &self,
+        params: datastore::StatsAggQueryParams,
+    ) -> anyhow::Result<serde_json::Value> {
+        let rows = self.get_stats(params).await?;
+        let mut response_data = vec![];
+        for (i, e) in rows.iter().enumerate() {
+            if i == 0 {
+                continue;
+            }
+            let previous = rows[i - 1].1;
+            let value = if previous <= e.1 { e.1 - previous } else { e.1 };
+            response_data.push(json!({
+                "value": value,
+                "timestamp": nanos_to_rfc3339((e.0 * 1000000000) as i128)?,
+            }));
+        }
+        return Ok(json!({
+            "data": response_data,
+        }));
+    }
+}
+
+fn sqlite_format_interval(duration: time::Duration) -> i64 {
+    duration.whole_seconds()
+}
+
+fn nanos_to_rfc3339(nanos: i128) -> anyhow::Result<String> {
+    let ts = time::OffsetDateTime::from_unix_timestamp_nanos(nanos)?;
+    let rfc3339 = ts.format(&time::format_description::well_known::Rfc3339)?;
+    Ok(rfc3339)
 }

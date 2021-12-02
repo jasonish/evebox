@@ -290,6 +290,12 @@ pub(crate) fn build_axum_service(
         .route("/api/1/report/dhcp/:what", get(api::report_dhcp))
         .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
         .route("/api/1/submit", post(api::submit::handler_new))
+        .route(
+            "/api/1/stats/agg/deriv",
+            get(api::stats::stats_derivative_agg),
+        )
+        .route("/api/1/stats/agg", get(api::stats::stats_agg))
+        .route("/api/1/sensors", get(api::stats::get_sensor_names))
         .layer(AddExtensionLayer::new(context.clone()))
         .layer(response_header_layer)
         .fallback(axum::routing::get(fallback_handler));
@@ -479,13 +485,15 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
             } else {
                 panic!("data-directory required");
             };
-            let connection_builder =
-                Arc::new(sqlite::ConnectionBuilder::filename(Some(db_filename)));
+            let connection_builder = Arc::new(sqlite::ConnectionBuilder::filename(Some(
+                db_filename.clone(),
+            )));
             let connection = connection_builder.open()?;
             sqlite::init_event_db(&mut connection_builder.open()?)?;
             let connection = Arc::new(Mutex::new(connection));
+            let pool = sqlite::open_pool(&db_filename).await?;
 
-            let eventstore = sqlite::eventstore::SQLiteEventStore::new(connection_builder);
+            let eventstore = sqlite::eventstore::SQLiteEventStore::new(connection_builder, pool);
             context.datastore = Datastore::SQLite(eventstore);
 
             // Setup retention job.

@@ -25,6 +25,7 @@ pub mod eve2pcap;
 pub mod flow_histogram;
 pub mod helpers;
 pub mod login;
+pub mod stats;
 pub mod submit;
 
 pub use api::*;

@@ -47,6 +47,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
     let mut db = sqlite::ConnectionBuilder::filename(Some(&PathBuf::from(&db_filename))).open()?;
     sqlite::init_event_db(&mut db)?;
     let db = Arc::new(Mutex::new(db));
+    let pool = sqlite::open_pool(&db_filename).await?;
 
     let import_task = {
         let db = db.clone();
@@ -74,8 +75,10 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
         tokio::spawn(async move {
             let mut port = 5636;
             loop {
-                let sqlite_datastore =
-                    sqlite::eventstore::SQLiteEventStore::new(db_connection_builder.clone());
+                let sqlite_datastore = sqlite::eventstore::SQLiteEventStore::new(
+                    db_connection_builder.clone(),
+                    pool.clone(),
+                );
                 let ds = crate::datastore::Datastore::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port: port.to_string(),
