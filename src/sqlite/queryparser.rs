@@ -31,6 +31,7 @@ pub fn parse_query_string(input: &str) -> (Option<String>, String, &str) {
     (None, token, rem)
 }
 
+#[allow(clippy::branches_sharing_code)]
 fn next_token(input: &str) -> (&str, String) {
     let mut output = Vec::new();
     let mut escaped = false;
