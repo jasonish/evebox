@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Jason Ish
+// Copyright (C) 2020-2021 Jason Ish
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -125,7 +125,8 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
         std::process::exit(0);
     });
 
-    let mut context = build_context(config.clone(), None).await?;
+    let datastore = configure_datastore(&config).await?;
+    let mut context = build_context(config.clone(), datastore).await?;
 
     if let Some(filename) = config_filename {
         match load_event_services(filename) {
@@ -391,7 +392,7 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
 
 pub async fn build_context(
     config: ServerConfig,
-    datastore: Option<Datastore>,
+    datastore: Datastore,
 ) -> anyhow::Result<ServerContext> {
     let config_repo = if let Some(directory) = &config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
@@ -401,12 +402,18 @@ pub async fn build_context(
         info!("Using temporary in-memory configuration database");
         ConfigRepo::new(None)?
     };
-    let mut context = ServerContext::new(config, Arc::new(config_repo));
-    if let Some(datastore) = datastore {
-        context.datastore = datastore;
-    } else {
-        configure_datastore(&mut context).await?;
+
+    let mut context = ServerContext::new(config, Arc::new(config_repo), datastore);
+
+    #[allow(clippy::single_match)]
+    match context.datastore {
+        Datastore::Elastic(_) => {
+            context.features.comments = true;
+            context.features.reporting = true;
+        }
+        _ => {}
     }
+
     Ok(context)
 }
 
@@ -415,7 +422,7 @@ async fn wait_for_version(client: &Client) -> elastic::client::Version {
         match client.get_version().await {
             Err(err) => {
                 warn!(
-                    "Failed to get Elasticsearch version, will try again: {}",
+                    "Failed to get Elasticsearch version, will try again: {:?}",
                     err
                 );
             }
@@ -427,8 +434,7 @@ async fn wait_for_version(client: &Client) -> elastic::client::Version {
     }
 }
 
-async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> {
-    let config = &context.config;
+async fn configure_datastore(config: &ServerConfig) -> anyhow::Result<Datastore> {
     match config.datastore.as_ref() {
         "elasticsearch" => {
             let mut client = elastic::ClientBuilder::new(&config.elastic_url);
@@ -472,10 +478,7 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
                 &eventstore.index_pattern
             );
             debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
-            context.features.reporting = true;
-            context.features.comments = true;
-            context.elastic = Some(eventstore.clone());
-            context.datastore = Datastore::Elastic(eventstore);
+            return Ok(Datastore::Elastic(eventstore));
         }
         "sqlite" => {
             let db_filename = if let Some(dir) = &config.data_directory {
@@ -494,7 +497,6 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
             let pool = sqlite::open_pool(&db_filename).await?;
 
             let eventstore = sqlite::eventstore::SQLiteEventStore::new(connection_builder, pool);
-            context.datastore = Datastore::SQLite(eventstore);
 
             // Setup retention job.
             if let Some(period) = config.database_retention_period {
@@ -507,10 +509,11 @@ async fn configure_datastore(context: &mut ServerContext) -> anyhow::Result<()> 
                     });
                 }
             }
+
+            return Ok(Datastore::SQLite(eventstore));
         }
         _ => panic!("unsupported datastore"),
     }
-    Ok(())
 }
 
 #[derive(Debug)]

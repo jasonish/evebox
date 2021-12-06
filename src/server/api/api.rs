@@ -31,7 +31,7 @@ use crate::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::datastore::{self, EventQueryParams};
+use crate::datastore::{self, Datastore, EventQueryParams};
 use crate::elastic;
 use crate::server::filters::GenericQuery;
 use crate::server::main::AxumSessionExtractor;
@@ -367,7 +367,7 @@ pub(crate) async fn query_elastic(
     _session: AxumSessionExtractor,
     Json(body): Json<serde_json::Value>,
 ) -> impl IntoResponse {
-    if let Some(elastic) = &context.elastic {
+    if let Datastore::Elastic(elastic) = &context.datastore {
         let response = match elastic.search(&body).await {
             Err(err) => {
                 error!("Failed to query elasticsearch: {:?}", err);

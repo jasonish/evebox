@@ -141,7 +141,6 @@ pub(crate) async fn stats_agg(
             let response = ds.stats_agg(params).await.unwrap();
             Json(response).into_response()
         }
-        Datastore::None => (StatusCode::NOT_IMPLEMENTED, "not implemented").into_response(),
     }
 }
 
@@ -159,7 +158,7 @@ pub(crate) async fn stats_derivative_agg(
         interval: bucket_interval(duration),
         start_time,
     };
-    return match &context.datastore {
+    match &context.datastore {
         Datastore::Elastic(elastic) => {
             let response = elastic.stats_agg_deriv(params).await.unwrap();
             Json(response).into_response()
@@ -168,6 +167,5 @@ pub(crate) async fn stats_derivative_agg(
             let response = sqlite.stats_agg_deriv(params).await.unwrap();
             Json(response).into_response()
         }
-        Datastore::None => (StatusCode::NOT_IMPLEMENTED, "not implemented").into_response(),
-    };
+    }
 }

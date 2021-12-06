@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Jason Ish
+// Copyright (C) 2020-2021 Jason Ish
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -42,7 +42,6 @@ pub struct EventQueryParams {
 }
 
 pub enum Datastore {
-    None,
     Elastic(crate::elastic::EventStore),
     SQLite(SQLiteEventStore),
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Jason Ish
+// Copyright (C) 2020-2021 Jason Ish
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -90,7 +90,7 @@ pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
                     sqlite_filename: Some(db_filename.clone()),
                     ..crate::server::ServerConfig::default()
                 };
-                let context = match crate::server::build_context(config.clone(), Some(ds)).await {
+                let context = match crate::server::build_context(config.clone(), ds).await {
                     Ok(context) => Arc::new(context),
                     Err(err) => {
                         error!("Failed to build server context: {}", err);

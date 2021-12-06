@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Jason Ish
+// Copyright (C) 2020-2021 Jason Ish
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -71,7 +71,6 @@ pub struct Features {
 
 pub struct ServerContext {
     pub config: ServerConfig,
-    pub elastic: Option<crate::elastic::EventStore>,
     pub datastore: Datastore,
     pub features: Features,
     pub session_store: session::SessionStore,
@@ -80,11 +79,10 @@ pub struct ServerContext {
 }
 
 impl ServerContext {
-    pub fn new(config: ServerConfig, config_repo: Arc<ConfigRepo>) -> Self {
+    pub fn new(config: ServerConfig, config_repo: Arc<ConfigRepo>, datastore: Datastore) -> Self {
         Self {
             config: config,
-            elastic: None,
-            datastore: Datastore::None,
+            datastore,
             features: Features::default(),
             session_store: SessionStore::new(),
             config_repo: config_repo,
