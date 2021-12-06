@@ -4,6 +4,7 @@
 
 - [sqlite] Remove full text search engine. It provided little benefit on search
   and was very expensive to add events to.
+- Add a stats view.
 
 ## 0.14.0 - 2021-06-16
 
