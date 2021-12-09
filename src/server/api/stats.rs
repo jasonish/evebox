@@ -23,7 +23,7 @@ use crate::datastore;
 use crate::datastore::Datastore;
 use crate::prelude::*;
 use crate::server::api::ApiError;
-use crate::server::main::AxumSessionExtractor;
+use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
 use axum::extract::{Extension, Form};
 use axum::http::StatusCode;
@@ -91,7 +91,7 @@ fn bucket_interval(duration: time::Duration) -> time::Duration {
 }
 
 pub(crate) async fn get_sensor_names(
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
 ) -> Result<impl IntoResponse, ApiError> {
     if let Datastore::Elastic(elastic) = &context.datastore {
@@ -118,7 +118,7 @@ pub(crate) async fn get_sensor_names(
 }
 
 pub(crate) async fn stats_agg(
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> impl IntoResponse {
@@ -145,7 +145,7 @@ pub(crate) async fn stats_agg(
 }
 
 pub(crate) async fn stats_derivative_agg(
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> impl IntoResponse {

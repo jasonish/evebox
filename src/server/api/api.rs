@@ -34,7 +34,7 @@ use serde_json::json;
 use crate::datastore::{self, Datastore, EventQueryParams};
 use crate::elastic;
 use crate::server::filters::GenericQuery;
-use crate::server::main::AxumSessionExtractor;
+use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
 use crate::{
     datastore::HistogramInterval,
@@ -52,7 +52,7 @@ pub struct AlertGroupSpec {
 
 pub(crate) async fn config(
     context: Extension<Arc<ServerContext>>,
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
 ) -> impl axum::response::IntoResponse {
     let config = json!({
        "ElasticSearchIndex": context.config.elastic_index,
@@ -65,9 +65,7 @@ pub(crate) async fn config(
     axum::response::Json(config)
 }
 
-pub(crate) async fn get_user(
-    AxumSessionExtractor(session): AxumSessionExtractor,
-) -> impl IntoResponse {
+pub(crate) async fn get_user(SessionExtractor(session): SessionExtractor) -> impl IntoResponse {
     let user = serde_json::json!({
         "username": session.username(),
     });
@@ -90,7 +88,7 @@ pub struct ReportDhcpRequest {
 
 pub(crate) async fn report_dhcp(
     Extension(context): Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(_session): AxumSessionExtractor,
+    SessionExtractor(_session): SessionExtractor,
     Path(what): Path<String>,
     Form(request): Form<ReportDhcpRequest>,
 ) -> impl IntoResponse {
@@ -121,7 +119,7 @@ pub(crate) async fn report_dhcp(
 
 pub(crate) async fn alert_group_star(
     Extension(context): Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(session): AxumSessionExtractor,
+    SessionExtractor(session): SessionExtractor,
     Json(request): Json<AlertGroupSpec>,
 ) -> impl IntoResponse {
     info!("Escalated alert group: {:?}", request);
@@ -135,7 +133,7 @@ pub(crate) async fn alert_group_star(
 
 pub(crate) async fn alert_group_unstar(
     Extension(context): Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(_session): AxumSessionExtractor,
+    SessionExtractor(_session): SessionExtractor,
     Json(request): Json<AlertGroupSpec>,
 ) -> impl IntoResponse {
     info!("De-escalating alert group: {:?}", request);
@@ -149,7 +147,7 @@ pub(crate) async fn alert_group_unstar(
 
 pub(crate) async fn alert_group_archive(
     Extension(context): Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(_session): AxumSessionExtractor,
+    SessionExtractor(_session): SessionExtractor,
     Json(request): Json<AlertGroupSpec>,
 ) -> impl IntoResponse {
     match context.datastore.archive_by_alert_group(request).await {
@@ -163,7 +161,7 @@ pub(crate) async fn alert_group_archive(
 
 pub(crate) async fn agg(
     Extension(context): Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(_session): AxumSessionExtractor,
+    SessionExtractor(_session): SessionExtractor,
     Form(query): Form<GenericQuery>,
 ) -> impl IntoResponse {
     let min_timestamp = match query.mints_from_time_range(&chrono::Utc::now()) {
@@ -202,7 +200,7 @@ pub(crate) async fn agg(
 
 pub(crate) async fn histogram(
     Extension(context): Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(_session): AxumSessionExtractor,
+    SessionExtractor(_session): SessionExtractor,
     Form(query): Form<GenericQuery>,
 ) -> impl IntoResponse {
     let mut params = datastore::HistogramParameters::default();
@@ -230,7 +228,7 @@ pub(crate) async fn histogram(
 pub(crate) async fn alert_query(
     Extension(context): Extension<Arc<ServerContext>>,
     // Session required to get here.
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
     axum::extract::Form(query): axum::extract::Form<GenericQuery>,
 ) -> impl IntoResponse {
     let mut options = elastic::AlertQueryOptions {
@@ -279,7 +277,7 @@ pub(crate) async fn alert_query(
 pub(crate) async fn get_event_by_id(
     Extension(context): Extension<Arc<ServerContext>>,
     Path(event_id): axum::extract::Path<String>,
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
 ) -> impl IntoResponse {
     match context.datastore.get_event_by_id(event_id.clone()).await {
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
@@ -291,7 +289,7 @@ pub(crate) async fn get_event_by_id(
 pub(crate) async fn archive_event_by_id(
     Extension(context): Extension<Arc<ServerContext>>,
     Path(event_id): axum::extract::Path<String>,
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
 ) -> impl IntoResponse {
     match context.datastore.archive_event_by_id(&event_id).await {
         Ok(()) => StatusCode::OK,
@@ -308,7 +306,7 @@ pub(crate) async fn archive_event_by_id(
 pub(crate) async fn escalate_event_by_id(
     Extension(context): Extension<Arc<ServerContext>>,
     Path(event_id): axum::extract::Path<String>,
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
 ) -> impl IntoResponse {
     match context.datastore.escalate_event_by_id(&event_id).await {
         Ok(()) => StatusCode::OK,
@@ -325,7 +323,7 @@ pub(crate) async fn escalate_event_by_id(
 pub(crate) async fn deescalate_event_by_id(
     Extension(context): Extension<Arc<ServerContext>>,
     Path(event_id): axum::extract::Path<String>,
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
 ) -> impl IntoResponse {
     match context.datastore.deescalate_event_by_id(&event_id).await {
         Ok(()) => StatusCode::OK,
@@ -342,7 +340,7 @@ pub(crate) async fn deescalate_event_by_id(
 pub(crate) async fn comment_by_event_id(
     Extension(context): Extension<Arc<ServerContext>>,
     Path(event_id): axum::extract::Path<String>,
-    AxumSessionExtractor(session): AxumSessionExtractor,
+    SessionExtractor(session): SessionExtractor,
     Json(body): Json<EventCommentRequestBody>,
 ) -> impl IntoResponse {
     match context
@@ -364,7 +362,7 @@ pub(crate) async fn comment_by_event_id(
 /// REST API handler to perform a raw query against the Elastic Search server.
 pub(crate) async fn query_elastic(
     Extension(context): Extension<Arc<ServerContext>>,
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
     Json(body): Json<serde_json::Value>,
 ) -> impl IntoResponse {
     if let Datastore::Elastic(elastic) = &context.datastore {
@@ -388,7 +386,7 @@ pub(crate) async fn query_elastic(
 }
 
 pub(crate) async fn event_query(
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     axum::extract::Form(query): axum::extract::Form<GenericQuery>,
 ) -> impl IntoResponse {
@@ -468,7 +466,7 @@ pub struct AlertGroupCommentRequest {
 
 pub(crate) async fn alert_group_comment(
     Extension(context): Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(session): AxumSessionExtractor,
+    SessionExtractor(session): SessionExtractor,
     Json(request): Json<AlertGroupCommentRequest>,
 ) -> impl IntoResponse {
     match context

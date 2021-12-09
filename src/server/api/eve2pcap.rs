@@ -32,7 +32,7 @@ use crate::eve::eve::EveJson;
 use crate::eve::Eve;
 use crate::pcap;
 use crate::server::api::ApiError;
-use crate::server::main::AxumSessionExtractor;
+use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
 
 #[derive(Deserialize, Debug)]
@@ -43,7 +43,7 @@ pub struct PcapForm {
 
 pub(crate) async fn handler(
     Extension(_context): Extension<Arc<ServerContext>>,
-    _session: AxumSessionExtractor,
+    _session: SessionExtractor,
     Form(form): Form<PcapForm>,
 ) -> Result<impl IntoResponse, ApiError> {
     let headers = Headers(vec![

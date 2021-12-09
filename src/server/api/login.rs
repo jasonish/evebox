@@ -27,7 +27,7 @@ use axum::Json;
 use serde::Deserialize;
 use std::sync::Arc;
 
-use crate::server::main::AxumSessionExtractor;
+use crate::server::main::SessionExtractor;
 use crate::server::session::Session;
 use crate::server::AuthenticationType;
 use crate::server::ServerContext;
@@ -52,7 +52,7 @@ pub(crate) async fn options_new(
 
 pub(crate) async fn post(
     context: Extension<Arc<ServerContext>>,
-    _session: Option<AxumSessionExtractor>,
+    _session: Option<SessionExtractor>,
     form: axum::extract::Form<LoginForm>,
 ) -> impl IntoResponse {
     // No authentication required.
@@ -132,7 +132,7 @@ pub(crate) async fn post(
 
 pub(crate) async fn logout_new(
     context: Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(session): AxumSessionExtractor,
+    SessionExtractor(session): SessionExtractor,
 ) -> impl IntoResponse {
     if let Some(session_id) = &session.session_id {
         if !context.session_store.delete(session_id) {

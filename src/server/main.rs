@@ -520,10 +520,10 @@ async fn configure_datastore(config: &ServerConfig) -> anyhow::Result<Datastore>
 pub enum GenericError {}
 
 #[derive(Debug)]
-pub(crate) struct AxumSessionExtractor(pub(crate) Arc<Session>);
+pub(crate) struct SessionExtractor(pub(crate) Arc<Session>);
 
 #[async_trait]
-impl FromRequest for AxumSessionExtractor {
+impl FromRequest for SessionExtractor {
     type Rejection = (StatusCode, &'static str);
 
     async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
@@ -562,7 +562,7 @@ impl FromRequest for AxumSessionExtractor {
         if let Some(session_id) = session_id {
             let session = context.session_store.get(session_id);
             if let Some(session) = session {
-                return Ok(AxumSessionExtractor(session));
+                return Ok(SessionExtractor(session));
             }
         }
 

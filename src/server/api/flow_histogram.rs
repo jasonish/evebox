@@ -31,7 +31,7 @@ use std::sync::Arc;
 use serde::Deserialize;
 
 use crate::datastore::FlowHistogramParameters;
-use crate::server::main::AxumSessionExtractor;
+use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
 
 use super::helpers;
@@ -47,7 +47,7 @@ pub struct Query {
 
 pub(crate) async fn handler(
     Extension(context): Extension<Arc<ServerContext>>,
-    AxumSessionExtractor(_session): AxumSessionExtractor,
+    SessionExtractor(_session): SessionExtractor,
     Form(query): Form<Query>,
 ) -> impl IntoResponse {
     helpers::log_unknown_parameters("flow-histogram", &query.other);
