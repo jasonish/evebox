@@ -326,6 +326,7 @@ impl EventStore {
         &self,
         event_id: &str,
         comment: String,
+        username: &str,
     ) -> Result<(), DatastoreError> {
         let query = json!({
             "bool": {
@@ -335,7 +336,7 @@ impl EventStore {
             }
         });
         let action = HistoryEntry {
-            username: "anonymous".to_string(),
+            username: username.to_string(),
             timestamp: format_timestamp(chrono::Utc::now()),
             action: ACTION_COMMENT.to_string(),
             comment: Some(comment),
@@ -590,9 +591,10 @@ impl EventStore {
         &self,
         alert_group: api::AlertGroupSpec,
         comment: String,
+        username: &str,
     ) -> Result<(), DatastoreError> {
         let entry = HistoryEntry {
-            username: "anonymous".to_string(),
+            username: username.to_string(),
             timestamp: format_timestamp(chrono::Utc::now()),
             action: ACTION_COMMENT.to_string(),
             comment: Some(comment),

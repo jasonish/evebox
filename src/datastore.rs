@@ -191,9 +191,13 @@ impl Datastore {
         &self,
         alert_group: api::AlertGroupSpec,
         comment: String,
+        username: &str,
     ) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.comment_by_alert_group(alert_group, comment).await,
+            Datastore::Elastic(ds) => {
+                ds.comment_by_alert_group(alert_group, comment, username)
+                    .await
+            }
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -213,9 +217,10 @@ impl Datastore {
         &self,
         event_id: &str,
         comment: String,
+        username: &str,
     ) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.comment_event_by_id(event_id, comment).await,
+            Datastore::Elastic(ds) => ds.comment_event_by_id(event_id, comment, username).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }

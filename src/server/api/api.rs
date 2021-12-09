@@ -342,12 +342,12 @@ pub(crate) async fn deescalate_event_by_id(
 pub(crate) async fn comment_by_event_id(
     Extension(context): Extension<Arc<ServerContext>>,
     Path(event_id): axum::extract::Path<String>,
-    _session: AxumSessionExtractor,
+    AxumSessionExtractor(session): AxumSessionExtractor,
     Json(body): Json<EventCommentRequestBody>,
 ) -> impl IntoResponse {
     match context
         .datastore
-        .comment_event_by_id(&event_id, body.comment.to_string())
+        .comment_event_by_id(&event_id, body.comment.to_string(), session.username())
         .await
     {
         Ok(()) => StatusCode::OK,
@@ -468,12 +468,12 @@ pub struct AlertGroupCommentRequest {
 
 pub(crate) async fn alert_group_comment(
     Extension(context): Extension<Arc<ServerContext>>,
-    _session: AxumSessionExtractor,
+    AxumSessionExtractor(session): AxumSessionExtractor,
     Json(request): Json<AlertGroupCommentRequest>,
 ) -> impl IntoResponse {
     match context
         .datastore
-        .comment_by_alert_group(request.alert_group, request.comment)
+        .comment_by_alert_group(request.alert_group, request.comment, session.username())
         .await
     {
         Ok(()) => StatusCode::OK,
