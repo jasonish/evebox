@@ -19,7 +19,7 @@ EveBox is a web based Suricata "eve" event viewer for Elastic Search.
 
 And one of...
 
-- An existing ElasticSearch/Logstash (version 6 or greater) setup
+- An existing ElasticSearch/Logstash (version 7 or greater) setup
   already handling Suricata events (EveBox has issues with Filebeat
   indices at this time).
 - Just Elastic Search, using EveBox or the EveBox agent to add events.
@@ -52,7 +52,7 @@ repository are also available.
 ### SELKS
 
 EveBox is also included
-in [SELKS](https://www.stamus-networks.com/open-source/) which
+in [SELKS](https://www.stamus-networks.com/selks) which
 provides Suricata and an ELK stack configured and ready to go.
 
 ### Docker
@@ -112,11 +112,10 @@ More documentation can be found at http://evebox.readthedocs.io/en/latest/.
 
 ## Building EveBox
 
-EveBox consists of a JavaScript frontend, and a very minimal backend
-written in Go. To build Evebox the following requirements must first
-be satisfied:
+EveBox consists of a JavaScript frontend, and a backend written in Rust. To
+build Evebox the following requirements must first be satisfied:
 
-* Node.js v12.16.1 or newer installed.
+* Node.js v16.13.1 or newer installed.
 * Latest Rust stable.
 
 First checkout EveBox:
