@@ -32,7 +32,7 @@ pub async fn dhcp_report(
     params: &EventQueryParams,
 ) -> Result<JsonValue, DatastoreError> {
     let mut filters = vec![elastic::request::term_filter(
-        ds.map_field("event_type"),
+        &ds.map_field("event_type"),
         "dhcp",
     )];
 
@@ -60,7 +60,7 @@ pub async fn dhcp_report_ack(
 ) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
-        ds.map_field("dhcp.dhcp_type"),
+        &ds.map_field("dhcp.dhcp_type"),
         "ack",
     ));
     request.set_filters(filters);
@@ -112,7 +112,7 @@ pub async fn dhcp_report_request(
 ) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
-        ds.map_field("dhcp.dhcp_type"),
+        &ds.map_field("dhcp.dhcp_type"),
         "request",
     ));
     request.set_filters(filters);
@@ -167,7 +167,7 @@ pub async fn servers(
 ) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
-        ds.map_field("dhcp.type"),
+        &ds.map_field("dhcp.type"),
         "reply",
     ));
     request.set_filters(filters);
@@ -210,7 +210,7 @@ pub async fn mac(
 ) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
-        ds.map_field("dhcp.type"),
+        &ds.map_field("dhcp.type"),
         "reply",
     ));
     request.set_filters(filters);
@@ -270,7 +270,7 @@ pub async fn mac(
 pub async fn ip(ds: &EventStore, mut filters: Vec<JsonValue>) -> Result<JsonValue, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
-        ds.map_field("dhcp.type"),
+        &ds.map_field("dhcp.type"),
         "reply",
     ));
     request.set_filters(filters);

@@ -74,54 +74,45 @@ impl EventStore {
         self.post(path, body).await
     }
 
-    /// Map field names to ECS names if required.
-    pub fn map_field<'a>(&self, name: &'a str) -> &'a str {
-        if !self.ecs {
+    /// Map field names as needed.
+    ///
+    /// For ECS some of the field names have been changed completely. This happens when using
+    /// Filebeat with the Suricata module.
+    ///
+    /// For plain old Eve in Elasticsearch we still need to map some fields to their keyword
+    /// variant.
+    pub fn map_field(&self, name: &str) -> String {
+        if self.ecs {
             match name {
-                "alert.category" => "alert.category.keyword",
-                "alert.signature" => "alert.signature.keyword",
-                "app_proto" => "app_proto.keyword",
-                "dest_ip" => "dest_ip.keyword",
-                "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword",
-                "dhcp.client_mac" => "dhcp.client_mac.keyword",
-                "dns.rrname" => "dns.rrname.keyword",
-                "dns.rrtype" => "dns.rrtype.keyword",
-                "dns.rcode" => "dns.rcode.keyword",
-                "dns.rdata" => "dns.rdata.keyword",
-                "host" => "host.keyword",
-                "src_ip" => "src_ip.keyword",
-                "ssh.client.software_version" => "ssh.client.software_version.keyword",
-                "ssh.server.software_version" => "ssh.server.software_version.keyword",
-                "traffic.id" => "traffic.id.keyword",
-                "traffic.label" => "traffic.label.keyword",
-                _ => name,
+                "dest_ip" => "destination.address".to_string(),
+                "dest_port" => "destination.port".to_string(),
+                "dns.rrname" => "dns.question.name".to_string(),
+                "dns.rrtype" => "dns.question.type".to_string(),
+                "dns.rcode" => "dns.response_code".to_string(),
+                "dns.type" => name.to_string(),
+                "src_ip" => "source.address".to_string(),
+                "src_port" => "source.port".to_string(),
+                _ => format!("suricata.eve.{}", name),
             }
         } else {
             match name {
-                "alert.signature_id" => "suricata.eve.alert.signature_id",
-                "alert.signature" => "suricata.eve.alert.signature",
-                "alert.category" => "suricata.eve.alert.category",
-                "dest_ip" => "destination.address",
-                "dest_port" => "destination.port",
-                "dhcp.dhcp_type" => "suricata.eve.dhcp.dhcp_type",
-                "dhcp.client_mac" => "suricata.eve.dhcp.client_mac",
-                "dhcp.type" => "suricata.eve.dhcp.type",
-                "dhcp.assigned_ip" => "suricata.eve.dhcp.assigned_ip",
-                "dns.rrname" => "dns.question.name",
-                "dns.rrtype" => "dns.question.type",
-                "dns.rcode" => "dns.response_code",
-                "dns.type" => name,
-                "event_type" => "suricata.eve.event_type",
-                "src_ip" => "source.address",
-                "src_port" => "source.port",
-                "ssh.client.software_version" => "suricata.eve.ssh.client.software_version",
-                "ssh.server.software_version" => "suricata.eve.ssh.server.software_version",
-                "traffic.id" => "suricata.eve.traffic.id",
-                "traffic.label" => "suricata.eve.traffic.label",
-                _ => {
-                    info!("No ECS mapping for {}", name);
-                    name
-                }
+                "alert.category" => "alert.category.keyword".to_string(),
+                "alert.signature" => "alert.signature.keyword".to_string(),
+                "app_proto" => "app_proto.keyword".to_string(),
+                "dest_ip" => "dest_ip.keyword".to_string(),
+                "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword".to_string(),
+                "dhcp.client_mac" => "dhcp.client_mac.keyword".to_string(),
+                "dns.rrname" => "dns.rrname.keyword".to_string(),
+                "dns.rrtype" => "dns.rrtype.keyword".to_string(),
+                "dns.rcode" => "dns.rcode.keyword".to_string(),
+                "dns.rdata" => "dns.rdata.keyword".to_string(),
+                "host" => "host.keyword".to_string(),
+                "src_ip" => "src_ip.keyword".to_string(),
+                "ssh.client.software_version" => "ssh.client.software_version.keyword".to_string(),
+                "ssh.server.software_version" => "ssh.server.software_version.keyword".to_string(),
+                "traffic.id" => "traffic.id.keyword".to_string(),
+                "traffic.label" => "traffic.label.keyword".to_string(),
+                _ => name.to_string(),
             }
         }
     }
@@ -542,11 +533,11 @@ impl EventStore {
         &self,
         params: datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
-        let mut filters = vec![request::exists_filter(self.map_field("event_type"))];
+        let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
 
         if let Some(event_type) = params.event_type {
             filters.push(request::term_filter(
-                self.map_field("event_type"),
+                &self.map_field("event_type"),
                 &event_type,
             ));
         }
@@ -608,7 +599,7 @@ impl EventStore {
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut bound_max = None;
         let mut bound_min = None;
-        let mut filters = vec![request::exists_filter(self.map_field("event_type"))];
+        let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
         if let Some(ts) = params.min_timestamp {
             filters.push(request::timestamp_gte_filter(ts));
             bound_min = Some(format_timestamp(ts));
@@ -619,12 +610,12 @@ impl EventStore {
         }
         if let Some(event_type) = params.event_type {
             filters.push(request::term_filter(
-                self.map_field("event_type"),
+                &self.map_field("event_type"),
                 &event_type,
             ));
         }
         if let Some(dns_type) = params.dns_type {
-            filters.push(request::term_filter(self.map_field("dns.type"), &dns_type));
+            filters.push(request::term_filter(&self.map_field("dns.type"), &dns_type));
         }
 
         if let Some(query_string) = params.query_string {
@@ -636,7 +627,7 @@ impl EventStore {
         if !self.ecs {
             if let Some(sensor_name) = params.sensor_name {
                 if !sensor_name.is_empty() {
-                    filters.push(request::term_filter(self.map_field("host"), &sensor_name));
+                    filters.push(request::term_filter(&self.map_field("host"), &sensor_name));
                 }
             }
         }
@@ -645,11 +636,11 @@ impl EventStore {
         let mut min_should_match = 0;
         if let Some(address_filter) = params.address_filter {
             should.push(request::term_filter(
-                self.map_field("src_ip"),
+                &self.map_field("src_ip"),
                 &address_filter,
             ));
             should.push(request::term_filter(
-                self.map_field("dest_ip"),
+                &self.map_field("dest_ip"),
                 &address_filter,
             ));
             min_should_match = 1;
@@ -731,15 +722,15 @@ impl EventStore {
     }
 
     pub async fn agg(&self, params: datastore::AggParameters) -> Result<JsonValue, DatastoreError> {
-        let mut filters = vec![request::exists_filter(self.map_field("event_type"))];
+        let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
         if let Some(event_type) = params.event_type {
             filters.push(request::term_filter(
-                self.map_field("event_type"),
+                &self.map_field("event_type"),
                 &event_type,
             ));
         }
         if let Some(dns_type) = params.dns_type {
-            filters.push(request::term_filter(self.map_field("dns.type"), &dns_type));
+            filters.push(request::term_filter(&self.map_field("dns.type"), &dns_type));
         }
         if let Some(ts) = params.min_timestamp {
             filters.push(request::timestamp_gte_filter(ts));
@@ -750,11 +741,11 @@ impl EventStore {
 
         if let Some(address_filter) = params.address_filter {
             should.push(request::term_filter(
-                self.map_field("src_ip"),
+                &self.map_field("src_ip"),
                 &address_filter,
             ));
             should.push(request::term_filter(
-                self.map_field("dest_ip"),
+                &self.map_field("dest_ip"),
                 &address_filter,
             ));
             min_should_match = 1;
@@ -818,8 +809,8 @@ impl EventStore {
         params: datastore::FlowHistogramParameters,
     ) -> Result<JsonValue, datastore::DatastoreError> {
         let mut filters = vec![
-            request::term_filter(self.map_field("event_type"), "flow"),
-            request::exists_filter(self.map_field("event_type")),
+            request::term_filter(&self.map_field("event_type"), "flow"),
+            request::exists_filter(&self.map_field("event_type")),
         ];
         if let Some(mints) = params.mints {
             filters.push(request::timestamp_gte_filter(mints));
@@ -932,12 +923,12 @@ impl EventStore {
             .unwrap();
         let interval = elastic_format_interval(params.interval);
         let mut filters = vec![];
-        filters.push(json!({"term": {"event_type": "stats"}}));
+        filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
         if let Some(sensor_name) = params.sensor_name {
             filters.push(json!({"term": {"host": sensor_name}}));
         }
-
+        let field = self.map_field(&params.field);
         let query = json!({
            "query": {
                 "bool": {
@@ -955,7 +946,7 @@ impl EventStore {
               "aggs": {
                 "memuse": {
                   "max": {
-                    "field": &params.field,
+                    "field": field,
                   }
                 },
             }}}
@@ -1001,11 +992,12 @@ impl EventStore {
             .unwrap();
         let interval = elastic_format_interval(params.interval);
         let mut filters = vec![];
-        filters.push(json!({"term": {"event_type": "stats"}}));
+        filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
         if let Some(sensor_name) = params.sensor_name {
             filters.push(json!({"term": {"host": sensor_name}}));
         }
+        let field = self.map_field(&params.field);
         let query = json!({
           "query": {
             "bool": {
@@ -1023,7 +1015,7 @@ impl EventStore {
               "aggs": {
                 "values": {
                   "max": {
-                    "field": &params.field,
+                    "field": field,
                   }
                 },
                 "values_deriv": {
