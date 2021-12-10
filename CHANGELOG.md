@@ -5,6 +5,10 @@
 - [sqlite] Remove full text search engine. It provided little benefit on search
   and was very expensive to add events to.
 - Add a stats view.
+- [webapp] Update to Angular 13.
+- [server] Move from Warp to Axum.
+- [webapp] Remove Brace edit for pretty printing of JSON and replace with
+  a JSON pretty printer module.
 
 ## 0.14.0 - 2021-06-16
 
