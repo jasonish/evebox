@@ -7,8 +7,10 @@
 - Add a stats view.
 - [webapp] Update to Angular 13.
 - [server] Move from Warp to Axum.
-- [webapp] Remove Brace edit for pretty printing of JSON and replace with
+- [webapp] Remove Brace editor for pretty printing of JSON and replace with
   a JSON pretty printer module.
+- [elastic] Fixes to Elastic field name mappings that should address issues
+  with ECS. Most things seem to work.
 
 ## 0.14.0 - 2021-06-16
 
