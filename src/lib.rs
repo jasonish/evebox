@@ -41,6 +41,7 @@ pub mod pcap;
 pub mod prelude;
 pub mod resource;
 mod rules;
+pub mod searchquery;
 pub mod server;
 pub mod settings;
 pub mod sqlite;

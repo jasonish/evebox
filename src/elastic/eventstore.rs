@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Jason Ish
+// Copyright (C) 2020-2021 Jason Ish
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -35,6 +35,7 @@ use crate::elastic::{
     TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::prelude::*;
+use crate::searchquery;
 use crate::server::api;
 use crate::server::session::Session;
 use serde::{Deserialize, Serialize};
@@ -369,6 +370,28 @@ impl EventStore {
         Ok(None)
     }
 
+    fn query_string_to_filters(&self, query: &str) -> Vec<serde_json::Value> {
+        let mut filters = Vec::new();
+        match searchquery::parse(&query) {
+            Err(err) => {
+                error!("Failed to parse query string: {} -- {}", &query, err);
+            }
+            Ok((_, elements)) => {
+                for element in elements {
+                    match element {
+                        searchquery::Element::KeyVal(key, val) => {
+                            filters.push(request::term_filter(&self.map_field(&key), &val));
+                        }
+                        searchquery::Element::String(val) => {
+                            filters.push(query_string_query(&val));
+                        }
+                    }
+                }
+            }
+        }
+        filters
+    }
+
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
         let mut filters = Vec::new();
         filters.push(json!({"exists": {"field": self.map_field("event_type")}}));
@@ -378,10 +401,7 @@ impl EventStore {
                 .push(json!({"range": {"@timestamp": {"gte": format_timestamp(timestamp_gte)}}}));
         }
         if let Some(query_string) = options.query_string {
-            if !query_string.is_empty() {
-                info!("Setting query string to: {}", query_string);
-                filters.push(query_string_query(&query_string));
-            }
+            filters.extend(self.query_string_to_filters(&query_string));
         }
 
         let mut must_not = Vec::new();
@@ -543,7 +563,7 @@ impl EventStore {
         }
 
         if let Some(query_string) = params.query_string {
-            filters.push(query_string_query(&query_string));
+            filters.extend(self.query_string_to_filters(&query_string));
         }
 
         if let Some(timestamp) = params.min_timestamp {
@@ -619,9 +639,7 @@ impl EventStore {
         }
 
         if let Some(query_string) = params.query_string {
-            if !query_string.is_empty() {
-                filters.push(query_string_query(&query_string));
-            }
+            filters.extend(self.query_string_to_filters(&query_string));
         }
 
         if !self.ecs {
@@ -752,9 +770,7 @@ impl EventStore {
         }
 
         if let Some(query_string) = params.query_string {
-            if !query_string.is_empty() {
-                filters.push(query_string_query(&query_string));
-            }
+            filters.extend(self.query_string_to_filters(&query_string));
         }
 
         let agg = self.map_field(&params.agg);
@@ -816,7 +832,7 @@ impl EventStore {
             filters.push(request::timestamp_gte_filter(mints));
         }
         if let Some(query_string) = params.query_string {
-            filters.push(query_string_query(&query_string));
+            filters.extend(self.query_string_to_filters(&query_string));
         }
         let query = json!({
             "query": {

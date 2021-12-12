@@ -67,3 +67,4 @@ tower-http = { version = "0.1.2", default_features = false, features = ["set-hea
 hyper = "0.14.15"
 time = { version = "0.3.5", features = ["formatting"] }
 deadpool-sqlite = { version = "0.3.1", features = ["rt_tokio_1"] }
+nom = "7.1.0"
