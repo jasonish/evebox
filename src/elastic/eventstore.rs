@@ -933,6 +933,12 @@ impl EventStore {
         &self,
         params: datastore::StatsAggQueryParams,
     ) -> anyhow::Result<serde_json::Value> {
+        let version = self.client.get_version().await?;
+        let date_histogram_interval_field_name = if version.major < 7 {
+            "interval"
+        } else {
+            "fixed_interval"
+        };
         let start_time = params
             .start_time
             .format(&time::format_description::well_known::Rfc3339)
@@ -957,7 +963,7 @@ impl EventStore {
                "histogram": {
                   "date_histogram": {
                     "field": "@timestamp",
-                    "fixed_interval": interval,
+                    date_histogram_interval_field_name: interval,
                     },
               "aggs": {
                 "memuse": {
@@ -1000,8 +1006,14 @@ impl EventStore {
 
     pub async fn stats_agg_deriv(
         &self,
-        params: datastore::StatsAggQueryParams,
+        params: &datastore::StatsAggQueryParams,
     ) -> anyhow::Result<serde_json::Value> {
+        let version = self.client.get_version().await.unwrap();
+        let date_histogram_interval_field_name = if version.major < 7 {
+            "interval"
+        } else {
+            "fixed_interval"
+        };
         let start_time = params
             .start_time
             .format(&time::format_description::well_known::Rfc3339)
@@ -1010,7 +1022,7 @@ impl EventStore {
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
-        if let Some(sensor_name) = params.sensor_name {
+        if let Some(sensor_name) = &params.sensor_name {
             filters.push(json!({"term": {"host": sensor_name}}));
         }
         let field = self.map_field(&params.field);
@@ -1026,7 +1038,7 @@ impl EventStore {
             "histogram": {
               "date_histogram": {
                 "field": "@timestamp",
-                "fixed_interval": interval,
+                date_histogram_interval_field_name: interval,
               },
               "aggs": {
                 "values": {
@@ -1043,7 +1055,13 @@ impl EventStore {
             }
           }
         });
-        let mut response: serde_json::Value = self.search(&query).await?.json().await?;
+
+        let response = self.search(&query).await?;
+        if response.status() != 200 {
+            let error_text = response.text().await?;
+            anyhow::bail!(error_text);
+        }
+        let mut response: serde_json::Value = response.json().await?;
 
         #[derive(Debug, Deserialize, Serialize, Default)]
         struct Value {

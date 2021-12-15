@@ -121,7 +121,7 @@ pub(crate) async fn stats_agg(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let duration = form.duration();
     let start_time = form.start_time().unwrap();
     let params = datastore::StatsAggQueryParams {
@@ -135,11 +135,11 @@ pub(crate) async fn stats_agg(
     match &context.datastore {
         Datastore::Elastic(ds) => {
             let response = ds.stats_agg(params).await.unwrap();
-            Json(response).into_response()
+            Ok(Json(response))
         }
         Datastore::SQLite(ds) => {
             let response = ds.stats_agg(params).await.unwrap();
-            Json(response).into_response()
+            Ok(Json(response))
         }
     }
 }
@@ -148,7 +148,7 @@ pub(crate) async fn stats_derivative_agg(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let duration = form.duration();
     let start_time = form.start_time().unwrap();
     let params = datastore::StatsAggQueryParams {
@@ -160,12 +160,18 @@ pub(crate) async fn stats_derivative_agg(
     };
     match &context.datastore {
         Datastore::Elastic(elastic) => {
-            let response = elastic.stats_agg_deriv(params).await.unwrap();
-            Json(response).into_response()
+            let result = elastic.stats_agg_deriv(&params).await.map_err(|err| {
+                error!(
+                    "Elasticsearch stats derivative aggregation failed: params={:?}, err={:?}",
+                    &params, err
+                );
+                ApiError::InternalServerError
+            })?;
+            Ok(Json(result))
         }
         Datastore::SQLite(sqlite) => {
             let response = sqlite.stats_agg_deriv(params).await.unwrap();
-            Json(response).into_response()
+            Ok(Json(response))
         }
     }
 }
