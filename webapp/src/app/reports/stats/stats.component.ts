@@ -67,7 +67,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         this.destroyCharts();
         this.refreshTcpMemuse();
         this.refreshFlowMemuse();
-        this.refreshKernelPackets();
+        this.refreshDecoderPkts();
         this.refreshKernelDrops();
         this.refreshDecoderBytes();
     }
@@ -99,8 +99,8 @@ export class StatsComponent implements OnInit, OnDestroy {
         });
     }
 
-    private refreshKernelPackets(): void {
-        const params = this.getParams().set("field", "stats.capture.kernel_packets");
+    private refreshDecoderPkts(): void {
+        const params = this.getParams().set("field", "stats.decoder.pkts");
         this.client.get("/api/1/stats/agg/deriv", params).subscribe((response) => {
             const labels = [];
             const values = [];
@@ -108,7 +108,7 @@ export class StatsComponent implements OnInit, OnDestroy {
                 labels.push(moment(e.timestamp).toDate());
                 values.push(e.value);
             });
-            this.charts.kernelPackets = this.buildChart("chart-kernel-packets", "Kernel Packets", labels, values);
+            this.charts.kernelPackets = this.buildChart("chart-decoder-packets", "Decoder Packets", labels, values);
         });
     }
 
@@ -126,7 +126,7 @@ export class StatsComponent implements OnInit, OnDestroy {
     }
 
     private refreshTcpMemuse(): void {
-        const params = this.getParams().set("field", "stats.tcp.memuse");
+        const params = this.getParams().set("field", "stats.tcp.xmemuse");
         this.client.get("/api/1/stats/agg", params).subscribe((response) => {
             const labels = [];
             const values = [];
