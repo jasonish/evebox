@@ -1,6 +1,27 @@
+// Copyright (C) 2021 Jason Ish
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ClientService } from "../../client.service";
-import { getCanvasElementById, getColourPalette } from "../../shared/chartjs";
+import { getCanvasElementById } from "../../shared/chartjs";
 import { Chart } from "chart.js";
 import * as moment from "moment";
 import { HttpParams } from "@angular/common/http";
@@ -15,18 +36,11 @@ import { AppEventCode, AppService } from "../../app.service";
 })
 export class StatsComponent implements OnInit, OnDestroy {
 
-    private charts = {
-        decoderBytes: null,
-        flowMemUse: null,
-        tcpMemuse: null,
-        kernelPackets: null,
-        kernelDrops: null,
-    };
-
+    private charts: { [key: string]: any } = {};
     sensors = [];
     sensorName = "";
-
     subscriptions = new Subscription();
+    totals: { [key: string]: number } = {};
 
     constructor(private client: ClientService, private topNav: TopNavService, private appService: AppService) {
     }
@@ -55,7 +69,7 @@ export class StatsComponent implements OnInit, OnDestroy {
 
     private destroyCharts(): void {
         for (const chart in this.charts) {
-            if (this.charts[chart] != null) {
+            if (this.charts[chart]) {
                 this.charts[chart].destroy();
             }
         }
@@ -65,11 +79,12 @@ export class StatsComponent implements OnInit, OnDestroy {
         this.refreshSensors();
 
         this.destroyCharts();
-        this.refreshTcpMemuse();
-        this.refreshFlowMemuse();
-        this.refreshDecoderPkts();
-        this.refreshKernelDrops();
-        this.refreshDecoderBytes();
+
+        this.refreshAgg("chart-tcp-memuse", "stats.tcp.memuse", "TCP Memory Usage");
+        this.refreshAggDeriv("chart-decoder-packets", "stats.decoder.pkts", "Decoder Packets");
+        this.refreshAggDeriv("chart-decoder-bytes", "stats.decoder.bytes", "Decoder Bytes");
+        this.refreshAggDeriv("chart-kernel-drops", "stats.capture.kernel_drops", "Kernel Drops");
+        this.refreshAgg("chart-flow-memuse", "stats.flow.memuse", "Flow Memory Usage");
     }
 
     private refreshSensors(): void {
@@ -86,47 +101,24 @@ export class StatsComponent implements OnInit, OnDestroy {
         return params;
     }
 
-    private refreshDecoderBytes(): void {
-        const params = this.getParams().set("field", "stats.decoder.bytes");
+    private refreshAggDeriv(elementId: string, field: string, title: string): void {
+        const params = this.getParams().set("field", field);
         this.client.get("/api/1/stats/agg/deriv", params).subscribe((response) => {
             const labels = [];
             const values = [];
+            let total = 0;
             response.data.forEach((e) => {
                 labels.push(moment(e.timestamp).toDate());
                 values.push(e.value);
+                total += e.value;
             });
-            this.charts.decoderBytes = this.buildChart("chart-decoder-bytes", "Decoder Bytes", labels, values);
+            this.totals[elementId] = total;
+            this.charts[elementId] = this.buildChart(elementId, title, labels, values);
         });
     }
 
-    private refreshDecoderPkts(): void {
-        const params = this.getParams().set("field", "stats.decoder.pkts");
-        this.client.get("/api/1/stats/agg/deriv", params).subscribe((response) => {
-            const labels = [];
-            const values = [];
-            response.data.forEach((e) => {
-                labels.push(moment(e.timestamp).toDate());
-                values.push(e.value);
-            });
-            this.charts.kernelPackets = this.buildChart("chart-decoder-packets", "Decoder Packets", labels, values);
-        });
-    }
-
-    private refreshKernelDrops(): void {
-        const params = this.getParams().set("field", "stats.capture.kernel_drops");
-        this.client.get("/api/1/stats/agg/deriv", params).subscribe((response) => {
-            const labels = [];
-            const values = [];
-            response.data.forEach((e) => {
-                labels.push(moment(e.timestamp).toDate());
-                values.push(e.value);
-            });
-            this.charts.kernelDrops = this.buildChart("chart-kernel-drops", "Kernel Drops", labels, values);
-        });
-    }
-
-    private refreshTcpMemuse(): void {
-        const params = this.getParams().set("field", "stats.tcp.xmemuse");
+    private refreshAgg(elementId: string, field: string, title: string): void {
+        const params = this.getParams().set("field", field);
         this.client.get("/api/1/stats/agg", params).subscribe((response) => {
             const labels = [];
             const values = [];
@@ -134,20 +126,7 @@ export class StatsComponent implements OnInit, OnDestroy {
                 labels.push(moment(e.timestamp).toDate());
                 values.push(e.value);
             });
-            this.charts.tcpMemuse = this.buildChart("chart-tcp-memuse", "TCP Memory Usage", labels, values);
-        });
-    }
-
-    private refreshFlowMemuse(): void {
-        const params = this.getParams().set("field", "stats.flow.memuse");
-        this.client.get("/api/1/stats/agg", params).subscribe((response) => {
-            const labels = [];
-            const values = [];
-            response.data.forEach((e) => {
-                labels.push(moment(e.timestamp).toDate());
-                values.push(e.value);
-            });
-            this.charts.flowMemUse = this.buildChart("chart-flow-memuse", "Flow Memory Usage", labels, values);
+            this.charts[elementId] = this.buildChart(elementId, title, labels, values);
         });
     }
 
