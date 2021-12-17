@@ -34,7 +34,7 @@ use crate::server::ServerContext;
 
 pub(crate) async fn handler_new(
     Extension(context): Extension<Arc<ServerContext>>,
-    ContentLengthLimit(body): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
+    ContentLengthLimit(body): ContentLengthLimit<Bytes, { 1024 * 1024 * 256 }>,
 ) -> impl IntoResponse {
     let mut importer = match context.datastore.get_importer() {
         Some(importer) => importer,
