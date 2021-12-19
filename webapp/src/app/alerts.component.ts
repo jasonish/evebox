@@ -716,6 +716,9 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     isArchived(row: any): boolean {
         if (row.event.event._source.tags) {
+            if (row.event.event._source.tags.indexOf("evebox.archived") > -1) {
+                return true;
+            }
             if (row.event.event._source.tags.indexOf("archived") > -1) {
                 return true;
             }
