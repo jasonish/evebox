@@ -12,7 +12,7 @@ gitrev:
 
 build: gitrev
 	@echo "Building EveBox webapp rev $(BUILD_REV)."
-	npm run ng -- build $(BUILD_ARGS) --output-path $(OUTPUT_PATH) --deploy-url "public/"
+	npm run ng -- build $(BUILD_ARGS) --output-path $(OUTPUT_PATH)
 
 ./node_modules/_done: package.json
 	npm ci --prefer-offline

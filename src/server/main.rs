@@ -364,10 +364,12 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
     }
 
     if path.is_empty() {
-        path = "index.html".into();
+        path = "public/index.html".into();
+    } else {
+        path = format!("public/{}", path);
     }
     let resource = crate::resource::Resource::get(&path).or_else(|| {
-        info!("No resource found for {}, trying public/index.html", &path);
+        debug!("No resource found for {}, trying public/index.html", &path);
         path = "public/index.html".into();
         crate::resource::Resource::get(&path)
     });
