@@ -15,6 +15,11 @@ $@
 
 if [ "${FIX_PERMS}" = "true" ]; then
     if [ "${REAL_UID}" -a "${REAL_GID}" ]; then
-        chown -R "${REAL_UID}:${REAL_GID}" dist target
+        if test -e dist; then
+            chown -R "${REAL_UID}:${REAL_GID}" dist
+        fi
+        if test -e target; then
+            chown -R "${REAL_UID}:${REAL_GID}" target
+        fi
     fi
 fi

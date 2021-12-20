@@ -29,7 +29,7 @@ fi
 echo "BUILD_REV=${BUILD_REV}"
 
 build_webapp() {
-    DOCKERFILE="./docker/builder/Dockerfile.musl"
+    DOCKERFILE="./docker/builder/Dockerfile.cross"
     TAG=${BUILDER_TAG:-"evebox/builder:webapp"}
     docker build --rm \
            --build-arg REAL_UID="$(id -u)" \
