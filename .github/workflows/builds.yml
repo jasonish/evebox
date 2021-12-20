@@ -35,7 +35,7 @@ jobs:
       - run: docker push ${BUILDER_TAG} || true
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{ env.BRANCH_PREFIX }}-resources-public
+          name: webapp
           path: resources/public
 
   linux:
@@ -54,19 +54,14 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{ env.BRANCH_PREFIX }}-build
-          path: dist/*.zip
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.BRANCH_PREFIX }}-build
-          path: dist/*.deb
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.BRANCH_PREFIX }}-build
-          path: dist/*.rpm
+          name: linux-x64-build
+          path: |
+            dist/*.zip
+            dist/*.deb
+            dist/*.rpm
 
-  linux-armv7:
-    name: Arm v7
+  linux-arm32:
+    name: Arm 32v7
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -75,11 +70,28 @@ jobs:
       - run: echo "BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')" >> $GITHUB_ENV
       - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
       - run: docker pull ${BUILDER_TAG} || true
-      - run: ./build.sh linux-arm
+      - run: ./build.sh linux-arm32
       - run: docker push ${BUILDER_TAG} || true
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{ env.BRANCH_PREFIX }}-build
+          name: linux-arm32-build
+          path: dist/*.zip
+
+  linux-arm64:
+    name: Arm 64v8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: echo "BUILDER_TAG=docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder--armv7:latest" >> $GITHUB_ENV
+      - run: echo "BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD | awk '{split($0,a,"/"); print a[1]}')" >> $GITHUB_ENV
+      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
+      - run: docker pull ${BUILDER_TAG} || true
+      - run: ./build.sh linux-arm64
+      - run: docker push ${BUILDER_TAG} || true
+      - uses: actions/upload-artifact@v2
+        with:
+          name: linux-arm64-build
           path: dist/*.zip
 
   windows:
@@ -96,7 +108,7 @@ jobs:
       - run: docker push ${BUILDER_TAG} || true
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{ env.BRANCH_PREFIX }}-build
+          name: windows-build
           path: dist/*.zip
 
   macos:
@@ -114,13 +126,13 @@ jobs:
       - run: docker push ${BUILDER_TAG} || true
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{ env.BRANCH_PREFIX }}-build
+          name: macos-build
           path: dist/*.zip
 
   docker:
     name: Docker
     runs-on: ubuntu-latest
-    needs: [linux, linux-armv7]
+    needs: [linux, linux-arm32, linux-arm64]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/download-artifact@v2
@@ -135,9 +147,9 @@ jobs:
       - run: |
           mkdir -p dist
           cd dist
-          unzip ../${BRANCH_PREFIX}-build/evebox-*-linux-x64.zip
-          unzip ../${BRANCH_PREFIX}-build/evebox-*-linux-arm.zip
-          unzip ../${BRANCH_PREFIX}-build/evebox-*-linux-arm64.zip
+          unzip ../linux-x64-build/evebox-*-linux-x64.zip
+          unzip ../linux-arm32-build/evebox-*-linux-arm.zip
+          unzip ../linux-arm64-build/evebox-*-linux-arm64.zip
       - run: ./build.sh docker
       - name: Push Docker images and manifest
         if: github.ref == 'refs/heads/master'

@@ -230,6 +230,14 @@ case "$1" in
         build_linux
         ;;
 
+    linux-arm32)
+        build_linux_armv7
+        ;;
+
+    linux-arm64)
+        build_linux_armv8
+        ;;
+
     linux-arm)
         build_linux_armv8
         build_linux_armv7
