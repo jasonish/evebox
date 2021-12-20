@@ -31,7 +31,7 @@ echo "BUILD_REV=${BUILD_REV}"
 build_webapp() {
     DOCKERFILE="./docker/builder/Dockerfile.musl"
     TAG=${BUILDER_TAG:-"evebox/builder:webapp"}
-    docker build ${CACHE_FROM} --rm \
+    docker build --rm \
            --build-arg REAL_UID="$(id -u)" \
            --build-arg REAL_GID="$(id -g)" \
            --cache-from ${TAG} \
@@ -108,7 +108,7 @@ build_macos() {
     TAG=${BUILDER_TAG:-"evebox/builder:macos"}
     DOCKERFILE="./docker/builder/Dockerfile.macos"
     TARGET="x86_64-apple-darwin"
-    docker build ${CACHE_FROM} --rm \
+    docker build --rm \
            --build-arg REAL_UID="$(id -u)" \
            --build-arg REAL_GID="$(id -g)" \
            --cache-from ${TAG} \
