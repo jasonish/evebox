@@ -93,7 +93,14 @@ impl EventStore {
                 "dns.type" => name.to_string(),
                 "src_ip" => "source.address".to_string(),
                 "src_port" => "source.port".to_string(),
-                _ => format!("suricata.eve.{}", name),
+                _ => {
+                    if name.starts_with("suricata") {
+                        // Don't remap.
+                        name.to_string()
+                    } else {
+                        format!("suricata.eve.{}", name)
+                    }
+                }
             }
         } else {
             match name {
