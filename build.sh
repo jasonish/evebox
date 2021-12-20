@@ -46,33 +46,13 @@ build_webapp() {
            ${TAG} make
 }
 
-# Linux - x86_64
-build_linux() {
-    DOCKERFILE="./docker/builder/Dockerfile.musl"
-    TAG=${BUILDER_TAG:-"evebox/builder:musl"}
-    docker build --rm \
-           --build-arg REAL_UID="$(id -u)" \
-           --build-arg REAL_GID="$(id -g)" \
-           --cache-from ${TAG} \
-	   -t ${TAG} \
-	   -f ${DOCKERFILE} .
-    docker run ${IT} --rm \
-           -v "$(pwd):/src" \
-           -v "$HOME/.cargo:/home/builder/.cargo" \
-           -w /src \
-           -e REAL_UID="$(id -u)" \
-           -e REAL_GID="$(id -g)" \
-           -e BUILD_REV="${BUILD_REV}" \
-           -e TARGET="x86_64-unknown-linux-musl" \
-           ${TAG} make dist rpm deb
-}
-
 build_cross() {
     target="$1"
     if [ "${target}" = "" ]; then
         echo "error: target must be set for build_cross"
         exit 1
     fi
+    what="$2"
     DOCKERFILE="./docker/builder/Dockerfile.cross"
     TAG=${BUILDER_TAG:-"evebox/builder:cross"}
     docker build --rm \
@@ -88,20 +68,23 @@ build_cross() {
          -e REAL_GID="$(id -g)" \
          -e BUILD_REV="${BUILD_REV}" \
          -e TARGET="${target}" \
-         -e CARGO="cross" \
-         ${TAG} make dist
+         ${TAG} make $what
+}
+
+build_linux() {
+    build_cross x86_64-unknown-linux-musl "dist rpm deb"
 }
 
 build_linux_armv8() {
-    build_cross aarch64-unknown-linux-musl
+    build_cross aarch64-unknown-linux-musl dist
 }
 
 build_linux_armv7() {
-    build_cross armv7-unknown-linux-musleabihf
+    build_cross armv7-unknown-linux-musleabihf dist
 }
 
 build_windows() {
-    build_cross x86_64-pc-windows-gnu
+    build_cross x86_64-pc-windows-gnu dist
 }
 
 build_macos() {
@@ -178,32 +161,6 @@ docker_push() {
     fi
 }
 
-build_all() {
-    rm -rf dist
-
-    build_webapp
-    ./docker.sh release-linux
-    ./docker.sh release-windows
-    ./docker.sh release-macos
-}
-
-push() {
-    (cd dist && sha256sum *.zip *.rpm *.deb > CHECKSUMS.txt)
-
-    if [ "${EVEBOX_RSYNC_PUSH_DEST}" ]; then
-        rsync -av \
-              --filter "+ *.rpm" \
-              --filter "+ *.deb" \
-              --filter "+ *.zip" \
-              --filter "+ CHECKSUMS.txt" \
-              --filter "- *" \
-              dist/ \
-              "${EVEBOX_RSYNC_PUSH_DEST}"
-    else
-        echo "error: EVEBOX_RSYNC_PUSH_DEST environment variable not set"
-    fi
-}
-
 for arg in $@; do
     case "${arg}" in
         --release)
@@ -238,11 +195,6 @@ case "$1" in
         build_linux_armv8
         ;;
 
-    linux-arm)
-        build_linux_armv8
-        build_linux_armv7
-        ;;
-
     windows)
         build_windows
         ;;
@@ -258,10 +210,6 @@ case "$1" in
     docker-push)
         build_docker
         docker_push
-        ;;
-
-    push)
-        push
         ;;
 
     all)

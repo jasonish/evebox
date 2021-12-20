@@ -38,6 +38,7 @@ ENV FIX_PERMS=true
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 RUN cargo install --git https://github.com/rust-embedded/cross.git
+ENV CARGO=cross
 
 COPY / /src
 COPY /docker/builder/docker-entrypoint.sh /

@@ -55,10 +55,15 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: linux-x64-build
-          path: |
-            dist/*.zip
-            dist/*.deb
-            dist/*.rpm
+          path: dist/*.zip
+      - uses: actions/upload-artifact@v2
+        with:
+          name: linux-x64-rpm
+          path: dist/*.rpm
+      - uses: actions/upload-artifact@v2
+        with:
+          name: linux-x64-deb
+          path: dist/*.deb
 
   linux-arm32:
     name: Arm 32v7
