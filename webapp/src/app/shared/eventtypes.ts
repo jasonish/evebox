@@ -1,37 +1,39 @@
-// Copyright (C) 2018-2021 Jason Ish
+// Copyright (C) 2018-2022 Jason Ish <jason@codemonkey.net>
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// SPDX-License-Identifier: MIT
 
+// The list of event types that will be shown in dropdowns.
 export const EVENT_TYPES: any[] = [
     {name: "All", eventType: ""},
     {name: "Alerts", eventType: "alert"},
     {name: "Anomaly", eventType: "anomaly"},
+    {name: "DCERPC", eventType: "dcerpc"},
     {name: "DHCP", eventType: "dhcp"},
+    {name: "DNP3", eventType: "dnp3"},
     {name: "DNS", eventType: "dns"},
     {name: "Drop", eventType: "drop"},
     {name: "FileInfo", eventType: "fileinfo"},
     {name: "Flow", eventType: "flow"},
+    {name: "Frame", eventType: "frame"},
+    {name: "FTP", eventType: "ftp"},
+    {name: "FTP Data", eventType: "ftp_data"},
     {name: "HTTP", eventType: "http"},
+    {name: "IKE", eventType: "ike"},
+    {name: "KRB5", eventType: "krb5"},
+    {name: "Modbus", eventType: "modbus"},
+    {name: "MQTT", eventType: "mqtt"},
     {name: "NetFlow", eventType: "netflow"},
     {name: "NFS", eventType: "nfs"},
-    {name: "SSH", eventType: "ssh"},
+    {name: "PostgreSQL", eventType: "pgsql"},
+    {name: "QUIC", eventType: "quic"},
+    {name: "RDP", eventType: "rdp"},
+    {name: "RFB", eventType: "rfb"},
+    {name: "SIP", eventType: "sip"},
     {name: "SMB", eventType: "smb"},
+    {name: "SMTP", eventType: "smtp"},
+    {name: "SNMP", eventType: "snmp"},
+    {name: "SSH", eventType: "ssh"},
+    {name: "Stats", eventType: "stats"},
+    {name: "TFTP", eventType: "tftp"},
     {name: "TLS", eventType: "tls"},
 ];
