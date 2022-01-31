@@ -383,11 +383,12 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
             return (StatusCode::NOT_FOUND, axum::Json(response)).into_response();
         }
         Some(body) => {
+            let body = body.data.into();
             let mime = mime_guess::from_path(&path).first_or_octet_stream();
-            return Response::builder()
+            Response::builder()
                 .header(axum::http::header::CONTENT_TYPE, mime.as_ref())
-                .body(body.into())
-                .unwrap();
+                .body(body)
+                .unwrap()
         }
     }
 }

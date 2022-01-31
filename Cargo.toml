@@ -18,53 +18,47 @@ opt-level = 3
 members = [".", "./suricata-rule-parser"]
 
 [dependencies]
-tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
-serde = { version = "1.0.110", features = ["derive"] }
-reqwest = { version = "0.11.2", default-features = false, features = ["json", "rustls-tls"] }
-rust-embed = { version = "5.5.1", features = ["compression", "debug-embed"] }
-serde_json = "1.0.53"
-humantime = "2.0.0"
+anyhow = "1.0.31"
+axum = "0.3.4"
+axum-server = { version = "0.3.2", features = ["tls-rustls"] }
+base64 = "0.12.1"
+bcrypt = "0.9.0"
+bytes = "0.5.4"
 chrono = { version = "0.4.11", default_features = false }
-serde_urlencoded = "0.6.1"
 clap = { version = "2.33.1", default-features = false, features = [] }
-
+config = "0.10.1"
+deadpool-sqlite = { version = "0.3.1", features = ["rt_tokio_1"] }
+filetime = "0.2.12"
+glob = "0.3.0"
+humantime = "2.0.0"
+hyper = "0.14.15"
+lazy_static = "1.4.0"
+maxminddb = "0.13.0"
+md5 = "0.7.0"
+mime_guess = "2.0.3"
+nom = "7.1.0"
+notify = "4.0.16"
+percent-encoding = "2.1.0"
+rand = "0.7.3"
+refinery = { version = "0.7.0", features = ["rusqlite"] }
+reqwest = { version = "0.11.2", default-features = false, features = ["json", "rustls-tls"] }
+rpassword = "4.0.5"
+rust-embed = { version = "6.3.0", features = ["compression", "debug-embed"] }
+rusqlite = { version = "= 0.25", default-features = false, features = ["bundled", "serde_json"] }
+serde = { version = "1.0.110", features = ["derive"] }
+serde_json = "1.0.53"
+serde_urlencoded = "0.6.1"
+serde_yaml = "0.8.13"
+stdlog = { package = "log", version = "0.4.8" }
+suricata-rule-parser = { path = "./suricata-rule-parser", package = "evebox-suricata-rule-parser", version = "0.2.0" }
+time = { version = "0.3.5", features = ["formatting"] }
+tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
+tower = "0.4.11"
+tower-http = { version = "0.1.2", default_features = false, features = ["set-header", "trace"] }
 tracing = "0.1.25"
 tracing-subscriber = "0.2.17"
 tracing-log = "0.1.2"
-stdlog = { package = "log", version = "0.4.8" }
-
 thiserror = "1.0.19"
-anyhow = "1.0.31"
-
-rusqlite = { version = "= 0.25", default-features = false, features = ["bundled", "serde_json"] }
-
-percent-encoding = "2.1.0"
 ulid = "0.3.1"
-md5 = "0.7.0"
-config = "0.10.1"
-maxminddb = "0.13.0"
-lazy_static = "1.4.0"
-webbrowser = "0.5.2"
-bytes = "0.5.4"
-base64 = "0.12.1"
-rand = "0.7.3"
-bcrypt = "0.9.0"
-rpassword = "4.0.5"
 uuid = { version = "0.8.1", features = ["v4"] }
-glob = "0.3.0"
-serde_yaml = "0.8.13"
-
-suricata-rule-parser = { path = "./suricata-rule-parser", package = "evebox-suricata-rule-parser", version = "0.2.0" }
-filetime = "0.2.12"
-notify = "4.0.16"
-
-refinery = { version = "0.7.0", features = ["rusqlite"] }
-axum = "0.3.4"
-tower = "0.4.11"
-mime_guess = "2.0.3"
-axum-server = { version = "0.3.2", features = ["tls-rustls"] }
-tower-http = { version = "0.1.2", default_features = false, features = ["set-header", "trace"] }
-hyper = "0.14.15"
-time = { version = "0.3.5", features = ["formatting"] }
-deadpool-sqlite = { version = "0.3.1", features = ["rt_tokio_1"] }
-nom = "7.1.0"
+webbrowser = "0.5.2"

@@ -19,20 +19,20 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-use rust_embed::RustEmbed;
-use std::borrow::Cow;
+use rust_embed::{EmbeddedFile, RustEmbed};
 
 #[derive(RustEmbed)]
 #[folder = "./resources"]
 pub struct Resource;
 
-pub fn get(file_path: &str) -> Option<Cow<'static, [u8]>> {
-    Resource::get(file_path)
+pub fn get(file_path: &str) -> Option<EmbeddedFile> {
+    let resource = Resource::get(file_path);
+    resource
 }
 
 pub fn get_string(file_path: &str) -> Option<String> {
     if let Some(bytes) = get(file_path) {
-        if let Ok(text) = std::str::from_utf8(&bytes) {
+        if let Ok(text) = std::str::from_utf8(&bytes.data) {
             return Some(text.to_string());
         }
     }
