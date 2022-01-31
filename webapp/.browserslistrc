@@ -16,3 +16,7 @@ last 2 iOS major versions
 Firefox ESR
 not IE 9-10 # Angular support for IE 9-10 has been deprecated and will be removed as of Angular v11. To opt-in, remove the 'not' prefix on this line.
 not IE 11 # Angular supports IE 11 only as an opt-in. To opt-in, remove the 'not' prefix on this line.
+
+# Temporary fix from https://stackoverflow.com/questions/70911458/angular-13-ng-build-library-fails-ivy-partial-compilation-mode
+not ios_saf 15.2-15.3
+not safari 15.2-15.3
