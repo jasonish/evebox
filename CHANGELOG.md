@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.15.0 - 2022-02-27
 
 - [sqlite] Remove full text search engine. It provided little benefit on search
   and was very expensive to add events to.

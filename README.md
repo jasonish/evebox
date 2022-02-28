@@ -1,6 +1,6 @@
 # EveBox [![Documentation Status](https://readthedocs.org/projects/evebox/badge/?version=latest)](https://evebox.readthedocs.io/en/latest/?badge=latest)
 
-EveBox is a web based Suricata "eve" event viewer for Elastic Search.
+EveBox is a web based Suricata "EVE" event viewer for Elastic Search.
 
 ![EveBox](https://evebox.org/screens/inbox.png)
 
