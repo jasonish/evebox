@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Jason Ish
+// Copyright (C) 2022 Jason Ish
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -24,10 +24,7 @@ use std::collections::HashMap;
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-
 use suricata_rule_parser as parser;
-
-use notify::{RecursiveMode, Watcher};
 
 struct Inner {
     map: HashMap<u64, String>,
@@ -166,29 +163,29 @@ pub fn load_rules(filenames: &[String]) -> RuleMap {
     return map;
 }
 
+/// Watch the known rule files for changes.  This is a polling loop as the
+/// notify crate, at least as of the pre-5.0 releases could use some work.
 pub fn watch_rules(rulemap: Arc<RuleMap>) {
-    tokio::spawn(async move {
-        let (tx, rx) = std::sync::mpsc::channel();
-        let mut watcher = notify::watcher(tx, std::time::Duration::from_secs(3)).unwrap();
+    tokio::task::spawn_blocking(move || {
+        let mut last_modified = std::time::SystemTime::now();
         loop {
+            std::thread::sleep(std::time::Duration::from_secs(6));
+            let mut reload = false;
             let filenames = rulemap.filenames();
-            for filename in filenames {
-                watcher
-                    .watch(filename.parent().unwrap(), RecursiveMode::NonRecursive)
-                    .unwrap();
-            }
-            loop {
-                if let Ok(event) = rx.recv() {
-                    match event {
-                        notify::DebouncedEvent::Write(_path)
-                        | notify::DebouncedEvent::Create(_path) => {
-                            break;
+            for filename in &filenames {
+                if let Ok(metadata) = std::fs::metadata(filename) {
+                    if let Ok(modified) = metadata.modified() {
+                        if modified.gt(&last_modified) {
+                            reload = true;
+                            last_modified = modified;
                         }
-                        _ => {}
                     }
                 }
             }
-            rulemap.rescan();
+            if reload {
+                info!("Rule modification detected, reloading");
+                rulemap.rescan();
+            }
         }
     });
 }
