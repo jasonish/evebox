@@ -2,7 +2,7 @@
 
 EveBox is a web based Suricata "EVE" event viewer for Elastic Search.
 
-![EveBox](https://evebox.org/screens/inbox.png)
+![EveBox](https://evebox.org/inbox.png)
 
 ## Features
 
@@ -38,16 +38,8 @@ Example:
 
 Then visit http://localhost:5636 with your browser.
 
-The latest release builds can be found at
-https://evebox.org/files/release/latest/.
-
-The latest development builds (from git master) can be found at
-https://evebox.org/files/development/
-
-A [RPM](https://github.com/jasonish/evebox/wiki/EveBox-RPM-Repository)
-and
-[Debian](https://github.com/jasonish/evebox/wiki/EveBox-Debian-Repository) package
-repository are also available.
+Available downloads including RPM and Debian package repositories can be found
+at [https://evebox.org/downloads](https://evebox.org/downloads).
 
 ### SELKS
 
@@ -78,10 +70,6 @@ docker run -it -p 5636:5636 --link elasticsearch jasonish/evebox:latest
 ```
 
 Then visit http://localhost:5636 with your browser.
-
-This should not require any modification to your Elastic Search
-configuration. Unlike previous versions of Evebox, you do not need to
-enable dynamic scripting and CORS.
 
 ## Usage
 
