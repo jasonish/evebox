@@ -30,7 +30,7 @@ use crate::geoip;
 use crate::settings::Settings;
 use crate::sqlite;
 
-pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
+pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let mut settings = Settings::new(args);
     let limit: u64 = settings.get("limit").unwrap_or(0);
     let no_open: bool = settings.get_bool("no-open")?;

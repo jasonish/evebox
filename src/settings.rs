@@ -27,11 +27,11 @@ use serde::Deserialize;
 #[derive(Default, Clone, Debug)]
 pub struct Settings {
     pub config: config::Config,
-    pub args: clap::ArgMatches<'static>,
+    pub args: clap::ArgMatches,
 }
 
 impl Settings {
-    pub fn new(args: &clap::ArgMatches<'static>) -> Self {
+    pub fn new(args: &clap::ArgMatches) -> Self {
         fix_deprecated_env_vars();
         let mut config = Settings {
             config: config::Config::default(),
@@ -208,28 +208,28 @@ verbose: true
     #[test]
     fn test_bool() {
         let args: &[&str] = &["test-args"];
-        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short("v").multiple(true));
+        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short('v').multiple(true));
         let matches = parser.get_matches_from(args);
         let settings = Settings::new(&matches);
         assert_eq!(settings.get_bool("verbose").unwrap(), false);
         assert_eq!(settings.count_of("verbose"), 0);
 
         let args: &[&str] = &["test-args", "-v"];
-        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short("v").multiple(true));
+        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short('v').multiple(true));
         let matches = parser.get_matches_from(args);
         let settings = Settings::new(&matches);
         assert_eq!(settings.get_bool("verbose").unwrap(), true);
         assert_eq!(settings.count_of("verbose"), 1);
 
         let args: &[&str] = &["test-args", "-v", "-v"];
-        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short("v").multiple(true));
+        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short('v').multiple(true));
         let matches = parser.get_matches_from(args);
         let settings = Settings::new(&matches);
         assert_eq!(settings.get_bool("verbose").unwrap(), true);
         assert_eq!(settings.count_of("verbose"), 2);
 
         let args: &[&str] = &["test-args"];
-        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short("v").multiple(true));
+        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short('v').multiple(true));
         let matches = parser.get_matches_from(args);
         let mut settings = Settings::new(&matches);
         settings.merge_yaml_str(TEST_YAML).unwrap();

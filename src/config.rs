@@ -23,11 +23,11 @@ use crate::prelude::*;
 
 pub struct Config {
     config: serde_yaml::Value,
-    args: Option<clap::ArgMatches<'static>>,
+    args: Option<clap::ArgMatches>,
 }
 
 impl Config {
-    pub fn from_args(args: clap::ArgMatches<'static>, config_flag: Option<&str>) -> Result<Self> {
+    pub fn from_args(args: clap::ArgMatches, config_flag: Option<&str>) -> Result<Self> {
         let mut config = serde_yaml::Value::Null;
         if let Some(config_flag) = config_flag {
             if let Some(filename) = args.value_of(config_flag) {

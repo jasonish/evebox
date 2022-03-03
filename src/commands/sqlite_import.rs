@@ -27,7 +27,7 @@ use crate::sqlite;
 use crate::sqlite::ConnectionBuilder;
 use std::sync::{Arc, Mutex};
 
-pub async fn main(args: &clap::ArgMatches<'_>) -> anyhow::Result<()> {
+pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let input = args.value_of("INPUT").unwrap().to_string();
     let oneshot = args.occurrences_of("oneshot") > 0;
     let end = args.occurrences_of("end") > 0;

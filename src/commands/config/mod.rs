@@ -21,13 +21,13 @@
 
 pub mod users;
 
-pub fn config_subcommand() -> clap::App<'static, 'static> {
+pub fn config_subcommand() -> clap::App<'static> {
     clap::SubCommand::with_name("config").subcommand(users::users_subcommand())
 }
 
 pub fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     match args.subcommand() {
-        ("users", Some(args)) => users::main(args),
-        (_, _) => return Err(anyhow!("no subcommand provided")),
+        Some(("users", args)) => users::main(args),
+        _ => return Err(anyhow!("no subcommand provided")),
     }
 }

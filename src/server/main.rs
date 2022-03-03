@@ -61,7 +61,7 @@ fn load_event_services(filename: &str) -> anyhow::Result<serde_json::Value> {
 }
 
 #[allow(clippy::field_reassign_with_default)]
-pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
+pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     crate::version::log_version();
 
     let config_filename = args.value_of("config");

@@ -49,7 +49,7 @@ struct ElasticImportConfig {
     batch_size: u64,
 }
 
-pub async fn main(args: &clap::ArgMatches<'static>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let mut config = ElasticImportConfig::default();
     let settings = Config::from_args(args.clone(), Some("config"))?;
 

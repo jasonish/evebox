@@ -26,7 +26,7 @@ use anyhow::Result;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-pub async fn main(args: &clap::ArgMatches<'static>) -> Result<()> {
+pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     let url = args.value_of("elasticsearch").unwrap();
     let client = Client::new(url);
     let version = client.get_version().await?;

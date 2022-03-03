@@ -40,7 +40,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::with_name("verbose")
                 .long("verbose")
-                .short("v")
+                .short('v')
                 .multiple(true)
                 .global(true)
                 .help("Increase verbosity"),
@@ -48,7 +48,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::with_name("data-directory")
                 .long("data-directory")
-                .short("D")
+                .short('D')
                 .takes_value(true)
                 .value_name("DIR")
                 .help("Data directory")
@@ -75,7 +75,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             clap::Arg::with_name("config")
                 .long("config")
-                .short("c")
+                .short('c')
                 .takes_value(true)
                 .value_name("FILE")
                 .help("Configuration filename"),
@@ -90,7 +90,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             clap::Arg::with_name("http.port")
-                .short("p")
+                .short('p')
                 .long("port")
                 .value_name("PORT")
                 .takes_value(true)
@@ -99,7 +99,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             clap::Arg::with_name("database.elasticsearch.url")
-                .short("e")
+                .short('e')
                 .long("elasticsearch")
                 .takes_value(true)
                 .value_name("URL")
@@ -108,7 +108,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             clap::Arg::with_name("database.elasticsearch.index")
-                .short("i")
+                .short('i')
                 .long("index")
                 .takes_value(true)
                 .default_value("logstash")
@@ -145,7 +145,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             clap::Arg::with_name("no-check-certificate")
-                .short("k")
+                .short('k')
                 .long("no-check-certificate")
                 .help("Disable TLS certificate validation"),
         )
@@ -196,7 +196,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .about("EveBox Agent")
         .arg(
             Arg::with_name("config")
-                .short("c")
+                .short('c')
                 .long("config")
                 .takes_value(true)
                 .help("Configuration file"),
@@ -263,7 +263,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .about("Import to Elastic Search")
         .arg(
             Arg::with_name("config")
-                .short("c")
+                .short('c')
                 .long("config")
                 .takes_value(true)
                 .help("Configuration file"),
@@ -280,7 +280,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             clap::Arg::with_name("elasticsearch")
-                .short("e")
+                .short('e')
                 .long("elasticsearch")
                 .takes_value(true)
                 .default_value("http://localhost:9200")
@@ -308,7 +308,6 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::with_name("bookmark-filename")
                 .long("bookmark-filename")
                 .takes_value(true)
-                //.default_value(".bookmark")
                 .default_value("")
                 .help("Bookmark filename"),
         )
@@ -327,20 +326,20 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::with_name("username")
                 .long("username")
-                .short("u")
+                .short('u')
                 .takes_value(true)
                 .help("Elasticsearch username"),
         )
         .arg(
             Arg::with_name("password")
                 .long("password")
-                .short("p")
+                .short('p')
                 .takes_value(true)
                 .help("Elasticsearch password"),
         )
         .arg(
             clap::Arg::with_name(evebox::commands::elastic_import::NO_CHECK_CERTIFICATE)
-                .short("k")
+                .short('k')
                 .long("no-check-certificate")
                 .help("Disable TLS certificate validation"),
         )
@@ -389,34 +388,29 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
     logger::init_stdlog();
 
     let rc: anyhow::Result<()> = match matches.subcommand() {
-        ("server", Some(args)) => {
+        Some(("server", args)) => {
             evebox::server::main(args).await?;
             Ok(())
         }
-        ("version", _) => {
+        Some(("version", _)) => {
             version::print_version();
             Ok(())
         }
-        ("sqlite-import", Some(args)) => evebox::commands::sqlite_import::main(args).await,
-        ("elastic-import", Some(args)) => {
+        Some(("sqlite-import", args)) => evebox::commands::sqlite_import::main(args).await,
+        Some(("elastic-import", args)) => {
             if let Err(err) = evebox::commands::elastic_import::main(args).await {
                 error!("{}", err);
                 std::process::exit(1);
             }
             Ok(())
         }
-        ("elastic-debug", Some(args)) => evebox::commands::elastic_debug::main(args).await,
-        ("oneshot", Some(args)) => evebox::commands::oneshot::main(args).await,
-        ("agent", Some(args)) => evebox::agent::main(args).await,
-        ("config", Some(args)) => evebox::commands::config::main(args),
-        ("", None) => {
+        Some(("elastic-debug", args)) => evebox::commands::elastic_debug::main(args).await,
+        Some(("oneshot", args)) => evebox::commands::oneshot::main(args).await,
+        Some(("agent", args)) => evebox::agent::main(args).await,
+        Some(("config", args)) => evebox::commands::config::main(args),
+        _ => {
             parser.print_help().ok();
-            // print_help doesn't output a new line at the end, so fix that up...
             println!();
-            std::process::exit(1);
-        }
-        (command, _) => {
-            error!("command \"{}\" not implemented yet", command);
             std::process::exit(1);
         }
     };
@@ -428,11 +422,11 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn elastic_debug() -> clap::App<'static, 'static> {
+fn elastic_debug() -> clap::App<'static> {
     SubCommand::with_name("elastic-debug").arg(
         Arg::with_name("elasticsearch")
             .long("elasticsearch")
-            .short("e")
+            .short('e')
             .takes_value(true)
             .default_value("127.0.0.1"),
     )

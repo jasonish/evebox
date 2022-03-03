@@ -57,7 +57,7 @@ fn find_config_filename() -> Option<String> {
     None
 }
 
-pub async fn main(args: &clap::ArgMatches<'static>) -> anyhow::Result<()> {
+pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     tokio::spawn(async move {
         tokio::signal::ctrl_c()
             .await

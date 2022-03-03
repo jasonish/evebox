@@ -28,7 +28,7 @@ use clap::SubCommand;
 
 use crate::sqlite::configrepo::ConfigRepo;
 
-pub fn users_subcommand() -> clap::App<'static, 'static> {
+pub fn users_subcommand() -> clap::App<'static> {
     clap::SubCommand::with_name("users")
         .subcommand(
             SubCommand::with_name("list")
@@ -41,14 +41,14 @@ pub fn users_subcommand() -> clap::App<'static, 'static> {
                 .arg(
                     Arg::with_name("username")
                         .long("username")
-                        .short("u")
+                        .short('u')
                         .value_name("USERNAME")
                         .help("Username"),
                 )
                 .arg(
                     Arg::with_name("password")
                         .long("password")
-                        .short("p")
+                        .short('p')
                         .value_name("PASSWORD")
                         .help("Password"),
                 ),
@@ -68,10 +68,10 @@ pub fn users_subcommand() -> clap::App<'static, 'static> {
 
 pub fn main(args: &clap::ArgMatches) -> Result<()> {
     match args.subcommand() {
-        ("list", Some(args)) => list(args),
-        ("add", Some(args)) => add(args),
-        ("rm", Some(args)) => remove(args),
-        ("passwd", Some(args)) => password(args),
+        Some(("list", args)) => list(args),
+        Some(("add", args)) => add(args),
+        Some(("rm", args)) => remove(args),
+        Some(("passwd", args)) => password(args),
         _ => {
             return Err(anyhow!("config users: no subcommand provided"));
         }
