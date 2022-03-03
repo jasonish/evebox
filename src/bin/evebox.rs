@@ -21,7 +21,7 @@
 
 #![allow(clippy::redundant_field_names)]
 
-use clap::{Arg, SubCommand};
+use clap::{Arg, Command};
 use evebox::logger;
 use evebox::prelude::*;
 use evebox::version;
@@ -35,18 +35,18 @@ async fn main() {
 }
 
 async fn _main() -> Result<(), Box<dyn std::error::Error>> {
-    let parser = clap::App::new("EveBox")
+    let parser = clap::Command::new("EveBox")
         .version(std::env!("CARGO_PKG_VERSION"))
         .arg(
-            Arg::with_name("verbose")
+            Arg::new("verbose")
                 .long("verbose")
                 .short('v')
-                .multiple(true)
+                .multiple_occurrences(true)
                 .global(true)
                 .help("Increase verbosity"),
         )
         .arg(
-            Arg::with_name("data-directory")
+            Arg::new("data-directory")
                 .long("data-directory")
                 .short('D')
                 .takes_value(true)
@@ -54,26 +54,22 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Data directory")
                 .global(true),
         )
-        .subcommand(clap::SubCommand::with_name("version").about("Display version"));
+        .subcommand(clap::Command::new("version").about("Display version"));
 
-    let sqlite_import = SubCommand::with_name("sqlite-import")
+    let sqlite_import = Command::new("sqlite-import")
         .about("Import to SQLite")
         .arg(
-            Arg::with_name("oneshot")
+            Arg::new("oneshot")
                 .long("oneshot")
                 .help("One shot mode (exit on EOF"),
         )
-        .arg(
-            Arg::with_name("end")
-                .long("end")
-                .help("Start at end of file"),
-        )
-        .arg(Arg::with_name("INPUT").required(true).index(1));
+        .arg(Arg::new("end").long("end").help("Start at end of file"))
+        .arg(Arg::new("INPUT").required(true).index(1));
 
-    let server = clap::SubCommand::with_name("server")
+    let server = clap::Command::new("server")
         .about("EveBox Server")
         .arg(
-            clap::Arg::with_name("config")
+            clap::Arg::new("config")
                 .long("config")
                 .short('c')
                 .takes_value(true)
@@ -81,7 +77,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Configuration filename"),
         )
         .arg(
-            clap::Arg::with_name("http.host")
+            clap::Arg::new("http.host")
                 .long("host")
                 .value_name("HOSTNAME")
                 .takes_value(true)
@@ -89,7 +85,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Hostname/IP address to bind to"),
         )
         .arg(
-            clap::Arg::with_name("http.port")
+            clap::Arg::new("http.port")
                 .short('p')
                 .long("port")
                 .value_name("PORT")
@@ -98,7 +94,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Port to bind to"),
         )
         .arg(
-            clap::Arg::with_name("database.elasticsearch.url")
+            clap::Arg::new("database.elasticsearch.url")
                 .short('e')
                 .long("elasticsearch")
                 .takes_value(true)
@@ -107,7 +103,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Elastic Search URL"),
         )
         .arg(
-            clap::Arg::with_name("database.elasticsearch.index")
+            clap::Arg::new("database.elasticsearch.index")
                 .short('i')
                 .long("index")
                 .takes_value(true)
@@ -116,18 +112,18 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Elastic Search index prefix"),
         )
         .arg(
-            Arg::with_name("database.elasticsearch.no-index-suffix")
+            Arg::new("database.elasticsearch.no-index-suffix")
                 .long("no-index-suffix")
                 .takes_value(false)
                 .help("Do not add a suffix to the index name"),
         )
         .arg(
-            Arg::with_name("database.elasticsearch.ecs")
+            Arg::new("database.elasticsearch.ecs")
                 .long("ecs")
                 .help("Enable Elastic ECS support"),
         )
         .arg(
-            Arg::with_name("database.type")
+            Arg::new("database.type")
                 .long("database")
                 .aliases(&["datastore"])
                 .takes_value(true)
@@ -136,7 +132,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Database type"),
         )
         .arg(
-            Arg::with_name("sqlite-filename")
+            Arg::new("sqlite-filename")
                 .long("sqlite-filename")
                 .takes_value(true)
                 .value_name("FILENAME")
@@ -144,103 +140,95 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("SQLite events filename"),
         )
         .arg(
-            clap::Arg::with_name("no-check-certificate")
+            clap::Arg::new("no-check-certificate")
                 .short('k')
                 .long("no-check-certificate")
                 .help("Disable TLS certificate validation"),
         )
         .arg(
-            Arg::with_name("http.request-logging")
+            Arg::new("http.request-logging")
                 .long("http-request-logging")
                 .env("EVEBOX_HTTP_REQUEST_LOGGING")
                 .help("Enable HTTP access logging"),
         )
+        .arg(Arg::new("http.tls.enabled").long("tls").help("Enable TLS"))
         .arg(
-            Arg::with_name("http.tls.enabled")
-                .long("tls")
-                .help("Enable TLS"),
-        )
-        .arg(
-            Arg::with_name("http.tls.certificate")
+            Arg::new("http.tls.certificate")
                 .long("tls-cert")
                 .takes_value(true)
                 .value_name("FILENAME")
                 .help("TLS certificate filename"),
         )
         .arg(
-            Arg::with_name("http.tls.key")
+            Arg::new("http.tls.key")
                 .long("tls-key")
                 .takes_value(true)
                 .value_name("FILENAME")
                 .help("TLS key filename"),
         )
         .arg(
-            Arg::with_name("input.filename")
+            Arg::new("input.filename")
                 .long("input")
                 .takes_value(true)
                 .value_name("FILENAME")
                 .help("Input Eve file to read"),
         )
         .arg(
-            Arg::with_name("end")
+            Arg::new("end")
                 .long("end")
                 .help("Read from end (tail) of input file"),
         )
-        .arg(
-            Arg::with_name("input-start")
-                .long("input-start")
-                .hidden(true),
-        );
+        .arg(Arg::new("input-start").long("input-start").hide(true));
 
-    let agent = SubCommand::with_name("agent")
+    let agent = Command::new("agent")
         .about("EveBox Agent")
         .arg(
-            Arg::with_name("config")
+            Arg::new("config")
                 .short('c')
                 .long("config")
                 .takes_value(true)
                 .help("Configuration file"),
         )
         .arg(
-            Arg::with_name("server.url")
+            Arg::new("server.url")
                 .long("server")
                 .takes_value(true)
                 .value_name("URL")
                 .help("EveBox Server URL"),
         )
-        .arg(Arg::with_name("geoip.enabled").long("enable-geoip"))
+        .arg(Arg::new("geoip.enabled").long("enable-geoip"))
         .arg(
-            Arg::with_name("stdout")
+            Arg::new("stdout")
                 .long("stdout")
                 .help("Print events to stdout"),
         )
         .arg(
-            Arg::with_name("bookmark-directory")
+            Arg::new("bookmark-directory")
                 .long("bookmark-directory")
                 .takes_value(true)
-                .hidden(true),
+                .hide(true),
         );
 
-    let oneshot = SubCommand::with_name("oneshot")
+    let oneshot = Command::new("oneshot")
         .about("Import a single eve.json and review in EveBox")
         .arg(
-            Arg::with_name("limit")
+            Arg::new("limit")
                 .long("limit")
                 .takes_value(true)
                 .help("Limit the number of events read"),
         )
         .arg(
-            Arg::with_name("no-open")
+            Arg::new("no-open")
                 .long("no-open")
                 .help("Don't open browser"),
         )
         .arg(
-            Arg::with_name("no-wait")
+            Arg::new("no-wait")
                 .long("no-wait")
                 .help("Don't wait for events to load"),
         )
         .arg(
-            Arg::with_name("database-filename")
+            Arg::new("database-filename")
                 .long("database-filename")
                 .takes_value(true)
                 .default_value("./oneshot.sqlite")
@@ -249,37 +237,33 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         // --host, but keep th name as http.host to be campatible with the
         // EVEBOX_HTTP_HOST environment variable.
         .arg(
-            clap::Arg::with_name("http.host")
+            clap::Arg::new("http.host")
                 .long("host")
                 .value_name("HOSTNAME")
                 .takes_value(true)
                 .default_value("127.0.0.1")
                 .help("Hostname/IP address to bind to"),
         )
-        .arg(Arg::with_name("INPUT").required(true).index(1));
+        .arg(Arg::new("INPUT").required(true).index(1));
 
-    let elastic_import = SubCommand::with_name("elastic-import")
+    let elastic_import = Command::new("elastic-import")
         .alias("esimport")
         .about("Import to Elastic Search")
         .arg(
-            Arg::with_name("config")
+            Arg::new("config")
                 .short('c')
                 .long("config")
                 .takes_value(true)
                 .help("Configuration file"),
         )
         .arg(
-            Arg::with_name("oneshot")
+            Arg::new("oneshot")
                 .long("oneshot")
                 .help("One shot mode (exit on EOF)"),
         )
+        .arg(Arg::new("end").long("end").help("Start at end of file"))
         .arg(
-            Arg::with_name("end")
-                .long("end")
-                .help("Start at end of file"),
-        )
-        .arg(
-            clap::Arg::with_name("elasticsearch")
+            clap::Arg::new("elasticsearch")
                 .short('e')
                 .long("elasticsearch")
                 .takes_value(true)
@@ -287,77 +271,77 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Elastic Search URL"),
         )
         .arg(
-            Arg::with_name("index")
+            Arg::new("index")
                 .long("index")
                 .takes_value(true)
                 .default_value("logstash")
                 .help("Elastic Search index prefix"),
         )
         .arg(
-            Arg::with_name("no-index-suffix")
+            Arg::new("no-index-suffix")
                 .long("no-index-suffix")
                 .takes_value(false)
                 .help("Do not add a suffix to the index name"),
         )
         .arg(
-            Arg::with_name("bookmark")
+            Arg::new("bookmark")
                 .long("bookmark")
                 .help("Enable bookmarking"),
         )
         .arg(
-            Arg::with_name("bookmark-filename")
+            Arg::new("bookmark-filename")
                 .long("bookmark-filename")
                 .takes_value(true)
                 .default_value("")
                 .help("Bookmark filename"),
         )
         .arg(
-            Arg::with_name("bookmark-dir")
+            Arg::new("bookmark-dir")
                 .long("bookmark-dir")
                 .takes_value(true)
                 .default_value(".")
                 .help("Bookmark directory"),
         )
         .arg(
-            Arg::with_name("stdout")
+            Arg::new("stdout")
                 .long("stdout")
                 .help("Print events to stdout"),
         )
         .arg(
-            Arg::with_name("username")
+            Arg::new("username")
                 .long("username")
                 .short('u')
                 .takes_value(true)
                 .help("Elasticsearch username"),
         )
         .arg(
-            Arg::with_name("password")
+            Arg::new("password")
                 .long("password")
                 .short('p')
                 .takes_value(true)
                 .help("Elasticsearch password"),
         )
         .arg(
-            clap::Arg::with_name(evebox::commands::elastic_import::NO_CHECK_CERTIFICATE)
+            clap::Arg::new(evebox::commands::elastic_import::NO_CHECK_CERTIFICATE)
                 .short('k')
                 .long("no-check-certificate")
                 .help("Disable TLS certificate validation"),
         )
         .arg(
-            Arg::with_name("geoip.disabled")
+            Arg::new("geoip.disabled")
                 .long("no-geoip")
                 .help("Disable GeoIP"),
         )
         .arg(
-            Arg::with_name("geoip.database-filename")
+            Arg::new("geoip.database-filename")
                 .long("geoip-database")
                 .takes_value(true)
                 .value_name("filename")
                 .help("GeoIP database filename"),
         )
         .arg(
-            Arg::with_name("input")
-                .multiple(true)
+            Arg::new("input")
+                .multiple_values(true)
                 .value_name("INPUT")
                 .index(1),
         );
@@ -422,9 +406,9 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn elastic_debug() -> clap::App<'static> {
-    SubCommand::with_name("elastic-debug").arg(
-        Arg::with_name("elasticsearch")
+fn elastic_debug() -> clap::Command<'static> {
+    Command::new("elastic-debug").arg(
+        Arg::new("elasticsearch")
             .long("elasticsearch")
             .short('e')
             .takes_value(true)

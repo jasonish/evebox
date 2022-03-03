@@ -24,29 +24,25 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Arg;
-use clap::SubCommand;
+use clap::Command;
 
 use crate::sqlite::configrepo::ConfigRepo;
 
-pub fn users_subcommand() -> clap::App<'static> {
-    clap::SubCommand::with_name("users")
+pub fn users_subcommand() -> clap::Command<'static> {
+    clap::Command::new("users")
+        .subcommand(Command::new("list").alias("ls").about("List users"))
         .subcommand(
-            SubCommand::with_name("list")
-                .alias("ls")
-                .about("List users"),
-        )
-        .subcommand(
-            SubCommand::with_name("add")
+            Command::new("add")
                 .about("Add user")
                 .arg(
-                    Arg::with_name("username")
+                    Arg::new("username")
                         .long("username")
                         .short('u')
                         .value_name("USERNAME")
                         .help("Username"),
                 )
                 .arg(
-                    Arg::with_name("password")
+                    Arg::new("password")
                         .long("password")
                         .short('p')
                         .value_name("PASSWORD")
@@ -54,15 +50,15 @@ pub fn users_subcommand() -> clap::App<'static> {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("rm")
+            Command::new("rm")
                 .about("Remove user")
-                .arg(Arg::with_name("username").required(true)),
+                .arg(Arg::new("username").required(true)),
         )
         .subcommand(
-            SubCommand::with_name("passwd")
+            Command::new("passwd")
                 .alias("password")
                 .about("Change password for user")
-                .arg(Arg::with_name("username").required(true)),
+                .arg(Arg::new("username").required(true)),
         )
 }
 

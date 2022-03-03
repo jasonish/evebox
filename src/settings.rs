@@ -42,10 +42,14 @@ impl Settings {
     }
 
     fn load(&mut self) {
-        let config_from_args = self
-            .args
-            .value_of("config")
-            .map(|config| config.to_string());
+        let config_from_args = if self.args.is_valid_arg("config") {
+            self.args
+                .value_of("config")
+                .map(|config| config.to_string())
+        } else {
+            None
+        };
+
         if let Some(config) = config_from_args {
             self.merge_file(&config).unwrap();
         } else {
@@ -89,7 +93,7 @@ impl Settings {
     // - configuration file
     // - default set in clap
     pub fn get<'de, T: Deserialize<'de>>(&mut self, key: &str) -> Result<T, config::ConfigError> {
-        if self.args.occurrences_of(key) > 0 {
+        if self.args.is_valid_arg(key) && self.args.occurrences_of(key) > 0 {
             self.set_from_args(key);
         }
         match self.config.get(key) {
@@ -116,7 +120,7 @@ impl Settings {
     }
 
     pub fn get_bool(&self, key: &str) -> Result<bool, config::ConfigError> {
-        if self.args.occurrences_of(key) > 0 {
+        if self.args.is_valid_arg(key) && self.args.occurrences_of(key) > 0 {
             return Ok(true);
         }
         match self.config.get_bool(key) {
@@ -142,7 +146,7 @@ impl Settings {
     }
 
     fn set_from_args(&mut self, key: &str) {
-        if self.args.is_present(key) {
+        if self.args.is_valid_arg(key) && self.args.is_present(key) {
             self.config
                 .set(key, self.args.value_of(key).unwrap())
                 .unwrap();
@@ -208,28 +212,32 @@ verbose: true
     #[test]
     fn test_bool() {
         let args: &[&str] = &["test-args"];
-        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short('v').multiple(true));
+        let parser =
+            Command::new("EveBox").arg(Arg::new("verbose").short('v').multiple_occurrences(true));
         let matches = parser.get_matches_from(args);
         let settings = Settings::new(&matches);
         assert_eq!(settings.get_bool("verbose").unwrap(), false);
         assert_eq!(settings.count_of("verbose"), 0);
 
         let args: &[&str] = &["test-args", "-v"];
-        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short('v').multiple(true));
+        let parser =
+            Command::new("EveBox").arg(Arg::new("verbose").short('v').multiple_occurrences(true));
         let matches = parser.get_matches_from(args);
         let settings = Settings::new(&matches);
         assert_eq!(settings.get_bool("verbose").unwrap(), true);
         assert_eq!(settings.count_of("verbose"), 1);
 
         let args: &[&str] = &["test-args", "-v", "-v"];
-        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short('v').multiple(true));
+        let parser =
+            Command::new("EveBox").arg(Arg::new("verbose").short('v').multiple_occurrences(true));
         let matches = parser.get_matches_from(args);
         let settings = Settings::new(&matches);
         assert_eq!(settings.get_bool("verbose").unwrap(), true);
         assert_eq!(settings.count_of("verbose"), 2);
 
         let args: &[&str] = &["test-args"];
-        let parser = App::new("EveBox").arg(Arg::with_name("verbose").short('v').multiple(true));
+        let parser =
+            Command::new("EveBox").arg(Arg::new("verbose").short('v').multiple_occurrences(true));
         let matches = parser.get_matches_from(args);
         let mut settings = Settings::new(&matches);
         settings.merge_yaml_str(TEST_YAML).unwrap();

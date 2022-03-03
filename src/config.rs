@@ -65,12 +65,14 @@ impl Config {
 
         // First check if an argument was explicitly provided.
         if let Some(args) = &self.args {
-            if args.occurrences_of(key) > 0 {
-                return Ok(Some(args.value_of(key).unwrap().into()));
-            }
-            // Save the default...
-            if args.is_present(key) {
-                default = Some(args.value_of(key).unwrap().into());
+            if args.is_valid_arg(key) {
+                if args.occurrences_of(key) > 0 {
+                    return Ok(Some(args.value_of(key).unwrap().into()));
+                }
+                // Save the default...
+                if args.is_present(key) {
+                    default = Some(args.value_of(key).unwrap().into());
+                }
             }
         }
 
@@ -95,7 +97,7 @@ impl Config {
 
     pub fn get_strings(&self, key: &str) -> Result<Vec<String>> {
         if let Some(args) = &self.args {
-            if args.occurrences_of(key) > 0 {
+            if args.is_valid_arg(key) && args.occurrences_of(key) > 0 {
                 let val = args.values_of(key).unwrap().map(String::from).collect();
                 return Ok(val);
             }
@@ -118,17 +120,19 @@ impl Config {
     pub fn get_u64(&self, key: &str) -> Result<Option<u64>> {
         let mut default: Option<u64> = None;
         if let Some(args) = &self.args {
-            if args.occurrences_of(key) > 0 {
-                if let Some(v) = args.value_of(key) {
-                    let v = v.parse::<u64>()?;
-                    return Ok(Some(v));
+            if args.is_valid_arg(key) {
+                if args.occurrences_of(key) > 0 {
+                    if let Some(v) = args.value_of(key) {
+                        let v = v.parse::<u64>()?;
+                        return Ok(Some(v));
+                    }
                 }
-            }
 
-            // Store the clap default value...
-            if let Some(v) = args.value_of(key) {
-                if let Ok(v) = v.parse::<u64>() {
-                    default = Some(v);
+                // Store the clap default value...
+                if let Some(v) = args.value_of(key) {
+                    if let Ok(v) = v.parse::<u64>() {
+                        default = Some(v);
+                    }
                 }
             }
         }
@@ -151,7 +155,7 @@ impl Config {
     /// Get a value as a bool, returning false if the key does not exist.
     pub fn get_bool(&self, key: &str) -> Result<bool> {
         if let Some(args) = &self.args {
-            if args.occurrences_of(key) > 0 {
+            if args.is_valid_arg(key) && args.occurrences_of(key) > 0 {
                 return Ok(true);
             }
         }

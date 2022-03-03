@@ -21,8 +21,8 @@
 
 pub mod users;
 
-pub fn config_subcommand() -> clap::App<'static> {
-    clap::SubCommand::with_name("config").subcommand(users::users_subcommand())
+pub fn config_subcommand() -> clap::Command<'static> {
+    clap::Command::new("config").subcommand(users::users_subcommand())
 }
 
 pub fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
