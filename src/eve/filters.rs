@@ -26,6 +26,7 @@ use crate::rules::RuleMap;
 use serde_json::json;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub enum EveFilter {
     GeoIP(crate::geoip::GeoIP),
     EveBoxMetadataFilter(EveBoxMetadataFilter),
@@ -58,7 +59,7 @@ impl EveFilter {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EveBoxMetadataFilter {
     pub filename: Option<String>,
 }
@@ -88,6 +89,7 @@ impl From<EveBoxMetadataFilter> for EveFilter {
     }
 }
 
+#[derive(Clone)]
 pub struct CustomFieldFilter {
     pub field: String,
     pub value: String,
@@ -112,6 +114,7 @@ impl From<CustomFieldFilter> for EveFilter {
     }
 }
 
+#[derive(Clone)]
 pub struct AddRuleFilter {
     pub map: Arc<RuleMap>,
 }

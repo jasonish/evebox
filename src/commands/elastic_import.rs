@@ -26,13 +26,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::bookmark;
-use crate::config::Config;
 use crate::elastic;
 use crate::elastic::template_installer;
 use crate::eve;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::eve::Processor;
 use crate::importer::Importer;
+use crate::oldconfig::Config;
 
 pub const DEFAULT_BATCH_SIZE: u64 = 300;
 pub const NO_CHECK_CERTIFICATE: &str = "no-check-certificate";

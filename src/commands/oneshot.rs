@@ -27,7 +27,7 @@ use tokio::sync;
 
 use crate::eve;
 use crate::geoip;
-use crate::settings::Settings;
+use crate::oldsettings::Settings;
 use crate::sqlite;
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {

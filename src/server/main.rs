@@ -44,9 +44,9 @@ use crate::elastic;
 use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
 use crate::eve::processor::Processor;
 use crate::eve::EveReader;
+use crate::oldsettings::Settings;
 use crate::server::session::Session;
 use crate::server::{api, AuthenticationType};
-use crate::settings::Settings;
 use crate::sqlite;
 use crate::sqlite::configrepo::ConfigRepo;
 

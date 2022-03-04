@@ -22,7 +22,7 @@
 use crate::eve::eve::EveJson;
 use crate::prelude::*;
 use maxminddb::{geoip2, Reader};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, UNIX_EPOCH};
 
 const DAYS_28: i64 = 86400 * 28;
@@ -34,9 +34,10 @@ struct Inner {
     last_update_check: std::time::Instant,
 }
 
+#[derive(Clone)]
 pub struct GeoIP {
     filename: String,
-    inner: Mutex<Inner>,
+    inner: Arc<Mutex<Inner>>,
 }
 
 impl GeoIP {
@@ -78,7 +79,7 @@ impl GeoIP {
 
         let geoip = GeoIP {
             filename: filename,
-            inner: Mutex::new(inner),
+            inner: Arc::new(Mutex::new(inner)),
         };
         return Ok(geoip);
     }

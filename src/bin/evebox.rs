@@ -1,23 +1,6 @@
-// Copyright 2020 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
 #![allow(clippy::redundant_field_names)]
 
@@ -180,35 +163,6 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(Arg::new("input-start").long("input-start").hide(true));
 
-    let agent = Command::new("agent")
-        .about("EveBox Agent")
-        .arg(
-            Arg::new("config")
-                .short('c')
-                .long("config")
-                .takes_value(true)
-                .help("Configuration file"),
-        )
-        .arg(
-            Arg::new("server.url")
-                .long("server")
-                .takes_value(true)
-                .value_name("URL")
-                .help("EveBox Server URL"),
-        )
-        .arg(Arg::new("geoip.enabled").long("enable-geoip"))
-        .arg(
-            Arg::new("stdout")
-                .long("stdout")
-                .help("Print events to stdout"),
-        )
-        .arg(
-            Arg::new("bookmark-directory")
-                .long("bookmark-directory")
-                .takes_value(true)
-                .hide(true),
-        );
-
     let oneshot = Command::new("oneshot")
         .about("Import a single eve.json and review in EveBox")
         .arg(
@@ -350,7 +304,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(server)
         .subcommand(elastic_import)
         .subcommand(oneshot)
-        .subcommand(agent)
+        .subcommand(evebox::commands::agent::command())
         .subcommand(sqlite_import)
         .subcommand(evebox::commands::config::config_subcommand())
         .subcommand(elastic_debug());
@@ -390,7 +344,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(("elastic-debug", args)) => evebox::commands::elastic_debug::main(args).await,
         Some(("oneshot", args)) => evebox::commands::oneshot::main(args).await,
-        Some(("agent", args)) => evebox::agent::main(args).await,
+        Some(("agent", args)) => evebox::commands::agent::main(args).await,
         Some(("config", args)) => evebox::commands::config::main(args),
         _ => {
             parser.print_help().ok();
