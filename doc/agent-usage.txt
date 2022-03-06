@@ -1,5 +1,0 @@
-Usage of agent:
-  -c, --config string   Configuration file
-      --server string   EveBox server URL
-      --stdout          Print events to stdout
-  -v, --verbose         Be more verbose
