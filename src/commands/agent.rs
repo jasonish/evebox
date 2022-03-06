@@ -38,7 +38,11 @@ pub fn command() -> clap::Command<'static> {
                 .help("EveBox server URL")
                 .env("EVEBOX_SERVER_URL"),
         )
-        .arg(Arg::new("geoip.enabled").long("enable-geoip"))
+        .arg(
+            Arg::new("geoip.enabled")
+                .long("enable-geoip")
+                .help("Enable MaxMind GeoIP"),
+        )
         .arg(
             Arg::new("stdout")
                 .long("stdout")
@@ -57,18 +61,6 @@ pub fn command() -> clap::Command<'static> {
         )
 }
 
-fn find_config_filename() -> Option<&'static str> {
-    let paths = ["./agent.yaml", "/etc/evebox/agent.yaml"];
-    for path in paths {
-        debug!("Checking for {}", path);
-        let pathbuf = PathBuf::from(path);
-        if pathbuf.exists() {
-            return Some(path);
-        }
-    }
-    None
-}
-
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     tokio::spawn(async move {
         tokio::signal::ctrl_c()
@@ -81,6 +73,9 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         Some(v) => Some(v),
         None => find_config_filename(),
     };
+    if let Some(filename) = config_filename {
+        debug!("Using configuration file {}", filename);
+    }
     let config = Config::new(args, config_filename)?;
 
     let server_url = config
@@ -221,6 +216,18 @@ fn start_runner(
     tokio::spawn(async move {
         processor.run().await;
     })
+}
+
+fn find_config_filename() -> Option<&'static str> {
+    let paths = ["./agent.yaml", "/etc/evebox/agent.yaml"];
+    for path in paths {
+        debug!("Checking for {}", path);
+        let pathbuf = PathBuf::from(path);
+        if pathbuf.exists() {
+            return Some(path);
+        }
+    }
+    None
 }
 
 fn get_additional_fields(config: &Config) -> anyhow::Result<Option<HashMap<String, String>>> {

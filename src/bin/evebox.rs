@@ -307,6 +307,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(evebox::commands::agent::command())
         .subcommand(sqlite_import)
         .subcommand(evebox::commands::config::config_subcommand())
+        .subcommand(evebox::commands::print::command())
         .subcommand(elastic_debug());
 
     let matches = parser.clone().get_matches();
@@ -346,6 +347,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("oneshot", args)) => evebox::commands::oneshot::main(args).await,
         Some(("agent", args)) => evebox::commands::agent::main(args).await,
         Some(("config", args)) => evebox::commands::config::main(args),
+        Some(("print", args)) => evebox::commands::print::main(args),
         _ => {
             parser.print_help().ok();
             println!();

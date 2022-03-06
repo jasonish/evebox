@@ -7,4 +7,5 @@ pub mod config;
 pub mod elastic_debug;
 pub mod elastic_import;
 pub mod oneshot;
+pub mod print;
 pub mod sqlite_import;
