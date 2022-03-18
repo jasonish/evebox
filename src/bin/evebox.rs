@@ -201,7 +201,6 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(Arg::new("INPUT").required(true).index(1));
 
     let elastic_import = Command::new("elastic-import")
-        .alias("esimport")
         .about("Import to Elastic Search")
         .arg(
             Arg::new("config")
@@ -222,6 +221,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("elasticsearch")
                 .takes_value(true)
                 .default_value("http://localhost:9200")
+                .hide_default_value(true)
                 .help("Elastic Search URL"),
         )
         .arg(
@@ -229,6 +229,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("index")
                 .takes_value(true)
                 .default_value("logstash")
+                .hide_default_value(true)
                 .help("Elastic Search index prefix"),
         )
         .arg(
@@ -247,6 +248,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("bookmark-filename")
                 .takes_value(true)
                 .default_value("")
+                .hide_default_value(true)
                 .help("Bookmark filename"),
         )
         .arg(
@@ -254,6 +256,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("bookmark-dir")
                 .takes_value(true)
                 .default_value(".")
+                .hide_default_value(true)
                 .help("Bookmark directory"),
         )
         .arg(
