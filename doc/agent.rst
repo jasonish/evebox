@@ -36,18 +36,18 @@ records it is recommended to use a configuration file.
 
 A starter configuration file can be created with the following command::
 
-   evebox print evebox.yaml
+   evebox print agent.yaml
 
 You may want to redirect this to a file::
 
-   evebox print evebox.yaml > evebox.yaml
+   evebox print agent.yaml > agent.yaml
 
 Then the EveBox can be started like::
 
-   evebox agent -c /path/to/evebox.yaml
+   evebox agent -c /path/to/agent.yaml
 
 By default the EveBox Agent will first look in the current directory for
-``evebox.yaml`` then ``/etc/evebox/agent.yaml``.
+``agent.yaml`` then ``/etc/evebox/agent.yaml``.
 
 Command Line Options
 --------------------
