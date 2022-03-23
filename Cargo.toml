@@ -63,3 +63,4 @@ uuid = { version = "0.8.1", features = ["v4"] }
 webbrowser = "0.5.2"
 yaml-rust = "0.4.5"
 futures = "0.3.21"
+regex = "1.5.5"
