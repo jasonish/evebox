@@ -37,7 +37,7 @@ http:
 database:
 
   # Database type: elasticsearch, sqlite.
-  type: postgresql
+  type: elasticsearch
 
   elasticsearch:
     url: http://10.16.1.10:9200
