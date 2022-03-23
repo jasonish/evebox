@@ -80,7 +80,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
     let server_url = config
         .get_string("server.url")
-        .unwrap_or("http://localhost:5636".to_string());
+        .unwrap_or_else(|| "http://localhost:5636".to_string());
     let server_username = config.get_string("server.username");
     let server_password = config.get_string("server.password");
 
@@ -161,7 +161,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
     loop {
         for path in &eve_filenames {
-            for path in crate::path::expand(&path)? {
+            for path in crate::path::expand(path)? {
                 let path = path.display().to_string();
                 if !log_runners.contains_key(&path) {
                     info!("Found EVE log file {:?}", &path);

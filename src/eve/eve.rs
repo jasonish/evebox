@@ -74,7 +74,7 @@ pub fn add_evebox_metadata(event: &mut EveJson, filename: Option<String>) {
 pub fn parse_eve_timestamp(
     s: &str,
 ) -> Result<chrono::DateTime<chrono::Utc>, Box<dyn std::error::Error + Sync + Send>> {
-    let s = s.replace("Z", "-0000");
+    let s = s.replace('Z', "-0000");
     let dt = chrono::DateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S%.6f%z")?;
     Ok(dt.with_timezone(&chrono::Utc))
 }

@@ -38,13 +38,12 @@ impl<'a> Config<'a> {
         T: FromStr + DeserializeOwned + std::fmt::Debug,
         <T as FromStr>::Err: Display,
     {
-        if self.args.is_valid_arg(name) {
-            if self.args.occurrences_of(name) > 0
+        if self.args.is_valid_arg(name)
+            && (self.args.occurrences_of(name) > 0
                 || (self.args.is_present(name)
-                    && self.args.value_source(name) == Some(ValueSource::EnvVariable))
-            {
-                return Ok(Some(self.args.value_of_t(name)?));
-            }
+                    && self.args.value_source(name) == Some(ValueSource::EnvVariable)))
+        {
+            return Ok(Some(self.args.value_of_t(name)?));
         }
 
         // Now the configuration file.
@@ -106,7 +105,7 @@ impl<'a> Config<'a> {
         }
     }
 
-    pub fn get_value<'de, T: DeserializeOwned>(&self, name: &str) -> anyhow::Result<Option<T>> {
+    pub fn get_value<T: DeserializeOwned>(&self, name: &str) -> anyhow::Result<Option<T>> {
         if let Some(value) = self.get_node(&self.root, name) {
             if let Value::Null = value {
                 Ok(None)
@@ -117,11 +116,6 @@ impl<'a> Config<'a> {
             Ok(None)
         }
     }
-
-    // pub fn get_value_as_array(&self, name: &str) -> Option<&'a serde_yaml::Value> {
-    //     if let Some(_node) = self.get_node(&self.root, name) {}
-    //     None
-    // }
 
     pub fn get_node(
         &self,

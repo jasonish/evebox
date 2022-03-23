@@ -226,11 +226,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         run_axum_server_with_tls(&server_config, context)
             .await
             .unwrap();
-    } else {
-        if let Err(err) = run_axum_server(&server_config, context).await {
-            error!("Failed to start HTTP service: {:?}", err);
-            std::process::exit(1);
-        }
+    } else if let Err(err) = run_axum_server(&server_config, context).await {
+        error!("Failed to start HTTP service: {:?}", err);
+        std::process::exit(1);
     }
     Ok(())
 }
@@ -533,20 +531,14 @@ impl FromRequest for SessionExtractor {
         let headers = req.headers().expect("other extractor taken headers");
 
         let session_id = headers
-            .get("x-evebox-session-id")
-            .map(|h| h.to_str().ok())
-            .flatten();
+            .get("x-evebox-session-id").and_then(|h| h.to_str().ok());
 
         let remote_user = headers
-            .get("remote_user")
-            .map(|h| h.to_str().map(|h| h.to_string()).ok())
-            .flatten();
+            .get("remote_user").and_then(|h| h.to_str().map(|h| h.to_string()).ok());
 
         let forwarded_for = if enable_reverse_proxy {
             headers
-                .get("x-forwarded-for")
-                .map(|h| h.to_str().map(|h| h.to_string()).ok())
-                .flatten()
+                .get("x-forwarded-for").and_then(|h| h.to_str().map(|h| h.to_string()).ok())
         } else {
             None
         };

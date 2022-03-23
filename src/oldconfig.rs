@@ -56,7 +56,7 @@ impl Config {
     }
 
     pub fn env_key(&self, key: &str) -> String {
-        let xform = key.replace(".", "_").replace("-", "_");
+        let xform = key.replace('.', "_").replace('-', "_");
         format!("EVEBOX_{}", xform.to_uppercase())
     }
 

@@ -379,7 +379,7 @@ impl EventStore {
 
     fn query_string_to_filters(&self, query: &str) -> Vec<serde_json::Value> {
         let mut filters = Vec::new();
-        match searchquery::parse(&query) {
+        match searchquery::parse(query) {
             Err(err) => {
                 error!("Failed to parse query string: {} -- {}", &query, err);
             }
@@ -1089,9 +1089,7 @@ impl EventStore {
             .map(|b| {
                 let bytes = b
                     .values_deriv
-                    .as_ref()
-                    .map(|v| v.value.as_ref())
-                    .flatten()
+                    .as_ref().and_then(|v| v.value.as_ref())
                     .copied()
                     .unwrap_or(0.0) as u64;
                 json!({

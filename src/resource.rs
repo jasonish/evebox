@@ -26,8 +26,8 @@ use rust_embed::{EmbeddedFile, RustEmbed};
 pub struct Resource;
 
 pub fn get(file_path: &str) -> Option<EmbeddedFile> {
-    let resource = Resource::get(file_path);
-    resource
+    
+    Resource::get(file_path)
 }
 
 pub fn get_string(file_path: &str) -> Option<String> {

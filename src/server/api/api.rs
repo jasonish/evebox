@@ -569,7 +569,7 @@ fn parse_timestamp(
 ) -> Result<chrono::DateTime<chrono::Utc>, Box<dyn std::error::Error + Sync + Send>> {
     // The webapp may send the timestamp with an inproperly encoded +, which will be received
     // as space. Help the parsing out by replacing spaces with "+".
-    let timestamp = timestamp.replace(" ", "+");
+    let timestamp = timestamp.replace(' ', "+");
     let ts = percent_encoding::percent_decode_str(&timestamp).decode_utf8_lossy();
     crate::eve::parse_eve_timestamp(&ts)
 }

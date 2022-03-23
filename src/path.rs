@@ -30,6 +30,6 @@ mod test {
     #[test]
     fn test_expand() {
         let paths = expand("src/*.rs").unwrap();
-        assert!(paths.len() > 0);
+        assert!(!paths.is_empty());
     }
 }

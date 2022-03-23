@@ -133,7 +133,7 @@ mod test {
 
     fn parse_query_string(input: &str) -> (Option<String>, String, &str) {
         let (rem, token) = next_token(input);
-        if !rem.is_empty() && rem.starts_with(":") {
+        if !rem.is_empty() && rem.starts_with(':') {
             let (rem, val) = next_token(&rem[1..]);
             return (Some(token), val, rem);
         }
