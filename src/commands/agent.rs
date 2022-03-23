@@ -79,10 +79,10 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let config = Config::new(args, config_filename)?;
 
     let server_url = config
-        .get("server.url")
+        .get_string("server.url")
         .unwrap_or("http://localhost:5636".to_string());
-    let server_username = config.get("server.username");
-    let server_password = config.get("server.password");
+    let server_username = config.get_string("server.username");
+    let server_password = config.get_string("server.password");
 
     let disable_certificate_check: bool = config
         .get_value("disable-certificate-check")
@@ -145,11 +145,11 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         disable_certificate_check,
     );
 
-    let bookmark_directory = config.get("bookmark-directory");
+    let bookmark_directory = config.get_string("bookmark-directory");
     if bookmark_directory.is_some() {
         warn!("Found deprecated option bookmark-directory, please use data-directory");
     }
-    let data_directory = config.get("data-directory");
+    let data_directory = config.get_string("data-directory");
 
     let bookmark_directory = if bookmark_directory.is_some() {
         bookmark_directory

@@ -1,23 +1,6 @@
-// Copyright (C) 2020-2021 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
 use crate::prelude::*;
 use std::net::SocketAddr;
@@ -44,7 +27,6 @@ use crate::elastic;
 use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
 use crate::eve::processor::Processor;
 use crate::eve::EveReader;
-use crate::oldsettings::Settings;
 use crate::server::session::Session;
 use crate::server::{api, AuthenticationType};
 use crate::sqlite;
@@ -64,43 +46,50 @@ fn load_event_services(filename: &str) -> anyhow::Result<serde_json::Value> {
 pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     crate::version::log_version();
 
+    // Load the configuration file if provided.
     let config_filename = args.value_of("config");
-
-    let mut settings = Settings::new(args);
-    let mut config = ServerConfig::default();
-    config.port = settings.get("http.port")?;
-    config.host = settings.get("http.host")?;
-    config.tls_enabled = settings.get_bool("http.tls.enabled")?;
-    config.tls_cert_filename = settings.get_or_none("http.tls.certificate")?;
-    config.tls_key_filename = settings.get_or_none("http.tls.key")?;
-    config.datastore = settings.get("database.type")?;
-    config.elastic_url = settings.get("database.elasticsearch.url")?;
-    config.elastic_index = settings.get("database.elasticsearch.index")?;
-    config.elastic_no_index_suffix = settings.get_bool("database.elasticsearch.no-index-suffix")?;
-    config.elastic_ecs = settings.get_bool("database.elasticsearch.ecs")?;
-    config.elastic_username = settings.get_or_none("database.elasticsearch.username")?;
-    config.elastic_password = settings.get_or_none("database.elasticsearch.password")?;
-    config.data_directory = settings.get_or_none("data-directory")?;
-    config.database_retention_period = settings.get_or_none("database.retention-period")?;
-    if let Ok(val) = settings.get_bool("database.elasticsearch.disable-certificate-check") {
-        if val {
-            config.no_check_certificate = true;
-        } else {
-            config.no_check_certificate = settings.get_bool("no-check-certificate")?;
+    let config = match crate::config::Config::new(args, config_filename) {
+        Err(err) => {
+            error!(
+                "Failed to load configuration: {:?} - filename={:?}",
+                err, config_filename
+            );
+            std::process::exit(1);
         }
-    }
-    config.http_request_logging = settings.get_bool("http.request-logging")?;
-    config.http_reverse_proxy = settings.get_bool("http.reverse-proxy")?;
+        Ok(config) => config,
+    };
+
+    let mut server_config = ServerConfig::default();
+    server_config.port = config.get("http.port")?.unwrap();
+    server_config.host = config.get("http.host")?.unwrap();
+    server_config.tls_enabled = config.get_bool("http.tls.enabled")?;
+    server_config.tls_cert_filename = config.get("http.tls.certificate")?;
+    server_config.tls_key_filename = config.get("http.tls.key")?;
+    server_config.datastore = config.get("database.type")?.unwrap();
+    server_config.elastic_url = config.get("database.elasticsearch.url")?.unwrap();
+    server_config.elastic_index = config.get("database.elasticsearch.index")?.unwrap();
+    server_config.elastic_no_index_suffix =
+        config.get_bool("database.elasticsearch.no-index-suffix")?;
+    server_config.elastic_ecs = config.get_bool("database.elasticsearch.ecs")?;
+    server_config.elastic_username = config.get("database.elasticsearch.username")?;
+    server_config.elastic_password = config.get("database.elasticsearch.password")?;
+    server_config.data_directory = config.get("data-directory")?;
+    server_config.database_retention_period = config.get("database.retention-period")?;
+    server_config.no_check_certificate = config
+        .get_bool("database.elasticsearch.disable-certificate-check")?
+        || config.get_bool("no-check-certificate")?;
+    server_config.http_request_logging = config.get_bool("http.request-logging")?;
+    server_config.http_reverse_proxy = config.get_bool("http.reverse-proxy")?;
 
     debug!(
         "Certificate checks disabled: {}",
-        config.no_check_certificate,
+        server_config.no_check_certificate,
     );
 
-    config.authentication_required = settings.get_bool("authentication.required")?;
-    if config.authentication_required {
-        if let Some(auth_type) = settings.get_or_none::<String>("authentication.type")? {
-            config.authentication_type = match auth_type.as_ref() {
+    server_config.authentication_required = config.get_bool("authentication.required")?;
+    if server_config.authentication_required {
+        if let Some(auth_type) = config.get::<String>("authentication.type")? {
+            server_config.authentication_type = match auth_type.as_ref() {
                 "username" => AuthenticationType::Username,
                 "usernamepassword" => AuthenticationType::UsernamePassword,
                 _ => {
@@ -111,9 +100,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     }
 
     // Do we need a data-directory? If so, make sure its set.
-    let data_directory_required = config.datastore == "sqlite";
+    let data_directory_required = server_config.datastore == "sqlite";
 
-    if data_directory_required && config.data_directory.is_none() {
+    if data_directory_required && server_config.data_directory.is_none() {
         error!("A data-directory is required");
         std::process::exit(1);
     }
@@ -125,8 +114,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         std::process::exit(0);
     });
 
-    let datastore = configure_datastore(&config).await?;
-    let mut context = build_context(config.clone(), datastore).await?;
+    let datastore = configure_datastore(&server_config).await?;
+    let mut context = build_context(server_config.clone(), datastore).await?;
 
     if let Some(filename) = config_filename {
         match load_event_services(filename) {
@@ -140,10 +129,10 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     }
 
     let input_enabled = {
-        if settings.args.occurrences_of("input.filename") > 0 {
+        if config.args.occurrences_of("input.filename") > 0 {
             true
         } else {
-            settings.get_bool("input.enabled")?
+            config.get_bool("input.enabled")?
         }
     };
 
@@ -151,7 +140,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     // it later down.  Also, the filters (rules) are unlikely required if we
     // don't have an input enabled.
     let input_filenames = if input_enabled {
-        let input_filename: Option<String> = settings.get_or_none("input.filename")?;
+        let input_filename: Option<String> = config.get("input.filename")?;
         let mut input_filenames = Vec::new();
         if let Some(input_filename) = &input_filename {
             for path in crate::path::expand(input_filename)? {
@@ -166,8 +155,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     let mut shared_filters = Vec::new();
 
-    match settings.get::<Vec<String>>("input.rules") {
-        Ok(rules) => {
+    match config.get_config_value::<Vec<String>>("input.rules") {
+        Ok(Some(rules)) => {
             let rulemap = crate::rules::load_rules(&rules);
             let rulemap = Arc::new(rulemap);
             shared_filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
@@ -177,24 +166,21 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             ));
             crate::rules::watch_rules(rulemap);
         }
-        Err(err) => match err {
-            config::ConfigError::NotFound(_) => {}
-            _ => {
-                error!("Failed to read input.rules configuration: {}", err);
-            }
-        },
+        Ok(None) => {}
+        Err(err) => {
+            error!("Failed to read input.rules configuration: {}", err);
+        }
     }
 
     let shared_filters = Arc::new(shared_filters);
 
     for input_filename in &input_filenames {
-        let end = settings.get_bool("end")?;
-        let bookmark_directory: Option<String> =
-            settings.get_or_none("input.bookmark-directory")?;
+        let end = config.get_bool("end")?;
+        let bookmark_directory: Option<String> = config.get("input.bookmark-directory")?;
         let bookmark_filename = get_bookmark_filename(
             input_filename,
             bookmark_directory.as_deref(),
-            config.data_directory.as_deref(),
+            server_config.data_directory.as_deref(),
         );
         info!(
             "Using bookmark filename {:?} for input {:?}",
@@ -232,14 +218,19 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     info!(
         "Starting server on {}:{}, tls={}",
-        config.host, config.port, config.tls_enabled
+        server_config.host, server_config.port, server_config.tls_enabled
     );
-    if config.tls_enabled {
-        debug!("TLS key filename: {:?}", config.tls_key_filename);
-        debug!("TLS cert filename: {:?}", config.tls_cert_filename);
-        run_axum_server_with_tls(&config, context).await.unwrap();
+    if server_config.tls_enabled {
+        debug!("TLS key filename: {:?}", server_config.tls_key_filename);
+        debug!("TLS cert filename: {:?}", server_config.tls_cert_filename);
+        run_axum_server_with_tls(&server_config, context)
+            .await
+            .unwrap();
     } else {
-        run_axum_server(&config, context).await.unwrap();
+        if let Err(err) = run_axum_server(&server_config, context).await {
+            error!("Failed to start HTTP service: {:?}", err);
+            std::process::exit(1);
+        }
     }
     Ok(())
 }
@@ -316,7 +307,7 @@ pub(crate) async fn build_axum_server(
     config: &ServerConfig,
     context: Arc<ServerContext>,
 ) -> Result<Server<AddrIncoming, IntoMakeServiceWithConnectInfo<Router, SocketAddr>>> {
-    let port: u16 = config.port.parse()?;
+    let port: u16 = config.port;
     let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
     let service = build_axum_service(context);
     info!("Starting Axum server on {}", &addr);
@@ -328,7 +319,7 @@ pub(crate) async fn run_axum_server_with_tls(
     config: &ServerConfig,
     context: Arc<ServerContext>,
 ) -> anyhow::Result<()> {
-    let port: u16 = config.port.parse()?;
+    let port: u16 = config.port;
     let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
     let service = build_axum_service(context.clone());
     use axum_server::tls_rustls::RustlsConfig;
@@ -347,7 +338,7 @@ pub(crate) async fn run_axum_server(
     config: &ServerConfig,
     context: Arc<ServerContext>,
 ) -> anyhow::Result<()> {
-    let port: u16 = config.port.parse()?;
+    let port: u16 = config.port;
     let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
     let service = build_axum_service(context.clone());
     axum_server::bind(addr).serve(service).await?;

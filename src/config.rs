@@ -2,9 +2,11 @@
 //
 // Copyright (C) 2022 Jason Ish
 
-use clap::ArgMatches;
+use clap::{ArgMatches, ValueSource};
 use serde::de::DeserializeOwned;
 use serde_yaml::Value;
+use std::fmt::Display;
+use std::str::FromStr;
 use tracing::debug;
 
 pub struct Config<'a> {
@@ -27,7 +29,41 @@ impl<'a> Config<'a> {
         Ok(serde_yaml::from_reader(&input)?)
     }
 
-    pub fn get(&self, name: &str) -> Option<String> {
+    /// Get a a value and deserialize into a type.
+    ///
+    /// This doesn't work for all types, for example booleans due to limitations
+    /// with the Clap builder API.
+    pub fn get<T>(&self, name: &str) -> anyhow::Result<Option<T>>
+    where
+        T: FromStr + DeserializeOwned + std::fmt::Debug,
+        <T as FromStr>::Err: Display,
+    {
+        if self.args.is_valid_arg(name) {
+            if self.args.occurrences_of(name) > 0
+                || (self.args.is_present(name)
+                    && self.args.value_source(name) == Some(ValueSource::EnvVariable))
+            {
+                return Ok(Some(self.args.value_of_t(name)?));
+            }
+        }
+
+        // Now the configuration file.
+        if let Some(val) = self.get_node(&self.root, name) {
+            return Ok(Some(serde_yaml::from_value(val.clone())?));
+        }
+
+        // Maybe Clap as a default value.
+        if self.args.is_valid_arg(name)
+            && self.args.is_present(name)
+            && self.args.value_source(name) == Some(ValueSource::DefaultValue)
+        {
+            return Ok(Some(self.args.value_of_t(name)?));
+        }
+
+        Ok(None)
+    }
+
+    pub fn get_string(&self, name: &str) -> Option<String> {
         if let Some(val) = self.get_arg(name) {
             debug!("Found {} in command line arguments: {}", name, val);
             Some(val.to_string())
@@ -39,11 +75,27 @@ impl<'a> Config<'a> {
         }
     }
 
-    pub fn get_bool(&self, name: &str) -> bool {
-        if let Some(val) = self.get_arg(name) {
-            debug!("Found {} in command line arguments: {}", name, val);
+    /// Return the configuration value as a boolean.
+    ///
+    /// If the value cannot be converted to a boolean an error will be returned. If the value
+    /// is not found, false will be returned.
+    pub fn get_bool(&self, name: &str) -> anyhow::Result<bool> {
+        // This will catch the argument set on the command line or in the environment.
+        if self.args.is_valid_arg(name) && self.args.is_present(name) {
+            Ok(true)
+        } else if let Some(val) = self.get_node(&self.root, name) {
+            // Catch "yes" and "no".
+            if let serde_yaml::Value::String(s) = val {
+                if s == "yes" {
+                    return Ok(true);
+                } else if s == "no" {
+                    return Ok(false);
+                }
+            }
+            Ok(serde_yaml::from_value(val.clone())?)
+        } else {
+            Ok(false)
         }
-        false
     }
 
     pub fn get_arg(&self, name: &str) -> Option<&str> {
@@ -66,10 +118,10 @@ impl<'a> Config<'a> {
         }
     }
 
-    pub fn get_value_as_array(&self, name: &str) -> Option<&'a serde_yaml::Value> {
-        if let Some(_node) = self.get_node(&self.root, name) {}
-        None
-    }
+    // pub fn get_value_as_array(&self, name: &str) -> Option<&'a serde_yaml::Value> {
+    //     if let Some(_node) = self.get_node(&self.root, name) {}
+    //     None
+    // }
 
     pub fn get_node(
         &self,
@@ -88,5 +140,14 @@ impl<'a> Config<'a> {
             }
         }
         None
+    }
+
+    /// Get a configuration value explicitly from the configuration file.
+    pub fn get_config_value<T: DeserializeOwned>(&self, name: &str) -> anyhow::Result<Option<T>> {
+        if let Some(node) = self.get_node(&self.root, name) {
+            Ok(Some(serde_yaml::from_value(node.clone())?))
+        } else {
+            Ok(None)
+        }
     }
 }

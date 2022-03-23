@@ -81,7 +81,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 );
                 let ds = crate::datastore::Datastore::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
-                    port: port.to_string(),
+                    port,
                     host: host.clone(),
                     elastic_url: "".to_string(),
                     elastic_index: "".to_string(),

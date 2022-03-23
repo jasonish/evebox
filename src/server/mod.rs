@@ -94,7 +94,7 @@ impl ServerContext {
 #[derive(Debug, Default, Clone)]
 pub struct ServerConfig {
     pub host: String,
-    pub port: String,
+    pub port: u16,
     pub no_check_certificate: bool,
     pub datastore: String,
     pub sqlite_filename: Option<String>,

@@ -74,6 +74,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_name("PORT")
                 .takes_value(true)
                 .default_value("5636")
+                .env("EVEBOX_HTTP_PORT")
                 .help("Port to bind to"),
         )
         .arg(
@@ -132,9 +133,16 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("http.request-logging")
                 .long("http-request-logging")
                 .env("EVEBOX_HTTP_REQUEST_LOGGING")
+                .hide_env(true)
                 .help("Enable HTTP access logging"),
         )
-        .arg(Arg::new("http.tls.enabled").long("tls").help("Enable TLS"))
+        .arg(
+            Arg::new("http.tls.enabled")
+                .long("tls")
+                .help("Enable TLS")
+                .env("EVEBOX_HTTP_TLS_ENABLED")
+                .hide_env(true),
+        )
         .arg(
             Arg::new("http.tls.certificate")
                 .long("tls-cert")
