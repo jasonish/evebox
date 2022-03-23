@@ -86,7 +86,7 @@ authentication:
 
   # Default: false
   # env: EVEBOX_AUTHENTICATION_REQUIRED
-  required: no
+  required: false
 
   # Type of login required:
   # - username         -- just a username...
