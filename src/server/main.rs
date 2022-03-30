@@ -172,6 +172,10 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         }
     }
 
+    shared_filters.push(crate::eve::filters::EveFilter::AutoArchiveFilter(
+        crate::eve::filters::AutoArchiveFilter::default(),
+    ));
+
     let shared_filters = Arc::new(shared_filters);
 
     for input_filename in &input_filenames {

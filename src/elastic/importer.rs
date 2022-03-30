@@ -20,6 +20,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use super::client::BulkResponse;
+use crate::eve::filters::AutoArchiveFilter;
 use crate::eve::Eve;
 use crate::prelude::*;
 
@@ -29,6 +30,7 @@ pub struct Importer {
     queue: Vec<String>,
     client: crate::elastic::Client,
     no_index_suffix: bool,
+    auto_archive_filter: AutoArchiveFilter,
 }
 
 impl Importer {
@@ -38,6 +40,7 @@ impl Importer {
             queue: Vec::new(),
             client: client,
             no_index_suffix,
+            auto_archive_filter: AutoArchiveFilter::default(),
         }
     }
 
@@ -58,6 +61,7 @@ impl Importer {
         let event_id = ulid::Ulid::from_datetime(ts).to_string();
         let at_timestamp = crate::elastic::format_timestamp(ts);
         event["@timestamp"] = at_timestamp.into();
+        self.auto_archive_filter.run(&mut event);
 
         let mut header = serde_json::json!({
             "create": {

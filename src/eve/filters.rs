@@ -32,6 +32,7 @@ pub enum EveFilter {
     EveBoxMetadataFilter(EveBoxMetadataFilter),
     CustomFieldFilter(CustomFieldFilter),
     AddRuleFilter(AddRuleFilter),
+    AutoArchiveFilter(AutoArchiveFilter),
     Filters(Arc<Vec<EveFilter>>),
 }
 
@@ -54,6 +55,9 @@ impl EveFilter {
                 for filter in filters.iter() {
                     filter.run(event);
                 }
+            }
+            EveFilter::AutoArchiveFilter(filter) => {
+                filter.run(event);
             }
         }
     }
@@ -79,7 +83,9 @@ impl EveBoxMetadataFilter {
         }
 
         // Add a tags object.
-        event["tags"] = serde_json::Value::Array(vec![]);
+        if event.get("tags").is_none() {
+            event["tags"] = serde_json::Value::Array(vec![]);
+        }
     }
 }
 
@@ -129,6 +135,37 @@ impl AddRuleFilter {
                 event["alert"]["rule"] = rule.into();
             } else {
                 trace!("Failed to find rule for SID {}", sid);
+            }
+        }
+    }
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct AutoArchiveFilter {}
+
+impl AutoArchiveFilter {
+    pub fn run(&self, event: &mut EveJson) {
+        // Look for alert.metadata.
+        let action = event["alert"]["metadata"]["evebox-action"]
+            .as_array()
+            .and_then(|a| a.iter().next().and_then(|e| e.as_str()));
+        if let Some(action) = action {
+            if action == "archive" {
+                match &mut event["tags"] {
+                    serde_json::Value::Array(tags) => {
+                        tags.push("evebox.archived".into());
+                        tags.push("evebox.auto-archived".into());
+                    }
+                    serde_json::Value::Null => {
+                        event["tags"] = serde_json::Value::Array(vec![
+                            "evebox.archived".into(),
+                            "evebox.auto-archived".into(),
+                        ]);
+                    }
+                    _ => {
+                        warn!("Unable to auto-archive event, event has incompatible tags entry");
+                    }
+                }
             }
         }
     }
