@@ -65,6 +65,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_name("HOSTNAME")
                 .takes_value(true)
                 .default_value("127.0.0.1")
+                .env("EVEBOX_HTTP_HOST")
                 .help("Hostname/IP address to bind to"),
         )
         .arg(
@@ -84,6 +85,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .takes_value(true)
                 .value_name("URL")
                 .default_value("http://localhost:9200")
+                .env("ELASTICSEARCH_URL")
                 .help("Elastic Search URL"),
         )
         .arg(
