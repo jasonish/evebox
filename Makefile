@@ -68,8 +68,9 @@ dist: public
 	$(CARGO) build --release $(CARGO_BUILD_ARGS)
 	mkdir -p $(DIST_DIR)
 	cp $(EVEBOX_BIN) $(DIST_DIR)/
-	cp agent.yaml.example $(DIST_DIR)/
-	cp evebox.yaml.example $(DIST_DIR)/
+	mkdir -p $(DIST_DIR)/examples
+	cp examples/agent.yaml $(DIST_DIR)/examples/
+	cp examples/evebox.yaml $(DIST_DIR)/examples/
 	cd dist && zip -r $(DIST_NAME).zip $(DIST_NAME)
 
 # Debian packaging. Due to a versioning screwup early on, we now need
@@ -85,8 +86,8 @@ deb: STAGE_DIR := dist/_stage-deb
 deb:
 	rm -rf $(STAGE_DIR) && mkdir -p $(STAGE_DIR)
 	install -m 0644 \
-		evebox.yaml.example \
-		agent.yaml.example \
+		examples/evebox.yaml \
+		examples/agent.yaml \
 		deb/evebox.default \
 		deb/evebox.service \
 		deb/evebox-agent.service \
@@ -103,8 +104,8 @@ deb:
 		--deb-no-default-config-files \
 		--config-files /etc/default/evebox \
 		$(STAGE_DIR)/evebox=/usr/bin/evebox \
-	        $(STAGE_DIR)/evebox.yaml.example=/etc/evebox/evebox.yaml.example \
-		$(STAGE_DIR)/agent.yaml.example=/etc/evebox/agent.yaml.example \
+	        $(STAGE_DIR)/evebox.yaml=/etc/evebox/evebox.yaml.example \
+		$(STAGE_DIR)/agent.yaml=/etc/evebox/agent.yaml.example \
 		$(STAGE_DIR)/evebox.default=/etc/default/evebox \
 		$(STAGE_DIR)/evebox.service=/lib/systemd/system/evebox.service \
 		$(STAGE_DIR)/evebox-agent.service=/lib/systemd/system/evebox-agent.service
@@ -138,8 +139,8 @@ rpm:
 	    --rpm-attr 0644,root,root:/etc/evebox/agent.yaml.example \
 	    --rpm-attr 0644,root,root:/etc/sysconfig/evebox.service \
 	    ${EVEBOX_BIN}=/usr/bin/evebox \
-	    evebox.yaml.example=/etc/evebox/evebox.yaml.example \
-	    agent.yaml.example=/etc/evebox/agent.yaml.example \
+	    examples/evebox.yaml=/etc/evebox/evebox.yaml.example \
+	    examples/agent.yaml=/etc/evebox/agent.yaml.example \
 	    rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 	    rpm/evebox.service=/lib/systemd/system/evebox.service \
 	    rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service

@@ -37,7 +37,7 @@ ENV CROSS_DOCKER_IN_DOCKER=true
 ENV FIX_PERMS=true
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
-RUN cargo install --git https://github.com/rust-embedded/cross.git
+RUN cargo install cross
 ENV CARGO=cross
 
 COPY / /src
