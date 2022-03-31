@@ -51,7 +51,7 @@ impl From<serde_json::error::Error> for ClientError {
 
 #[derive(Debug, Default)]
 pub struct Client {
-    url: String,
+    pub url: String,
     disable_certificate_validation: bool,
     username: Option<String>,
     password: Option<String>,
