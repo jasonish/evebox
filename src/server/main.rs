@@ -418,8 +418,8 @@ async fn wait_for_version(client: &Client) -> elastic::client::Version {
         match client.get_version().await {
             Err(err) => {
                 warn!(
-                    "Failed to get Elasticsearch version, will try again: {:?}",
-                    err
+                    "Failed to get Elasticsearch version from {}, will try again: {:?}",
+                    client.url, err
                 );
             }
             Ok(version) => {
