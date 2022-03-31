@@ -40,6 +40,7 @@ database:
   type: elasticsearch
 
   elasticsearch:
+    # Env: EVEBOX_ELASTICSEARCH_URL
     url: http://10.16.1.10:9200
     index: logstash
     disable-certificate-check: false
