@@ -535,14 +535,17 @@ impl FromRequest for SessionExtractor {
         let headers = req.headers().expect("other extractor taken headers");
 
         let session_id = headers
-            .get("x-evebox-session-id").and_then(|h| h.to_str().ok());
+            .get("x-evebox-session-id")
+            .and_then(|h| h.to_str().ok());
 
         let remote_user = headers
-            .get("remote_user").and_then(|h| h.to_str().map(|h| h.to_string()).ok());
+            .get("remote_user")
+            .and_then(|h| h.to_str().map(|h| h.to_string()).ok());
 
         let forwarded_for = if enable_reverse_proxy {
             headers
-                .get("x-forwarded-for").and_then(|h| h.to_str().map(|h| h.to_string()).ok())
+                .get("x-forwarded-for")
+                .and_then(|h| h.to_str().map(|h| h.to_string()).ok())
         } else {
             None
         };

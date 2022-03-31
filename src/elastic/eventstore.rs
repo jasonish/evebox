@@ -1089,7 +1089,8 @@ impl EventStore {
             .map(|b| {
                 let bytes = b
                     .values_deriv
-                    .as_ref().and_then(|v| v.value.as_ref())
+                    .as_ref()
+                    .and_then(|v| v.value.as_ref())
                     .copied()
                     .unwrap_or(0.0) as u64;
                 json!({
