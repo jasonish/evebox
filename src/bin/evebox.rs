@@ -85,7 +85,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
                 .takes_value(true)
                 .value_name("URL")
                 .default_value("http://localhost:9200")
-                .env("ELASTICSEARCH_URL")
+                .env("EVEBOX_ELASTICSEARCH_URL")
                 .help("Elastic Search URL"),
         )
         .arg(

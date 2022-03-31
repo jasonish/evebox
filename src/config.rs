@@ -38,12 +38,24 @@ impl<'a> Config<'a> {
         T: FromStr + DeserializeOwned + std::fmt::Debug,
         <T as FromStr>::Err: Display,
     {
+        // This will return the value if set on the command line, or in an environment
+        // variable.
         if self.args.is_valid_arg(name)
             && (self.args.occurrences_of(name) > 0
                 || (self.args.is_present(name)
                     && self.args.value_source(name) == Some(ValueSource::EnvVariable)))
         {
             return Ok(Some(self.args.value_of_t(name)?));
+        }
+
+        // database.elasticsearch.url
+        match name {
+            "database.elasticsearch.url" => {
+                if let Ok(Some(v)) = self.get_env("ELASTICSEARCH_URL") {
+                    return Ok(Some(v));
+                }
+            }
+            _ => {}
         }
 
         // Now the configuration file.
@@ -59,6 +71,17 @@ impl<'a> Config<'a> {
             return Ok(Some(self.args.value_of_t(name)?));
         }
 
+        Ok(None)
+    }
+
+    pub fn get_env<T>(&self, name: &str) -> anyhow::Result<Option<T>>
+    where
+        T: DeserializeOwned,
+    {
+        if let Ok(v) = std::env::var(name) {
+            let value: serde_yaml::Value = serde_yaml::from_str(&v)?;
+            return Ok(serde_yaml::from_value(value)?);
+        }
         Ok(None)
     }
 
