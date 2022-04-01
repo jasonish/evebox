@@ -1,43 +1,26 @@
-// Copyright (C) 2020-2021 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
-use crate::prelude::*;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use tokio::sync;
 
+use crate::config::Config;
 use crate::eve;
 use crate::geoip;
-use crate::oldsettings::Settings;
+use crate::prelude::*;
 use crate::sqlite;
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
-    let mut settings = Settings::new(args);
-    let limit: u64 = settings.get("limit").unwrap_or(0);
-    let no_open: bool = settings.get_bool("no-open")?;
-    let no_wait: bool = settings.get_bool("no-wait")?;
-    let db_filename: String = settings.get("database-filename")?;
+    let config_loader = Config::new(args, None)?;
+    let limit: u64 = config_loader.get("limit")?.unwrap_or(0);
+    let no_open: bool = config_loader.get_bool("no-open")?;
+    let no_wait: bool = config_loader.get_bool("no-wait")?;
+    let db_filename: String = config_loader.get("database-filename")?.unwrap();
+    let host: String = config_loader.get("http.host")?.unwrap();
     let input = args.value_of("INPUT").unwrap().to_string();
-    let host: String = settings.get("http.host")?;
 
     info!("Using database filename {}", &db_filename);
 

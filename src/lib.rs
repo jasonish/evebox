@@ -35,7 +35,6 @@ mod elastic;
 pub mod eve;
 pub mod geoip;
 pub mod importer;
-pub mod oldsettings;
 pub mod packet;
 mod path;
 pub mod pcap;
