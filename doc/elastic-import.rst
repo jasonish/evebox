@@ -132,7 +132,7 @@ Configuration File
 The elastic-import command can use a YAML configuration file covering most
 of the command line arguments.
 
-.. literalinclude:: elastic-import.yaml
+.. literalinclude:: ../examples/elastic-import.yaml
    :language: yaml
 
 Example Usage

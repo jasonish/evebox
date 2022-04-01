@@ -1,23 +1,6 @@
-// Copyright (C) 2020-2021 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
 use crate::prelude::*;
 use std::path::Path;
@@ -32,7 +15,6 @@ use crate::eve;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::eve::Processor;
 use crate::importer::Importer;
-use crate::oldconfig::Config;
 
 pub const DEFAULT_BATCH_SIZE: u64 = 300;
 pub const NO_CHECK_CERTIFICATE: &str = "no-check-certificate";
@@ -47,34 +29,45 @@ struct ElasticImportConfig {
     disable_geoip: bool,
     geoip_filename: Option<String>,
     batch_size: u64,
+    elastic_url: String,
+    elastic_username: Option<String>,
+    elastic_password: Option<String>,
+    index: String,
+    no_index_suffix: bool,
+    bookmark_dir: String,
+    disable_certificate_validation: bool,
 }
 
 pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    let config_filename = args.value_of("config");
+    let loader = crate::config::Config::new(args, config_filename)?;
     let mut config = ElasticImportConfig::default();
-    let settings = Config::from_args(args.clone(), Some("config"))?;
 
-    let elastic_url: String = settings.get_string("elasticsearch")?.unwrap();
-    let index: String = settings.get_string("index")?.unwrap();
-    let no_index_suffix: bool = settings.get_bool("no-index-suffix")?;
-    config.end = settings.get_bool("end")?;
-    config.use_bookmark = settings.get_bool("bookmark")?;
+    config.elastic_url = loader.get_string("elasticsearch").unwrap();
+    config.elastic_username = loader.get_string("username");
+    config.elastic_password = loader.get_string("password");
+    config.index = loader.get_string("index").unwrap();
+    config.no_index_suffix = loader.get_bool("no-index-suffix")?;
+    config.end = loader.get_bool("end")?;
+    config.use_bookmark = loader.get_bool("bookmark")?;
+    config.bookmark_filename = loader.get_string("bookmark-filename").unwrap().into();
+    config.oneshot = loader.get_bool("oneshot")?;
+    config.stdout = loader.get_bool("stdout")?;
+    config.disable_geoip = loader.get_bool("geoip.disabled")?;
+    config.geoip_filename = loader.get_string("geoip.database-filename");
+    config.batch_size = loader.get("batch-size")?.unwrap_or(DEFAULT_BATCH_SIZE);
+    config.bookmark_dir = loader.get_string("bookmark-dir").unwrap();
+    config.disable_certificate_validation = loader.get_bool(NO_CHECK_CERTIFICATE)?;
 
-    config.bookmark_filename = settings.get_string("bookmark-filename")?.unwrap().into();
-    config.oneshot = settings.get_bool("oneshot")?;
-    config.stdout = settings.get_bool("stdout")?;
-    config.disable_geoip = settings.get_bool("geoip.disabled")?;
-    config.geoip_filename = settings.get_string("geoip.database-filename")?;
-    config.batch_size = settings
-        .get_u64("batch-size")?
-        .unwrap_or(DEFAULT_BATCH_SIZE);
-    let bookmark_dir: String = settings.get_string("bookmark-dir")?.unwrap();
-    let disable_certificate_validation = settings.get_bool(NO_CHECK_CERTIFICATE)?;
-    let inputs: Vec<String> = settings.get_strings("input")?;
-
-    // Bail now if there are no files to read.
-    if inputs.is_empty() {
-        fatal!("no input files provided");
-    }
+    let inputs = match loader.get_arg_strings("input") {
+        Some(inputs) => inputs,
+        None => match loader.get_config_value("input")? {
+            Some(inputs) => inputs,
+            None => {
+                fatal!("no input files provided");
+            }
+        },
+    };
 
     // Bookmark filename and bookmark directory can't be used together.
     if args.occurrences_of("bookmark-filename") > 0 && args.occurrences_of("bookmark-dir") > 0 {
@@ -87,7 +80,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
     }
 
     if config.use_bookmark {
-        let path = PathBuf::from(&bookmark_dir);
+        let path = PathBuf::from(&config.bookmark_dir);
         if !path.exists() {
             warn!(
                 "Bookmark directory does not exist: {}",
@@ -123,30 +116,31 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
         }
     }
 
-    let username: Option<String> = settings.get_string("username")?;
-    let password: Option<String> = settings.get_string("password")?;
-
-    let mut client = crate::elastic::ClientBuilder::new(&elastic_url);
-    client.disable_certificate_validation(disable_certificate_validation);
-    if let Some(username) = &username {
+    let mut client = crate::elastic::ClientBuilder::new(&config.elastic_url);
+    client.disable_certificate_validation(config.disable_certificate_validation);
+    if let Some(username) = &config.elastic_username {
         client.with_username(username);
     }
-    if let Some(password) = &password {
+    if let Some(password) = &config.elastic_password {
         client.with_password(password);
     }
 
     debug!(
         "Elasticsearch index: {}, no-index-suffix={}",
-        &index, no_index_suffix
+        &config.index, config.no_index_suffix
     );
-    let importer = crate::elastic::importer::Importer::new(client.build(), &index, no_index_suffix);
+    let importer = crate::elastic::importer::Importer::new(
+        client.build(),
+        &config.index,
+        config.no_index_suffix,
+    );
 
-    let mut elastic_client = crate::elastic::ClientBuilder::new(&elastic_url);
-    elastic_client.disable_certificate_validation(disable_certificate_validation);
-    if let Some(username) = &username {
+    let mut elastic_client = crate::elastic::ClientBuilder::new(&config.elastic_url);
+    elastic_client.disable_certificate_validation(config.disable_certificate_validation);
+    if let Some(username) = &config.elastic_username {
         elastic_client.with_username(username);
     }
-    if let Some(password) = &password {
+    if let Some(password) = &config.elastic_password {
         elastic_client.with_password(password);
     }
     let elastic_client = elastic_client.build();
@@ -169,7 +163,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
     }
     info!(
         "Found Elasticsearch version {} at {}",
-        version.version, &elastic_url
+        version.version, &config.elastic_url
     );
     if version < elastic::Version::parse("7.4.0").unwrap() {
         return Err(format!(
@@ -179,17 +173,17 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
         .into());
     }
 
-    if let Err(err) = template_installer::install_template(&elastic_client, &index).await {
+    if let Err(err) = template_installer::install_template(&elastic_client, &config.index).await {
         error!(
             "Failed to install Elasticsearch template \"{}\": {}",
-            &index, err
+            &config.index, err
         );
     }
 
     let mut filters = Vec::new();
 
-    match settings.get_strings("rules") {
-        Ok(rules) => {
+    match loader.get_strings("rules") {
+        Ok(Some(rules)) => {
             if !rules.is_empty() {
                 let rulemap = crate::rules::load_rules(&rules);
                 let rulemap = Arc::new(rulemap);
@@ -201,6 +195,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
                 crate::rules::watch_rules(rulemap);
             }
         }
+        Ok(None) => {}
         Err(err) => {
             error!("Failed to read input.rules configuration: {}", err);
         }
@@ -220,7 +215,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
 
         if inputs.len() > 1 && config.use_bookmark {
             debug!("Getting bookmark filename for {}", &input);
-            let bookmark_filename = bookmark::bookmark_filename(&input, &bookmark_dir);
+            let bookmark_filename = bookmark::bookmark_filename(&input, &config.bookmark_dir);
             config.bookmark_filename = bookmark_filename;
             debug!(
                 "Bookmark filename for {}: {:?}",
@@ -231,9 +226,10 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
             //
             // TODO: If <curdir>.bookmark, convert to <hash>.bookmark.
             let empty_path = PathBuf::from("");
-            if bookmark_dir == "." && config.bookmark_filename == empty_path {
+            if config.bookmark_dir == "." && config.bookmark_filename == empty_path {
                 let old_bookmark_filename = std::path::PathBuf::from(".bookmark");
-                let new_bookmark_filename = bookmark::bookmark_filename(&input, &bookmark_dir);
+                let new_bookmark_filename =
+                    bookmark::bookmark_filename(&input, &config.bookmark_dir);
                 let exists = std::path::Path::exists(&new_bookmark_filename);
                 if exists {
                     config.bookmark_filename = new_bookmark_filename;
@@ -242,8 +238,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
                 } else {
                     config.bookmark_filename = new_bookmark_filename;
                 }
-            } else if bookmark_dir != "." {
-                let bookmark_filename = bookmark::bookmark_filename(&input, &bookmark_dir);
+            } else if config.bookmark_dir != "." {
+                let bookmark_filename = bookmark::bookmark_filename(&input, &config.bookmark_dir);
                 config.bookmark_filename = bookmark_filename;
             }
         }

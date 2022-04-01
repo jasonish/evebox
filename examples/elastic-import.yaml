@@ -1,10 +1,9 @@
 # A list of Suricata Eve log files to read.
 input:
   - /var/log/suricata/eve.json
-  - /opt/suricata/var/log/suricata/eve.json
 
 # Elastic Search URL
-elasticsearch: http://10.16.1.10:9200
+elasticsearch: http://elasticsearch:9200
 
 # Elastic Search username and password.
 #username: admin
@@ -15,28 +14,36 @@ elasticsearch: http://10.16.1.10:9200
 index: logstash
 
 # Disable TLS certificate check.
-disable-certificate-check: false
+#disable-certificate-check: true
 
 # When no bookmark is present start reading at the end of the file.
 end: true
 
-# Enable bookmarking so esimport can continue reading from where it
-# left off after a restart.
+# Enable bookmarking so elastic-import can continue reading from where
+# it left off after a restart.
 bookmark: true
 
-# Set a filename to keep the bookmark in case esimport cannot write to
-# the log directory.
+# Set a filename to keep the bookmark in case elastic-import cannot
+# write to the log directory.
 #bookmark-filename: /var/tmp/eve.json.bookmark
 
-# Change the amount of events to batch per bulk request. This option may
-# be removed in the future.
-#batch-size: 300
+# If reading from multiple eve files, a bookmark directory is
+# required.
+#bookmark-dir: /var/tmp/bookmarks
+
+# Change the amount of events to batch per bulk request.
+#batch-size: 1000
 
 geoip:
   # GeoIP is enabled by default if a database can be found.
-  disabled: false
+  #
+  # Nested values can also be set with an environment variable. For example:
+  #    EVEBOX_GEOIP_DISABLED=true
+  disabled: true
 
   # Path to the database, if not set some standard locations are
   # checked.
-  #database-filename: /etc/evebox/GeoLite2-City.mmdb.gz
   #database-filename: /etc/evebox/GeoLite2-City.mmdb
+
+rules:
+  - /var/lib/suricata/rules/suricata.rules

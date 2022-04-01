@@ -120,6 +120,33 @@ impl<'a> Config<'a> {
         }
     }
 
+    pub fn get_present_arg(&self, name: &str) {
+        if self.args.is_valid_arg(name) {
+            dbg!(self.args.value_of(name));
+            let values: Vec<&str> = self.args.values_of(name).unwrap().collect();
+            dbg!(values);
+        }
+    }
+
+    pub fn get_arg_strings(&self, name: &str) -> Option<Vec<String>> {
+        if self.args.is_valid_arg(name) {
+            if let Some(values) = self.args.values_of(name) {
+                return Some(values.map(|s| s.to_string()).collect());
+            }
+        }
+        None
+    }
+
+    pub fn get_strings(&self, name: &str) -> anyhow::Result<Option<Vec<String>>> {
+        if self.args.is_valid_arg(name) && self.args.occurrences_of(name) > 0 {
+            if let Some(strings) = self.args.values_of(name) {
+                let strings: Vec<String> = strings.map(|s| s.to_string()).collect();
+                return Ok(Some(strings));
+            }
+        }
+        self.get_config_value(name)
+    }
+
     pub fn get_arg(&self, name: &str) -> Option<&str> {
         if self.args.is_valid_arg(name) {
             self.args.value_of(name)
