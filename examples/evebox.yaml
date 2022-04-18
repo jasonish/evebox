@@ -160,8 +160,12 @@ event-services:
     name: Dumpy
 
     # The URL template, {{raw}} expands to the raw eve event as a JSON
-    # string which is then url encoded.
-    url: http://10.16.1.1:7000/?event={{raw}}
+    # string which is then url encoded. This format will give you a direct
+    # download.
+    url: "http://127.0.0.1:7000/fetch?query-type=event&event={{raw}}&spool=default"
+
+    # Or this URL will pre-populate a download form for you.
+    #url: "http://127.0.0.1:7000/?event={{raw}}"
 
     # Open in new window. The default is the same window.
     target: new
