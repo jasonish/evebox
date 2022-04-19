@@ -24,24 +24,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, Input, OnInit} from '@angular/core';
+import {Component, Input, OnInit} from "@angular/core";
 
 @Component({
-    selector: 'search-link',
-    template: `<a [routerLink]="[route]" [queryParams]="{'q': queryString}" style="word-break: break-all">{{value}}</a>`
+    selector: "search-link",
+    template: `<a [routerLink]="[route]" [queryParams]="{'q': queryString}" style="word-break: break-all; text-decoration: none;">{{value}}</a>`
 })
 export class EveboxSearchLinkComponent implements OnInit {
 
     @Input() field: string;
     @Input() value: string;
     @Input() searchParams: any;
-    @Input() route = '/events';
+    @Input() route = "/events";
     @Input() search: string;
 
     queryString: string;
 
     ngOnInit() {
-        let queryString = '';
+        let queryString = "";
 
         if (!this.search) {
             this.search = this.value;
@@ -51,12 +51,10 @@ export class EveboxSearchLinkComponent implements OnInit {
             Object.keys(this.searchParams).map((key: any) => {
                 queryString += `+${key}:"${this.searchParams[key]}" `;
             });
-        }
-        else {
+        } else {
             if (this.field) {
                 queryString = `${this.field}:"${this.search}"`;
-            }
-            else {
+            } else {
                 queryString = `"${this.search}"`;
             }
         }

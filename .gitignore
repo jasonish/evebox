@@ -9,3 +9,5 @@
 .evebox
 *.sqlite
 /.vscode
+/*.iml
+*.swp

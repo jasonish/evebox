@@ -27,12 +27,13 @@
 import {EventEmitter, Injectable} from "@angular/core";
 import {ActivatedRoute, Router} from "@angular/router";
 import {MousetrapService} from "./mousetrap.service";
+import {NgbModal} from "@ng-bootstrap/ng-bootstrap";
+import {HelpComponent} from "./help/help.component";
 
 export let FEATURE_REPORTING = "reporting";
 export let FEATURE_COMMENTS = "comments";
 
 export enum AppEventCode {
-    SHOW_HELP = 0,
     TIME_RANGE_CHANGED,
     IDLE,
 }
@@ -53,7 +54,8 @@ export class AppService {
 
     constructor(private router: Router,
                 private route: ActivatedRoute,
-                private mousetrap: MousetrapService) {
+                private mousetrap: MousetrapService,
+                private modalService: NgbModal) {
 
         mousetrap.bindAny(this, () => {
             this.resetIdleTime();
@@ -134,6 +136,10 @@ export class AppService {
         this.router.navigate([path, newParams], {
             queryParams: newQueryParams
         });
+    }
+
+    showHelp() {
+        this.modalService.open(HelpComponent, { size: "lg"});
     }
 
 }

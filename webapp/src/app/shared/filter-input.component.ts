@@ -30,14 +30,12 @@ import { MousetrapService } from "../mousetrap.service";
             <div class="input-group">
                 <input id="filterInput" type="text" class="form-control" [(ngModel)]="queryString"
                        placeholder="Filter..." name="queryString"/>
-                <span class="input-group-append">
             <button type="submit"
                     class="btn btn-secondary">Apply</button>
             <button type="button"
                     class="btn btn-secondary"
                     (click)="clearFilter()">Clear
             </button>
-          </span>
             </div>
         </form>
     `

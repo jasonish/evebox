@@ -36,7 +36,7 @@ import * as moment from "moment";
 import { ApiService } from "./api.service";
 
 declare var window: any;
-declare var $: any;
+import $ from "jquery";
 
 export interface AlertsState {
     rows: any[];
@@ -172,7 +172,8 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
     ngAfterViewChecked(): void {
         // This seems to be required to activate the dropdowns when used in
         // an event table row. Probably something to do with the stopPropagations.
-        $(".dropdown-toggle").dropdown();
+        // TODO: Bootstrap5
+        //$(".dropdown-toggle").dropdown();
     }
 
     buildState(): any {
@@ -560,7 +561,7 @@ export class AlertsComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.router.navigate([], {
             queryParams,
         });
-        document.getElementById("filter-input").blur();
+        (<HTMLElement>document.activeElement).blur();
     }
 
     clearFilter(): void {

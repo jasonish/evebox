@@ -43,7 +43,6 @@ import {EveboxReportDataTable} from "./reports/report-data-table";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 import {EveboxFilterInputComponent} from "./shared/filter-input.component";
 import {TopNavComponent} from "./topnav.component";
-import {EveboxHelpComponent} from "./help.component";
 import {EveboxEventTableComponent} from "./event-table.component";
 import {KeyTableDirective} from "./keytable.directive";
 import {EveboxDurationComponent} from "./duration.component";
@@ -90,6 +89,8 @@ import {CommentInputComponent} from './comment-input/comment-input.component';
 import { AboutComponent } from './about/about.component';
 import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
 import { StatsComponent } from './reports/stats/stats.component';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+import { HelpComponent } from './help/help.component';
 
 @NgModule({
     declarations: [
@@ -107,7 +108,6 @@ import { StatsComponent } from './reports/stats/stats.component';
         IpAddrDataTableComponent,
         EveboxFilterInputComponent,
         TopNavComponent,
-        EveboxHelpComponent,
         EveboxEventTableComponent,
         KeyTableDirective,
         EveboxDurationComponent,
@@ -136,6 +136,7 @@ import { StatsComponent } from './reports/stats/stats.component';
         AboutComponent,
         DhcpReportComponent,
         StatsComponent,
+        HelpComponent,
     ],
     imports: [
         // Angular modules.
@@ -144,6 +145,9 @@ import { StatsComponent } from './reports/stats/stats.component';
         RouterModule,
         BrowserAnimationsModule,
         HttpClientModule,
+
+        // NgBootstrap
+        NgbModule,
 
         // Evebox modules.
         AppRoutingModule,

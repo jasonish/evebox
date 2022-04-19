@@ -72,7 +72,6 @@ export class KeyTableDirective implements OnInit, OnDestroy {
 
         this.mousetrap.bind(this, 'H', () => {
             this.setActiveRow(0);
-
         });
     }
 

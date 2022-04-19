@@ -1,139 +1,123 @@
-<nav class="navbar navbar-expand-md fixed-top">
-    <a class="navbar-brand" href="#">EveBox</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse"
-            data-target="#navbarSupportedContent"
-            aria-controls="navbarSupportedContent" aria-expanded="false"
-            aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
+<nav class="navbar navbar-expand-lg navbar-light fixed-top">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#/">EveBox</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
     </button>
-
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav mr-auto">
-            <li class="nav-item">
-                <a class="nav-link" href="#/inbox"
-                   [routerLink]="['/inbox']"
-                   [routerLinkActive]="['active']"
-                   queryParamsHandling="merge">Inbox</a>
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" href="#/inbox"
+             [routerLink]="['/inbox']"
+             [routerLinkActive]="['active']"
+             queryParamsHandling="merge">Inbox</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#/escalated"
+             [routerLink]="['/escalated']"
+             [routerLinkActive]="['active']"
+             queryParamsHandling="merge">Escalated</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#/alerts"
+             [routerLink]="['/alerts']"
+             [routerLinkActive]="['active']"
+             queryParamsHandling="merge">Alerts</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link"
+             [routerLink]="['/stats']"
+             [routerLinkActive]="['active']"
+             queryParamsHandling="merge">Stats</a>
+        </li>
+        <li class="nav-item" style="margin-right: 0 !important; padding-right: 0 !important;">
+          <a class="nav-link" style="padding-right: 0;"
+             [routerLink]="['/events']"
+             [routerLinkActive]="['active']"
+             queryParamsHandling="merge">Events</a>
+        </li>
+        <li class="nav-item" ngbDropdown style="margin-left: 0 !important; padding-left: 0 !important;">
+          <a class="nav-link" routerLink="" role="button" data-bs-toggle="dropdown"
+             style="padding-left: 4px;"
+             ngbDropdownToggle
+             [routerLink]="['/events']"
+             [routerLinkActive]="['active']"
+             aria-expanded="false"></a>
+          <ul ngbDropdownMenu class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <li *ngFor="let eventType of EVENT_TYPES">
+              <a class="dropdown-item"
+                 [routerLink]="['/events', {'eventType': eventType.eventType}]"
+                 queryParamsHandling="merge">{{eventType.name}}</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#/escalated"
-                   [routerLink]="['/escalated']"
-                   [routerLinkActive]="['active']"
-                   queryParamsHandling="merge">Escalated</a>
+          </ul>
+        </li>
+        <li *ngIf="features['reporting']" class="nav-item" ngbDropdown>
+          <a class="nav-link" [routerLink]="" role="button"
+             ngbDropdownToggle
+             [ngClass]="{'active': reportsActive}"
+             aria-expanded="false">
+            Reports
+          </a>
+          <ul ngbDropdownMenu class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <li *ngFor="let report of reports">
+              <a class="dropdown-item"
+                 [routerLink]="[report.route]"
+                 queryParamsHandling="merge">{{report.name}}</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#/alerts"
-                   [routerLink]="['/alerts']"
-                   [routerLinkActive]="['active']"
-                   queryParamsHandling="merge">Alerts</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#/stats"
-                   [routerLink]="['/stats']"
-                   [routerLinkActive]="['active']"
-                   queryParamsHandling="merge">Stats</a>
-            </li>
-            <li class="nav-item dropdown">
-                <span class="nav-link">
-                    <a [routerLink]="['/events']"
-                       [routerLinkActive]="['active']"
-                       queryParamsHandling="merge"
-                       class="nav-link"
-                       style="display: inline; padding: 0px;">Events</a>
-                    <a class="nav-link dropdown-toggle ml-1" href="#"
-                       id="topNavEventsDropdown"
-                       [routerLinkActive]="['active']"
-                       queryParamsHandling="merge"
-                       style="display: inline; padding: 0px;"
-                       role="button" data-toggle="dropdown" aria-haspopup="true"
-                       aria-expanded="false">
-                    </a>
-                    <div class="dropdown-menu" aria-labelledby="topNavEventsDropdown">
-                        <a class="dropdown-item"
-                           [routerLink]="['/events', {'eventType': eventType.eventType}]"
-                           queryParamsHandling="merge"
-                           *ngFor="let eventType of EVENT_TYPES">{{eventType.name}}</a>
-                    </div>
-                </span>
-            </li>
+          </ul>
+        </li>
+      </ul>
 
-            <li *ngIf="features['reporting']" class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle"
-                   href="#"
-                   id="navbarReportsDownload"
-                   role="button"
-                   data-toggle="dropdown"
-                   aria-haspopup="true"
-                   [ngClass]="{'active': reportsActive}"
-                   aria-expanded="false">
-                    Reports
-                </a>
-                <div class="dropdown-menu" aria-labelledby="navbarReportsDownload">
-                    <a class="dropdown-item" [routerLink]="['/reports/alerts']" queryParamsHandling="merge">Alerts</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/dns']" queryParamsHandling="merge">DNS</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/ssh']" queryParamsHandling="merge">SSH</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/flow']" queryParamsHandling="merge">Flow</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/netflow']" queryParamsHandling="merge">Netflow</a>
-                    <a class="dropdown-item" [routerLink]="['/reports/dhcp']" queryParamsHandling="merge">DHCP</a>
-                </div>
-            </li>
+      <form name="dateSelectorForm" class="form-inline my-2 my-lg-0">
+        <select *ngIf="!appService.isTimeRangeDisabled()" class="form-select"
+                id="timeRangeSelector"
+                [ngModel]="topNavService.timeRange" name="timeRange"
+                (change)="timeRangeChanged($event)">
+          <option value="1m">Last minute</option>
+          <option value="1h">Last hour</option>
+          <option value="3h">Last 3 hours</option>
+          <option value="6h">Last 6 hours</option>
+          <option value="12h">Last 12 hours</option>
+          <option value="24h">Last 24 hours</option>
+          <option value="3d">Last 3 days</option>
+          <option value="7d">Last week</option>
+          <option value="">All</option>
+        </select>
+      </form>
 
-        </ul>
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="#"
+                                (click)="showHelp(); $event.preventDefault()">Help</a></li>
+        <li class="nav-item" ngbDropdown>
+          <a class="nav-link" [routerLink]="" role="button"
+             ngbDropdownToggle aria-expanded="false">
+            <i class="fa fa-gear"></i>
+          </a>
+          <ul ngbDropdownMenu class="dropdown-menu dropdown-menu-end">
+            <li class="dropdown-item" routerLink="/settings">Settings</li>
+            <li class="dropdown-divider"></li>
+            <li class="dropdown-item" routerLink="" (click)="logout()">Logout</li>
+          </ul>
+        </li>
+      </ul>
 
-        <form name=" dateSelectorForm" class="form-inline my-2 my-lg-0">
-            <select *ngIf="!appService.isTimeRangeDisabled()" class="form-control"
-                    id="timeRangeSelector"
-                    [ngModel]="topNavService.timeRange" name="timeRange"
-                    (change)="timeRangeChanged($event)">
-                <option value="1m">Last minute</option>
-                <option value="1h">Last hour</option>
-                <option value="3h">Last 3 hours</option>
-                <option value="6h">Last 6 hours</option>
-                <option value="12h">Last 12 hours</option>
-                <option value="24h">Last 24 hours</option>
-                <option value="3d">Last 3 days</option>
-                <option value="7d">Last week</option>
-                <option value="">All</option>
-            </select>
-        </form>
-
-        <ul class="navbar-nav">
-            <li class="nav-item"><a class="nav-link" href="#"
-                                    (click)="showHelp(); $event.preventDefault()">Help</a></li>
-
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle no-caret" href="#" id="toolDropdown"
-                   role="button" data-toggle="dropdown" aria-haspopup="true"
-                   aria-expanded="false">
-                    <i class="fa fa-gear"></i>
-                </a>
-                <div class="dropdown-menu dropdown-menu-right"
-                     aria-labelledby="toolDropdown">
-                    <a class="dropdown-item" href="#/settings">
-                        Settings
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="#" (click)="logout()">Logout</a>
-                </div>
-            </li>
-
-        </ul>
-
-        <!-- TODO Using button here as it looks better than a bade. -->
-        <button type="button" class="btn btn-secondary">
-            {{elasticSearchService.jobCount$ | async}}
-        </button>
+      <!-- TODO Using button here as it looks better than a badge. -->
+      <button type="button" class="btn btn-secondary">
+        {{elasticSearchService.jobCount$ | async}}
+      </button>
 
     </div>
-
+  </div>
 </nav>
 
-<div class="row" style="position: relative; z-index: 999; right: 0; left: 0;"
-     *ngIf="client.reloadRequired">
-    <div class="alert alert-danger p-0 m-0 b-0 col-12"
-         style="border-radius: 0; position: fixed; right: 0; left: 0;">
-        <div class="text-center" style="font-size: 0.92em;">
-            <a href="javascript:window.location.reload()">The EveBox server has been updated. Reload Now.</a>
-        </div>
-    </div>
-</div>
+<!-- TODO/FIXME: bootstrap5 -->
+<!--<div class="row" style="position: relative; z-index: 999; right: 0; left: 0;"-->
+<!--     *ngIf="client.reloadRequired">-->
+<!--  <div class="alert alert-danger p-0 m-0 b-0 col-12"-->
+<!--       style="border-radius: 0; position: fixed; right: 0; left: 0;">-->
+<!--    <div class="text-center" style="font-size: 0.92em;">-->
+<!--      <a href="javascript:window.location.reload()">The EveBox server has been updated. Reload Now.</a>-->
+<!--    </div>-->
+<!--  </div>-->
+<!--</div>-->

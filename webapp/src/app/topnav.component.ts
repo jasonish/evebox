@@ -36,8 +36,6 @@ import {ApiService} from "./api.service";
 import {EVENT_TYPES} from './shared/eventtypes';
 import {ClientService} from "./client.service";
 
-declare var $: any;
-
 @Component({
     selector: "evebox-top-nav",
     templateUrl: "topnav.component.html",
@@ -51,6 +49,15 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     EVENT_TYPES = EVENT_TYPES;
 
     reportsActive = false;
+
+    reports = [
+        {name: "Alerts", route: "/reports/alerts"},
+        {name: "DNS", route: "/reports/dns"},
+        {name: "SSH", route: "/reports/ssh"},
+        {name: "Flow", route: "/reports/flow"},
+        {name: "NetFlow", route: "/reports/netflow"},
+        {name: "DHCP", route: "/reports/dhcp"},
+    ]
 
     constructor(private router: Router,
                 public elasticSearchService: ElasticSearchService,
@@ -120,14 +127,15 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     ngAfterViewChecked() {
         // This makes the navbar collapse when a link is clicked. Only applies
         // when the viewport is narrow enough to make it collapse.
-        $("#evebox-topnav-collapse-1 a:not(.no-collapse)").on("click", (e: any) => {
-            var clickover = $(e.target);
-            var $navbar = $(".navbar-collapse");
-            var _opened = $navbar.hasClass("in");
-            if (_opened === true && !clickover.hasClass("navbar-toggle")) {
-                $navbar.collapse("hide");
-            }
-        });
+        // TODO bootstrap5
+        // $("#evebox-topnav-collapse-1 a:not(.no-collapse)").on("click", (e: any) => {
+        //     var clickover = $(e.target);
+        //     var $navbar = $(".navbar-collapse");
+        //     var _opened = $navbar.hasClass("in");
+        //     if (_opened === true && !clickover.hasClass("navbar-toggle")) {
+        //         $navbar.collapse("hide");
+        //     }
+        // });
     }
 
     gotoRoute(route: string) {
@@ -144,9 +152,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     showHelp() {
-        this.appService.dispatch({
-            event: AppEventCode.SHOW_HELP
-        });
+        this.appService.showHelp();
     }
 
     logout() {

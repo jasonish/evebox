@@ -1,105 +1,101 @@
 <loading-spinner [loading]="loading"></loading-spinner>
 
-<div [@loadingState]="!rows || (!silentRefresh && loading) ? 'true' : 'false'">
-
-  <!-- Fixes the button/search bar in place, and hides the page as it scrolls
-       underneath. -->
-
-  <div style="position: relative;">
-
-    <div class="evebox-fixed">
-
-      <br/>
-
-      <div class="row" style="margin-right: 15px;">
-        <div class="col-md">
-          <button type="button" class="btn btn-secondary mr-2" (click)="refresh()">
-            Refresh
-          </button>
-          <button *ngIf="rows && rows.length > 0 && !allSelected()"
-                  type="button"
-                  class="btn btn-secondary mr-2"
-                  (click)="selectAllRows()">Select All
-          </button>
-          <button *ngIf="rows && rows.length > 0 && allSelected()" type="button"
-                  class="btn btn-secondary mr-2"
-                  (click)="deselectAllRows()">Deselect All
-          </button>
-          <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-                  type="button"
-                  class="btn btn-secondary mr-2"
-                  (click)="archiveSelected()">Archive
-          </button>
-          <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-                  type="button"
-                  class="btn btn-secondary"
-                  (click)="escalateSelected()">Escalate
-          </button>
-        </div>
-        <div class="col-md">
-          <form (submit)="submitFilter()">
-            <div class="input-group">
-              <input id="filter-input"
-                     type="text"
-                     class="form-control"
-                     placeholder="Filter..."
-                     [(ngModel)]="queryString"
-                     name="queryString"/>
-              <div class="input-group-append">
-                <button class="btn btn-secondary" type="submit">Apply
-                </button>
-                <button type="button"
-                        class="btn btn-secondary"
-                        (click)="clearFilter()">Clear
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
+<div style="position: relative">
+  <div class="evebox-fixed-toolbar pt-2 pb-2">
+    <div class="row">
+      <div class="col">
+        <button type="button" class="btn btn-secondary me-2" (click)="refresh()">Refresh</button>
+        <button *ngIf="rows && rows.length > 0 && !allSelected()" type="button" class="btn btn-secondary"
+                (click)="selectAllRows()">Select All
+        </button>
+        <button *ngIf="rows && rows.length > 0 && allSelected()" type="button" class="btn btn-secondary me-2"
+                (click)="deselectAllRows()">Deselect All
+        </button>
+        <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                type="button"
+                class="btn btn-secondary me-2"
+                (click)="archiveSelected()">Archive
+        </button>
+        <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                type="button"
+                class="btn btn-secondary"
+                (click)="escalateSelected()">Escalate
+        </button>
       </div>
-
-      <br/>
-
+      <div class="col">
+        <form (submit)="submitFilter()">
+          <div class="input-group">
+            <input type="text" class="form-control" placeholder="Filter..." [(ngModel)]="queryString"
+                   name="queryString">
+            <button class="btn btn-secondary" type="submit">Apply</button>
+            <button class="btn btn-secondary" type="button" (click)="clearFilter()">Clear</button>
+          </div>
+        </form>
+      </div>
     </div>
-
   </div>
-
 </div>
 
-<!-- This hidden div acts as a spacer as it should be the same height
-     as the fixed row above. -->
 <div style="visibility: hidden;">
-  <div class="row">
-    <div class="col-md">
-      <button type="button" class="btn btn-secondary btn-block">Spacer</button>
-    </div>
-    <div class="col-md">
-      <button type="button" class="btn btn-secondary btn-block">Spacer</button>
+  <div class="pt-2 pb-2">
+    <div class="row">
+      <div class="col">
+        <button type="button" class="btn btn-secondary me-2" (click)="refresh()">Refresh</button>
+        <button *ngIf="rows && rows.length > 0 && !allSelected()" type="button" class="btn btn-secondary"
+                (click)="selectAllRows()">Select All
+        </button>
+        <button *ngIf="rows && rows.length > 0 && allSelected()" type="button" class="btn btn-secondary me-2"
+                (click)="deselectAllRows()">Deselect All
+        </button>
+        <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                type="button"
+                class="btn btn-secondary me-2"
+                (click)="archiveSelected()">Archive
+        </button>
+        <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                type="button"
+                class="btn btn-secondary"
+                (click)="escalateSelected()">Escalate
+        </button>
+      </div>
+      <div class="col">
+        <form (submit)="submitFilter()">
+          <div class="input-group">
+            <input type="text" class="form-control" placeholder="Filter..." [(ngModel)]="queryString"
+                   name="queryString">
+            <button class="btn btn-outline-secondary" type="submit">Apply</button>
+            <button class="btn btn-outline-secondary" type="button" (click)="clearFilter()">Clear</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-  <br>
 </div>
 
-<br/>
-
-<div *ngIf="!loading && rows && rows.length == 0" style="text-align: center;">
-  <hr/>
-  No events found.
-  <hr/>
+<div *ngIf="!loading && rows && rows.length == 0" class="row">
+  <div class="col">
+    <div class="alert alert-warning text-center" role="alert">
+      No events found.
+    </div>
+  </div>
 </div>
 
-<div *ngIf="(!rows || rows.length == 0) && loading" style="text-align: center;">
-  <hr/>
-  Loading.
-  <hr/>
+<div *ngIf="(!rows || rows.length == 0) && loading" class="row">
+  <div class="col">
+    <div class="progress">
+      <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="75"
+           aria-valuemin="0" aria-valuemax="100" style="width: 100%">Loading
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="row align-items-center" *ngIf="rows && rows.length > 0">
-  <div class="col-sm">
+<div class="row align-items-center mb-2" *ngIf="rows && rows.length > 0">
+  <div class="col">
     Showing {{offset + 1}}-{{offset + rows.length}} of {{allRows.length}}.
   </div>
-  <div class="col-sm">
-    <div class="btn-group float-right" role="group">
+  <div class="col">
+    <div class="btn-group float-end" role="group">
       <button [disabled]="offset == 0"
               type="button"
               class="btn btn-secondary" (click)="newest()">Newest
@@ -118,22 +114,15 @@
           type="button"
           class="btn btn-secondary" (click)="oldest()">Oldest
       </button>
-      <button type="button"
-              class="btn btn-secondary dropdown-toggle"
-              data-toggle="dropdown"
-              aria-haspopup="true"
-              aria-expanded="false">
-      </button>
-      <div class="dropdown-menu dropdown-menu-right">
-        <button class="dropdown-item" href="#" (click)="showAll()">View
-          All
-        </button>
+      <div class="btn-group" ngbDropdown role="group" container="body">
+        <button type="button" class="btn btn-secondary" ngbDropdownToggle></button>
+        <div class="dropdown-menu dropdown-menu-start" ngbDropdownMenu>
+          <button ngbDropdownItem (click)="showAll()">View All</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
-
-<br/>
 
 <div *ngIf="rows && rows.length > 0">
   <div class="table-responsive" style="overflow: inherit !important;">
@@ -161,13 +150,13 @@
              class="fa fa-caret-down"></i>
         </a></th>
         <th>
-          <a (click)="onSort('source')">Source
+          <a (click)="onSort('source')">Src
             <span *ngIf="sortBy == 'source' && sortOrder == 'desc'"><i
                 class="fa fa-caret-up"></i></span>
             <span *ngIf="sortBy == 'source' && sortOrder == 'asc'"><i
                 class="fa fa-caret-down"></i></span>
           </a>/
-          <a (click)="onSort('dest')">Dest
+          <a (click)="onSort('dest')">Dst
             <span *ngIf="sortBy == 'dest' && sortOrder == 'desc'"><i
                 class="fa fa-caret-up"></i></span>
             <span *ngIf="sortBy == 'dest' && sortOrder == 'asc'"><i
@@ -219,7 +208,7 @@
           {{row.event.event._source.dest_ip | eveboxFormatIpAddress}}
         </td>
         <td>
-          <div *ngIf="!isArchived(row)" class="btn-group float-right"
+          <div *ngIf="!isArchived(row)" class="btn-group float-end"
                (click)="$event.stopPropagation();">
             <button type="button"
                     class="btn btn-secondary"
@@ -235,35 +224,36 @@
               <i class="fa fa-archive"
                  style="position: absolute; left: 50%; top: 40%"></i>
             </button>
-            <button type="button"
-                    class="btn btn-secondary dropdown-toggle"
-                    data-toggle="dropdown" aria-haspopup="true"
-                    aria-expanded="false"></button>
-            <div class="dropdown-menu dropdown-menu-right">
-              <a class="dropdown-item" href="javascript:void(0);"
-                 (click)="selectBySignatureId(row)">
-                Select all with SID: {{row.event.event._source.alert.signature_id}}
-              </a>
-              <a class="dropdown-item" href="javascript:void(0);"
-                 (click)="filterBySignatureId(row)">
-                Filter on SID: {{row.event.event._source.alert.signature_id}}</a>
-              <a class="dropdown-item"
-                 [routerLink]="['/reports/ip', {ip: row.event.event._source.src_ip}]">
-                Source IP report for {{row.event.event._source.src_ip}}
-              </a>
-              <a class="dropdown-item"
-                 [routerLink]="['/reports/ip', {ip: row.event.event._source.dest_ip}]">
-                Destination IP report for {{row.event.event._source.dest_ip}}
-              </a>
+
+            <div class="btn-group" ngbDropdown role="group">
+              <button type="button" class="btn btn-secondary" ngbDropdownToggle></button>
+              <div class="dropdown-menu" ngbDropdownMenu>
+                <button class="dropdown-item" href="javascript:void(0);"
+                        (click)="selectBySignatureId(row)">
+                  Select all with SID: {{row.event.event._source.alert.signature_id}}
+                </button>
+                <button ngbDropdownItem
+                        (click)="filterBySignatureId(row)">
+                  Filter on SID: {{row.event.event._source.alert.signature_id}}
+                </button>
+                <button ngbDropdownItem
+                        [routerLink]="['/reports/ip', {ip: row.event.event._source.src_ip}]">
+                  Source IP report for {{row.event.event._source.src_ip}}
+                </button>
+                <button ngbDropdownItem
+                        [routerLink]="['/reports/ip', {ip: row.event.event._source.dest_ip}]">
+                  Destination IP report for {{row.event.event._source.dest_ip}}
+                </button>
+              </div>
             </div>
           </div>
 
           <span *ngIf="row.event.event._source.alert.action != 'allowed'"
-                class="badge badge-warning">{{row.event.event._source.alert.action
+                class="badge bg-warning">{{row.event.event._source.alert.action
           | uppercase}}</span>
           <span
               [innerHTML]="row.event.event | eveboxEventDescriptionPrinter"></span>
-          <span class="badge badge-secondary mx-2"
+          <span class="badge bg-secondary mx-2"
                 *ngIf="row.event.event._source.app_proto && row.event.event._source.app_proto != 'failed'">
             {{row.event.event._source.app_proto}}
           </span>

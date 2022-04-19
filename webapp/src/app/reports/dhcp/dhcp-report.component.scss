@@ -1,3 +1,12 @@
 a {
-  text-decoration: underline;
+  text-decoration: none;
+}
+
+tbody {
+  border-top: 1px solid darkgray !important;
+}
+
+table {
+  padding-bottom: 0;
+  margin-bottom: 0;
 }

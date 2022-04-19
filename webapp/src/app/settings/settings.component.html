@@ -12,7 +12,7 @@
     <div class="form-group row">
       <label class="col-md-4 col-form-label">Theme</label>
       <div class="col-md-8">
-        <select class="form-control" [(ngModel)]="model.theme" name="theme"
+        <select class="form-select" [(ngModel)]="model.theme" name="theme"
                 (change)="setTheme()">
           <option value="default">Light</option>
           <option value="dark">Dark</option>
@@ -25,7 +25,7 @@
     <div class="form-group row">
       <label class="col-md-4 col-form-label">Alerts per Page</label>
       <div class="col-md-8">
-        <select class="form-control" [(ngModel)]="model.alertsPerPage"
+        <select class="form-select" [(ngModel)]="model.alertsPerPage"
                 (change)="updateAlertsPerPage()"
                 name="alertsPerPage">
           <option value="100">100</option>

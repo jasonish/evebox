@@ -3,62 +3,56 @@
 <div class="content"
      [@loadingState]="loading ? 'true' : 'false'">
 
-  <br/>
-
-  <div class="row">
-    <div class="col-md">
+  <div class="row mt-2">
+    <div class="col">
       <form name="filterInputForm" (submit)="submitFilter()">
         <div class="input-group">
           <input id="filter-input" type="text" class="form-control"
                  placeholder="Filter..." [(ngModel)]="queryString"
                  name="queryString"/>
-          <div class="input-group-append">
-            <button type="submit" class="btn btn-secondary">Search
-            </button>
-            <button type="button" class="btn btn-secondary"
-                    (click)="clearFilter()">Clear
-            </button>
-          </div>
+          <button type="submit" class="btn btn-secondary">Search
+          </button>
+          <button type="button" class="btn btn-secondary"
+                  (click)="clearFilter()">Clear
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <br/>
-
-  <div class="row">
+  <div class="row mt-2 mb-2">
     <div class="col-md">
 
-      <button type="button" class="btn btn-secondary mr-2" (click)="refresh()">
+      <button type="button" class="btn btn-secondary me-2" (click)="refresh()">
         Refresh
       </button>
 
-      <div class="btn-group dropright">
-        <button type="button"
-                class="btn btn-secondary dropdown-toggle"
-                data-toggle="dropdown"
-                aria-haspopup="true"
-                aria-expanded="false">
+      <div ngbDropdown class="d-inline-block">
+        <button type="button" class="btn btn-secondary" ngbDropdownToggle>
           Event Type: {{eventTypeFilter.name}}
         </button>
-        <div class="dropdown-menu">
+        <div ngbDropdownMenu >
           <button *ngFor="let type of eventTypes"
                   style="cursor: pointer;"
-             class="dropdown-item"
-             (click)="setEventTypeFilter(type)">{{type.name}}</button>
+                  class="dropdown-item"
+                  (click)="setEventTypeFilter(type)">{{type.name}}
+          </button>
+          <button ngbDropdownItem>Action - 1</button>
+          <button ngbDropdownItem>Another Action</button>
+          <button ngbDropdownItem>Something else is here</button>
         </div>
       </div>
 
-      <div *ngIf="hasEvents()" class="float-right">
-        <button type="button" class="btn btn-secondary mr-2"
+      <div *ngIf="hasEvents()" class="float-end">
+        <button type="button" class="btn btn-secondary me-2"
                 (click)="gotoNewest()">
           Newest
         </button>
-        <button type="button" class="btn btn-secondary mr-2"
+        <button type="button" class="btn btn-secondary me-2"
                 (click)="gotoNewer()">
           Newer
         </button>
-        <button type="button" class="btn btn-secondary mr-2"
+        <button type="button" class="btn btn-secondary me-2"
                 (click)="gotoOlder()">
           Older
         </button>
@@ -82,8 +76,6 @@
     No events found.
     <hr/>
   </div>
-
-  <br/>
 
   <evebox-event-table
       [rows]="model.events"></evebox-event-table>
