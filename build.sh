@@ -38,7 +38,7 @@ build_webapp() {
 	   -t ${TAG} \
 	   -f ${DOCKERFILE} .
     docker run ${IT} --rm \
-           -v "$(pwd):/src" \
+           -v "$(pwd):/src:z" \
            -w /src/webapp \
            -e REAL_UID="$(id -u)" \
            -e REAL_GID="$(id -g)" \
