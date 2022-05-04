@@ -10,6 +10,11 @@ $enable-smooth-scroll: false;
   @extend .bg-light;
 }
 
+// Class that applies theme appropriate background colors.
+.bg-theme {
+  @extend .bg-light;
+}
+
 .evebox-bg-danger {
   @extend .bg-danger;
   background-color: transparentize($danger, 0.8) !important;
@@ -62,7 +67,4 @@ $enable-smooth-scroll: false;
   }
 }
 
-.bg-theme {
-  @extend .bg-light;
-}
 

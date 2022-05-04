@@ -1,4 +1,4 @@
-<nav id="evebox-topnav" class="navbar navbar-expand-lg navbar-light fixed-top">
+<nav id="evebox-topnav" class="navbar navbar-expand-lg fixed-top">
   <div class="container-fluid">
     <a class="navbar-brand" [routerLink]="['/inbox']">EveBox</a>
     <button class="navbar-toggler" type="button" (click)="isMenuCollapsed = !isMenuCollapsed">
@@ -37,10 +37,9 @@
              queryParamsHandling="merge">Events</a>
         </li>
         <li class="nav-item" ngbDropdown style="margin-left: 0 !important; padding-left: 0 !important;">
-          <a class="nav-link" routerLink="" role="button"
+          <a class="nav-link" [routerLink]="" role="button"
              style="padding-left: 4px;"
              ngbDropdownToggle
-             [routerLink]="['/events']"
              [routerLinkActive]="['active']"></a>
           <ul ngbDropdownMenu class="dropdown-menu" aria-labelledby="navbarDropdown">
             <li *ngFor="let eventType of EVENT_TYPES">

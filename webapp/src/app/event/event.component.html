@@ -1,10 +1,8 @@
 <div class="content" [@loadingState]="loading ? 'true' : 'false'">
 
-  <br/>
-
   <div *ngIf="event._source">
 
-    <div class="row">
+    <div class="row pt-2">
       <div class="col-md">
         <button type="button" class="btn btn-secondary me-2"
                 (click)="goBack()">Back
@@ -29,9 +27,7 @@
       </div>
     </div>
 
-    <br/>
-
-    <div class="card">
+    <div class="card mt-2">
       <div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"
            class="card-header {{event | eventSeverityToBootstrapClass:'evebox-bg-':'success'}}">
         <b>{{event._source.event_type | uppercase}}:
@@ -64,7 +60,7 @@
             <table class="table table-sm table-striped table-hover info-table">
               <tbody>
               <tr>
-                <td>Timestamp</td>
+                <th>Timestamp</th>
                 <td>
                   <search-link field="timestamp"
                                value="{{event._source.timestamp}}">
@@ -75,7 +71,7 @@
 
               <!-- Sensor name. -->
               <tr *ngIf="normalized.sensor_name">
-                <td>Sensor</td>
+                <th>Sensor</th>
                 <td>
                   <search-link [field]="normalized.sensor_name_key" [search]="normalized.sensor_name"
                                value="{{normalized.sensor_name}}">
@@ -84,11 +80,11 @@
               </tr>
 
               <tr *ngIf="event._source.proto">
-                <td>Protocol</td>
+                <th>Protocol</th>
                 <td>{{event._source.proto}}</td>
               </tr>
               <tr *ngIf="event._source.src_ip">
-                <td>Source</td>
+                <th>Source</th>
                 <td>
                   <!-- @formatter:off -->
                   <search-link field="src_ip"
@@ -114,7 +110,7 @@
                 </td>
               </tr>
               <tr *ngIf="event._source.dest_ip">
-                <td>Destination</td>
+                <th>Destination</th>
                 <td>
                   <search-link field="dest_ip"
                                [search]="event._source.dest_ip"
@@ -139,11 +135,11 @@
                 </td>
               </tr>
               <tr *ngIf="event._source.in_iface">
-                <td>In Interface</td>
+                <th>In Interface</th>
                 <td>{{event._source.in_iface}}</td>
               </tr>
               <tr *ngIf="event._source.flow_id">
-                <td>Flow ID</td>
+                <th>Flow ID</th>
                 <td>
                   <search-link field="flow_id"
                                value="{{event._source.flow_id}}">
@@ -163,15 +159,15 @@
                     class="table table-sm table-striped table-hover info-table">
                   <tbody>
                   <tr>
-                    <td>Signature</td>
+                    <th>Signature</th>
                     <td>{{event._source.alert.signature}}</td>
                   </tr>
                   <tr>
-                    <td>Category</td>
+                    <th>Category</th>
                     <td>{{event._source.alert.category}}</td>
                   </tr>
                   <tr>
-                    <td>Signature ID</td>
+                    <th>Signature ID</th>
                     <td>
                       <!-- @formatter:off -->
                       {{event._source.alert.gid}}:
@@ -185,7 +181,7 @@
                     </td>
                   </tr>
                   <tr>
-                    <td>Severity</td>
+                    <th>Severity</th>
                     <td>{{event._source.alert.severity}}</td>
                   </tr>
                   </tbody>
@@ -196,15 +192,15 @@
                     class="table table-sm table-striped table-hover info-table">
                   <tbody>
                   <tr>
-                    <td>Transaction ID</td>
+                    <th>Transaction ID</th>
                     <td>{{event._source.dns.id}}</td>
                   </tr>
                   <tr>
-                    <td>Type</td>
+                    <th>Type</th>
                     <td>{{event._source.dns.type | lowercase | titlecase}}</td>
                   </tr>
                   <tr>
-                    <td>Request</td>
+                    <th>Request</th>
                     <td>
                       <span *ngIf="event._source.dns.rrtype">{{event._source.dns.rrtype}} </span>
                       {{event._source.dns.rrname}}
@@ -212,7 +208,7 @@
                   </tr>
                   <!-- For Pre EVE DNS v2. -->
                   <tr *ngIf="!event._source.dns.answers && event._source.dns.rdata">
-                    <td>Answer</td>
+                    <th>Answer</th>
                     <td>{{event._source.dns.rdata}}</td>
                   </tr>
                   </tbody>
@@ -407,12 +403,10 @@
           <b>HTTP</b>
         </div>
         <div class="card-body">
-          <table class="table table-striped table-sm">
+          <table class="table table-striped table-sm info-table">
             <tbody>
             <tr *ngFor="let item of http | mapToItems">
-              <td style="border: 0px; white-space: nowrap">{{item.key |
-                eveboxGenericPrettyPrinter}}:
-              </td>
+              <th>{{item.key | eveboxGenericPrettyPrinter}}:</th>
               <td style="border: 0px;">
                 <search-link [value]="item.val"></search-link>
               </td>

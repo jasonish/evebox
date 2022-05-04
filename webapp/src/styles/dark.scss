@@ -21,6 +21,18 @@ $enable-smooth-scroll: false;
 $event-table-border-color: $gray-800;
 @import "common";
 
+// Dark navbar.
+.navbar {
+  @extend .navbar-dark;
+  @extend .bg-dark;
+  background-color: $gray-800 !important;
+}
+
+// Class that applies theme appropriate background colors.
+.bg-theme {
+  @extend .bg-dark;
+}
+
 .table {
   &-secondary {
     &,
@@ -51,13 +63,6 @@ tr {
 
 button {
   color: $gray-200 !important;
-}
-
-// Dark navbar.
-.navbar {
-  @extend .navbar-dark;
-  @extend .bg-dark;
-  background-color: $gray-800 !important;
 }
 
 .evebox-event-table {
@@ -121,6 +126,3 @@ button {
   }
 }
 
-.bg-theme {
-  @extend .bg-dark;
-}
