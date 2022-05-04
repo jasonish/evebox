@@ -42,7 +42,7 @@ import {FlowReportComponent} from "./reports/flow/flow-report.component";
 import {EveboxReportDataTable} from "./reports/report-data-table";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 import {EveboxFilterInputComponent} from "./shared/filter-input.component";
-import {TopNavComponent} from "./topnav.component";
+import {TopNavComponent} from "./topnav/topnav.component";
 import {EveboxEventTableComponent} from "./event-table.component";
 import {KeyTableDirective} from "./keytable.directive";
 import {EveboxDurationComponent} from "./duration.component";

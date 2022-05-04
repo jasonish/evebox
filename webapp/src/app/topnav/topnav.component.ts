@@ -25,16 +25,16 @@
  */
 
 import {AfterViewChecked, Component, OnDestroy, OnInit} from "@angular/core";
-import {ElasticSearchService} from "./elasticsearch.service";
+import {ElasticSearchService} from "../elasticsearch.service";
 import {ActivatedRoute, NavigationEnd, Router} from "@angular/router";
-import {MousetrapService} from "./mousetrap.service";
-import {TopNavService} from "./topnav.service";
-import {AppEventCode, AppService, FEATURE_REPORTING} from "./app.service";
+import {MousetrapService} from "../mousetrap.service";
+import {TopNavService} from "../topnav.service";
+import {AppEventCode, AppService, FEATURE_REPORTING} from "../app.service";
 import {Subscription} from "rxjs";
-import {ConfigService} from "./config.service";
-import {ApiService} from "./api.service";
-import {EVENT_TYPES} from './shared/eventtypes';
-import {ClientService} from "./client.service";
+import {ConfigService} from "../config.service";
+import {ApiService} from "../api.service";
+import {EVENT_TYPES} from '../shared/eventtypes';
+import {ClientService} from "../client.service";
 
 @Component({
     selector: "evebox-top-nav",
