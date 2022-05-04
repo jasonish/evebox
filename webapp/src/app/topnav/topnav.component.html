@@ -1,11 +1,10 @@
-<nav class="navbar navbar-expand-lg navbar-light fixed-top">
+<nav id="evebox-topnav" class="navbar navbar-expand-lg navbar-light fixed-top">
   <div class="container-fluid">
-    <a class="navbar-brand" href="#/">EveBox</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
-            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <a class="navbar-brand" [routerLink]="['/inbox']">EveBox</a>
+    <button class="navbar-toggler" type="button" (click)="isMenuCollapsed = !isMenuCollapsed">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <div [ngbCollapse]="isMenuCollapsed" class="collapse navbar-collapse">
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item">
           <a class="nav-link" href="#/inbox"
@@ -38,32 +37,25 @@
              queryParamsHandling="merge">Events</a>
         </li>
         <li class="nav-item" ngbDropdown style="margin-left: 0 !important; padding-left: 0 !important;">
-          <a class="nav-link" routerLink="" role="button" data-bs-toggle="dropdown"
+          <a class="nav-link" routerLink="" role="button"
              style="padding-left: 4px;"
              ngbDropdownToggle
              [routerLink]="['/events']"
-             [routerLinkActive]="['active']"
-             aria-expanded="false"></a>
+             [routerLinkActive]="['active']"></a>
           <ul ngbDropdownMenu class="dropdown-menu" aria-labelledby="navbarDropdown">
             <li *ngFor="let eventType of EVENT_TYPES">
-              <a class="dropdown-item"
-                 [routerLink]="['/events', {'eventType': eventType.eventType}]"
+              <a class="dropdown-item" [routerLink]="['/events', {'eventType': eventType.eventType}]"
                  queryParamsHandling="merge">{{eventType.name}}</a>
             </li>
           </ul>
         </li>
         <li *ngIf="features['reporting']" class="nav-item" ngbDropdown>
-          <a class="nav-link" [routerLink]="" role="button"
-             ngbDropdownToggle
-             [ngClass]="{'active': reportsActive}"
-             aria-expanded="false">
+          <a class="nav-link" [routerLink]="" role="button" ngbDropdownToggle [ngClass]="{'active': reportsActive}">
             Reports
           </a>
-          <ul ngbDropdownMenu class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <ul ngbDropdownMenu class="dropdown-menu">
             <li *ngFor="let report of reports">
-              <a class="dropdown-item"
-                 [routerLink]="[report.route]"
-                 queryParamsHandling="merge">{{report.name}}</a>
+              <a class="dropdown-item" [routerLink]="[report.route]" queryParamsHandling="merge">{{report.name}}</a>
             </li>
           </ul>
         </li>
@@ -87,7 +79,10 @@
       </form>
 
       <ul class="navbar-nav">
-        <li class="nav-item"><a class="nav-link" href="#"
+        <li *ngIf="client.reloadRequired" class="nav-item justify-content-start">
+          <button class="btn btn-outline-danger btn-sm mt-1" (click)="reload()">Reload Required</button>
+        </li>
+        <li class="nav-item"><a class="nav-link" routerLink=""
                                 (click)="showHelp(); $event.preventDefault()">Help</a></li>
         <li class="nav-item" ngbDropdown>
           <a class="nav-link" [routerLink]="" role="button"
@@ -110,14 +105,3 @@
     </div>
   </div>
 </nav>
-
-<!-- TODO/FIXME: bootstrap5 -->
-<!--<div class="row" style="position: relative; z-index: 999; right: 0; left: 0;"-->
-<!--     *ngIf="client.reloadRequired">-->
-<!--  <div class="alert alert-danger p-0 m-0 b-0 col-12"-->
-<!--       style="border-radius: 0; position: fixed; right: 0; left: 0;">-->
-<!--    <div class="text-center" style="font-size: 0.92em;">-->
-<!--      <a href="javascript:window.location.reload()">The EveBox server has been updated. Reload Now.</a>-->
-<!--    </div>-->
-<!--  </div>-->
-<!--</div>-->

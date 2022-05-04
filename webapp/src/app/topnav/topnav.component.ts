@@ -1,28 +1,6 @@
-/* Copyright (c) 2014-2016 Jason Ish
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+// Copyright (C) 2014-2022 Jason Ish <jason@codemonkey.net>
+//
+// SPDX-License-Identifier: MIT
 
 import {AfterViewChecked, Component, OnDestroy, OnInit} from "@angular/core";
 import {ElasticSearchService} from "../elasticsearch.service";
@@ -33,14 +11,17 @@ import {AppEventCode, AppService, FEATURE_REPORTING} from "../app.service";
 import {Subscription} from "rxjs";
 import {ConfigService} from "../config.service";
 import {ApiService} from "../api.service";
-import {EVENT_TYPES} from '../shared/eventtypes';
+import {EVENT_TYPES} from "../shared/eventtypes";
 import {ClientService} from "../client.service";
+import $ from "jquery";
 
 @Component({
     selector: "evebox-top-nav",
     templateUrl: "topnav.component.html",
 })
 export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
+
+    isMenuCollapsed = true;
 
     routerSub: Subscription;
 
@@ -57,7 +38,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         {name: "Flow", route: "/reports/flow"},
         {name: "NetFlow", route: "/reports/netflow"},
         {name: "DHCP", route: "/reports/dhcp"},
-    ]
+    ];
 
     constructor(private router: Router,
                 public elasticSearchService: ElasticSearchService,
@@ -127,15 +108,9 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     ngAfterViewChecked() {
         // This makes the navbar collapse when a link is clicked. Only applies
         // when the viewport is narrow enough to make it collapse.
-        // TODO bootstrap5
-        // $("#evebox-topnav-collapse-1 a:not(.no-collapse)").on("click", (e: any) => {
-        //     var clickover = $(e.target);
-        //     var $navbar = $(".navbar-collapse");
-        //     var _opened = $navbar.hasClass("in");
-        //     if (_opened === true && !clickover.hasClass("navbar-toggle")) {
-        //         $navbar.collapse("hide");
-        //     }
-        // });
+        $("#evebox-topnav a:not(.dropdown-toggle)").on("click", (e: any) => {
+            this.isMenuCollapsed = true;
+        });
     }
 
     gotoRoute(route: string) {
@@ -157,5 +132,9 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     logout() {
         this.api.logout();
+    }
+
+    reload() {
+        window.location.reload();
     }
 }
