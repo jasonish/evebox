@@ -31,7 +31,7 @@ import {AlertsComponent} from "./alerts.component";
 import {AlertReportComponent} from "./reports/alerts/alerts-report.component";
 import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {FlowReportComponent} from "./reports/flow/flow-report.component";
-import {NetflowReportComponent} from "./reports/netflow-report.component";
+import {NetflowReportComponent} from "./reports/netflow/netflow-report.component";
 import {Injectable, NgModule} from "@angular/core";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
 import {SshReportComponent} from "./reports/ssh/ssh-report.component";

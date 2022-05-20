@@ -1,0 +1,47 @@
+<div class="content" [@loadingState]="(loading > 0) ? 'true' : 'false'">
+
+    <loading-spinner [loading]="loading > 0"></loading-spinner>
+
+    <div class="row mt-2 mb-2">
+        <div class="col">
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+                Refresh
+            </button>
+        </div>
+        <div class="col">
+            <evebox-filter-input
+                    [queryString]="queryString"></evebox-filter-input>
+        </div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col">
+            <report-data-table *ngIf="topBySourceIp"
+                               title="Top Clients By Flow Count"
+                               [rows]="topBySourceIp"
+                               [headers]="['Flows', 'Client IP']"></report-data-table>
+        </div>
+        <div class="col">
+            <report-data-table *ngIf="topByDestIp"
+                               title="Top Servers By Flow Count"
+                               [rows]="topByDestIp"
+                               [headers]="['Flows', 'Server IP']"></report-data-table>
+        </div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col">
+            <report-data-table *ngIf="topBySourcePort"
+                               title="Top Source Ports"
+                               [rows]="topBySourcePort"
+                               [headers]="['Flows', 'Port']"></report-data-table>
+        </div>
+        <div class="col">
+            <report-data-table *ngIf="topByDestPort"
+                               title="Top Destination Ports"
+                               [rows]="topByDestPort"
+                               [headers]="['Flows', 'Port']"></report-data-table>
+        </div>
+    </div>
+
+</div>

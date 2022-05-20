@@ -37,7 +37,7 @@ import {EventComponent} from "./event/event.component";
 import {EventsComponent} from "./events/events.component";
 import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
 import {AlertReportComponent} from "./reports/alerts/alerts-report.component";
-import {NetflowReportComponent} from "./reports/netflow-report.component";
+import {NetflowReportComponent} from "./reports/netflow/netflow-report.component";
 import {FlowReportComponent} from "./reports/flow/flow-report.component";
 import {EveboxReportDataTable} from "./reports/report-data-table";
 import {IpReportComponent} from "./reports/ip-report/ip-report.component";
