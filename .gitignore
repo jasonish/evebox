@@ -8,6 +8,6 @@
 *.bookmark
 .evebox
 *.sqlite
-/.vscode
+.vscode
 /*.iml
 *.swp
