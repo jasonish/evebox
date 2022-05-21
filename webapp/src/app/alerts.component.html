@@ -7,7 +7,7 @@
           <span *ngIf="!loading" class="spinner-border spinner-border-sm" style="visibility: hidden"></span><span
             *ngIf="loading" class="spinner-border spinner-border-sm"></span>Refresh
         </button>
-        <button *ngIf="rows && rows.length > 0 && !allSelected()" type="button" class="btn btn-secondary"
+        <button *ngIf="rows && rows.length > 0 && !allSelected()" type="button" class="btn btn-secondary me-2"
                 (click)="selectAllRows()">Select All
         </button>
         <button *ngIf="rows && rows.length > 0 && allSelected()" type="button" class="btn btn-secondary me-2"
