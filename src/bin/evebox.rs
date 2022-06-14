@@ -373,13 +373,3 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
 }
-
-fn elastic_debug() -> clap::Command<'static> {
-    Command::new("elastic-debug").arg(
-        Arg::new("elasticsearch")
-            .long("elasticsearch")
-            .short('e')
-            .takes_value(true)
-            .default_value("127.0.0.1"),
-    )
-}

@@ -49,13 +49,10 @@ impl<'a> Config<'a> {
         }
 
         // database.elasticsearch.url
-        match name {
-            "database.elasticsearch.url" => {
-                if let Ok(Some(v)) = self.get_env("ELASTICSEARCH_URL") {
-                    return Ok(Some(v));
-                }
+        if name == "database.elasticsearch.url" {
+            if let Ok(Some(v)) = self.get_env("ELASTICSEARCH_URL") {
+                return Ok(Some(v));
             }
-            _ => {}
         }
 
         // Now the configuration file.

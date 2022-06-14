@@ -25,10 +25,8 @@ struct ElasticImportConfig {
     use_bookmark: bool,
     bookmark_filename: PathBuf,
     oneshot: bool,
-    stdout: bool,
     disable_geoip: bool,
     geoip_filename: Option<String>,
-    batch_size: u64,
     elastic_url: String,
     elastic_username: Option<String>,
     elastic_password: Option<String>,
@@ -41,23 +39,22 @@ struct ElasticImportConfig {
 pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let config_filename = args.value_of("config");
     let loader = crate::config::Config::new(args, config_filename)?;
-    let mut config = ElasticImportConfig::default();
 
-    config.elastic_url = loader.get_string("elasticsearch").unwrap();
-    config.elastic_username = loader.get_string("username");
-    config.elastic_password = loader.get_string("password");
-    config.index = loader.get_string("index").unwrap();
-    config.no_index_suffix = loader.get_bool("no-index-suffix")?;
-    config.end = loader.get_bool("end")?;
-    config.use_bookmark = loader.get_bool("bookmark")?;
-    config.bookmark_filename = loader.get_string("bookmark-filename").unwrap().into();
-    config.oneshot = loader.get_bool("oneshot")?;
-    config.stdout = loader.get_bool("stdout")?;
-    config.disable_geoip = loader.get_bool("geoip.disabled")?;
-    config.geoip_filename = loader.get_string("geoip.database-filename");
-    config.batch_size = loader.get("batch-size")?.unwrap_or(DEFAULT_BATCH_SIZE);
-    config.bookmark_dir = loader.get_string("bookmark-dir").unwrap();
-    config.disable_certificate_validation = loader.get_bool(NO_CHECK_CERTIFICATE)?;
+    let config = ElasticImportConfig {
+        elastic_url: loader.get_string("elasticsearch").unwrap(),
+        elastic_username: loader.get_string("username"),
+        elastic_password: loader.get_string("password"),
+        index: loader.get_string("index").unwrap(),
+        no_index_suffix: loader.get_bool("no-index-suffix")?,
+        end: loader.get_bool("end")?,
+        use_bookmark: loader.get_bool("bookmark")?,
+        bookmark_filename: loader.get_string("bookmark-filename").unwrap().into(),
+        oneshot: loader.get_bool("oneshot")?,
+        disable_geoip: loader.get_bool("geoip.disabled")?,
+        geoip_filename: loader.get_string("geoip.database-filename"),
+        bookmark_dir: loader.get_string("bookmark-dir").unwrap(),
+        disable_certificate_validation: loader.get_bool(NO_CHECK_CERTIFICATE)?,
+    };
 
     let inputs = match loader.get_arg_strings("input") {
         Some(inputs) => inputs,
