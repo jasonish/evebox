@@ -4,7 +4,7 @@
 
 #![allow(clippy::redundant_field_names)]
 
-use clap::{Arg, Command};
+use clap::{Arg, Command, IntoApp};
 use evebox::logger;
 use evebox::prelude::*;
 use evebox::version;
@@ -321,8 +321,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(sqlite_import)
         .subcommand(evebox::commands::config::config_subcommand())
         .subcommand(evebox::commands::print::command())
-        .subcommand(elastic_debug());
-
+        .subcommand(evebox::commands::elastic::main::Options::command());
     let matches = parser.clone().get_matches();
 
     // Initialize logging.
@@ -356,11 +355,11 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(())
         }
-        Some(("elastic-debug", args)) => evebox::commands::elastic_debug::main(args).await,
         Some(("oneshot", args)) => evebox::commands::oneshot::main(args).await,
         Some(("agent", args)) => evebox::commands::agent::main(args).await,
         Some(("config", args)) => evebox::commands::config::main(args),
         Some(("print", args)) => evebox::commands::print::main(args),
+        Some(("elastic", args)) => evebox::commands::elastic::main::main(args).await,
         _ => {
             parser.print_help().ok();
             println!();
