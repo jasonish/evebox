@@ -4,7 +4,7 @@
 
 #![allow(clippy::redundant_field_names)]
 
-use clap::{Arg, Command, IntoApp};
+use clap::{Arg, Command};
 use evebox::logger;
 use evebox::prelude::*;
 use evebox::version;
@@ -321,7 +321,7 @@ async fn _main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(sqlite_import)
         .subcommand(evebox::commands::config::config_subcommand())
         .subcommand(evebox::commands::print::command())
-        .subcommand(evebox::commands::elastic::main::Options::command());
+        .subcommand(evebox::commands::elastic::main::main_options());
     let matches = parser.clone().get_matches();
 
     // Initialize logging.
