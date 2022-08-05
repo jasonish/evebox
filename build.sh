@@ -55,6 +55,7 @@ build_cross() {
     what="$2"
     DOCKERFILE="./docker/builder/Dockerfile.cross"
     TAG=${BUILDER_TAG:-"evebox/builder:cross"}
+    sudo rm -rf target
     docker build --rm \
            --cache-from ${TAG} \
 	   -t ${TAG} \
