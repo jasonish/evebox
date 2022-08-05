@@ -4,7 +4,6 @@
 
 #[allow(clippy::module_inception)]
 mod api;
-pub mod elastic;
 pub mod eve2pcap;
 pub mod flow_histogram;
 pub mod helpers;

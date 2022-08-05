@@ -19,6 +19,7 @@ pub fn main_options() -> Command<'static> {
                 .global(true),
         )
         .subcommand(info)
+        .subcommand_required(true)
 }
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
