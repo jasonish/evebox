@@ -4,7 +4,7 @@
 
 #![allow(clippy::redundant_field_names)]
 
-use clap::{Arg, Command, IntoApp};
+use clap::{Arg, Command};
 use evebox::logger;
 use evebox::prelude::*;
 use evebox::version;

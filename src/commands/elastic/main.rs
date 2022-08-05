@@ -3,7 +3,7 @@
 // Copyright (C) 2022 Jason Ish
 
 use crate::commands::elastic::info;
-use clap::{Command, Parser, Subcommand};
+use clap::Command;
 
 pub fn main_options() -> Command<'static> {
     let info = Command::new("info");
