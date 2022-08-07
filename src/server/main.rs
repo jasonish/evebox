@@ -227,9 +227,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     if server_config.tls_enabled {
         debug!("TLS key filename: {:?}", server_config.tls_key_filename);
         debug!("TLS cert filename: {:?}", server_config.tls_cert_filename);
-        run_axum_server_with_tls(&server_config, context)
-            .await
-            .unwrap();
+        if let Err(err) = run_axum_server_with_tls(&server_config, context).await {
+            error!("Failed to start TLS HTTP service: {:?}", err);
+        }
     } else if let Err(err) = run_axum_server(&server_config, context).await {
         error!("Failed to start HTTP service: {:?}", err);
         std::process::exit(1);
@@ -320,7 +320,7 @@ pub(crate) async fn build_axum_server(
 pub(crate) async fn run_axum_server_with_tls(
     config: &ServerConfig,
     context: Arc<ServerContext>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let port: u16 = config.port;
     let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
     let service = build_axum_service(context.clone());
@@ -329,7 +329,15 @@ pub(crate) async fn run_axum_server_with_tls(
         config.tls_cert_filename.as_ref().unwrap(),
         config.tls_key_filename.as_ref().unwrap(),
     )
-    .await?;
+    .await
+    .map_err(|err| {
+        anyhow!(
+            "Failed to load certificate or key file ({:?}, {:?}) {:?}",
+            config.tls_cert_filename,
+            config.tls_key_filename,
+            err
+        )
+    })?;
     axum_server::bind_rustls(addr, tls_config)
         .serve(service)
         .await?;
