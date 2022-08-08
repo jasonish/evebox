@@ -138,11 +138,15 @@ rpm:
 	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox-agent.service \
 	    --rpm-attr 0755,root,root:/usr/bin/evebox \
 	    --rpm-attr 0640,root,evebox:/etc/evebox/evebox.yaml \
+	    --rpm-attr 0640,root,evebox:/etc/evebox/evebox.yaml.example \
 	    --rpm-attr 0640,root,evebox:/etc/evebox/agent.yaml \
+	    --rpm-attr 0640,root,evebox:/etc/evebox/agent.yaml.example \
 	    --rpm-attr 0644,root,root:/etc/sysconfig/evebox \
 	    ${EVEBOX_BIN}=/usr/bin/evebox \
 	    examples/evebox.yaml=/etc/evebox/evebox.yaml \
+	    examples/evebox.yaml=/etc/evebox/evebox.yaml.example \
 	    examples/agent.yaml=/etc/evebox/agent.yaml \
+	    examples/agent.yaml=/etc/evebox/agent.yaml.example \
 	    rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 	    rpm/evebox.service=/lib/systemd/system/evebox.service \
 	    rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
