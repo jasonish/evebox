@@ -135,8 +135,8 @@ rpm:
 	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox.service \
 	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox-agent.service \
 	    --rpm-attr 0755,root,root:/usr/bin/evebox \
-	    --rpm-attr 0644,root,root:/etc/evebox/evebox.yaml.example \
-	    --rpm-attr 0644,root,root:/etc/evebox/agent.yaml.example \
+	    --rpm-attr 0640,root,evebox:/etc/evebox/evebox.yaml.example \
+	    --rpm-attr 0640,root,evebox:/etc/evebox/agent.yaml.example \
 	    --rpm-attr 0644,root,root:/etc/sysconfig/evebox.service \
 	    ${EVEBOX_BIN}=/usr/bin/evebox \
 	    examples/evebox.yaml=/etc/evebox/evebox.yaml.example \
