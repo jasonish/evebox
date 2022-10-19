@@ -22,3 +22,6 @@ install-deps: ./node_modules/_done
 clean:
 	rm -rf node_modules
 	rm -rf typings
+
+fmt:
+	npx prettier --write .
