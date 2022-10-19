@@ -151,7 +151,7 @@
     </div>
 </div>
 
-<div *ngIf="!loading && rows && rows.length == 0" class="row">
+<div *ngIf="!loading && rows && rows.length === 0" class="row">
     <div class="col">
         <div class="alert alert-warning text-center" role="alert">
             No events found.
@@ -167,7 +167,7 @@
     <div class="col">
         <div class="btn-group float-end" role="group">
             <button
-                [disabled]="offset == 0"
+                [disabled]="offset === 0"
                 type="button"
                 class="btn btn-secondary"
                 (click)="newest()"
@@ -175,7 +175,7 @@
                 Newest
             </button>
             <button
-                [disabled]="offset == 0"
+                [disabled]="offset === 0"
                 type="button"
                 class="btn btn-secondary"
                 (click)="newer()"
@@ -184,7 +184,7 @@
             </button>
             <button
                 [disabled]="
-                    rows.length == allRows.length ||
+                    rows.length === allRows.length ||
                     offset + windowSize >= allRows.length
                 "
                 type="button"
@@ -195,7 +195,7 @@
             </button>
             <button
                 [disabled]="
-                    rows.length == allRows.length ||
+                    rows.length === allRows.length ||
                     offset + windowSize >= allRows.length
                 "
                 type="button"
@@ -252,13 +252,15 @@
                             Timestamp
                             <i
                                 *ngIf="
-                                    sortBy == 'timestamp' && sortOrder == 'desc'
+                                    sortBy === 'timestamp' &&
+                                    sortOrder === 'desc'
                                 "
                                 class="fa fa-caret-up"
                             ></i>
                             <i
                                 *ngIf="
-                                    sortBy == 'timestamp' && sortOrder == 'asc'
+                                    sortBy === 'timestamp' &&
+                                    sortOrder === 'asc'
                                 "
                                 class="fa fa-caret-down"
                             ></i>
@@ -269,22 +271,27 @@
                             >Src
                             <span
                                 *ngIf="
-                                    sortBy == 'source' && sortOrder == 'desc'
+                                    sortBy === 'source' && sortOrder === 'desc'
                                 "
                                 ><i class="fa fa-caret-up"></i
                             ></span>
                             <span
-                                *ngIf="sortBy == 'source' && sortOrder == 'asc'"
+                                *ngIf="
+                                    sortBy === 'source' && sortOrder === 'asc'
+                                "
                                 ><i class="fa fa-caret-down"></i
                             ></span> </a
                         >/
                         <a (click)="onSort('dest')"
                             >Dst
                             <span
-                                *ngIf="sortBy == 'dest' && sortOrder == 'desc'"
+                                *ngIf="
+                                    sortBy === 'dest' && sortOrder === 'desc'
+                                "
                                 ><i class="fa fa-caret-up"></i
                             ></span>
-                            <span *ngIf="sortBy == 'dest' && sortOrder == 'asc'"
+                            <span
+                                *ngIf="sortBy === 'dest' && sortOrder === 'asc'"
                                 ><i class="fa fa-caret-down"></i
                             ></span>
                         </a>
@@ -294,14 +301,16 @@
                             >Signature
                             <i
                                 *ngIf="
-                                    sortBy == 'signature' && sortOrder == 'desc'
+                                    sortBy === 'signature' &&
+                                    sortOrder === 'desc'
                                 "
                                 class="fa fa-caret-up"
                             >
                             </i>
                             <i
                                 *ngIf="
-                                    sortBy == 'signature' && sortOrder == 'asc'
+                                    sortBy === 'signature' &&
+                                    sortOrder === 'asc'
                                 "
                                 class="fa fa-caret-down"
                             >
@@ -343,11 +352,11 @@
                         style="width: 1% !important"
                     >
                         <i
-                            *ngIf="row.event.escalatedCount == 0"
+                            *ngIf="row.event.escalatedCount === 0"
                             class="fa fa-star-o"
                         ></i>
                         <i
-                            *ngIf="row.event.escalatedCount == row.event.count"
+                            *ngIf="row.event.escalatedCount === row.event.count"
                             class="fa fa-star"
                         ></i>
                         <i
@@ -472,7 +481,7 @@
 
                         <span
                             *ngIf="
-                                row.event.event._source.alert.action !=
+                                row.event.event._source.alert.action !==
                                 'allowed'
                             "
                             class="badge bg-warning"
@@ -489,7 +498,7 @@
                             class="badge bg-secondary mx-2"
                             *ngIf="
                                 row.event.event._source.app_proto &&
-                                row.event.event._source.app_proto != 'failed'
+                                row.event.event._source.app_proto !== 'failed'
                             "
                         >
                             {{ row.event.event._source.app_proto }}
