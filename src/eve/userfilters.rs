@@ -100,7 +100,7 @@ impl RegularExpression {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub enum UserFilterAction {
     #[serde(rename = "archive")]
     Archive,

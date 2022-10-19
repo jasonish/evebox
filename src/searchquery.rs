@@ -25,7 +25,7 @@ use nom::character::complete::{multispace0, one_of};
 use nom::sequence::{delimited, preceded};
 use nom::IResult;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Element {
     String(String),
     KeyVal(String, String),

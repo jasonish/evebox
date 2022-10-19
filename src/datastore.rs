@@ -276,7 +276,7 @@ pub struct HistogramParameters {
     pub sensor_name: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum HistogramInterval {
     Minute,
     Hour,

@@ -39,7 +39,7 @@ mod rejection;
 mod response;
 pub mod session;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthenticationType {
     Anonymous,
     Username,
