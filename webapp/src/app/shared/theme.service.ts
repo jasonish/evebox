@@ -2,15 +2,13 @@
 //
 // SPDX-License-Identifier: MIT
 
-import {Injectable} from "@angular/core";
-import {SETTING_THEME, SettingsService} from "../settings.service";
-import {Chart} from "chart.js";
+import { Injectable } from "@angular/core";
+import { SETTING_THEME, SettingsService } from "../settings.service";
+import { Chart } from "chart.js";
 
 @Injectable()
 export class ThemeService {
-
-    constructor(private settings?: SettingsService) {
-    }
+    constructor(private settings?: SettingsService) {}
 
     init(): void {
         this.setTheme(this.currentTheme());

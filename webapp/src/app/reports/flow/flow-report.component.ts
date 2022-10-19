@@ -40,16 +40,13 @@ import * as moment from "moment";
 import { finalize } from "rxjs/operators";
 import { Observable } from "rxjs";
 
-import { Chart } from 'chart.js';
+import { Chart } from "chart.js";
 
 @Component({
     templateUrl: "flow-report.component.html",
-    animations: [
-        loadingAnimation,
-    ]
+    animations: [loadingAnimation],
 })
 export class FlowReportComponent implements OnInit, OnDestroy {
-
     topClientsByFlows: any[];
     topServersByFlows: any[];
 
@@ -64,14 +61,14 @@ export class FlowReportComponent implements OnInit, OnDestroy {
     private charts: any = {};
 
     histogramIntervals: any[] = [
-        {value: "1s", msg: "1 second"},
-        {value: "1m", msg: "1 minute"},
-        {value: "5m", msg: "5 minute"},
-        {value: "15m", msg: "15 minutes"},
-        {value: "1h", msg: "1 hour"},
-        {value: "6h", msg: "6 hours"},
-        {value: "12h", msg: "12 hours"},
-        {value: "1d", msg: "1 day (24 hours)"},
+        { value: "1s", msg: "1 second" },
+        { value: "1m", msg: "1 minute" },
+        { value: "5m", msg: "5 minute" },
+        { value: "15m", msg: "15 minutes" },
+        { value: "1h", msg: "1 hour" },
+        { value: "6h", msg: "6 hours" },
+        { value: "12h", msg: "12 hours" },
+        { value: "1d", msg: "1 day (24 hours)" },
     ];
 
     public interval: string = null;
@@ -82,14 +79,15 @@ export class FlowReportComponent implements OnInit, OnDestroy {
     // to fix issues with ChartJS resizing.
     showCharts = true;
 
-    constructor(private appService: AppService,
-                private route: ActivatedRoute,
-                private reportsService: ReportsService,
-                private topNavService: TopNavService,
-                private api: ApiService,
-                private elasticsearch: ElasticSearchService,
-                private protoPrettyPrinter: EveBoxProtoPrettyPrinter) {
-    }
+    constructor(
+        private appService: AppService,
+        private route: ActivatedRoute,
+        private reportsService: ReportsService,
+        private topNavService: TopNavService,
+        private api: ApiService,
+        private elasticsearch: ElasticSearchService,
+        private protoPrettyPrinter: EveBoxProtoPrettyPrinter
+    ) {}
 
     ngOnInit(): void {
         this.range = this.topNavService.getTimeRangeAsSeconds();
@@ -106,7 +104,6 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 this.refresh();
             }
         });
-
     }
 
     ngOnDestroy(): void {
@@ -115,11 +112,12 @@ export class FlowReportComponent implements OnInit, OnDestroy {
 
     load(fn: any): void {
         this.loading++;
-        fn().then(() => {
-        }).catch((_) => {
-        }).then(() => {
-            this.loading--;
-        });
+        fn()
+            .then(() => {})
+            .catch((_) => {})
+            .then(() => {
+                this.loading--;
+            });
     }
 
     private renderChart(id: string, options: any): void {
@@ -141,7 +139,10 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             this.showCharts = true;
             setTimeout(() => {
                 for (const key of Object.keys(this.charts)) {
-                    this.renderChart(this.charts[key].id, this.charts[key].options);
+                    this.renderChart(
+                        this.charts[key].id,
+                        this.charts[key].options
+                    );
                 }
             });
         }, 0);
@@ -161,7 +162,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             } else if (this.range <= 3600) {
                 this.interval = "1m";
                 displayUnit = "minute";
-            } else if (this.range <= (3600 * 3)) {
+            } else if (this.range <= 3600 * 3) {
                 this.interval = "5m";
                 displayUnit = "minute";
             } else if (this.range <= 3600 * 24) {
@@ -188,8 +189,8 @@ export class FlowReportComponent implements OnInit, OnDestroy {
             histogramOptions.timeRange = `${this.range}s`;
         }
 
-        this.wrap(this.api.flowHistogram(histogramOptions))
-            .subscribe((response) => {
+        this.wrap(this.api.flowHistogram(histogramOptions)).subscribe(
+            (response) => {
                 const labels = [];
                 const eventCounts = [];
                 const protos = [];
@@ -228,13 +229,15 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                     eventCounts.push(elem.events - protoSum);
                 });
 
-                const datasets: any[] = [{
-                    label: "Other",
-                    backgroundColor: colours[0],
-                    borderColor: colours[0],
-                    data: eventCounts,
-                    fill: false,
-                }];
+                const datasets: any[] = [
+                    {
+                        label: "Other",
+                        backgroundColor: colours[0],
+                        borderColor: colours[0],
+                        data: eventCounts,
+                        fill: false,
+                    },
+                ];
 
                 let i = 1;
 
@@ -270,7 +273,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                                 display: true,
                                 text: "Flow Events Over Time",
                                 padding: 0,
-                            }
+                            },
                         },
                         title: {
                             display: true,
@@ -289,16 +292,17 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                                 },
                                 ticks: {
                                     padding: 5,
-                                }
+                                },
                             },
                         },
                         maintainAspectRatio: false,
                         responsive: true,
-                    }
+                    },
                 };
 
                 this.renderChart("eventsOverTimeChart", chartOptions);
-            });
+            }
+        );
     }
 
     changeHistogramInterval(interval): void {
@@ -317,23 +321,25 @@ export class FlowReportComponent implements OnInit, OnDestroy {
         };
 
         this.load(() => {
-            return this.api.reportAgg("src_ip", aggOptions)
+            return this.api
+                .reportAgg("src_ip", aggOptions)
                 .then((response: any) => {
                     this.topClientsByFlows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dest_ip", aggOptions)
+            return this.api
+                .reportAgg("dest_ip", aggOptions)
                 .then((response: any) => {
                     this.topServersByFlows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("traffic.id", aggOptions)
+            return this.api
+                .reportAgg("traffic.id", aggOptions)
                 .then((response: any) => {
-
                     const labels = response.data.map((e) => e.key);
                     const data = response.data.map((e) => e.count);
 
@@ -356,22 +362,22 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                                 {
                                     data: data,
                                     backgroundColor: colours,
-                                }
+                                },
                             ],
                             labels: labels,
                         },
                         options: {
                             responsive: true,
-                        }
+                        },
                     };
                     this.renderChart("trafficIdChart", config);
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("traffic.label", aggOptions)
+            return this.api
+                .reportAgg("traffic.label", aggOptions)
                 .then((response: any) => {
-
                     const labels = response.data.map((e) => e.key);
                     const data = response.data.map((e) => e.count);
 
@@ -394,7 +400,7 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                                 {
                                     data: data,
                                     backgroundColor: colours,
-                                }
+                                },
                             ],
                             labels: labels,
                         },
@@ -403,23 +409,26 @@ export class FlowReportComponent implements OnInit, OnDestroy {
                 });
         });
 
-        this.wrap(this.api.eventQuery({
-            queryString: this.queryString,
-            eventType: "flow",
-            size: 10,
-            timeRange: this.range,
-            sortBy: "flow.age",
-            sortOrder: "desc",
-        })).subscribe((response) => {
+        this.wrap(
+            this.api.eventQuery({
+                queryString: this.queryString,
+                eventType: "flow",
+                size: 10,
+                timeRange: this.range,
+                sortBy: "flow.age",
+                sortOrder: "desc",
+            })
+        ).subscribe((response) => {
             this.topFlowsByAge = response.data;
         });
     }
 
     private wrap(observable: Observable<any>): Observable<any> {
         this.loading++;
-        return observable.pipe(finalize(() => {
-            this.loading--;
-        }));
+        return observable.pipe(
+            finalize(() => {
+                this.loading--;
+            })
+        );
     }
-
 }

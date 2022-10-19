@@ -1,25 +1,24 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from "@angular/core/testing";
 
-import { DhcpReportComponent } from './dhcp-report.component';
+import { DhcpReportComponent } from "./dhcp-report.component";
 
-describe('DhcpComponent', () => {
-  let component: DhcpReportComponent;
-  let fixture: ComponentFixture<DhcpReportComponent>;
+describe("DhcpComponent", () => {
+    let component: DhcpReportComponent;
+    let fixture: ComponentFixture<DhcpReportComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      declarations: [ DhcpReportComponent ]
-    })
-    .compileComponents();
-  });
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            declarations: [DhcpReportComponent],
+        }).compileComponents();
+    });
 
-  beforeEach(() => {
-    fixture = TestBed.createComponent(DhcpReportComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+    beforeEach(() => {
+        fixture = TestBed.createComponent(DhcpReportComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it("should create", () => {
+        expect(component).toBeTruthy();
+    });
 });

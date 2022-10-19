@@ -24,10 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {AfterViewInit, Component, OnInit} from "@angular/core";
-import {ActivatedRoute, Router} from "@angular/router";
-import {ApiService} from "../api.service";
-import {ClientService} from "../client.service";
+import { AfterViewInit, Component, OnInit } from "@angular/core";
+import { ActivatedRoute, Router } from "@angular/router";
+import { ApiService } from "../api.service";
+import { ClientService } from "../client.service";
 
 declare var window: any;
 
@@ -35,7 +35,6 @@ declare var window: any;
     templateUrl: "login.component.html",
 })
 export class LoginComponent implements OnInit, AfterViewInit {
-
     model: any = {
         username: "",
         password: "",
@@ -48,14 +47,14 @@ export class LoginComponent implements OnInit, AfterViewInit {
 
     loginMessage: string;
 
-    constructor(private api: ApiService,
-                private router: Router,
-                private route: ActivatedRoute,
-                private client: ClientService) {
-    }
+    constructor(
+        private api: ApiService,
+        private router: Router,
+        private route: ActivatedRoute,
+        private client: ClientService
+    ) {}
 
     ngOnInit() {
-
         if (this.route.snapshot.params["error"]) {
             this.error = this.route.snapshot.params["error"];
         }
@@ -63,7 +62,8 @@ export class LoginComponent implements OnInit, AfterViewInit {
         console.log(this.route.snapshot.params);
 
         // Get the login types.
-        this.api._options("/api/1/login")
+        this.api
+            ._options("/api/1/login")
             .toPromise()
             .then((options) => {
                 console.log("Login options:");
@@ -103,18 +103,18 @@ export class LoginComponent implements OnInit, AfterViewInit {
 
     login() {
         console.log("Calling api.login...");
-        this.api.login(this.model.username, this.model.password)
+        this.api
+            .login(this.model.username, this.model.password)
             .then(() => {
                 console.log("Login successful, redirecting to /");
                 this.router.navigate(["/"]);
             })
-            .catch(error => {
+            .catch((error) => {
                 console.log(`Login failed:`);
                 console.log(error);
                 if (error.status === 401) {
                     this.error = "Login failed";
-                }
-                else {
+                } else {
                     this.error = "Login failed: " + JSON.stringify(error);
                 }
             });

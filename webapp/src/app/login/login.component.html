@@ -1,54 +1,66 @@
-<div *ngIf="error"
-     style="position: absolute; top: 0; left: 0; width: 100%;">
-  <div class="alert alert-danger"
-       style="border-radius: 0; text-align: center;">
-    {{error}}
-  </div>
+<div *ngIf="error" style="position: absolute; top: 0; left: 0; width: 100%">
+    <div
+        class="alert alert-danger"
+        style="border-radius: 0; text-align: center"
+    >
+        {{ error }}
+    </div>
 </div>
 
 <div class="row">
-  <div class="col-md-4"></div>
-  <div class="col-md-4">
+    <div class="col-md-4"></div>
+    <div class="col-md-4">
+        <h3 style="text-align: center">EveBox Login</h3>
 
-    <h3 style="text-align: center;">EveBox Login</h3>
+        <div class="jumbotron" style="padding: 20px">
+            <form #loginForm="ngForm">
+                <div *ngIf="username">
+                    <input
+                        type="text"
+                        autofocus
+                        class="form-control"
+                        id="username"
+                        [(ngModel)]="model.username"
+                        name="username"
+                        placeholder="Username"
+                        #name="ngModel"
+                        required
+                    />
+                    <br />
+                </div>
 
-    <div class="jumbotron" style="padding: 20px;">
+                <div *ngIf="password">
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="password"
+                        [(ngModel)]="model.password"
+                        name="password"
+                        placeholder="Password"
+                        #name="ngModel"
+                        required
+                    />
+                    <br />
+                </div>
 
-      <form #loginForm="ngForm">
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-block"
+                    [disabled]="!loginForm.form.valid"
+                    (click)="login()"
+                >
+                    Login
+                </button>
 
-        <div *ngIf="username">
-          <input type="text" autofocus class="form-control"
-                 id="username"
-                 [(ngModel)]="model.username" name="username"
-                 placeholder="Username" #name="ngModel"
-                 required>
-          <br/>
+                <div *ngIf="loginMessage">
+                    <br />
+                    <div class="alert alert-info" style="margin-bottom: 0">
+                        {{ loginMessage }}
+                    </div>
+                </div>
+            </form>
         </div>
-
-        <div *ngIf="password">
-          <input type="password" class="form-control"
-                 id="password"
-                 [(ngModel)]="model.password" name="password"
-                 placeholder="Password" #name="ngModel"
-                 required>
-          <br/>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block"
-                [disabled]="!loginForm.form.valid"
-                (click)="login()">Login
-        </button>
-
-        <div *ngIf="loginMessage">
-          <br/>
-          <div class="alert alert-info" style="margin-bottom: 0;">
-            {{loginMessage}}
-          </div>
-        </div>
-
-      </form>
     </div>
-  </div>
-  <div class="col-md-4"></div>
+    <div class="col-md-4"></div>
 </div>
 `

@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from '@angular/core';
+import { Pipe, PipeTransform } from "@angular/core";
 
 /**
  * Example usage:
@@ -34,24 +34,22 @@ import {Pipe, PipeTransform} from '@angular/core';
  *     </div>
  */
 @Pipe({
-    name: 'mapToItems'
+    name: "mapToItems",
 })
 export class EveboxMapToItemsPipe implements PipeTransform {
-
     flatten(object: any) {
-
         let result = {};
 
         for (let x in object) {
             if (!object.hasOwnProperty(x)) continue;
 
-            if ((typeof object[x]) == 'object') {
+            if (typeof object[x] == "object") {
                 let flattened = this.flatten(object[x]);
                 for (let y in flattened) {
                     if (!flattened.hasOwnProperty(y)) {
                         continue;
                     }
-                    result[x + '.' + y] = flattened[y];
+                    result[x + "." + y] = flattened[y];
                 }
             } else {
                 result[x] = object[x];
@@ -62,16 +60,14 @@ export class EveboxMapToItemsPipe implements PipeTransform {
     }
 
     transform(value: any, args: any): any {
-
         // Should make optional.
         value = this.flatten(value);
 
-        return Object.keys(value).map(key => {
+        return Object.keys(value).map((key) => {
             return {
                 key: key,
-                val: value[key]
+                val: value[key],
             };
         });
     }
-
 }

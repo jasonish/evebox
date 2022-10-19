@@ -24,17 +24,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from '@angular/core';
+import { Pipe, PipeTransform } from "@angular/core";
 
 @Pipe({
-    name: 'eveboxGenericPrettyPrinter'
+    name: "eveboxGenericPrettyPrinter",
 })
 export class EveBoxGenericPrettyPrinter implements PipeTransform {
-
     transform(value: any, args: any): any {
-
         // Replace underscores with spaces.
-        value = value.replace(/_/g, ' ');
+        value = value.replace(/_/g, " ");
 
         // fuid -> FUID (SMB events).
         value = value.replace("fuid", "FUID");
@@ -49,5 +47,4 @@ export class EveBoxGenericPrettyPrinter implements PipeTransform {
 
         return value;
     }
-
 }

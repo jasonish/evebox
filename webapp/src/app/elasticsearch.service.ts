@@ -34,7 +34,7 @@ import * as moment from "moment";
 import { HttpParams } from "@angular/common/http";
 import { transformEcsEvent } from "./events/events.component";
 import { map } from "rxjs/operators";
-import { indexOf } from './utils';
+import { indexOf } from "./utils";
 
 declare function require(name: string);
 
@@ -50,24 +50,25 @@ export interface AlertGroup {
 
 @Injectable()
 export class ElasticSearchService {
-
     private index: string;
-    private jobs = queue({concurrency: 4});
+    private jobs = queue({ concurrency: 4 });
 
     public keywordSuffix = "";
 
     // Observable for current job count.
-    public jobCount$: BehaviorSubject<number> =
-        new BehaviorSubject<number>(0);
+    public jobCount$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
-    constructor(private api: ApiService,
-                private topNavService: TopNavService,
-                private appService: AppService,
-                private config: ConfigService) {
+    constructor(
+        private api: ApiService,
+        private topNavService: TopNavService,
+        private appService: AppService,
+        private config: ConfigService
+    ) {
         this.index = config.getConfig().ElasticSearchIndex;
 
         try {
-            this.keywordSuffix = config.getConfig()["extra"]["elasticSearchKeywordSuffix"];
+            this.keywordSuffix =
+                config.getConfig()["extra"]["elasticSearchKeywordSuffix"];
         } catch (err) {
             console.log(err);
         }
@@ -83,11 +84,12 @@ export class ElasticSearchService {
     }
 
     search(query: any): Promise<any> {
-        return this.api.post("api/1/query", query)
-            .then((response: any) => response,
-                (error: any) => {
-                    throw error.json();
-                });
+        return this.api.post("api/1/query", query).then(
+            (response: any) => response,
+            (error: any) => {
+                throw error.json();
+            }
+        );
     }
 
     updateJobCount() {
@@ -95,23 +97,22 @@ export class ElasticSearchService {
     }
 
     submit(func: any): Promise<void> {
-
         const p = new Promise<void>((resolve, reject) => {
-
             this.jobs.push((cb: any) => {
-                func().then(() => {
-                    cb();
-                    resolve();
-                    this.updateJobCount();
-                }).catch(() => {
-                    cb();
-                    reject();
-                    this.updateJobCount();
-                });
+                func()
+                    .then(() => {
+                        cb();
+                        resolve();
+                        this.updateJobCount();
+                    })
+                    .catch(() => {
+                        cb();
+                        reject();
+                        this.updateJobCount();
+                    });
             });
 
             this.updateJobCount();
-
         });
 
         this.jobs.start();
@@ -128,7 +129,7 @@ export class ElasticSearchService {
         let term = {};
         term[field] = value;
         return {
-            term: term
+            term: term,
         };
     }
 
@@ -207,11 +208,12 @@ export class ElasticSearchService {
             };
             return this.api.post("api/1/alert-group/unstar", request);
         });
-
     }
 
     getEventById(id: string): Promise<any> {
-        return this.api.client.get(`api/1/event/${id}`).toPromise()
+        return this.api.client
+            .get(`api/1/event/${id}`)
+            .toPromise()
             .then((response: any) => {
                 const event = response;
 
@@ -242,8 +244,8 @@ export class ElasticSearchService {
             range: {
                 "@timestamp": {
                     gte: `${then.format()}`,
-                }
-            }
+                },
+            },
         });
     }
 
@@ -251,7 +253,7 @@ export class ElasticSearchService {
         let term = {};
         term[`host${this.keywordSuffix}`] = sensor;
         query.query.bool.filter.push({
-            "term": term,
+            term: term,
         });
     }
 
@@ -260,26 +262,26 @@ export class ElasticSearchService {
             query: {
                 bool: {
                     filter: [
-                        {exists: {field: "event_type"}},
-                        {term: {"event_type": "dns"}},
+                        { exists: { field: "event_type" } },
+                        { term: { event_type: "dns" } },
                         this.keywordTerm("dns.rdata", ip),
-                    ]
-                }
+                    ],
+                },
             },
             size: 1,
-            sort: [
-                {"@timestamp": {order: "desc"}}
-            ],
+            sort: [{ "@timestamp": { order: "desc" } }],
         };
 
-        return this.search(query).then((response: any) => {
-            if (response.hits.hits.length > 0) {
-                let hostname = response.hits.hits[0]._source.dns.rrname;
-                return hostname;
+        return this.search(query).then(
+            (response: any) => {
+                if (response.hits.hits.length > 0) {
+                    let hostname = response.hits.hits[0]._source.dns.rrname;
+                    return hostname;
+                }
+            },
+            (error) => {
+                console.log("Failed to resolve hostname for IP: " + error);
             }
-        }, error => {
-            console.log("Failed to resolve hostname for IP: " + error);
-        });
+        );
     }
-
 }

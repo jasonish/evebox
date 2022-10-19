@@ -24,11 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {EventEmitter, Injectable} from "@angular/core";
-import {ActivatedRoute, Router} from "@angular/router";
-import {MousetrapService} from "./mousetrap.service";
-import {NgbModal} from "@ng-bootstrap/ng-bootstrap";
-import {HelpComponent} from "./help/help.component";
+import { EventEmitter, Injectable } from "@angular/core";
+import { ActivatedRoute, Router } from "@angular/router";
+import { MousetrapService } from "./mousetrap.service";
+import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
+import { HelpComponent } from "./help/help.component";
 
 export let FEATURE_REPORTING = "reporting";
 export let FEATURE_COMMENTS = "comments";
@@ -45,18 +45,18 @@ export interface AppEvent {
 
 @Injectable()
 export class AppService {
-
     private eventEmitter: EventEmitter<AppEvent> = new EventEmitter<AppEvent>();
 
     timeRangeDisabled = false;
 
     private lastRouteEvent: number = new Date().getTime() / 1000;
 
-    constructor(private router: Router,
-                private route: ActivatedRoute,
-                private mousetrap: MousetrapService,
-                private modalService: NgbModal) {
-
+    constructor(
+        private router: Router,
+        private route: ActivatedRoute,
+        private mousetrap: MousetrapService,
+        private modalService: NgbModal
+    ) {
         mousetrap.bindAny(this, () => {
             this.resetIdleTime();
         });
@@ -68,7 +68,7 @@ export class AppService {
     dispatchIdleEvent() {
         let now = new Date().getTime() / 1000;
         let idleTime = now - this.lastRouteEvent;
-        this.dispatch({event: AppEventCode.IDLE, data: idleTime});
+        this.dispatch({ event: AppEventCode.IDLE, data: idleTime });
     }
 
     resetIdleTime() {
@@ -107,17 +107,23 @@ export class AppService {
         return "/" + route;
     }
 
-    updateParams(activatedRoute: ActivatedRoute, params: any = {}, queryParams: any = {}) {
-
-        let newParams = JSON.parse(JSON.stringify(activatedRoute.snapshot.params));
-        let newQueryParams = JSON.parse(JSON.stringify(activatedRoute.snapshot.queryParams));
+    updateParams(
+        activatedRoute: ActivatedRoute,
+        params: any = {},
+        queryParams: any = {}
+    ) {
+        let newParams = JSON.parse(
+            JSON.stringify(activatedRoute.snapshot.params)
+        );
+        let newQueryParams = JSON.parse(
+            JSON.stringify(activatedRoute.snapshot.queryParams)
+        );
 
         Object.keys(params).forEach((key: any) => {
             let value = params[key];
             if (value == undefined || value == null) {
-                delete(newParams[key]);
-            }
-            else {
+                delete newParams[key];
+            } else {
                 newParams[key] = value;
             }
         });
@@ -125,21 +131,19 @@ export class AppService {
         Object.keys(queryParams).forEach((key: any) => {
             let value = queryParams[key];
             if (value == undefined || value == null) {
-                delete(newQueryParams[key]);
-            }
-            else {
+                delete newQueryParams[key];
+            } else {
                 newQueryParams[key] = value;
             }
         });
 
-        let path = this.router.url.split( /[;\?]/)[0];
+        let path = this.router.url.split(/[;\?]/)[0];
         this.router.navigate([path, newParams], {
-            queryParams: newQueryParams
+            queryParams: newQueryParams,
         });
     }
 
     showHelp() {
-        this.modalService.open(HelpComponent, { size: "lg"});
+        this.modalService.open(HelpComponent, { size: "lg" });
     }
-
 }

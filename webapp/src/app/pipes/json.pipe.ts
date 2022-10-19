@@ -24,14 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from '@angular/core';
-import {prettyPrintJson, FormatOptions} from 'pretty-print-json';
+import { Pipe, PipeTransform } from "@angular/core";
+import { prettyPrintJson, FormatOptions } from "pretty-print-json";
 
 @Pipe({
-    name: 'eveboxJsonPretty'
+    name: "eveboxJsonPretty",
 })
 export class EveboxJsonPrettyPipe implements PipeTransform {
-
     transform(object: any): string {
         const options: FormatOptions = {
             linkUrls: false,
@@ -39,5 +38,4 @@ export class EveboxJsonPrettyPipe implements PipeTransform {
         };
         return prettyPrintJson.toHtml(object, options);
     }
-
 }

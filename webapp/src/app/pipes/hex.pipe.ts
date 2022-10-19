@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from '@angular/core';
+import { Pipe, PipeTransform } from "@angular/core";
 
 /**
  * Pipe to convert input to hex.
@@ -33,31 +33,28 @@ import {Pipe, PipeTransform} from '@angular/core';
  * Input data should be binary.
  */
 @Pipe({
-    name: 'hex'
+    name: "hex",
 })
 export class EveboxHexPipe implements PipeTransform {
-
     transform(value: any, args: any): any {
-
         let hex: any = [];
 
         for (let i = 0; i < value.length; ++i) {
             let tmp = value.charCodeAt(i).toString(16);
             if (tmp.length === 1) {
-                tmp = '0' + tmp;
+                tmp = "0" + tmp;
             }
             hex[hex.length] = tmp;
         }
 
-        let output = '';
+        let output = "";
         for (let i = 0; i < hex.length; i++) {
             if (i > 0 && i % 16 == 0) {
-                output += '\n';
+                output += "\n";
             }
-            output += hex[i] + ' ';
+            output += hex[i] + " ";
         }
 
         return output;
     }
-
 }

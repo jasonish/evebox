@@ -24,31 +24,28 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
-import {ConfigService} from './config.service';
+import { Injectable } from "@angular/core";
+import { ConfigService } from "./config.service";
 
 export class CustomEventService {
-
     private name: string;
     private url: string;
     private target: string;
     private eventTypes: string[] = [];
 
     constructor(config: any) {
-
         this.name = config.name;
         this.url = config.url;
-        this.target = config.target || '_top';
+        this.target = config.target || "_top";
 
         // If "new", set to "_blank.".
-        if (this.target == 'new') {
-            this.target = '_blank';
+        if (this.target == "new") {
+            this.target = "_blank";
         }
 
-        if (config['event-types']) {
-            this.eventTypes = config['event-types'];
+        if (config["event-types"]) {
+            this.eventTypes = config["event-types"];
         }
-
     }
 
     isValidForEvent(event: any) {
@@ -67,12 +64,12 @@ export class CustomEventService {
     }
 
     getField(name: string, event: any) {
-        let parts = name.split('.');
+        let parts = name.split(".");
         let node = event._source;
 
         for (let i = 0; i < parts.length; i++) {
             if (!node[parts[i]]) {
-                return '';
+                return "";
             }
             node = node[parts[i]];
         }
@@ -87,11 +84,13 @@ export class CustomEventService {
                 break;
             }
 
-            let replacement = '';
+            let replacement = "";
 
             switch (match[1]) {
-                case 'raw':
-                    replacement = encodeURIComponent(JSON.stringify(event._source));
+                case "raw":
+                    replacement = encodeURIComponent(
+                        JSON.stringify(event._source)
+                    );
                     break;
                 default:
                     replacement = this.getField(match[1], event);
@@ -106,27 +105,23 @@ export class CustomEventService {
 
 @Injectable()
 export class EventServices {
-
     private services: any[] = [];
 
     constructor(private configService: ConfigService) {
-
         /* The config may already be here... */
         let config = configService.getConfig();
         this.initServices(config);
-
     }
 
     initServices(config: any) {
-
         this.services = [];
 
-        if (!config['event-services']) {
-            console.log('No configured event services.');
+        if (!config["event-services"]) {
+            console.log("No configured event services.");
             return;
         }
 
-        config['event-services'].forEach((serviceConfig: any) => {
+        config["event-services"].forEach((serviceConfig: any) => {
             if (serviceConfig.enabled) {
                 let service = new CustomEventService(serviceConfig);
                 this.services.push(service);

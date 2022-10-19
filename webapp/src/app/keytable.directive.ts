@@ -33,44 +33,42 @@ import {
     OnChanges,
     Output,
     EventEmitter,
-    AfterViewChecked
-} from '@angular/core';
-import {MousetrapService} from './mousetrap.service';
+    AfterViewChecked,
+} from "@angular/core";
+import { MousetrapService } from "./mousetrap.service";
 
 declare var jQuery: any;
 declare var window: any;
 
 @Directive({
-    selector: '[eveboxKeyTable]'
+    selector: "[eveboxKeyTable]",
 })
 export class KeyTableDirective implements OnInit, OnDestroy {
-
     @Input() private rows: any[] = [];
     @Input() activeRow = 0;
-    @Output() activeRowChange: EventEmitter<number> = new EventEmitter<number>();
+    @Output() activeRowChange: EventEmitter<number> =
+        new EventEmitter<number>();
 
-    constructor(private el: ElementRef, private mousetrap: MousetrapService) {
-    }
+    constructor(private el: ElementRef, private mousetrap: MousetrapService) {}
 
     ngOnInit(): any {
-
-        this.mousetrap.bind(this, 'j', () => {
+        this.mousetrap.bind(this, "j", () => {
             if (this.getActiveRow() < this.getRowCount() - 1) {
                 this.setActiveRow(this.getActiveRow() + 1);
             }
         });
 
-        this.mousetrap.bind(this, 'k', () => {
+        this.mousetrap.bind(this, "k", () => {
             if (this.getActiveRow() > 0) {
                 this.setActiveRow(this.getActiveRow() - 1);
             }
         });
 
-        this.mousetrap.bind(this, 'G', () => {
+        this.mousetrap.bind(this, "G", () => {
             this.setActiveRow(this.getRowCount() - 1);
         });
 
-        this.mousetrap.bind(this, 'H', () => {
+        this.mousetrap.bind(this, "H", () => {
             this.setActiveRow(0);
         });
     }
@@ -80,11 +78,12 @@ export class KeyTableDirective implements OnInit, OnDestroy {
     }
 
     scrollToActive() {
-
         let error = 175;
 
-        let el = this.el.nativeElement.getElementsByTagName('tbody')[0]
-            .children[this.activeRow];
+        let el =
+            this.el.nativeElement.getElementsByTagName("tbody")[0].children[
+                this.activeRow
+            ];
 
         let elOffset = el.offsetTop;
         let elHeight = el.scrollHeight;
@@ -97,8 +96,7 @@ export class KeyTableDirective implements OnInit, OnDestroy {
 
         if (this.activeRow == 0) {
             window.scrollTo(0, 0);
-        }
-        else if (elBottom > windowBottom - error - (windowHeight * 0.20)) {
+        } else if (elBottom > windowBottom - error - windowHeight * 0.2) {
             let newOffset = windowOffset + elHeight;
 
             // The first case gives up somewhat of a smooth scroll. But if it
@@ -106,12 +104,11 @@ export class KeyTableDirective implements OnInit, OnDestroy {
             // which is handled by the else.
             if (elBottom < newOffset + windowHeight) {
                 window.scrollTo(0, windowOffset + elHeight);
-            }
-            else {
+            } else {
                 window.scrollTo(0, elBottom);
             }
         } else if (windowOffset > 0) {
-            if (elOffset < windowOffset + (windowHeight * 0.10)) {
+            if (elOffset < windowOffset + windowHeight * 0.1) {
                 window.scrollTo(0, Math.min(elOffset, windowOffset - elHeight));
             }
         }
@@ -130,5 +127,4 @@ export class KeyTableDirective implements OnInit, OnDestroy {
     getRowCount(): number {
         return this.rows.length;
     }
-
 }

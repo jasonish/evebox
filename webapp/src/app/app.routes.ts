@@ -24,32 +24,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {CanActivate, RouterModule, Routes} from "@angular/router";
-import {EventsComponent} from "./events/events.component";
-import {EventComponent} from "./event/event.component";
-import {AlertsComponent} from "./alerts.component";
-import {AlertReportComponent} from "./reports/alerts/alerts-report.component";
-import {DNSReportComponent} from "./reports/dns-report/dns-report.component";
-import {FlowReportComponent} from "./reports/flow/flow-report.component";
-import {NetflowReportComponent} from "./reports/netflow/netflow-report.component";
-import {Injectable, NgModule} from "@angular/core";
-import {IpReportComponent} from "./reports/ip-report/ip-report.component";
-import {SshReportComponent} from "./reports/ssh/ssh-report.component";
-import {LoginComponent} from "./login/login.component";
-import {ConfigService} from "./config.service";
-import {ApiService} from "./api.service";
-import {SettingsComponent} from "./settings/settings.component";
-import {DebugComponent} from "./debug/debug.component";
-import { DhcpReportComponent } from './reports/dhcp/dhcp-report.component';
+import { CanActivate, RouterModule, Routes } from "@angular/router";
+import { EventsComponent } from "./events/events.component";
+import { EventComponent } from "./event/event.component";
+import { AlertsComponent } from "./alerts.component";
+import { AlertReportComponent } from "./reports/alerts/alerts-report.component";
+import { DNSReportComponent } from "./reports/dns-report/dns-report.component";
+import { FlowReportComponent } from "./reports/flow/flow-report.component";
+import { NetflowReportComponent } from "./reports/netflow/netflow-report.component";
+import { Injectable, NgModule } from "@angular/core";
+import { IpReportComponent } from "./reports/ip-report/ip-report.component";
+import { SshReportComponent } from "./reports/ssh/ssh-report.component";
+import { LoginComponent } from "./login/login.component";
+import { ConfigService } from "./config.service";
+import { ApiService } from "./api.service";
+import { SettingsComponent } from "./settings/settings.component";
+import { DebugComponent } from "./debug/debug.component";
+import { DhcpReportComponent } from "./reports/dhcp/dhcp-report.component";
 import { StatsComponent } from "./reports/stats/stats.component";
 
 declare var window: any;
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-
-    constructor(private api: ApiService) {
-    }
+    constructor(private api: ApiService) {}
 
     canActivate(): Promise<boolean> {
         if (this.api.isAuthenticated()) {
@@ -69,30 +67,31 @@ export class NeverActivate implements CanActivate {
 
 @Injectable()
 export class ConfigResolver implements CanActivate {
-
-    constructor(private api: ApiService,
-                private configService: ConfigService) {
-    }
+    constructor(
+        private api: ApiService,
+        private configService: ConfigService
+    ) {}
 
     canActivate(): Promise<boolean> {
         if (this.configService.hasConfig()) {
             return Promise.resolve(true);
         }
 
-        return this.api.client.get("api/1/config").toPromise()
-                .then((config) => {
-                    console.log(config);
-                    this.configService.setConfig(config);
-                    return true;
-                })
-                .catch(() => {
-                    return false;
-                });
+        return this.api.client
+            .get("api/1/config")
+            .toPromise()
+            .then((config) => {
+                console.log(config);
+                this.configService.setConfig(config);
+                return true;
+            })
+            .catch(() => {
+                return false;
+            });
     }
 }
 
 const routes: Routes = [
-
     {
         path: "login",
         pathMatch: "prefix",
@@ -114,28 +113,30 @@ const routes: Routes = [
                 pathMatch: "prefix",
             },
             {
-                path: "inbox", component: AlertsComponent, pathMatch: "prefix",
+                path: "inbox",
+                component: AlertsComponent,
+                pathMatch: "prefix",
             },
             {
                 path: "escalated",
                 component: AlertsComponent,
                 pathMatch: "prefix",
-            }
-            ,
+            },
             {
-                path: "alerts", component: AlertsComponent, pathMatch: "prefix",
-            }
-            ,
+                path: "alerts",
+                component: AlertsComponent,
+                pathMatch: "prefix",
+            },
             {
                 path: "event/:id",
                 component: EventComponent,
                 pathMatch: "prefix",
-            }
-            ,
+            },
             {
-                path: "events", component: EventsComponent, pathMatch: "prefix",
-            }
-            ,
+                path: "events",
+                component: EventsComponent,
+                pathMatch: "prefix",
+            },
             {
                 path: "reports",
                 children: [
@@ -152,25 +153,25 @@ const routes: Routes = [
                     },
                     {
                         path: "dns",
-                        component: DNSReportComponent
+                        component: DNSReportComponent,
                     },
                     {
                         path: "flow",
-                        component: FlowReportComponent
+                        component: FlowReportComponent,
                     },
                     {
                         path: "netflow",
-                        component: NetflowReportComponent
+                        component: NetflowReportComponent,
                     },
                     {
                         path: "ssh",
-                        component: SshReportComponent
+                        component: SshReportComponent,
                     },
                     {
                         path: "dhcp",
                         component: DhcpReportComponent,
-                    }
-                ]
+                    },
+                ],
             },
             {
                 path: "reports/ip",
@@ -182,14 +183,20 @@ const routes: Routes = [
                 component: StatsComponent,
             },
             {
-                path: "settings", component: SettingsComponent,
-            }
-        ]
+                path: "settings",
+                component: SettingsComponent,
+            },
+        ],
     },
 ];
 
 @NgModule({
-    imports: [RouterModule.forRoot(routes, { useHash: true, relativeLinkResolution: 'legacy' })],
-    exports: [RouterModule]
+    imports: [
+        RouterModule.forRoot(routes, {
+            useHash: true,
+            relativeLinkResolution: "legacy",
+        }),
+    ],
+    exports: [RouterModule],
 })
-export class AppRoutingModule { }
+export class AppRoutingModule {}

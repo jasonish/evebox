@@ -28,27 +28,35 @@ import { MousetrapService } from "../mousetrap.service";
     template: `
         <form (ngSubmit)="submitFilter()">
             <div class="input-group">
-                <input id="filterInput" type="text" class="form-control" [(ngModel)]="queryString"
-                       placeholder="Filter..." name="queryString"/>
-            <button type="submit"
-                    class="btn btn-secondary">Apply</button>
-            <button type="button"
+                <input
+                    id="filterInput"
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="queryString"
+                    placeholder="Filter..."
+                    name="queryString"
+                />
+                <button type="submit" class="btn btn-secondary">Apply</button>
+                <button
+                    type="button"
                     class="btn btn-secondary"
-                    (click)="clearFilter()">Clear
-            </button>
+                    (click)="clearFilter()"
+                >
+                    Clear
+                </button>
             </div>
         </form>
-    `
+    `,
 })
 export class EveboxFilterInputComponent implements OnInit, OnDestroy {
-
     @Input() queryString: string;
 
-    constructor(private route: ActivatedRoute,
-                private mousetrap: MousetrapService,
-                private router: Router,
-                private appService: AppService) {
-    }
+    constructor(
+        private route: ActivatedRoute,
+        private mousetrap: MousetrapService,
+        private router: Router,
+        private appService: AppService
+    ) {}
 
     ngOnInit(): void {
         this.mousetrap.bind(this, "/", () => {
@@ -76,4 +84,3 @@ export class EveboxFilterInputComponent implements OnInit, OnDestroy {
         this.submitFilter();
     }
 }
-

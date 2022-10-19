@@ -24,11 +24,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-declare function require(name:string);
+declare function require(name: string);
 
-import {Injectable} from '@angular/core';
+import { Injectable } from "@angular/core";
 
-require('!!script-loader!humanize-plus/dist/humanize.js');
+require("!!script-loader!humanize-plus/dist/humanize.js");
 declare let Humanize: any;
 
 export function humanizeFileSize(value: any) {

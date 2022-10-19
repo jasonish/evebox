@@ -24,10 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
-import {ElasticSearchService, AlertGroup} from './elasticsearch.service';
+import { Injectable } from "@angular/core";
+import { ElasticSearchService, AlertGroup } from "./elasticsearch.service";
 
-import * as moment from 'moment';
+import * as moment from "moment";
 
 /**
  * A service to support the the alert views: inbox, escalated and alerts.
@@ -36,11 +36,9 @@ import * as moment from 'moment';
  */
 @Injectable()
 export class AlertService {
-
     private state: any;
 
-    constructor(private elasticSearchService: ElasticSearchService) {
-    }
+    constructor(private elasticSearchService: ElasticSearchService) {}
 
     pushState(state: any) {
         this.state = state;
@@ -51,5 +49,4 @@ export class AlertService {
         this.state = undefined;
         return state;
     }
-
 }

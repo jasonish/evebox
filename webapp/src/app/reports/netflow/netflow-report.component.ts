@@ -2,25 +2,22 @@
 //
 // SPDX-License-Identifier: MIT
 
-import {Component, OnDestroy, OnInit} from "@angular/core";
-import {ActivatedRoute, Params} from "@angular/router";
-import {ReportsService} from "../reports.service";
-import {AppEvent, AppEventCode, AppService} from "../../app.service";
-import {ToastrService} from "../../toastr.service";
-import {TopNavService} from "../../topnav.service";
-import {ElasticSearchService} from "../../elasticsearch.service";
-import {EveboxSubscriptionTracker} from "../../subscription-tracker";
-import {loadingAnimation} from "../../animations";
-import {ApiService, ReportAggOptions} from "../../api.service";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { ActivatedRoute, Params } from "@angular/router";
+import { ReportsService } from "../reports.service";
+import { AppEvent, AppEventCode, AppService } from "../../app.service";
+import { ToastrService } from "../../toastr.service";
+import { TopNavService } from "../../topnav.service";
+import { ElasticSearchService } from "../../elasticsearch.service";
+import { EveboxSubscriptionTracker } from "../../subscription-tracker";
+import { loadingAnimation } from "../../animations";
+import { ApiService, ReportAggOptions } from "../../api.service";
 
 @Component({
     templateUrl: "./netflow-report.component.html",
-    animations: [
-        loadingAnimation,
-    ]
+    animations: [loadingAnimation],
 })
 export class NetflowReportComponent implements OnInit, OnDestroy {
-
     topBySourceIp: any[];
     topByDestIp: any[];
 
@@ -33,14 +30,15 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
 
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    constructor(private reportsService: ReportsService,
-                private elasticsearch: ElasticSearchService,
-                private appService: AppService,
-                private route: ActivatedRoute,
-                private toastr: ToastrService,
-                private api: ApiService,
-                private topNavService: TopNavService) {
-    }
+    constructor(
+        private reportsService: ReportsService,
+        private elasticsearch: ElasticSearchService,
+        private appService: AppService,
+        private route: ActivatedRoute,
+        private toastr: ToastrService,
+        private api: ApiService,
+        private topNavService: TopNavService
+    ) {}
 
     ngOnInit() {
         this.route.queryParams.subscribe((params: Params) => {
@@ -87,22 +85,27 @@ export class NetflowReportComponent implements OnInit, OnDestroy {
         });
 
         this.wrapPromise(() => {
-            return this.api.reportAgg("dest_ip", aggOptions).then((response: any) => {
-                this.topByDestIp = response.data;
-            });
+            return this.api
+                .reportAgg("dest_ip", aggOptions)
+                .then((response: any) => {
+                    this.topByDestIp = response.data;
+                });
         });
 
         this.wrapPromise(() => {
-            return this.api.reportAgg("src_port", aggOptions).then((response) => {
-                this.topBySourcePort = response.data;
-            });
+            return this.api
+                .reportAgg("src_port", aggOptions)
+                .then((response) => {
+                    this.topBySourcePort = response.data;
+                });
         });
 
         this.wrapPromise(() => {
-            return this.api.reportAgg("dest_port", aggOptions).then((response: any) => {
-                this.topByDestPort = response.data;
-            });
+            return this.api
+                .reportAgg("dest_port", aggOptions)
+                .then((response: any) => {
+                    this.topByDestPort = response.data;
+                });
         });
     }
-
 }

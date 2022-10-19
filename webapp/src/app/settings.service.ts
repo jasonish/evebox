@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
+import { Injectable } from "@angular/core";
 
 declare var localStorage: any;
 
@@ -33,14 +33,12 @@ export const SETTING_ALERTS_PER_PAGE = "alerts-per-page";
 
 @Injectable()
 export class SettingsService {
-
     private settings: any;
 
     constructor() {
         try {
             this.settings = JSON.parse(localStorage.settings);
-        }
-        catch (err) {
+        } catch (err) {
             this.settings = {};
         }
     }
@@ -49,7 +47,7 @@ export class SettingsService {
         localStorage.settings = JSON.stringify(this.settings);
     }
 
-    get(key: string, def?:any) {
+    get(key: string, def?: any) {
         return this.settings[key] || def;
     }
 
@@ -61,5 +59,4 @@ export class SettingsService {
         this.settings[key] = value;
         this.save();
     }
-
 }

@@ -24,11 +24,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
+import { Injectable } from "@angular/core";
 
 @Injectable()
 export class ConfigService {
-
     private config: any;
 
     hasConfig(): boolean {
@@ -46,7 +45,7 @@ export class ConfigService {
         return this.config;
     }
 
-    getDefault(key:string) {
+    getDefault(key: string) {
         if (this.config && "defaults" in this.config) {
             return this.config["defaults"][key];
         }

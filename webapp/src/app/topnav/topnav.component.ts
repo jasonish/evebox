@@ -2,17 +2,17 @@
 //
 // SPDX-License-Identifier: MIT
 
-import {AfterViewChecked, Component, OnDestroy, OnInit} from "@angular/core";
-import {ElasticSearchService} from "../elasticsearch.service";
-import {ActivatedRoute, NavigationEnd, Router} from "@angular/router";
-import {MousetrapService} from "../mousetrap.service";
-import {TopNavService} from "../topnav.service";
-import {AppEventCode, AppService, FEATURE_REPORTING} from "../app.service";
-import {Subscription} from "rxjs";
-import {ConfigService} from "../config.service";
-import {ApiService} from "../api.service";
-import {EVENT_TYPES} from "../shared/eventtypes";
-import {ClientService} from "../client.service";
+import { AfterViewChecked, Component, OnDestroy, OnInit } from "@angular/core";
+import { ElasticSearchService } from "../elasticsearch.service";
+import { ActivatedRoute, NavigationEnd, Router } from "@angular/router";
+import { MousetrapService } from "../mousetrap.service";
+import { TopNavService } from "../topnav.service";
+import { AppEventCode, AppService, FEATURE_REPORTING } from "../app.service";
+import { Subscription } from "rxjs";
+import { ConfigService } from "../config.service";
+import { ApiService } from "../api.service";
+import { EVENT_TYPES } from "../shared/eventtypes";
+import { ClientService } from "../client.service";
 import $ from "jquery";
 
 @Component({
@@ -20,7 +20,6 @@ import $ from "jquery";
     templateUrl: "topnav.component.html",
 })
 export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
-
     isMenuCollapsed = true;
 
     routerSub: Subscription;
@@ -32,24 +31,25 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     reportsActive = false;
 
     reports = [
-        {name: "Alerts", route: "/reports/alerts"},
-        {name: "DNS", route: "/reports/dns"},
-        {name: "SSH", route: "/reports/ssh"},
-        {name: "Flow", route: "/reports/flow"},
-        {name: "NetFlow", route: "/reports/netflow"},
-        {name: "DHCP", route: "/reports/dhcp"},
+        { name: "Alerts", route: "/reports/alerts" },
+        { name: "DNS", route: "/reports/dns" },
+        { name: "SSH", route: "/reports/ssh" },
+        { name: "Flow", route: "/reports/flow" },
+        { name: "NetFlow", route: "/reports/netflow" },
+        { name: "DHCP", route: "/reports/dhcp" },
     ];
 
-    constructor(private router: Router,
-                public elasticSearchService: ElasticSearchService,
-                private mousetrap: MousetrapService,
-                private topNavService: TopNavService,
-                public appService: AppService,
-                public client: ClientService,
-                private api: ApiService,
-                private route: ActivatedRoute,
-                private configService: ConfigService) {
-    }
+    constructor(
+        private router: Router,
+        public elasticSearchService: ElasticSearchService,
+        private mousetrap: MousetrapService,
+        private topNavService: TopNavService,
+        public appService: AppService,
+        public client: ClientService,
+        private api: ApiService,
+        private route: ActivatedRoute,
+        private configService: ConfigService
+    ) {}
 
     ngOnInit() {
         if (this.configService.hasFeature(FEATURE_REPORTING)) {
@@ -114,7 +114,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     gotoRoute(route: string) {
-        this.router.navigate([route], {queryParams: {}});
+        this.router.navigate([route], { queryParams: {} });
     }
 
     timeRangeChanged($event: any) {
@@ -122,7 +122,7 @@ export class TopNavComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.topNavService.setTimeRange($event.target.value);
         this.appService.dispatch({
             event: AppEventCode.TIME_RANGE_CHANGED,
-            data: $event.target.value
+            data: $event.target.value,
         });
     }
 

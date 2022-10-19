@@ -35,12 +35,9 @@ import { Chart, ChartConfiguration } from "chart.js";
 
 @Component({
     templateUrl: "alerts-report.component.html",
-    animations: [
-        loadingAnimation,
-    ]
+    animations: [loadingAnimation],
 })
 export class AlertReportComponent implements OnInit, OnDestroy {
-
     eventsOverTime: any[] = [];
 
     sourceRows: any[];
@@ -61,17 +58,17 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    constructor(private appService: AppService,
-                private ss: EveboxSubscriptionService,
-                private route: ActivatedRoute,
-                private reports: ReportsService,
-                private api: ApiService,
-                private topNavService: TopNavService,
-                private elasticSearch: ElasticSearchService) {
-    }
+    constructor(
+        private appService: AppService,
+        private ss: EveboxSubscriptionService,
+        private route: ActivatedRoute,
+        private reports: ReportsService,
+        private api: ApiService,
+        private topNavService: TopNavService,
+        private elasticSearch: ElasticSearchService
+    ) {}
 
     ngOnInit(): void {
-
         if (this.route.snapshot.queryParams.q) {
             this.queryString = this.route.snapshot.queryParams.q;
         }
@@ -86,7 +83,6 @@ export class AlertReportComponent implements OnInit, OnDestroy {
                 this.refresh();
             }
         });
-
     }
 
     ngOnDestroy(): void {
@@ -98,15 +94,15 @@ export class AlertReportComponent implements OnInit, OnDestroy {
 
     load(fn: any): void {
         this.loading++;
-        fn().then(() => {
-        }).catch((err) => {
-        }).then(() => {
-            this.loading--;
-        });
+        fn()
+            .then(() => {})
+            .catch((err) => {})
+            .then(() => {
+                this.loading--;
+            });
     }
 
     refresh(): void {
-
         const size = 10;
 
         this.sourceRows = undefined;
@@ -123,112 +119,128 @@ export class AlertReportComponent implements OnInit, OnDestroy {
         };
 
         this.load(() => {
-            return this.api.reportAgg("alert.signature", aggOptions)
+            return this.api
+                .reportAgg("alert.signature", aggOptions)
                 .then((response: any) => {
                     this.signatureRows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("alert.category", aggOptions)
+            return this.api
+                .reportAgg("alert.category", aggOptions)
                 .then((response: any) => {
                     this.categoryRows = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("src_ip", aggOptions)
+            return this.api
+                .reportAgg("src_ip", aggOptions)
                 .then((response: any) => {
                     this.sourceRows = response.data;
 
                     this.sourceRows.forEach((row: any) => {
-                        this.elasticSearch.resolveHostnameForIp(row.key).then((hostname: string) => {
-                            if (hostname) {
-                                row.searchKey = row.key;
-                                row.key = `${row.key} (${hostname})`;
-                            }
-                        });
+                        this.elasticSearch
+                            .resolveHostnameForIp(row.key)
+                            .then((hostname: string) => {
+                                if (hostname) {
+                                    row.searchKey = row.key;
+                                    row.key = `${row.key} (${hostname})`;
+                                }
+                            });
                     });
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dest_ip", aggOptions)
+            return this.api
+                .reportAgg("dest_ip", aggOptions)
                 .then((response: any) => {
                     this.destinationRows = response.data;
 
                     this.destinationRows.forEach((row: any) => {
-                        this.elasticSearch.resolveHostnameForIp(row.key).then((hostname: string) => {
-                            if (hostname) {
-                                row.searchKey = row.key;
-                                row.key = `${row.key} (${hostname})`;
-                            }
-                        });
+                        this.elasticSearch
+                            .resolveHostnameForIp(row.key)
+                            .then((hostname: string) => {
+                                if (hostname) {
+                                    row.searchKey = row.key;
+                                    row.key = `${row.key} (${hostname})`;
+                                }
+                            });
                     });
-
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("src_port", aggOptions)
+            return this.api
+                .reportAgg("src_port", aggOptions)
                 .then((response: any) => {
                     this.srcPorts = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportAgg("dest_port", aggOptions)
+            return this.api
+                .reportAgg("dest_port", aggOptions)
                 .then((response: any) => {
                     this.destPorts = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportHistogram({
-                timeRange: timeRangeSeconds,
-                interval: this.reports.histogramTimeInterval(timeRangeSeconds),
-                eventType: "alert",
-                queryString: this.queryString,
-            }).then((response: any) => {
-                const dataValues = [];
-                const dataLabels = [];
-                response.data.forEach((e: any) => {
-                    dataValues.push(e.count);
-                    dataLabels.push(moment(e.key).toDate());
-                });
-                const ctx = getCanvasElementById("eventsOverTimeChart");
-                const config: ChartConfiguration = {
-                    type: "bar",
-                    data: {
-                        labels: dataLabels,
-                        datasets: [{
-                            data: dataValues,
-                            backgroundColor: getColourPalette(dataValues.length),
-                        }]
-                    },
-                    options: {
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: "Alerts Over Time",
-                                padding: 0,
+            return this.api
+                .reportHistogram({
+                    timeRange: timeRangeSeconds,
+                    interval:
+                        this.reports.histogramTimeInterval(timeRangeSeconds),
+                    eventType: "alert",
+                    queryString: this.queryString,
+                })
+                .then((response: any) => {
+                    const dataValues = [];
+                    const dataLabels = [];
+                    response.data.forEach((e: any) => {
+                        dataValues.push(e.count);
+                        dataLabels.push(moment(e.key).toDate());
+                    });
+                    const ctx = getCanvasElementById("eventsOverTimeChart");
+                    const config: ChartConfiguration = {
+                        type: "bar",
+                        data: {
+                            labels: dataLabels,
+                            datasets: [
+                                {
+                                    data: dataValues,
+                                    backgroundColor: getColourPalette(
+                                        dataValues.length
+                                    ),
+                                },
+                            ],
+                        },
+                        options: {
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: "Alerts Over Time",
+                                    padding: 0,
+                                },
+                                legend: {
+                                    display: false,
+                                },
                             },
-                            legend: {
-                                display: false,
+                            scales: {
+                                x: {
+                                    type: "time",
+                                },
                             },
                         },
-                        scales: {
-                            x: {
-                                type: "time",
-                            }
-                        }
-                    },
-                };
-                if (this.charts.eventsOverTime) {
-                    this.charts.eventsOverTime.destroy();
-                }
-                this.charts.eventsOverTime = new Chart(ctx, config);
-            });
+                    };
+                    if (this.charts.eventsOverTime) {
+                        this.charts.eventsOverTime.destroy();
+                    }
+                    this.charts.eventsOverTime = new Chart(ctx, config);
+                });
         });
     }
 }

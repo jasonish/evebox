@@ -24,15 +24,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
+import { Injectable } from "@angular/core";
 
 @Injectable()
 export class EveboxSubscriptionService {
-
     private subscriptions: any = {};
 
     subscribe(id: any, subscribable: any, handler: any) {
-
         let subscription = subscribable.subscribe(handler);
 
         if (!this.subscriptions[id]) {
@@ -40,11 +38,9 @@ export class EveboxSubscriptionService {
         }
 
         this.subscriptions[id].push(subscription);
-
     }
 
     unsubscribe(id: any) {
-
         if (!this.subscriptions[id]) {
             return;
         }
@@ -54,6 +50,5 @@ export class EveboxSubscriptionService {
         });
 
         this.subscriptions[id] = [];
-
     }
 }

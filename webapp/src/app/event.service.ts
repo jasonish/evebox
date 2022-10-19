@@ -24,15 +24,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Injectable} from '@angular/core';
-import {AlertGroup} from './elasticsearch.service';
+import { Injectable } from "@angular/core";
+import { AlertGroup } from "./elasticsearch.service";
 
 /**
  * Service to support EventComponent.
  */
 @Injectable()
 export class EventService {
-
     private alertGroup: AlertGroup[] = [];
 
     pushAlertGroup(alertGroup: AlertGroup) {
@@ -42,5 +41,4 @@ export class EventService {
     popAlertGroup(): AlertGroup {
         return this.alertGroup.shift();
     }
-
 }

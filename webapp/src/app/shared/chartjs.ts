@@ -24,8 +24,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { Chart, registerables } from 'chart.js';
-import 'chartjs-adapter-moment';
+import { Chart, registerables } from "chart.js";
+import "chartjs-adapter-moment";
 import * as palette from "google-palette";
 
 export function initChartjs(): void {
@@ -34,7 +34,7 @@ export function initChartjs(): void {
 
 export function getColourPalette(count: number): string[] {
     const colours = palette("qualitative", count);
-    return colours.map(colour => {
+    return colours.map((colour) => {
         return "#" + colour;
     });
 }

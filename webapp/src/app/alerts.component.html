@@ -1,262 +1,504 @@
 <div style="position: relative">
-  <div class="evebox-fixed-toolbar pt-2 pb-2">
-    <div class="row">
-      <div class="col">
-        <button type="button" class="btn btn-secondary me-2" (click)="refresh()" [disabled]="loading"
-                style="padding-left: 0; padding-right: 13px;">
-          <span *ngIf="!loading" class="spinner-border spinner-border-sm" style="visibility: hidden"></span><span
-            *ngIf="loading" class="spinner-border spinner-border-sm"></span>Refresh
-        </button>
-        <button *ngIf="rows && rows.length > 0 && !allSelected()" type="button" class="btn btn-secondary me-2"
-                (click)="selectAllRows()">Select All
-        </button>
-        <button *ngIf="rows && rows.length > 0 && allSelected()" type="button" class="btn btn-secondary me-2"
-                (click)="deselectAllRows()">Deselect All
-        </button>
-        <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-                type="button"
-                class="btn btn-secondary me-2"
-                (click)="archiveSelected()">Archive
-        </button>
-        <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-                type="button"
-                class="btn btn-secondary"
-                (click)="escalateSelected()">Escalate
-        </button>
-      </div>
-      <div class="col">
-        <form (submit)="submitFilter()">
-          <div class="input-group">
-            <input type="text" class="form-control" placeholder="Filter..." [(ngModel)]="queryString"
-                   name="queryString">
-            <button class="btn btn-secondary" type="submit">Apply</button>
-            <button class="btn btn-secondary" type="button" (click)="clearFilter()">Clear</button>
-          </div>
-        </form>
-      </div>
+    <div class="evebox-fixed-toolbar pt-2 pb-2">
+        <div class="row">
+            <div class="col">
+                <button
+                    type="button"
+                    class="btn btn-secondary me-2"
+                    (click)="refresh()"
+                    [disabled]="loading"
+                    style="padding-left: 0; padding-right: 13px"
+                >
+                    <span
+                        *ngIf="!loading"
+                        class="spinner-border spinner-border-sm"
+                        style="visibility: hidden"
+                    ></span
+                    ><span
+                        *ngIf="loading"
+                        class="spinner-border spinner-border-sm"
+                    ></span
+                    >Refresh
+                </button>
+                <button
+                    *ngIf="rows && rows.length > 0 && !allSelected()"
+                    type="button"
+                    class="btn btn-secondary me-2"
+                    (click)="selectAllRows()"
+                >
+                    Select All
+                </button>
+                <button
+                    *ngIf="rows && rows.length > 0 && allSelected()"
+                    type="button"
+                    class="btn btn-secondary me-2"
+                    (click)="deselectAllRows()"
+                >
+                    Deselect All
+                </button>
+                <button
+                    *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                    type="button"
+                    class="btn btn-secondary me-2"
+                    (click)="archiveSelected()"
+                >
+                    Archive
+                </button>
+                <button
+                    *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                    type="button"
+                    class="btn btn-secondary"
+                    (click)="escalateSelected()"
+                >
+                    Escalate
+                </button>
+            </div>
+            <div class="col">
+                <form (submit)="submitFilter()">
+                    <div class="input-group">
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="Filter..."
+                            [(ngModel)]="queryString"
+                            name="queryString"
+                        />
+                        <button class="btn btn-secondary" type="submit">
+                            Apply
+                        </button>
+                        <button
+                            class="btn btn-secondary"
+                            type="button"
+                            (click)="clearFilter()"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
-<div style="visibility: hidden;">
-  <div class="pt-2 pb-2">
-    <div class="row">
-      <div class="col">
-        <button type="button" class="btn btn-secondary me-2" (click)="refresh()">Refresh</button>
-        <button *ngIf="rows && rows.length > 0 && !allSelected()" type="button" class="btn btn-secondary"
-                (click)="selectAllRows()">Select All
-        </button>
-        <button *ngIf="rows && rows.length > 0 && allSelected()" type="button" class="btn btn-secondary me-2"
-                (click)="deselectAllRows()">Deselect All
-        </button>
-        <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-                type="button"
-                class="btn btn-secondary me-2"
-                (click)="archiveSelected()">Archive
-        </button>
-        <button *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
-                type="button"
-                class="btn btn-secondary"
-                (click)="escalateSelected()">Escalate
-        </button>
-      </div>
-      <div class="col">
-        <form (submit)="submitFilter()">
-          <div class="input-group">
-            <input type="text" class="form-control" placeholder="Filter..." [(ngModel)]="queryString"
-                   name="queryString">
-            <button class="btn btn-outline-secondary" type="submit">Apply</button>
-            <button class="btn btn-outline-secondary" type="button" (click)="clearFilter()">Clear</button>
-          </div>
-        </form>
-      </div>
+<div style="visibility: hidden">
+    <div class="pt-2 pb-2">
+        <div class="row">
+            <div class="col">
+                <button
+                    type="button"
+                    class="btn btn-secondary me-2"
+                    (click)="refresh()"
+                >
+                    Refresh
+                </button>
+                <button
+                    *ngIf="rows && rows.length > 0 && !allSelected()"
+                    type="button"
+                    class="btn btn-secondary"
+                    (click)="selectAllRows()"
+                >
+                    Select All
+                </button>
+                <button
+                    *ngIf="rows && rows.length > 0 && allSelected()"
+                    type="button"
+                    class="btn btn-secondary me-2"
+                    (click)="deselectAllRows()"
+                >
+                    Deselect All
+                </button>
+                <button
+                    *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                    type="button"
+                    class="btn btn-secondary me-2"
+                    (click)="archiveSelected()"
+                >
+                    Archive
+                </button>
+                <button
+                    *ngIf="rows && rows.length > 0 && getSelectedCount() > 0"
+                    type="button"
+                    class="btn btn-secondary"
+                    (click)="escalateSelected()"
+                >
+                    Escalate
+                </button>
+            </div>
+            <div class="col">
+                <form (submit)="submitFilter()">
+                    <div class="input-group">
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="Filter..."
+                            [(ngModel)]="queryString"
+                            name="queryString"
+                        />
+                        <button class="btn btn-outline-secondary" type="submit">
+                            Apply
+                        </button>
+                        <button
+                            class="btn btn-outline-secondary"
+                            type="button"
+                            (click)="clearFilter()"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <div *ngIf="!loading && rows && rows.length == 0" class="row">
-  <div class="col">
-    <div class="alert alert-warning text-center" role="alert">
-      No events found.
+    <div class="col">
+        <div class="alert alert-warning text-center" role="alert">
+            No events found.
+        </div>
     </div>
-  </div>
 </div>
 
 <div class="row align-items-center mb-2" *ngIf="rows && rows.length > 0">
-  <div class="col">
-    Showing {{offset + 1}}-{{offset + rows.length}} of {{allRows.length}}.
-  </div>
-  <div class="col">
-    <div class="btn-group float-end" role="group">
-      <button [disabled]="offset == 0"
-              type="button"
-              class="btn btn-secondary" (click)="newest()">Newest
-      </button>
-      <button [disabled]="offset == 0"
-              type="button"
-              class="btn btn-secondary" (click)="newer()">Newer
-      </button>
-      <button
-          [disabled]="rows.length == allRows.length || offset + windowSize >= allRows.length"
-          type="button"
-          class="btn btn-secondary" (click)="older()">Older
-      </button>
-      <button
-          [disabled]="rows.length == allRows.length || offset + windowSize >= allRows.length"
-          type="button"
-          class="btn btn-secondary" (click)="oldest()">Oldest
-      </button>
-      <div class="btn-group" ngbDropdown role="group" container="body">
-        <button type="button" class="btn btn-secondary" ngbDropdownToggle></button>
-        <div class="dropdown-menu dropdown-menu-start" ngbDropdownMenu>
-          <button ngbDropdownItem (click)="showAll()">View All</button>
-        </div>
-      </div>
+    <div class="col">
+        Showing {{ offset + 1 }}-{{ offset + rows.length }} of
+        {{ allRows.length }}.
     </div>
-  </div>
+    <div class="col">
+        <div class="btn-group float-end" role="group">
+            <button
+                [disabled]="offset == 0"
+                type="button"
+                class="btn btn-secondary"
+                (click)="newest()"
+            >
+                Newest
+            </button>
+            <button
+                [disabled]="offset == 0"
+                type="button"
+                class="btn btn-secondary"
+                (click)="newer()"
+            >
+                Newer
+            </button>
+            <button
+                [disabled]="
+                    rows.length == allRows.length ||
+                    offset + windowSize >= allRows.length
+                "
+                type="button"
+                class="btn btn-secondary"
+                (click)="older()"
+            >
+                Older
+            </button>
+            <button
+                [disabled]="
+                    rows.length == allRows.length ||
+                    offset + windowSize >= allRows.length
+                "
+                type="button"
+                class="btn btn-secondary"
+                (click)="oldest()"
+            >
+                Oldest
+            </button>
+            <div class="btn-group" ngbDropdown role="group" container="body">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    ngbDropdownToggle
+                ></button>
+                <div class="dropdown-menu dropdown-menu-start" ngbDropdownMenu>
+                    <button ngbDropdownItem (click)="showAll()">
+                        View All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div *ngIf="rows && rows.length > 0">
-  <div class="table-responsive" style="overflow: inherit !important;">
+    <div class="table-responsive" style="overflow: inherit !important">
+        <table
+            class="table table-sm evebox-event-table"
+            style="margin-bottom: 0px"
+            eveboxKeyTable
+            [rows]="rows"
+            [(activeRow)]="activeRow"
+        >
+            <thead>
+                <tr>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th style="white-space: nowrap">
+                        <a (click)="onSort('count')"
+                            >#
+                            <i
+                                *ngIf="sortBy == 'count' && sortOrder == 'desc'"
+                                class="fa fa-caret-up"
+                            ></i>
+                            <i
+                                *ngIf="sortBy == 'count' && sortOrder == 'asc'"
+                                class="fa fa-caret-down"
+                            ></i>
+                        </a>
+                    </th>
+                    <th>
+                        <a (click)="onSort('timestamp')">
+                            Timestamp
+                            <i
+                                *ngIf="
+                                    sortBy == 'timestamp' && sortOrder == 'desc'
+                                "
+                                class="fa fa-caret-up"
+                            ></i>
+                            <i
+                                *ngIf="
+                                    sortBy == 'timestamp' && sortOrder == 'asc'
+                                "
+                                class="fa fa-caret-down"
+                            ></i>
+                        </a>
+                    </th>
+                    <th>
+                        <a (click)="onSort('source')"
+                            >Src
+                            <span
+                                *ngIf="
+                                    sortBy == 'source' && sortOrder == 'desc'
+                                "
+                                ><i class="fa fa-caret-up"></i
+                            ></span>
+                            <span
+                                *ngIf="sortBy == 'source' && sortOrder == 'asc'"
+                                ><i class="fa fa-caret-down"></i
+                            ></span> </a
+                        >/
+                        <a (click)="onSort('dest')"
+                            >Dst
+                            <span
+                                *ngIf="sortBy == 'dest' && sortOrder == 'desc'"
+                                ><i class="fa fa-caret-up"></i
+                            ></span>
+                            <span *ngIf="sortBy == 'dest' && sortOrder == 'asc'"
+                                ><i class="fa fa-caret-down"></i
+                            ></span>
+                        </a>
+                    </th>
+                    <th width="50%">
+                        <a (click)="onSort('signature')"
+                            >Signature
+                            <i
+                                *ngIf="
+                                    sortBy == 'signature' && sortOrder == 'desc'
+                                "
+                                class="fa fa-caret-up"
+                            >
+                            </i>
+                            <i
+                                *ngIf="
+                                    sortBy == 'signature' && sortOrder == 'asc'
+                                "
+                                class="fa fa-caret-down"
+                            >
+                            </i>
+                        </a>
+                    </th>
+                </tr>
+            </thead>
 
-    <table class="table table-sm evebox-event-table"
-           style="margin-bottom: 0px;"
-           eveboxKeyTable [rows]="rows" [(activeRow)]="activeRow">
-
-      <thead>
-      <tr>
-        <th></th>
-        <th></th>
-        <th></th>
-        <th style="white-space: nowrap;"><a (click)="onSort('count')">#
-          <i *ngIf="sortBy == 'count' && sortOrder == 'desc'"
-             class="fa fa-caret-up"></i>
-          <i *ngIf="sortBy == 'count' && sortOrder == 'asc'"
-             class="fa fa-caret-down"></i>
-        </a></th>
-        <th><a (click)="onSort('timestamp')">
-          Timestamp
-          <i *ngIf="sortBy == 'timestamp' && sortOrder == 'desc'"
-             class="fa fa-caret-up"></i>
-          <i *ngIf="sortBy == 'timestamp' && sortOrder == 'asc'"
-             class="fa fa-caret-down"></i>
-        </a></th>
-        <th>
-          <a (click)="onSort('source')">Src
-            <span *ngIf="sortBy == 'source' && sortOrder == 'desc'"><i
-                class="fa fa-caret-up"></i></span>
-            <span *ngIf="sortBy == 'source' && sortOrder == 'asc'"><i
-                class="fa fa-caret-down"></i></span>
-          </a>/
-          <a (click)="onSort('dest')">Dst
-            <span *ngIf="sortBy == 'dest' && sortOrder == 'desc'"><i
-                class="fa fa-caret-up"></i></span>
-            <span *ngIf="sortBy == 'dest' && sortOrder == 'asc'"><i
-                class="fa fa-caret-down"></i></span>
-          </a>
-        </th>
-        <th width="50%"><a (click)="onSort('signature')">Signature <i
-            *ngIf="sortBy == 'signature' && sortOrder == 'desc'"
-            class="fa fa-caret-up"> </i>
-          <i *ngIf="sortBy == 'signature' && sortOrder == 'asc'"
-             class="fa fa-caret-down"> </i>
-        </a></th>
-      </tr>
-      </thead>
-
-      <tbody>
-      <tr *ngFor="let row of rows; let i = index" id="row-{{i}}"
-          [ngClass]="row.event.event | eventSeverityToBootstrapClass:'evebox-bg-'"
-          (click)="rowClicked(row)" class="align-items-center">
-        <td style="width: 1% !important;">
-          <i *ngIf="i == activeRow" class="fa fa-chevron-right"
-             aria-hidden="true"></i>
-        </td>
-        <td class="clearfix" style="width: 1% !important;">
-          <input type="checkbox" [(ngModel)]="row.selected"
-                 (click)="$event.stopPropagation()">
-        </td>
-        <td (click)="$event.stopPropagation(); toggleEscalatedState(row)"
-            style="width: 1% !important;">
-          <i *ngIf="row.event.escalatedCount == 0"
-             class="fa fa-star-o"></i>
-          <i *ngIf="row.event.escalatedCount == row.event.count"
-             class="fa fa-star"></i>
-          <i *ngIf="row.event.escalatedCount > 0 &&  row.event.escalatedCount != row.event.count"
-             class="fa fa-star-half-o"></i>
-        </td>
-        <td style="width: 1% !important;">{{row.event.count}}</td>
-        <td class="text-nowrap" style="width: 1%;">
-          {{row.date | eveboxFormatTimestamp}}
-          <br/>
-          <evebox-duration style="color:gray"
-                           [timestamp]="row.event.maxTs"></evebox-duration>
-        </td>
-        <td class="text-nowrap" style="width: 1% !important">
-          <label>S:</label>
-          {{row.event.event._source.src_ip | eveboxFormatIpAddress}}
-          <br/>
-          <label>D:</label>
-          {{row.event.event._source.dest_ip | eveboxFormatIpAddress}}
-        </td>
-        <td>
-          <div *ngIf="!isArchived(row)" class="btn-group float-end"
-               (click)="$event.stopPropagation();">
-            <button type="button"
-                    class="btn btn-secondary"
-                    (click)="archiveAlertGroup(row)">
-              Archive
-            </button>
-            <button type="button" class="btn btn-secondary"
-                    title="Escalate and Archive"
-                    (click)="escalateAndArchiveEvent(row);">
-              <!-- This is supposed to be a star with an archive box overlaid,
+            <tbody>
+                <tr
+                    *ngFor="let row of rows; let i = index"
+                    id="row-{{ i }}"
+                    [ngClass]="
+                        row.event.event
+                            | eventSeverityToBootstrapClass: 'evebox-bg-'
+                    "
+                    (click)="rowClicked(row)"
+                    class="align-items-center"
+                >
+                    <td style="width: 1% !important">
+                        <i
+                            *ngIf="i == activeRow"
+                            class="fa fa-chevron-right"
+                            aria-hidden="true"
+                        ></i>
+                    </td>
+                    <td class="clearfix" style="width: 1% !important">
+                        <input
+                            type="checkbox"
+                            [(ngModel)]="row.selected"
+                            (click)="$event.stopPropagation()"
+                        />
+                    </td>
+                    <td
+                        (click)="
+                            $event.stopPropagation(); toggleEscalatedState(row)
+                        "
+                        style="width: 1% !important"
+                    >
+                        <i
+                            *ngIf="row.event.escalatedCount == 0"
+                            class="fa fa-star-o"
+                        ></i>
+                        <i
+                            *ngIf="row.event.escalatedCount == row.event.count"
+                            class="fa fa-star"
+                        ></i>
+                        <i
+                            *ngIf="
+                                row.event.escalatedCount > 0 &&
+                                row.event.escalatedCount != row.event.count
+                            "
+                            class="fa fa-star-half-o"
+                        ></i>
+                    </td>
+                    <td style="width: 1% !important">{{ row.event.count }}</td>
+                    <td class="text-nowrap" style="width: 1%">
+                        {{ row.date | eveboxFormatTimestamp }}
+                        <br />
+                        <evebox-duration
+                            style="color: gray"
+                            [timestamp]="row.event.maxTs"
+                        ></evebox-duration>
+                    </td>
+                    <td class="text-nowrap" style="width: 1% !important">
+                        <label>S:</label>
+                        {{
+                            row.event.event._source.src_ip
+                                | eveboxFormatIpAddress
+                        }}
+                        <br />
+                        <label>D:</label>
+                        {{
+                            row.event.event._source.dest_ip
+                                | eveboxFormatIpAddress
+                        }}
+                    </td>
+                    <td>
+                        <div
+                            *ngIf="!isArchived(row)"
+                            class="btn-group float-end"
+                            (click)="$event.stopPropagation()"
+                        >
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                (click)="archiveAlertGroup(row)"
+                            >
+                                Archive
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                title="Escalate and Archive"
+                                (click)="escalateAndArchiveEvent(row)"
+                            >
+                                <!-- This is supposed to be a star with an archive box overlaid,
                  the idea behing to escalate and archive the event. -->
-              <i class="fa fa-star-o fa-lg"></i>
-              <i class="fa fa-archive"
-                 style="position: absolute; left: 50%; top: 40%"></i>
-            </button>
+                                <i class="fa fa-star-o fa-lg"></i>
+                                <i
+                                    class="fa fa-archive"
+                                    style="
+                                        position: absolute;
+                                        left: 50%;
+                                        top: 40%;
+                                    "
+                                ></i>
+                            </button>
 
-            <div class="btn-group" ngbDropdown role="group">
-              <button type="button" class="btn btn-secondary" ngbDropdownToggle></button>
-              <div class="dropdown-menu" ngbDropdownMenu>
-                <button class="dropdown-item" href="javascript:void(0);"
-                        (click)="selectBySignatureId(row)">
-                  Select all with SID: {{row.event.event._source.alert.signature_id}}
-                </button>
-                <button ngbDropdownItem
-                        (click)="filterBySignatureId(row)">
-                  Filter on SID: {{row.event.event._source.alert.signature_id}}
-                </button>
-                <button ngbDropdownItem
-                        [routerLink]="['/reports/ip', {ip: row.event.event._source.src_ip}]">
-                  Source IP report for {{row.event.event._source.src_ip}}
-                </button>
-                <button ngbDropdownItem
-                        [routerLink]="['/reports/ip', {ip: row.event.event._source.dest_ip}]">
-                  Destination IP report for {{row.event.event._source.dest_ip}}
-                </button>
-              </div>
-            </div>
-          </div>
+                            <div class="btn-group" ngbDropdown role="group">
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    ngbDropdownToggle
+                                ></button>
+                                <div class="dropdown-menu" ngbDropdownMenu>
+                                    <button
+                                        class="dropdown-item"
+                                        href="javascript:void(0);"
+                                        (click)="selectBySignatureId(row)"
+                                    >
+                                        Select all with SID:
+                                        {{
+                                            row.event.event._source.alert
+                                                .signature_id
+                                        }}
+                                    </button>
+                                    <button
+                                        ngbDropdownItem
+                                        (click)="filterBySignatureId(row)"
+                                    >
+                                        Filter on SID:
+                                        {{
+                                            row.event.event._source.alert
+                                                .signature_id
+                                        }}
+                                    </button>
+                                    <button
+                                        ngbDropdownItem
+                                        [routerLink]="[
+                                            '/reports/ip',
+                                            {
+                                                ip: row.event.event._source
+                                                    .src_ip
+                                            }
+                                        ]"
+                                    >
+                                        Source IP report for
+                                        {{ row.event.event._source.src_ip }}
+                                    </button>
+                                    <button
+                                        ngbDropdownItem
+                                        [routerLink]="[
+                                            '/reports/ip',
+                                            {
+                                                ip: row.event.event._source
+                                                    .dest_ip
+                                            }
+                                        ]"
+                                    >
+                                        Destination IP report for
+                                        {{ row.event.event._source.dest_ip }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
-          <span *ngIf="row.event.event._source.alert.action != 'allowed'"
-                class="badge bg-warning">{{row.event.event._source.alert.action
-          | uppercase}}</span>
-          <span
-              [innerHTML]="row.event.event | eveboxEventDescriptionPrinter"></span>
-          <span class="badge bg-secondary mx-2"
-                *ngIf="row.event.event._source.app_proto && row.event.event._source.app_proto != 'failed'">
-            {{row.event.event._source.app_proto}}
-          </span>
-        </td>
-      </tr>
-      </tbody>
-
-    </table>
-
-  </div>
-
+                        <span
+                            *ngIf="
+                                row.event.event._source.alert.action !=
+                                'allowed'
+                            "
+                            class="badge bg-warning"
+                            >{{
+                                row.event.event._source.alert.action | uppercase
+                            }}</span
+                        >
+                        <span
+                            [innerHTML]="
+                                row.event.event | eveboxEventDescriptionPrinter
+                            "
+                        ></span>
+                        <span
+                            class="badge bg-secondary mx-2"
+                            *ngIf="
+                                row.event.event._source.app_proto &&
+                                row.event.event._source.app_proto != 'failed'
+                            "
+                        >
+                            {{ row.event.event._source.app_proto }}
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<br/>
+<br />

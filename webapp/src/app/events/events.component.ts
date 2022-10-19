@@ -29,17 +29,14 @@ import { EveboxSubscriptionService } from "../subscription.service";
 import { loadingAnimation } from "../animations";
 import { ApiService } from "../api.service";
 import { debounce, finalize } from "rxjs/operators";
-import { EVENT_TYPES } from '../shared/eventtypes';
+import { EVENT_TYPES } from "../shared/eventtypes";
 import { combineLatest, interval } from "rxjs";
 
 @Component({
     templateUrl: "./events.component.html",
-    animations: [
-        loadingAnimation,
-    ]
+    animations: [loadingAnimation],
 })
 export class EventsComponent implements OnInit, OnDestroy {
-
     model: any = {
         newestTimestamp: "",
         oldestTimestamp: "",
@@ -61,35 +58,34 @@ export class EventsComponent implements OnInit, OnDestroy {
     timeEnd: string;
     private order: string;
 
-    constructor(private route: ActivatedRoute,
-                private router: Router,
-                private elasticsearch: ElasticSearchService,
-                private mousetrap: MousetrapService,
-                private appService: AppService,
-                private toastr: ToastrService,
-                private api: ApiService) {
-    }
+    constructor(
+        private route: ActivatedRoute,
+        private router: Router,
+        private elasticsearch: ElasticSearchService,
+        private mousetrap: MousetrapService,
+        private appService: AppService,
+        private toastr: ToastrService,
+        private api: ApiService
+    ) {}
 
     ngOnInit(): any {
+        combineLatest([this.route.queryParams, this.route.params])
+            .pipe(debounce(() => interval(100)))
+            .subscribe(([queryParams, params]) => {
+                let qp: any = this.route.snapshot.queryParams;
 
-        combineLatest([
-            this.route.queryParams,
-            this.route.params,
-        ]).pipe(debounce(() => interval(100))).subscribe(([queryParams, params]) => {
-            let qp: any = this.route.snapshot.queryParams;
+                this.timeStart = params.timeStart || qp.timeStart;
+                this.timeEnd = params.timeEnd || qp.timeEnd;
 
-            this.timeStart = params.timeStart || qp.timeStart;
-            this.timeEnd = params.timeEnd || qp.timeEnd;
+                if (params.eventType) {
+                    this.setEventTypeFilterByEventType(params.eventType);
+                }
 
-            if (params.eventType) {
-                this.setEventTypeFilterByEventType(params.eventType);
-            }
+                this.order = params.order;
 
-            this.order = params.order;
-
-            this.queryString = queryParams.q;
-            this.refresh();
-        });
+                this.queryString = queryParams.q;
+                this.refresh();
+            });
 
         // Use setTimeout to prevent ExpressionChangedAfterItHasBeenCheckedError.
         setTimeout(() => {
@@ -111,7 +107,9 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     setEventTypeFilter(type: any) {
         this.eventTypeFilter = type;
-        this.appService.updateParams(this.route, {eventType: this.eventTypeFilter.eventType});
+        this.appService.updateParams(this.route, {
+            eventType: this.eventTypeFilter.eventType,
+        });
     }
 
     ngOnDestroy() {
@@ -127,7 +125,7 @@ export class EventsComponent implements OnInit, OnDestroy {
         this.router.navigate([], {
             queryParams: {
                 q: this.queryString,
-            }
+            },
         });
     }
 
@@ -182,45 +180,59 @@ export class EventsComponent implements OnInit, OnDestroy {
         this.model.events = [];
         this.loading = true;
 
-        this.api.eventQuery({
-            queryString: this.queryString,
-            maxTs: this.timeEnd,
-            minTs: this.timeStart,
-            eventType: this.eventTypeFilter.eventType,
-            sortOrder: this.order,
-        }).pipe(finalize(() => {
-            this.loading = false;
-        })).subscribe((response) => {
-            let events = response.data;
+        this.api
+            .eventQuery({
+                queryString: this.queryString,
+                maxTs: this.timeEnd,
+                minTs: this.timeStart,
+                eventType: this.eventTypeFilter.eventType,
+                sortOrder: this.order,
+            })
+            .pipe(
+                finalize(() => {
+                    this.loading = false;
+                })
+            )
+            .subscribe(
+                (response) => {
+                    let events = response.data;
 
-            console.log("Got reponse...");
+                    console.log("Got reponse...");
 
-            // If the sortOrder is "asc", reverse to put back into descending sortOrder.
-            if (this.order === "asc") {
-                events = events.reverse();
-            }
+                    // If the sortOrder is "asc", reverse to put back into descending sortOrder.
+                    if (this.order === "asc") {
+                        events = events.reverse();
+                    }
 
-            if (response.ecs) {
-                console.log("Transforming ECS events...");
-                events.forEach((event) => {
-                    transformEcsEvent(event);
-                });
-                console.log("Done transforming ECS events...");
-            }
+                    if (response.ecs) {
+                        console.log("Transforming ECS events...");
+                        events.forEach((event) => {
+                            transformEcsEvent(event);
+                        });
+                        console.log("Done transforming ECS events...");
+                    }
 
-            console.log(events[0]);
+                    console.log(events[0]);
 
-            if (events.length > 0) {
-                this.model.newestTimestamp = events[0]._source["@timestamp"];
-                this.model.oldestTimestamp = events[events.length - 1]._source["@timestamp"];
+                    if (events.length > 0) {
+                        this.model.newestTimestamp =
+                            events[0]._source["@timestamp"];
+                        this.model.oldestTimestamp =
+                            events[events.length - 1]._source["@timestamp"];
 
-                console.log(`Newest event: ${this.model.newestTimestamp}`);
-                console.log(`Oldest event: ${this.model.oldestTimestamp}`);
-            }
-            this.model.events = events;
-        }, (error) => {
-            this.setError(error);
-        });
+                        console.log(
+                            `Newest event: ${this.model.newestTimestamp}`
+                        );
+                        console.log(
+                            `Oldest event: ${this.model.oldestTimestamp}`
+                        );
+                    }
+                    this.model.events = events;
+                },
+                (error) => {
+                    this.setError(error);
+                }
+            );
     }
 
     private setError(error: string) {
@@ -230,7 +242,6 @@ export class EventsComponent implements OnInit, OnDestroy {
     private clearError() {
         this.error = null;
     }
-
 }
 
 export function transformEcsEvent(event: any): void {

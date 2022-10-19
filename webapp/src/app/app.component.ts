@@ -24,32 +24,34 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit} from "@angular/core";
-import {AppService} from "./app.service";
-import {ClientService} from "./client.service";
+import { Component, OnInit } from "@angular/core";
+import { AppService } from "./app.service";
+import { ClientService } from "./client.service";
 
 declare var window: Window;
 
 @Component({
     selector: "app-root",
     template: `
-      <evebox-help *ngIf="client.isAuthenticated$ | async"></evebox-help>
-      <evebox-top-nav *ngIf="client.isAuthenticated$ | async"></evebox-top-nav>
-      <div class="container-fluid">
-        <router-outlet></router-outlet>
-      </div>
+        <evebox-help *ngIf="client.isAuthenticated$ | async"></evebox-help>
+        <evebox-top-nav
+            *ngIf="client.isAuthenticated$ | async"
+        ></evebox-top-nav>
+        <div class="container-fluid">
+            <router-outlet></router-outlet>
+        </div>
     `,
 })
 export class AppComponent implements OnInit {
-
-    constructor(private appService: AppService,
-                public client: ClientService) {
-    }
+    constructor(private appService: AppService, public client: ClientService) {}
 
     ngOnInit() {
-        window.addEventListener("click", () => {
-            this.appService.resetIdleTime();
-        }, true);
+        window.addEventListener(
+            "click",
+            () => {
+                this.appService.resetIdleTime();
+            },
+            true
+        );
     }
-
 }

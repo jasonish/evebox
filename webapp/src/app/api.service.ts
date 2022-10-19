@@ -37,13 +37,14 @@ const SESSION_HEADER = "x-evebox-session-id";
  */
 @Injectable()
 export class ApiService {
-
     private authenticated = false;
 
-    constructor(private httpClient: HttpClient,
-                public client: ClientService,
-                private router: Router,
-                private configService: ConfigService) {
+    constructor(
+        private httpClient: HttpClient,
+        public client: ClientService,
+        private router: Router,
+        private configService: ConfigService
+    ) {
         this.client._sessionId = localStorage._sessionId;
     }
 
@@ -80,8 +81,7 @@ export class ApiService {
         this.client.setAuthenticated(authenticated);
         if (!authenticated) {
             this.setSessionId(null);
-            this.router.navigate(["/login"]).then(() => {
-            });
+            this.router.navigate(["/login"]).then(() => {});
         }
     }
 
@@ -96,16 +96,21 @@ export class ApiService {
         return this.httpClient.options(this.client.buildUrl(path));
     }
 
-    doRequest(method: string, path: string, options: any = {}): Observable<any> {
+    doRequest(
+        method: string,
+        path: string,
+        options: any = {}
+    ): Observable<any> {
         const headers = options.headers || new HttpHeaders();
         options.headers = this.setSessionHeader(headers);
         options.observe = "response";
-        return this.httpClient.request<any>(method, path, options)
-            .pipe(map((response: any) => {
+        return this.httpClient.request<any>(method, path, options).pipe(
+            map((response: any) => {
                 this.client.updateSessionId(response);
                 this.checkVersion(response);
                 return response.body;
-            }), catchError((error) => {
+            }),
+            catchError((error) => {
                 if (error.error instanceof ErrorEvent) {
                     // Client side or network error.
                 } else {
@@ -114,7 +119,8 @@ export class ApiService {
                     }
                 }
                 return throwError(error);
-            }));
+            })
+        );
     }
 
     post(path: string, body: any, options: any = {}): Promise<any> {
@@ -123,7 +129,9 @@ export class ApiService {
     }
 
     updateConfig(): Promise<any> {
-        return this.client.get("api/1/config").toPromise()
+        return this.client
+            .get("api/1/config")
+            .toPromise()
             .then((config) => {
                 console.log("got config");
                 console.log(config);
@@ -147,28 +155,31 @@ export class ApiService {
     }
 
     login(username: string = "", password: string = ""): Promise<boolean> {
-        return this.client.login(username, password).toPromise()
+        return this.client
+            .login(username, password)
+            .toPromise()
             .then((response: LoginResponse) => {
                 this.setSessionId(response.session_id);
                 console.log("Login successful, updating configuration");
-                return this.updateConfig()
-                    .then(() => {
-                        this.setAuthenticated(true);
-                        return true;
-                    });
+                return this.updateConfig().then(() => {
+                    this.setAuthenticated(true);
+                    return true;
+                });
             });
     }
 
     logout(): Promise<any> {
-        return this.client.logout().pipe(
-            finalize(() => {
-                this.setAuthenticated(false);
-            })
-        ).toPromise();
+        return this.client
+            .logout()
+            .pipe(
+                finalize(() => {
+                    this.setAuthenticated(false);
+                })
+            )
+            .toPromise();
     }
 
     getWithParams(path: string, params = {}): Promise<any> {
-
         const qsb: any = [];
 
         for (const param of Object.keys(params)) {
@@ -185,7 +196,9 @@ export class ApiService {
     eventToPcap(what: any, event: any): void {
         // Set a cook with the session key to expire in 60 seconds from now.
         const expires = new Date(new Date().getTime() + 60000);
-        const cookie = `${SESSION_HEADER}=${this.client._sessionId}; expires=${expires.toUTCString()}`;
+        const cookie = `${SESSION_HEADER}=${
+            this.client._sessionId
+        }; expires=${expires.toUTCString()}`;
         console.log("Setting cookie: " + cookie);
         document.cookie = cookie;
 
@@ -240,7 +253,9 @@ export class ApiService {
             query.push(`event_type=${options.eventType}`);
         }
 
-        return this.client.get(`api/1/report/histogram?${query.join("&")}`).toPromise();
+        return this.client
+            .get(`api/1/report/histogram?${query.join("&")}`)
+            .toPromise();
     }
 
     reportAgg(agg: string, options: ReportAggOptions = {}): Promise<any> {
@@ -254,7 +269,7 @@ export class ApiService {
                 case "queryString":
                     params = params.append("query_string", `${options[key]}`);
                     break;
-                    case "eventType":
+                case "eventType":
                     params = params.append("event_type", `${options[key]}`);
                     break;
                 default:
@@ -270,7 +285,6 @@ export class ApiService {
      * Find events - all events, not just alerts.
      */
     eventQuery(options: EventQueryOptions = {}): Observable<any> {
-
         let params = new HttpParams();
 
         if (options.queryString) {
@@ -387,8 +401,6 @@ export class ApiService {
 
         return this.client.get("api/1/alerts", params);
     }
-
-
 }
 
 export interface ReportHistogramOptions {
@@ -412,7 +424,6 @@ export interface ReportAggOptions {
 
     // Subtype info.
     dnsType?: string;
-
 }
 
 export interface EventQueryOptions {

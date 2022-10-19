@@ -18,17 +18,23 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 // OR OTHER DEALINGS IN THE SOFTWARE.
 
-import {HttpParams} from "@angular/common/http";
-import {AfterViewInit, Component, OnDestroy, OnInit} from "@angular/core";
-import {AppEventCode, AppService} from "src/app/app.service";
-import {ClientService} from "src/app/client.service";
-import {TopNavService} from "src/app/topnav.service";
+import { HttpParams } from "@angular/common/http";
+import { AfterViewInit, Component, OnDestroy, OnInit } from "@angular/core";
+import { AppEventCode, AppService } from "src/app/app.service";
+import { ClientService } from "src/app/client.service";
+import { TopNavService } from "src/app/topnav.service";
 import * as moment from "moment";
-import {ActivatedRoute, Params} from "@angular/router";
-import {Observable} from "rxjs";
-import {finalize} from "rxjs/operators";
-import {animate, state, style, transition, trigger} from "@angular/animations";
-import {spinningLoaderAnimation} from "../../animations";
+import { ActivatedRoute, Params } from "@angular/router";
+import { Observable } from "rxjs";
+import { finalize } from "rxjs/operators";
+import {
+    animate,
+    state,
+    style,
+    transition,
+    trigger,
+} from "@angular/animations";
+import { spinningLoaderAnimation } from "../../animations";
 
 declare var $: any;
 
@@ -39,7 +45,6 @@ declare var $: any;
     animations: [spinningLoaderAnimation],
 })
 export class DhcpReportComponent implements OnInit, OnDestroy, AfterViewInit {
-
     private subs = [];
 
     acks: any[] = [];
@@ -54,16 +59,21 @@ export class DhcpReportComponent implements OnInit, OnDestroy, AfterViewInit {
 
     loading = 0;
 
-    constructor(private appService: AppService, private client: ClientService, private topNavService: TopNavService,
-                private route: ActivatedRoute) {
-    }
+    constructor(
+        private appService: AppService,
+        private client: ClientService,
+        private topNavService: TopNavService,
+        private route: ActivatedRoute
+    ) {}
 
     ngOnInit(): void {
-        this.subs.push(this.appService.subscribe((event: any) => {
-            if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
-                this.refresh();
-            }
-        }));
+        this.subs.push(
+            this.appService.subscribe((event: any) => {
+                if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
+                    this.refresh();
+                }
+            })
+        );
 
         this.route.queryParams.subscribe((params: Params) => {
             console.log("Got new route parameters...");
@@ -96,8 +106,12 @@ export class DhcpReportComponent implements OnInit, OnDestroy, AfterViewInit {
 
         const now = moment().unix();
 
-        this.load(this.client.get("/api/1/report/dhcp/request", params)).subscribe((requests) => {
-            this.load(this.client.get("/api/1/report/dhcp/ack", params)).subscribe((acks) => {
+        this.load(
+            this.client.get("/api/1/report/dhcp/request", params)
+        ).subscribe((requests) => {
+            this.load(
+                this.client.get("/api/1/report/dhcp/ack", params)
+            ).subscribe((acks) => {
                 const merged: any = {};
 
                 this.requests = requests.data;
@@ -135,38 +149,53 @@ export class DhcpReportComponent implements OnInit, OnDestroy, AfterViewInit {
                     record.lease_time = lease_time;
                 }
 
-                this.report = Object.keys(merged).sort((a, b) => {
-                    return moment(merged[b].timestamp).unix() - moment(merged[a].timestamp).unix();
-                }).map((z) => {
-                    return merged[z];
-                });
+                this.report = Object.keys(merged)
+                    .sort((a, b) => {
+                        return (
+                            moment(merged[b].timestamp).unix() -
+                            moment(merged[a].timestamp).unix()
+                        );
+                    })
+                    .map((z) => {
+                        return merged[z];
+                    });
 
                 this.haveSensorName = haveSensorName;
-
             });
         });
 
-        this.load(this.client.get("/api/1/report/dhcp/servers", params)).subscribe((response) => {
+        this.load(
+            this.client.get("/api/1/report/dhcp/servers", params)
+        ).subscribe((response) => {
             this.servers = response.data;
         });
 
-        this.load(this.client.get("/api/1/report/dhcp/mac", params)).subscribe((response) => {
-            this.mac = response.data.filter((entry) => entry.addrs.length > 1).map((entry) => entry.mac);
-        });
+        this.load(this.client.get("/api/1/report/dhcp/mac", params)).subscribe(
+            (response) => {
+                this.mac = response.data
+                    .filter((entry) => entry.addrs.length > 1)
+                    .map((entry) => entry.mac);
+            }
+        );
 
-        this.load(this.client.get("/api/1/report/dhcp/ip", params)).subscribe((response) => {
-            this.ip = response.data.filter((entry) => entry.macs.length > 1).map((entry) => entry.ip);
-        });
-
+        this.load(this.client.get("/api/1/report/dhcp/ip", params)).subscribe(
+            (response) => {
+                this.ip = response.data
+                    .filter((entry) => entry.macs.length > 1)
+                    .map((entry) => entry.ip);
+            }
+        );
     }
 
     private load(o: Observable<any>) {
         this.loading += 1;
-        return o.pipe(finalize(() => {
-            if (this.loading > 0) {
-                this.loading -= 1;
-            }
-        }));
+        return o.pipe(
+            finalize(() => {
+                if (this.loading > 0) {
+                    this.loading -= 1;
+                }
+            })
+        );
     }
 
     quote(val: string): string {

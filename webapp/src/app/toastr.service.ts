@@ -24,14 +24,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-declare function require(name:string);
+declare function require(name: string);
 
-import {Injectable} from '@angular/core';
+import { Injectable } from "@angular/core";
 
-let toastr = require('toastr');
+let toastr = require("toastr");
 
 // Fixes toastr when Bootstrap 4.2 is present.
-toastr.options.toastClass = 'toastr';
+toastr.options.toastClass = "toastr";
 
 export interface ToastrOptions {
     title?: string;
@@ -49,7 +49,6 @@ export interface ToastrOptions {
 
 @Injectable()
 export class ToastrService {
-
     warning(msg: any, options: ToastrOptions = {}) {
         toastr.warning(msg, options.title, options);
     }
@@ -57,5 +56,4 @@ export class ToastrService {
     error(msg: any, options: ToastrOptions = {}) {
         toastr.error(msg, options.title, options);
     }
-
 }

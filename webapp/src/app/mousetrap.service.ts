@@ -24,29 +24,27 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-declare function require(name:string);
+declare function require(name: string);
 
-import {Injectable, NgZone} from '@angular/core';
+import { Injectable, NgZone } from "@angular/core";
 
-let mousetrap = require('mousetrap/mousetrap');
+let mousetrap = require("mousetrap/mousetrap");
 
 declare var Mousetrap: any;
 
 @Injectable()
 export class MousetrapService {
-
     private bindings: any[] = [];
     private anyBindings: any[] = [];
 
     constructor(private ngZone: NgZone) {
-
         let mouseTrapService = this;
 
-        Mousetrap.prototype.handleKey = function() {
+        Mousetrap.prototype.handleKey = function () {
             let self = this;
             self._handleKey.apply(this, arguments);
 
-            mouseTrapService.anyBindings.forEach(binding => {
+            mouseTrapService.anyBindings.forEach((binding) => {
                 binding.handler();
             });
         };
@@ -69,7 +67,7 @@ export class MousetrapService {
         this.bindings.push({
             component: component,
             key: key,
-            handler: handler
+            handler: handler,
         });
 
         this.rebind();
@@ -88,12 +86,12 @@ export class MousetrapService {
     }
 
     unbind(component: any) {
-        this.bindings.forEach(binding => {
+        this.bindings.forEach((binding) => {
             if (binding.component == component) {
                 mousetrap.unbind(binding.key);
             }
         });
-        this.bindings = this.bindings.filter(binding => {
+        this.bindings = this.bindings.filter((binding) => {
             return binding.component != component;
         });
     }

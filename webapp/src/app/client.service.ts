@@ -23,7 +23,7 @@ import {
     HttpClient,
     HttpErrorResponse,
     HttpHeaders,
-    HttpParams
+    HttpParams,
 } from "@angular/common/http";
 import { Observable, throwError } from "rxjs";
 import { catchError, finalize, map } from "rxjs/operators";
@@ -41,7 +41,6 @@ export interface LoginResponse {
 
 @Injectable()
 export class ClientService {
-
     private versionWarned = false;
 
     private _baseUrl: string = window.location.pathname;
@@ -112,40 +111,47 @@ export class ClientService {
             headers = this.addSessionIdHeader(headers);
         }
 
-        return this.http.get(this.buildUrl("api/1/config"), {
-            observe: "response",
-            headers: headers
-        }).pipe(map((response) => {
-            let sessionId = response.headers.get("x-evebox-session-id");
-            if (sessionId) {
-                this._sessionId = sessionId;
-            }
-            this.setAuthenticated(true);
-            return true;
-        }), catchError((error) => {
-            this.setAuthenticated(false);
-            return of(false);
-        }));
+        return this.http
+            .get(this.buildUrl("api/1/config"), {
+                observe: "response",
+                headers: headers,
+            })
+            .pipe(
+                map((response) => {
+                    let sessionId = response.headers.get("x-evebox-session-id");
+                    if (sessionId) {
+                        this._sessionId = sessionId;
+                    }
+                    this.setAuthenticated(true);
+                    return true;
+                }),
+                catchError((error) => {
+                    this.setAuthenticated(false);
+                    return of(false);
+                })
+            );
     }
 
-    login(username: string = "", password: string = ""): Observable<LoginResponse> {
+    login(
+        username: string = "",
+        password: string = ""
+    ): Observable<LoginResponse> {
         let params = new HttpParams()
             .append("username", username)
             .append("password", password);
-        return this.http.post(this.buildUrl("api/1/login"), params)
-            .pipe(
-                map((response: LoginResponse) => {
-                    console.log(`Got session ID: ${response.session_id}`);
-    //                this.setAuthenticated(true);
-                    this.setSessionId(response.session_id);
-                    return response;
-                }),
-                catchError((error: any) => {
-                    this.setAuthenticated(false);
-                    this.setSessionId(null);
-                    return throwError(error);
-                })
-            );
+        return this.http.post(this.buildUrl("api/1/login"), params).pipe(
+            map((response: LoginResponse) => {
+                console.log(`Got session ID: ${response.session_id}`);
+                //                this.setAuthenticated(true);
+                this.setSessionId(response.session_id);
+                return response;
+            }),
+            catchError((error: any) => {
+                this.setAuthenticated(false);
+                this.setSessionId(null);
+                return throwError(error);
+            })
+        );
     }
 
     logout(): Observable<boolean> {
@@ -153,7 +159,8 @@ export class ClientService {
         if (this._sessionId) {
             headers = this.addSessionIdHeader(headers);
         }
-        return this.http.get(this.buildUrl("api/1/logout"), {headers: headers})
+        return this.http
+            .get(this.buildUrl("api/1/logout"), { headers: headers })
             .pipe(
                 map(() => {
                     return true;
@@ -186,12 +193,13 @@ export class ClientService {
             options.params = params;
         }
 
-        return this.http.get(this.buildUrl(path), options)
-            .pipe(map((response: any) => {
+        return this.http.get(this.buildUrl(path), options).pipe(
+            map((response: any) => {
                 this.updateSessionId(response);
                 this.checkVersion(response);
                 return response.body;
-            }), catchError((error: HttpErrorResponse) => {
+            }),
+            catchError((error: HttpErrorResponse) => {
                 if (error.error instanceof ErrorEvent) {
                     // Client side or network error.
                 } else {
@@ -200,7 +208,8 @@ export class ClientService {
                     }
                 }
                 return throwError(error);
-            }));
+            })
+        );
     }
 
     public updateSessionId(response: any) {
@@ -222,10 +231,11 @@ export class ClientService {
         const webappRev: string = GITREV;
         const serverRev: string = response.headers.get("x-evebox-git-revision");
         if (webappRev !== serverRev) {
-            console.log(`Client: server version: ${serverRev}; webapp version: ${webappRev}`);
+            console.log(
+                `Client: server version: ${serverRev}; webapp version: ${webappRev}`
+            );
             this.versionWarned = true;
             this.reloadRequired = true;
         }
     }
-
 }

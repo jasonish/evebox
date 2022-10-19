@@ -18,24 +18,21 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 // OR OTHER DEALINGS IN THE SOFTWARE.
 
-import {Component, EventEmitter, OnInit, Output} from '@angular/core';
+import { Component, EventEmitter, OnInit, Output } from "@angular/core";
 
 @Component({
-    selector: 'app-comment-input',
-    templateUrl: './comment-input.component.html',
+    selector: "app-comment-input",
+    templateUrl: "./comment-input.component.html",
 })
 export class CommentInputComponent implements OnInit {
-
     @Output("on-close") public onClose = new EventEmitter<any>();
     @Output("on-submit") public onSubmit = new EventEmitter<any>();
 
     public comment: string = "";
 
-    constructor() {
-    }
+    constructor() {}
 
-    ngOnInit() {
-    }
+    ngOnInit() {}
 
     close() {
         this.onClose.emit();
@@ -44,5 +41,4 @@ export class CommentInputComponent implements OnInit {
     submitComment() {
         this.onSubmit.emit(this.comment);
     }
-
 }

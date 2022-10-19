@@ -19,16 +19,14 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import {Pipe, PipeTransform} from '@angular/core';
-import {EveboxFormatIpAddressPipe} from './format-ipaddress.pipe';
+import { Pipe, PipeTransform } from "@angular/core";
+import { EveboxFormatIpAddressPipe } from "./format-ipaddress.pipe";
 
 @Pipe({
-    name: 'eveboxEventDescriptionPrinter'
+    name: "eveboxEventDescriptionPrinter",
 })
 export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
-
-    constructor(private ipFormatter: EveboxFormatIpAddressPipe) {
-    }
+    constructor(private ipFormatter: EveboxFormatIpAddressPipe) {}
 
     formatDnsRequest(event: any) {
         let dns = event.dns;
@@ -54,27 +52,27 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                 }
             default:
                 switch (dns.rcode) {
-                    case 'NXDOMAIN':
+                    case "NXDOMAIN":
                         return `ANSWER: NXDOMAIN for ${dns.rrname}`;
                     default:
-                        return `ANSWER for ${dns.rrname}: ${dns.rrtype} ${dns.rdata || ''}`;
+                        return `ANSWER for ${dns.rrname}: ${dns.rrtype} ${
+                            dns.rdata || ""
+                        }`;
                 }
         }
     }
 
     formatDns(eve: any) {
-        if (eve.dns.type == 'answer') {
+        if (eve.dns.type == "answer") {
             return this.formatDnsResponse(eve);
-        }
-        else if (eve.dns.type == 'query') {
+        } else if (eve.dns.type == "query") {
             return this.formatDnsRequest(eve);
-        }
-        else {
+        } else {
             return `UNSUPPORTED DNS TYPE "${eve.dns.type}"`;
         }
     }
 
-    formatSmb(eve:any) {
+    formatSmb(eve: any) {
         let smb = eve.smb;
         let ntlmssp = smb.ntlmssp || {};
         let msg = `${smb.command}`;
@@ -98,9 +96,8 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
     }
 
     transform(event: any): string {
-
         if (!event._source.event_type) {
-            return '[Error: This does not look like an event]';
+            return "[Error: This does not look like an event]";
         }
 
         const eve = event._source;
@@ -109,66 +106,73 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
         const destAddr = this.ipFormatter.transform(eve.dest_ip);
 
         switch (event._source.event_type) {
-            case 'alert': {
+            case "alert": {
                 const alert = event._source.alert;
                 if (alert.signature) {
                     return alert.signature;
-                }
-                else {
-                    return `ALERT: [${alert.gid}:${alert.signature_id}:${alert.rev}]`
-                            + ` (${alert.category})`;
+                } else {
+                    return (
+                        `ALERT: [${alert.gid}:${alert.signature_id}:${alert.rev}]` +
+                        ` (${alert.category})`
+                    );
                 }
             }
-            case 'http': {
+            case "http": {
                 const http = event._source.http;
                 return `${http.http_method} - ${http.hostname} - ${http.url}`;
             }
-            case 'ssh': {
+            case "ssh": {
                 const ssh = eve.ssh;
                 return `${ssh.client.software_version} -> ${ssh.server.software_version}`;
             }
-            case 'tls': {
-                return `${eve.tls.version} - ${eve.tls.sni || "[no sni]"} - ${eve.tls.subject || "[no subject]"}`;
+            case "tls": {
+                return `${eve.tls.version} - ${eve.tls.sni || "[no sni]"} - ${
+                    eve.tls.subject || "[no subject]"
+                }`;
             }
-            case 'flow': {
+            case "flow": {
                 const flow = eve.flow;
-                let sport = '';
-                let dport = '';
+                let sport = "";
+                let dport = "";
                 switch (eve.proto.toLowerCase()) {
-                    case 'udp':
-                    case 'tcp':
+                    case "udp":
+                    case "tcp":
                         sport = `:${eve.src_port}`;
                         dport = `:${eve.dest_port}`;
                         break;
                 }
-                return `${eve.proto} ${srcAddr}${sport} -> ${destAddr}${dport}`
-                        + `; Age: ${flow.age}`
-                        + `; Bytes: ${flow.bytes_toserver + flow.bytes_toclient}`
-                        + `; Packets: ${flow.pkts_toserver + flow.pkts_toclient}`;
+                return (
+                    `${eve.proto} ${srcAddr}${sport} -> ${destAddr}${dport}` +
+                    `; Age: ${flow.age}` +
+                    `; Bytes: ${flow.bytes_toserver + flow.bytes_toclient}` +
+                    `; Packets: ${flow.pkts_toserver + flow.pkts_toclient}`
+                );
             }
-            case 'netflow': {
+            case "netflow": {
                 const netflow = eve.netflow;
-                let sport = '';
-                let dport = '';
+                let sport = "";
+                let dport = "";
                 switch (eve.proto.toLowerCase()) {
-                    case 'udp':
-                    case 'tcp':
+                    case "udp":
+                    case "tcp":
                         sport = `:${eve.src_port}`;
                         dport = `:${eve.dest_port}`;
                         break;
                 }
-                return `${eve.proto} ${srcAddr}${sport} -> ${destAddr}${dport}`
-                        + `; Age: ${netflow.age}`
-                        + `; Bytes: ${netflow.bytes}`
-                        + `; Packets: ${netflow.pkts}`;
+                return (
+                    `${eve.proto} ${srcAddr}${sport} -> ${destAddr}${dport}` +
+                    `; Age: ${netflow.age}` +
+                    `; Bytes: ${netflow.bytes}` +
+                    `; Packets: ${netflow.pkts}`
+                );
             }
-            case 'dns': {
+            case "dns": {
                 return this.formatDns(eve);
             }
-            case 'drop':
+            case "drop":
                 const drop: any = eve.drop;
-                let srcPort = '';
-                let dstPort = '';
+                let srcPort = "";
+                let dstPort = "";
                 if (eve.src_port) {
                     srcPort = `:${eve.src_port}`;
                 }
@@ -178,27 +182,27 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
 
                 let flags: string[] = [];
                 if (drop.syn) {
-                    flags.push('SYN');
+                    flags.push("SYN");
                 }
                 if (drop.ack) {
-                    flags.push('ACK');
+                    flags.push("ACK");
                 }
                 if (drop.psh) {
-                    flags.push('PSH');
+                    flags.push("PSH");
                 }
                 if (drop.rst) {
-                    flags.push('RST');
+                    flags.push("RST");
                 }
                 if (drop.urg) {
-                    flags.push('URG');
+                    flags.push("URG");
                 }
                 if (drop.fin) {
-                    flags.push('FIN');
+                    flags.push("FIN");
                 }
-                const flagInfo = flags.join(',');
+                const flagInfo = flags.join(",");
 
                 return `${eve.proto} - ${eve.src_ip}${srcPort} -> ${eve.dest_ip}${dstPort} [${flagInfo}]`;
-            case 'fileinfo':
+            case "fileinfo":
                 const extra: string[] = [];
 
                 if (eve.http && eve.http.hostname) {
@@ -208,7 +212,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
                     extra.push(`Content-Type: ${eve.http.http_content_type}`);
                 }
 
-                const extraInfo = '- ' + extra.join('; ');
+                const extraInfo = "- " + extra.join("; ");
 
                 return `${eve.fileinfo.filename} ${extraInfo}`;
             case "smb":
@@ -264,7 +268,7 @@ export class EveBoxEventDescriptionPrinterPipe implements PipeTransform {
         } else if (dhcp.dhcp_type == "inform") {
             return `Inform from ${client_mac} ${with_string}`;
         } else if (dhcp.dhcp_type == "release") {
-            return `Release from ${client_mac} ${with_string}`
+            return `Release from ${client_mac} ${with_string}`;
         } else {
             console.log("Unknown DHCP type: " + dhcp.dhcp_type);
         }

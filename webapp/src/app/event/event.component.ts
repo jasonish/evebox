@@ -1,4 +1,4 @@
- /* Copyright (c) 2014-2016 Jason Ish
+/* Copyright (c) 2014-2016 Jason Ish
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,19 +24,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnDestroy, OnInit} from "@angular/core";
-import {Location} from "@angular/common";
-import {ActivatedRoute, Router} from "@angular/router";
-import {AlertGroup, ElasticSearchService} from "../elasticsearch.service";
-import {ApiService} from "../api.service";
-import {EventServices} from "../eventservices.service";
-import {EventService} from "../event.service";
-import {MousetrapService} from "../mousetrap.service";
-import {EveboxSubscriptionService} from "../subscription.service";
-import {loadingAnimation} from "../animations";
-import {ToastrService} from "../toastr.service";
-import {FEATURE_COMMENTS} from "../app.service";
-import {ConfigService} from "../config.service";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { Location } from "@angular/common";
+import { ActivatedRoute, Router } from "@angular/router";
+import { AlertGroup, ElasticSearchService } from "../elasticsearch.service";
+import { ApiService } from "../api.service";
+import { EventServices } from "../eventservices.service";
+import { EventService } from "../event.service";
+import { MousetrapService } from "../mousetrap.service";
+import { EveboxSubscriptionService } from "../subscription.service";
+import { loadingAnimation } from "../animations";
+import { ToastrService } from "../toastr.service";
+import { FEATURE_COMMENTS } from "../app.service";
+import { ConfigService } from "../config.service";
 import { transformEcsEvent } from "../events/events.component";
 import { indexOf } from "../utils";
 
@@ -45,13 +45,10 @@ import { indexOf } from "../utils";
  */
 @Component({
     templateUrl: "./event.component.html",
-    animations: [
-        loadingAnimation,
-    ],
+    animations: [loadingAnimation],
     styleUrls: ["./event.component.scss"],
 })
 export class EventComponent implements OnInit, OnDestroy {
-
     loading = false;
 
     eventId: string;
@@ -72,18 +69,19 @@ export class EventComponent implements OnInit, OnDestroy {
     public commentInputVisible: boolean = false;
     public features: any = {};
 
-    constructor(private route: ActivatedRoute,
-                private router: Router,
-                private elasticSearch: ElasticSearchService,
-                private api: ApiService,
-                private eventServices: EventServices,
-                private location: Location,
-                private eventService: EventService,
-                private mousetrap: MousetrapService,
-                private ss: EveboxSubscriptionService,
-                private configService: ConfigService,
-                private toastr: ToastrService) {
-    }
+    constructor(
+        private route: ActivatedRoute,
+        private router: Router,
+        private elasticSearch: ElasticSearchService,
+        private api: ApiService,
+        private eventServices: EventServices,
+        private location: Location,
+        private eventService: EventService,
+        private mousetrap: MousetrapService,
+        private ss: EveboxSubscriptionService,
+        private configService: ConfigService,
+        private toastr: ToastrService
+    ) {}
 
     reset() {
         this.eventId = undefined;
@@ -98,7 +96,9 @@ export class EventComponent implements OnInit, OnDestroy {
         if (event._source.ecs) {
             transformEcsEvent(event);
         }
-        this.servicesForEvent = this.eventServices.getServicesForEvent(this.event);
+        this.servicesForEvent = this.eventServices.getServicesForEvent(
+            this.event
+        );
 
         // If the Suricata provided rule doesn't exist, check for
         // an EveBox added one and put it where the Suricata one
@@ -118,7 +118,7 @@ export class EventComponent implements OnInit, OnDestroy {
             if (event._source.host.name) {
                 this.normalized.sensor_name = event._source.host.name;
                 this.normalized.sensor_name_key = "host.name";
-            } else if (typeof (event._source.host) === "string") {
+            } else if (typeof event._source.host === "string") {
                 this.normalized.sensor_name = event._source.host;
                 this.normalized.sensor_name_key = "host";
             }
@@ -145,7 +145,6 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
-
         if (this.configService.hasFeature(FEATURE_COMMENTS)) {
             this.features["comments"] = true;
         }
@@ -201,8 +200,10 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     hasGeoip(): boolean {
-        if (this.event._source.geoip &&
-            Object.keys(this.event._source.geoip).length > 0) {
+        if (
+            this.event._source.geoip &&
+            Object.keys(this.event._source.geoip).length > 0
+        ) {
             return true;
         }
         return false;
@@ -222,23 +223,23 @@ export class EventComponent implements OnInit, OnDestroy {
 
     onCommentSubmit(comment: any) {
         if (this.alertGroup) {
-            this.api.commentOnAlertGroup(this.alertGroup, comment)
-                .then(() => {
-                    this.commentInputVisible = false;
-                    this.elasticSearch.getEventById(this.event._id)
-                        .then((response: any) => {
-                            this.event = response;
-                        });
-                });
+            this.api.commentOnAlertGroup(this.alertGroup, comment).then(() => {
+                this.commentInputVisible = false;
+                this.elasticSearch
+                    .getEventById(this.event._id)
+                    .then((response: any) => {
+                        this.event = response;
+                    });
+            });
         } else {
-            this.api.commentOnEvent(this.eventId, comment)
-                .then(() => {
-                    this.commentInputVisible = false;
-                    this.elasticSearch.getEventById(this.event._id)
-                        .then((response: any) => {
-                            this.event = response;
-                        });
-                });
+            this.api.commentOnEvent(this.eventId, comment).then(() => {
+                this.commentInputVisible = false;
+                this.elasticSearch
+                    .getEventById(this.event._id)
+                    .then((response: any) => {
+                        this.event = response;
+                    });
+            });
         }
     }
 
@@ -256,7 +257,7 @@ export class EventComponent implements OnInit, OnDestroy {
 
         console.log(q);
 
-        this.router.navigate(["/events", {q: q}]);
+        this.router.navigate(["/events", { q: q }]);
     }
 
     archiveEvent() {
@@ -281,7 +282,9 @@ export class EventComponent implements OnInit, OnDestroy {
 
     deEscalateEvent() {
         if (this.alertGroup) {
-            this.elasticSearch.removeEscalatedStateFromAlertGroup(this.alertGroup);
+            this.elasticSearch.removeEscalatedStateFromAlertGroup(
+                this.alertGroup
+            );
             this.alertGroup.escalatedCount = 0;
         } else {
             this.elasticSearch.deEscalateEvent(this.event);
@@ -290,7 +293,6 @@ export class EventComponent implements OnInit, OnDestroy {
     }
 
     isEscalated() {
-
         if (this.alertGroup) {
             if (this.alertGroup.escalatedCount == this.alertGroup.count) {
                 return true;
@@ -315,7 +317,8 @@ export class EventComponent implements OnInit, OnDestroy {
     refresh() {
         this.loading = true;
 
-        this.elasticSearch.getEventById(this.eventId)
+        this.elasticSearch
+            .getEventById(this.eventId)
             .then((event: any) => {
                 this.event = event;
                 this.loading = false;
@@ -333,8 +336,7 @@ export class EventComponent implements OnInit, OnDestroy {
         try {
             this.toastr.error(error.error.message);
             return;
-        } catch (e) {
-        }
+        } catch (e) {}
 
         this.toastr.error("Unhandled error: " + JSON.stringify(error));
     }

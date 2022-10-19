@@ -25,7 +25,6 @@
  */
 
 export class EveboxSubscriptionTracker {
-
     private subscriptions: any = [];
 
     subscribe(subscribable: any, handler: any) {

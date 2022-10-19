@@ -24,33 +24,37 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Component, OnInit} from '@angular/core';
-import {ThemeService} from '../shared/theme.service';
+import { Component, OnInit } from "@angular/core";
+import { ThemeService } from "../shared/theme.service";
 import {
-    SETTING_ALERTS_PER_PAGE, SETTING_THEME,
-    SettingsService
-} from '../settings.service';
+    SETTING_ALERTS_PER_PAGE,
+    SETTING_THEME,
+    SettingsService,
+} from "../settings.service";
 
 @Component({
-    selector: 'app-settings',
-    templateUrl: './settings.component.html',
-    styleUrls: ['./settings.component.scss']
+    selector: "app-settings",
+    templateUrl: "./settings.component.html",
+    styleUrls: ["./settings.component.scss"],
 })
 export class SettingsComponent implements OnInit {
-
     model = {
         theme: "",
         alertsPerPage: 100,
     };
 
-    constructor(private theme: ThemeService,
-                private settings: SettingsService) {
+    constructor(
+        private theme: ThemeService,
+        private settings: SettingsService
+    ) {
         this.model.theme = settings.get(SETTING_THEME, "default");
-        this.model.alertsPerPage = settings.getInt(SETTING_ALERTS_PER_PAGE, 100);
+        this.model.alertsPerPage = settings.getInt(
+            SETTING_ALERTS_PER_PAGE,
+            100
+        );
     }
 
-    ngOnInit() {
-    }
+    ngOnInit() {}
 
     currentTheme(): string {
         return this.theme.currentTheme();
@@ -61,6 +65,6 @@ export class SettingsComponent implements OnInit {
     }
 
     updateAlertsPerPage() {
-        this.settings.set(SETTING_ALERTS_PER_PAGE, this.model.alertsPerPage)
+        this.settings.set(SETTING_ALERTS_PER_PAGE, this.model.alertsPerPage);
     }
 }

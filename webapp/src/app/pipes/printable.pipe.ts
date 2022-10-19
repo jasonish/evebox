@@ -24,16 +24,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import {Pipe, PipeTransform} from '@angular/core';
+import { Pipe, PipeTransform } from "@angular/core";
 
 @Pipe({
-    name: 'printable'
+    name: "printable",
 })
 export class EveboxPrintablePipe implements PipeTransform {
-
     transform(value: any, args?: any): any {
         // Hardly complete, but strips a lot.
-        return value.replace(/[^\x20-\x7e]/g, '.');
+        return value.replace(/[^\x20-\x7e]/g, ".");
     }
-
 }

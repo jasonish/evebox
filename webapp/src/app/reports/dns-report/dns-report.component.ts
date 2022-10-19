@@ -36,7 +36,6 @@ import { Chart, ChartConfiguration } from "chart.js";
     templateUrl: "./dns-report.component.html",
 })
 export class DNSReportComponent implements OnInit, OnDestroy {
-
     topRrnames: any[];
     topRdata: any[];
     topRrtypes: any[];
@@ -54,16 +53,16 @@ export class DNSReportComponent implements OnInit, OnDestroy {
         eventsOverTime: null,
     };
 
-    constructor(private route: ActivatedRoute,
-                private appService: AppService,
-                private api: ApiService,
-                private topNavService: TopNavService,
-                private reportsService: ReportsService,
-                private formatIpAddressPipe: EveboxFormatIpAddressPipe) {
-    }
+    constructor(
+        private route: ActivatedRoute,
+        private appService: AppService,
+        private api: ApiService,
+        private topNavService: TopNavService,
+        private reportsService: ReportsService,
+        private formatIpAddressPipe: EveboxFormatIpAddressPipe
+    ) {}
 
     ngOnInit(): void {
-
         this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
             this.queryString = params.q || "";
             this.refresh();
@@ -74,7 +73,6 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 this.refresh();
             }
         });
-
     }
 
     ngOnDestroy(): void {
@@ -86,7 +84,6 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
     mapAddressAggregation(items: any[]): { count: any; key: any }[] {
         return items.map((item: any) => {
-
             let key = item.key;
 
             // If key looks like an IP address, format it.
@@ -98,7 +95,6 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 key: key,
                 count: item.doc_count,
             };
-
         });
     }
 
@@ -113,11 +109,12 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
     load(fn: any): void {
         this.loading++;
-        fn().then(() => {
-        }).catch((err) => {
-        }).then(() => {
-            this.loading--;
-        });
+        fn()
+            .then(() => {})
+            .catch((err) => {})
+            .then(() => {
+                this.loading--;
+            });
     }
 
     refresh(): void {
@@ -134,9 +131,16 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         // Top response codes.
         this.load(() => {
-            return this.api.reportAgg("dns.rcode", Object.assign({
-                dnsType: "answer",
-            }, aggOptions))
+            return this.api
+                .reportAgg(
+                    "dns.rcode",
+                    Object.assign(
+                        {
+                            dnsType: "answer",
+                        },
+                        aggOptions
+                    )
+                )
                 .then((response: any) => {
                     this.topRcodes = response.data;
                 });
@@ -147,7 +151,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         // Top request rrnames.
         this.load(() => {
-            return this.api.reportAgg("dns.rrname", aggOptions)
+            return this.api
+                .reportAgg("dns.rrname", aggOptions)
                 .then((response: any) => {
                     this.topRrnames = response.data;
                 });
@@ -155,7 +160,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         // Top request rrtypes.
         this.load(() => {
-            return this.api.reportAgg("dns.rrtype", aggOptions)
+            return this.api
+                .reportAgg("dns.rrtype", aggOptions)
                 .then((response: any) => {
                     this.topRrtypes = response.data;
                 });
@@ -163,7 +169,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         // Top DNS clients.
         this.load(() => {
-            return this.api.reportAgg("src_ip", aggOptions)
+            return this.api
+                .reportAgg("src_ip", aggOptions)
                 .then((response: any) => {
                     this.topClients = response.data;
                 });
@@ -171,7 +178,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         // Top DNS servers.
         this.load(() => {
-            return this.api.reportAgg("dest_ip", aggOptions)
+            return this.api
+                .reportAgg("dest_ip", aggOptions)
                 .then((response: any) => {
                     this.topServers = response.data;
                 });
@@ -179,15 +187,17 @@ export class DNSReportComponent implements OnInit, OnDestroy {
 
         // Queries over time histogram.
         this.load(() => {
-            return this.api.reportHistogram({
-                timeRange: range,
-                interval: this.reportsService.histogramTimeInterval(range),
-                eventType: "dns",
-                dnsType: "query",
-                queryString: this.queryString,
-            }).then((response: any) => {
-                this.buildChart(response.data);
-            });
+            return this.api
+                .reportHistogram({
+                    timeRange: range,
+                    interval: this.reportsService.histogramTimeInterval(range),
+                    eventType: "dns",
+                    dnsType: "query",
+                    queryString: this.queryString,
+                })
+                .then((response: any) => {
+                    this.buildChart(response.data);
+                });
         });
     }
 
@@ -203,10 +213,12 @@ export class DNSReportComponent implements OnInit, OnDestroy {
             type: "bar",
             data: {
                 labels: labels,
-                datasets: [{
-                    data: values,
-                    backgroundColor: getColourPalette(values.length),
-                }]
+                datasets: [
+                    {
+                        data: values,
+                        backgroundColor: getColourPalette(values.length),
+                    },
+                ],
             },
             options: {
                 plugins: {
@@ -222,8 +234,8 @@ export class DNSReportComponent implements OnInit, OnDestroy {
                 scales: {
                     x: {
                         type: "time",
-                    }
-                }
+                    },
+                },
             },
         };
         if (this.charts.eventsOverTime) {

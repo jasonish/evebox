@@ -37,26 +37,26 @@ import * as moment from "moment";
 import { ElasticSearchService } from "../../elasticsearch.service";
 import * as palette from "google-palette";
 
-import { Chart } from 'chart.js';
+import { Chart } from "chart.js";
 import { getCanvasElementById } from "../../shared/chartjs";
 
 @Component({
     selector: "evebox-ip-addr-data-table",
     template: `
-        <report-data-table *ngIf="rows"
-                           [title]="title"
-                           [rows]="rows"
-                           [headers]="headers"></report-data-table>
+        <report-data-table
+            *ngIf="rows"
+            [title]="title"
+            [rows]="rows"
+            [headers]="headers"
+        ></report-data-table>
     `,
 })
 export class IpAddrDataTableComponent implements OnInit, OnChanges {
-
     @Input() rows: any[] = [];
     @Input() headers: string[] = [];
     @Input() title: string;
 
-    constructor(private elasticSearch: ElasticSearchService) {
-    }
+    constructor(private elasticSearch: ElasticSearchService) {}
 
     ngOnInit(): void {
         this.resolveHostnames();
@@ -73,25 +73,23 @@ export class IpAddrDataTableComponent implements OnInit, OnChanges {
 
         console.log(`Resolving hostnames for data table ${this.title}.`);
         this.rows.forEach((result: any) => {
-            this.elasticSearch.resolveHostnameForIp(result.key).then((hostname: string) => {
-                if (hostname) {
-                    result.searchKey = result.key;
-                    result.key = `${result.key} (${hostname})`;
-                }
-            });
+            this.elasticSearch
+                .resolveHostnameForIp(result.key)
+                .then((hostname: string) => {
+                    if (hostname) {
+                        result.searchKey = result.key;
+                        result.key = `${result.key} (${hostname})`;
+                    }
+                });
         });
     }
-
 }
 
 @Component({
     templateUrl: "ssh-report.component.html",
-    animations: [
-        loadingAnimation,
-    ]
+    animations: [loadingAnimation],
 })
 export class SshReportComponent implements OnInit, OnDestroy {
-
     eventsOverTime: any = {
         labels: [],
         values: [],
@@ -111,16 +109,16 @@ export class SshReportComponent implements OnInit, OnDestroy {
     topDestinationAddresses: any[] = [];
     topSourceAddresses: any[] = [];
 
-    constructor(private appService: AppService,
-                private ss: EveboxSubscriptionService,
-                private route: ActivatedRoute,
-                private reports: ReportsService,
-                private api: ApiService,
-                private topNavService: TopNavService) {
-    }
+    constructor(
+        private appService: AppService,
+        private ss: EveboxSubscriptionService,
+        private route: ActivatedRoute,
+        private reports: ReportsService,
+        private api: ApiService,
+        private topNavService: TopNavService
+    ) {}
 
     ngOnInit(): void {
-
         if (this.route.snapshot.queryParams.q) {
             this.queryString = this.route.snapshot.queryParams.q;
         }
@@ -135,7 +133,6 @@ export class SshReportComponent implements OnInit, OnDestroy {
                 this.refresh();
             }
         });
-
     }
 
     ngOnDestroy(): void {
@@ -144,18 +141,18 @@ export class SshReportComponent implements OnInit, OnDestroy {
 
     load(fn: any): void {
         this.loading++;
-        fn().then(() => {
-        }).catch((err) => {
-            console.log("Caught error loading resource:");
-            console.log(err);
-        }).then(() => {
-            this.loading--;
-        });
+        fn()
+            .then(() => {})
+            .catch((err) => {
+                console.log("Caught error loading resource:");
+                console.log(err);
+            })
+            .then(() => {
+                this.loading--;
+            });
     }
 
-
     refresh(): void {
-
         const size = 100;
 
         const timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
@@ -169,7 +166,8 @@ export class SshReportComponent implements OnInit, OnDestroy {
 
         // Top source IPs.
         this.load(() => {
-            return this.api.reportAgg("src_ip", aggOptions)
+            return this.api
+                .reportAgg("src_ip", aggOptions)
                 .then((response: any) => {
                     this.topSourceAddresses = response.data;
                 });
@@ -177,89 +175,93 @@ export class SshReportComponent implements OnInit, OnDestroy {
 
         // Top destination IPs.
         this.load(() => {
-            return this.api.reportAgg("dest_ip", aggOptions)
+            return this.api
+                .reportAgg("dest_ip", aggOptions)
                 .then((response: any) => {
                     this.topDestinationAddresses = response.data;
                 });
         });
 
         this.load(() => {
-            return this.api.reportHistogram({
-                timeRange: timeRangeSeconds,
-                interval: this.reports.histogramTimeInterval(timeRangeSeconds),
-                eventType: "ssh",
-                queryString: this.queryString,
-            }).then((response: any) => {
-
-                this.eventsOverTime = {
-                    labels: [],
-                    values: [],
-                };
-
-                let nonZeroCount = 0;
-                for (const item of response.data) {
-                    const count = item.count;
-                    this.eventsOverTime.labels.push(moment(item.key).toDate());
-                    this.eventsOverTime.values.push(count);
-                    if (count > 0) {
-                        nonZeroCount += 1;
-                    }
-                }
-
-                if (nonZeroCount === 0) {
+            return this.api
+                .reportHistogram({
+                    timeRange: timeRangeSeconds,
+                    interval:
+                        this.reports.histogramTimeInterval(timeRangeSeconds),
+                    eventType: "ssh",
+                    queryString: this.queryString,
+                })
+                .then((response: any) => {
                     this.eventsOverTime = {
                         labels: [],
                         values: [],
                     };
-                }
 
-                setTimeout(() => {
-                    const ctx = getCanvasElementById("eventsOverTimeChart");
-
-                    if (this.charts.eventsOverTimeChart) {
-                        this.charts.eventsOverTimeChart.destroy();
+                    let nonZeroCount = 0;
+                    for (const item of response.data) {
+                        const count = item.count;
+                        this.eventsOverTime.labels.push(
+                            moment(item.key).toDate()
+                        );
+                        this.eventsOverTime.values.push(count);
+                        if (count > 0) {
+                            nonZeroCount += 1;
+                        }
                     }
-                    
-                    this.charts.eventsOverTimeChart = new Chart(ctx, {
-                        type: "bar",
-                        data: {
-                            labels: this.eventsOverTime.labels,
-                            datasets: [
-                                {
-                                    backgroundColor: this.getColours(1)[0],
-                                    data: this.eventsOverTime.values,
-                                }
-                            ]
-                        },
-                        options: {
-                            plugins: {
-                                legend: {
-                                    display: false,
-                                },
-                                title: {
-                                    display: true,
-                                    text: "SSH Connections Over Time",
-                                    padding: 0,
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    type: "time",
-                                },
-                            },
-                            layout: {},
-                            maintainAspectRatio: false,
-                        },
-                    });
-                }, 0);
 
-            });
+                    if (nonZeroCount === 0) {
+                        this.eventsOverTime = {
+                            labels: [],
+                            values: [],
+                        };
+                    }
+
+                    setTimeout(() => {
+                        const ctx = getCanvasElementById("eventsOverTimeChart");
+
+                        if (this.charts.eventsOverTimeChart) {
+                            this.charts.eventsOverTimeChart.destroy();
+                        }
+
+                        this.charts.eventsOverTimeChart = new Chart(ctx, {
+                            type: "bar",
+                            data: {
+                                labels: this.eventsOverTime.labels,
+                                datasets: [
+                                    {
+                                        backgroundColor: this.getColours(1)[0],
+                                        data: this.eventsOverTime.values,
+                                    },
+                                ],
+                            },
+                            options: {
+                                plugins: {
+                                    legend: {
+                                        display: false,
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: "SSH Connections Over Time",
+                                        padding: 0,
+                                    },
+                                },
+                                scales: {
+                                    x: {
+                                        type: "time",
+                                    },
+                                },
+                                layout: {},
+                                maintainAspectRatio: false,
+                            },
+                        });
+                    }, 0);
+                });
         });
 
         this.load(() => {
-            return this.api.reportAgg("ssh.client.software_version", aggOptions)
+            return this.api
+                .reportAgg("ssh.client.software_version", aggOptions)
                 .then((response: any) => {
-
                     this.clientSoftware = response.data;
 
                     // Only graph the top 10 then sum up the rest under "Other".
@@ -270,7 +272,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                             versions.push(response.data[i]);
                         }
                         if (i === 10) {
-                            versions.push({key: "Other", count: 0});
+                            versions.push({ key: "Other", count: 0 });
                         }
                         if (i >= 10) {
                             versions[10].count += response.data[i].count;
@@ -282,9 +284,9 @@ export class SshReportComponent implements OnInit, OnDestroy {
         });
 
         this.load(() => {
-            return this.api.reportAgg("ssh.server.software_version", aggOptions)
+            return this.api
+                .reportAgg("ssh.server.software_version", aggOptions)
                 .then((response: any) => {
-
                     this.serverSoftware = response.data;
 
                     // Only graph the top 10 then sum up the rest under "Other".
@@ -295,7 +297,7 @@ export class SshReportComponent implements OnInit, OnDestroy {
                             versions.push(response.data[i]);
                         }
                         if (i === 10) {
-                            versions.push({key: "Other", count: 0});
+                            versions.push({ key: "Other", count: 0 });
                         }
                         if (i >= 10) {
                             versions[10].count += response.data[i].count;
@@ -305,7 +307,6 @@ export class SshReportComponent implements OnInit, OnDestroy {
                     this.renderPieChart("serverVersionsPie", versions);
                 });
         });
-
     }
 
     renderPieChart(canvasId: string, data: any[]): void {
@@ -333,19 +334,17 @@ export class SshReportComponent implements OnInit, OnDestroy {
                     {
                         data: values,
                         backgroundColor: colours,
-                    }
-                ]
+                    },
+                ],
             },
-            options: {}
+            options: {},
         });
-
     }
 
     private getColours(count: number): string[] {
         const colours = palette("qualitative", count);
-        return colours.map(colour => {
+        return colours.map((colour) => {
             return "#" + colour;
         });
     }
-
 }
