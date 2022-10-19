@@ -238,11 +238,15 @@
                         <a (click)="onSort('count')"
                             >#
                             <i
-                                *ngIf="sortBy == 'count' && sortOrder == 'desc'"
+                                *ngIf="
+                                    sortBy === 'count' && sortOrder === 'desc'
+                                "
                                 class="fa fa-caret-up"
                             ></i>
                             <i
-                                *ngIf="sortBy == 'count' && sortOrder == 'asc'"
+                                *ngIf="
+                                    sortBy === 'count' && sortOrder === 'asc'
+                                "
                                 class="fa fa-caret-down"
                             ></i>
                         </a>

@@ -33,7 +33,7 @@ import * as moment from "moment";
     template: "{{duration}} ago",
 })
 export class EveboxDurationComponent implements OnInit, OnDestroy {
-    @Input("timestamp") private timestamp: any;
+    @Input() private timestamp: any;
     duration: any;
     interval: any = null;
 

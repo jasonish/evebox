@@ -19,7 +19,7 @@
                 </button>
 
                 <!-- For now, escalation is only for alerts. -->
-                <div *ngIf="eventType() == 'alert'" style="display: inline">
+                <div *ngIf="eventType() === 'alert'" style="display: inline">
                     <button
                         *ngIf="!isEscalated()"
                         type="button"
@@ -59,7 +59,7 @@
                         [innerHTML]="event | eveboxEventDescriptionPrinter"
                     ></div>
                     <span
-                        *ngIf="event._source.event_type == 'stats'"
+                        *ngIf="event._source.event_type === 'stats'"
                         class="float-right"
                         >{{ event._source.timestamp | date: "medium" }}</span
                     >
@@ -89,7 +89,7 @@
                     ]
                 </span>
             </div>
-            <div *ngIf="event._source.event_type != 'stats'" class="card-body">
+            <div *ngIf="event._source.event_type !== 'stats'" class="card-body">
                 <div class="row">
                     <div class="col">
                         <table
@@ -433,7 +433,7 @@
             *ngIf="
                 event._source.evebox &&
                 event._source.evebox.history &&
-                event._source.event_type != 'stats'
+                event._source.event_type !== 'stats'
             "
         >
             <br />
@@ -491,7 +491,7 @@
 
         <div
             *ngIf="
-                event._source.event_type != 'stats' &&
+                event._source.event_type !== 'stats' &&
                 features['comments'] &&
                 (!hasHistory() || commentInputVisible)
             "
@@ -506,7 +506,7 @@
         </div>
 
         <!-- DNS -->
-        <div *ngIf="event._source.event_type != 'dns'">
+        <div *ngIf="event._source.event_type !== 'dns'">
             <div *ngIf="event._source.dns">
                 <br />
                 <div class="card">
@@ -564,7 +564,7 @@
             </div>
         </div>
 
-        <div *ngIf="event._source.event_type == 'stats'">
+        <div *ngIf="event._source.event_type === 'stats'">
             <br />
             <div class="card">
                 <div class="card-header">
@@ -731,7 +731,7 @@
         </div>
 
         <!-- TLS (in-event). -->
-        <div *ngIf="event._source.event_type != 'tls' && event._source.tls">
+        <div *ngIf="event._source.event_type !== 'tls' && event._source.tls">
             <br />
             <div class="card">
                 <div class="card-header">

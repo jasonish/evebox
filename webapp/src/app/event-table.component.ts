@@ -72,14 +72,15 @@ import { indexOf } from "./utils";
                             class="badge bg-secondary"
                             *ngIf="
                                 row._source.app_proto &&
-                                row._source.app_proto != 'failed'
+                                row._source.app_proto !== 'failed'
                             "
                         >
                             {{ row._source.app_proto }}
                         </span>
                         <div
                             *ngIf="
-                                getEventType(row) == 'alert' && !isArchived(row)
+                                getEventType(row) === 'alert' &&
+                                !isArchived(row)
                             "
                             class="pull-right"
                             (click)="$event.stopPropagation()"

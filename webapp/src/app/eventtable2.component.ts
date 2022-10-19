@@ -96,7 +96,8 @@ import { indexOf } from "./utils";
                         {{ row | eveboxEventDescriptionPrinter }}
                         <div
                             *ngIf="
-                                getEventType(row) == 'alert' && !isArchived(row)
+                                getEventType(row) === 'alert' &&
+                                !isArchived(row)
                             "
                             class="pull-right"
                             (click)="$event.stopPropagation()"
