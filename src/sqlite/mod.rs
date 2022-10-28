@@ -40,7 +40,7 @@ pub async fn open_pool<T: Into<PathBuf>>(filename: T) -> anyhow::Result<deadpool
     if let Err(err) = conn
         .interact(|conn| {
             debug!("set journal mode to WAL");
-            let mode = conn.pragma_update_and_check(None, "ournal_mode", &"WAL", |row| {
+            let mode = conn.pragma_update_and_check(None, "journal_mode", &"WAL", |row| {
                 let mode: String = row.get(0)?;
                 Ok(mode)
             });
