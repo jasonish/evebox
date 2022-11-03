@@ -589,6 +589,169 @@
             </div>
         </div>
 
+        <div *ngIf="event._ecs">
+            <br />
+            <div class="row">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <b>ECS Source</b>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th>Organization</th>
+                                        <td>
+                                            {{
+                                                event._ecs.source?.as
+                                                    ?.organization?.name ||
+                                                    "unavailable"
+                                            }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>City</th>
+                                        <td>
+                                            {{
+                                                event._ecs.source?.geo
+                                                    ?.city_name || "unavailable"
+                                            }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Country</th>
+                                        <td>
+                                            {{
+                                                event._ecs.source?.geo
+                                                    ?.country_name ||
+                                                    "unavailable"
+                                            }}
+                                            <ng-container
+                                                *ngIf="
+                                                    event._ecs?.source?.geo
+                                                        ?.country_iso_code
+                                                "
+                                            >
+                                                ({{
+                                                    event._ecs.source.geo
+                                                        .country_iso_code
+                                                }})
+                                            </ng-container>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Continent</th>
+                                        <td>
+                                            {{
+                                                event._ecs.source?.geo
+                                                    ?.continent_name ||
+                                                    "unavailable"
+                                            }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <b>ECS Destination</b>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th>Organization</th>
+                                        <td>
+                                            {{
+                                                event._ecs.destination?.as
+                                                    ?.organization?.name ||
+                                                    "unavailable"
+                                            }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>City</th>
+                                        <td>
+                                            {{
+                                                event._ecs.destination?.geo
+                                                    ?.city_name || "unavailable"
+                                            }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Country</th>
+                                        <td>
+                                            {{
+                                                event._ecs.destination?.geo
+                                                    ?.country_name ||
+                                                    "unavailable"
+                                            }}
+                                            <ng-container
+                                                *ngIf="
+                                                    event._ecs?.destination?.geo
+                                                        ?.country_iso_code
+                                                "
+                                            >
+                                                ({{
+                                                    event._ecs.destination.geo
+                                                        .country_iso_code
+                                                }})
+                                            </ng-container>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Continent</th>
+                                        <td>
+                                            {{
+                                                event._ecs.destination?.geo
+                                                    ?.continent_name ||
+                                                    "unavailable"
+                                            }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="event._ecs?.destination.as || event._ecs?.destination.geo">
+            <br />
+            <div class="card">
+                <div class="card-header">
+                    <b>ECS GeoIP</b>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <b>Source</b>
+                        </div>
+                        <div class="col">
+                            <b>Destination</b>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr
+                                        *ngFor="
+                                            let e of [event._ecs.destination]
+                                        "
+                                    >
+                                        <th>Country</th>
+                                        <td>{{ e.geo.country_name }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- HTTP. -->
         <div *ngIf="http">
             <br />
