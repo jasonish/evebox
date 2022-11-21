@@ -2,7 +2,6 @@
 //
 // Copyright (C) 2020-2022 Jason Ish
 
-use crate::prelude::*;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -24,18 +23,19 @@ use tracing::Level;
 use crate::bookmark;
 use crate::datastore::Datastore;
 use crate::elastic;
+use crate::elastic::Client;
 use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
 use crate::eve::processor::Processor;
 use crate::eve::EveReader;
+use crate::prelude::*;
 use crate::server::session::Session;
 use crate::server::{api, AuthenticationType};
 use crate::sqlite;
 use crate::sqlite::configrepo::ConfigRepo;
 
 use super::{ServerConfig, ServerContext};
-use crate::elastic::Client;
 
-fn load_event_services(filename: &str) -> anyhow::Result<serde_json::Value> {
+fn load_event_services(filename: &str) -> Result<serde_json::Value> {
     let finput = std::fs::File::open(filename)?;
     let yaml_value: serde_yaml::Value = serde_yaml::from_reader(finput)?;
     let json_value = serde_json::to_value(&yaml_value["event-services"])?;
@@ -292,7 +292,7 @@ pub(crate) fn build_axum_service(
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
         .layer(AddExtensionLayer::new(context.clone()))
         .layer(response_header_layer)
-        .fallback(axum::routing::get(fallback_handler));
+        .fallback(get(fallback_handler));
 
     let app = if context.config.http_request_logging {
         app.layer(request_tracing)
@@ -347,7 +347,7 @@ pub(crate) async fn run_axum_server_with_tls(
 pub(crate) async fn run_axum_server(
     config: &ServerConfig,
     context: Arc<ServerContext>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let port: u16 = config.port;
     let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
     let service = build_axum_service(context.clone());
@@ -394,10 +394,7 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-pub async fn build_context(
-    config: ServerConfig,
-    datastore: Datastore,
-) -> anyhow::Result<ServerContext> {
+pub async fn build_context(config: ServerConfig, datastore: Datastore) -> Result<ServerContext> {
     let config_repo = if let Some(directory) = &config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
         info!("Configuration database filename: {:?}", filename);
@@ -434,11 +431,11 @@ async fn wait_for_version(client: &Client) -> elastic::client::Version {
                 return version;
             }
         }
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        tokio::time::sleep(Duration::from_secs(3)).await;
     }
 }
 
-async fn configure_datastore(config: &ServerConfig) -> anyhow::Result<Datastore> {
+async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
     match config.datastore.as_ref() {
         "elasticsearch" => {
             let mut client = elastic::ClientBuilder::new(&config.elastic_url);
@@ -531,13 +528,12 @@ impl FromRequest for SessionExtractor {
     type Rejection = (StatusCode, &'static str);
 
     async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
-        let axum::extract::Extension(context) =
-            axum::extract::Extension::<Arc<ServerContext>>::from_request(req)
-                .await
-                .unwrap();
+        let Extension(context) = Extension::<Arc<ServerContext>>::from_request(req)
+            .await
+            .unwrap();
         let enable_reverse_proxy = context.config.http_reverse_proxy;
         let Extension(ConnectInfo(remote_addr)) =
-            axum::extract::Extension::<ConnectInfo<SocketAddr>>::from_request(req)
+            Extension::<ConnectInfo<SocketAddr>>::from_request(req)
                 .await
                 .unwrap();
         let headers = req.headers().expect("other extractor taken headers");
@@ -573,11 +569,8 @@ impl FromRequest for SessionExtractor {
             }
             _ => {
                 // Any authentication type requires a session.
-                info!("Authentication required but not session found.");
-                return Err((
-                    axum::http::StatusCode::UNAUTHORIZED,
-                    "authentication required",
-                ));
+                info!("Authentication required but no session found.");
+                return Err((StatusCode::UNAUTHORIZED, "authentication required"));
             }
         }
     }
