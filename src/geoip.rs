@@ -54,11 +54,17 @@ impl GeoIP {
 
         // Warn if database older than 4 weeks.
         let now = chrono::offset::Utc::now();
-        let dt = chrono::NaiveDateTime::from_timestamp(reader.metadata.build_epoch as i64, 0);
-        if (reader.metadata.build_epoch as i64) < now.timestamp() - DAYS_28 {
-            warn!("GeoIP database older than 4 weeks: {}", dt);
+
+        let dt = chrono::NaiveDateTime::from_timestamp_opt(reader.metadata.build_epoch as i64, 0);
+        if let Some(dt) = dt {
+            if (reader.metadata.build_epoch as i64) < now.timestamp() - DAYS_28 {
+                warn!("GeoIP database older than 4 weeks: {}", dt);
+            }
+        } else {
+            warn!("Failed to find timestamp of GeoIP database");
         }
-        info!("Loaded GeoIP database: {}: {}", filename, dt);
+
+        info!("Loaded GeoIP database: {}: {:?}", filename, dt);
 
         let last_modified = match Self::get_last_modified(&filename) {
             Ok(last_modified) => last_modified,
@@ -132,9 +138,11 @@ impl GeoIP {
     ) -> Result<geoip2::City, Box<dyn std::error::Error>> {
         let mut inner = self.inner.lock().unwrap();
         if self.check_for_update(&mut inner) {
-            let build_time =
-                chrono::NaiveDateTime::from_timestamp(inner.reader.metadata.build_epoch as i64, 0);
-            info!("GeoIP database has been updated to {}", build_time);
+            let build_time = chrono::NaiveDateTime::from_timestamp_opt(
+                inner.reader.metadata.build_epoch as i64,
+                0,
+            );
+            info!("GeoIP database has been updated to {:?}", build_time);
         }
         let ip: std::net::IpAddr = std::str::FromStr::from_str(addr)?;
         let city = inner.reader.lookup(ip)?;
