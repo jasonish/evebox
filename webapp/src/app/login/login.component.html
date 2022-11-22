@@ -10,9 +10,9 @@
 <div class="row">
     <div class="col-md-4"></div>
     <div class="col-md-4">
-        <h3 style="text-align: center">EveBox Login</h3>
+        <h1 style="text-align: center">EveBox Login</h1>
 
-        <div class="jumbotron" style="padding: 20px">
+        <div class="mt-4 p-5 text-white rounded bg-light" style="padding: 20px">
             <form #loginForm="ngForm">
                 <div *ngIf="username">
                     <input
@@ -43,14 +43,16 @@
                     <br />
                 </div>
 
-                <button
-                    type="submit"
-                    class="btn btn-primary btn-block"
-                    [disabled]="!loginForm.form.valid"
-                    (click)="login()"
-                >
-                    Login
-                </button>
+                <div class="d-grid">
+                    <button
+                        type="submit"
+                        class="btn btn-primary btn-block"
+                        [disabled]="!loginForm.form.valid"
+                        (click)="login()"
+                    >
+                        Login
+                    </button>
+                </div>
 
                 <div *ngIf="loginMessage">
                     <br />
