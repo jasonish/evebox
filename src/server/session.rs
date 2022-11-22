@@ -78,9 +78,10 @@ impl Session {
     }
 
     pub fn anonymous(username: Option<String>) -> Session {
+        let session_id = generate_session_id();
         Session {
             username,
-            ..Default::default()
+            session_id: Some(session_id),
         }
     }
 

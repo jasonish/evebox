@@ -31,6 +31,7 @@ use crate::server::main::SessionExtractor;
 use crate::server::session::Session;
 use crate::server::AuthenticationType;
 use crate::server::ServerContext;
+use crate::sqlite::configrepo::ConfigRepoError;
 
 #[derive(Debug, Deserialize)]
 pub struct LoginForm {
@@ -38,7 +39,7 @@ pub struct LoginForm {
     pub password: Option<String>,
 }
 
-pub(crate) async fn options_new(
+pub(crate) async fn options(
     Extension(context): Extension<Arc<ServerContext>>,
 ) -> impl IntoResponse {
     let response = json!({
@@ -61,11 +62,62 @@ pub(crate) async fn post(
     }
 
     // We just take the username.
-    if context.config.authentication_type == AuthenticationType::Username {}
+    if context.config.authentication_type == AuthenticationType::Username {
+        let username = match &form.username {
+            None => {
+                return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({}))).into_response();
+            }
+            Some(username) => username.to_owned(),
+        };
+        info!("Creating anonymous session for username={}", &username);
+        let session = Arc::new(Session::anonymous(Some(username)));
+        let _ = context.session_store.put(session.clone());
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "session_id": session.session_id,
+            })),
+        )
+            .into_response();
+    }
 
     if context.config.authentication_type == AuthenticationType::UsernamePassword {
+        let username = match &form.username {
+            None => {
+                return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({}))).into_response();
+            }
+            Some(username) => username.to_owned(),
+        };
+        let password = match &form.password {
+            None => {
+                return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({}))).into_response();
+            }
+            Some(password) => password.to_owned(),
+        };
+
+        let user = match context
+            .config_repo
+            .get_user_by_username_password(&username, &password)
+            .await
+        {
+            Ok(user) => user,
+            Err(err) => match err {
+                ConfigRepoError::UsernameNotFound(_)
+                | ConfigRepoError::BadPassword(_)
+                | ConfigRepoError::NoUser(_) => {
+                    warn!("Login failure for username={}, error={:?}", &username, err);
+                    return (StatusCode::UNAUTHORIZED, "").into_response();
+                }
+                _ => {
+                    error!("Login failure for username={}, error={:?}", &username, err);
+                    return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
+                }
+            },
+        };
+
+        info!("Creating session for user {:?}", &username);
         let mut session = Session::new();
-        session.username = Some(form.username.as_ref().unwrap().to_string());
+        session.username = Some(user.username);
         let session = Arc::new(session);
         context.session_store.put(session.clone()).unwrap();
         return (
@@ -76,52 +128,6 @@ pub(crate) async fn post(
         )
             .into_response();
     }
-
-    // let session = match (
-    //     &context.config.authentication_type,
-    //     &form.username,
-    //     &form.password,
-    // ) {
-    //     (AuthenticationType::Anonymous, _, _) => {
-    //         let session = Session::new();
-    //         Some(session)
-    //     }
-    //     (AuthenticationType::Username, Some(username), _) => {
-    //         let mut session = Session::new();
-    //         session.username = Some(username.to_string());
-    //         Some(session)
-    //     }
-    //     (AuthenticationType::UsernamePassword, Some(username), Some(password)) => match context
-    //         .config_repo
-    //         .get_user_by_username_password(username, password)
-    //         .await
-    //     {
-    //         Ok(user) => {
-    //             let mut session = Session::new();
-    //             session.username = Some(user.username.clone());
-    //             Some(session)
-    //         }
-    //         Err(err) => {
-    //             warn!("Login failed for username {}: error={}", username, err);
-    //             None
-    //         }
-    //     },
-    //     _ => None,
-    // };
-    //
-    // if let Some(session) = session {
-    //     let session = Arc::new(session);
-    //     if let Err(err) = context.session_store.put(session.clone()) {
-    //         error!("Failed to add new session to session store: {}", err);
-    //         return Ok(Response::InternalError(err.to_string()));
-    //     }
-    //     let response = json!({
-    //         "session_id": session.session_id,
-    //     });
-    //     return Ok(Response::Json(response));
-    // }
-    //
-    // return Ok(Response::Unauthorized);
 
     return (
         StatusCode::UNAUTHORIZED,

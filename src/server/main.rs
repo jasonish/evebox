@@ -257,7 +257,7 @@ pub(crate) fn build_axum_service(
     let app = axum::Router::new()
         .route(
             "/api/1/login",
-            post(crate::server::api::login::post).options(api::login::options_new),
+            post(crate::server::api::login::post).options(api::login::options),
         )
         .route("/api/1/logout", post(crate::server::api::login::logout_new))
         .route("/api/1/config", get(api::config))
