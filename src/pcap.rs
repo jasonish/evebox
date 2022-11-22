@@ -160,7 +160,7 @@ pub fn packet_from_payload(event: &EveJson) -> Result<Vec<u8>, Error> {
     }
 }
 
-pub fn create(linktype: u32, ts: chrono::DateTime<chrono::Utc>, packet: &[u8]) -> Vec<u8> {
+pub fn create(linktype: u32, ts: time::OffsetDateTime, packet: &[u8]) -> Vec<u8> {
     let mut buf = BytesMut::with_capacity(FILE_HEADER_LEN + PACKET_HEADER_LEN + packet.len());
 
     // Write out the file header.
@@ -173,8 +173,8 @@ pub fn create(linktype: u32, ts: chrono::DateTime<chrono::Utc>, packet: &[u8]) -
     buf.put_u32_le(linktype); // Data link type
 
     // The record header.
-    buf.put_u32_le(ts.timestamp() as u32);
-    buf.put_u32_le(ts.timestamp_subsec_micros());
+    buf.put_u32_le(ts.unix_timestamp_nanos() as u32);
+    buf.put_u32_le(ts.microsecond());
     buf.put_u32_le(packet.len() as u32);
     buf.put_u32_le(packet.len() as u32);
     buf.put_slice(packet);

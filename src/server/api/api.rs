@@ -1,29 +1,13 @@
-// Copyright (C) 2020-2021 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
 use axum::extract::{Extension, Form, Path};
 use axum::http::{Response, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use std::convert::Infallible;
+use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -36,10 +20,7 @@ use crate::elastic;
 use crate::server::filters::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
-use crate::{
-    datastore::HistogramInterval,
-    types::{DateTime, JsonValue},
-};
+use crate::{datastore::HistogramInterval, types::JsonValue};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AlertGroupSpec {
@@ -94,7 +75,7 @@ pub(crate) async fn report_dhcp(
 ) -> impl IntoResponse {
     let mut params = EventQueryParams::default();
     if let Some(time_range) = request.time_range {
-        let now = chrono::Utc::now();
+        let now = time::OffsetDateTime::now_utc();
         match parse_then_from_duration(&now, &time_range) {
             Some(then) => {
                 params.min_timestamp = Some(then);
@@ -164,7 +145,7 @@ pub(crate) async fn agg(
     SessionExtractor(_session): SessionExtractor,
     Form(query): Form<GenericQuery>,
 ) -> impl IntoResponse {
-    let min_timestamp = match query.mints_from_time_range(&chrono::Utc::now()) {
+    let min_timestamp = match query.mints_from_time_range(&time::OffsetDateTime::now_utc()) {
         Ok(ts) => ts,
         Err(err) => {
             error!("api/agg: {:?}", err);
@@ -204,7 +185,7 @@ pub(crate) async fn histogram(
     Form(query): Form<GenericQuery>,
 ) -> impl IntoResponse {
     let mut params = datastore::HistogramParameters::default();
-    let now = chrono::Utc::now();
+    let now = time::OffsetDateTime::now_utc();
     params.min_timestamp = query.mints_from_time_range(&now).unwrap();
     if params.min_timestamp.is_some() {
         params.max_timestamp = Some(now);
@@ -245,7 +226,7 @@ pub(crate) async fn alert_query(
 
     if let Some(time_range) = query.time_range {
         if !time_range.is_empty() {
-            let now = chrono::Utc::now();
+            let now = time::OffsetDateTime::now_utc();
             match parse_then_from_duration(&now, &time_range) {
                 None => {
                     error!("Failed to parse time_range: {}", time_range);
@@ -482,7 +463,10 @@ pub(crate) async fn alert_group_comment(
     }
 }
 
-fn parse_then_from_duration(now: &DateTime, duration: &str) -> Option<DateTime> {
+fn parse_then_from_duration(
+    now: &time::OffsetDateTime,
+    duration: &str,
+) -> Option<time::OffsetDateTime> {
     // First parse to a somewhat standard duration.
     let duration = match humantime::Duration::from_str(duration) {
         Ok(duration) => duration,
@@ -491,18 +475,8 @@ fn parse_then_from_duration(now: &DateTime, duration: &str) -> Option<DateTime> 
             return None;
         }
     };
-    // Convert the standard duration to a chrono duration.
-    let duration = match chrono::Duration::from_std(*duration.as_ref()) {
-        Ok(x) => x,
-        Err(err) => {
-            error!(
-                "Failed to convert duration from humantime to chrono: {}: {}",
-                duration, err
-            );
-            return None;
-        }
-    };
-    now.checked_sub_signed(duration)
+
+    Some(now.sub(*duration.as_ref()))
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -547,7 +521,7 @@ mod test {
 
     #[test]
     fn test_query_params_mints_from_time_range() {
-        let now = chrono::Utc::now();
+        let now = time::OffsetDateTime::now_utc();
 
         let query = GenericQuery {
             ..Default::default()
@@ -566,10 +540,10 @@ mod test {
 
 fn parse_timestamp(
     timestamp: &str,
-) -> Result<chrono::DateTime<chrono::Utc>, Box<dyn std::error::Error + Sync + Send>> {
-    // The webapp may send the timestamp with an inproperly encoded +, which will be received
+) -> Result<time::OffsetDateTime, Box<dyn std::error::Error + Sync + Send>> {
+    // The webapp may send the timestamp with an improperly encoded +, which will be received
     // as space. Help the parsing out by replacing spaces with "+".
     let timestamp = timestamp.replace(' ', "+");
     let ts = percent_encoding::percent_decode_str(&timestamp).decode_utf8_lossy();
-    crate::eve::parse_eve_timestamp(&ts)
+    Ok(crate::eve::parse_eve_timestamp(&ts)?)
 }

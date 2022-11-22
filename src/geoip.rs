@@ -1,23 +1,6 @@
-// Copyright (C) 2020 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
 use crate::eve::eve::EveJson;
 use crate::prelude::*;
@@ -52,12 +35,14 @@ impl GeoIP {
             return Err("No database file found".into());
         };
 
-        // Warn if database older than 4 weeks.
-        let now = chrono::offset::Utc::now();
+        let build_epoch = reader.metadata.build_epoch as i64;
 
-        let dt = chrono::NaiveDateTime::from_timestamp_opt(reader.metadata.build_epoch as i64, 0);
-        if let Some(dt) = dt {
-            if (reader.metadata.build_epoch as i64) < now.timestamp() - DAYS_28 {
+        // Warn if database older than 4 weeks.
+        let now = time::OffsetDateTime::now_utc();
+
+        let dt = time::OffsetDateTime::from_unix_timestamp(build_epoch);
+        if let Ok(dt) = dt {
+            if build_epoch < now.unix_timestamp() - DAYS_28 {
                 warn!("GeoIP database older than 4 weeks: {}", dt);
             }
         } else {
@@ -138,10 +123,8 @@ impl GeoIP {
     ) -> Result<geoip2::City, Box<dyn std::error::Error>> {
         let mut inner = self.inner.lock().unwrap();
         if self.check_for_update(&mut inner) {
-            let build_time = chrono::NaiveDateTime::from_timestamp_opt(
-                inner.reader.metadata.build_epoch as i64,
-                0,
-            );
+            let build_time =
+                time::OffsetDateTime::from_unix_timestamp(inner.reader.metadata.build_epoch as i64);
             info!("GeoIP database has been updated to {:?}", build_time);
         }
         let ip: std::net::IpAddr = std::str::FromStr::from_str(addr)?;

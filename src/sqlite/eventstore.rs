@@ -128,7 +128,7 @@ impl SQLiteEventStore {
 
         if let Some(ts) = options.timestamp_gte {
             filters.push("timestamp >= ?".into());
-            params.push(Box::new(ts.timestamp_nanos()));
+            params.push(Box::new(ts.unix_timestamp_nanos() as i64));
         }
 
         if let Some(query_string) = options.query_string {
@@ -186,8 +186,9 @@ impl SQLiteEventStore {
                 }
             }
 
-            use chrono::offset::TimeZone;
-            let min_ts = chrono::Utc.timestamp_nanos(min_ts_nanos);
+            let min_ts = time::OffsetDateTime::from_unix_timestamp_nanos(min_ts_nanos as i128)
+                .unwrap()
+                .to_offset(time::UtcOffset::UTC);
 
             let alert = json!({
                 "count": count,
@@ -295,12 +296,12 @@ impl SQLiteEventStore {
 
         if let Some(dt) = options.max_timestamp {
             filters.push("timestamp <= ?".to_string());
-            params.push(Box::new(dt.timestamp_nanos()));
+            params.push(Box::new(dt.unix_timestamp_nanos() as i64));
         }
 
         if let Some(dt) = options.min_timestamp {
             filters.push("timestamp >= ?".to_string());
-            params.push(Box::new(dt.timestamp_nanos()));
+            params.push(Box::new(dt.unix_timestamp_nanos() as i64));
         }
 
         // Query string.
@@ -472,14 +473,14 @@ impl SQLiteEventStore {
         params.push(Box::new(alert_group.dest_ip));
 
         let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
-        let mints_nanos = mints.timestamp_nanos();
+        let mints_nanos = mints.unix_timestamp_nanos();
         filters.push("timestamp >= ?".to_string());
-        params.push(Box::new(mints_nanos));
+        params.push(Box::new(mints_nanos as i64));
 
         let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
-        let maxts_nanos = maxts.timestamp_nanos();
+        let maxts_nanos = maxts.unix_timestamp_nanos();
         filters.push("timestamp <= ?".to_string());
-        params.push(Box::new(maxts_nanos));
+        params.push(Box::new(maxts_nanos as i64));
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
@@ -540,11 +541,11 @@ impl SQLiteEventStore {
 
         let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
         filters.push("timestamp >= ?".to_string());
-        params.push(Box::new(mints.timestamp_nanos()));
+        params.push(Box::new(mints.unix_timestamp_nanos() as i64));
 
         let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
         filters.push("timestamp <= ?".to_string());
-        params.push(Box::new(maxts.timestamp_nanos()));
+        params.push(Box::new(maxts.unix_timestamp_nanos() as i64));
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
         let conn = self.connection.lock().unwrap();
@@ -582,11 +583,11 @@ impl SQLiteEventStore {
 
         let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
         filters.push("timestamp >= ?".to_string());
-        params.push(Box::new(mints.timestamp_nanos()));
+        params.push(Box::new(mints.unix_timestamp_nanos() as i64));
 
         let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
         filters.push("timestamp <= ?".to_string());
-        params.push(Box::new(maxts.timestamp_nanos()));
+        params.push(Box::new(maxts.unix_timestamp_nanos() as i64));
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
         let conn = self.connection.lock().unwrap();

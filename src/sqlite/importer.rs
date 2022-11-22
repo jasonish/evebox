@@ -26,6 +26,7 @@ use rusqlite::types::ToSqlOutput;
 use rusqlite::{ToSql, TransactionBehavior};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
+use time::macros::format_description;
 
 #[derive(thiserror::Error, Debug)]
 pub enum IndexError {
@@ -101,7 +102,7 @@ impl Importer {
         // Queue event insert.
         let sql = "INSERT INTO events (timestamp, source) VALUES (?1, ?2)";
         let params = vec![
-            Value::I64(ts.timestamp_nanos()),
+            Value::I64(ts.unix_timestamp_nanos() as i64),
             Value::String(event.to_string()),
         ];
         self.queue.push(QueuedRecord {
@@ -222,8 +223,11 @@ fn reformat_timestamps(eve: &mut EveJson) {
 }
 
 fn reformat_timestamp(ts: &str) -> String {
+    let format = format_description!(
+        "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:6][offset_hour sign:mandatory][offset_minute]"
+    );
     if let Ok(dt) = eve::parse_eve_timestamp(ts) {
-        super::format_sqlite_timestamp(&dt)
+        dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
     } else {
         ts.to_string()
     }

@@ -86,8 +86,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod test {
-    use chrono::TimeZone;
-
     #[test]
     fn test_timestamps() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ts = "2020-04-06T10:48:55.011800-0600";
@@ -102,11 +100,11 @@ mod test {
     fn test_from_nanos() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ts = "2020-04-06T10:48:55.011800-0600";
         let dt = crate::eve::parse_eve_timestamp(ts)?;
-        let nanos = dt.timestamp_nanos();
+        let nanos = dt.unix_timestamp_nanos();
         assert_eq!(nanos, 1586191735011800000);
 
         // Now convert nanos back to a datetime.
-        let dt = chrono::Utc.timestamp_nanos(nanos);
+        let dt = time::OffsetDateTime::from_unix_timestamp_nanos(nanos).unwrap();
         let formatted = crate::sqlite::format_sqlite_timestamp(&dt);
         assert_eq!(formatted, "2020-04-06T16:48:55.011800+0000");
 

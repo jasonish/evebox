@@ -1,27 +1,9 @@
-// Copyright (C) 2020 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
-use crate::types::{DateTime, JsonValue};
-
-const TIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S.%3fZ";
+use crate::types::JsonValue;
+use time::macros::format_description;
 
 pub trait Request {
     fn push_filter(&mut self, filter: JsonValue);
@@ -55,11 +37,14 @@ pub fn new_request() -> JsonValue {
     })
 }
 
-pub fn format_datetime(dt: DateTime) -> String {
-    dt.format(TIME_FORMAT).to_string()
+/// Format: "%Y-%m-%dT%H:%M:%S.%3fZ";
+pub fn format_datetime(dt: time::OffsetDateTime) -> String {
+    let format =
+        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z");
+    dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
 }
 
-pub fn timestamp_gte_filter(dt: DateTime) -> JsonValue {
+pub fn timestamp_gte_filter(dt: time::OffsetDateTime) -> JsonValue {
     json!({
         "range": {
             "@timestamp": {"gte": format_datetime(dt)}
@@ -67,7 +52,7 @@ pub fn timestamp_gte_filter(dt: DateTime) -> JsonValue {
     })
 }
 
-pub fn timestamp_lte_filter(dt: DateTime) -> JsonValue {
+pub fn timestamp_lte_filter(dt: time::OffsetDateTime) -> JsonValue {
     json!({
         "range": {
             "@timestamp": {"lte": format_datetime(dt)}

@@ -24,7 +24,6 @@ axum-server = { version = "0.3.2", features = ["tls-rustls"] }
 base64 = "0.12.1"
 bcrypt = "0.9.0"
 bytes = "0.5.4"
-chrono = { version = "0.4.23", default_features = false }
 clap = { version = "3.1.5", features = ["env", "derive"] }
 config = "0.10.1"
 deadpool-sqlite = { version = "0.3.1", features = ["rt_tokio_1"] }
@@ -50,7 +49,7 @@ serde_urlencoded = "0.6.1"
 serde_yaml = "0.8.13"
 stdlog = { package = "log", version = "0.4.8" }
 suricata-rule-parser = { path = "./suricata-rule-parser", package = "evebox-suricata-rule-parser", version = "0.2.0" }
-time = { version = "0.3.17", features = ["formatting", "local-offset", "macros"] }
+time = { version = "0.3.17", features = ["formatting", "local-offset", "macros", "parsing"] }
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
 tower = "0.4.11"
 tower-http = { version = "0.1.2", default_features = false, features = ["set-header", "trace"] }
@@ -58,7 +57,7 @@ tracing = "0.1.25"
 tracing-subscriber = { version = "0.3.16", features = ["std", "fmt", "env-filter", "time"] }
 tracing-log = "0.1.2"
 thiserror = "1.0.19"
-ulid = "0.5.0"
+ulid = "1.0.0"
 uuid = { version = "0.8.1", features = ["v4"] }
 webbrowser = "0.5.2"
 yaml-rust = "0.4.5"

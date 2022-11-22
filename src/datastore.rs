@@ -1,23 +1,6 @@
-// Copyright (C) 2020-2021 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
 use crate::elastic;
 use crate::importer::Importer;
@@ -28,14 +11,12 @@ use serde_json::Value as JsonValue;
 use std::sync::Arc;
 use thiserror::Error;
 
-type DateTime = chrono::DateTime<chrono::Utc>;
-
 #[derive(Default, Debug)]
 pub struct EventQueryParams {
     pub query_string: Option<String>,
     pub order: Option<String>,
-    pub min_timestamp: Option<chrono::DateTime<chrono::Utc>>,
-    pub max_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    pub min_timestamp: Option<time::OffsetDateTime>,
+    pub max_timestamp: Option<time::OffsetDateTime>,
     pub event_type: Option<String>,
     pub size: Option<u64>,
     pub sort_by: Option<String>,
@@ -60,8 +41,8 @@ pub enum DatastoreError {
     ElasticSearchError(String),
     #[error("elasticsearch: {0}")]
     ElasticError(elastic::ElasticError),
-    #[error("failed to parse timestamp")]
-    TimestampParseError(chrono::format::ParseError),
+    #[error("time parse error")]
+    TimeParseError(time::error::Parse),
     #[error("failed to parse event")]
     EventParseError,
     #[error("failed to parse histogram interval: {0}")]
@@ -76,9 +57,9 @@ impl From<Box<dyn std::error::Error + Sync + Send>> for DatastoreError {
     }
 }
 
-impl From<chrono::format::ParseError> for DatastoreError {
-    fn from(err: chrono::format::ParseError) -> Self {
-        DatastoreError::TimestampParseError(err)
+impl From<time::error::Parse> for DatastoreError {
+    fn from(err: time::error::Parse) -> Self {
+        DatastoreError::TimeParseError(err)
     }
 }
 
@@ -266,8 +247,8 @@ impl Datastore {
 
 #[derive(Default, Debug)]
 pub struct HistogramParameters {
-    pub min_timestamp: Option<chrono::DateTime<chrono::Utc>>,
-    pub max_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    pub min_timestamp: Option<time::OffsetDateTime>,
+    pub max_timestamp: Option<time::OffsetDateTime>,
     pub interval: Option<HistogramInterval>,
     pub event_type: Option<String>,
     pub dns_type: Option<String>,
@@ -300,13 +281,13 @@ pub struct AggParameters {
     pub dns_type: Option<String>,
     pub query_string: Option<String>,
     pub address_filter: Option<String>,
-    pub min_timestamp: Option<DateTime>,
+    pub min_timestamp: Option<time::OffsetDateTime>,
     pub agg: String,
     pub size: u64,
 }
 
 pub struct FlowHistogramParameters {
-    pub mints: Option<DateTime>,
+    pub mints: Option<time::OffsetDateTime>,
     pub interval: Option<String>,
     pub query_string: Option<String>,
 }

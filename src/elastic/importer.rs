@@ -23,6 +23,7 @@ use super::client::BulkResponse;
 use crate::eve::filters::AutoArchiveFilter;
 use crate::eve::Eve;
 use crate::prelude::*;
+use time::macros::format_description;
 
 #[derive(Clone, Debug)]
 pub struct Importer {
@@ -53,12 +54,21 @@ impl Importer {
         mut event: serde_json::Value,
     ) -> anyhow::Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ts = event.timestamp().unwrap();
+        let st: std::time::SystemTime = ts.into();
+
         let index = if self.no_index_suffix {
             self.index.clone()
         } else {
-            format!("{}-{}", self.index, ts.format("%Y.%m.%d"))
+            let formatter = format_description!("[year].[month].[day]");
+            format!(
+                "{}-{}",
+                self.index,
+                ts.to_offset(time::UtcOffset::UTC)
+                    .format(&formatter)
+                    .unwrap()
+            )
         };
-        let event_id = ulid::Ulid::from_datetime(ts).to_string();
+        let event_id = ulid::Ulid::from_datetime(st).to_string();
         let at_timestamp = crate::elastic::format_timestamp(ts);
         event["@timestamp"] = at_timestamp.into();
         self.auto_archive_filter.run(&mut event);
