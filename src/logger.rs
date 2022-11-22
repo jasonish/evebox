@@ -1,31 +1,23 @@
-// Copyright (C) 2020 Jason Ish
+// SPDX-License-Identifier: MIT
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Copyright (C) 2020-2022 Jason Ish
 
+use time::macros::format_description;
+use time::UtcOffset;
 pub use tracing::debug;
 pub use tracing::error;
 pub use tracing::info;
 pub use tracing::trace;
 pub use tracing::warn;
-
 use tracing::Level;
+use tracing_subscriber::fmt::time::OffsetTime;
+
+static mut OFFSET: Option<UtcOffset> = None;
+
+pub fn init_offset() {
+    let offset: UtcOffset = UtcOffset::current_local_offset().unwrap();
+    unsafe { OFFSET = Some(offset) };
+}
 
 pub fn init_logger(level: Level) {
     let level = match level {
@@ -35,10 +27,23 @@ pub fn init_logger(level: Level) {
         Level::WARN => "warn",
         Level::ERROR => "error",
     };
-    let timer =
-        tracing_subscriber::fmt::time::ChronoLocal::with_format("%Y-%m-%d %H:%M:%S".to_string());
+
+    let timer = unsafe {
+        if let Some(offset) = OFFSET {
+            OffsetTime::new(
+                offset,
+                format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
+            )
+        } else {
+            OffsetTime::new(
+                time::UtcOffset::UTC,
+                format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
+            )
+        }
+    };
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(format!("{},hyper=off,warp=off,tower_http=debug", level))
+        .with_env_filter(format!("{},hyper=off,tower_http=debug", level))
         .with_writer(std::io::stderr)
         .with_timer(timer)
         .finish();

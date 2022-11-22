@@ -9,15 +9,18 @@ use evebox::logger;
 use evebox::prelude::*;
 use evebox::version;
 
-#[tokio::main]
-async fn main() {
-    if let Err(err) = _main().await {
-        error!("{}", err);
-        std::process::exit(1);
-    }
+fn main() {
+    logger::init_offset();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        if let Err(err) = evebox_main().await {
+            error!("{}", err);
+            std::process::exit(1);
+        }
+    })
 }
 
-async fn _main() -> Result<(), Box<dyn std::error::Error>> {
+async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
     let parser = clap::Command::new("EveBox")
         .version(std::env!("CARGO_PKG_VERSION"))
         .arg(
