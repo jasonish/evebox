@@ -27,30 +27,30 @@ import { Injectable } from "@angular/core";
 
 @Injectable()
 export class ReportsService {
-    histogramTimeInterval(range: number): string {
-        let interval = "day";
+  histogramTimeInterval(range: number): string {
+    let interval = "day";
 
-        if (range == 0) {
-            return "day";
-        } else if (range <= 60) {
-            // Minute or less.
-            interval = "second";
-        } else if (range <= 3600 * 6) {
-            // 6 hours or or less.
-            interval = "minute";
-        } else if (range <= 86400) {
-            // Day or less.
-            interval = "hour";
-        } else if (range <= 86400 * 3) {
-            // 3 days or less.
-            interval = "hour";
-        } else if (range <= 86400 * 7) {
-            // 7 days or less.
-            interval = "hour";
-        }
-
-        console.log(`Returning interval: ${interval}.`);
-
-        return interval;
+    if (range == 0) {
+      return "day";
+    } else if (range <= 60) {
+      // Minute or less.
+      interval = "second";
+    } else if (range <= 3600 * 6) {
+      // 6 hours or or less.
+      interval = "minute";
+    } else if (range <= 86400) {
+      // Day or less.
+      interval = "hour";
+    } else if (range <= 86400 * 3) {
+      // 3 days or less.
+      interval = "hour";
+    } else if (range <= 86400 * 7) {
+      // 7 days or less.
+      interval = "hour";
     }
+
+    console.log(`Returning interval: ${interval}.`);
+
+    return interval;
+  }
 }

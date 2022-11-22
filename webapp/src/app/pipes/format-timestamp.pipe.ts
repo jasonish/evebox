@@ -29,10 +29,10 @@ import { Pipe, PipeTransform } from "@angular/core";
 import * as moment from "moment";
 
 @Pipe({
-    name: "eveboxFormatTimestamp",
+  name: "eveboxFormatTimestamp",
 })
 export class EveboxFormatTimestampPipe implements PipeTransform {
-    transform(timestamp: string) {
-        return moment(timestamp).format("YYYY-MM-DD HH:mm:ss");
-    }
+  transform(timestamp: string) {
+    return moment(timestamp).format("YYYY-MM-DD HH:mm:ss");
+  }
 }

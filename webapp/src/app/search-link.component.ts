@@ -27,42 +27,42 @@
 import { Component, Input, OnInit } from "@angular/core";
 
 @Component({
-    selector: "search-link",
-    template: `<a
-        [routerLink]="[route]"
-        [queryParams]="{ q: queryString }"
-        style="word-break: break-all; text-decoration: none;"
-        >{{ value }}</a
-    >`,
+  selector: "search-link",
+  template: `<a
+    [routerLink]="[route]"
+    [queryParams]="{ q: queryString }"
+    style="word-break: break-all; text-decoration: none;"
+    >{{ value }}</a
+  >`,
 })
 export class EveboxSearchLinkComponent implements OnInit {
-    @Input() field: string;
-    @Input() value: string;
-    @Input() searchParams: any;
-    @Input() route = "/events";
-    @Input() search: string;
+  @Input() field: string;
+  @Input() value: string;
+  @Input() searchParams: any;
+  @Input() route = "/events";
+  @Input() search: string;
 
-    queryString: string;
+  queryString: string;
 
-    ngOnInit() {
-        let queryString = "";
+  ngOnInit() {
+    let queryString = "";
 
-        if (!this.search) {
-            this.search = this.value;
-        }
-
-        if (this.searchParams) {
-            Object.keys(this.searchParams).map((key: any) => {
-                queryString += `+${key}:"${this.searchParams[key]}" `;
-            });
-        } else {
-            if (this.field) {
-                queryString = `${this.field}:"${this.search}"`;
-            } else {
-                queryString = `"${this.search}"`;
-            }
-        }
-
-        this.queryString = queryString;
+    if (!this.search) {
+      this.search = this.value;
     }
+
+    if (this.searchParams) {
+      Object.keys(this.searchParams).map((key: any) => {
+        queryString += `+${key}:"${this.searchParams[key]}" `;
+      });
+    } else {
+      if (this.field) {
+        queryString = `${this.field}:"${this.search}"`;
+      } else {
+        queryString = `"${this.search}"`;
+      }
+    }
+
+    this.queryString = queryString;
+  }
 }

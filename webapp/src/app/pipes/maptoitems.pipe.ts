@@ -34,40 +34,40 @@ import { Pipe, PipeTransform } from "@angular/core";
  *     </div>
  */
 @Pipe({
-    name: "mapToItems",
+  name: "mapToItems",
 })
 export class EveboxMapToItemsPipe implements PipeTransform {
-    flatten(object: any) {
-        let result = {};
+  flatten(object: any) {
+    let result = {};
 
-        for (let x in object) {
-            if (!object.hasOwnProperty(x)) continue;
+    for (let x in object) {
+      if (!object.hasOwnProperty(x)) continue;
 
-            if (typeof object[x] == "object") {
-                let flattened = this.flatten(object[x]);
-                for (let y in flattened) {
-                    if (!flattened.hasOwnProperty(y)) {
-                        continue;
-                    }
-                    result[x + "." + y] = flattened[y];
-                }
-            } else {
-                result[x] = object[x];
-            }
+      if (typeof object[x] == "object") {
+        let flattened = this.flatten(object[x]);
+        for (let y in flattened) {
+          if (!flattened.hasOwnProperty(y)) {
+            continue;
+          }
+          result[x + "." + y] = flattened[y];
         }
-
-        return result;
+      } else {
+        result[x] = object[x];
+      }
     }
 
-    transform(value: any, args: any): any {
-        // Should make optional.
-        value = this.flatten(value);
+    return result;
+  }
 
-        return Object.keys(value).map((key) => {
-            return {
-                key: key,
-                val: value[key],
-            };
-        });
-    }
+  transform(value: any, args: any): any {
+    // Should make optional.
+    value = this.flatten(value);
+
+    return Object.keys(value).map((key) => {
+      return {
+        key: key,
+        val: value[key],
+      };
+    });
+  }
 }

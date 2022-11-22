@@ -27,40 +27,40 @@ declare var localStorage: any;
 
 @Injectable()
 export class TopNavService {
-    timeRange = "24h";
+  timeRange = "24h";
 
-    constructor(private config: ConfigService) {
-        const forceDefaultTimeRange = config.getDefault("force_time_range");
-        const defaultTimeRange = config.getDefault("time_range");
-        const localTimeRange = localStorage.timeRange;
+  constructor(private config: ConfigService) {
+    const forceDefaultTimeRange = config.getDefault("force_time_range");
+    const defaultTimeRange = config.getDefault("time_range");
+    const localTimeRange = localStorage.timeRange;
 
-        if (defaultTimeRange && (forceDefaultTimeRange || !localTimeRange)) {
-            if (defaultTimeRange === "all") {
-                this.timeRange = "";
-            } else {
-                this.timeRange = defaultTimeRange;
-            }
-        } else if (localTimeRange) {
-            this.timeRange = localTimeRange;
-        }
+    if (defaultTimeRange && (forceDefaultTimeRange || !localTimeRange)) {
+      if (defaultTimeRange === "all") {
+        this.timeRange = "";
+      } else {
+        this.timeRange = defaultTimeRange;
+      }
+    } else if (localTimeRange) {
+      this.timeRange = localTimeRange;
     }
+  }
 
-    setTimeRange(timeRange: string): void {
-        this.timeRange = timeRange;
-        localStorage.timeRange = timeRange;
-    }
+  setTimeRange(timeRange: string): void {
+    this.timeRange = timeRange;
+    localStorage.timeRange = timeRange;
+  }
 
-    /**
-     * Get the time range in seconds.
-     */
-    getTimeRangeAsSeconds(): number {
-        if (this.timeRange === "") {
-            // Everything...
-            return 0;
-        }
-        const parts: any[] = this.timeRange.match(/(\d+)(\w+)/) as any[];
-        const value: number = parseInt(parts[1], 10);
-        const unit: string = parts[2];
-        return moment.duration(value, unit as any).asSeconds();
+  /**
+   * Get the time range in seconds.
+   */
+  getTimeRangeAsSeconds(): number {
+    if (this.timeRange === "") {
+      // Everything...
+      return 0;
     }
+    const parts: any[] = this.timeRange.match(/(\d+)(\w+)/) as any[];
+    const value: number = parseInt(parts[1], 10);
+    const unit: string = parts[2];
+    return moment.duration(value, unit as any).asSeconds();
+  }
 }

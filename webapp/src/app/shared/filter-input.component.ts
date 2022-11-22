@@ -24,63 +24,59 @@ import { AppService } from "../app.service";
 import { MousetrapService } from "../mousetrap.service";
 
 @Component({
-    selector: "evebox-filter-input",
-    template: `
-        <form (ngSubmit)="submitFilter()">
-            <div class="input-group">
-                <input
-                    id="filterInput"
-                    type="text"
-                    class="form-control"
-                    [(ngModel)]="queryString"
-                    placeholder="Filter..."
-                    name="queryString"
-                />
-                <button type="submit" class="btn btn-secondary">Apply</button>
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    (click)="clearFilter()"
-                >
-                    Clear
-                </button>
-            </div>
-        </form>
-    `,
+  selector: "evebox-filter-input",
+  template: `
+    <form (ngSubmit)="submitFilter()">
+      <div class="input-group">
+        <input
+          id="filterInput"
+          type="text"
+          class="form-control"
+          [(ngModel)]="queryString"
+          placeholder="Filter..."
+          name="queryString"
+        />
+        <button type="submit" class="btn btn-secondary">Apply</button>
+        <button type="button" class="btn btn-secondary" (click)="clearFilter()">
+          Clear
+        </button>
+      </div>
+    </form>
+  `,
 })
 export class EveboxFilterInputComponent implements OnInit, OnDestroy {
-    @Input() queryString: string;
+  @Input() queryString: string;
 
-    constructor(
-        private route: ActivatedRoute,
-        private mousetrap: MousetrapService,
-        private router: Router,
-        private appService: AppService
-    ) {}
+  constructor(
+    private route: ActivatedRoute,
+    private mousetrap: MousetrapService,
+    private router: Router,
+    private appService: AppService
+  ) {}
 
-    ngOnInit(): void {
-        this.mousetrap.bind(this, "/", () => {
-            document.getElementById("filterInput").focus();
-        });
+  ngOnInit(): void {
+    this.mousetrap.bind(this, "/", () => {
+      document.getElementById("filterInput").focus();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.mousetrap.unbind(this);
+  }
+
+  submitFilter(): void {
+    document.getElementById("filterInput").blur();
+    const queryParams: any = {};
+    if (this.queryString !== "") {
+      queryParams.q = this.queryString;
     }
+    this.router.navigate([], {
+      queryParams,
+    });
+  }
 
-    ngOnDestroy(): void {
-        this.mousetrap.unbind(this);
-    }
-
-    submitFilter(): void {
-        document.getElementById("filterInput").blur();
-        const queryParams: any = {};
-        if (this.queryString !== "") {
-            queryParams.q = this.queryString;
-        }
-        this.router.navigate([], {
-            queryParams,
-        });
-    }
-
-    clearFilter(): void {
-        this.queryString = "";
-        this.submitFilter();
-    }
+  clearFilter(): void {
+    this.queryString = "";
+    this.submitFilter();
+  }
 }

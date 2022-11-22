@@ -32,9 +32,9 @@ require("!!script-loader!humanize-plus/dist/humanize.js");
 declare let Humanize: any;
 
 export function humanizeFileSize(value: any) {
-    return Humanize.fileSize(value);
+  return Humanize.fileSize(value);
 }
 
 export function humanizeCompactInteger(value: any) {
-    return Humanize.compactInteger(value);
+  return Humanize.compactInteger(value);
 }

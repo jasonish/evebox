@@ -1,84 +1,82 @@
 <div class="content" [ngClass]="{ 'evebox-opacity-50': loading > 0 }">
-    <br />
+  <br />
 
-    <loading-spinner [loading]="loading > 0"></loading-spinner>
+  <loading-spinner [loading]="loading > 0"></loading-spinner>
 
-    <div class="row">
-        <div class="col-md">
-            <button type="button" class="btn btn-secondary" (click)="refresh()">
-                Refresh
-            </button>
-        </div>
-        <div class="col-md">
-            <evebox-filter-input
-                [queryString]="queryString"
-            ></evebox-filter-input>
-        </div>
+  <div class="row">
+    <div class="col-md">
+      <button type="button" class="btn btn-secondary" (click)="refresh()">
+        Refresh
+      </button>
+    </div>
+    <div class="col-md">
+      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
+    </div>
+  </div>
+
+  <br />
+
+  <div class="row">
+    <div class="col-12">
+      <canvas
+        id="eventsOverTimeChart"
+        style="max-height: 200px; height: 200px"
+      ></canvas>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <report-data-table
+        *ngIf="topRrnames"
+        title="Top Request RRNames"
+        [rows]="topRrnames"
+        [headers]="['#', 'RRName']"
+      ></report-data-table>
+    </div>
+    <div class="col">
+      <report-data-table
+        *ngIf="topRrtypes"
+        title="Top Requests Types"
+        [rows]="topRrtypes"
+        [headers]="['#', 'RRType']"
+      ></report-data-table>
+    </div>
+    <div class="col">
+      <report-data-table
+        *ngIf="topRcodes"
+        title="Top Response Codes"
+        [rows]="topRcodes"
+        [headers]="['#', 'RCode']"
+      ></report-data-table>
+    </div>
+  </div>
+
+  <br />
+
+  <div class="row">
+    <div class="col-md-6">
+      <report-data-table
+        *ngIf="topServers"
+        title="Top DNS Servers"
+        [rows]="topServers"
+        [headers]="['#', 'Server']"
+      ></report-data-table>
     </div>
 
-    <br />
-
-    <div class="row">
-        <div class="col-12">
-            <canvas
-                id="eventsOverTimeChart"
-                style="max-height: 200px; height: 200px"
-            ></canvas>
-        </div>
+    <div class="col-md-6">
+      <report-data-table
+        *ngIf="topClients"
+        title="Top DNS Clients"
+        [rows]="topClients"
+        [headers]="['#', 'Client']"
+      ></report-data-table>
     </div>
+  </div>
 
-    <div class="row">
-        <div class="col">
-            <report-data-table
-                *ngIf="topRrnames"
-                title="Top Request RRNames"
-                [rows]="topRrnames"
-                [headers]="['#', 'RRName']"
-            ></report-data-table>
-        </div>
-        <div class="col">
-            <report-data-table
-                *ngIf="topRrtypes"
-                title="Top Requests Types"
-                [rows]="topRrtypes"
-                [headers]="['#', 'RRType']"
-            ></report-data-table>
-        </div>
-        <div class="col">
-            <report-data-table
-                *ngIf="topRcodes"
-                title="Top Response Codes"
-                [rows]="topRcodes"
-                [headers]="['#', 'RCode']"
-            ></report-data-table>
-        </div>
-    </div>
+  <br />
 
-    <br />
+  <div class="row"></div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <report-data-table
-                *ngIf="topServers"
-                title="Top DNS Servers"
-                [rows]="topServers"
-                [headers]="['#', 'Server']"
-            ></report-data-table>
-        </div>
-
-        <div class="col-md-6">
-            <report-data-table
-                *ngIf="topClients"
-                title="Top DNS Clients"
-                [rows]="topClients"
-                [headers]="['#', 'Client']"
-            ></report-data-table>
-        </div>
-    </div>
-
-    <br />
-
-    <div class="row"></div>
-
-    <br />
+  <br />
 </div>

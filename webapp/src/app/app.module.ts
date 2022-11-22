@@ -32,10 +32,10 @@ import { BrowserAnimationsModule } from "@angular/platform-browser/animations";
 import { AppComponent } from "./app.component";
 import { RouterModule } from "@angular/router";
 import {
-    AppRoutingModule,
-    AuthGuard,
-    ConfigResolver,
-    NeverActivate,
+  AppRoutingModule,
+  AuthGuard,
+  ConfigResolver,
+  NeverActivate,
 } from "./app.routes";
 import { AlertsComponent } from "./alerts.component";
 import { EventComponent } from "./event/event.component";
@@ -77,8 +77,8 @@ import { ApiService } from "./api.service";
 import { ReportsService } from "./reports/reports.service";
 import { EveboxSubscriptionService } from "./subscription.service";
 import {
-    IpAddrDataTableComponent,
-    SshReportComponent,
+  IpAddrDataTableComponent,
+  SshReportComponent,
 } from "./reports/ssh/ssh-report.component";
 import { LoginComponent } from "./login/login.component";
 import { SettingsComponent } from "./settings/settings.component";
@@ -98,93 +98,93 @@ import { NgbModule } from "@ng-bootstrap/ng-bootstrap";
 import { HelpComponent } from "./help/help.component";
 
 @NgModule({
-    declarations: [
-        AppComponent,
-        AlertsComponent,
-        EventsComponent,
-        EventComponent,
-        DNSReportComponent,
-        AlertReportComponent,
-        NetflowReportComponent,
-        FlowReportComponent,
-        EveboxReportDataTable,
-        IpReportComponent,
-        SshReportComponent,
-        IpAddrDataTableComponent,
-        EveboxFilterInputComponent,
-        TopNavComponent,
-        EveboxEventTableComponent,
-        KeyTableDirective,
-        EveboxDurationComponent,
-        EveboxSearchLinkComponent,
-        EveboxEventTable2Component,
-        EveboxLoadingSpinnerComponent,
-        LoginComponent,
-        SettingsComponent,
-        DebugComponent,
+  declarations: [
+    AppComponent,
+    AlertsComponent,
+    EventsComponent,
+    EventComponent,
+    DNSReportComponent,
+    AlertReportComponent,
+    NetflowReportComponent,
+    FlowReportComponent,
+    EveboxReportDataTable,
+    IpReportComponent,
+    SshReportComponent,
+    IpAddrDataTableComponent,
+    EveboxFilterInputComponent,
+    TopNavComponent,
+    EveboxEventTableComponent,
+    KeyTableDirective,
+    EveboxDurationComponent,
+    EveboxSearchLinkComponent,
+    EveboxEventTable2Component,
+    EveboxLoadingSpinnerComponent,
+    LoginComponent,
+    SettingsComponent,
+    DebugComponent,
 
-        // Local pipes.
-        EveBoxProtoPrettyPrinter,
-        EventSeverityToBootstrapClass,
-        EveboxFormatTimestampPipe,
-        EveboxFormatIpAddressPipe,
-        EveboxHumanizePipe,
-        EveboxJsonPrettyPipe,
-        EveboxMapToItemsPipe,
-        EveBoxGenericPrettyPrinter,
-        EveboxBase64DecodePipe,
-        EveboxHexPipe,
-        EveBoxEventDescriptionPrinterPipe,
-        RuleHighlightPipe,
-        EveboxPrintablePipe,
-        CommentInputComponent,
-        AboutComponent,
-        DhcpReportComponent,
-        StatsComponent,
-        HelpComponent,
-    ],
-    imports: [
-        // Angular modules.
-        BrowserModule,
-        FormsModule,
-        RouterModule,
-        BrowserAnimationsModule,
-        HttpClientModule,
+    // Local pipes.
+    EveBoxProtoPrettyPrinter,
+    EventSeverityToBootstrapClass,
+    EveboxFormatTimestampPipe,
+    EveboxFormatIpAddressPipe,
+    EveboxHumanizePipe,
+    EveboxJsonPrettyPipe,
+    EveboxMapToItemsPipe,
+    EveBoxGenericPrettyPrinter,
+    EveboxBase64DecodePipe,
+    EveboxHexPipe,
+    EveBoxEventDescriptionPrinterPipe,
+    RuleHighlightPipe,
+    EveboxPrintablePipe,
+    CommentInputComponent,
+    AboutComponent,
+    DhcpReportComponent,
+    StatsComponent,
+    HelpComponent,
+  ],
+  imports: [
+    // Angular modules.
+    BrowserModule,
+    FormsModule,
+    RouterModule,
+    BrowserAnimationsModule,
+    HttpClientModule,
 
-        // NgBootstrap
-        NgbModule,
+    // NgBootstrap
+    NgbModule,
 
-        // Evebox modules.
-        AppRoutingModule,
-    ],
-    providers: [
-        AlertService,
-        AppService,
-        ApiService,
-        AuthGuard,
-        ConfigService,
-        ClientService,
-        ConfigResolver,
-        ElasticSearchService,
-        EventServices,
-        EventService,
-        EveboxSubscriptionService,
-        MousetrapService,
-        ReportsService,
-        SettingsService,
-        TopNavService,
-        ToastrService,
-        ThemeService,
+    // Evebox modules.
+    AppRoutingModule,
+  ],
+  providers: [
+    AlertService,
+    AppService,
+    ApiService,
+    AuthGuard,
+    ConfigService,
+    ClientService,
+    ConfigResolver,
+    ElasticSearchService,
+    EventServices,
+    EventService,
+    EveboxSubscriptionService,
+    MousetrapService,
+    ReportsService,
+    SettingsService,
+    TopNavService,
+    ToastrService,
+    ThemeService,
 
-        // Route gards.
-        NeverActivate,
+    // Route gards.
+    NeverActivate,
 
-        // Local pipes.
-        EveBoxProtoPrettyPrinter,
-        EveboxFormatIpAddressPipe,
+    // Local pipes.
+    EveBoxProtoPrettyPrinter,
+    EveboxFormatIpAddressPipe,
 
-        // Angular included pipes.
-    ],
-    bootstrap: [AppComponent],
+    // Angular included pipes.
+  ],
+  bootstrap: [AppComponent],
 })
 export class AppModule {}

@@ -28,27 +28,27 @@ import { Injectable } from "@angular/core";
 
 @Injectable()
 export class EveboxSubscriptionService {
-    private subscriptions: any = {};
+  private subscriptions: any = {};
 
-    subscribe(id: any, subscribable: any, handler: any) {
-        let subscription = subscribable.subscribe(handler);
+  subscribe(id: any, subscribable: any, handler: any) {
+    let subscription = subscribable.subscribe(handler);
 
-        if (!this.subscriptions[id]) {
-            this.subscriptions[id] = [];
-        }
-
-        this.subscriptions[id].push(subscription);
+    if (!this.subscriptions[id]) {
+      this.subscriptions[id] = [];
     }
 
-    unsubscribe(id: any) {
-        if (!this.subscriptions[id]) {
-            return;
-        }
+    this.subscriptions[id].push(subscription);
+  }
 
-        this.subscriptions[id].forEach((subscription: any) => {
-            subscription.unsubscribe();
-        });
-
-        this.subscriptions[id] = [];
+  unsubscribe(id: any) {
+    if (!this.subscriptions[id]) {
+      return;
     }
+
+    this.subscriptions[id].forEach((subscription: any) => {
+      subscription.unsubscribe();
+    });
+
+    this.subscriptions[id] = [];
+  }
 }

@@ -34,26 +34,26 @@ let toastr = require("toastr");
 toastr.options.toastClass = "toastr";
 
 export interface ToastrOptions {
-    title?: string;
-    closeButton?: boolean;
+  title?: string;
+  closeButton?: boolean;
 
-    // How long the toast will be displayed until the user interacts with it.
-    // 0 to disable, however will still timeout after the user hovers over it.
-    timeOut?: number;
+  // How long the toast will be displayed until the user interacts with it.
+  // 0 to disable, however will still timeout after the user hovers over it.
+  timeOut?: number;
 
-    // How to the toast will be displayed after user interaction, like hovering.
-    extendedTimeOut?: number;
+  // How to the toast will be displayed after user interaction, like hovering.
+  extendedTimeOut?: number;
 
-    preventDuplicates?: boolean;
+  preventDuplicates?: boolean;
 }
 
 @Injectable()
 export class ToastrService {
-    warning(msg: any, options: ToastrOptions = {}) {
-        toastr.warning(msg, options.title, options);
-    }
+  warning(msg: any, options: ToastrOptions = {}) {
+    toastr.warning(msg, options.title, options);
+  }
 
-    error(msg: any, options: ToastrOptions = {}) {
-        toastr.error(msg, options.title, options);
-    }
+  error(msg: any, options: ToastrOptions = {}) {
+    toastr.error(msg, options.title, options);
+  }
 }

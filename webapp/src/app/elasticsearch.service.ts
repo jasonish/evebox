@@ -41,247 +41,247 @@ declare function require(name: string);
 let queue = require("queue");
 
 export interface AlertGroup {
-    count: number;
-    escalatedCount: number;
-    maxTs: string;
-    minTs: string;
-    event: any;
+  count: number;
+  escalatedCount: number;
+  maxTs: string;
+  minTs: string;
+  event: any;
 }
 
 @Injectable()
 export class ElasticSearchService {
-    private index: string;
-    private jobs = queue({ concurrency: 4 });
+  private index: string;
+  private jobs = queue({ concurrency: 4 });
 
-    public keywordSuffix = "";
+  public keywordSuffix = "";
 
-    // Observable for current job count.
-    public jobCount$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+  // Observable for current job count.
+  public jobCount$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
-    constructor(
-        private api: ApiService,
-        private topNavService: TopNavService,
-        private appService: AppService,
-        private config: ConfigService
-    ) {
-        this.index = config.getConfig().ElasticSearchIndex;
+  constructor(
+    private api: ApiService,
+    private topNavService: TopNavService,
+    private appService: AppService,
+    private config: ConfigService
+  ) {
+    this.index = config.getConfig().ElasticSearchIndex;
 
-        try {
-            this.keywordSuffix =
-                config.getConfig()["extra"]["elasticSearchKeywordSuffix"];
-        } catch (err) {
-            console.log(err);
-        }
-
-        console.log("Use Elastic Search keyword suffix: " + this.keywordSuffix);
+    try {
+      this.keywordSuffix =
+        config.getConfig()["extra"]["elasticSearchKeywordSuffix"];
+    } catch (err) {
+      console.log(err);
     }
 
-    /**
-     * Get the current job size.
-     */
-    jobSize(): number {
-        return this.jobs.length;
-    }
+    console.log("Use Elastic Search keyword suffix: " + this.keywordSuffix);
+  }
 
-    search(query: any): Promise<any> {
-        return this.api.post("api/1/query", query).then(
-            (response: any) => response,
-            (error: any) => {
-                throw error.json();
-            }
-        );
-    }
+  /**
+   * Get the current job size.
+   */
+  jobSize(): number {
+    return this.jobs.length;
+  }
 
-    updateJobCount() {
-        this.jobCount$.next(this.jobSize());
-    }
+  search(query: any): Promise<any> {
+    return this.api.post("api/1/query", query).then(
+      (response: any) => response,
+      (error: any) => {
+        throw error.json();
+      }
+    );
+  }
 
-    submit(func: any): Promise<void> {
-        const p = new Promise<void>((resolve, reject) => {
-            this.jobs.push((cb: any) => {
-                func()
-                    .then(() => {
-                        cb();
-                        resolve();
-                        this.updateJobCount();
-                    })
-                    .catch(() => {
-                        cb();
-                        reject();
-                        this.updateJobCount();
-                    });
-            });
+  updateJobCount() {
+    this.jobCount$.next(this.jobSize());
+  }
 
+  submit(func: any): Promise<void> {
+    const p = new Promise<void>((resolve, reject) => {
+      this.jobs.push((cb: any) => {
+        func()
+          .then(() => {
+            cb();
+            resolve();
             this.updateJobCount();
-        });
+          })
+          .catch(() => {
+            cb();
+            reject();
+            this.updateJobCount();
+          });
+      });
 
-        this.jobs.start();
+      this.updateJobCount();
+    });
 
-        return p;
+    this.jobs.start();
+
+    return p;
+  }
+
+  asKeyword(keyword: string): string {
+    return `${keyword}${this.keywordSuffix}`;
+  }
+
+  keywordTerm(keyword: string, value: any): any {
+    let field = this.asKeyword(keyword);
+    let term = {};
+    term[field] = value;
+    return {
+      term: term,
+    };
+  }
+
+  escalateEvent(event: any): Promise<any> {
+    event._source.tags.push("escalated");
+    event._source.tags.push("evebox.escalated");
+    return this.api.post(`api/1/event/${event._id}/escalate`, {});
+  }
+
+  private indexOf(array: any, what: any): number {
+    if (array && Array.isArray(array)) {
+      return array.indexOf(what);
+    } else {
+      return -1;
     }
+  }
 
-    asKeyword(keyword: string): string {
-        return `${keyword}${this.keywordSuffix}`;
+  deEscalateEvent(event: any): Promise<any> {
+    let idx = indexOf(event._source.tags, "escalated");
+    if (idx > -1) {
+      event._source.tags.splice(idx, 1);
     }
-
-    keywordTerm(keyword: string, value: any): any {
-        let field = this.asKeyword(keyword);
-        let term = {};
-        term[field] = value;
-        return {
-            term: term,
-        };
+    idx = indexOf(event._source.tags, "evebox.escalated");
+    if (idx > -1) {
+      event._source.tags.splice(idx, 1);
     }
+    return this.api.post(`api/1/event/${event._id}/de-escalate`, {});
+  }
 
-    escalateEvent(event: any): Promise<any> {
-        event._source.tags.push("escalated");
-        event._source.tags.push("evebox.escalated");
-        return this.api.post(`api/1/event/${event._id}/escalate`, {});
-    }
+  /**
+   * Archive an event.
+   *
+   * @param event An Elastic Search document.
+   */
+  archiveEvent(event: any): Promise<any> {
+    return this.submit(() => {
+      return this.api.post(`api/1/event/${event._id}/archive`, {});
+    });
+  }
 
-    private indexOf(array: any, what: any): number {
-        if (array && Array.isArray(array)) {
-            return array.indexOf(what);
-        } else {
-            return -1;
-        }
-    }
+  escalateAlertGroup(alertGroup: AlertGroup): Promise<void> {
+    return this.submit(() => {
+      const request = {
+        signature_id: alertGroup.event._source.alert.signature_id,
+        src_ip: alertGroup.event._source.src_ip,
+        dest_ip: alertGroup.event._source.dest_ip,
+        min_timestamp: alertGroup.minTs,
+        max_timestamp: alertGroup.maxTs,
+      };
+      console.log(request);
+      return this.api.post("api/1/alert-group/star", request);
+    });
+  }
 
-    deEscalateEvent(event: any): Promise<any> {
-        let idx = indexOf(event._source.tags, "escalated");
-        if (idx > -1) {
-            event._source.tags.splice(idx, 1);
-        }
-        idx = indexOf(event._source.tags, "evebox.escalated");
-        if (idx > -1) {
-            event._source.tags.splice(idx, 1);
-        }
-        return this.api.post(`api/1/event/${event._id}/de-escalate`, {});
-    }
+  archiveAlertGroup(alertGroup: AlertGroup) {
+    return this.submit(() => {
+      let request = {
+        signature_id: alertGroup.event._source.alert.signature_id,
+        src_ip: alertGroup.event._source.src_ip,
+        dest_ip: alertGroup.event._source.dest_ip,
+        min_timestamp: alertGroup.minTs,
+        max_timestamp: alertGroup.maxTs,
+      };
+      return this.api.post("api/1/alert-group/archive", request);
+    });
+  }
 
-    /**
-     * Archive an event.
-     *
-     * @param event An Elastic Search document.
-     */
-    archiveEvent(event: any): Promise<any> {
-        return this.submit(() => {
-            return this.api.post(`api/1/event/${event._id}/archive`, {});
-        });
-    }
+  removeEscalatedStateFromAlertGroup(alertGroup: AlertGroup): Promise<void> {
+    return this.submit(() => {
+      const request = {
+        signature_id: alertGroup.event._source.alert.signature_id,
+        src_ip: alertGroup.event._source.src_ip,
+        dest_ip: alertGroup.event._source.dest_ip,
+        min_timestamp: alertGroup.minTs,
+        max_timestamp: alertGroup.maxTs,
+      };
+      return this.api.post("api/1/alert-group/unstar", request);
+    });
+  }
 
-    escalateAlertGroup(alertGroup: AlertGroup): Promise<void> {
-        return this.submit(() => {
-            const request = {
-                signature_id: alertGroup.event._source.alert.signature_id,
-                src_ip: alertGroup.event._source.src_ip,
-                dest_ip: alertGroup.event._source.dest_ip,
-                min_timestamp: alertGroup.minTs,
-                max_timestamp: alertGroup.maxTs,
-            };
-            console.log(request);
-            return this.api.post("api/1/alert-group/star", request);
-        });
-    }
+  getEventById(id: string): Promise<any> {
+    return this.api.client
+      .get(`api/1/event/${id}`)
+      .toPromise()
+      .then((response: any) => {
+        const event = response;
 
-    archiveAlertGroup(alertGroup: AlertGroup) {
-        return this.submit(() => {
-            let request = {
-                signature_id: alertGroup.event._source.alert.signature_id,
-                src_ip: alertGroup.event._source.src_ip,
-                dest_ip: alertGroup.event._source.dest_ip,
-                min_timestamp: alertGroup.minTs,
-                max_timestamp: alertGroup.maxTs,
-            };
-            return this.api.post("api/1/alert-group/archive", request);
-        });
-    }
-
-    removeEscalatedStateFromAlertGroup(alertGroup: AlertGroup): Promise<void> {
-        return this.submit(() => {
-            const request = {
-                signature_id: alertGroup.event._source.alert.signature_id,
-                src_ip: alertGroup.event._source.src_ip,
-                dest_ip: alertGroup.event._source.dest_ip,
-                min_timestamp: alertGroup.minTs,
-                max_timestamp: alertGroup.maxTs,
-            };
-            return this.api.post("api/1/alert-group/unstar", request);
-        });
-    }
-
-    getEventById(id: string): Promise<any> {
-        return this.api.client
-            .get(`api/1/event/${id}`)
-            .toPromise()
-            .then((response: any) => {
-                const event = response;
-
-                // Make sure tags exists.
-                if (!event._source.tags) {
-                    event._source.tags = [];
-                }
-
-                return event;
-            });
-    }
-
-    /**
-     * Add a time range filter to a query.
-     *
-     * @param query The query.
-     * @param now The time to use as now (a moment object).
-     * @param range The time range of the report in seconds.
-     */
-    addTimeRangeFilter(query: any, now: any, range: number) {
-        if (!range) {
-            return;
+        // Make sure tags exists.
+        if (!event._source.tags) {
+          event._source.tags = [];
         }
 
-        let then = now.clone().subtract(moment.duration(range, "seconds"));
+        return event;
+      });
+  }
 
-        query.query.bool.filter.push({
-            range: {
-                "@timestamp": {
-                    gte: `${then.format()}`,
-                },
-            },
-        });
+  /**
+   * Add a time range filter to a query.
+   *
+   * @param query The query.
+   * @param now The time to use as now (a moment object).
+   * @param range The time range of the report in seconds.
+   */
+  addTimeRangeFilter(query: any, now: any, range: number) {
+    if (!range) {
+      return;
     }
 
-    addSensorNameFilter(query: any, sensor: string) {
-        let term = {};
-        term[`host${this.keywordSuffix}`] = sensor;
-        query.query.bool.filter.push({
-            term: term,
-        });
-    }
+    let then = now.clone().subtract(moment.duration(range, "seconds"));
 
-    resolveHostnameForIp(ip: string) {
-        let query = {
-            query: {
-                bool: {
-                    filter: [
-                        { exists: { field: "event_type" } },
-                        { term: { event_type: "dns" } },
-                        this.keywordTerm("dns.rdata", ip),
-                    ],
-                },
-            },
-            size: 1,
-            sort: [{ "@timestamp": { order: "desc" } }],
-        };
+    query.query.bool.filter.push({
+      range: {
+        "@timestamp": {
+          gte: `${then.format()}`,
+        },
+      },
+    });
+  }
 
-        return this.search(query).then(
-            (response: any) => {
-                if (response.hits.hits.length > 0) {
-                    let hostname = response.hits.hits[0]._source.dns.rrname;
-                    return hostname;
-                }
-            },
-            (error) => {
-                console.log("Failed to resolve hostname for IP: " + error);
-            }
-        );
-    }
+  addSensorNameFilter(query: any, sensor: string) {
+    let term = {};
+    term[`host${this.keywordSuffix}`] = sensor;
+    query.query.bool.filter.push({
+      term: term,
+    });
+  }
+
+  resolveHostnameForIp(ip: string) {
+    let query = {
+      query: {
+        bool: {
+          filter: [
+            { exists: { field: "event_type" } },
+            { term: { event_type: "dns" } },
+            this.keywordTerm("dns.rdata", ip),
+          ],
+        },
+      },
+      size: 1,
+      sort: [{ "@timestamp": { order: "desc" } }],
+    };
+
+    return this.search(query).then(
+      (response: any) => {
+        if (response.hits.hits.length > 0) {
+          let hostname = response.hits.hits[0]._source.dns.rrname;
+          return hostname;
+        }
+      },
+      (error) => {
+        console.log("Failed to resolve hostname for IP: " + error);
+      }
+    );
+  }
 }

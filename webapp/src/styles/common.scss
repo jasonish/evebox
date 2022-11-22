@@ -1,79 +1,79 @@
 $navbar-height: 56;
 
 body {
-    padding-top: $navbar-height + px;
+  padding-top: $navbar-height + px;
 }
 
 .evebox-loading-spinner {
-    z-index: 100;
-    font-size: 300px;
-    position: absolute;
-    left: 50%;
-    margin-left: -150px;
-    margin-top: 150px;
-    opacity: 0.8;
+  z-index: 100;
+  font-size: 300px;
+  position: absolute;
+  left: 50%;
+  margin-left: -150px;
+  margin-top: 150px;
+  opacity: 0.8;
 }
 
 .raised-background {
-    background-color: white;
-    z-index: 1000;
+  background-color: white;
+  z-index: 1000;
 }
 
 // For a fixed toolbar that sits under the navbar.
 .evebox-fixed-toolbar {
-    position: fixed;
-    width: 100%;
-    background-color: $body-bg;
-    z-index: 1;
+  position: fixed;
+  width: 100%;
+  background-color: $body-bg;
+  z-index: 1;
 
-    .row {
-        margin-right: 12px;
-    }
+  .row {
+    margin-right: 12px;
+  }
 }
 
 .evebox-event-table {
-    @extend .table;
-    @extend .table-hover;
+  @extend .table;
+  @extend .table-hover;
 
-    // Make the cursor a pointer finger.
-    cursor: pointer;
+  // Make the cursor a pointer finger.
+  cursor: pointer;
 
-    /* Colour and border style for event tables. */
-    $event-table-border: 1px solid $event-table-border-color;
+  /* Colour and border style for event tables. */
+  $event-table-border: 1px solid $event-table-border-color;
 
-    th {
-        border-top: $event-table-border !important;
-    }
+  th {
+    border-top: $event-table-border !important;
+  }
 
-    td:first-child,
-    th:first-child {
-        border-left: $event-table-border !important;
-    }
+  td:first-child,
+  th:first-child {
+    border-left: $event-table-border !important;
+  }
 
-    td:last-child,
-    th:last-child {
-        border-right: $event-table-border !important;
-    }
+  td:last-child,
+  th:last-child {
+    border-right: $event-table-border !important;
+  }
 
-    tr:last-child {
-        td {
-            border-bottom: $event-table-border !important;
-        }
-    }
-
-    // Reduce the padding between rows.
+  tr:last-child {
     td {
-        margin: 0px;
-        padding: 3px 3px 0px 3px; // Top, right, bottom, left.
+      border-bottom: $event-table-border !important;
     }
+  }
 
-    // Remove any padding or margin from labels within the table.
-    label {
-        margin: 0px;
-        padding: 0px;
-    }
+  // Reduce the padding between rows.
+  td {
+    margin: 0px;
+    padding: 3px 3px 0px 3px; // Top, right, bottom, left.
+  }
 
-    tbody {
-        border-top: 2px solid $event-table-border-color !important;
-    }
+  // Remove any padding or margin from labels within the table.
+  label {
+    margin: 0px;
+    padding: 0px;
+  }
+
+  tbody {
+    border-top: 2px solid $event-table-border-color !important;
+  }
 }

@@ -1,72 +1,64 @@
 <div class="row pt-2">
-    <div class="col-1">
-        <button type="button" class="btn btn-secondary" (click)="refresh()">
-            Refresh
-        </button>
-    </div>
-    <div class="col-2">
-        <select
-            *ngIf="sensors"
-            class="form-select"
-            [(ngModel)]="sensorName"
-            (ngModelChange)="refresh()"
-            name="sensorSelector"
-        >
-            <option value="">All Sensors</option>
-            <option *ngFor="let sensor of sensors" [value]="sensor">
-                {{ sensor }}
-            </option>
-        </select>
-    </div>
-    <div class="col-auto"></div>
+  <div class="col-1">
+    <button type="button" class="btn btn-secondary" (click)="refresh()">
+      Refresh
+    </button>
+  </div>
+  <div class="col-2">
+    <select
+      *ngIf="sensors"
+      class="form-select"
+      [(ngModel)]="sensorName"
+      (ngModelChange)="refresh()"
+      name="sensorSelector"
+    >
+      <option value="">All Sensors</option>
+      <option *ngFor="let sensor of sensors" [value]="sensor">
+        {{ sensor }}
+      </option>
+    </select>
+  </div>
+  <div class="col-auto"></div>
 </div>
 
 <div class="row pt-2">
-    <div class="col-12">
-        <canvas
-            height="200"
-            id="chart-decoder-bytes"
-            style="height: 200px"
-        ></canvas>
-    </div>
+  <div class="col-12">
+    <canvas
+      height="200"
+      id="chart-decoder-bytes"
+      style="height: 200px"
+    ></canvas>
+  </div>
 </div>
 
 <div class="row pt-2">
-    <div class="col-12">
-        <canvas
-            height="200"
-            id="chart-decoder-packets"
-            style="height: 200px"
-        ></canvas>
-    </div>
+  <div class="col-12">
+    <canvas
+      height="200"
+      id="chart-decoder-packets"
+      style="height: 200px"
+    ></canvas>
+  </div>
 </div>
 
 <div class="row pt-2">
-    <div class="col-12">
-        <canvas
-            height="200"
-            id="chart-kernel-drops"
-            style="max-height: 200px"
-        ></canvas>
-    </div>
+  <div class="col-12">
+    <canvas
+      height="200"
+      id="chart-kernel-drops"
+      style="max-height: 200px"
+    ></canvas>
+  </div>
 </div>
 
 <div class="row pt-2">
-    <div class="col-12">
-        <canvas
-            height="200"
-            id="chart-flow-memuse"
-            style="height: 200px"
-        ></canvas>
-    </div>
+  <div class="col-12">
+    <canvas height="200" id="chart-flow-memuse" style="height: 200px"></canvas>
+  </div>
 </div>
 
 <div class="row pt-2">
-    <div class="col-12">
-        <canvas
-            height="200"
-            id="chart-tcp-memuse"
-            style="height: 200px"
-        ></canvas>
-    </div>
+  <div class="col-12">
+    <canvas height="200" id="chart-tcp-memuse" style="height: 200px"></canvas>
+  </div>
 </div>

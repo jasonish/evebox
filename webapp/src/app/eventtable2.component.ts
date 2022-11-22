@@ -37,118 +37,112 @@ import { ElasticSearchService } from "./elasticsearch.service";
 import { indexOf } from "./utils";
 
 @Component({
-    selector: "eveboxEventTable2",
-    template: `<div *ngIf="rows && rows.length > 0" class="table-responsive">
-        <table
-            class="table table-condensed table-hover evebox-event-table"
-            style="padding-bottom: 0px !important; margin-bottom: 0px !important;"
+  selector: "eveboxEventTable2",
+  template: `<div *ngIf="rows && rows.length > 0" class="table-responsive">
+    <table
+      class="table table-condensed table-hover evebox-event-table"
+      style="padding-bottom: 0px !important; margin-bottom: 0px !important;"
+    >
+      <thead>
+        <tr>
+          <!-- Chevron column. -->
+          <th></th>
+          <!-- Timestamp. -->
+          <th>Timestamp</th>
+          <!-- Event type. -->
+          <th *ngIf="showEventType">Type</th>
+          <!-- Source/Dest. -->
+          <th>Source/Dest</th>
+          <!-- Description. -->
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody *ngIf="rows.length > 0">
+        <tr
+          *ngFor="let row of rows; let i = index"
+          [ngClass]="
+            row | eventSeverityToBootstrapClass: 'evebox-bg-':'success'
+          "
+          (click)="openRow(row)"
         >
-            <thead>
-                <tr>
-                    <!-- Chevron column. -->
-                    <th></th>
-                    <!-- Timestamp. -->
-                    <th>Timestamp</th>
-                    <!-- Event type. -->
-                    <th *ngIf="showEventType">Type</th>
-                    <!-- Source/Dest. -->
-                    <th>Source/Dest</th>
-                    <!-- Description. -->
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody *ngIf="rows.length > 0">
-                <tr
-                    *ngFor="let row of rows; let i = index"
-                    [ngClass]="
-                        row
-                            | eventSeverityToBootstrapClass
-                                : 'evebox-bg-'
-                                : 'success'
-                    "
-                    (click)="openRow(row)"
-                >
-                    <td>
-                        <div
-                            *ngIf="showActiveEvent && i == activeRow"
-                            class="glyphicon glyphicon-chevron-right"
-                        ></div>
-                    </td>
-                    <td class="text-nowrap">
-                        {{ row._source.timestamp | eveboxFormatTimestamp }}
-                        <br />
-                        <evebox-duration
-                            style="color: gray"
-                            [timestamp]="row._source.timestamp"
-                        ></evebox-duration>
-                    </td>
-                    <td *ngIf="showEventType">
-                        {{ row._source.event_type | uppercase }}
-                    </td>
-                    <td class="text-nowrap">
-                        <label>S:</label>
-                        {{ row._source.src_ip | eveboxFormatIpAddress }}
-                        <br />
-                        <label>D:</label>
-                        {{ row._source.dest_ip | eveboxFormatIpAddress }}
-                    </td>
-                    <td style="word-break: break-all;">
-                        {{ row | eveboxEventDescriptionPrinter }}
-                        <div
-                            *ngIf="
-                                getEventType(row) === 'alert' &&
-                                !isArchived(row)
-                            "
-                            class="pull-right"
-                            (click)="$event.stopPropagation()"
-                        >
-                            <button
-                                type="button"
-                                class="btn btn-default"
-                                (click)="archive(row, $event)"
-                            >
-                                Archive
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>`,
+          <td>
+            <div
+              *ngIf="showActiveEvent && i == activeRow"
+              class="glyphicon glyphicon-chevron-right"
+            ></div>
+          </td>
+          <td class="text-nowrap">
+            {{ row._source.timestamp | eveboxFormatTimestamp }}
+            <br />
+            <evebox-duration
+              style="color: gray"
+              [timestamp]="row._source.timestamp"
+            ></evebox-duration>
+          </td>
+          <td *ngIf="showEventType">
+            {{ row._source.event_type | uppercase }}
+          </td>
+          <td class="text-nowrap">
+            <label>S:</label>
+            {{ row._source.src_ip | eveboxFormatIpAddress }}
+            <br />
+            <label>D:</label>
+            {{ row._source.dest_ip | eveboxFormatIpAddress }}
+          </td>
+          <td style="word-break: break-all;">
+            {{ row | eveboxEventDescriptionPrinter }}
+            <div
+              *ngIf="getEventType(row) === 'alert' && !isArchived(row)"
+              class="pull-right"
+              (click)="$event.stopPropagation()"
+            >
+              <button
+                type="button"
+                class="btn btn-default"
+                (click)="archive(row, $event)"
+              >
+                Archive
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`,
 })
 export class EveboxEventTable2Component {
-    @Input() rows: any[];
+  @Input() rows: any[];
 
-    @Input() showEventType = true;
+  @Input() showEventType = true;
 
-    @Input() showActiveEvent = true;
+  @Input() showActiveEvent = true;
 
-    constructor(
-        private router: Router,
-        private mousetrap: MousetrapService,
-        private elasticSearchService: ElasticSearchService
-    ) {}
+  constructor(
+    private router: Router,
+    private mousetrap: MousetrapService,
+    private elasticSearchService: ElasticSearchService
+  ) {}
 
-    openRow(row: any) {
-        this.router.navigate(["/event", row._id]);
+  openRow(row: any) {
+    this.router.navigate(["/event", row._id]);
+  }
+
+  getEventType(row: any) {
+    return row._source.event_type;
+  }
+
+  isArchived(row: any) {
+    try {
+      return indexOf(row._source.tags, "archived") > -1;
+    } catch (e) {
+      return false;
     }
+  }
 
-    getEventType(row: any) {
-        return row._source.event_type;
+  archive(row: any, $event?: any) {
+    if ($event) {
+      $event.stopPropagation();
     }
-
-    isArchived(row: any) {
-        try {
-            return indexOf(row._source.tags, "archived") > -1;
-        } catch (e) {
-            return false;
-        }
-    }
-
-    archive(row: any, $event?: any) {
-        if ($event) {
-            $event.stopPropagation();
-        }
-        this.elasticSearchService.archiveEvent(row);
-    }
+    this.elasticSearchService.archiveEvent(row);
+  }
 }

@@ -34,116 +34,114 @@ export let FEATURE_REPORTING = "reporting";
 export let FEATURE_COMMENTS = "comments";
 
 export enum AppEventCode {
-    TIME_RANGE_CHANGED,
-    IDLE,
+  TIME_RANGE_CHANGED,
+  IDLE,
 }
 
 export interface AppEvent {
-    event: AppEventCode;
-    data?: any;
+  event: AppEventCode;
+  data?: any;
 }
 
 @Injectable()
 export class AppService {
-    private eventEmitter: EventEmitter<AppEvent> = new EventEmitter<AppEvent>();
+  private eventEmitter: EventEmitter<AppEvent> = new EventEmitter<AppEvent>();
 
-    timeRangeDisabled = false;
+  timeRangeDisabled = false;
 
-    private lastRouteEvent: number = new Date().getTime() / 1000;
+  private lastRouteEvent: number = new Date().getTime() / 1000;
 
-    constructor(
-        private router: Router,
-        private route: ActivatedRoute,
-        private mousetrap: MousetrapService,
-        private modalService: NgbModal
-    ) {
-        mousetrap.bindAny(this, () => {
-            this.resetIdleTime();
-        });
+  constructor(
+    private router: Router,
+    private route: ActivatedRoute,
+    private mousetrap: MousetrapService,
+    private modalService: NgbModal
+  ) {
+    mousetrap.bindAny(this, () => {
+      this.resetIdleTime();
+    });
 
-        // Setup idle check interval.
-        setInterval(() => this.dispatchIdleEvent(), 1000);
-    }
+    // Setup idle check interval.
+    setInterval(() => this.dispatchIdleEvent(), 1000);
+  }
 
-    dispatchIdleEvent() {
-        let now = new Date().getTime() / 1000;
-        let idleTime = now - this.lastRouteEvent;
-        this.dispatch({ event: AppEventCode.IDLE, data: idleTime });
-    }
+  dispatchIdleEvent() {
+    let now = new Date().getTime() / 1000;
+    let idleTime = now - this.lastRouteEvent;
+    this.dispatch({ event: AppEventCode.IDLE, data: idleTime });
+  }
 
-    resetIdleTime() {
-        this.lastRouteEvent = new Date().getTime() / 1000;
-    }
+  resetIdleTime() {
+    this.lastRouteEvent = new Date().getTime() / 1000;
+  }
 
-    isTimeRangeDisabled() {
-        return this.timeRangeDisabled;
-    }
+  isTimeRangeDisabled() {
+    return this.timeRangeDisabled;
+  }
 
-    enableTimeRange() {
-        console.log("Enabling time range.");
-        this.timeRangeDisabled = false;
-    }
+  enableTimeRange() {
+    console.log("Enabling time range.");
+    this.timeRangeDisabled = false;
+  }
 
-    disableTimeRange() {
-        console.log("Disabling time range.");
-        this.timeRangeDisabled = true;
-    }
+  disableTimeRange() {
+    console.log("Disabling time range.");
+    this.timeRangeDisabled = true;
+  }
 
-    subscribe(handler: any) {
-        return this.eventEmitter.subscribe(handler);
-    }
+  subscribe(handler: any) {
+    return this.eventEmitter.subscribe(handler);
+  }
 
-    dispatch(event: AppEvent) {
-        this.eventEmitter.emit(event);
-    }
+  dispatch(event: AppEvent) {
+    this.eventEmitter.emit(event);
+  }
 
-    getRoute() {
-        // First get the name of the first part of the path without query
-        // parameters, but after the first /.
-        let route = this.router.url.substring(1).split(/[;\?\/]/)[0];
+  getRoute() {
+    // First get the name of the first part of the path without query
+    // parameters, but after the first /.
+    let route = this.router.url.substring(1).split(/[;\?\/]/)[0];
 
-        // Return the route with a leading / as that is what is expected right
-        // now.
-        return "/" + route;
-    }
+    // Return the route with a leading / as that is what is expected right
+    // now.
+    return "/" + route;
+  }
 
-    updateParams(
-        activatedRoute: ActivatedRoute,
-        params: any = {},
-        queryParams: any = {}
-    ) {
-        let newParams = JSON.parse(
-            JSON.stringify(activatedRoute.snapshot.params)
-        );
-        let newQueryParams = JSON.parse(
-            JSON.stringify(activatedRoute.snapshot.queryParams)
-        );
+  updateParams(
+    activatedRoute: ActivatedRoute,
+    params: any = {},
+    queryParams: any = {}
+  ) {
+    let newParams = JSON.parse(JSON.stringify(activatedRoute.snapshot.params));
+    let newQueryParams = JSON.parse(
+      JSON.stringify(activatedRoute.snapshot.queryParams)
+    );
 
-        Object.keys(params).forEach((key: any) => {
-            let value = params[key];
-            if (value == undefined || value == null) {
-                delete newParams[key];
-            } else {
-                newParams[key] = value;
-            }
-        });
+    Object.keys(params).forEach((key: any) => {
+      let value = params[key];
+      if (value == undefined || value == null) {
+        delete newParams[key];
+      } else {
+        newParams[key] = value;
+      }
+    });
 
-        Object.keys(queryParams).forEach((key: any) => {
-            let value = queryParams[key];
-            if (value == undefined || value == null) {
-                delete newQueryParams[key];
-            } else {
-                newQueryParams[key] = value;
-            }
-        });
+    Object.keys(queryParams).forEach((key: any) => {
+      let value = queryParams[key];
+      if (value == undefined || value == null) {
+        delete newQueryParams[key];
+      } else {
+        newQueryParams[key] = value;
+      }
+    });
 
-        let path = this.router.url.split(/[;\?]/)[0];
-        this.router.navigate([path, newParams], {
-            queryParams: newQueryParams,
-        });
-    }
+    let path = this.router.url.split(/[;\?]/)[0];
+    this.router.navigate([path, newParams], {
+      queryParams: newQueryParams,
+    });
+  }
 
-    showHelp() {
-        this.modalService.open(HelpComponent, { size: "lg" });
-    }
+  showHelp() {
+    this.modalService.open(HelpComponent, { size: "lg" });
+  }
 }

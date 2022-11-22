@@ -29,17 +29,17 @@ import "chartjs-adapter-moment";
 import * as palette from "google-palette";
 
 export function initChartjs(): void {
-    Chart.register(...registerables);
+  Chart.register(...registerables);
 }
 
 export function getColourPalette(count: number): string[] {
-    const colours = palette("qualitative", count);
-    return colours.map((colour) => {
-        return "#" + colour;
-    });
+  const colours = palette("qualitative", count);
+  return colours.map((colour) => {
+    return "#" + colour;
+  });
 }
 
 export function getCanvasElementById(id: string): CanvasRenderingContext2D {
-    const element = document.getElementById(id) as HTMLCanvasElement;
-    return element.getContext("2d");
+  const element = document.getElementById(id) as HTMLCanvasElement;
+  return element.getContext("2d");
 }

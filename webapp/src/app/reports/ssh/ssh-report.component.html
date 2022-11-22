@@ -1,107 +1,102 @@
 <div class="content" [@loadingState]="loading > 0 ? 'true' : 'false'">
-    <loading-spinner [loading]="loading > 0"></loading-spinner>
-    <br />
-    <div class="row">
-        <div class="col-sm">
-            <button type="button" class="btn btn-secondary" (click)="refresh()">
-                Refresh
-            </button>
-        </div>
-        <div class="col-sm">
-            <evebox-filter-input
-                [queryString]="queryString"
-            ></evebox-filter-input>
-        </div>
+  <loading-spinner [loading]="loading > 0"></loading-spinner>
+  <br />
+  <div class="row">
+    <div class="col-sm">
+      <button type="button" class="btn btn-secondary" (click)="refresh()">
+        Refresh
+      </button>
     </div>
-
-    <br />
-
-    <div class="row">
-        <div class="col">
-            <div
-                style="height: 225px"
-                [hidden]="!eventsOverTime || eventsOverTime.values.length == 0"
-            >
-                <canvas
-                    id="eventsOverTimeChart"
-                    style="max-height: 300px"
-                ></canvas>
-            </div>
-        </div>
+    <div class="col-sm">
+      <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
     </div>
+  </div>
 
-    <br />
+  <br />
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">SSH Client Software</div>
-                <div class="card-body">
-                    <canvas
-                        [hidden]="!clientSoftware || clientSoftware.length == 0"
-                        id="clientVersionsPie"
-                        style="max-height: 300px"
-                    ></canvas>
-                    <div *ngIf="!clientSoftware || clientSoftware.length == 0">
-                        No data.
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">SSH Server Software</div>
-                <div class="card-body">
-                    <canvas
-                        [hidden]="!serverSoftware || serverSoftware.length == 0"
-                        id="serverVersionsPie"
-                        style="max-height: 300px"
-                    ></canvas>
-                    <div *ngIf="!serverSoftware || serverSoftware.length == 0">
-                        No data.
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="row">
+    <div class="col">
+      <div
+        style="height: 225px"
+        [hidden]="!eventsOverTime || eventsOverTime.values.length == 0"
+      >
+        <canvas id="eventsOverTimeChart" style="max-height: 300px"></canvas>
+      </div>
     </div>
+  </div>
 
-    <br />
+  <br />
 
-    <div class="row">
-        <div class="col-md-6">
-            <report-data-table
-                *ngIf="clientSoftware"
-                title="SSH Client Software"
-                [rows]="clientSoftware"
-                [headers]="['#', 'Software']"
-            ></report-data-table>
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">SSH Client Software</div>
+        <div class="card-body">
+          <canvas
+            [hidden]="!clientSoftware || clientSoftware.length == 0"
+            id="clientVersionsPie"
+            style="max-height: 300px"
+          ></canvas>
+          <div *ngIf="!clientSoftware || clientSoftware.length == 0">
+            No data.
+          </div>
         </div>
-        <div class="col-md-6">
-            <report-data-table
-                *ngIf="serverSoftware"
-                title="SSH Server Software"
-                [rows]="serverSoftware"
-                [headers]="['#', 'Software']"
-            ></report-data-table>
-        </div>
+      </div>
     </div>
-    <br />
-    <div class="row">
-        <div class="col-sm">
-            <evebox-ip-addr-data-table
-                *ngIf="topSourceAddresses"
-                title="Top SSH Client Hosts"
-                [rows]="topSourceAddresses"
-                [headers]="['#', 'Address']"
-            ></evebox-ip-addr-data-table>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">SSH Server Software</div>
+        <div class="card-body">
+          <canvas
+            [hidden]="!serverSoftware || serverSoftware.length == 0"
+            id="serverVersionsPie"
+            style="max-height: 300px"
+          ></canvas>
+          <div *ngIf="!serverSoftware || serverSoftware.length == 0">
+            No data.
+          </div>
         </div>
-        <div class="col-sm">
-            <evebox-ip-addr-data-table
-                *ngIf="topDestinationAddresses"
-                title="Top SSH Server Hosts"
-                [rows]="topDestinationAddresses"
-                [headers]="['#', 'Address']"
-            ></evebox-ip-addr-data-table>
-        </div>
+      </div>
     </div>
+  </div>
+
+  <br />
+
+  <div class="row">
+    <div class="col-md-6">
+      <report-data-table
+        *ngIf="clientSoftware"
+        title="SSH Client Software"
+        [rows]="clientSoftware"
+        [headers]="['#', 'Software']"
+      ></report-data-table>
+    </div>
+    <div class="col-md-6">
+      <report-data-table
+        *ngIf="serverSoftware"
+        title="SSH Server Software"
+        [rows]="serverSoftware"
+        [headers]="['#', 'Software']"
+      ></report-data-table>
+    </div>
+  </div>
+  <br />
+  <div class="row">
+    <div class="col-sm">
+      <evebox-ip-addr-data-table
+        *ngIf="topSourceAddresses"
+        title="Top SSH Client Hosts"
+        [rows]="topSourceAddresses"
+        [headers]="['#', 'Address']"
+      ></evebox-ip-addr-data-table>
+    </div>
+    <div class="col-sm">
+      <evebox-ip-addr-data-table
+        *ngIf="topDestinationAddresses"
+        title="Top SSH Server Hosts"
+        [rows]="topDestinationAddresses"
+        [headers]="['#', 'Address']"
+      ></evebox-ip-addr-data-table>
+    </div>
+  </div>
 </div>

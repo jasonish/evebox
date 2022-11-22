@@ -14,98 +14,94 @@ import { loadingAnimation } from "../../animations";
 import { ApiService, ReportAggOptions } from "../../api.service";
 
 @Component({
-    templateUrl: "./netflow-report.component.html",
-    animations: [loadingAnimation],
+  templateUrl: "./netflow-report.component.html",
+  animations: [loadingAnimation],
 })
 export class NetflowReportComponent implements OnInit, OnDestroy {
-    topBySourceIp: any[];
-    topByDestIp: any[];
+  topBySourceIp: any[];
+  topByDestIp: any[];
 
-    topBySourcePort: any[];
-    topByDestPort: any[];
+  topBySourcePort: any[];
+  topByDestPort: any[];
 
-    loading = 0;
+  loading = 0;
 
-    queryString = "";
+  queryString = "";
 
-    subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+  subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
 
-    constructor(
-        private reportsService: ReportsService,
-        private elasticsearch: ElasticSearchService,
-        private appService: AppService,
-        private route: ActivatedRoute,
-        private toastr: ToastrService,
-        private api: ApiService,
-        private topNavService: TopNavService
-    ) {}
+  constructor(
+    private reportsService: ReportsService,
+    private elasticsearch: ElasticSearchService,
+    private appService: AppService,
+    private route: ActivatedRoute,
+    private toastr: ToastrService,
+    private api: ApiService,
+    private topNavService: TopNavService
+  ) {}
 
-    ngOnInit() {
-        this.route.queryParams.subscribe((params: Params) => {
-            this.queryString = params["q"] || "";
-            this.refresh();
+  ngOnInit() {
+    this.route.queryParams.subscribe((params: Params) => {
+      this.queryString = params["q"] || "";
+      this.refresh();
+    });
+
+    this.subTracker.subscribe(this.appService, (event: AppEvent) => {
+      if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
+        this.refresh();
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    this.subTracker.unsubscribe();
+  }
+
+  refresh() {
+    this.load();
+  }
+
+  private wrapPromise(fn: any) {
+    this.loading++;
+    fn().then(() => {
+      this.loading--;
+    });
+  }
+
+  load() {
+    let range = this.topNavService.getTimeRangeAsSeconds();
+
+    const aggOptions: ReportAggOptions = {
+      timeRange: range,
+      eventType: "netflow",
+      size: 10,
+      queryString: this.queryString,
+    };
+
+    this.wrapPromise(() => {
+      return this.api.reportAgg("src_ip", aggOptions).then((response) => {
+        this.topBySourceIp = response.data;
+      });
+    });
+
+    this.wrapPromise(() => {
+      return this.api.reportAgg("dest_ip", aggOptions).then((response: any) => {
+        this.topByDestIp = response.data;
+      });
+    });
+
+    this.wrapPromise(() => {
+      return this.api.reportAgg("src_port", aggOptions).then((response) => {
+        this.topBySourcePort = response.data;
+      });
+    });
+
+    this.wrapPromise(() => {
+      return this.api
+        .reportAgg("dest_port", aggOptions)
+        .then((response: any) => {
+          this.topByDestPort = response.data;
         });
-
-        this.subTracker.subscribe(this.appService, (event: AppEvent) => {
-            if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
-                this.refresh();
-            }
-        });
-    }
-
-    ngOnDestroy() {
-        this.subTracker.unsubscribe();
-    }
-
-    refresh() {
-        this.load();
-    }
-
-    private wrapPromise(fn: any) {
-        this.loading++;
-        fn().then(() => {
-            this.loading--;
-        });
-    }
-
-    load() {
-        let range = this.topNavService.getTimeRangeAsSeconds();
-
-        const aggOptions: ReportAggOptions = {
-            timeRange: range,
-            eventType: "netflow",
-            size: 10,
-            queryString: this.queryString,
-        };
-
-        this.wrapPromise(() => {
-            return this.api.reportAgg("src_ip", aggOptions).then((response) => {
-                this.topBySourceIp = response.data;
-            });
-        });
-
-        this.wrapPromise(() => {
-            return this.api
-                .reportAgg("dest_ip", aggOptions)
-                .then((response: any) => {
-                    this.topByDestIp = response.data;
-                });
-        });
-
-        this.wrapPromise(() => {
-            return this.api
-                .reportAgg("src_port", aggOptions)
-                .then((response) => {
-                    this.topBySourcePort = response.data;
-                });
-        });
-
-        this.wrapPromise(() => {
-            return this.api
-                .reportAgg("dest_port", aggOptions)
-                .then((response: any) => {
-                    this.topByDestPort = response.data;
-                });
-        });
-    }
+    });
+  }
 }

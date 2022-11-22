@@ -34,65 +34,65 @@ declare var Mousetrap: any;
 
 @Injectable()
 export class MousetrapService {
-    private bindings: any[] = [];
-    private anyBindings: any[] = [];
+  private bindings: any[] = [];
+  private anyBindings: any[] = [];
 
-    constructor(private ngZone: NgZone) {
-        let mouseTrapService = this;
+  constructor(private ngZone: NgZone) {
+    let mouseTrapService = this;
 
-        Mousetrap.prototype.handleKey = function () {
-            let self = this;
-            self._handleKey.apply(this, arguments);
+    Mousetrap.prototype.handleKey = function () {
+      let self = this;
+      self._handleKey.apply(this, arguments);
 
-            mouseTrapService.anyBindings.forEach((binding) => {
-                binding.handler();
-            });
-        };
-    }
+      mouseTrapService.anyBindings.forEach((binding) => {
+        binding.handler();
+      });
+    };
+  }
 
-    bindAny(component: any, handler: any) {
-        this.anyBindings.push({
-            component: component,
-            handler: handler,
+  bindAny(component: any, handler: any) {
+    this.anyBindings.push({
+      component: component,
+      handler: handler,
+    });
+  }
+
+  bind(component: any, key: string, handler: any) {
+    mousetrap.bind(key, (e: any) => {
+      this.ngZone.run(() => {
+        e.preventDefault();
+        handler();
+      });
+    });
+    this.bindings.push({
+      component: component,
+      key: key,
+      handler: handler,
+    });
+
+    this.rebind();
+  }
+
+  rebind() {
+    this.bindings.forEach((binding) => {
+      mousetrap.unbind(binding.key);
+      mousetrap.bind(binding.key, (e: any) => {
+        this.ngZone.run(() => {
+          e.preventDefault();
+          binding.handler();
         });
-    }
+      });
+    });
+  }
 
-    bind(component: any, key: string, handler: any) {
-        mousetrap.bind(key, (e: any) => {
-            this.ngZone.run(() => {
-                e.preventDefault();
-                handler();
-            });
-        });
-        this.bindings.push({
-            component: component,
-            key: key,
-            handler: handler,
-        });
-
-        this.rebind();
-    }
-
-    rebind() {
-        this.bindings.forEach((binding) => {
-            mousetrap.unbind(binding.key);
-            mousetrap.bind(binding.key, (e: any) => {
-                this.ngZone.run(() => {
-                    e.preventDefault();
-                    binding.handler();
-                });
-            });
-        });
-    }
-
-    unbind(component: any) {
-        this.bindings.forEach((binding) => {
-            if (binding.component == component) {
-                mousetrap.unbind(binding.key);
-            }
-        });
-        this.bindings = this.bindings.filter((binding) => {
-            return binding.component != component;
-        });
-    }
+  unbind(component: any) {
+    this.bindings.forEach((binding) => {
+      if (binding.component == component) {
+        mousetrap.unbind(binding.key);
+      }
+    });
+    this.bindings = this.bindings.filter((binding) => {
+      return binding.component != component;
+    });
+  }
 }

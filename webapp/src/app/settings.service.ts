@@ -33,30 +33,30 @@ export const SETTING_ALERTS_PER_PAGE = "alerts-per-page";
 
 @Injectable()
 export class SettingsService {
-    private settings: any;
+  private settings: any;
 
-    constructor() {
-        try {
-            this.settings = JSON.parse(localStorage.settings);
-        } catch (err) {
-            this.settings = {};
-        }
+  constructor() {
+    try {
+      this.settings = JSON.parse(localStorage.settings);
+    } catch (err) {
+      this.settings = {};
     }
+  }
 
-    save() {
-        localStorage.settings = JSON.stringify(this.settings);
-    }
+  save() {
+    localStorage.settings = JSON.stringify(this.settings);
+  }
 
-    get(key: string, def?: any) {
-        return this.settings[key] || def;
-    }
+  get(key: string, def?: any) {
+    return this.settings[key] || def;
+  }
 
-    getInt(key: string, def: number = 0): number {
-        return parseInt(this.get(key)) || def;
-    }
+  getInt(key: string, def: number = 0): number {
+    return parseInt(this.get(key)) || def;
+  }
 
-    set(key: string, value: any) {
-        this.settings[key] = value;
-        this.save();
-    }
+  set(key: string, value: any) {
+    this.settings[key] = value;
+    this.save();
+  }
 }

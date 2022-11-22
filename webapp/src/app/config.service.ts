@@ -28,34 +28,34 @@ import { Injectable } from "@angular/core";
 
 @Injectable()
 export class ConfigService {
-    private config: any;
+  private config: any;
 
-    hasConfig(): boolean {
-        if (this.config) {
-            return true;
-        }
-        return false;
+  hasConfig(): boolean {
+    if (this.config) {
+      return true;
     }
+    return false;
+  }
 
-    setConfig(config: any) {
-        this.config = config;
-    }
+  setConfig(config: any) {
+    this.config = config;
+  }
 
-    getConfig() {
-        return this.config;
-    }
+  getConfig() {
+    return this.config;
+  }
 
-    getDefault(key: string) {
-        if (this.config && "defaults" in this.config) {
-            return this.config["defaults"][key];
-        }
-        return undefined;
+  getDefault(key: string) {
+    if (this.config && "defaults" in this.config) {
+      return this.config["defaults"][key];
     }
+    return undefined;
+  }
 
-    hasFeature(feature: string): boolean {
-        if (this.config.features && this.config.features[feature] === true) {
-            return true;
-        }
-        return false;
+  hasFeature(feature: string): boolean {
+    if (this.config.features && this.config.features[feature] === true) {
+      return true;
     }
+    return false;
+  }
 }

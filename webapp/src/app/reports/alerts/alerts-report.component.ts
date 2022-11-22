@@ -34,213 +34,206 @@ import { getCanvasElementById, getColourPalette } from "../../shared/chartjs";
 import { Chart, ChartConfiguration } from "chart.js";
 
 @Component({
-    templateUrl: "alerts-report.component.html",
-    animations: [loadingAnimation],
+  templateUrl: "alerts-report.component.html",
+  animations: [loadingAnimation],
 })
 export class AlertReportComponent implements OnInit, OnDestroy {
-    eventsOverTime: any[] = [];
+  eventsOverTime: any[] = [];
 
-    sourceRows: any[];
-    destinationRows: any[];
-    signatureRows: any[];
-    categoryRows: any[];
+  sourceRows: any[];
+  destinationRows: any[];
+  signatureRows: any[];
+  categoryRows: any[];
 
-    srcPorts: any[];
-    destPorts: any[];
+  srcPorts: any[];
+  destPorts: any[];
 
-    loading = 0;
+  loading = 0;
 
-    queryString = "";
+  queryString = "";
 
-    private charts = {
-        eventsOverTime: null,
+  private charts = {
+    eventsOverTime: null,
+  };
+
+  subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
+
+  constructor(
+    private appService: AppService,
+    private ss: EveboxSubscriptionService,
+    private route: ActivatedRoute,
+    private reports: ReportsService,
+    private api: ApiService,
+    private topNavService: TopNavService,
+    private elasticSearch: ElasticSearchService
+  ) {}
+
+  ngOnInit(): void {
+    if (this.route.snapshot.queryParams.q) {
+      this.queryString = this.route.snapshot.queryParams.q;
+    }
+
+    this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
+      this.queryString = params.q || "";
+      this.refresh();
+    });
+
+    this.subTracker.subscribe(this.appService, (event: any) => {
+      if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
+        this.refresh();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.charts.eventsOverTime) {
+      this.charts.eventsOverTime.destroy();
+    }
+    this.subTracker.unsubscribe();
+  }
+
+  load(fn: any): void {
+    this.loading++;
+    fn()
+      .then(() => {})
+      .catch((err) => {})
+      .then(() => {
+        this.loading--;
+      });
+  }
+
+  refresh(): void {
+    const size = 10;
+
+    this.sourceRows = undefined;
+    this.destinationRows = undefined;
+    this.signatureRows = undefined;
+
+    const timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
+
+    const aggOptions: ReportAggOptions = {
+      queryString: this.queryString,
+      timeRange: timeRangeSeconds,
+      size: size,
+      eventType: "alert",
     };
 
-    subTracker: EveboxSubscriptionTracker = new EveboxSubscriptionTracker();
-
-    constructor(
-        private appService: AppService,
-        private ss: EveboxSubscriptionService,
-        private route: ActivatedRoute,
-        private reports: ReportsService,
-        private api: ApiService,
-        private topNavService: TopNavService,
-        private elasticSearch: ElasticSearchService
-    ) {}
-
-    ngOnInit(): void {
-        if (this.route.snapshot.queryParams.q) {
-            this.queryString = this.route.snapshot.queryParams.q;
-        }
-
-        this.subTracker.subscribe(this.route.queryParams, (params: Params) => {
-            this.queryString = params.q || "";
-            this.refresh();
+    this.load(() => {
+      return this.api
+        .reportAgg("alert.signature", aggOptions)
+        .then((response: any) => {
+          this.signatureRows = response.data;
         });
+    });
 
-        this.subTracker.subscribe(this.appService, (event: any) => {
-            if (event.event === AppEventCode.TIME_RANGE_CHANGED) {
-                this.refresh();
-            }
+    this.load(() => {
+      return this.api
+        .reportAgg("alert.category", aggOptions)
+        .then((response: any) => {
+          this.categoryRows = response.data;
         });
-    }
+    });
 
-    ngOnDestroy(): void {
-        if (this.charts.eventsOverTime) {
-            this.charts.eventsOverTime.destroy();
-        }
-        this.subTracker.unsubscribe();
-    }
+    this.load(() => {
+      return this.api.reportAgg("src_ip", aggOptions).then((response: any) => {
+        this.sourceRows = response.data;
 
-    load(fn: any): void {
-        this.loading++;
-        fn()
-            .then(() => {})
-            .catch((err) => {})
-            .then(() => {
-                this.loading--;
+        this.sourceRows.forEach((row: any) => {
+          this.elasticSearch
+            .resolveHostnameForIp(row.key)
+            .then((hostname: string) => {
+              if (hostname) {
+                row.searchKey = row.key;
+                row.key = `${row.key} (${hostname})`;
+              }
             });
-    }
-
-    refresh(): void {
-        const size = 10;
-
-        this.sourceRows = undefined;
-        this.destinationRows = undefined;
-        this.signatureRows = undefined;
-
-        const timeRangeSeconds = this.topNavService.getTimeRangeAsSeconds();
-
-        const aggOptions: ReportAggOptions = {
-            queryString: this.queryString,
-            timeRange: timeRangeSeconds,
-            size: size,
-            eventType: "alert",
-        };
-
-        this.load(() => {
-            return this.api
-                .reportAgg("alert.signature", aggOptions)
-                .then((response: any) => {
-                    this.signatureRows = response.data;
-                });
         });
+      });
+    });
 
-        this.load(() => {
-            return this.api
-                .reportAgg("alert.category", aggOptions)
-                .then((response: any) => {
-                    this.categoryRows = response.data;
-                });
+    this.load(() => {
+      return this.api.reportAgg("dest_ip", aggOptions).then((response: any) => {
+        this.destinationRows = response.data;
+
+        this.destinationRows.forEach((row: any) => {
+          this.elasticSearch
+            .resolveHostnameForIp(row.key)
+            .then((hostname: string) => {
+              if (hostname) {
+                row.searchKey = row.key;
+                row.key = `${row.key} (${hostname})`;
+              }
+            });
         });
+      });
+    });
 
-        this.load(() => {
-            return this.api
-                .reportAgg("src_ip", aggOptions)
-                .then((response: any) => {
-                    this.sourceRows = response.data;
-
-                    this.sourceRows.forEach((row: any) => {
-                        this.elasticSearch
-                            .resolveHostnameForIp(row.key)
-                            .then((hostname: string) => {
-                                if (hostname) {
-                                    row.searchKey = row.key;
-                                    row.key = `${row.key} (${hostname})`;
-                                }
-                            });
-                    });
-                });
+    this.load(() => {
+      return this.api
+        .reportAgg("src_port", aggOptions)
+        .then((response: any) => {
+          this.srcPorts = response.data;
         });
+    });
 
-        this.load(() => {
-            return this.api
-                .reportAgg("dest_ip", aggOptions)
-                .then((response: any) => {
-                    this.destinationRows = response.data;
-
-                    this.destinationRows.forEach((row: any) => {
-                        this.elasticSearch
-                            .resolveHostnameForIp(row.key)
-                            .then((hostname: string) => {
-                                if (hostname) {
-                                    row.searchKey = row.key;
-                                    row.key = `${row.key} (${hostname})`;
-                                }
-                            });
-                    });
-                });
+    this.load(() => {
+      return this.api
+        .reportAgg("dest_port", aggOptions)
+        .then((response: any) => {
+          this.destPorts = response.data;
         });
+    });
 
-        this.load(() => {
-            return this.api
-                .reportAgg("src_port", aggOptions)
-                .then((response: any) => {
-                    this.srcPorts = response.data;
-                });
+    this.load(() => {
+      return this.api
+        .reportHistogram({
+          timeRange: timeRangeSeconds,
+          interval: this.reports.histogramTimeInterval(timeRangeSeconds),
+          eventType: "alert",
+          queryString: this.queryString,
+        })
+        .then((response: any) => {
+          const dataValues = [];
+          const dataLabels = [];
+          response.data.forEach((e: any) => {
+            dataValues.push(e.count);
+            dataLabels.push(moment(e.key).toDate());
+          });
+          const ctx = getCanvasElementById("eventsOverTimeChart");
+          const config: ChartConfiguration = {
+            type: "bar",
+            data: {
+              labels: dataLabels,
+              datasets: [
+                {
+                  data: dataValues,
+                  backgroundColor: getColourPalette(dataValues.length),
+                },
+              ],
+            },
+            options: {
+              plugins: {
+                title: {
+                  display: true,
+                  text: "Alerts Over Time",
+                  padding: 0,
+                },
+                legend: {
+                  display: false,
+                },
+              },
+              scales: {
+                x: {
+                  type: "time",
+                },
+              },
+            },
+          };
+          if (this.charts.eventsOverTime) {
+            this.charts.eventsOverTime.destroy();
+          }
+          this.charts.eventsOverTime = new Chart(ctx, config);
         });
-
-        this.load(() => {
-            return this.api
-                .reportAgg("dest_port", aggOptions)
-                .then((response: any) => {
-                    this.destPorts = response.data;
-                });
-        });
-
-        this.load(() => {
-            return this.api
-                .reportHistogram({
-                    timeRange: timeRangeSeconds,
-                    interval:
-                        this.reports.histogramTimeInterval(timeRangeSeconds),
-                    eventType: "alert",
-                    queryString: this.queryString,
-                })
-                .then((response: any) => {
-                    const dataValues = [];
-                    const dataLabels = [];
-                    response.data.forEach((e: any) => {
-                        dataValues.push(e.count);
-                        dataLabels.push(moment(e.key).toDate());
-                    });
-                    const ctx = getCanvasElementById("eventsOverTimeChart");
-                    const config: ChartConfiguration = {
-                        type: "bar",
-                        data: {
-                            labels: dataLabels,
-                            datasets: [
-                                {
-                                    data: dataValues,
-                                    backgroundColor: getColourPalette(
-                                        dataValues.length
-                                    ),
-                                },
-                            ],
-                        },
-                        options: {
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: "Alerts Over Time",
-                                    padding: 0,
-                                },
-                                legend: {
-                                    display: false,
-                                },
-                            },
-                            scales: {
-                                x: {
-                                    type: "time",
-                                },
-                            },
-                        },
-                    };
-                    if (this.charts.eventsOverTime) {
-                        this.charts.eventsOverTime.destroy();
-                    }
-                    this.charts.eventsOverTime = new Chart(ctx, config);
-                });
-        });
-    }
+    });
+  }
 }

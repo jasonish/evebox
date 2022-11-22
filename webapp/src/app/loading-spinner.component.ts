@@ -26,44 +26,44 @@
 
 import { Component, Input } from "@angular/core";
 import {
-    animate,
-    state,
-    style,
-    transition,
-    trigger,
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
 } from "@angular/animations";
 
 @Component({
-    selector: "loading-spinner",
-    template: `<div
-        *ngIf="active"
-        [@eveboxSpinnerTrigger]="active ? 'true' : 'false'"
-    >
-        <i
-            class="fa fa-spinner fa-pulse evebox-loading-spinner"
-            [ngStyle]="{ 'font-size': fontSize + 'px' }"
-        ></i>
-    </div>`,
-    animations: [
-        trigger("eveboxSpinnerTrigger", [
-            state(
-                "void",
-                style({
-                    opacity: 0,
-                })
-            ),
-            state(
-                "*",
-                style({
-                    opacity: 1,
-                })
-            ),
-            transition("void => *", animate("500ms")),
-            transition("* => void", animate("500ms")),
-        ]),
-    ],
+  selector: "loading-spinner",
+  template: `<div
+    *ngIf="active"
+    [@eveboxSpinnerTrigger]="active ? 'true' : 'false'"
+  >
+    <i
+      class="fa fa-spinner fa-pulse evebox-loading-spinner"
+      [ngStyle]="{ 'font-size': fontSize + 'px' }"
+    ></i>
+  </div>`,
+  animations: [
+    trigger("eveboxSpinnerTrigger", [
+      state(
+        "void",
+        style({
+          opacity: 0,
+        })
+      ),
+      state(
+        "*",
+        style({
+          opacity: 1,
+        })
+      ),
+      transition("void => *", animate("500ms")),
+      transition("* => void", animate("500ms")),
+    ]),
+  ],
 })
 export class EveboxLoadingSpinnerComponent {
-    @Input("loading") active = false;
-    @Input() fontSize = 300;
+  @Input("loading") active = false;
+  @Input() fontSize = 300;
 }

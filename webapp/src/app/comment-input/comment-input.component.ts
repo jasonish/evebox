@@ -21,24 +21,24 @@
 import { Component, EventEmitter, OnInit, Output } from "@angular/core";
 
 @Component({
-    selector: "app-comment-input",
-    templateUrl: "./comment-input.component.html",
+  selector: "app-comment-input",
+  templateUrl: "./comment-input.component.html",
 })
 export class CommentInputComponent implements OnInit {
-    @Output("on-close") public onClose = new EventEmitter<any>();
-    @Output("on-submit") public onSubmit = new EventEmitter<any>();
+  @Output("on-close") public onClose = new EventEmitter<any>();
+  @Output("on-submit") public onSubmit = new EventEmitter<any>();
 
-    public comment: string = "";
+  public comment: string = "";
 
-    constructor() {}
+  constructor() {}
 
-    ngOnInit() {}
+  ngOnInit() {}
 
-    close() {
-        this.onClose.emit();
-    }
+  close() {
+    this.onClose.emit();
+  }
 
-    submitComment() {
-        this.onSubmit.emit(this.comment);
-    }
+  submitComment() {
+    this.onSubmit.emit(this.comment);
+  }
 }

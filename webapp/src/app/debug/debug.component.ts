@@ -28,54 +28,54 @@ import { Component, OnInit } from "@angular/core";
 import { ClientService } from "../client.service";
 
 @Component({
-    selector: "app-debug",
-    templateUrl: "./debug.component.html",
-    styleUrls: ["./debug.component.scss"],
+  selector: "app-debug",
+  templateUrl: "./debug.component.html",
+  styleUrls: ["./debug.component.scss"],
 })
 export class DebugComponent implements OnInit {
-    public loginModel: any = {
-        username: "",
-        password: "",
-    };
+  public loginModel: any = {
+    username: "",
+    password: "",
+  };
 
-    constructor(private client: ClientService) {}
+  constructor(private client: ClientService) {}
 
-    ngOnInit() {}
+  ngOnInit() {}
 
-    checkAuthentication() {
-        this.client.checkAuthentication().subscribe((response) => {
-            console.log(response);
-        });
-    }
+  checkAuthentication() {
+    this.client.checkAuthentication().subscribe((response) => {
+      console.log(response);
+    });
+  }
 
-    logout() {
-        this.client.logout().subscribe(
-            (response) => {
-                console.log("logout ok; response:");
-                console.log(response);
-            },
-            (error) => {
-                console.log("logout error:");
-                console.log(error);
-            }
-        );
-    }
+  logout() {
+    this.client.logout().subscribe(
+      (response) => {
+        console.log("logout ok; response:");
+        console.log(response);
+      },
+      (error) => {
+        console.log("logout error:");
+        console.log(error);
+      }
+    );
+  }
 
-    login() {
-        console.log(
-            `Logging in: username=${this.loginModel.username}; password=${this.loginModel.password}`
-        );
-        this.client
-            .login(this.loginModel.username, this.loginModel.password)
-            .subscribe(
-                (response: any) => {
-                    console.log("login ok; response:");
-                    console.log(response);
-                },
-                (error: any) => {
-                    console.log("login failed; error:");
-                    console.log(error);
-                }
-            );
-    }
+  login() {
+    console.log(
+      `Logging in: username=${this.loginModel.username}; password=${this.loginModel.password}`
+    );
+    this.client
+      .login(this.loginModel.username, this.loginModel.password)
+      .subscribe(
+        (response: any) => {
+          console.log("login ok; response:");
+          console.log(response);
+        },
+        (error: any) => {
+          console.log("login failed; error:");
+          console.log(error);
+        }
+      );
+  }
 }

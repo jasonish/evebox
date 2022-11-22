@@ -27,17 +27,17 @@
 import { Pipe, PipeTransform } from "@angular/core";
 
 @Pipe({
-    name: "evebox-proto-pretty-printer",
+  name: "evebox-proto-pretty-printer",
 })
 export class EveBoxProtoPrettyPrinter implements PipeTransform {
-    transform(value: any, args: any): any {
-        switch (value) {
-            case "ftp-data":
-                return "FTP Data";
-            default:
-                return value.toUpperCase();
-        }
-
-        return value;
+  transform(value: any, args: any): any {
+    switch (value) {
+      case "ftp-data":
+        return "FTP Data";
+      default:
+        return value.toUpperCase();
     }
+
+    return value;
+  }
 }

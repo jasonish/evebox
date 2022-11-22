@@ -11,8 +11,8 @@ import { SettingsService } from "./app/settings.service";
 import { initChartjs } from "./app/shared/chartjs";
 
 if (environment.production) {
-    console.log("Enabling production mode from ng cli environment.");
-    enableProdMode();
+  console.log("Enabling production mode from ng cli environment.");
+  enableProdMode();
 }
 
 initChartjs();
@@ -20,5 +20,5 @@ initChartjs();
 new ThemeService(new SettingsService()).init();
 
 platformBrowserDynamic()
-    .bootstrapModule(AppModule)
-    .catch((err) => console.log(err));
+  .bootstrapModule(AppModule)
+  .catch((err) => console.log(err));

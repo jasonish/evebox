@@ -25,15 +25,15 @@
  */
 
 import {
-    Directive,
-    Input,
-    ElementRef,
-    OnInit,
-    OnDestroy,
-    OnChanges,
-    Output,
-    EventEmitter,
-    AfterViewChecked,
+  Directive,
+  Input,
+  ElementRef,
+  OnInit,
+  OnDestroy,
+  OnChanges,
+  Output,
+  EventEmitter,
+  AfterViewChecked,
 } from "@angular/core";
 import { MousetrapService } from "./mousetrap.service";
 
@@ -41,90 +41,89 @@ declare var jQuery: any;
 declare var window: any;
 
 @Directive({
-    selector: "[eveboxKeyTable]",
+  selector: "[eveboxKeyTable]",
 })
 export class KeyTableDirective implements OnInit, OnDestroy {
-    @Input() private rows: any[] = [];
-    @Input() activeRow = 0;
-    @Output() activeRowChange: EventEmitter<number> =
-        new EventEmitter<number>();
+  @Input() private rows: any[] = [];
+  @Input() activeRow = 0;
+  @Output() activeRowChange: EventEmitter<number> = new EventEmitter<number>();
 
-    constructor(private el: ElementRef, private mousetrap: MousetrapService) {}
+  constructor(private el: ElementRef, private mousetrap: MousetrapService) {}
 
-    ngOnInit(): any {
-        this.mousetrap.bind(this, "j", () => {
-            if (this.getActiveRow() < this.getRowCount() - 1) {
-                this.setActiveRow(this.getActiveRow() + 1);
-            }
-        });
+  ngOnInit(): any {
+    this.mousetrap.bind(this, "j", () => {
+      if (this.getActiveRow() < this.getRowCount() - 1) {
+        this.setActiveRow(this.getActiveRow() + 1);
+      }
+    });
 
-        this.mousetrap.bind(this, "k", () => {
-            if (this.getActiveRow() > 0) {
-                this.setActiveRow(this.getActiveRow() - 1);
-            }
-        });
+    this.mousetrap.bind(this, "k", () => {
+      if (this.getActiveRow() > 0) {
+        this.setActiveRow(this.getActiveRow() - 1);
+      }
+    });
 
-        this.mousetrap.bind(this, "G", () => {
-            this.setActiveRow(this.getRowCount() - 1);
-        });
+    this.mousetrap.bind(this, "G", () => {
+      this.setActiveRow(this.getRowCount() - 1);
+    });
 
-        this.mousetrap.bind(this, "H", () => {
-            this.setActiveRow(0);
-        });
+    this.mousetrap.bind(this, "H", () => {
+      this.setActiveRow(0);
+    });
+  }
+
+  ngOnDestroy(): any {
+    this.mousetrap.unbind(this);
+  }
+
+  scrollToActive() {
+    let error = 175;
+
+    let el =
+      this.el.nativeElement.getElementsByTagName("tbody")[0].children[
+        this.activeRow
+      ];
+
+    let elOffset = el.offsetTop;
+    let elHeight = el.scrollHeight;
+
+    let windowOffset = window.pageYOffset;
+    let windowHeight = window.innerHeight;
+
+    let elBottom = elOffset + elHeight;
+    let windowBottom = windowOffset + windowHeight;
+
+    if (this.activeRow == 0) {
+      window.scrollTo(0, 0);
+    } else if (elBottom > windowBottom - error - windowHeight * 0.2) {
+      let newOffset = windowOffset + elHeight;
+
+      // The first case gives up somewhat of a smooth scroll. But if it
+      // doesn't get the active element into view, we need to jump to
+      // which is handled by the else.
+      if (elBottom < newOffset + windowHeight) {
+        window.scrollTo(0, windowOffset + elHeight);
+      } else {
+        window.scrollTo(0, elBottom);
+      }
+    } else if (windowOffset > 0) {
+      if (elOffset < windowOffset + windowHeight * 0.1) {
+        window.scrollTo(0, Math.min(elOffset, windowOffset - elHeight));
+      }
     }
+  }
 
-    ngOnDestroy(): any {
-        this.mousetrap.unbind(this);
-    }
+  getActiveRow(): number {
+    return this.activeRow;
+  }
 
-    scrollToActive() {
-        let error = 175;
+  setActiveRow(activeRow: number) {
+    this.activeRow = activeRow;
+    this.activeRowChange.emit(this.activeRow);
+    this.scrollToActive();
+  }
 
-        let el =
-            this.el.nativeElement.getElementsByTagName("tbody")[0].children[
-                this.activeRow
-            ];
-
-        let elOffset = el.offsetTop;
-        let elHeight = el.scrollHeight;
-
-        let windowOffset = window.pageYOffset;
-        let windowHeight = window.innerHeight;
-
-        let elBottom = elOffset + elHeight;
-        let windowBottom = windowOffset + windowHeight;
-
-        if (this.activeRow == 0) {
-            window.scrollTo(0, 0);
-        } else if (elBottom > windowBottom - error - windowHeight * 0.2) {
-            let newOffset = windowOffset + elHeight;
-
-            // The first case gives up somewhat of a smooth scroll. But if it
-            // doesn't get the active element into view, we need to jump to
-            // which is handled by the else.
-            if (elBottom < newOffset + windowHeight) {
-                window.scrollTo(0, windowOffset + elHeight);
-            } else {
-                window.scrollTo(0, elBottom);
-            }
-        } else if (windowOffset > 0) {
-            if (elOffset < windowOffset + windowHeight * 0.1) {
-                window.scrollTo(0, Math.min(elOffset, windowOffset - elHeight));
-            }
-        }
-    }
-
-    getActiveRow(): number {
-        return this.activeRow;
-    }
-
-    setActiveRow(activeRow: number) {
-        this.activeRow = activeRow;
-        this.activeRowChange.emit(this.activeRow);
-        this.scrollToActive();
-    }
-
-    getRowCount(): number {
-        return this.rows.length;
-    }
+  getRowCount(): number {
+    return this.rows.length;
+  }
 }

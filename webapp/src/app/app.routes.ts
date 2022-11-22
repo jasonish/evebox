@@ -47,156 +47,153 @@ declare var window: any;
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-    constructor(private api: ApiService) {}
+  constructor(private api: ApiService) {}
 
-    canActivate(): Promise<boolean> {
-        if (this.api.isAuthenticated()) {
-            return Promise.resolve(true);
-        }
-        console.log("authguard.canactivate: checking auth");
-        return this.api.checkAuth();
+  canActivate(): Promise<boolean> {
+    if (this.api.isAuthenticated()) {
+      return Promise.resolve(true);
     }
+    console.log("authguard.canactivate: checking auth");
+    return this.api.checkAuth();
+  }
 }
 
 @Injectable()
 export class NeverActivate implements CanActivate {
-    canActivate(): Promise<boolean> {
-        return Promise.resolve(false);
-    }
+  canActivate(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
 }
 
 @Injectable()
 export class ConfigResolver implements CanActivate {
-    constructor(
-        private api: ApiService,
-        private configService: ConfigService
-    ) {}
+  constructor(private api: ApiService, private configService: ConfigService) {}
 
-    canActivate(): Promise<boolean> {
-        if (this.configService.hasConfig()) {
-            return Promise.resolve(true);
-        }
-
-        return this.api.client
-            .get("api/1/config")
-            .toPromise()
-            .then((config) => {
-                console.log(config);
-                this.configService.setConfig(config);
-                return true;
-            })
-            .catch(() => {
-                return false;
-            });
+  canActivate(): Promise<boolean> {
+    if (this.configService.hasConfig()) {
+      return Promise.resolve(true);
     }
+
+    return this.api.client
+      .get("api/1/config")
+      .toPromise()
+      .then((config) => {
+        console.log(config);
+        this.configService.setConfig(config);
+        return true;
+      })
+      .catch(() => {
+        return false;
+      });
+  }
 }
 
 const routes: Routes = [
-    {
-        path: "login",
-        pathMatch: "prefix",
-        component: LoginComponent,
-    },
-    {
-        path: "debug",
-        pathMatch: "prefix",
-        component: DebugComponent,
-    },
-    {
+  {
+    path: "login",
+    pathMatch: "prefix",
+    component: LoginComponent,
+  },
+  {
+    path: "debug",
+    pathMatch: "prefix",
+    component: DebugComponent,
+  },
+  {
+    path: "",
+    pathMatch: "prefix",
+    canActivate: [AuthGuard],
+    children: [
+      {
         path: "",
+        redirectTo: "inbox",
         pathMatch: "prefix",
-        canActivate: [AuthGuard],
+      },
+      {
+        path: "inbox",
+        component: AlertsComponent,
+        pathMatch: "prefix",
+      },
+      {
+        path: "escalated",
+        component: AlertsComponent,
+        pathMatch: "prefix",
+      },
+      {
+        path: "alerts",
+        component: AlertsComponent,
+        pathMatch: "prefix",
+      },
+      {
+        path: "event/:id",
+        component: EventComponent,
+        pathMatch: "prefix",
+      },
+      {
+        path: "events",
+        component: EventsComponent,
+        pathMatch: "prefix",
+      },
+      {
+        path: "reports",
         children: [
-            {
-                path: "",
-                redirectTo: "inbox",
-                pathMatch: "prefix",
-            },
-            {
-                path: "inbox",
-                component: AlertsComponent,
-                pathMatch: "prefix",
-            },
-            {
-                path: "escalated",
-                component: AlertsComponent,
-                pathMatch: "prefix",
-            },
-            {
-                path: "alerts",
-                component: AlertsComponent,
-                pathMatch: "prefix",
-            },
-            {
-                path: "event/:id",
-                component: EventComponent,
-                pathMatch: "prefix",
-            },
-            {
-                path: "events",
-                component: EventsComponent,
-                pathMatch: "prefix",
-            },
-            {
-                path: "reports",
-                children: [
-                    // The "reports/" route. Never allow to activate as there
-                    // is nothing here.
-                    {
-                        path: "",
-                        canActivate: [NeverActivate],
-                        component: AlertReportComponent,
-                    },
-                    {
-                        path: "alerts",
-                        component: AlertReportComponent,
-                    },
-                    {
-                        path: "dns",
-                        component: DNSReportComponent,
-                    },
-                    {
-                        path: "flow",
-                        component: FlowReportComponent,
-                    },
-                    {
-                        path: "netflow",
-                        component: NetflowReportComponent,
-                    },
-                    {
-                        path: "ssh",
-                        component: SshReportComponent,
-                    },
-                    {
-                        path: "dhcp",
-                        component: DhcpReportComponent,
-                    },
-                ],
-            },
-            {
-                path: "reports/ip",
-                component: IpReportComponent,
-                pathMatch: "prefix",
-            },
-            {
-                path: "stats",
-                component: StatsComponent,
-            },
-            {
-                path: "settings",
-                component: SettingsComponent,
-            },
+          // The "reports/" route. Never allow to activate as there
+          // is nothing here.
+          {
+            path: "",
+            canActivate: [NeverActivate],
+            component: AlertReportComponent,
+          },
+          {
+            path: "alerts",
+            component: AlertReportComponent,
+          },
+          {
+            path: "dns",
+            component: DNSReportComponent,
+          },
+          {
+            path: "flow",
+            component: FlowReportComponent,
+          },
+          {
+            path: "netflow",
+            component: NetflowReportComponent,
+          },
+          {
+            path: "ssh",
+            component: SshReportComponent,
+          },
+          {
+            path: "dhcp",
+            component: DhcpReportComponent,
+          },
         ],
-    },
+      },
+      {
+        path: "reports/ip",
+        component: IpReportComponent,
+        pathMatch: "prefix",
+      },
+      {
+        path: "stats",
+        component: StatsComponent,
+      },
+      {
+        path: "settings",
+        component: SettingsComponent,
+      },
+    ],
+  },
 ];
 
 @NgModule({
-    imports: [
-        RouterModule.forRoot(routes, {
-            useHash: true,
-            relativeLinkResolution: "legacy",
-        }),
-    ],
-    exports: [RouterModule],
+  imports: [
+    RouterModule.forRoot(routes, {
+      useHash: true,
+      relativeLinkResolution: "legacy",
+    }),
+  ],
+  exports: [RouterModule],
 })
 export class AppRoutingModule {}

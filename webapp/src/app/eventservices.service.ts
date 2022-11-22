@@ -28,112 +28,110 @@ import { Injectable } from "@angular/core";
 import { ConfigService } from "./config.service";
 
 export class CustomEventService {
-    private name: string;
-    private url: string;
-    private target: string;
-    private eventTypes: string[] = [];
+  private name: string;
+  private url: string;
+  private target: string;
+  private eventTypes: string[] = [];
 
-    constructor(config: any) {
-        this.name = config.name;
-        this.url = config.url;
-        this.target = config.target || "_top";
+  constructor(config: any) {
+    this.name = config.name;
+    this.url = config.url;
+    this.target = config.target || "_top";
 
-        // If "new", set to "_blank.".
-        if (this.target == "new") {
-            this.target = "_blank";
-        }
-
-        if (config["event-types"]) {
-            this.eventTypes = config["event-types"];
-        }
+    // If "new", set to "_blank.".
+    if (this.target == "new") {
+      this.target = "_blank";
     }
 
-    isValidForEvent(event: any) {
-        if (this.eventTypes.length == 0) {
-            return true;
-        }
-        return this.eventTypes.indexOf(event._source.event_type) > -1;
+    if (config["event-types"]) {
+      this.eventTypes = config["event-types"];
+    }
+  }
+
+  isValidForEvent(event: any) {
+    if (this.eventTypes.length == 0) {
+      return true;
+    }
+    return this.eventTypes.indexOf(event._source.event_type) > -1;
+  }
+
+  getTarget() {
+    return this.target;
+  }
+
+  getUrl(event: any) {
+    return this.resolveUrl(this.url, event);
+  }
+
+  getField(name: string, event: any) {
+    let parts = name.split(".");
+    let node = event._source;
+
+    for (let i = 0; i < parts.length; i++) {
+      if (!node[parts[i]]) {
+        return "";
+      }
+      node = node[parts[i]];
     }
 
-    getTarget() {
-        return this.target;
+    return node;
+  }
+
+  resolveUrl(url: string, event: any) {
+    while (true) {
+      let match = url.match(/{{(.*?)}}/);
+      if (!match) {
+        break;
+      }
+
+      let replacement = "";
+
+      switch (match[1]) {
+        case "raw":
+          replacement = encodeURIComponent(JSON.stringify(event._source));
+          break;
+        default:
+          replacement = this.getField(match[1], event);
+          break;
+      }
+
+      url = url.replace(match[0], replacement);
     }
-
-    getUrl(event: any) {
-        return this.resolveUrl(this.url, event);
-    }
-
-    getField(name: string, event: any) {
-        let parts = name.split(".");
-        let node = event._source;
-
-        for (let i = 0; i < parts.length; i++) {
-            if (!node[parts[i]]) {
-                return "";
-            }
-            node = node[parts[i]];
-        }
-
-        return node;
-    }
-
-    resolveUrl(url: string, event: any) {
-        while (true) {
-            let match = url.match(/{{(.*?)}}/);
-            if (!match) {
-                break;
-            }
-
-            let replacement = "";
-
-            switch (match[1]) {
-                case "raw":
-                    replacement = encodeURIComponent(
-                        JSON.stringify(event._source)
-                    );
-                    break;
-                default:
-                    replacement = this.getField(match[1], event);
-                    break;
-            }
-
-            url = url.replace(match[0], replacement);
-        }
-        return url;
-    }
+    return url;
+  }
 }
 
 @Injectable()
 export class EventServices {
-    private services: any[] = [];
+  private services: any[] = [];
 
-    constructor(private configService: ConfigService) {
-        /* The config may already be here... */
-        let config = configService.getConfig();
-        this.initServices(config);
+  constructor(private configService: ConfigService) {
+    /* The config may already be here... */
+    let config = configService.getConfig();
+    this.initServices(config);
+  }
+
+  initServices(config: any) {
+    this.services = [];
+
+    if (!config["event-services"]) {
+      console.log("No configured event services.");
+      return;
     }
 
-    initServices(config: any) {
-        this.services = [];
+    config["event-services"].forEach((serviceConfig: any) => {
+      if (serviceConfig.enabled) {
+        let service = new CustomEventService(serviceConfig);
+        this.services.push(service);
+      }
+    });
+  }
 
-        if (!config["event-services"]) {
-            console.log("No configured event services.");
-            return;
-        }
-
-        config["event-services"].forEach((serviceConfig: any) => {
-            if (serviceConfig.enabled) {
-                let service = new CustomEventService(serviceConfig);
-                this.services.push(service);
-            }
-        });
-    }
-
-    getServicesForEvent(event: any) {
-        console.log("getServicesForEvent");
-        let services = this.services.filter((service: CustomEventService) => {
-            return service.isValidForEvent(event);
-        });
-        return services;
-    }
+  getServicesForEvent(event: any) {
+    console.log("getServicesForEvent");
+    let services = this.services.filter((service: CustomEventService) => {
+      return service.isValidForEvent(event);
+    });
+    return services;
+  }
 }

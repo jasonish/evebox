@@ -32,91 +32,91 @@ import { ClientService } from "../client.service";
 declare var window: any;
 
 @Component({
-    templateUrl: "login.component.html",
+  templateUrl: "login.component.html",
 })
 export class LoginComponent implements OnInit, AfterViewInit {
-    model: any = {
-        username: "",
-        password: "",
-    };
+  model: any = {
+    username: "",
+    password: "",
+  };
 
-    username = false;
-    password = false;
+  username = false;
+  password = false;
 
-    error: string;
+  error: string;
 
-    loginMessage: string;
+  loginMessage: string;
 
-    constructor(
-        private api: ApiService,
-        private router: Router,
-        private route: ActivatedRoute,
-        private client: ClientService
-    ) {}
+  constructor(
+    private api: ApiService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private client: ClientService
+  ) {}
 
-    ngOnInit() {
-        if (this.route.snapshot.params["error"]) {
-            this.error = this.route.snapshot.params["error"];
+  ngOnInit() {
+    if (this.route.snapshot.params["error"]) {
+      this.error = this.route.snapshot.params["error"];
+    }
+
+    console.log(this.route.snapshot.params);
+
+    // Get the login types.
+    this.api
+      ._options("/api/1/login")
+      .toPromise()
+      .then((options) => {
+        console.log("Login options:");
+        console.log(options);
+        if (options.authentication.required) {
+          for (let authType of options.authentication.types) {
+            switch (authType) {
+              case "username":
+                this.username = true;
+                break;
+              case "usernamepassword":
+                this.username = true;
+                this.password = true;
+                break;
+            }
+          }
         }
-
-        console.log(this.route.snapshot.params);
-
-        // Get the login types.
-        this.api
-            ._options("/api/1/login")
-            .toPromise()
-            .then((options) => {
-                console.log("Login options:");
-                console.log(options);
-                if (options.authentication.required) {
-                    for (let authType of options.authentication.types) {
-                        switch (authType) {
-                            case "username":
-                                this.username = true;
-                                break;
-                            case "usernamepassword":
-                                this.username = true;
-                                this.password = true;
-                                break;
-                        }
-                    }
-                }
-                if (options.login_message) {
-                    this.loginMessage = options.login_message;
-                }
-            });
-
-        this.focus();
-    }
-
-    ngAfterViewInit() {
-        this.focus();
-    }
-
-    focus() {
-        let em = document.getElementById("username");
-        if (em) {
-            em.focus();
-            document.execCommand("selectall", null, "");
+        if (options.login_message) {
+          this.loginMessage = options.login_message;
         }
-    }
+      });
 
-    login() {
-        console.log("Calling api.login...");
-        this.api
-            .login(this.model.username, this.model.password)
-            .then(() => {
-                console.log("Login successful, redirecting to /");
-                this.router.navigate(["/"]);
-            })
-            .catch((error) => {
-                console.log(`Login failed:`);
-                console.log(error);
-                if (error.status === 401) {
-                    this.error = "Login failed";
-                } else {
-                    this.error = "Login failed: " + JSON.stringify(error);
-                }
-            });
+    this.focus();
+  }
+
+  ngAfterViewInit() {
+    this.focus();
+  }
+
+  focus() {
+    let em = document.getElementById("username");
+    if (em) {
+      em.focus();
+      document.execCommand("selectall", null, "");
     }
+  }
+
+  login() {
+    console.log("Calling api.login...");
+    this.api
+      .login(this.model.username, this.model.password)
+      .then(() => {
+        console.log("Login successful, redirecting to /");
+        this.router.navigate(["/"]);
+      })
+      .catch((error) => {
+        console.log(`Login failed:`);
+        console.log(error);
+        if (error.status === 401) {
+          this.error = "Login failed";
+        } else {
+          this.error = "Login failed: " + JSON.stringify(error);
+        }
+      });
+  }
 }

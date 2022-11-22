@@ -32,13 +32,13 @@ import { AlertGroup } from "./elasticsearch.service";
  */
 @Injectable()
 export class EventService {
-    private alertGroup: AlertGroup[] = [];
+  private alertGroup: AlertGroup[] = [];
 
-    pushAlertGroup(alertGroup: AlertGroup) {
-        this.alertGroup.unshift(alertGroup);
-    }
+  pushAlertGroup(alertGroup: AlertGroup) {
+    this.alertGroup.unshift(alertGroup);
+  }
 
-    popAlertGroup(): AlertGroup {
-        return this.alertGroup.shift();
-    }
+  popAlertGroup(): AlertGroup {
+    return this.alertGroup.shift();
+  }
 }

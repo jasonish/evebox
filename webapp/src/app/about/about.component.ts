@@ -23,17 +23,17 @@ import { Component, OnInit } from "@angular/core";
 import { ApiService } from "../api.service";
 
 @Component({
-    selector: "app-about",
-    templateUrl: "./about.component.html",
+  selector: "app-about",
+  templateUrl: "./about.component.html",
 })
 export class AboutComponent implements OnInit {
-    versionInfo: any = {};
+  versionInfo: any = {};
 
-    constructor(private api: ApiService) {}
+  constructor(private api: ApiService) {}
 
-    ngOnInit(): void {
-        this.api.getVersion().then((response) => {
-            this.versionInfo = response;
-        });
-    }
+  ngOnInit(): void {
+    this.api.getVersion().then((response) => {
+      this.versionInfo = response;
+    });
+  }
 }

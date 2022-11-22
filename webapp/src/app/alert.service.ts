@@ -36,17 +36,17 @@ import * as moment from "moment";
  */
 @Injectable()
 export class AlertService {
-    private state: any;
+  private state: any;
 
-    constructor(private elasticSearchService: ElasticSearchService) {}
+  constructor(private elasticSearchService: ElasticSearchService) {}
 
-    pushState(state: any) {
-        this.state = state;
-    }
+  pushState(state: any) {
+    this.state = state;
+  }
 
-    popState() {
-        let state = this.state;
-        this.state = undefined;
-        return state;
-    }
+  popState() {
+    let state = this.state;
+    this.state = undefined;
+    return state;
+  }
 }

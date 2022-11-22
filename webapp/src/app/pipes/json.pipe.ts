@@ -28,14 +28,14 @@ import { Pipe, PipeTransform } from "@angular/core";
 import { prettyPrintJson, FormatOptions } from "pretty-print-json";
 
 @Pipe({
-    name: "eveboxJsonPretty",
+  name: "eveboxJsonPretty",
 })
 export class EveboxJsonPrettyPipe implements PipeTransform {
-    transform(object: any): string {
-        const options: FormatOptions = {
-            linkUrls: false,
-            indent: 2,
-        };
-        return prettyPrintJson.toHtml(object, options);
-    }
+  transform(object: any): string {
+    const options: FormatOptions = {
+      linkUrls: false,
+      indent: 2,
+    };
+    return prettyPrintJson.toHtml(object, options);
+  }
 }

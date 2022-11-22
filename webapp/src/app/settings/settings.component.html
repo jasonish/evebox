@@ -1,45 +1,45 @@
 <br />
 
 <div class="content">
-    <div class="alert alert-info">
-        Note: Settings are stored client side and will not be reflected on other
-        computers or in other browsers.
+  <div class="alert alert-info">
+    Note: Settings are stored client side and will not be reflected on other
+    computers or in other browsers.
+  </div>
+
+  <form>
+    <div class="form-group row">
+      <label class="col-md-4 col-form-label">Theme</label>
+      <div class="col-md-8">
+        <select
+          class="form-select"
+          [(ngModel)]="model.theme"
+          name="theme"
+          (change)="setTheme()"
+        >
+          <option value="default">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
     </div>
 
-    <form>
-        <div class="form-group row">
-            <label class="col-md-4 col-form-label">Theme</label>
-            <div class="col-md-8">
-                <select
-                    class="form-select"
-                    [(ngModel)]="model.theme"
-                    name="theme"
-                    (change)="setTheme()"
-                >
-                    <option value="default">Light</option>
-                    <option value="dark">Dark</option>
-                </select>
-            </div>
-        </div>
+    <hr />
 
-        <hr />
-
-        <div class="form-group row">
-            <label class="col-md-4 col-form-label">Alerts per Page</label>
-            <div class="col-md-8">
-                <select
-                    class="form-select"
-                    [(ngModel)]="model.alertsPerPage"
-                    (change)="updateAlertsPerPage()"
-                    name="alertsPerPage"
-                >
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                    <option value="300">300</option>
-                    <option value="400">400</option>
-                    <option value="500">500</option>
-                </select>
-            </div>
-        </div>
-    </form>
+    <div class="form-group row">
+      <label class="col-md-4 col-form-label">Alerts per Page</label>
+      <div class="col-md-8">
+        <select
+          class="form-select"
+          [(ngModel)]="model.alertsPerPage"
+          (change)="updateAlertsPerPage()"
+          name="alertsPerPage"
+        >
+          <option value="100">100</option>
+          <option value="200">200</option>
+          <option value="300">300</option>
+          <option value="400">400</option>
+          <option value="500">500</option>
+        </select>
+      </div>
+    </div>
+  </form>
 </div>
