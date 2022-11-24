@@ -102,7 +102,7 @@ pub fn bookmark_filename(input_filename: &str, bookmark_dir: &str) -> std::path:
         }
     };
 
-    let hash = md5::compute(&input_filename);
+    let hash = md5::compute(input_filename);
     let filename = format!("{:x}.bookmark", hash);
     let path = directory.join(filename);
     return path;

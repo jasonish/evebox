@@ -73,7 +73,7 @@ impl ConnectionBuilder {
             | OpenFlags::SQLITE_OPEN_SHARED_CACHE
             | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
         if let Some(filename) = &self.filename {
-            let conn = rusqlite::Connection::open_with_flags(&filename, flags)?;
+            let conn = rusqlite::Connection::open_with_flags(filename, flags)?;
 
             // Set WAL mode.
             let mode = conn.pragma_update_and_check(None, "journal_mode", &"WAL", |row| {

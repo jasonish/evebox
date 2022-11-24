@@ -33,7 +33,7 @@ struct Inner {
 
 impl Inner {
     fn load_path(&mut self, path: &Path) {
-        if let Ok(file) = std::fs::File::open(&path) {
+        if let Ok(file) = std::fs::File::open(path) {
             let mut reader = std::io::BufReader::new(file);
             while let Ok(Some(line)) = parser::read_next_rule(&mut reader) {
                 if let Some(rule) = parse_line(&line) {
@@ -67,12 +67,12 @@ impl RuleMap {
 
     pub fn filenames(&self) -> Vec<PathBuf> {
         let inner = self.inner.read().unwrap();
-        (*inner).files.keys().cloned().collect()
+        inner.files.keys().cloned().collect()
     }
 
     pub fn find_by_sid(&self, sid: u64) -> Option<String> {
         let inner = self.inner.read().unwrap();
-        if let Some(rule) = (*inner).map.get(&sid) {
+        if let Some(rule) = inner.map.get(&sid) {
             return Some(rule.to_string());
         }
         return None;
@@ -99,7 +99,7 @@ impl RuleMap {
                                         filetime::FileTime::from_last_modification_time(&meta)
                                             .unix_seconds();
                                     let mut inner = self.inner.write().unwrap();
-                                    let prev = (*inner).files.insert(path.clone(), mtime);
+                                    let prev = inner.files.insert(path.clone(), mtime);
                                     if let Some(prev) = prev {
                                         if mtime > prev {
                                             info!("Reloading rules from {:?}", path);

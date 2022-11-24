@@ -11,7 +11,7 @@ use tracing::debug;
 
 pub struct Config<'a> {
     pub args: &'a ArgMatches,
-    root: serde_yaml::Value,
+    root: Value,
 }
 
 impl<'a> Config<'a> {
@@ -19,12 +19,12 @@ impl<'a> Config<'a> {
         let root = if let Some(filename) = filename {
             Self::load_file(filename)?
         } else {
-            serde_yaml::Value::Null
+            Value::Null
         };
         Ok(Self { args, root })
     }
 
-    fn load_file(filename: &str) -> anyhow::Result<serde_yaml::Value> {
+    fn load_file(filename: &str) -> anyhow::Result<Value> {
         let input = std::fs::File::open(filename)?;
         Ok(serde_yaml::from_reader(&input)?)
     }
@@ -164,14 +164,12 @@ impl<'a> Config<'a> {
         }
     }
 
-    pub fn get_node(
-        &self,
-        root: &'a serde_yaml::Value,
-        name: &str,
-    ) -> Option<&'a serde_yaml::Value> {
+    /// Suppress clippy warning for another day...
+    #[allow(clippy::only_used_in_recursion)]
+    pub fn get_node(&self, root: &'a Value, name: &str) -> Option<&'a Value> {
         let parts: Vec<&str> = name.splitn(2, '.').collect();
-        let key = serde_yaml::Value::String(parts[0].to_string());
-        if let serde_yaml::Value::Mapping(map) = root {
+        let key = Value::String(parts[0].to_string());
+        if let Value::Mapping(map) = root {
             if let Some(value) = map.get(&key) {
                 if parts.len() == 1 {
                     return Some(value);
