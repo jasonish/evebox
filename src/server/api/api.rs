@@ -3,10 +3,10 @@
 // Copyright (C) 2020-2022 Jason Ish
 
 use axum::extract::{Extension, Form, Path};
-use axum::http::{Response, StatusCode};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use axum::response::Response;
 use axum::Json;
-use std::convert::Infallible;
 use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -492,10 +492,7 @@ pub enum ApiError {
 }
 
 impl IntoResponse for ApiError {
-    type Body = axum::body::Full<axum::body::Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, message) = match self {
             ApiError::TimeRangeParseError(msg) => (StatusCode::BAD_REQUEST, msg),
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),

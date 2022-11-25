@@ -9,13 +9,13 @@ use std::time::Duration;
 
 use anyhow::Result;
 use axum::async_trait;
-use axum::body::Body;
+use axum::body::{Body, Full};
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::extract::{ConnectInfo, Extension, FromRequest, RequestParts};
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
-use axum::{AddExtensionLayer, Router, Server};
+use axum::{Router, Server};
 use hyper::server::conn::AddrIncoming;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 use tracing::Level;
@@ -290,7 +290,7 @@ pub(crate) fn build_axum_service(
         )
         .route("/api/1/stats/agg", get(api::stats::stats_agg))
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
-        .layer(AddExtensionLayer::new(context.clone()))
+        .layer(axum::extract::Extension(context.clone()))
         .layer(response_header_layer)
         .fallback(get(fallback_handler));
 
@@ -384,12 +384,12 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
             return (StatusCode::NOT_FOUND, axum::Json(response)).into_response();
         }
         Some(body) => {
-            let body = body.data.into();
             let mime = mime_guess::from_path(&path).first_or_octet_stream();
             Response::builder()
                 .header(axum::http::header::CONTENT_TYPE, mime.as_ref())
-                .body(body)
+                .body(Full::from(body.data))
                 .unwrap()
+                .into_response()
         }
     }
 }
@@ -524,10 +524,13 @@ pub enum GenericError {}
 pub(crate) struct SessionExtractor(pub(crate) Arc<Session>);
 
 #[async_trait]
-impl FromRequest for SessionExtractor {
+impl<B> FromRequest<B> for SessionExtractor
+where
+    B: Send,
+{
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let Extension(context) = Extension::<Arc<ServerContext>>::from_request(req)
             .await
             .unwrap();
