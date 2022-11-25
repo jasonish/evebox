@@ -3,7 +3,8 @@
 ## unreleased
 
 - [server] Fix authentication:
-  https://github.com/jasonish/evebox/issues/227
+  https://github.com/jasonish/evebox/issues/227,
+  https://github.com/jasonish/evebox/issues/230
 - [server] Auto archive: https://github.com/jasonish/evebox/issues/52
 - [webapp] Update to Bootstrap 5
 - [webapp] Update to Angular 14

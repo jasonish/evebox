@@ -19,7 +19,7 @@ members = [".", "./suricata-rule-parser"]
 
 [dependencies]
 anyhow = "1.0.31"
-axum = { version = "0.6.0" }
+axum = { version = "0.6.0", features = ["headers"] }
 axum-server = { version = "0.4.4", features = ["tls-rustls"] }
 base64 = "0.12.1"
 bcrypt = "0.9.0"

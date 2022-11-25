@@ -77,6 +77,14 @@ impl Session {
         }
     }
 
+    pub fn with_username(username: &str) -> Self {
+        let session_id = generate_session_id();
+        Session {
+            session_id: Some(session_id),
+            username: Some(username.to_string()),
+        }
+    }
+
     pub fn anonymous(username: Option<String>) -> Session {
         let session_id = generate_session_id();
         Session {

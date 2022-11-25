@@ -8,13 +8,13 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::Result;
-use axum::async_trait;
 use axum::body::Full;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::extract::{ConnectInfo, Extension, FromRequestParts};
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
+use axum::{async_trait, TypedHeader};
 use axum::{Router, Server};
 use hyper::server::conn::AddrIncoming;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
@@ -569,16 +569,58 @@ where
             }
         }
 
+        use axum::headers::authorization::Basic;
+        use axum::headers::Authorization;
+
+        let authorization = if headers.contains_key("authorization") {
+            let TypedHeader(Authorization(basic)) =
+                TypedHeader::<Authorization<Basic>>::from_request_parts(req, state)
+                    .await
+                    .map_err(|err| {
+                        warn!("Failed to decode basic authentication header: {:?}", err);
+                        (StatusCode::UNAUTHORIZED, "bad authorization header")
+                    })?;
+            Some(basic)
+        } else {
+            None
+        };
+
         match context.config.authentication_type {
             AuthenticationType::Anonymous => {
                 return Ok(Self(Arc::new(Session::anonymous(remote_user))));
             }
-            _ => {
-                // Any authentication type requires a session.
+            AuthenticationType::Username => {
+                if let Some(basic) = authorization {
+                    let username = basic.username();
+                    if username.is_empty() {
+                        return Err((StatusCode::UNAUTHORIZED, "no username provided"));
+                    }
+                    return Ok(Self(Arc::new(Session::with_username(username))));
+                }
+            }
+            AuthenticationType::UsernamePassword => {
+                if let Some(basic) = authorization {
+                    match context
+                        .config_repo
+                        .get_user_by_username_password(basic.username(), basic.password())
+                        .await
+                    {
+                        Ok(user) => {
+                            return Ok(Self(Arc::new(Session::with_username(&user.username))));
+                        }
+                        Err(err) => {
+                            warn!(
+                                "Basic authentication failure for username {}, error={:?}",
+                                basic.username(),
+                                err
+                            );
+                        }
+                    }
+                }
                 info!("Authentication required but no session found.");
-                return Err((StatusCode::UNAUTHORIZED, "authentication required"));
             }
         }
+        return Err((StatusCode::UNAUTHORIZED, "authentication required"));
     }
 }
 
