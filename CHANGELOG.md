@@ -1,5 +1,16 @@
 # Change Log
 
+## unreleased
+
+- [server] Fix authentication:
+  https://github.com/jasonish/evebox/issues/227
+- [server] Auto archive: https://github.com/jasonish/evebox/issues/52
+- [webapp] Update to Bootstrap 5
+- [webapp] Update to Angular 14
+- [sqlite] Typo when opening sqlite database:
+  https://github.com/jasonish/evebox/issues/226
+- Many cleanups from 0.15.0
+
 ## 0.15.0 - 2022-02-27
 
 - [sqlite] Remove full text search engine. It provided little benefit on search
