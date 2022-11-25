@@ -20,7 +20,7 @@ members = [".", "./suricata-rule-parser"]
 [dependencies]
 anyhow = "1.0.31"
 axum = { version = "0.5.17" }
-axum-server = { version = "0.3.2", features = ["tls-rustls"] }
+axum-server = { version = "0.4.4", features = ["tls-rustls"] }
 base64 = "0.12.1"
 bcrypt = "0.9.0"
 bytes = "0.5.4"
@@ -51,8 +51,7 @@ stdlog = { package = "log", version = "0.4.8" }
 suricata-rule-parser = { path = "./suricata-rule-parser", package = "evebox-suricata-rule-parser", version = "0.2.0" }
 time = { version = "0.3.17", features = ["formatting", "local-offset", "macros", "parsing"] }
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
-tower = "0.4.11"
-tower-http = { version = "0.1.2", default_features = false, features = ["set-header", "trace"] }
+tower-http = { version = "0.3.4", default_features = false, features = ["set-header", "trace"] }
 tracing = "0.1.25"
 tracing-subscriber = { version = "0.3.16", features = ["std", "fmt", "env-filter", "time"] }
 tracing-log = "0.1.2"

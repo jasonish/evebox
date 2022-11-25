@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use axum::async_trait;
-use axum::body::{Body, Full};
+use axum::body::Full;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::extract::{ConnectInfo, Extension, FromRequest, RequestParts};
 use axum::http::header::HeaderName;
@@ -243,11 +243,10 @@ pub(crate) fn build_axum_service(
     use axum::routing::{get, post};
     use tower_http::trace::TraceLayer;
 
-    let response_header_layer =
-        tower_http::set_header::SetResponseHeaderLayer::<_, Body>::if_not_present(
-            HeaderName::from_static("x-evebox-git-revision"),
-            HeaderValue::from_static(crate::version::build_rev()),
-        );
+    let response_header_layer = tower_http::set_header::SetResponseHeaderLayer::if_not_present(
+        HeaderName::from_static("x-evebox-git-revision"),
+        HeaderValue::from_static(crate::version::build_rev()),
+    );
 
     let request_tracing = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::new().include_headers(false))
