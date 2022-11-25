@@ -539,7 +539,7 @@ where
             Extension::<ConnectInfo<SocketAddr>>::from_request(req)
                 .await
                 .unwrap();
-        let headers = req.headers().expect("other extractor taken headers");
+        let headers = req.headers();
 
         let session_id = headers
             .get("x-evebox-session-id")
@@ -557,6 +557,7 @@ where
             None
         };
 
+        // TODO: Proper reverse proxy handling, mainly for logging.
         let _remote_addr = forwarded_for.unwrap_or_else(|| remote_addr.to_string());
 
         if let Some(session_id) = session_id {
