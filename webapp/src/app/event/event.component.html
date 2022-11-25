@@ -110,7 +110,6 @@
                 <tr *ngIf="event._source.src_ip">
                   <th>Source</th>
                   <td>
-                    <!-- @formatter:off -->
                     <search-link
                       field="src_ip"
                       [search]="event._source.src_ip"
@@ -120,19 +119,15 @@
                     <span *ngIf="event._source.src_port" style="color: dimgray"
                       >:{{ event._source.src_port }}</span
                     >
-                    <span class="dropdown">
+                    <div ngbDropdown class="ms-2 d-inline-block">
                       <a
-                        href="#"
-                        class="dropdown-toggle"
-                        data-toggle="dropdown"
-                        aria-haspopup="true"
-                        aria-expanded="true"
-                      >
-                        <span class="caret"></span>
-                      </a>
-                      <div class="dropdown-menu">
+                        [routerLink]=""
+                        ngbDropdownToggle
+                        style="cursor: pointer"
+                      ></a>
+                      <div ngbDropdownMenu>
                         <a
-                          class="dropdown-item"
+                          ngbDropdownItem
                           [routerLink]="[
                             '/reports/ip',
                             {
@@ -142,8 +137,7 @@
                           >IP Report</a
                         >
                       </div>
-                    </span>
-                    <!-- @formatter:on -->
+                    </div>
                   </td>
                 </tr>
                 <tr *ngIf="event._source.dest_ip">
@@ -156,25 +150,19 @@
                         event._source.dest_ip | eveboxFormatIpAddress
                       }}"
                     >
-                    </search-link
-                    ><!-- @formatter: off -->
+                    </search-link>
                     <span *ngIf="event._source.dest_port" style="color: dimgray"
                       >:{{ event._source.dest_port }}</span
                     >
-                    <!-- @formatter:on -->
-                    <span class="dropdown">
+                    <div ngbDropdown class="ms-2 d-inline-block">
                       <a
-                        href="#"
-                        class="dropdown-toggle"
-                        data-toggle="dropdown"
-                        aria-haspopup="true"
-                        aria-expanded="true"
-                      >
-                        <span class="caret"></span>
-                      </a>
-                      <div class="dropdown-menu">
+                        [routerLink]=""
+                        ngbDropdownToggle
+                        style="cursor: pointer"
+                      ></a>
+                      <div ngbDropdownMenu>
                         <a
-                          class="dropdown-item"
+                          ngbDropdownItem
                           [routerLink]="[
                             '/reports/ip',
                             {
@@ -184,7 +172,7 @@
                           >IP Report</a
                         >
                       </div>
-                    </span>
+                    </div>
                   </td>
                 </tr>
                 <tr *ngIf="event._source.in_iface">
@@ -854,7 +842,7 @@
           class="pb-0 mb-0"
           style="white-space: pre-wrap; word-wrap: anywhere"
         ><output
-                    [innerHTML]="event | eveboxJsonPretty"></output></pre>
+                [innerHTML]="event | eveboxJsonPretty"></output></pre>
       </div>
     </div>
   </div>
