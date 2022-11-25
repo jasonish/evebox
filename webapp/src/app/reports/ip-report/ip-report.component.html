@@ -1,69 +1,57 @@
 <loading-spinner [loading]="loading > 0"></loading-spinner>
 
-<br />
-
 <div
   class="content"
   *ngIf="ip"
   [@loadingState]="loading > 0 ? 'true' : 'false'"
 >
-  <div>
-    <span *ngIf="relatedAddresses.length > 0" class="pull-right">
-      <div class="dropdown">
-        <a href="#" class="dropdown-toggle" data-toggle="dropdown"
-          >Related Reports <span class="caret"></span
-        ></a>
-        <div
-          class="dropdown-menu dropdown-menu-right"
-          aria-labelledby="dropdownMenu1"
-        >
-          <li *ngFor="let related of relatedAddresses">
-            <a
-              class="dropdown-item"
-              [routerLink]="['/reports/ip', { ip: related.value }]"
-              >{{ related.name }}</a
-            >
-          </li>
+  <div class="row mt-2">
+    <div class="col">
+      <h2 style="margin-top: 0px">Report for IP {{ ip }}</h2>
+    </div>
+    <div class="col" *ngIf="relatedAddresses.length > 0">
+      <div ngbDropdown class="float-end d-inline-block">
+        <button type="button" class="btn btn-outline-primary" ngbDropdownToggle>
+          Related Reports
+        </button>
+        <div ngbDropdownMenu>
+          <a
+            ngbDropdownItem
+            *ngFor="let related of relatedAddresses"
+            [routerLink]="['/reports/ip', { ip: related.value }]"
+            >{{ related.name }}</a
+          >
         </div>
       </div>
-    </span>
-    <h2 style="margin-top: 0px">Report for IP {{ ip }}</h2>
+    </div>
   </div>
 
   <div class="row">
-    <div class="col">
-      <form class="form-inline">
-        <button
-          type="button"
-          class="btn btn-secondary mr-2"
-          (click)="refresh()"
-        >
-          Refresh
-        </button>
-
-        <select
-          *ngIf="sensors"
-          class="form-control"
-          [(ngModel)]="sensorFilter"
-          (ngModelChange)="refresh()"
-          name="sensorSelector"
-        >
-          <option value="">All Sensors</option>
-          <option *ngFor="let sensor of sensors" [value]="sensor">
-            {{ sensor }}
-          </option>
-        </select>
-      </form>
+    <div class="col-md-2">
+      <button type="button" class="btn btn-secondary mr-2" (click)="refresh()">
+        Refresh
+      </button>
     </div>
-
     <div class="col">
+      <select
+        *ngIf="sensors"
+        class="form-control"
+        [(ngModel)]="sensorFilter"
+        (ngModelChange)="refresh()"
+        name="sensorSelector"
+      >
+        <option value="">All Sensors</option>
+        <option *ngFor="let sensor of sensors" [value]="sensor">
+          {{ sensor }}
+        </option>
+      </select>
+    </div>
+    <div class="col-md-6">
       <evebox-filter-input [queryString]="queryString"></evebox-filter-input>
     </div>
   </div>
 
-  <br />
-
-  <div class="row">
+  <div class="row mt-2">
     <!-- First Column -->
     <div class="col-md-6">
       <report-data-table
