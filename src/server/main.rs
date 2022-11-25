@@ -11,7 +11,7 @@ use anyhow::Result;
 use axum::async_trait;
 use axum::body::Full;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use axum::extract::{ConnectInfo, Extension, FromRequest, RequestParts};
+use axum::extract::{ConnectInfo, Extension, FromRequestParts};
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
@@ -291,7 +291,7 @@ pub(crate) fn build_axum_service(
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
         .layer(axum::extract::Extension(context.clone()))
         .layer(response_header_layer)
-        .fallback(get(fallback_handler));
+        .fallback(fallback_handler);
 
     let app = if context.config.http_request_logging {
         app.layer(request_tracing)
@@ -523,22 +523,25 @@ pub enum GenericError {}
 pub(crate) struct SessionExtractor(pub(crate) Arc<Session>);
 
 #[async_trait]
-impl<B> FromRequest<B> for SessionExtractor
+impl<S> FromRequestParts<S> for SessionExtractor
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(context) = Extension::<Arc<ServerContext>>::from_request(req)
+    async fn from_request_parts(
+        req: &mut axum::http::request::Parts,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        let Extension(context) = Extension::<Arc<ServerContext>>::from_request_parts(req, state)
             .await
             .unwrap();
         let enable_reverse_proxy = context.config.http_reverse_proxy;
         let Extension(ConnectInfo(remote_addr)) =
-            Extension::<ConnectInfo<SocketAddr>>::from_request(req)
+            Extension::<ConnectInfo<SocketAddr>>::from_request_parts(req, state)
                 .await
                 .unwrap();
-        let headers = req.headers();
+        let headers = &req.headers;
 
         let session_id = headers
             .get("x-evebox-session-id")
