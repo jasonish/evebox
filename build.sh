@@ -20,7 +20,9 @@ GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 # Set the container tag prefix to "dev" if not on the master branch.
 if [ "${DOCKER_TAG_PREFIX}" = "" ]; then
     if [ "${GIT_BRANCH}" = "master" ]; then
-        DOCKER_TAG_PREFIX="master"
+        DOCKER_TAG_PREFIX="main"
+    elif [ "${GIT_BRANCH}" = "main" ]; then
+	DOCKER_TAG_PREFIX="main"
     else
         DOCKER_TAG_PREFIX="dev"
     fi
@@ -159,6 +161,17 @@ docker_push() {
                ${DOCKER_NAME}:latest \
                ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
         docker manifest push --purge ${DOCKER_NAME}:latest
+    fi
+
+    if [ "${DOCKER_TAG_PREFIX}" = "main" ]; then
+        docker manifest create -a ${DOCKER_NAME}:master \
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
+        docker manifest annotate --arch arm --variant v7 \
+               ${DOCKER_NAME}:master \
+               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
+        docker manifest push --purge ${DOCKER_NAME}:master
     fi
 }
 
