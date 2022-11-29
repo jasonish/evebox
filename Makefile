@@ -41,10 +41,9 @@ endif
 DIST_ARCH :=	$(shell rustc --target $(TARGET) --print cfg | \
 			awk -F'"' '/target_arch/ { print $$2 }' | \
 			sed -e 's/x86_64/x64/' | sed -e 's/aarch64/arm64/')
-DIST_NAME ?=	$(APP)-$(DIST_VERSION)-$(OS)-$(DIST_ARCH)
 EVEBOX_BIN :=	target/$(TARGET)/release/$(APP)$(APP_EXT)
 
-all: public evebox
+all: evebox
 
 clean:
 	rm -rf dist target resources/public
@@ -53,17 +52,17 @@ clean:
 
 .PHONY: dist rpm deb
 
-resources/public/_done: $(WEBAPP_SRCS)
+resources/public/index.html: $(WEBAPP_SRCS)
 	cd webapp && $(MAKE)
-	touch $@
-public: resources/public/_done
+webapp: resources/public/index.html
 
 # Build's EveBox for the host platform.
-evebox:
-	$(CARGO) build $(RELEASE) $(CARGO_BUILD_ARGS)
+evebox: webapp
+	$(CARGO) build
 
+dist: DIST_NAME ?= $(APP)-$(DIST_VERSION)-$(OS)-$(DIST_ARCH)
 dist: DIST_DIR ?= dist/$(DIST_NAME)
-dist: public
+dist: webapp
 	echo "Building $(DIST_NAME)..."
 	$(CARGO) build --release $(CARGO_BUILD_ARGS)
 	mkdir -p $(DIST_DIR)

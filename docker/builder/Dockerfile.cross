@@ -1,4 +1,4 @@
-FROM fedora:35
+FROM fedora:36
 
 RUN dnf -y install \
         curl \
@@ -32,14 +32,20 @@ RUN cd /usr/local && \
   curl -o - -L https://nodejs.org/dist/v${N_V}/node-v${N_V}-linux-x64.tar.gz | \
        tar zxf - --strip-components=1
 
-ENV PATH=/root/.cargo/bin:$PATH
-ENV CROSS_DOCKER_IN_DOCKER=true
-ENV FIX_PERMS=true
+USER builder
+
+ENV PATH=/home/builder/.cargo/bin:$PATH
+ENV CROSS_CONTAINER_IN_CONTAINER=true
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
-RUN cargo install cross
+RUN cargo install cross --git https://github.com/cross-rs/cross
+RUN rustup target add x86_64-pc-windows-gnu
+RUN rustup target add x86_64-unknown-linux-musl
+RUN rustup target add aarch64-unknown-linux-musl
+RUN rustup target add armv7-unknown-linux-musleabihf
+RUN rustup component add rust-src
+RUN rustup component add rust-std
 ENV CARGO=cross
 
-COPY / /src
 COPY /docker/builder/docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]

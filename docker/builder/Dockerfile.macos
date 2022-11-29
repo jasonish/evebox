@@ -1,4 +1,4 @@
-FROM fedora:35
+FROM fedora:36
 
 RUN dnf -y install \
     	make \
@@ -38,12 +38,16 @@ RUN curl -L -o \
 RUN sed -i -e 's|-march=native||g' ./build_clang.sh ./wrapper/build_wrapper.sh
 RUN printf "\n" | OSX_VERSION_MIN="10.9" PORTABLE=true bash -x ./build.sh
 
-ENV PATH=/home/builder/.cargo/bin:/root/.cargo/bin:$PATH
+USER builder
+
+ENV PATH=/home/builder/.cargo/bin:/opt/osxcross/target/bin:$PATH
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+RUN cargo install cross --git https://github.com/cross-rs/cross
 RUN rustup target add x86_64-apple-darwin
+RUN rustup component add rust-src
+RUN rustup component add rust-std
 
-ENV FIX_PERMS=true
+ENV CARGO=cross
 
-COPY / /src
 COPY /docker/builder/docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]

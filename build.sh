@@ -17,6 +17,12 @@ export BUILD_REV
 VERSION=$(cat Cargo.toml | awk '/^version/ { gsub(/"/, "", $3); print $3 }')
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
+if test -t 1; then
+    it="-it"
+fi
+
+declare -A COMMANDS
+
 # Set the container tag prefix to "dev" if not on the master branch.
 if [ "${DOCKER_TAG_PREFIX}" = "" ]; then
     if [ "${GIT_BRANCH}" = "master" ]; then
@@ -28,25 +34,23 @@ if [ "${DOCKER_TAG_PREFIX}" = "" ]; then
     fi
 fi
 
-echo "BUILD_REV=${BUILD_REV}"
-
 build_webapp() {
     DOCKERFILE="./docker/builder/Dockerfile.cross"
     TAG=${BUILDER_TAG:-"evebox/builder:webapp"}
-    docker build --rm \
+    docker build \
            --build-arg REAL_UID="$(id -u)" \
            --build-arg REAL_GID="$(id -g)" \
-           --cache-from ${TAG} \
 	   -t ${TAG} \
 	   -f ${DOCKERFILE} .
-    docker run ${IT} --rm \
+    docker run --rm ${it} \
            -v "$(pwd):/src:z" \
-           -w /src/webapp \
-           -e REAL_UID="$(id -u)" \
-           -e REAL_GID="$(id -g)" \
+           -w /src \
            -e BUILD_REV="${BUILD_REV}" \
-           ${TAG} make
+           -u builder \
+           --group-add $(getent group docker | cut -f3 -d:) \
+           ${TAG} make webapp
 }
+COMMANDS[webapp]=build_webapp
 
 build_cross() {
     target="$1"
@@ -57,122 +61,138 @@ build_cross() {
     what="$2"
     DOCKERFILE="./docker/builder/Dockerfile.cross"
     TAG=${BUILDER_TAG:-"evebox/builder:cross"}
-    sudo rm -rf target
-    docker build --rm \
-           --cache-from ${TAG} \
-	   -t ${TAG} \
-	   -f ${DOCKERFILE} .
-    docker run ${IT} --rm \
-         -v "$(pwd)/target/docker/${TARGET}:/src/target:z" \
-         -v "$(pwd)/dist:/src/dist:z" \
-         -v /var/run/docker.sock:/var/run/docker.sock \
-         -w /src \
-         -e REAL_UID="$(id -u)" \
-         -e REAL_GID="$(id -g)" \
-         -e BUILD_REV="${BUILD_REV}" \
-         -e TARGET="${target}" \
-         ${TAG} make $what
+    docker build \
+        --build-arg REAL_UID="$(id -u)" \
+        --build-arg REAL_GID="$(id -g)" \
+        --cache-from ${TAG} \
+	-t ${TAG} \
+	-f ${DOCKERFILE} .
+    docker run --rm ${it} --privileged \
+        -v "$(pwd):/src:z" \
+        -v /var/run/docker.sock:/var/run/docker.sock:z \
+        -w /src \
+        -e BUILD_REV="${BUILD_REV}" \
+        -e TARGET="${target}" \
+        -u builder \
+        --group-add $(getent group docker | cut -f3 -d:) \
+        ${TAG} make $what
 }
 
 build_linux() {
     build_cross x86_64-unknown-linux-musl "dist rpm deb"
 }
+COMMANDS[linux]=build_linux
 
-build_linux_armv8() {
+build_linux_arm64() {
     build_cross aarch64-unknown-linux-musl dist
 }
+COMMANDS[linux-arm64]=build_linux_arm64
 
-build_linux_armv7() {
-    build_cross armv7-unknown-linux-musleabihf dist
+build_linux_arm32() {
+    build_cross arm-unknown-linux-musleabihf dist
 }
+COMMANDS[linux-arm32]=build_linux_arm32
 
 build_windows() {
     build_cross x86_64-pc-windows-gnu dist
 }
+COMMANDS[windows]=build_windows
 
 build_macos() {
     TAG=${BUILDER_TAG:-"evebox/builder:macos"}
     DOCKERFILE="./docker/builder/Dockerfile.macos"
     TARGET="x86_64-apple-darwin"
-    docker build --rm \
-           --build-arg REAL_UID="$(id -u)" \
-           --build-arg REAL_GID="$(id -g)" \
-           --cache-from ${TAG} \
-	   -t ${TAG} \
-	   -f ${DOCKERFILE} .
+    docker build \
+        --build-arg REAL_UID="$(id -u)" \
+        --build-arg REAL_GID="$(id -g)" \
+        --cache-from ${TAG} \
+	-t ${TAG} \
+	-f ${DOCKERFILE} .
     docker run ${IT} --rm \
-           -v "$(pwd)/target/docker/${TARGET}:/src/target:z" \
-           -v "$(pwd)/dist:/src/dist:z" \
-           -w /src \
-           -e REAL_UID="$(id -u)" \
-           -e REAL_GID="$(id -g)" \
-           -e CC=o64-clang \
-           -e TARGET=${TARGET} \
-           -e BUILD_REV="${BUILD_REV}" \
-           ${TAG} make dist
+        -v "$(pwd):/src:z" \
+        -w /src \
+        -e CC=o64-clang \
+        -e TARGET=${TARGET} \
+        -e BUILD_REV="${BUILD_REV}" \
+        -u builder \
+        --group-add $(getent group docker | cut -f3 -d:) \
+        ${TAG} make dist
 }
 
+COMMANDS[macos]=build_macos
+
 build_docker() {
-    if test -e ./dist/evebox-${VERSION}-linux-x64/evebox; then
+    if [[ "${RELEASE}" = "yes" ]]; then
         version=${VERSION}
     else
         version="latest"
     fi
 
-    docker build \
-	   --build-arg "BASE=amd64/alpine" \
-           --build-arg "SRC=./dist/evebox-${version}-linux-x64/evebox" \
-           -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
-           -f docker/Dockerfile .
+    set -x
+    test -e ./dist/evebox-${version}-linux-x64/evebox
+    test -e ./dist/evebox-${version}-linux-arm/evebox
+    test -e ./dist/evebox-${version}-linux-arm64/evebox
+    set +x
 
     docker build \
-	   --build-arg "BASE=arm32v7/alpine" \
-           --build-arg "SRC=./dist/evebox-${version}-linux-arm/evebox" \
-           -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
-           -f docker/Dockerfile .
+	--build-arg "BASE=amd64/alpine" \
+        --build-arg "SRC=./dist/evebox-${version}-linux-x64/evebox" \
+        -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
+        -f docker/Dockerfile .
 
     docker build \
-	   --build-arg "BASE=arm64v8/alpine" \
-           --build-arg "SRC=./dist/evebox-${version}-linux-arm64/evebox" \
-           -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8 \
-           -f docker/Dockerfile .
+	--build-arg "BASE=arm32v6/alpine" \
+        --build-arg "SRC=./dist/evebox-${version}-linux-arm/evebox" \
+        -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v6 \
+        -f docker/Dockerfile .
+
+    docker build \
+	--build-arg "BASE=arm64v8/alpine" \
+        --build-arg "SRC=./dist/evebox-${version}-linux-arm64/evebox" \
+        -t ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8 \
+        -f docker/Dockerfile .
 }
+COMMANDS[docker]=build_docker
 
 docker_push() {
-    docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64
-    docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
-    docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
+    ${DP_DEBUG} docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64
+    ${DP_DEBUG} docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v6
+    ${DP_DEBUG} docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
 
-    docker manifest create -a ${DOCKER_NAME}:${DOCKER_TAG_PREFIX} \
-           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
-           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
-           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
-    docker manifest annotate --arch arm --variant v7 \
-           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX} \
-           ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
-    docker manifest push --purge ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}
+    ${DP_DEBUG} docker manifest create -a ${DOCKER_NAME}:${DOCKER_TAG_PREFIX} \
+        ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
+        ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v6 \
+        ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
+    ${DP_DEBUG} docker manifest push --purge ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}
 
     if [ "${LATEST}" = "yes" ]; then
-        docker manifest create -a ${DOCKER_NAME}:latest \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
-        docker manifest annotate --arch arm --variant v7 \
-               ${DOCKER_NAME}:latest \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
-        docker manifest push --purge ${DOCKER_NAME}:latest
+        echo "Pushing Docker image as \"latest\"."
+        ${DP_DEBUG} docker manifest create -a ${DOCKER_NAME}:latest \
+            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
+            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v6 \
+            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
+        ${DP_DEBUG} docker manifest push --purge ${DOCKER_NAME}:latest
     fi
 
     if [ "${DOCKER_TAG_PREFIX}" = "main" ]; then
-        docker manifest create -a ${DOCKER_NAME}:master \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7 \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
-        docker manifest annotate --arch arm --variant v7 \
-               ${DOCKER_NAME}:master \
-               ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v7
-        docker manifest push --purge ${DOCKER_NAME}:master
+        echo "Pushing Docker iamge as \"master\"."
+        ${DP_DEBUG} docker manifest create -a ${DOCKER_NAME}:master \
+            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64 \
+            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v6 \
+            ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
+        ${DP_DEBUG} docker manifest push --purge ${DOCKER_NAME}:master
     fi
+}
+COMMANDS[docker-push]=docker_push
+
+build_all() {
+    build_webapp
+    build_linux
+    build_linux_arm64
+    build_linux_arm32
+    build_windows
+    build_macos
+    build_docker
 }
 
 for arg in $@; do
@@ -192,64 +212,22 @@ if [ "${RELEASE}" = "yes" ]; then
     DOCKER_TAG_PREFIX="${VERSION}"
 fi
 
-case "$1" in
-    webapp)
-        build_webapp
-        ;;
+if [[ "${1}" ]]; then
+    if [[ "${1}" == "all" ]]; then
+        build_all
+        exit 0
+    else
+        command=${COMMANDS[${1}]}
+        if [[ "${command}" ]]; then
+            ${COMMANDS[${1}]}
+            exit 0
+        fi
+    fi
+    echo "Error: Unknown command: $1"
+    exit 1
+fi
 
-    linux)
-        build_linux
-        ;;
-
-    linux-arm32)
-        build_linux_armv7
-        ;;
-
-    linux-arm64)
-        build_linux_armv8
-        ;;
-
-    windows)
-        build_windows
-        ;;
-
-    macos)
-        build_macos
-        ;;
-
-    docker)
-        build_docker
-        ;;
-
-    docker-push)
-        build_docker
-        docker_push
-        ;;
-
-    all)
-        build_webapp
-        build_linux
-        build_linux_armv7
-        build_linux_armv8
-        build_windows
-        build_macos
-        build_docker
-        ;;
-
-    *)
-        cat <<EOF
-usage: $0 <command>
-
-Commands:
-    webapp
-    linux
-    linux-arm
-    windows
-    macos
-    docker
-    docker-push
-    all
-EOF
-        exit 1
-        ;;
-esac
+echo "Commands:"
+for key in "${!COMMANDS[@]}"; do
+    echo "    ${key}"
+done
