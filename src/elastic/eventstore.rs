@@ -49,7 +49,7 @@ impl EventStore {
         self.client.post(&path)?.json(body).send().await
     }
 
-    pub async fn search<T: Serialize + ?Sized>(
+    pub async fn search<T: Serialize + std::fmt::Debug + ?Sized>(
         &self,
         body: &T,
     ) -> Result<reqwest::Response, reqwest::Error> {
@@ -86,24 +86,26 @@ impl EventStore {
             }
         } else {
             match name {
-                "alert.category" => "alert.category.keyword".to_string(),
-                "alert.signature" => "alert.signature.keyword".to_string(),
-                "app_proto" => "app_proto.keyword".to_string(),
-                "dest_ip" => "dest_ip.keyword".to_string(),
-                "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword".to_string(),
-                "dhcp.client_mac" => "dhcp.client_mac.keyword".to_string(),
-                "dns.rrname" => "dns.rrname.keyword".to_string(),
-                "dns.rrtype" => "dns.rrtype.keyword".to_string(),
-                "dns.rcode" => "dns.rcode.keyword".to_string(),
-                "dns.rdata" => "dns.rdata.keyword".to_string(),
-                "host" => "host.keyword".to_string(),
-                "src_ip" => "src_ip.keyword".to_string(),
-                "ssh.client.software_version" => "ssh.client.software_version.keyword".to_string(),
-                "ssh.server.software_version" => "ssh.server.software_version.keyword".to_string(),
-                "traffic.id" => "traffic.id.keyword".to_string(),
-                "traffic.label" => "traffic.label.keyword".to_string(),
-                _ => name.to_string(),
+                "alert.category" => "alert.category.keyword",
+                "alert.signature" => "alert.signature.keyword",
+                "app_proto" => "app_proto.keyword",
+                "community_id" => "community_id.keyword",
+                "dest_ip" => "dest_ip.keyword",
+                "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword",
+                "dhcp.client_mac" => "dhcp.client_mac.keyword",
+                "dns.rrname" => "dns.rrname.keyword",
+                "dns.rrtype" => "dns.rrtype.keyword",
+                "dns.rcode" => "dns.rcode.keyword",
+                "dns.rdata" => "dns.rdata.keyword",
+                "host" => "host.keyword",
+                "src_ip" => "src_ip.keyword",
+                "ssh.client.software_version" => "ssh.client.software_version.keyword",
+                "ssh.server.software_version" => "ssh.server.software_version.keyword",
+                "traffic.id" => "traffic.id.keyword",
+                "traffic.label" => "traffic.label.keyword",
+                _ => name,
             }
+            .to_string()
         }
     }
 
