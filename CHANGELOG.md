@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.16.0 - 2022-11-12
 
 - [server] Fix authentication:
   https://github.com/jasonish/evebox/issues/227,
