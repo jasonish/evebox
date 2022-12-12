@@ -155,6 +155,8 @@ build_docker() {
 COMMANDS[docker]=build_docker
 
 docker_push() {
+    build_docker
+
     ${DP_DEBUG} docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-amd64
     ${DP_DEBUG} docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm32v6
     ${DP_DEBUG} docker push ${DOCKER_NAME}:${DOCKER_TAG_PREFIX}-arm64v8
