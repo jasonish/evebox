@@ -190,17 +190,17 @@
                     </search-link>
                   </td>
                 </tr>
-              <tr *ngIf="event._source.community_id">
-                <th>Community ID</th>
-                <td>
-                  <search-link
-                          field="community_id"
-                          value="{{ event._source.community_id }}"
-                  >
-                    {{ event._source.communit_id }}
-                  </search-link>
-                </td>
-              </tr>
+                <tr *ngIf="event._source.community_id">
+                  <th>Community ID</th>
+                  <td>
+                    <search-link
+                      field="community_id"
+                      value="{{ event._source.community_id }}"
+                    >
+                      {{ event._source.communit_id }}
+                    </search-link>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>

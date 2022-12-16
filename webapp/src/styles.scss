@@ -1,7 +1,11 @@
-@import "~font-awesome/css/font-awesome.css";
-@import "~toastr/build/toastr.css";
-@import "~pretty-print-json/dist/pretty-print-json.css";
+@import "font-awesome/css/font-awesome.css";
+@import "toastr/build/toastr.css";
+@import "node_modules/pretty-print-json/dist/pretty-print-json.css";
 
 .invisible {
   visibility: hidden;
 }
+
+/* Importing Bootstrap SCSS file. */
+$enable-smooth-scroll: false;
+@import "bootstrap/scss/bootstrap";

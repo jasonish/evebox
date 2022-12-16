@@ -15,7 +15,7 @@ $danger: $evebox-danger-color;
 $enable-smooth-scroll: false;
 
 // Finally import bootstrap.
-@import "~bootstrap/scss/bootstrap";
+@import "bootstrap/scss/bootstrap";
 
 // Set the border colour around event tables to a dark gray provided by the slate theme.
 $event-table-border-color: $gray-800;
