@@ -8,7 +8,7 @@ trap 'echo "Killing background jobs..."; kill $(jobs -p)' EXIT
 args="$@"
 
 if ! test -d webapp/node_modules; then
-    (cd webapp && make install-deps)
+    (cd webapp && npm ci --prefer-offline)
 fi
 
 (cd webapp && npm start) &
