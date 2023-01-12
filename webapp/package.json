@@ -1,0 +1,35 @@
+{
+  "name": "vite-template-solid",
+  "version": "0.0.0",
+  "description": "",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "fmt": "prettier --write ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "2.8.3",
+    "sass": "^1.57.1",
+    "typescript": "^4.8.2",
+    "vite": "^3.0.9",
+    "vite-plugin-solid": "^2.3.0"
+  },
+  "dependencies": {
+    "@solidjs/router": "^0.5.1",
+    "axios": "^1.2.1",
+    "bootstrap": "^5.3.0-alpha1",
+    "chart.js": "^4.2.0",
+    "chartjs-adapter-dayjs-4": "^1.0.4",
+    "dayjs": "^1.11.7",
+    "events": "^3.3.0",
+    "pretty-print-json": "^1.4.0",
+    "queue": "^6.0.2",
+    "solid-bootstrap": "^1.0.13",
+    "solid-js": "^1.6.0",
+    "solid-transition-group": "^0.0.12",
+    "tinykeys": "^1.4.0"
+  }
+}
