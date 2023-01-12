@@ -490,7 +490,7 @@ impl EventStore {
 
         let response = json!({
             "ecs": self.ecs,
-            "alerts": alerts,
+            "events": alerts,
         });
 
         Ok(response)
@@ -583,7 +583,7 @@ impl EventStore {
 
         let response = json!({
             "ecs": self.ecs,
-            "data": hits,
+            "events": hits,
         });
 
         Ok(response)

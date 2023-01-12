@@ -209,7 +209,7 @@ impl SQLiteEventStore {
             .await
             .unwrap();
         let response = json!({
-            "alerts": alerts,
+            "events": alerts,
         });
         return Ok(response);
     }
@@ -396,7 +396,8 @@ impl SQLiteEventStore {
             .await?;
 
         let response = json!({
-            "data": events,
+            "esc": false,
+            "events": events,
         });
 
         Ok(response)

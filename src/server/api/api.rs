@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use axum::extract::{Extension, Form, Path};
 use axum::http::StatusCode;
@@ -210,7 +210,7 @@ pub(crate) async fn alert_query(
     Extension(context): Extension<Arc<ServerContext>>,
     // Session required to get here.
     _session: SessionExtractor,
-    axum::extract::Form(query): axum::extract::Form<GenericQuery>,
+    Form(query): Form<GenericQuery>,
 ) -> impl IntoResponse {
     let mut options = elastic::AlertQueryOptions {
         query_string: query.query_string,
@@ -369,9 +369,9 @@ pub(crate) async fn query_elastic(
 pub(crate) async fn event_query(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
-    axum::extract::Form(query): axum::extract::Form<GenericQuery>,
+    Form(query): Form<GenericQuery>,
 ) -> impl IntoResponse {
-    let mut params = datastore::EventQueryParams {
+    let mut params = EventQueryParams {
         size: query.size,
         sort_by: query.sort_by,
         event_type: query.event_type,
@@ -430,7 +430,7 @@ pub(crate) async fn event_query(
             error!("error: {:?}", err);
             (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
         }
-        Ok(v) => axum::Json(v).into_response(),
+        Ok(v) => Json(v).into_response(),
     }
 }
 
