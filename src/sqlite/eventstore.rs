@@ -191,14 +191,15 @@ impl SQLiteEventStore {
                 .to_offset(time::UtcOffset::UTC);
 
             let alert = json!({
-                "count": count,
-                "event": {
-                    "_id": id,
-                    "_source": parsed,
-                },
-                "minTs": super::format_sqlite_timestamp(&min_ts),
-                "maxTs": &parsed["timestamp"],
-                "escalatedCount": escalated_count,
+                "_id": id,
+                "_source": parsed,
+                "_metadata": json!({
+                    "count": count,
+                    "escalated_count": escalated_count,
+                    "min_timestamp": super::format_sqlite_timestamp(&min_ts),
+                    "max_timestamp": &parsed["timestamp"],
+                    "aggregate": true,
+                }),
             });
 
             Ok(alert)

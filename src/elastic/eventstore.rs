@@ -467,17 +467,18 @@ impl EventStore {
                         for bucket in buckets {
                             if let JsonValue::Array(buckets) = &bucket["destinations"]["buckets"] {
                                 for bucket in buckets {
-                                    let newest = &bucket["newest"]["hits"]["hits"][0];
+                                    let mut newest = bucket["newest"]["hits"]["hits"][0].clone();
                                     let oldest = &bucket["oldest"]["hits"]["hits"][0];
                                     let escalated = &bucket["escalated"]["doc_count"];
-                                    let record = json!({
+
+                                    newest["_metadata"] = json!({
                                         "count": bucket["doc_count"],
-                                        "event": newest,
-                                        "escalatedCount": escalated,
-                                        "maxTs": &newest["_source"]["@timestamp"],
-                                        "minTs": &oldest["_source"]["@timestamp"],
+                                        "escalated_count": escalated,
+                                        "min_timestamp": &oldest["_source"]["timestamp"],
+                                        "max_timestamp": &newest["_source"]["timestamp"],
+                                        "aggregate": true,
                                     });
-                                    alerts.push(record);
+                                    alerts.push(newest);
                                 }
                             }
                         }
