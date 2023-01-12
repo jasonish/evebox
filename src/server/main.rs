@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -256,7 +256,7 @@ pub(crate) fn build_axum_service(
     let app = axum::Router::new()
         .route(
             "/api/1/login",
-            post(crate::server::api::login::post).options(api::login::options),
+            post(crate::server::api::login::post).get(api::login::options),
         )
         .route("/api/1/logout", post(crate::server::api::login::logout_new))
         .route("/api/1/config", get(api::config))
