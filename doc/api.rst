@@ -22,7 +22,7 @@ src_ip, GROUP BY dest_ip``.
 Query Parameters
 ~~~~~~~~~~~~~~~~
 
-.. option:: time_range (or timeRange)
+.. option:: time_range
 
    Time range to limit matching alerts to. Only alerts between 'now'
    and time_range ago will be returned.
@@ -35,12 +35,12 @@ Query Parameters
 
    At this time only the 's' unit is support for seconds.
 
-   This paramet is not allowed with ``min_ts`` or ``max_ts``.
+   This parameter is not allowed with ``min_ts`` or ``max_ts``.
 
 .. option:: min_ts
 
    Specify the minimum timestamp for the range of the query. Alerts
-   occurence on this or after will be included.
+   occuring on this time or after will be included.
 
 .. option:: max_ts
 
@@ -58,7 +58,7 @@ Query Parameters
    of alerts that have the "evebox.escalated" tagged and would be
    queries with a value of "evebox.escalated".
 
-.. option:: query_string (or queryString)
+.. option:: query_string
 
    Query string alerts must match. The format of the query string
    varies depending on the datastore used.
@@ -69,20 +69,25 @@ Response Format
 .. code::
 
    {
-     "alerts": [
+     "ecs": false,
+     "events": [
        {
-         "count": 82,
-	 "event": {
          "_id": "98ae9349-136e-11e7-bba7-d8cb8a1db3b2",
          "_index": "logstash-2017.03.28",
-         "_score": null,
+         "_metadata": {
+           "aggregate": true,
+           "count": 82,
+           "escalated_count": 0,
+           "max_timestamp": "2023-01-12T07:01:18.683538-0600",
+           "min_timestamp": "2023-01-12T13:01:18.683538-0600"
+         },
          "_source": {
-           "@timestamp": "2017-03-28T04:25:37.808Z",
+           "@timestamp": "2023-01-12T19:01:18.683Z",
+           "alert": {
+             ...
+           }
 	   ...
 	 },
-         "maxTs": "2017-03-27T22:25:37.808514-0600",
-         "minTs": "2017-03-26T23:07:22.539277-0600",
-         "escalatedCount": 0
        },
        {
          ...
