@@ -370,9 +370,17 @@ impl EventStore {
             Ok((_, elements)) => {
                 for element in elements {
                     match element {
-                        searchquery::Element::KeyVal(key, val) => {
-                            filters.push(request::term_filter(&self.map_field(&key), &val));
-                        }
+                        searchquery::Element::KeyVal(key, val) => match key.as_ref() {
+                            "@before" => {
+                                filters.push(request::range_lte_filter("@timestamp", &val));
+                            }
+                            "@after" => {
+                                filters.push(request::range_gte_filter("@timestamp", &val));
+                            }
+                            _ => {
+                                filters.push(request::term_filter(&self.map_field(&key), &val));
+                            }
+                        },
                         searchquery::Element::String(val) => {
                             filters.push(query_string_query(&val));
                         }

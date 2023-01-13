@@ -114,15 +114,20 @@ impl SQLiteEventStore {
         params.push(Box::new("alert"));
 
         for tag in options.tags {
-            if tag == "archived" {
-                filters.push("archived = ?".into());
-                params.push(Box::new(1));
-            } else if tag == "-archived" {
-                filters.push("archived = ?".into());
-                params.push(Box::new(0));
-            } else if tag == "escalated" {
-                filters.push("escalated = ?".into());
-                params.push(Box::new(1));
+            match tag.as_ref() {
+                "evebox.archived" => {
+                    filters.push("archived = ?".into());
+                    params.push(Box::new(1));
+                }
+                "-evebox.archived" => {
+                    filters.push("archived = ?".into());
+                    params.push(Box::new(0));
+                }
+                "evebox.escalated" => {
+                    filters.push("escalated = ?".into());
+                    params.push(Box::new(1));
+                }
+                _ => {}
             }
         }
 
@@ -268,7 +273,7 @@ impl SQLiteEventStore {
 
     pub async fn event_query(
         &self,
-        options: crate::datastore::EventQueryParams,
+        options: datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut conn = self.connection_builder.open()?;
 
@@ -331,8 +336,31 @@ impl SQLiteEventStore {
                         filters.push(format!("json_extract(events.source, '$.{}') = ?", key));
                         params.push(Box::new(val));
                     } else {
-                        filters.push(format!("json_extract(events.source, '$.{}') LIKE ?", key));
-                        params.push(Box::new(format!("%{}%", val)));
+                        match key.as_ref() {
+                            "@before" => {
+                                if let Ok(ts) = parse_timestamp(&val) {
+                                    filters.push("timestamp <= ?".to_string());
+                                    params.push(Box::new(ts.unix_timestamp_nanos() as i64));
+                                } else {
+                                    error!("Failed to parse {} timestamp of {}", &key, &val);
+                                }
+                            }
+                            "@after" => {
+                                if let Ok(ts) = parse_timestamp(&val) {
+                                    filters.push("timestamp >= ?".to_string());
+                                    params.push(Box::new(ts.unix_timestamp_nanos() as i64));
+                                } else {
+                                    error!("Failed to parse {} timestamp of {}", &key, &val);
+                                }
+                            }
+                            _ => {
+                                filters.push(format!(
+                                    "json_extract(events.source, '$.{}') LIKE ?",
+                                    key
+                                ));
+                                params.push(Box::new(format!("%{}%", val)));
+                            }
+                        }
                     }
                 } else if !val.is_empty() {
                     filters.push("events.source LIKE ?".into());
@@ -758,4 +786,14 @@ fn nanos_to_rfc3339(nanos: i128) -> anyhow::Result<String> {
     let ts = time::OffsetDateTime::from_unix_timestamp_nanos(nanos)?;
     let rfc3339 = ts.format(&time::format_description::well_known::Rfc3339)?;
     Ok(rfc3339)
+}
+
+fn parse_timestamp(
+    timestamp: &str,
+) -> Result<time::OffsetDateTime, Box<dyn std::error::Error + Sync + Send>> {
+    // The webapp may send the timestamp with an improperly encoded +, which will be received
+    // as space. Help the parsing out by replacing spaces with "+".
+    let timestamp = timestamp.replace(' ', "+");
+    let ts = percent_encoding::percent_decode_str(&timestamp).decode_utf8_lossy();
+    Ok(eve::parse_eve_timestamp(&ts)?)
 }

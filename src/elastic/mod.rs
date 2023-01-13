@@ -58,7 +58,7 @@ impl From<reqwest::Error> for ElasticError {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct AlertQueryOptions {
     pub timestamp_gte: Option<OffsetDateTime>,
     pub query_string: Option<String>,

@@ -67,3 +67,11 @@ pub fn term_filter(field: &str, value: &str) -> JsonValue {
 pub fn exists_filter(field: &str) -> JsonValue {
     json!({"exists": {"field": field}})
 }
+
+pub fn range_lte_filter(field: &str, value: &str) -> serde_json::Value {
+    json!({"range": {field: {"lte": value}}})
+}
+
+pub fn range_gte_filter(field: &str, value: &str) -> serde_json::Value {
+    json!({"range": {field: {"gte": value}}})
+}
