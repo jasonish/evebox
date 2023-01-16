@@ -1,36 +1,20 @@
-// Copyright (C) 2020 Jason Ish
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use crate::eve::eve::EveJson;
 use rusqlite::{params, Connection, Error, ToSql};
 use serde_json::json;
 
 use crate::datastore::DatastoreError;
 use crate::elastic::AlertQueryOptions;
+use crate::eve::eve::EveJson;
+use crate::prelude::*;
+use crate::searchquery::Element;
 use crate::server::api::AlertGroupSpec;
 use crate::sqlite::ConnectionBuilder;
-use crate::{datastore, eve};
+use crate::{datastore, eve, searchquery};
 
 impl From<rusqlite::Error> for DatastoreError {
     fn from(err: Error) -> Self {
@@ -136,34 +120,62 @@ impl SQLiteEventStore {
             params.push(Box::new(ts.unix_timestamp_nanos() as i64));
         }
 
+        // Query string.
         if let Some(query_string) = options.query_string {
-            let mut query_string = query_string.as_str();
-            let mut counter = 0;
-            loop {
-                counter += 1;
-                if counter > 128 {
+            match searchquery::parse(&query_string) {
+                Err(err) => {
                     error!(
-                        "Aborting query string parsing, too many iterations: {}",
-                        query_string
+                        "Failed to parse query string: error={}, query string={}",
+                        &err, &query_string
                     );
-                    break;
                 }
-                let (key, val, rem) = crate::sqlite::queryparser::parse_query_string(query_string);
-                if let Some(key) = key {
-                    if let Ok(val) = val.parse::<i64>() {
-                        filters.push(format!("json_extract(events.source, '$.{}') = ?", key));
-                        params.push(Box::new(val));
-                    } else {
-                        filters.push(format!("json_extract(events.source, '$.{}') LIKE ?", key));
-                        params.push(Box::new(format!("%{}%", val)));
+                Ok((unparsed, elements)) => {
+                    if !unparsed.is_empty() {
+                        error!("Unparsed characters in query string: {unparsed}");
                     }
-                } else if !val.is_empty() {
-                    filters.push("events.source LIKE ?".into());
-                    params.push(Box::new(format!("%{}%", val)));
-                } else {
-                    break;
+                    for el in &elements {
+                        debug!("Parsed query string element: {:?}", el);
+                        match el {
+                            Element::String(val) => {
+                                filters.push("events.source LIKE ?".into());
+                                params.push(Box::new(format!("%{}%", val)));
+                            }
+                            Element::KeyVal(key, val) => match key.as_ref() {
+                                "@before" => {
+                                    if let Ok(ts) = parse_timestamp(&val) {
+                                        filters.push("timestamp <= ?".to_string());
+                                        params.push(Box::new(ts.unix_timestamp_nanos() as i64));
+                                    } else {
+                                        error!("Failed to parse {} timestamp of {}", &key, &val);
+                                    }
+                                }
+                                "@after" => {
+                                    if let Ok(ts) = parse_timestamp(&val) {
+                                        filters.push("timestamp >= ?".to_string());
+                                        params.push(Box::new(ts.unix_timestamp_nanos() as i64));
+                                    } else {
+                                        error!("Failed to parse {} timestamp of {}", &key, &val);
+                                    }
+                                }
+                                _ => {
+                                    if let Ok(val) = val.parse::<i64>() {
+                                        filters.push(format!(
+                                            "json_extract(events.source, '$.{}') = ?",
+                                            key
+                                        ));
+                                        params.push(Box::new(val));
+                                    } else {
+                                        filters.push(format!(
+                                            "json_extract(events.source, '$.{}') LIKE ?",
+                                            key
+                                        ));
+                                        params.push(Box::new(format!("%{}%", val)));
+                                    }
+                                }
+                            },
+                        }
+                    }
                 }
-                query_string = rem;
             }
         }
 
@@ -312,62 +324,60 @@ impl SQLiteEventStore {
 
         // Query string.
         if let Some(query_string) = options.query_string {
-            let mut query_string = query_string.as_str();
-            let mut counter = 0;
-            loop {
-                if query_string.is_empty() {
-                    // Nothing left to parse.
-                    break;
-                }
-
-                // Escape hatch in case of an infinite loop bug in the query parser as it could
-                // use more testing.
-                if counter > 100 {
+            match searchquery::parse(&query_string) {
+                Err(err) => {
                     error!(
-                        "Aborting query string parsing, too many iterations: {}",
-                        query_string
+                        "Failed to parse query string: error={}, query string={}",
+                        &err, &query_string
                     );
-                    break;
                 }
-
-                let (key, val, rem) = crate::sqlite::queryparser::parse_query_string(query_string);
-                if let Some(key) = key {
-                    if let Ok(val) = val.parse::<i64>() {
-                        filters.push(format!("json_extract(events.source, '$.{}') = ?", key));
-                        params.push(Box::new(val));
-                    } else {
-                        match key.as_ref() {
-                            "@before" => {
-                                if let Ok(ts) = parse_timestamp(&val) {
-                                    filters.push("timestamp <= ?".to_string());
-                                    params.push(Box::new(ts.unix_timestamp_nanos() as i64));
-                                } else {
-                                    error!("Failed to parse {} timestamp of {}", &key, &val);
-                                }
-                            }
-                            "@after" => {
-                                if let Ok(ts) = parse_timestamp(&val) {
-                                    filters.push("timestamp >= ?".to_string());
-                                    params.push(Box::new(ts.unix_timestamp_nanos() as i64));
-                                } else {
-                                    error!("Failed to parse {} timestamp of {}", &key, &val);
-                                }
-                            }
-                            _ => {
-                                filters.push(format!(
-                                    "json_extract(events.source, '$.{}') LIKE ?",
-                                    key
-                                ));
+                Ok((unparsed, elements)) => {
+                    if !unparsed.is_empty() {
+                        error!("Unparsed characters in query string: {unparsed}");
+                    }
+                    for el in &elements {
+                        debug!("Parsed query string element: {:?}", el);
+                        match el {
+                            Element::String(val) => {
+                                filters.push("events.source LIKE ?".into());
                                 params.push(Box::new(format!("%{}%", val)));
                             }
+                            Element::KeyVal(key, val) => match key.as_ref() {
+                                "@before" => {
+                                    if let Ok(ts) = parse_timestamp(&val) {
+                                        filters.push("timestamp <= ?".to_string());
+                                        params.push(Box::new(ts.unix_timestamp_nanos() as i64));
+                                    } else {
+                                        error!("Failed to parse {} timestamp of {}", &key, &val);
+                                    }
+                                }
+                                "@after" => {
+                                    if let Ok(ts) = parse_timestamp(&val) {
+                                        filters.push("timestamp >= ?".to_string());
+                                        params.push(Box::new(ts.unix_timestamp_nanos() as i64));
+                                    } else {
+                                        error!("Failed to parse {} timestamp of {}", &key, &val);
+                                    }
+                                }
+                                _ => {
+                                    if let Ok(val) = val.parse::<i64>() {
+                                        filters.push(format!(
+                                            "json_extract(events.source, '$.{}') = ?",
+                                            key
+                                        ));
+                                        params.push(Box::new(val));
+                                    } else {
+                                        filters.push(format!(
+                                            "json_extract(events.source, '$.{}') LIKE ?",
+                                            key
+                                        ));
+                                        params.push(Box::new(format!("%{}%", val)));
+                                    }
+                                }
+                            },
                         }
                     }
-                } else if !val.is_empty() {
-                    filters.push("events.source LIKE ?".into());
-                    params.push(Box::new(format!("%{}%", val)));
                 }
-                query_string = rem;
-                counter += 1;
             }
         }
 

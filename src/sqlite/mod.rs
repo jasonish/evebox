@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use std::path::PathBuf;
 
@@ -14,7 +14,6 @@ use crate::prelude::*;
 pub mod configrepo;
 pub mod eventstore;
 pub mod importer;
-pub mod queryparser;
 pub mod retention;
 
 pub async fn open_pool<T: Into<PathBuf>>(filename: T) -> anyhow::Result<deadpool_sqlite::Pool> {
