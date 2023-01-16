@@ -38,7 +38,7 @@ impl Client {
         let url = format!("{}/{}", self.url, path);
         let request = self
             .get_http_client()?
-            .post(&url)
+            .post(url)
             .header("Content-Type", "application/json");
         let request = if let Some(username) = &self.username {
             request.basic_auth(username, self.password.clone())

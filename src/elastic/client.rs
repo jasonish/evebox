@@ -76,7 +76,7 @@ impl Client {
         let url = format!("{}/{}", self.url, path);
         let request = self
             .get_http_client()?
-            .get(&url)
+            .get(url)
             .header("Content-Type", "application/json");
         let request = if let Some(username) = &self.username {
             request.basic_auth(username, self.password.clone())
@@ -90,7 +90,7 @@ impl Client {
         let url = format!("{}/{}", self.url, path);
         let request = self
             .get_http_client()?
-            .post(&url)
+            .post(url)
             .header("Content-Type", "application/json");
         let request = if let Some(username) = &self.username {
             request.basic_auth(username, self.password.clone())
@@ -104,7 +104,7 @@ impl Client {
         let url = format!("{}/{}", self.url, path);
         let request = self
             .get_http_client()?
-            .put(&url)
+            .put(url)
             .header("Content-Type", "application/json");
         let request = if let Some(username) = &self.username {
             request.basic_auth(username, self.password.clone())

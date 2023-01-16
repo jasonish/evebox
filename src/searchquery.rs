@@ -136,7 +136,7 @@ mod test {
             ]
         );
 
-        let (_, mut parsed) = parse("alert.signature:\"WPAD\" 10.16.1.1").unwrap();
+        let (_, parsed) = parse("alert.signature:\"WPAD\" 10.16.1.1").unwrap();
         let first = &parsed[0];
         assert_eq!(
             first,

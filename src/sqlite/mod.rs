@@ -24,14 +24,14 @@ pub async fn open_pool<T: Into<PathBuf>>(filename: T) -> anyhow::Result<deadpool
     if let Err(err) = conn
         .interact(|conn| {
             debug!("set journal mode to WAL");
-            let mode = conn.pragma_update_and_check(None, "journal_mode", &"WAL", |row| {
+            let mode = conn.pragma_update_and_check(None, "journal_mode", "WAL", |row| {
                 let mode: String = row.get(0)?;
                 Ok(mode)
             });
             info!("Result of setting database to WAL mode: {:?}", mode);
 
             // Set synchronous to NORMAL.
-            if let Err(err) = conn.pragma_update(None, "synchronous", &"NORMAL") {
+            if let Err(err) = conn.pragma_update(None, "synchronous", "NORMAL") {
                 error!("Failed to set pragma synchronous = NORMAL: {:?}", err);
             }
             match conn.pragma_query_value(None, "synchronous", |row| {
@@ -75,14 +75,14 @@ impl ConnectionBuilder {
             let conn = rusqlite::Connection::open_with_flags(filename, flags)?;
 
             // Set WAL mode.
-            let mode = conn.pragma_update_and_check(None, "journal_mode", &"WAL", |row| {
+            let mode = conn.pragma_update_and_check(None, "journal_mode", "WAL", |row| {
                 let mode: String = row.get(0)?;
                 Ok(mode)
             });
             debug!("Result of setting database to WAL mode: {:?}", mode);
 
             // Set synchronous to NORMAL.
-            if let Err(err) = conn.pragma_update(None, "synchronous", &"NORMAL") {
+            if let Err(err) = conn.pragma_update(None, "synchronous", "NORMAL") {
                 error!("Failed to set pragma synchronous = NORMAL: {:?}", err);
             }
             match conn.pragma_query_value(None, "synchronous", |row| {

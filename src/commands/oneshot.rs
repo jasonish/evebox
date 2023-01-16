@@ -128,8 +128,8 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
             .expect("Failed to register CTRL-C handler");
         info!("Got CTRL-C, exiting");
         let _ = std::fs::remove_file(&db_filename);
-        let _ = std::fs::remove_file(&format!("{}-shm", &db_filename));
-        let _ = std::fs::remove_file(&format!("{}-wal", &db_filename));
+        let _ = std::fs::remove_file(format!("{}-shm", &db_filename));
+        let _ = std::fs::remove_file(format!("{}-wal", &db_filename));
         std::process::exit(0);
     });
 

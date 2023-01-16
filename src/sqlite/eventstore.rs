@@ -142,7 +142,7 @@ impl SQLiteEventStore {
                             }
                             Element::KeyVal(key, val) => match key.as_ref() {
                                 "@before" => {
-                                    if let Ok(ts) = parse_timestamp(&val) {
+                                    if let Ok(ts) = parse_timestamp(val) {
                                         filters.push("timestamp <= ?".to_string());
                                         params.push(Box::new(ts.unix_timestamp_nanos() as i64));
                                     } else {
@@ -150,7 +150,7 @@ impl SQLiteEventStore {
                                     }
                                 }
                                 "@after" => {
-                                    if let Ok(ts) = parse_timestamp(&val) {
+                                    if let Ok(ts) = parse_timestamp(val) {
                                         filters.push("timestamp >= ?".to_string());
                                         params.push(Box::new(ts.unix_timestamp_nanos() as i64));
                                     } else {
@@ -344,7 +344,7 @@ impl SQLiteEventStore {
                             }
                             Element::KeyVal(key, val) => match key.as_ref() {
                                 "@before" => {
-                                    if let Ok(ts) = parse_timestamp(&val) {
+                                    if let Ok(ts) = parse_timestamp(val) {
                                         filters.push("timestamp <= ?".to_string());
                                         params.push(Box::new(ts.unix_timestamp_nanos() as i64));
                                     } else {
@@ -352,7 +352,7 @@ impl SQLiteEventStore {
                                     }
                                 }
                                 "@after" => {
-                                    if let Ok(ts) = parse_timestamp(&val) {
+                                    if let Ok(ts) = parse_timestamp(val) {
                                         filters.push("timestamp >= ?".to_string());
                                         params.push(Box::new(ts.unix_timestamp_nanos() as i64));
                                     } else {

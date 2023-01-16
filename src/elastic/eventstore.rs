@@ -379,11 +379,11 @@ impl EventStore {
     fn query_string_element_to_filter(&self, el: &searchquery::Element) -> serde_json::Value {
         match el {
             searchquery::Element::KeyVal(key, val) => match key.as_ref() {
-                "@before" => request::range_lte_filter("@timestamp", &val),
-                "@after" => request::range_gte_filter("@timestamp", &val),
-                _ => request::term_filter(&self.map_field(&key), &val),
+                "@before" => request::range_lte_filter("@timestamp", val),
+                "@after" => request::range_gte_filter("@timestamp", val),
+                _ => request::term_filter(&self.map_field(key), val),
             },
-            searchquery::Element::String(val) => query_string_query(&val),
+            searchquery::Element::String(val) => query_string_query(val),
         }
     }
 
