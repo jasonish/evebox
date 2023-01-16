@@ -346,7 +346,11 @@ impl EventStore {
         } else if let Some(hits) = &response.hits {
             if let serde_json::Value::Array(hits) = &hits["hits"] {
                 if !hits.is_empty() {
-                    return Ok(Some(hits[0].clone()));
+                    let mut hit = hits[0].clone();
+                    if self.ecs {
+                        self.transform_ecs(&mut hit);
+                    }
+                    return Ok(Some(hit));
                 } else {
                     return Ok(None);
                 }
@@ -472,7 +476,13 @@ impl EventStore {
                             if let JsonValue::Array(buckets) = &bucket["destinations"]["buckets"] {
                                 for bucket in buckets {
                                     let mut newest = bucket["newest"]["hits"]["hits"][0].clone();
-                                    let oldest = &bucket["oldest"]["hits"]["hits"][0];
+                                    let mut oldest = bucket["oldest"]["hits"]["hits"][0].clone();
+
+                                    if self.ecs {
+                                        self.transform_ecs(&mut newest);
+                                        self.transform_ecs(&mut oldest);
+                                    }
+
                                     let escalated = &bucket["escalated"]["doc_count"];
 
                                     newest["_metadata"] = json!({
@@ -499,6 +509,22 @@ impl EventStore {
         });
 
         Ok(response)
+    }
+
+    fn transform_ecs(&self, event: &mut serde_json::Value) {
+        let original_ecs = event.clone();
+        // The "take" isn't really necessary but has the nice side affect that it removes
+        // "original" from the result which makes for a better client side view of the event.
+        if let Some(original) = event["_source"]["event"]["original"].take().as_str() {
+            if let Ok(serde_json::Value::Object(m)) = serde_json::from_str(original) {
+                for (k, v) in m {
+                    event["_source"][k] = v;
+                }
+            }
+
+            // Mainly for debugging ECS support, keep a copy of the ECS original record.
+            event["ecs_original"] = original_ecs;
+        }
     }
 
     pub async fn archive_by_alert_group(
@@ -610,9 +636,20 @@ impl EventStore {
         let response: JsonValue = self.search(&body).await?.json().await?;
         let hits = &response["hits"]["hits"];
 
+        let mut events = vec![];
+        if let Some(hits) = hits.as_array() {
+            for hit in hits {
+                let mut hit = hit.clone();
+                if self.ecs {
+                    self.transform_ecs(&mut hit);
+                }
+                events.push(hit);
+            }
+        }
+
         let response = json!({
             "ecs": self.ecs,
-            "events": hits,
+            "events": events,
         });
 
         Ok(response)
