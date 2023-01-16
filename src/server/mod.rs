@@ -69,6 +69,11 @@ pub struct Features {
     pub reporting: bool,
 }
 
+#[derive(Serialize, Default, Debug)]
+pub struct Defaults {
+    pub time_range: Option<String>,
+}
+
 pub struct ServerContext {
     pub config: ServerConfig,
     pub datastore: Datastore,
@@ -76,6 +81,7 @@ pub struct ServerContext {
     pub session_store: session::SessionStore,
     pub config_repo: Arc<ConfigRepo>,
     pub event_services: Option<serde_json::Value>,
+    pub defaults: Defaults,
 }
 
 impl ServerContext {
@@ -87,6 +93,7 @@ impl ServerContext {
             session_store: SessionStore::new(),
             config_repo: config_repo,
             event_services: None,
+            defaults: Defaults::default(),
         }
     }
 }

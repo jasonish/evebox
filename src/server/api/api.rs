@@ -36,12 +36,13 @@ pub(crate) async fn config(
     _session: SessionExtractor,
 ) -> impl axum::response::IntoResponse {
     let config = json!({
-       "ElasticSearchIndex": context.config.elastic_index,
-       "event-services": context.event_services,
-       "extra": {
+        "ElasticSearchIndex": context.config.elastic_index,
+        "event-services": context.event_services,
+        "extra": {
             "elasticSearchKeywordSuffix": ".keyword",
-       },
-       "features": &context.features,
+        },
+        "features": &context.features,
+        "defaults": &context.defaults,
     });
     axum::response::Json(config)
 }

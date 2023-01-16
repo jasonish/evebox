@@ -49,7 +49,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
             _ = import_task => {}
         }
     }
-
     let (port_tx, mut port_rx) = sync::mpsc::unbounded_channel::<u16>();
 
     let server = {
@@ -74,7 +73,10 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                     ..crate::server::ServerConfig::default()
                 };
                 let context = match crate::server::build_context(config.clone(), ds).await {
-                    Ok(context) => Arc::new(context),
+                    Ok(mut context) => {
+                        context.defaults.time_range = Some("all".to_string());
+                        Arc::new(context)
+                    }
                     Err(err) => {
                         error!("Failed to build server context: {}", err);
                         std::process::exit(1);
