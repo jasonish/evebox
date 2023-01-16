@@ -368,27 +368,23 @@ impl EventStore {
                 error!("Failed to parse query string: {} -- {}", &query, err);
             }
             Ok((_, elements)) => {
-                for element in elements {
-                    match element {
-                        searchquery::Element::KeyVal(key, val) => match key.as_ref() {
-                            "@before" => {
-                                filters.push(request::range_lte_filter("@timestamp", &val));
-                            }
-                            "@after" => {
-                                filters.push(request::range_gte_filter("@timestamp", &val));
-                            }
-                            _ => {
-                                filters.push(request::term_filter(&self.map_field(&key), &val));
-                            }
-                        },
-                        searchquery::Element::String(val) => {
-                            filters.push(query_string_query(&val));
-                        }
-                    }
+                for element in &elements {
+                    filters.push(self.query_string_element_to_filter(element));
                 }
             }
         }
         filters
+    }
+
+    fn query_string_element_to_filter(&self, el: &searchquery::Element) -> serde_json::Value {
+        match el {
+            searchquery::Element::KeyVal(key, val) => match key.as_ref() {
+                "@before" => request::range_lte_filter("@timestamp", &val),
+                "@after" => request::range_gte_filter("@timestamp", &val),
+                _ => request::term_filter(&self.map_field(&key), &val),
+            },
+            searchquery::Element::String(val) => query_string_query(&val),
+        }
     }
 
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
@@ -562,16 +558,39 @@ impl EventStore {
             ));
         }
 
+        let mut has_min_timestamp = false;
+        let mut has_max_timestamp = false;
+
         if let Some(query_string) = params.query_string {
-            filters.extend(self.query_string_to_filters(&query_string));
+            match searchquery::parse(&query_string) {
+                Err(err) => {
+                    error!("Failed to parse query string: {} -- {}", &query_string, err);
+                }
+                Ok((_, elements)) => {
+                    for element in &elements {
+                        if let searchquery::Element::KeyVal(key, _) = element {
+                            match key.as_ref() {
+                                "@before" => has_min_timestamp = true,
+                                "@after" => has_max_timestamp = true,
+                                _ => {}
+                            }
+                        }
+                        filters.push(self.query_string_element_to_filter(element));
+                    }
+                }
+            }
         }
 
-        if let Some(timestamp) = params.min_timestamp {
-            filters.push(request::timestamp_gte_filter(timestamp));
+        if !has_min_timestamp {
+            if let Some(timestamp) = params.min_timestamp {
+                filters.push(request::timestamp_gte_filter(timestamp));
+            }
         }
 
-        if let Some(timestamp) = params.max_timestamp {
-            filters.push(request::timestamp_lte_filter(timestamp));
+        if !has_max_timestamp {
+            if let Some(timestamp) = params.max_timestamp {
+                filters.push(request::timestamp_lte_filter(timestamp));
+            }
         }
 
         let sort_by = params.sort_by.unwrap_or_else(|| "@timestamp".to_string());
@@ -587,6 +606,7 @@ impl EventStore {
             "sort": [{sort_by: {"order": sort_order}}],
             "size": size,
         });
+
         let response: JsonValue = self.search(&body).await?.json().await?;
         let hits = &response["hits"]["hits"];
 

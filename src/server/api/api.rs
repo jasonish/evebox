@@ -388,8 +388,8 @@ pub(crate) async fn event_query(
         params.order = Some(order);
     }
 
-    if let Some(ts) = query.min_ts {
-        match parse_timestamp(&ts) {
+    if let Some(ts) = &query.min_ts {
+        match parse_timestamp(ts) {
             Ok(ts) => params.min_timestamp = Some(ts),
             Err(_) => {
                 return (StatusCode::BAD_REQUEST, "failed to parse timestamp").into_response();
@@ -410,7 +410,7 @@ pub(crate) async fn event_query(
         }
     }
 
-    if query.time_range.is_some() {
+    if query.min_ts.is_none() && query.time_range.is_some() {
         match super::helpers::mints_from_time_range(query.time_range.clone(), None) {
             Ok(ts) => {
                 params.min_timestamp = ts;
