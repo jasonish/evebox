@@ -15,12 +15,12 @@ use crate::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::datastore::{self, Datastore, EventQueryParams};
+use crate::datastore::HistogramInterval;
+use crate::datastore::{self, EventQueryParams};
 use crate::elastic;
 use crate::server::filters::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
-use crate::{datastore::HistogramInterval, types::JsonValue};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AlertGroupSpec {
@@ -339,32 +339,6 @@ pub(crate) async fn comment_by_event_id(
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
-}
-
-/// REST API handler to perform a raw query against the Elastic Search server.
-pub(crate) async fn query_elastic(
-    Extension(context): Extension<Arc<ServerContext>>,
-    _session: SessionExtractor,
-    Json(body): Json<serde_json::Value>,
-) -> impl IntoResponse {
-    if let Datastore::Elastic(elastic) = &context.datastore {
-        let response = match elastic.search(&body).await {
-            Err(err) => {
-                error!("Failed to query elasticsearch: {:?}", err);
-                return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
-            }
-            Ok(response) => response,
-        };
-        let response: JsonValue = match response.json().await {
-            Err(err) => {
-                error!("Failed to query elasticsearch: {:?}", err);
-                return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
-            }
-            Ok(response) => response,
-        };
-        return Json(response).into_response();
-    }
-    (StatusCode::OK, "").into_response()
 }
 
 pub(crate) async fn event_query(

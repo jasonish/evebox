@@ -14,9 +14,11 @@ use axum::extract::{ConnectInfo, Extension, FromRequestParts};
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
+use axum::routing::{get, post};
 use axum::{async_trait, TypedHeader};
 use axum::{Router, Server};
 use hyper::server::conn::AddrIncoming;
+use tower_http::trace::TraceLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 use tracing::Level;
 
@@ -240,9 +242,6 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 pub(crate) fn build_axum_service(
     context: Arc<ServerContext>,
 ) -> IntoMakeServiceWithConnectInfo<Router, SocketAddr> {
-    use axum::routing::{get, post};
-    use tower_http::trace::TraceLayer;
-
     let response_header_layer = tower_http::set_header::SetResponseHeaderLayer::if_not_present(
         HeaderName::from_static("x-evebox-git-revision"),
         HeaderValue::from_static(crate::version::build_rev()),
@@ -256,9 +255,9 @@ pub(crate) fn build_axum_service(
     let app = axum::Router::new()
         .route(
             "/api/1/login",
-            post(crate::server::api::login::post).get(api::login::options),
+            post(api::login::post).get(api::login::options),
         )
-        .route("/api/1/logout", post(crate::server::api::login::logout_new))
+        .route("/api/1/logout", post(api::login::logout_new))
         .route("/api/1/config", get(api::config))
         .route("/api/1/version", get(api::get_version))
         .route("/api/1/user", get(api::get_user))
@@ -278,7 +277,6 @@ pub(crate) fn build_axum_service(
         )
         .route("/api/1/report/agg", get(api::agg))
         .route("/api/1/report/histogram", get(api::histogram))
-        .route("/api/1/query", post(api::query_elastic))
         .route("/api/1/flow/histogram", get(api::flow_histogram::handler))
         .route("/api/1/report/dhcp/:what", get(api::report_dhcp))
         .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
@@ -289,7 +287,7 @@ pub(crate) fn build_axum_service(
         )
         .route("/api/1/stats/agg", get(api::stats::stats_agg))
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
-        .layer(axum::extract::Extension(context.clone()))
+        .layer(Extension(context.clone()))
         .layer(response_header_layer)
         .fallback(fallback_handler);
 
