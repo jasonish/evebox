@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use crate::agent::importer::EveboxImporter;
 
@@ -17,12 +17,12 @@ impl Importer {
     pub async fn submit(
         &mut self,
         event: crate::eve::eve::EveJson,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         match self {
             Importer::EveBox(importer) => importer.submit(event).await,
             Importer::Elastic(importer) => importer.submit(event).await,
             Importer::SQLite(importer) => match importer.submit(event).await {
-                Ok(()) => Ok(()),
+                Ok(commit) => Ok(commit),
                 Err(err) => Err(Box::new(err)),
             },
             _ => unimplemented!(),

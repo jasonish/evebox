@@ -1,16 +1,23 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
+
 // EveBox agent import. For importing events to an EveBox server.
+
+use tracing::trace;
 
 use crate::agent::client::Client;
 use crate::eve::eve::EveJson;
-use tracing::trace;
+
+// The server, 0.17.0+ should have a receive size limit of 32 megabytes. We'll do climate side
+// limiting at 16 MB.
+const LIMIT: usize = 1024 * 1024 * 16;
 
 #[derive(Debug, Clone)]
 pub struct EveboxImporter {
     pub client: Client,
     pub queue: Vec<String>,
+    pub size: usize,
 }
 
 impl EveboxImporter {
@@ -18,19 +25,32 @@ impl EveboxImporter {
         Self {
             queue: Vec::new(),
             client: client,
+            size: 0,
         }
     }
 
+    /// The result will be true if the user should `commit` before submitting new events.
     pub async fn submit(
         &mut self,
         event: EveJson,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        self.queue.push(event.to_string());
-        Ok(())
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        let as_string = event.to_string();
+        self.size += as_string.len();
+        self.queue.push(as_string);
+        Ok(self.size > LIMIT)
     }
 
     pub fn pending(&self) -> usize {
         self.queue.len()
+    }
+
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
+    pub fn truncate(&mut self) {
+        self.queue.truncate(0);
+        self.size = 0;
     }
 
     pub async fn commit(&mut self) -> anyhow::Result<usize> {
@@ -52,7 +72,7 @@ impl EveboxImporter {
             }
             return Err(anyhow!("Server returned status code {}", status_code));
         }
-        self.queue.truncate(0);
+        self.truncate();
         Ok(n)
     }
 }
