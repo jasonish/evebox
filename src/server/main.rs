@@ -10,7 +10,7 @@ use std::time::Duration;
 use anyhow::Result;
 use axum::body::Full;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use axum::extract::{ConnectInfo, Extension, FromRequestParts};
+use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts};
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
@@ -289,6 +289,10 @@ pub(crate) fn build_axum_service(
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
         .layer(Extension(context.clone()))
         .layer(response_header_layer)
+        .layer(DefaultBodyLimit::disable())
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(
+            1024 * 1024 * 32,
+        ))
         .fallback(fallback_handler);
 
     let app = if context.config.http_request_logging {

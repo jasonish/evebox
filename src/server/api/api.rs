@@ -17,10 +17,11 @@ use serde_json::json;
 
 use crate::datastore::HistogramInterval;
 use crate::datastore::{self, EventQueryParams};
-use crate::elastic;
+use crate::searchquery::Element;
 use crate::server::filters::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
+use crate::{elastic, searchquery};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AlertGroupSpec {
