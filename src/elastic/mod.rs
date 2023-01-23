@@ -17,6 +17,7 @@ pub use importer::Importer;
 pub mod eventstore;
 pub use client::Version;
 pub use eventstore::EventStore;
+
 pub mod report;
 pub mod request;
 

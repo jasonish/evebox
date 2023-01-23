@@ -35,7 +35,7 @@ pub struct AlertGroupSpec {
 pub(crate) async fn config(
     context: Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
-) -> impl axum::response::IntoResponse {
+) -> impl IntoResponse {
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
         "event-services": context.event_services,
@@ -45,11 +45,11 @@ pub(crate) async fn config(
         "features": &context.features,
         "defaults": &context.defaults,
     });
-    axum::response::Json(config)
+    Json(config)
 }
 
 pub(crate) async fn get_user(SessionExtractor(session): SessionExtractor) -> impl IntoResponse {
-    let user = serde_json::json!({
+    let user = json!({
         "username": session.username(),
     });
     Json(user)
@@ -347,108 +347,12 @@ pub(crate) async fn event_query(
     Extension(context): Extension<Arc<ServerContext>>,
     Form(query): Form<GenericQuery>,
 ) -> impl IntoResponse {
-    let mut params = EventQueryParams {
-        size: query.size,
-        sort_by: query.sort_by,
-        event_type: query.event_type,
-        ..Default::default()
+    let params = match generic_query_to_event_query(&query) {
+        Ok(params) => params,
+        Err(err) => {
+            return (StatusCode::BAD_REQUEST, format!("error: {}", err)).into_response();
+        }
     };
-
-    let default_tz_offset = query.tz_offset.as_ref().map(|s| s.as_ref());
-
-    // Parse query string.
-    if let Some(query_string) = &query.query_string {
-        match searchquery::parse(query_string) {
-            Err(err) => {
-                error!("Failed to parse query string: {:?}", err);
-            }
-            Ok((_, elements)) => {
-                for element in elements {
-                    match element {
-                        Element::KeyVal(ref key, ref val) => match key.as_ref() {
-                            "@before" => match parse_timestamp2(val, default_tz_offset) {
-                                Ok(timestamp) => {
-                                    params.max_timestamp = Some(timestamp);
-                                }
-                                Err(err) => {
-                                    error!(
-                                        "Failed to parse @after timestamp: {}, error={:?}",
-                                        &val, err
-                                    );
-                                }
-                            },
-                            "@after" => match parse_timestamp2(val, default_tz_offset) {
-                                Ok(timestamp) => {
-                                    params.min_timestamp = Some(timestamp);
-                                }
-                                Err(err) => {
-                                    error!(
-                                        "Failed to parse @after timestamp: {}, error={:?}",
-                                        &val, err
-                                    );
-                                }
-                            },
-                            _ => {
-                                params.query_string_elements.push(element);
-                            }
-                        },
-                        _ => {
-                            params.query_string_elements.push(element);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if let Some(order) = query.order {
-        params.order = Some(order);
-    }
-
-    if let Some(min_timestamp) = query.min_ts {
-        if params.min_timestamp.is_some() {
-            debug!("Ignoring min_timestamp, @after provided in query string");
-        } else {
-            match parse_timestamp(&min_timestamp) {
-                Ok(ts) => params.min_timestamp = Some(ts),
-                Err(_) => {
-                    return (StatusCode::BAD_REQUEST, "failed to parse timestamp").into_response();
-                }
-            }
-        }
-    }
-
-    if let Some(max_timestamp) = query.max_ts {
-        if params.max_timestamp.is_some() {
-            debug!("Ignoring max_timestamp, @before provided in query string");
-        } else {
-            match parse_timestamp(&max_timestamp) {
-                Ok(ts) => params.max_timestamp = Some(ts),
-                Err(err) => {
-                    error!(
-                        "event_query: failed to parse max timestamp: \"{}\": error={}",
-                        &max_timestamp, err
-                    );
-                    return (StatusCode::BAD_REQUEST, "failed to parse timestamp").into_response();
-                }
-            }
-        }
-    }
-
-    if params.min_timestamp.is_none() && query.time_range.is_some() {
-        match super::helpers::mints_from_time_range(query.time_range.clone(), None) {
-            Ok(ts) => {
-                params.min_timestamp = ts;
-            }
-            Err(err) => {
-                error!(
-                    "Failed to parse time_range to timestamp: {:?}: {:?}",
-                    query.time_range, err
-                );
-                return (StatusCode::BAD_REQUEST, "failed to parse time range").into_response();
-            }
-        }
-    }
 
     match context.datastore.event_query(params).await {
         Err(err) => {
@@ -537,16 +441,6 @@ impl IntoResponse for ApiError {
     }
 }
 
-fn parse_timestamp(
-    timestamp: &str,
-) -> Result<time::OffsetDateTime, Box<dyn std::error::Error + Sync + Send>> {
-    // The webapp may send the timestamp with an improperly encoded +, which will be received
-    // as space. Help the parsing out by replacing spaces with "+".
-    let timestamp = timestamp.replace(' ', "+");
-    let ts = percent_encoding::percent_decode_str(&timestamp).decode_utf8_lossy();
-    Ok(crate::eve::parse_eve_timestamp(&ts)?)
-}
-
 fn parse_timestamp2(timestamp: &str, offset: Option<&str>) -> Result<time::OffsetDateTime> {
     if let Some(timestamp) = timestamp_preprocess(timestamp, offset) {
         Ok(crate::eve::parse_eve_timestamp(&timestamp)?)
@@ -562,7 +456,7 @@ fn parse_timestamp2(timestamp: &str, offset: Option<&str>) -> Result<time::Offse
 fn timestamp_preprocess(s: &str, offset: Option<&str>) -> Option<String> {
     let default_offset = offset.unwrap_or("+0000");
     let re = regex::Regex::new(
-        r"^(\d{4})-?(\d{2})?-?(\d{2})?[T ]?(\d{2})?:?(\d{2})?:?(\d{2})?(\.(\d+))?([+\-]\d{4})?$",
+        r"^(\d{4})-?(\d{2})?-?(\d{2})?[T ]?(\d{2})?:?(\d{2})?:?(\d{2})?(\.(\d+))?(([+\-]\d{4})|Z)?$",
     )
     .unwrap();
     if let Some(c) = re.captures(s) {
@@ -576,7 +470,14 @@ fn timestamp_preprocess(s: &str, offset: Option<&str>) -> Option<String> {
         let offset = c.get(9).map_or(default_offset, |m| m.as_str());
         return Some(format!(
             "{}-{}-{}T{}:{}:{}.{}{}",
-            year, month, day, hour, minute, second, subs, offset
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+            subs,
+            if offset == "Z" { "+0000" } else { offset },
         ));
     }
     None
@@ -588,7 +489,7 @@ mod test {
     use crate::server::filters::GenericQuery;
 
     #[test]
-    fn test_parse_timestamp3() {
+    fn test_timestamp_preprocess() {
         assert_eq!(
             timestamp_preprocess("2023", None).unwrap(),
             "2023-01-01T00:00:00.0+0000"
@@ -638,6 +539,12 @@ mod test {
             timestamp_preprocess("2023-01-01T01:02:03.123", Some("+1200")).unwrap(),
             "2023-01-01T01:02:03.123+1200"
         );
+
+        // 'Z' as timezone offset.
+        assert_eq!(
+            timestamp_preprocess("2023-01-01T01:02:03.123Z", None).unwrap(),
+            "2023-01-01T01:02:03.123+0000"
+        );
     }
 
     #[test]
@@ -657,4 +564,139 @@ mod test {
         let r = query.mints_from_time_range(&now).unwrap();
         dbg!(r);
     }
+}
+
+fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQueryParams> {
+    let mut params = EventQueryParams {
+        size: query.size,
+        sort_by: query.sort_by.clone(),
+        event_type: query.event_type.clone(),
+        order: query.order.clone(),
+        ..Default::default()
+    };
+
+    let default_tz_offset: Option<&str> = query.tz_offset.as_ref().map(|s| s.as_ref());
+
+    if let Some(query_string) = &query.query_string {
+        let parts = parse_query_string(query_string, default_tz_offset)?;
+        params.min_timestamp = parts.after;
+        params.max_timestamp = parts.before;
+        params.query_string_elements = parts.elements;
+    }
+
+    if let Some(min_timestamp) = &query.min_ts {
+        if params.min_timestamp.is_some() {
+            debug!("Ignoring min_timestamp, @after provided in query string");
+        } else {
+            match parse_timestamp2(&min_timestamp, default_tz_offset) {
+                Ok(ts) => params.min_timestamp = Some(ts),
+                Err(err) => {
+                    error!(
+                        "event_query: failed to parse max timestamp: \"{}\": error={}",
+                        &min_timestamp, err
+                    );
+                    bail!(
+                        "failed to parse min_timestamp: {}, error={:?}",
+                        &min_timestamp,
+                        err
+                    );
+                }
+            }
+        }
+    }
+
+    if let Some(max_timestamp) = &query.max_ts {
+        if params.max_timestamp.is_some() {
+            debug!("Ignoring max_timestamp, @before provided in query string");
+        } else {
+            match parse_timestamp2(&max_timestamp, default_tz_offset) {
+                Ok(ts) => params.max_timestamp = Some(ts),
+                Err(err) => {
+                    error!(
+                        "event_query: failed to parse max timestamp: \"{}\": error={}",
+                        &max_timestamp, err
+                    );
+                    bail!(
+                        "failed to parse max_timestamp: {}, error={:?}",
+                        &max_timestamp,
+                        err
+                    );
+                }
+            }
+        }
+    }
+
+    if params.min_timestamp.is_none() && query.time_range.is_some() {
+        match super::helpers::mints_from_time_range(query.time_range.clone(), None) {
+            Ok(ts) => {
+                params.min_timestamp = ts;
+            }
+            Err(err) => {
+                error!(
+                    "Failed to parse time_range to timestamp: {:?}: {:?}",
+                    query.time_range, err
+                );
+                bail!(
+                    "failed to parse time_range: {:?}, error={:?}",
+                    query.time_range,
+                    err
+                );
+            }
+        }
+    }
+
+    Ok(params)
+}
+
+#[derive(Default, Debug)]
+pub struct QueryStringParts {
+    pub before: Option<time::OffsetDateTime>,
+    pub after: Option<time::OffsetDateTime>,
+    pub elements: Vec<searchquery::Element>,
+}
+
+pub fn parse_query_string(query: &str, tz_offset: Option<&str>) -> Result<QueryStringParts> {
+    let mut parts = QueryStringParts::default();
+    match searchquery::parse(query) {
+        Err(err) => {
+            bail!("Failed to parse query string: {:?}", err);
+        }
+        Ok((_, elements)) => {
+            for element in elements {
+                match element {
+                    Element::KeyVal(ref key, ref val) => match key.as_ref() {
+                        "@before" => match parse_timestamp2(val, tz_offset) {
+                            Ok(timestamp) => {
+                                parts.before = Some(timestamp);
+                            }
+                            Err(err) => {
+                                error!(
+                                    "Failed to parse @after timestamp: {}, error={:?}",
+                                    &val, err
+                                );
+                            }
+                        },
+                        "@after" => match parse_timestamp2(val, tz_offset) {
+                            Ok(timestamp) => {
+                                parts.after = Some(timestamp);
+                            }
+                            Err(err) => {
+                                error!(
+                                    "Failed to parse @after timestamp: {}, error={:?}",
+                                    &val, err
+                                );
+                            }
+                        },
+                        _ => {
+                            parts.elements.push(element);
+                        }
+                    },
+                    _ => {
+                        parts.elements.push(element);
+                    }
+                }
+            }
+        }
+    }
+    Ok(parts)
 }

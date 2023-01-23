@@ -25,9 +25,6 @@ pub struct GenericQuery {
     pub agg: Option<String>,
     pub sensor_name: Option<String>,
     pub tz_offset: Option<String>,
-
-    #[serde(flatten)]
-    pub other: std::collections::HashMap<String, String>,
 }
 
 impl GenericQuery {
