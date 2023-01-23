@@ -24,6 +24,7 @@ pub struct GenericQuery {
     pub dns_type: Option<String>,
     pub agg: Option<String>,
     pub sensor_name: Option<String>,
+    pub tz_offset: Option<String>,
 
     #[serde(flatten)]
     pub other: std::collections::HashMap<String, String>,

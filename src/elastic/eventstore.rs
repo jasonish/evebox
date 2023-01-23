@@ -584,39 +584,16 @@ impl EventStore {
             ));
         }
 
-        let mut has_min_timestamp = false;
-        let mut has_max_timestamp = false;
-
-        if let Some(query_string) = params.query_string {
-            match searchquery::parse(&query_string) {
-                Err(err) => {
-                    error!("Failed to parse query string: {} -- {}", &query_string, err);
-                }
-                Ok((_, elements)) => {
-                    for element in &elements {
-                        if let searchquery::Element::KeyVal(key, _) = element {
-                            match key.as_ref() {
-                                "@before" => has_min_timestamp = true,
-                                "@after" => has_max_timestamp = true,
-                                _ => {}
-                            }
-                        }
-                        filters.push(self.query_string_element_to_filter(element));
-                    }
-                }
-            }
+        for element in &params.query_string_elements {
+            filters.push(self.query_string_element_to_filter(element));
         }
 
-        if !has_min_timestamp {
-            if let Some(timestamp) = params.min_timestamp {
-                filters.push(request::timestamp_gte_filter(timestamp));
-            }
+        if let Some(timestamp) = params.min_timestamp {
+            filters.push(request::timestamp_gte_filter(timestamp));
         }
 
-        if !has_max_timestamp {
-            if let Some(timestamp) = params.max_timestamp {
-                filters.push(request::timestamp_lte_filter(timestamp));
-            }
+        if let Some(timestamp) = params.max_timestamp {
+            filters.push(request::timestamp_lte_filter(timestamp));
         }
 
         let sort_by = params.sort_by.unwrap_or_else(|| "@timestamp".to_string());

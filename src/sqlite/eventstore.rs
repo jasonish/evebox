@@ -322,60 +322,19 @@ impl SQLiteEventStore {
             params.push(Box::new(dt.unix_timestamp_nanos() as i64));
         }
 
-        // Query string.
-        if let Some(query_string) = options.query_string {
-            match searchquery::parse(&query_string) {
-                Err(err) => {
-                    error!(
-                        "Failed to parse query string: error={}, query string={}",
-                        &err, &query_string
-                    );
+        for element in &options.query_string_elements {
+            match element {
+                Element::String(val) => {
+                    filters.push("events.source LIKE ?".into());
+                    params.push(Box::new(format!("%{}%", val)));
                 }
-                Ok((unparsed, elements)) => {
-                    if !unparsed.is_empty() {
-                        error!("Unparsed characters in query string: {unparsed}");
-                    }
-                    for el in &elements {
-                        debug!("Parsed query string element: {:?}", el);
-                        match el {
-                            Element::String(val) => {
-                                filters.push("events.source LIKE ?".into());
-                                params.push(Box::new(format!("%{}%", val)));
-                            }
-                            Element::KeyVal(key, val) => match key.as_ref() {
-                                "@before" => {
-                                    if let Ok(ts) = parse_timestamp(val) {
-                                        filters.push("timestamp <= ?".to_string());
-                                        params.push(Box::new(ts.unix_timestamp_nanos() as i64));
-                                    } else {
-                                        error!("Failed to parse {} timestamp of {}", &key, &val);
-                                    }
-                                }
-                                "@after" => {
-                                    if let Ok(ts) = parse_timestamp(val) {
-                                        filters.push("timestamp >= ?".to_string());
-                                        params.push(Box::new(ts.unix_timestamp_nanos() as i64));
-                                    } else {
-                                        error!("Failed to parse {} timestamp of {}", &key, &val);
-                                    }
-                                }
-                                _ => {
-                                    if let Ok(val) = val.parse::<i64>() {
-                                        filters.push(format!(
-                                            "json_extract(events.source, '$.{}') = ?",
-                                            key
-                                        ));
-                                        params.push(Box::new(val));
-                                    } else {
-                                        filters.push(format!(
-                                            "json_extract(events.source, '$.{}') LIKE ?",
-                                            key
-                                        ));
-                                        params.push(Box::new(format!("%{}%", val)));
-                                    }
-                                }
-                            },
-                        }
+                Element::KeyVal(key, val) => {
+                    if let Ok(val) = val.parse::<i64>() {
+                        filters.push(format!("json_extract(events.source, '$.{}') = ?", key));
+                        params.push(Box::new(val));
+                    } else {
+                        filters.push(format!("json_extract(events.source, '$.{}') LIKE ?", key));
+                        params.push(Box::new(format!("%{}%", val)));
                     }
                 }
             }
