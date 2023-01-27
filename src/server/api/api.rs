@@ -240,12 +240,12 @@ pub(crate) async fn alert_query(
         }
     }
 
-    if let Some(_ts) = query.min_ts {
-        error!("alert_query: min_ts query argument not implemented");
+    if let Some(_ts) = query.min_timestamp {
+        error!("alert_query: min_timestamp query argument not implemented");
     }
 
-    if let Some(_ts) = query.max_ts {
-        error!("alert_query: max_ts query argument not implemented");
+    if let Some(_ts) = query.max_timestamp {
+        error!("alert_query: max_timeestamp query argument not implemented");
     }
 
     match context.datastore.alert_query(options).await {
@@ -584,7 +584,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
         params.query_string_elements = parts.elements;
     }
 
-    if let Some(min_timestamp) = &query.min_ts {
+    if let Some(min_timestamp) = &query.min_timestamp {
         if params.min_timestamp.is_some() {
             debug!("Ignoring min_timestamp, @after provided in query string");
         } else {
@@ -605,7 +605,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
         }
     }
 
-    if let Some(max_timestamp) = &query.max_ts {
+    if let Some(max_timestamp) = &query.max_timestamp {
         if params.max_timestamp.is_some() {
             debug!("Ignoring max_timestamp, @before provided in query string");
         } else {

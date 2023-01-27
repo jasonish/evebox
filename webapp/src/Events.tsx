@@ -26,6 +26,7 @@ import { scrollToClass } from "./scroll";
 import { Transition } from "solid-transition-group";
 import { eventIsArchived, eventSetArchived } from "./event";
 import { AlertDescription } from "./Alerts";
+import { GetEventsOptions } from "./api";
 
 // The list of event types that will be shown in dropdowns.
 export const EVENT_TYPES: { name: string; eventType: string }[] = [
@@ -140,7 +141,7 @@ export function Events() {
   }
 
   function loadEvents() {
-    let options: any = {};
+    let options: GetEventsOptions = {};
 
     if (TIME_RANGE()) {
       let time_range = parse_timerange(TIME_RANGE());
@@ -161,11 +162,11 @@ export function Events() {
     }
 
     if (searchParams.min_timestamp) {
-      options.min_ts = searchParams.min_timestamp;
+      options.min_timestamp = searchParams.min_timestamp;
     }
 
     if (searchParams.max_timestamp) {
-      options.max_ts = searchParams.max_timestamp;
+      options.max_timestamp = searchParams.max_timestamp;
     }
 
     setIsLoading(true);

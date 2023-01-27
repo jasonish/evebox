@@ -137,15 +137,23 @@ export interface GetEventsOptions {
   query_string?: string;
   event_type?: string;
   time_range?: number;
-  min_ts?: string;
-  max_ts?: string;
-  order: "asc" | "desc";
+  min_timestamp?: string;
+  max_timestamp?: string;
+  order?: "asc" | "desc";
 }
 
 export async function getEvents(
   options?: GetEventsOptions
 ): Promise<{ events: EventWrapper[]; esc: boolean }> {
-  let params: any = {
+  let params: {
+    tz_offset?: string;
+    time_range?: string;
+    event_type?: string;
+    query_string?: string;
+    order?: string;
+    min_timestamp?: string;
+    max_timestamp?: string;
+  } = {
     tz_offset: get_timezone_offset_str(),
   };
   if (options?.time_range) {
@@ -160,11 +168,11 @@ export async function getEvents(
   if (options?.order) {
     params.order = options.order;
   }
-  if (options?.min_ts) {
-    params.min_ts = options.min_ts;
+  if (options?.min_timestamp) {
+    params.min_timestamp = options.min_timestamp;
   }
-  if (options?.max_ts) {
-    params.max_ts = options.max_ts;
+  if (options?.max_timestamp) {
+    params.max_timestamp = options.max_timestamp;
   }
   return get("/api/1/event-query", params).then((response) => response.data);
 }
