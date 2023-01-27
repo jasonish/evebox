@@ -368,7 +368,7 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
     if path.is_empty() {
         path = "webapp/index.html".into();
     } else {
-        path = format!("webapp/{}", path);
+        path = format!("webapp/{path}");
     }
     let resource = crate::resource::Resource::get(&path).or_else(|| {
         debug!("No resource found for {}, trying webapp/index.html", &path);
@@ -638,7 +638,7 @@ fn get_bookmark_filename(
 
     // Otherwise see if there is a file with the same name as the input filename but
     // suffixed with ".bookmark".
-    let legacy_filename = format!("{}.bookmark", input_filename);
+    let legacy_filename = format!("{input_filename}.bookmark");
     if let Ok(_meta) = std::fs::metadata(&legacy_filename) {
         warn!(
             "Found legacy bookmark file, checking if writable: {}",

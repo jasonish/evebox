@@ -194,7 +194,7 @@ pub(crate) async fn histogram(
     }
     if let Some(interval) = query.interval {
         let interval = HistogramInterval::from_str(&interval)
-            .map_err(|_| ApiError::BadRequest(format!("failed to parse interval: {}", interval)))
+            .map_err(|_| ApiError::BadRequest(format!("failed to parse interval: {interval}")))
             .unwrap();
         params.interval = Some(interval);
     }
@@ -350,7 +350,7 @@ pub(crate) async fn event_query(
     let params = match generic_query_to_event_query(&query) {
         Ok(params) => params,
         Err(err) => {
-            return (StatusCode::BAD_REQUEST, format!("error: {}", err)).into_response();
+            return (StatusCode::BAD_REQUEST, format!("error: {err}")).into_response();
         }
     };
 
@@ -588,7 +588,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
         if params.min_timestamp.is_some() {
             debug!("Ignoring min_timestamp, @after provided in query string");
         } else {
-            match parse_timestamp2(&min_timestamp, default_tz_offset) {
+            match parse_timestamp2(min_timestamp, default_tz_offset) {
                 Ok(ts) => params.min_timestamp = Some(ts),
                 Err(err) => {
                     error!(
@@ -609,7 +609,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
         if params.max_timestamp.is_some() {
             debug!("Ignoring max_timestamp, @before provided in query string");
         } else {
-            match parse_timestamp2(&max_timestamp, default_tz_offset) {
+            match parse_timestamp2(max_timestamp, default_tz_offset) {
                 Ok(ts) => params.max_timestamp = Some(ts),
                 Err(err) => {
                     error!(

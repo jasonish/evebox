@@ -43,7 +43,7 @@ pub fn init_logger(level: Level) {
     };
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(format!("{},hyper=off,tower_http=debug", level))
+        .with_env_filter(format!("{level},hyper=off,tower_http=debug"))
         .with_writer(std::io::stderr)
         .with_timer(timer)
         .finish();

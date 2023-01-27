@@ -33,7 +33,7 @@ pub(crate) async fn handler_new(
     loop {
         match buf.read_line(&mut line) {
             Err(err) => {
-                errors.push(format!("Failed to read event from request body: {}", err));
+                errors.push(format!("Failed to read event from request body: {err}"));
                 // Failed to read line, can't continue.
                 break;
             }
@@ -45,8 +45,7 @@ pub(crate) async fn handler_new(
                 match serde_json::from_str::<EveJson>(&line) {
                     Err(err) => {
                         errors.push(format!(
-                            "Failed to decode event from request body ({}): {}",
-                            err, line
+                            "Failed to decode event from request body ({err}): {line}"
                         ));
                     }
                     Ok(event) => {

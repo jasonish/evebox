@@ -312,7 +312,7 @@ pub fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<P
     if let Some(directory) = directory {
         return Some(bookmark::bookmark_filename(input, &directory));
     } else {
-        let filename = PathBuf::from(format!("{}.bookmark", input));
+        let filename = PathBuf::from(format!("{input}.bookmark"));
 
         if filename.exists() {
             info!(

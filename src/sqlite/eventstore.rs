@@ -138,7 +138,7 @@ impl SQLiteEventStore {
                         match el {
                             Element::String(val) => {
                                 filters.push("events.source LIKE ?".into());
-                                params.push(Box::new(format!("%{}%", val)));
+                                params.push(Box::new(format!("%{val}%")));
                             }
                             Element::KeyVal(key, val) => match key.as_ref() {
                                 "@before" => {
@@ -160,16 +160,14 @@ impl SQLiteEventStore {
                                 _ => {
                                     if let Ok(val) = val.parse::<i64>() {
                                         filters.push(format!(
-                                            "json_extract(events.source, '$.{}') = ?",
-                                            key
+                                            "json_extract(events.source, '$.{key}') = ?"
                                         ));
                                         params.push(Box::new(val));
                                     } else {
                                         filters.push(format!(
-                                            "json_extract(events.source, '$.{}') LIKE ?",
-                                            key
+                                            "json_extract(events.source, '$.{key}') LIKE ?"
                                         ));
-                                        params.push(Box::new(format!("%{}%", val)));
+                                        params.push(Box::new(format!("%{val}%")));
                                     }
                                 }
                             },
@@ -326,15 +324,15 @@ impl SQLiteEventStore {
             match element {
                 Element::String(val) => {
                     filters.push("events.source LIKE ?".into());
-                    params.push(Box::new(format!("%{}%", val)));
+                    params.push(Box::new(format!("%{val}%")));
                 }
                 Element::KeyVal(key, val) => {
                     if let Ok(val) = val.parse::<i64>() {
-                        filters.push(format!("json_extract(events.source, '$.{}') = ?", key));
+                        filters.push(format!("json_extract(events.source, '$.{key}') = ?"));
                         params.push(Box::new(val));
                     } else {
-                        filters.push(format!("json_extract(events.source, '$.{}') LIKE ?", key));
-                        params.push(Box::new(format!("%{}%", val)));
+                        filters.push(format!("json_extract(events.source, '$.{key}') LIKE ?"));
+                        params.push(Box::new(format!("%{val}%")));
                     }
                 }
             }

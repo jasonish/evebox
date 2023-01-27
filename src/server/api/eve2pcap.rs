@@ -33,7 +33,7 @@ pub(crate) async fn handler(
     ];
 
     let event: EveJson = serde_json::from_str(&form.event)
-        .map_err(|err| ApiError::BadRequest(format!("failed to decode event: {}", err)))?;
+        .map_err(|err| ApiError::BadRequest(format!("failed to decode event: {err}")))?;
     match form.what.as_ref() {
         "packet" => {
             let linktype = if let Some(linktype) = &event["xpacket_info"]["linktype"].as_u64() {
@@ -48,7 +48,7 @@ pub(crate) async fn handler(
                 .map(base64::decode)
                 .ok_or_else(|| ApiError::BadRequest("no packet in event".to_string()))?
                 .map_err(|err| {
-                    ApiError::BadRequest(format!("failed to base64 decode packet: {}", err))
+                    ApiError::BadRequest(format!("failed to base64 decode packet: {err}"))
                 })?;
             let ts = event.timestamp().ok_or_else(|| {
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
@@ -61,7 +61,7 @@ pub(crate) async fn handler(
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
             })?;
             let packet = pcap::packet_from_payload(&event).map_err(|err| {
-                let msg = format!("Failed to create packet from payload: {:?}", err);
+                let msg = format!("Failed to create packet from payload: {err:?}");
                 warn!("{}", msg);
                 ApiError::BadRequest(msg)
             })?;

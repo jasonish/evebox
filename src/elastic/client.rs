@@ -147,7 +147,7 @@ impl Client {
     }
 
     pub async fn put_template(&self, name: &str, template: String) -> Result<(), ClientError> {
-        let path = format!("_template/{}", name);
+        let path = format!("_template/{name}");
         let response = self.put(&path)?.body(template).send().await?;
         if response.status().as_u16() == 200 {
             return Ok(());
@@ -160,7 +160,7 @@ impl Client {
         &self,
         name: &str,
     ) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error>> {
-        let path = format!("_template/{}", name);
+        let path = format!("_template/{name}");
         let response = self.get(&path)?.send().await?;
         if response.status() == reqwest::StatusCode::OK {
             let template: serde_json::Value = response.json().await?;

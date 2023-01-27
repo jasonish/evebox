@@ -155,7 +155,7 @@ pub fn packet_from_payload(event: &EveJson) -> Result<Vec<u8>, Error> {
             }
         }
         _ => {
-            return Err(Error::ProtocolNotSupported(format!("{:?}", proto)));
+            return Err(Error::ProtocolNotSupported(format!("{proto:?}")));
         }
     }
 }

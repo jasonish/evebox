@@ -118,7 +118,7 @@ impl EveReader {
     /// Will return 0 if no file is open.
     pub fn offset(&mut self) -> u64 {
         if let Some(reader) = &mut self.reader {
-            if let Ok(pos) = reader.seek(SeekFrom::Current(0)) {
+            if let Ok(pos) = reader.stream_position() {
                 return pos;
             }
         }
@@ -128,7 +128,7 @@ impl EveReader {
     fn next_line(&mut self) -> Result<Option<&str>, EveReaderError> {
         self.line.truncate(0);
         if let Some(reader) = &mut self.reader {
-            let pos = reader.seek(SeekFrom::Current(0))?;
+            let pos = reader.stream_position()?;
             let n = reader.read_line(&mut self.line)?;
             if n > 0 {
                 if !self.line.ends_with('\n') {

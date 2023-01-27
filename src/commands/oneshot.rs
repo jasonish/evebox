@@ -104,13 +104,13 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     };
 
     let port = port_rx.recv().await.unwrap();
-    let url = format!("http://{}:{}", host, port);
+    let url = format!("http://{host}:{port}");
     info!("Server started at {}", url);
 
     let connect_url = if host == "0.0.0.0" {
-        format!("http://127.0.0.1:{}", port)
+        format!("http://127.0.0.1:{port}")
     } else {
-        format!("http://{}:{}", host, port)
+        format!("http://{host}:{port}")
     };
 
     if !no_open {

@@ -65,7 +65,7 @@ pub async fn install_template(client: &Client, template: &str) -> Result<()> {
 
     info!("Installing template {}", &template);
     let mut templatejs: serde_json::Value = serde_json::from_str(&template_string)?;
-    templatejs["index_patterns"] = format!("{}-*", template).into();
+    templatejs["index_patterns"] = format!("{template}-*").into();
     client
         .put_template(template, serde_json::to_string(&templatejs)?)
         .await?;

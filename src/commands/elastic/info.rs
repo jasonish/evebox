@@ -18,19 +18,18 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         if ignore_dot && index.starts_with('.') {
             continue;
         }
-        println!("Found index: {}", index);
+        println!("Found index: {index}");
     }
 
     if let Err(err) = check_logstash(&client).await {
-        println!("Failed to check logstash-* for Suricata events: {}", err);
+        println!("Failed to check logstash-* for Suricata events: {err}");
     }
     if let Err(err) = check_filebeat(&client).await {
-        println!("Failed to check filebeat-* for Suricata events: {}", err);
+        println!("Failed to check filebeat-* for Suricata events: {err}");
     }
     if let Err(err) = check_filebeat_ecs(&client).await {
         println!(
-            "Failed to check filebeat-* for Suricata ECS events: {}",
-            err
+            "Failed to check filebeat-* for Suricata ECS events: {err}"
         );
     }
 
@@ -45,7 +44,7 @@ async fn check_logstash(client: &Client) -> anyhow::Result<()> {
     request.push_filter(elastic::request::exists_filter("dest_ip"));
     request.size(1);
     let response: JsonValue = client
-        .post(&format!("{}/_search", index_pattern))?
+        .post(&format!("{index_pattern}/_search"))?
         .json(&request)
         .send()
         .await?
@@ -59,11 +58,10 @@ async fn check_logstash(client: &Client) -> anyhow::Result<()> {
     }
 
     if found {
-        println!("Found Suricata events at index pattern {}", index_pattern);
+        println!("Found Suricata events at index pattern {index_pattern}");
     } else {
         println!(
-            "No Suricata events found at index pattern {}",
-            index_pattern
+            "No Suricata events found at index pattern {index_pattern}"
         );
     }
 
@@ -78,7 +76,7 @@ async fn check_filebeat(client: &Client) -> anyhow::Result<()> {
     request.push_filter(elastic::request::exists_filter("dest_ip"));
     request.size(1);
     let response: JsonValue = client
-        .post(&format!("{}/_search", index_pattern))?
+        .post(&format!("{index_pattern}/_search"))?
         .json(&request)
         .send()
         .await?
@@ -92,11 +90,10 @@ async fn check_filebeat(client: &Client) -> anyhow::Result<()> {
     }
 
     if found {
-        println!("Found Suricata events at index pattern {}", index_pattern);
+        println!("Found Suricata events at index pattern {index_pattern}");
     } else {
         println!(
-            "No Suricata events found at index pattern {}",
-            index_pattern
+            "No Suricata events found at index pattern {index_pattern}"
         );
     }
 
@@ -110,7 +107,7 @@ async fn check_filebeat_ecs(client: &Client) -> anyhow::Result<()> {
     request.push_filter(elastic::request::exists_filter("suricata.eve.event_type"));
     request.size(1);
     let response: JsonValue = client
-        .post(&format!("{}/_search", index_pattern))?
+        .post(&format!("{index_pattern}/_search"))?
         .json(&request)
         .send()
         .await?
@@ -126,13 +123,11 @@ async fn check_filebeat_ecs(client: &Client) -> anyhow::Result<()> {
 
     if found {
         println!(
-            "Found Suricata ECS events at index pattern {}",
-            index_pattern
+            "Found Suricata ECS events at index pattern {index_pattern}"
         );
     } else {
         println!(
-            "No Suricata ECS events found at index pattern {}",
-            index_pattern
+            "No Suricata ECS events found at index pattern {index_pattern}"
         );
     }
 

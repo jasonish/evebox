@@ -94,7 +94,7 @@ fn list(args: &clap::ArgMatches) -> Result<()> {
 }
 
 fn get_input(prompt: &str) -> Result<String> {
-    print!("{}", prompt);
+    print!("{prompt}");
     stdout().flush()?;
     let mut input = String::new();
     stdin().read_line(&mut input)?;
@@ -126,7 +126,7 @@ fn add(args: &clap::ArgMatches) -> Result<()> {
     };
 
     repo.add_user(&username, &password)?;
-    println!("User added: username=\"{}\"", username);
+    println!("User added: username=\"{username}\"");
     Ok(())
 }
 
@@ -136,7 +136,7 @@ fn remove(args: &clap::ArgMatches) -> Result<()> {
     if repo.remove_user(username)? == 0 {
         return Err(anyhow!("user does not exist"));
     }
-    println!("User removed: username=\"{}\"", username);
+    println!("User removed: username=\"{username}\"");
     Ok(())
 }
 

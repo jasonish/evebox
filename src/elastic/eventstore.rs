@@ -80,7 +80,7 @@ impl EventStore {
                         // Don't remap.
                         name.to_string()
                     } else {
-                        format!("suricata.eve.{}", name)
+                        format!("suricata.eve.{name}")
                     }
                 }
             }
