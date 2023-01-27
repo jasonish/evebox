@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use rusqlite::{params, Connection, Error, ToSql};
+use rusqlite::{params, Connection, ToSql};
 use serde_json::json;
 
 use crate::datastore::DatastoreError;
@@ -15,18 +15,6 @@ use crate::searchquery::Element;
 use crate::server::api::AlertGroupSpec;
 use crate::sqlite::ConnectionBuilder;
 use crate::{datastore, eve, searchquery};
-
-impl From<rusqlite::Error> for DatastoreError {
-    fn from(err: Error) -> Self {
-        DatastoreError::SQLiteError(err)
-    }
-}
-
-impl From<serde_json::Error> for DatastoreError {
-    fn from(_: serde_json::Error) -> Self {
-        DatastoreError::EventParseError
-    }
-}
 
 /// SQLite implementation of the event datastore.
 pub struct SQLiteEventStore {

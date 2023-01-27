@@ -38,24 +38,12 @@ pub enum ElasticError {
     #[error("elasticsearch response error: {0}")]
     ErrorResponse(String),
     #[error("elasticsearch: reqwest error: {0}")]
-    ReqwestError(reqwest::Error),
-}
-
-impl From<ElasticError> for DatastoreError {
-    fn from(err: ElasticError) -> Self {
-        DatastoreError::ElasticError(err)
-    }
+    ReqwestError(#[from] reqwest::Error),
 }
 
 impl From<reqwest::Error> for DatastoreError {
     fn from(err: reqwest::Error) -> Self {
         DatastoreError::ElasticSearchError(err.to_string())
-    }
-}
-
-impl From<reqwest::Error> for ElasticError {
-    fn from(err: reqwest::Error) -> Self {
-        ElasticError::ReqwestError(err)
     }
 }
 

@@ -13,25 +13,13 @@ use std::sync::RwLock;
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
     #[error("request: {0}")]
-    Reqwest(reqwest::Error),
+    Reqwest(#[from] reqwest::Error),
     #[error("json: {0}")]
-    Json(serde_json::error::Error),
+    SerdeJson(#[from] serde_json::error::Error),
     #[error("failed to parse version: {0}")]
     VersionParse(String),
     #[error("{0}")]
     String(String),
-}
-
-impl From<reqwest::Error> for ClientError {
-    fn from(err: reqwest::Error) -> Self {
-        ClientError::Reqwest(err)
-    }
-}
-
-impl From<serde_json::error::Error> for ClientError {
-    fn from(err: serde_json::error::Error) -> Self {
-        ClientError::Json(err)
-    }
 }
 
 #[derive(Debug, Default)]

@@ -18,13 +18,7 @@ pub enum IndexError {
     #[error("timestamp missing")]
     TimestampMissing,
     #[error("sqlite error: {0}")]
-    SQLiteError(rusqlite::Error),
-}
-
-impl From<rusqlite::Error> for IndexError {
-    fn from(err: rusqlite::Error) -> Self {
-        IndexError::SQLiteError(err)
-    }
+    SQLiteError(#[from] rusqlite::Error),
 }
 
 enum Value {

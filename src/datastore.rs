@@ -35,19 +35,19 @@ pub enum DatastoreError {
     #[error("event not found")]
     EventNotFound,
     #[error("sqlite error: {0}")]
-    SQLiteError(rusqlite::Error),
+    SQLiteError(#[from] rusqlite::Error),
     #[error("generic datastore error")]
     GenericError(Box<dyn std::error::Error + Sync + Send>),
     #[error("elasticsearch: {0}")]
     ElasticSearchError(String),
     #[error("elasticsearch: {0}")]
-    ElasticError(elastic::ElasticError),
+    ElasticError(#[from] elastic::ElasticError),
     #[error("time parse error")]
     TimeParseError(time::error::Parse),
-    #[error("failed to parse event")]
-    EventParseError,
     #[error("failed to parse histogram interval: {0}")]
     HistogramIntervalParseError(String),
+    #[error("serde: {0}")]
+    SerdeJsonError(#[from] serde_json::Error),
     #[error("error: {0}")]
     AnyhowError(anyhow::Error),
 }

@@ -28,9 +28,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         println!("Failed to check filebeat-* for Suricata events: {err}");
     }
     if let Err(err) = check_filebeat_ecs(&client).await {
-        println!(
-            "Failed to check filebeat-* for Suricata ECS events: {err}"
-        );
+        println!("Failed to check filebeat-* for Suricata ECS events: {err}");
     }
 
     Ok(())
@@ -60,9 +58,7 @@ async fn check_logstash(client: &Client) -> anyhow::Result<()> {
     if found {
         println!("Found Suricata events at index pattern {index_pattern}");
     } else {
-        println!(
-            "No Suricata events found at index pattern {index_pattern}"
-        );
+        println!("No Suricata events found at index pattern {index_pattern}");
     }
 
     Ok(())
@@ -92,9 +88,7 @@ async fn check_filebeat(client: &Client) -> anyhow::Result<()> {
     if found {
         println!("Found Suricata events at index pattern {index_pattern}");
     } else {
-        println!(
-            "No Suricata events found at index pattern {index_pattern}"
-        );
+        println!("No Suricata events found at index pattern {index_pattern}");
     }
 
     Ok(())
@@ -122,13 +116,9 @@ async fn check_filebeat_ecs(client: &Client) -> anyhow::Result<()> {
     }
 
     if found {
-        println!(
-            "Found Suricata ECS events at index pattern {index_pattern}"
-        );
+        println!("Found Suricata ECS events at index pattern {index_pattern}");
     } else {
-        println!(
-            "No Suricata ECS events found at index pattern {index_pattern}"
-        );
+        println!("No Suricata ECS events found at index pattern {index_pattern}");
     }
 
     Ok(())
