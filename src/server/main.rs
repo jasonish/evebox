@@ -287,12 +287,9 @@ pub(crate) fn build_axum_service(
         )
         .route("/api/1/stats/agg", get(api::stats::stats_agg))
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
+        .layer(DefaultBodyLimit::max(1024 * 1024 * 32))
         .layer(Extension(context.clone()))
         .layer(response_header_layer)
-        .layer(DefaultBodyLimit::disable())
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(
-            1024 * 1024 * 32,
-        ))
         .fallback(fallback_handler);
 
     let app = if context.config.http_request_logging {
