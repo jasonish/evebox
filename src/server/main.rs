@@ -281,15 +281,12 @@ pub(crate) fn build_axum_service(
         .route("/api/1/report/dhcp/:what", get(api::report_dhcp))
         .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
         .route("/api/1/submit", post(api::submit::handler_new))
-        .route(
-            "/api/1/stats/agg/deriv",
-            get(api::stats::stats_derivative_agg),
-        )
-        .route("/api/1/stats/agg", get(api::stats::stats_agg))
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
+        .nest("/api/1/stats", api::stats::router())
         .layer(DefaultBodyLimit::max(1024 * 1024 * 32))
         .layer(Extension(context.clone()))
         .layer(response_header_layer)
+        .with_state(context.clone())
         .fallback(fallback_handler);
 
     let app = if context.config.http_request_logging {

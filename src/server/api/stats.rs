@@ -1,23 +1,6 @@
-// Copyright (C) 2021 Jason Ish
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// SPDX-License-Identifier: MIT
 
 use crate::datastore;
 use crate::datastore::Datastore;
@@ -25,13 +8,20 @@ use crate::prelude::*;
 use crate::server::api::ApiError;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
-use axum::extract::{Extension, Form};
+use axum::extract::{Form, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::Json;
+use axum::routing::get;
+use axum::{Json, Router};
 use serde::Deserialize;
 use std::sync::Arc;
 use time::Duration;
+
+pub(crate) fn router() -> Router<Arc<ServerContext>> {
+    Router::new()
+        .route("/agg/diff", get(agg_differential))
+        .route("/agg", get(agg))
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct StatsAggQuery {
@@ -92,7 +82,7 @@ fn bucket_interval(duration: time::Duration) -> time::Duration {
 
 pub(crate) async fn get_sensor_names(
     _session: SessionExtractor,
-    Extension(context): Extension<Arc<ServerContext>>,
+    State(context): State<Arc<ServerContext>>,
 ) -> Result<impl IntoResponse, ApiError> {
     if let Datastore::Elastic(elastic) = &context.datastore {
         let sensors = elastic.get_sensors().await.map_err(|err| {
@@ -117,9 +107,9 @@ pub(crate) async fn get_sensor_names(
     }
 }
 
-pub(crate) async fn stats_agg(
+pub(crate) async fn agg(
     _session: SessionExtractor,
-    Extension(context): Extension<Arc<ServerContext>>,
+    State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     let duration = form.duration();
@@ -144,9 +134,9 @@ pub(crate) async fn stats_agg(
     }
 }
 
-pub(crate) async fn stats_derivative_agg(
+pub(crate) async fn agg_differential(
     _session: SessionExtractor,
-    Extension(context): Extension<Arc<ServerContext>>,
+    State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     let duration = form.duration();
