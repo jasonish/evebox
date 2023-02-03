@@ -80,6 +80,61 @@ fn bucket_interval(duration: time::Duration) -> time::Duration {
     result
 }
 
+async fn agg(
+    _session: SessionExtractor,
+    State(context): State<Arc<ServerContext>>,
+    Form(form): Form<StatsAggQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    let duration = form.duration();
+    let start_time = form.start_time().unwrap();
+    let params = datastore::StatsAggQueryParams {
+        field: form.field.to_string(),
+        sensor_name: form.sensor_name.clone(),
+        duration,
+        interval: bucket_interval(duration),
+        start_time,
+    };
+
+    match context.datastore.stats_agg(&params).await {
+        Ok(response) => Ok(Json(response)),
+        Err(err) => {
+            error!(
+                "Stats agg differential query failed: params={:?}, error={:?}",
+                &params, err
+            );
+            Err(ApiError::InternalServerError)
+        }
+    }
+}
+
+async fn agg_differential(
+    _session: SessionExtractor,
+    State(context): State<Arc<ServerContext>>,
+    Form(form): Form<StatsAggQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    let duration = form.duration();
+    let start_time = form.start_time().unwrap();
+    let params = datastore::StatsAggQueryParams {
+        field: form.field.to_string(),
+        sensor_name: form.sensor_name.clone(),
+        duration,
+        interval: bucket_interval(duration),
+        start_time,
+    };
+
+    match context.datastore.stats_agg_diff(&params).await {
+        Ok(response) => Ok(Json(response)),
+        Err(err) => {
+            error!(
+                "Stats agg differential query failed: params={:?}, error={:?}",
+                &params, err
+            );
+            Err(ApiError::InternalServerError)
+        }
+    }
+}
+
+// Doesn't really belong in this module.
 pub(crate) async fn get_sensor_names(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
@@ -105,60 +160,4 @@ pub(crate) async fn get_sensor_names(
     } else {
         return Ok((StatusCode::NOT_IMPLEMENTED, "").into_response());
     }
-}
-
-pub(crate) async fn agg(
-    _session: SessionExtractor,
-    State(context): State<Arc<ServerContext>>,
-    Form(form): Form<StatsAggQuery>,
-) -> Result<impl IntoResponse, ApiError> {
-    let duration = form.duration();
-    let start_time = form.start_time().unwrap();
-    let params = datastore::StatsAggQueryParams {
-        field: form.field.to_string(),
-        sensor_name: form.sensor_name.clone(),
-        duration,
-        interval: bucket_interval(duration),
-        start_time,
-    };
-
-    let response = match &context.datastore {
-        Datastore::Elastic(ds) => ds.stats_agg(&params).await.unwrap(),
-        Datastore::SQLite(ds) => ds.stats_agg(&params).await.unwrap(),
-    };
-    Ok(Json(response))
-}
-
-pub(crate) async fn agg_differential(
-    _session: SessionExtractor,
-    State(context): State<Arc<ServerContext>>,
-    Form(form): Form<StatsAggQuery>,
-) -> Result<impl IntoResponse, ApiError> {
-    let duration = form.duration();
-    let start_time = form.start_time().unwrap();
-    let params = datastore::StatsAggQueryParams {
-        field: form.field.to_string(),
-        sensor_name: form.sensor_name.clone(),
-        duration,
-        interval: bucket_interval(duration),
-        start_time,
-    };
-
-    let response = match &context.datastore {
-        Datastore::Elastic(elastic) => elastic.stats_agg_diff(&params).await.map_err(|err| {
-            error!(
-                "Elasticsearch stats differential aggregation failed: params={:?}, err={:?}",
-                &params, err
-            );
-            ApiError::InternalServerError
-        })?,
-        Datastore::SQLite(sqlite) => sqlite.stats_agg_diff(&params).await.map_err(|err| {
-            error!(
-                "SQLite stats agg differential failed: params={:?}, err={:?}",
-                &params, err
-            );
-            ApiError::InternalServerError
-        })?,
-    };
-    Ok(Json(response))
 }

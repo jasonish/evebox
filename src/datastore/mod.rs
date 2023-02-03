@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use crate::importer::Importer;
 use crate::server::api;
@@ -10,6 +10,8 @@ use crate::{elastic, searchquery};
 use serde_json::Value as JsonValue;
 use std::sync::Arc;
 use thiserror::Error;
+
+mod stats;
 
 #[derive(Default, Debug)]
 pub struct EventQueryParams {
