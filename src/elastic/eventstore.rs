@@ -965,7 +965,7 @@ impl EventStore {
 
     pub async fn stats_agg(
         &self,
-        params: datastore::StatsAggQueryParams,
+        params: &datastore::StatsAggQueryParams,
     ) -> anyhow::Result<serde_json::Value> {
         let version = self.client.get_version().await?;
         let date_histogram_interval_field_name = if version.major < 7 {
@@ -981,7 +981,7 @@ impl EventStore {
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
-        if let Some(sensor_name) = params.sensor_name {
+        if let Some(sensor_name) = &params.sensor_name {
             filters.push(json!({"term": {"host": sensor_name}}));
         }
         let field = self.map_field(&params.field);
@@ -1038,7 +1038,7 @@ impl EventStore {
         return Ok(response);
     }
 
-    pub async fn stats_agg_deriv(
+    pub async fn stats_agg_diff(
         &self,
         params: &datastore::StatsAggQueryParams,
     ) -> anyhow::Result<serde_json::Value> {

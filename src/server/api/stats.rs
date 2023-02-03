@@ -122,16 +122,11 @@ pub(crate) async fn agg(
         start_time,
     };
 
-    match &context.datastore {
-        Datastore::Elastic(ds) => {
-            let response = ds.stats_agg(params).await.unwrap();
-            Ok(Json(response))
-        }
-        Datastore::SQLite(ds) => {
-            let response = ds.stats_agg(params).await.unwrap();
-            Ok(Json(response))
-        }
-    }
+    let response = match &context.datastore {
+        Datastore::Elastic(ds) => ds.stats_agg(&params).await.unwrap(),
+        Datastore::SQLite(ds) => ds.stats_agg(&params).await.unwrap(),
+    };
+    Ok(Json(response))
 }
 
 pub(crate) async fn agg_differential(
@@ -148,20 +143,22 @@ pub(crate) async fn agg_differential(
         interval: bucket_interval(duration),
         start_time,
     };
-    match &context.datastore {
-        Datastore::Elastic(elastic) => {
-            let result = elastic.stats_agg_deriv(&params).await.map_err(|err| {
-                error!(
-                    "Elasticsearch stats derivative aggregation failed: params={:?}, err={:?}",
-                    &params, err
-                );
-                ApiError::InternalServerError
-            })?;
-            Ok(Json(result))
-        }
-        Datastore::SQLite(sqlite) => {
-            let response = sqlite.stats_agg_deriv(params).await.unwrap();
-            Ok(Json(response))
-        }
-    }
+
+    let response = match &context.datastore {
+        Datastore::Elastic(elastic) => elastic.stats_agg_diff(&params).await.map_err(|err| {
+            error!(
+                "Elasticsearch stats differential aggregation failed: params={:?}, err={:?}",
+                &params, err
+            );
+            ApiError::InternalServerError
+        })?,
+        Datastore::SQLite(sqlite) => sqlite.stats_agg_diff(&params).await.map_err(|err| {
+            error!(
+                "SQLite stats agg differential failed: params={:?}, err={:?}",
+                &params, err
+            );
+            ApiError::InternalServerError
+        })?,
+    };
+    Ok(Json(response))
 }

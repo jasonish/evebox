@@ -645,8 +645,9 @@ impl SQLiteEventStore {
 
     async fn get_stats(
         &self,
-        qp: datastore::StatsAggQueryParams,
+        qp: &datastore::StatsAggQueryParams,
     ) -> anyhow::Result<Vec<(u64, u64)>> {
+        let qp = qp.clone();
         let conn = self.pool.get().await?;
         let field = format!("$.{}", &qp.field);
         let start_time = qp.start_time.unix_timestamp_nanos() as i64;
@@ -693,7 +694,7 @@ impl SQLiteEventStore {
 
     pub async fn stats_agg(
         &self,
-        params: datastore::StatsAggQueryParams,
+        params: &datastore::StatsAggQueryParams,
     ) -> anyhow::Result<serde_json::Value> {
         let rows = self.get_stats(params).await?;
         let response_data: Vec<serde_json::Value> = rows
@@ -710,9 +711,9 @@ impl SQLiteEventStore {
         }));
     }
 
-    pub async fn stats_agg_deriv(
+    pub async fn stats_agg_diff(
         &self,
-        params: datastore::StatsAggQueryParams,
+        params: &datastore::StatsAggQueryParams,
     ) -> anyhow::Result<serde_json::Value> {
         let rows = self.get_stats(params).await?;
         let mut response_data = vec![];
