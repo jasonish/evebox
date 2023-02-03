@@ -2,11 +2,6 @@
 //
 // SPDX-License-Identifier: MIT
 
-use std::sync::{Arc, Mutex};
-
-use rusqlite::{params, Connection, ToSql};
-use serde_json::json;
-
 use crate::datastore::DatastoreError;
 use crate::elastic::AlertQueryOptions;
 use crate::eve::eve::EveJson;
@@ -15,6 +10,11 @@ use crate::searchquery::Element;
 use crate::server::api::AlertGroupSpec;
 use crate::sqlite::ConnectionBuilder;
 use crate::{datastore, eve, searchquery};
+use rusqlite::{params, Connection, ToSql};
+use serde_json::json;
+use std::sync::{Arc, Mutex};
+
+mod stats;
 
 /// SQLite implementation of the event datastore.
 pub struct SQLiteEventStore {
@@ -641,96 +641,6 @@ impl SQLiteEventStore {
             .await
             .map_err(|err| anyhow::anyhow!("sqlite interact error:: {:?}", err))??;
         Ok(result)
-    }
-
-    async fn get_stats(
-        &self,
-        qp: &datastore::StatsAggQueryParams,
-    ) -> anyhow::Result<Vec<(u64, u64)>> {
-        let qp = qp.clone();
-        let conn = self.pool.get().await?;
-        let field = format!("$.{}", &qp.field);
-        let start_time = qp.start_time.unix_timestamp_nanos() as i64;
-        let interval = sqlite_format_interval(qp.interval);
-        let result = conn
-            .interact(move |conn| -> Result<Vec<(u64, u64)>, rusqlite::Error> {
-                let sql = r#"
-                        SELECT
-                            (timestamp / 1000000000 / :interval) * :interval AS a,
-                            MAX(json_extract(events.source, :field))
-                        FROM events
-                        WHERE %WHERE%
-                        GROUP BY a
-                        ORDER BY a
-                    "#;
-
-                let mut filters = vec![
-                    "json_extract(events.source, '$.event_type') == 'stats'",
-                    "timestamp >= :start_time",
-                ];
-                let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![
-                    (":interval", &interval),
-                    (":field", &field),
-                    (":start_time", &start_time),
-                ];
-                if let Some(sensor_name) = qp.sensor_name.as_ref() {
-                    filters.push("json_extract(events.source, '$.host') = :sensor_name");
-                    params.push((":sensor_name", sensor_name));
-                }
-                let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-                let mut stmt = conn.prepare(&sql)?;
-                let rows =
-                    stmt.query_map(params.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?;
-                let mut entries = vec![];
-                for row in rows {
-                    entries.push(row?);
-                }
-                Ok(entries)
-            })
-            .await
-            .map_err(|err| anyhow::anyhow!("sqlite interact error:: {:?}", err))??;
-        Ok(result)
-    }
-
-    pub async fn stats_agg(
-        &self,
-        params: &datastore::StatsAggQueryParams,
-    ) -> anyhow::Result<serde_json::Value> {
-        let rows = self.get_stats(params).await?;
-        let response_data: Vec<serde_json::Value> = rows
-            .iter()
-            .map(|(timestamp, value)| {
-                json!({
-                    "value": value,
-                    "timestamp": nanos_to_rfc3339((timestamp * 1000000000) as i128).unwrap(),
-                })
-            })
-            .collect();
-        return Ok(json!({
-            "data": response_data,
-        }));
-    }
-
-    pub async fn stats_agg_diff(
-        &self,
-        params: &datastore::StatsAggQueryParams,
-    ) -> anyhow::Result<serde_json::Value> {
-        let rows = self.get_stats(params).await?;
-        let mut response_data = vec![];
-        for (i, e) in rows.iter().enumerate() {
-            if i == 0 {
-                continue;
-            }
-            let previous = rows[i - 1].1;
-            let value = if previous <= e.1 { e.1 - previous } else { e.1 };
-            response_data.push(json!({
-                "value": value,
-                "timestamp": nanos_to_rfc3339((e.0 * 1000000000) as i128)?,
-            }));
-        }
-        return Ok(json!({
-            "data": response_data,
-        }));
     }
 }
 
