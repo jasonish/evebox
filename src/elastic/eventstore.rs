@@ -458,7 +458,7 @@ impl EventStore {
         query
     }
 
-    pub async fn alert_query(
+    pub async fn alerts(
         &self,
         options: AlertQueryOptions,
     ) -> Result<serde_json::Value, DatastoreError> {
@@ -964,7 +964,6 @@ impl EventStore {
         let sensors: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
         return Ok(sensors);
     }
-
 }
 
 fn elastic_format_interval(duration: time::Duration) -> String {

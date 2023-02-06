@@ -208,7 +208,7 @@ pub(crate) async fn histogram(
     Json(response)
 }
 
-pub(crate) async fn alert_query(
+pub(crate) async fn alerts(
     Extension(context): Extension<Arc<ServerContext>>,
     // Session required to get here.
     _session: SessionExtractor,
@@ -248,7 +248,7 @@ pub(crate) async fn alert_query(
         error!("alert_query: max_timeestamp query argument not implemented");
     }
 
-    match context.datastore.alert_query(options).await {
+    match context.datastore.alerts(options).await {
         Ok(v) => axum::Json(v).into_response(),
         Err(err) => {
             error!("alert query failed: {}", err);

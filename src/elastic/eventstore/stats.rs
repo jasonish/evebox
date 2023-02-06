@@ -2,16 +2,13 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::{datastore::StatsAggQueryParams, elastic::eventstore::elastic_format_interval};
 use super::EventStore;
+use crate::{datastore::StatsAggQueryParams, elastic::eventstore::elastic_format_interval};
 use anyhow::Result;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 impl EventStore {
-    pub async fn stats_agg(
-        &self,
-        params: &StatsAggQueryParams,
-    ) -> Result<serde_json::Value> {
+    pub async fn stats_agg(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
         let version = self.client.get_version().await?;
         let date_histogram_interval_field_name = if version.major < 7 {
             "interval"
@@ -83,10 +80,7 @@ impl EventStore {
         return Ok(response);
     }
 
-    pub async fn stats_agg_diff(
-        &self,
-        params: &StatsAggQueryParams,
-    ) -> Result<serde_json::Value> {
+    pub async fn stats_agg_diff(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
         let version = self.client.get_version().await.unwrap();
         let date_histogram_interval_field_name = if version.major < 7 {
             "interval"
@@ -176,5 +170,4 @@ impl EventStore {
         });
         Ok(response)
     }
-
 }

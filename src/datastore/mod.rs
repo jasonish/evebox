@@ -52,6 +52,10 @@ pub enum DatastoreError {
     SerdeJsonError(#[from] serde_json::Error),
     #[error("error: {0}")]
     AnyhowError(anyhow::Error),
+    #[error("database pool error: {0}")]
+    DeadpoolError(#[from] deadpool_sqlite::PoolError),
+    #[error("database pool interation error: {0}")]
+    DeadpoolInteractionError(#[from] deadpool_sqlite::InteractError),
 }
 
 impl From<Box<dyn std::error::Error + Sync + Send>> for DatastoreError {
@@ -126,13 +130,13 @@ impl Datastore {
         }
     }
 
-    pub async fn alert_query(
+    pub async fn alerts(
         &self,
         options: elastic::AlertQueryOptions,
     ) -> Result<serde_json::Value, DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.alert_query(options).await,
-            Datastore::SQLite(ds) => ds.alert_query(options).await,
+            Datastore::Elastic(ds) => ds.alerts(options).await,
+            Datastore::SQLite(ds) => ds.alerts(options).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }

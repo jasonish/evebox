@@ -261,7 +261,7 @@ pub(crate) fn build_axum_service(
         .route("/api/1/config", get(api::config))
         .route("/api/1/version", get(api::get_version))
         .route("/api/1/user", get(api::get_user))
-        .route("/api/1/alerts", get(api::alert_query))
+        .route("/api/1/alerts", get(api::alerts))
         .route("/api/1/event-query", get(api::event_query))
         .route("/api/1/event/:id", get(api::get_event_by_id))
         .route("/api/1/alert-group/star", post(api::alert_group_star))
