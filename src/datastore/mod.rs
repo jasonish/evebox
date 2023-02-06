@@ -44,36 +44,22 @@ pub enum DatastoreError {
     ElasticSearchError(String),
     #[error("elasticsearch: {0}")]
     ElasticError(#[from] elastic::ElasticError),
-    #[error("time parse error")]
-    TimeParseError(time::error::Parse),
     #[error("failed to parse histogram interval: {0}")]
     HistogramIntervalParseError(String),
     #[error("serde: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
-    #[error("error: {0}")]
-    AnyhowError(anyhow::Error),
     #[error("database pool error: {0}")]
     DeadpoolError(#[from] deadpool_sqlite::PoolError),
     #[error("database pool interation error: {0}")]
     DeadpoolInteractionError(#[from] deadpool_sqlite::InteractError),
-}
+    #[error("time: {0}")]
+    TimeParse(#[from] time::error::Parse),
+    #[error("time: {0}")]
+    TimeComponentRange(#[from] time::error::ComponentRange),
 
-impl From<Box<dyn std::error::Error + Sync + Send>> for DatastoreError {
-    fn from(err: Box<dyn std::error::Error + Sync + Send>) -> Self {
-        DatastoreError::GenericError(err)
-    }
-}
-
-impl From<time::error::Parse> for DatastoreError {
-    fn from(err: time::error::Parse) -> Self {
-        DatastoreError::TimeParseError(err)
-    }
-}
-
-impl From<anyhow::Error> for DatastoreError {
-    fn from(err: anyhow::Error) -> Self {
-        DatastoreError::AnyhowError(err)
-    }
+    // Fallback...
+    #[error("error: {0}")]
+    AnyhowError(#[from] anyhow::Error),
 }
 
 #[derive(Clone, Debug)]
