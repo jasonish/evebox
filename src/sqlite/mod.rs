@@ -2,14 +2,14 @@
 //
 // SPDX-License-Identifier: MIT
 
-use std::path::PathBuf;
-
+use crate::prelude::*;
 use rusqlite::params;
+use rusqlite::Connection;
+use rusqlite::DatabaseName;
 use rusqlite::OpenFlags;
+use std::path::PathBuf;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
-
-use crate::prelude::*;
 
 pub mod configrepo;
 pub mod eventstore;
@@ -72,34 +72,7 @@ impl ConnectionBuilder {
             | OpenFlags::SQLITE_OPEN_SHARED_CACHE
             | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
         if let Some(filename) = &self.filename {
-            let conn = rusqlite::Connection::open_with_flags(filename, flags)?;
-
-            // Set WAL mode.
-            let mode = conn.pragma_update_and_check(None, "journal_mode", "WAL", |row| {
-                let mode: String = row.get(0)?;
-                Ok(mode)
-            });
-            debug!("Result of setting database to WAL mode: {:?}", mode);
-
-            // Set synchronous to NORMAL.
-            if let Err(err) = conn.pragma_update(None, "synchronous", "NORMAL") {
-                error!("Failed to set pragma synchronous = NORMAL: {:?}", err);
-            }
-            match conn.pragma_query_value(None, "synchronous", |row| {
-                let val: i32 = row.get(0)?;
-                Ok(val)
-            }) {
-                Ok(mode) => {
-                    if mode != 1 {
-                        warn!("Database not in synchronous mode normal, instead: {}", mode);
-                    }
-                }
-                Err(err) => {
-                    warn!("Failed to query pragma synchronous: {:?}", err);
-                }
-            }
-
-            Ok(conn)
+            rusqlite::Connection::open_with_flags(filename, flags)
         } else {
             rusqlite::Connection::open_in_memory()
         }
@@ -107,6 +80,39 @@ impl ConnectionBuilder {
 }
 
 pub fn init_event_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
+    let auto_vacuum = get_auto_vacuum(db)?;
+    if auto_vacuum == 0 {
+        enable_auto_vacuum(db)?;
+        if get_auto_vacuum(db)? == 0 {
+            info!("Auto-vacuum not enabled");
+        }
+    }
+
+    // Set WAL mode.
+    let mode = db.pragma_update_and_check(None, "journal_mode", "WAL", |row| {
+        let mode: String = row.get(0)?;
+        Ok(mode)
+    });
+    debug!("Result of setting database to WAL mode: {:?}", mode);
+
+    // Set synchronous to NORMAL.
+    if let Err(err) = db.pragma_update(None, "synchronous", "NORMAL") {
+        error!("Failed to set pragma synchronous = NORMAL: {:?}", err);
+    }
+    match db.pragma_query_value(None, "synchronous", |row| {
+        let val: i32 = row.get(0)?;
+        Ok(val)
+    }) {
+        Ok(mode) => {
+            if mode != 1 {
+                warn!("Database not in synchronous mode normal, instead: {}", mode);
+            }
+        }
+        Err(err) => {
+            warn!("Failed to query pragma synchronous: {:?}", err);
+        }
+    }
+
     let version = db
         .query_row("select max(version) from schema", params![], |row| {
             let version: i64 = row.get(0).unwrap();
@@ -164,6 +170,16 @@ pub fn format_sqlite_timestamp(dt: &time::OffsetDateTime) -> String {
     let format =
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:6][offset_hour sign:mandatory][offset_minute]");
     dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
+}
+
+fn get_auto_vacuum(db: &Connection) -> Result<u8, rusqlite::Error> {
+    db.query_row_and_then("SELECT auto_vacuum FROM pragma_auto_vacuum", [], |row| {
+        row.get(0)
+    })
+}
+
+fn enable_auto_vacuum(db: &Connection) -> Result<(), rusqlite::Error> {
+    db.pragma_update(Some(DatabaseName::Main), "auto_vacuum", 2)
 }
 
 mod embedded {
