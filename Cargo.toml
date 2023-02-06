@@ -25,7 +25,12 @@ base64 = "0.12.1"
 bcrypt = "0.9.0"
 bytes = "0.5.4"
 clap = { version = "3.1.5", features = ["env", "derive"] }
-deadpool-sqlite = { version = "= 0.4.0", features = ["rt_tokio_1"] }
+
+# These 3 somewhat depend on each other.
+deadpool-sqlite = { version = "0.5", features = ["rt_tokio_1"] }
+rusqlite = { version = "= 0.28", default-features = false, features = ["bundled", "serde_json"] }
+refinery = { version = "0.8.6", features = ["rusqlite"] }
+
 filetime = "0.2.12"
 glob = "0.3.0"
 humantime = "2.0.0"
@@ -37,11 +42,9 @@ mime_guess = "2.0.3"
 nom = "7.1.0"
 percent-encoding = "2.1.0"
 rand = "0.7.3"
-refinery = { version = "0.8.6", features = ["rusqlite"] }
 reqwest = { version = "0.11.11", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots"] }
 rpassword = "4.0.5"
 rust-embed = { version = "6.3.0", features = ["compression", "debug-embed"] }
-rusqlite = { version = "= 0.27", default-features = false, features = ["bundled", "serde_json"] }
 serde = { version = "1.0.110", features = ["derive"] }
 serde_json = "1.0.53"
 serde_urlencoded = "0.6.1"
