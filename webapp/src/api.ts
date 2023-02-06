@@ -174,7 +174,7 @@ export async function getEvents(
   if (options?.max_timestamp) {
     params.max_timestamp = options.max_timestamp;
   }
-  return get("/api/1/event-query", params).then((response) => response.data);
+  return get("/api/1/events", params).then((response) => response.data);
 }
 
 export async function archiveAggregateAlert(alert: EventWrapper) {

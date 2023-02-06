@@ -342,7 +342,7 @@ pub(crate) async fn comment_by_event_id(
     }
 }
 
-pub(crate) async fn event_query(
+pub(crate) async fn events(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(query): Form<GenericQuery>,
@@ -354,7 +354,7 @@ pub(crate) async fn event_query(
         }
     };
 
-    match context.datastore.event_query(params).await {
+    match context.datastore.events(params).await {
         Err(err) => {
             error!("error: {:?}", err);
             (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()

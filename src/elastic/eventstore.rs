@@ -573,7 +573,7 @@ impl EventStore {
             .await
     }
 
-    pub async fn event_query(
+    pub async fn events(
         &self,
         params: datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {

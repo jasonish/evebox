@@ -176,13 +176,13 @@ impl Datastore {
         }
     }
 
-    pub async fn event_query(
+    pub async fn events(
         &self,
         params: EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.event_query(params).await,
-            Datastore::SQLite(ds) => ds.event_query(params).await,
+            Datastore::Elastic(ds) => ds.events(params).await,
+            Datastore::SQLite(ds) => ds.events(params).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }

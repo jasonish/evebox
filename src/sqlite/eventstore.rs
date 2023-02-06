@@ -65,7 +65,7 @@ impl SQLiteEventStore {
         self.importer.clone()
     }
 
-    pub async fn event_query(
+    pub async fn events(
         &self,
         options: datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
