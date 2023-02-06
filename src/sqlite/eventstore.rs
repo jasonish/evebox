@@ -11,6 +11,7 @@ use crate::sqlite::ConnectionBuilder;
 use crate::{datastore, eve};
 use rusqlite::{params, Connection, ToSql};
 use serde_json::json;
+use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -25,7 +26,28 @@ pub struct SQLiteEventStore {
     pub pool: deadpool_sqlite::Pool,
 }
 
+/// A type alias over ToSql allowing us to create vectors of parameters.
 type QueryParam = dyn ToSql + Send + Sync + 'static;
+
+#[derive(Default)]
+struct ParamBuilder {
+    pub params: Vec<Box<dyn ToSql + Send + Sync + 'static>>,
+    pub debug: Vec<String>,
+}
+
+impl ParamBuilder {
+    fn new() -> Self {
+        Default::default()
+    }
+
+    fn push<T>(&mut self, v: T)
+    where
+        T: ToSql + Display + Send + Sync + 'static,
+    {
+        self.debug.push(v.to_string());
+        self.params.push(Box::new(v));
+    }
+}
 
 impl SQLiteEventStore {
     pub fn new(connection_builder: Arc<ConnectionBuilder>, pool: deadpool_sqlite::Pool) -> Self {
@@ -43,172 +65,130 @@ impl SQLiteEventStore {
         self.importer.clone()
     }
 
-    /// Run a database query in a loop as lock errors can occur, and we should retry those.
-    async fn retry_query_loop<'a, F, T>(
-        &'a self,
-        conn: &'a mut Connection,
-        query: &'a str,
-        params: &[Box<QueryParam>],
-        f: F,
-    ) -> anyhow::Result<Vec<T>>
-    where
-        F: FnMut(&rusqlite::Row<'_>) -> Result<T, rusqlite::Error> + Copy,
-    {
-        let mut trys = 0;
-        loop {
-            match self.query_and_then(conn, query, params, f) {
-                Ok(result) => {
-                    return Ok(result);
-                }
-                Err(err) => {
-                    if trys < 100 && err.to_string().contains("lock") {
-                        trys += 1;
-                    } else {
-                        return Err(err);
-                    }
-                }
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        }
-    }
-
-    /// Wrapper around Rusqlite's query_and_then but encapsulates its all to make it easier
-    /// to run from a retry loop.
-    fn query_and_then<F, T>(
-        &self,
-        conn: &mut Connection,
-        query: &str,
-        params: &[Box<QueryParam>],
-        f: F,
-    ) -> anyhow::Result<Vec<T>>
-    where
-        F: FnMut(&rusqlite::Row<'_>) -> Result<T, rusqlite::Error>,
-    {
-        let tx = conn.transaction()?;
-        let mut stmt = tx.prepare(query)?;
-        let rows = stmt.query_and_then(rusqlite::params_from_iter(params), f)?;
-        let mut out_rows = Vec::new();
-        for row in rows {
-            out_rows.push(row?);
-        }
-        return Ok(out_rows);
-    }
-
     pub async fn event_query(
         &self,
         options: datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
-        let mut conn = self.connection_builder.open()?;
+        let result = self
+            .pool
+            .get()
+            .await?
+            .interact(move |conn| {
+                let query = r#"
+		    SELECT 
+			events.rowid AS id, 
+			events.archived AS archived, 
+			events.escalated AS escalated, 
+			events.source AS source
+		    FROM %FROM%
+		    WHERE %WHERE%
+		    ORDER BY events.timestamp %ORDER%
+		    LIMIT 500
+		"#;
+                let mut from: Vec<&str> = vec![];
+                let mut filters: Vec<String> = vec![];
+                let mut params = ParamBuilder::new();
 
-        let query = r#"
-            SELECT 
-                events.rowid AS id, 
-                events.archived AS archived, 
-                events.escalated AS escalated, 
-                events.source AS source
-            FROM %FROM%
-            WHERE %WHERE%
-            ORDER BY events.timestamp %ORDER%
-            LIMIT 500
-        "#;
+                from.push("events");
 
-        let mut from: Vec<&str> = Vec::new();
-        let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<QueryParam>> = Vec::new();
-
-        from.push("events");
-
-        if let Some(event_type) = options.event_type {
-            filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
-            params.push(Box::new(event_type));
-        }
-
-        if let Some(dt) = options.max_timestamp {
-            filters.push("timestamp <= ?".to_string());
-            params.push(Box::new(dt.unix_timestamp_nanos() as i64));
-        }
-
-        if let Some(dt) = options.min_timestamp {
-            filters.push("timestamp >= ?".to_string());
-            params.push(Box::new(dt.unix_timestamp_nanos() as i64));
-        }
-
-        for element in &options.query_string_elements {
-            match element {
-                Element::String(val) => {
-                    filters.push("events.source LIKE ?".into());
-                    params.push(Box::new(format!("%{val}%")));
+                if let Some(event_type) = options.event_type {
+                    filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
+                    params.push(event_type);
                 }
-                Element::KeyVal(key, val) => {
-                    if let Ok(val) = val.parse::<i64>() {
-                        filters.push(format!("json_extract(events.source, '$.{key}') = ?"));
-                        params.push(Box::new(val));
-                    } else {
-                        filters.push(format!("json_extract(events.source, '$.{key}') LIKE ?"));
-                        params.push(Box::new(format!("%{val}%")));
+
+                if let Some(dt) = options.max_timestamp {
+                    filters.push("timestamp <= ?".to_string());
+                    params.push(dt.unix_timestamp_nanos() as i64);
+                }
+
+                if let Some(dt) = options.min_timestamp {
+                    filters.push("timestamp >= ?".to_string());
+                    params.push(dt.unix_timestamp_nanos() as i64);
+                }
+                for element in &options.query_string_elements {
+                    match element {
+                        Element::String(val) => {
+                            filters.push("events.source LIKE ?".into());
+                            params.push(format!("%{val}%"));
+                        }
+                        Element::KeyVal(key, val) => {
+                            if let Ok(val) = val.parse::<i64>() {
+                                filters.push(format!("json_extract(events.source, '$.{key}') = ?"));
+                                params.push(val);
+                            } else {
+                                filters
+                                    .push(format!("json_extract(events.source, '$.{key}') LIKE ?"));
+                                params.push(format!("%{val}%"));
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        let order = if let Some(order) = options.order {
-            order
-        } else {
-            "DESC".to_string()
-        };
+                let order = if let Some(order) = options.order {
+                    order
+                } else {
+                    "DESC".to_string()
+                };
 
-        let query = query.replace("%FROM%", &from.join(", "));
-        let query = query.replace("%WHERE%", &filters.join(" AND "));
-        let query = query.replace("%ORDER%", &order);
+                let query = query.replace("%FROM%", &from.join(", "));
+                let query = query.replace("%WHERE%", &filters.join(" AND "));
+                let query = query.replace("%ORDER%", &order);
 
-        // TODO: Cleanup query building.
-        let mut query = query.to_string();
-        if filters.is_empty() {
-            query = query.replace("WHERE", "");
-        }
-
-        let mapper = |row: &rusqlite::Row| -> Result<serde_json::Value, rusqlite::Error> {
-            let id: i64 = row.get(0)?;
-            let archived: i8 = row.get(1)?;
-            let escalated: i8 = row.get(2)?;
-            let mut parsed: EveJson = row.get(3)?;
-
-            if let Some(timestamp) = parsed.get("timestamp") {
-                parsed["@timestamp"] = timestamp.clone();
-            }
-
-            if let serde_json::Value::Null = &parsed["tags"] {
-                let tags: Vec<String> = Vec::new();
-                parsed["tags"] = tags.into();
-            }
-
-            if let serde_json::Value::Array(ref mut tags) = &mut parsed["tags"] {
-                if archived > 0 {
-                    tags.push("archived".into());
-                    tags.push("evebox.archived".into());
+                // TODO: Cleanup query building.
+                let mut query = query.to_string();
+                if filters.is_empty() {
+                    query = query.replace("WHERE", "");
                 }
-                if escalated > 0 {
-                    tags.push("escalated".into());
-                    tags.push("evebox.escalated".into());
+
+                let mapper = |row: &rusqlite::Row| -> Result<serde_json::Value, rusqlite::Error> {
+                    let id: i64 = row.get(0)?;
+                    let archived: i8 = row.get(1)?;
+                    let escalated: i8 = row.get(2)?;
+                    let mut parsed: EveJson = row.get(3)?;
+
+                    if let Some(timestamp) = parsed.get("timestamp") {
+                        parsed["@timestamp"] = timestamp.clone();
+                    }
+
+                    if let serde_json::Value::Null = &parsed["tags"] {
+                        let tags: Vec<String> = Vec::new();
+                        parsed["tags"] = tags.into();
+                    }
+
+                    if let serde_json::Value::Array(ref mut tags) = &mut parsed["tags"] {
+                        if archived > 0 {
+                            tags.push("archived".into());
+                            tags.push("evebox.archived".into());
+                        }
+                        if escalated > 0 {
+                            tags.push("escalated".into());
+                            tags.push("evebox.escalated".into());
+                        }
+                    }
+
+                    let event = json!({
+                        "_id": id,
+                        "_source": parsed,
+                    });
+                    Ok(event)
+                };
+
+                let tx = conn.transaction().unwrap();
+                let mut st = tx.prepare(&query).unwrap();
+                let rows = st
+                    .query_and_then(rusqlite::params_from_iter(&params.params), mapper)
+                    .unwrap();
+                let mut events = vec![];
+                for row in rows {
+                    events.push(row.unwrap());
                 }
-            }
-
-            let event = json!({
-                "_id": id,
-                "_source": parsed,
-            });
-            Ok(event)
-        };
-
-        let events = self
-            .retry_query_loop(&mut conn, &query, &params, mapper)
+                events
+            })
             .await?;
-
         let response = json!({
-            "esc": false,
-            "events": events,
+            "ecs": false,
+            "events": result,
         });
-
         Ok(response)
     }
 
