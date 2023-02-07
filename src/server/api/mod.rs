@@ -6,9 +6,11 @@
 mod api;
 pub mod eve2pcap;
 pub mod flow_histogram;
+pub mod groupby;
 pub mod helpers;
 pub mod login;
 pub mod stats;
 pub mod submit;
+mod util;
 
 pub use api::*;

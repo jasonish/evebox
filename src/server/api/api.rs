@@ -418,10 +418,19 @@ pub enum ApiError {
     QueryStringParseError,
     #[error("internal server error")]
     InternalServerError,
+    #[error("unimplemented")]
+    Unimplemented,
+}
+
+impl ApiError {
+    pub fn bad_request<S: Into<String>>(msg: S) -> Self {
+        Self::BadRequest(msg.into())
+    }
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        let err = self.to_string();
         let (status, message) = match self {
             ApiError::TimeRangeParseError(msg) => (StatusCode::BAD_REQUEST, msg),
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
@@ -433,6 +442,7 @@ impl IntoResponse for ApiError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal server error".to_string(),
             ),
+            ApiError::Unimplemented => (StatusCode::NOT_IMPLEMENTED, err),
         };
         let body = Json(serde_json::json!({
             "error": message,

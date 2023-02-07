@@ -16,6 +16,7 @@ use std::time::Instant;
 
 mod alerts;
 mod events;
+mod groupby;
 mod stats;
 
 /// SQLite implementation of the event datastore.

@@ -56,6 +56,8 @@ pub enum DatastoreError {
     TimeParse(#[from] time::error::Parse),
     #[error("time: {0}")]
     TimeComponentRange(#[from] time::error::ComponentRange),
+    #[error("sql: {0}")]
+    FromSql(#[from] rusqlite::types::FromSqlError),
 
     // Fallback...
     #[error("error: {0}")]

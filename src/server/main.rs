@@ -282,6 +282,7 @@ pub(crate) fn build_axum_service(
         .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
         .route("/api/1/submit", post(api::submit::handler_new))
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
+        .route("/api/1/groupby", get(api::groupby::group_by))
         .nest("/api/1/stats", api::stats::router())
         .layer(DefaultBodyLimit::max(1024 * 1024 * 32))
         .layer(Extension(context.clone()))
