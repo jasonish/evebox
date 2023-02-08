@@ -28,6 +28,7 @@ import { Events } from "./Events";
 import { Alert, Col, Container, Row } from "solid-bootstrap";
 import { Stats } from "./Stats";
 import { serverConfigSet } from "./config";
+import { AlertsReport } from "./reports/AlertsReport";
 
 const Report: Component = () => {
   return (
@@ -72,6 +73,7 @@ export function App() {
         <Route path={"event/:id"} component={EventView} />
         <Route path={"settings"} component={Settings} />
         <Route path={"reports"} component={Report} />
+        <Route path={"reports/alerts"} component={AlertsReport} />
         <Route path={"stats"} component={Stats} />
         <Route path={"*"} element={<Navigate href={"/inbox"} />} />
       </Route>

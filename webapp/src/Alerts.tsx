@@ -554,6 +554,15 @@ export function Alerts() {
                 Refresh
               </button>
             </Show>
+            <Show when={isLoading()}>
+              <button
+                class={"btn btn-secondary me-2"}
+                style={"width: 7em;"}
+                disabled
+              >
+                Loading
+              </button>
+            </Show>
             <Show when={visibleEvents().length > 0 && !isAllSelected()}>
               <button
                 class={"btn btn-secondary me-2"}
@@ -570,15 +579,6 @@ export function Alerts() {
                 onclick={unselectAll}
               >
                 Unselect All
-              </button>
-            </Show>
-            <Show when={isLoading()}>
-              <button
-                class={"btn btn-secondary me-2"}
-                style={"width: 7em;"}
-                disabled
-              >
-                Loading
               </button>
             </Show>
             <Show when={getSelected().length > 0}>

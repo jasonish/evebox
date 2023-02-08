@@ -274,3 +274,17 @@ export async function statsAgg(
 export async function getSensors(): Promise<{ data: string[] }> {
   return get("/api/1/sensors").then((response) => response.data);
 }
+
+export interface GroupByQueryRequest {
+  field: string;
+  time_range?: string;
+  size?: number;
+  order?: "asc" | "desc";
+  q?: string;
+}
+
+export async function groupBy(
+  request: GroupByQueryRequest
+): Promise<{ rows: { count: number; key: any }[] }> {
+  return get("/api/1/groupby", request).then((response) => response.data);
+}

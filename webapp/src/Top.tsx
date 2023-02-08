@@ -150,14 +150,14 @@ export function Top(props: { brand?: string }) {
                   Events
                 </A>
               </Nav.Item>
-              <Nav.Item>
-                <A href={"/reports"} class={"nav-link"}>
-                  Reports
+              <NavDropdown
+                title="Reports"
+                active={location.pathname.startsWith("/reports")}
+              >
+                <A href={"/reports/alerts"} class={"dropdown-item"}>
+                  Alerts
                 </A>
-              </Nav.Item>
-              {/*<NavDropdown title="Reports" active={location.pathname.startsWith("/reports")}>*/}
-              {/*  <A href={"/reports/alerts"} class={"dropdown-item"}>Alerts</A>*/}
-              {/*</NavDropdown>*/}
+              </NavDropdown>
             </Nav>
             <Nav>
               <Show
