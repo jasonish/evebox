@@ -36,6 +36,7 @@ import { addNotification } from "./Notifications";
 import { eventNameFromType } from "./Events";
 import { EventServiceConfig, serverConfig } from "./config";
 import { createStore } from "solid-js/store";
+import { BiInfoCircle } from "./icons";
 
 export function EventView() {
   console.log("***** EventView *****");
@@ -193,17 +194,27 @@ export function EventView() {
     if (source.src_ip) {
       commonDetails.push([
         "Source",
-        <SearchLink value={source.src_ip}>
-          {formatAddressWithPort(source.src_ip, source.src_port)}
-        </SearchLink>,
+        <>
+          <SearchLink value={source.src_ip}>
+            {formatAddressWithPort(source.src_ip, source.src_port)}
+          </SearchLink>
+          <A class={"ps-1"} href={`/reports/address/${source.src_ip}`}>
+            <BiInfoCircle class={"bi-inline"} />
+          </A>
+        </>,
       ]);
     }
     if (source.dest_ip) {
       commonDetails.push([
         "Destination",
-        <SearchLink value={source.dest_ip}>
-          {formatAddressWithPort(source.dest_ip, source.dest_port)}
-        </SearchLink>,
+        <>
+          <SearchLink value={source.dest_ip}>
+            {formatAddressWithPort(source.dest_ip, source.dest_port)}
+          </SearchLink>
+          <A class={"ps-1"} href={`/reports/address/${source.dest_ip}`}>
+            <BiInfoCircle class={"bi-inline"} />
+          </A>
+        </>,
       ]);
     }
     if (source.in_iface) {

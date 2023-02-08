@@ -14,6 +14,7 @@ pub struct SelectQueryBuilder {
     order_by: Option<(String, String)>,
     limit: i64,
     params: Vec<Box<dyn ToSql + Send + Sync + 'static>>,
+    pub debug: Vec<String>,
 }
 
 impl SelectQueryBuilder {
@@ -48,16 +49,24 @@ impl SelectQueryBuilder {
         T: ToSql + Display + Send + Sync + 'static,
     {
         self.wheres.push(col.into());
-        self.params.push(Box::new(val));
+        self.push_param(val);
+        self
+    }
+
+    pub fn push_where<S>(&mut self, col: S) -> &mut Self
+    where
+        S: Into<String>,
+    {
+        self.wheres.push(col.into());
         self
     }
 
     /// Add a parameter.
-    #[allow(dead_code)]
-    pub fn param<T>(&mut self, v: T) -> &mut Self
+    pub fn push_param<T>(&mut self, v: T) -> &mut Self
     where
         T: ToSql + Display + Send + Sync + 'static,
     {
+        self.debug.push(v.to_string());
         self.params.push(Box::new(v));
         self
     }

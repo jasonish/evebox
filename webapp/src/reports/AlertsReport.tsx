@@ -7,6 +7,7 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 import * as API from "../api";
 import { Button, Card, Col, Container, Row, Table } from "solid-bootstrap";
 import { GroupByQueryRequest } from "../api";
+import { RefreshButton } from "../common/RefreshButton";
 
 interface CountValueRow {
   count: number;
@@ -94,7 +95,7 @@ export function AlertsReport() {
       <Container fluid={true}>
         <Row class="mt-2">
           <Col>
-            <RefreshButton loading={loading} refresh={forceRefresh} />
+            <RefreshButton loading={loading()} refresh={forceRefresh} />
           </Col>
         </Row>
 
@@ -137,53 +138,43 @@ export function AlertsReport() {
   );
 }
 
-function RefreshButton(props: { loading: () => number; refresh: () => void }) {
-  const style = "width: 7em;";
-  return (
-    <>
-      <Show when={props.loading() > 0}>
-        <Button disabled={true} style={style}>
-          Loading
-        </Button>
-      </Show>
-      <Show when={props.loading() == 0}>
-        <Button onclick={props.refresh} style={style}>
-          Refresh
-        </Button>
-      </Show>
-    </>
-  );
-}
-
-function CountValueTable(props: {
+export function CountValueTable(props: {
   title: string;
   label: string;
   rows: { count: number; key: any }[];
 }) {
+  const showNoData = true;
   return (
-    <Show when={props.rows.length > 0}>
+    <Show when={showNoData || props.rows.length > 0}>
       <Card>
-        <Card.Header>{props.title}</Card.Header>
-        <Card.Body style={"padding: 0;"}>
-          <Table size={"sm"} hover striped>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>{props.label}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={props.rows}>
-                {(row) => (
-                  <tr>
-                    <td>{row.count}</td>
-                    <td>{row.key}</td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </Table>
-        </Card.Body>
+        <Card.Header>
+          <b>{props.title}</b>
+        </Card.Header>
+        <Show when={props.rows.length === 0}>
+          <Card.Body>No results.</Card.Body>
+        </Show>
+        <Show when={props.rows.length > 0}>
+          <Card.Body style={"padding: 0;"}>
+            <Table size={"sm"} hover striped>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>{props.label}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <For each={props.rows}>
+                  {(row) => (
+                    <tr>
+                      <td>{row.count}</td>
+                      <td>{row.key}</td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </Table>
+          </Card.Body>
+        </Show>
       </Card>
     </Show>
   );

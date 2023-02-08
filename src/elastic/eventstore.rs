@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 use super::query_string_query;
-use super::request::term_filter;
 use super::Client;
 use super::ElasticError;
 use super::HistoryEntry;
@@ -105,12 +104,16 @@ impl EventStore {
                 "dns.rcode" => "dns.rcode.keyword",
                 "dns.rdata" => "dns.rdata.keyword",
                 "host" => "host.keyword",
+                "http.hostname" => "http.hostname.keyword",
+                "http.http_user_agent" => "http.http_user_agent.keyword",
                 "src_ip" => "src_ip.keyword",
                 "ssh.client.software_version" => "ssh.client.software_version.keyword",
                 "ssh.server.software_version" => "ssh.server.software_version.keyword",
                 "traffic.id" => "traffic.id.keyword",
                 "traffic.label" => "traffic.label.keyword",
                 "tls.sni" => "tls.sni.keyword",
+                "tls.subject" => "tls.subject.keyword",
+                "tls.issuerdn" => "tls.issuerdn.keyword",
                 _ => name,
             }
             .to_string()
@@ -386,6 +389,30 @@ impl EventStore {
             }
         }
         filters
+    }
+
+    fn process_query_string(
+        &self,
+        q: &QueryStringParts,
+        filter: &mut Vec<serde_json::Value>,
+        should: &mut Vec<serde_json::Value>,
+    ) {
+        for el in &q.elements {
+            match el {
+                Element::String(s) => {
+                    filter.push(query_string_query(s));
+                }
+                Element::KeyVal(key, val) => match key.as_ref() {
+                    "@before" => filter.push(request::range_lte_filter("@timestamp", val)),
+                    "@after" => filter.push(request::range_gte_filter("@timestamp", val)),
+                    "@ip" => {
+                        should.push(json!({"term": {self.map_field("src_ip"): val}}));
+                        should.push(json!({"term": {self.map_field("dest_ip"): val}}));
+                    }
+                    _ => filter.push(request::term_filter(&self.map_field(key), val)),
+                },
+            }
+        }
     }
 
     fn query_string_element_to_filter(&self, el: &Element) -> serde_json::Value {
@@ -871,16 +898,10 @@ impl EventStore {
         q: Option<QueryStringParts>,
     ) -> Result<Vec<JsonValue>, DatastoreError> {
         let mut filter = vec![];
+        let mut should = vec![];
 
         if let Some(q) = &q {
-            for x in &q.elements {
-                match x {
-                    Element::String(_v) => todo!(),
-                    Element::KeyVal(k, v) => {
-                        filter.push(term_filter(&self.map_field(k), v));
-                    }
-                }
-            }
+            self.process_query_string(q, &mut filter, &mut should);
         }
 
         #[rustfmt::skip]
@@ -913,7 +934,7 @@ impl EventStore {
         ));
 
         #[rustfmt::skip]
-        let query = json!({
+        let mut query = json!({
             "query": {
 		"bool": {
 		    "filter": filter,
@@ -926,24 +947,36 @@ impl EventStore {
 		"agg": agg,
             },
         });
-        let response: JsonValue = self.search(&query).await?.json().await?;
-        let mut data = vec![];
-        if let JsonValue::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
-            for bucket in buckets {
-                let entry = json!({
-                    "key": bucket["key"],
-                    "count": bucket["doc_count"],
-                });
-                data.push(entry);
 
-                // Elasticsearch doesn't take a size for rare terms,
-                // so stop when we've hit the requested size.
-                if data.len() == size {
-                    break;
+        if !should.is_empty() {
+            query["query"]["bool"]["should"] = should.into();
+            query["query"]["bool"]["minimum_should_match"] = 1.into();
+        }
+
+        let response: JsonValue = self.search(&query).await?.json().await?;
+
+        if let Some(error) = response["error"].as_object() {
+            error!("Elasticsearch \"group_by\" query failed: {error:?}");
+            Err(DatastoreError::ElasticSearchError(format!("{error:?}")))
+        } else {
+            let mut data = vec![];
+            if let JsonValue::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
+                for bucket in buckets {
+                    let entry = json!({
+                        "key": bucket["key"],
+                        "count": bucket["doc_count"],
+                    });
+                    data.push(entry);
+
+                    // Elasticsearch doesn't take a size for rare terms,
+                    // so stop when we've hit the requested size.
+                    if data.len() == size {
+                        break;
+                    }
                 }
             }
+            Ok(data)
         }
-        Ok(data)
     }
 
     pub async fn flow_histogram(

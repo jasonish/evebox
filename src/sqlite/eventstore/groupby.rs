@@ -47,12 +47,20 @@ impl SQLiteEventStore {
                     Element::String(s) => {
                         builder.where_value("events.source LIKE ?", s.clone());
                     }
-                    Element::KeyVal(k, v) => {
-                        builder.where_value(
-                            format!("json_extract(events.source, '$.{k}') = ?"),
-                            v.clone(),
-                        );
-                    }
+                    Element::KeyVal(k, v) => match k.as_ref() {
+                        "@ip" => {
+                            dbg!((k, v));
+                            builder.push_where("(json_extract(events.source, '$.src_ip') = ? OR json_extract(events.source, '$.dest_ip') = ?)");
+                            builder.push_param(v.clone());
+                            builder.push_param(v.clone());
+                        }
+                        _ => {
+                            builder.where_value(
+                                format!("json_extract(events.source, '$.{k}') = ?"),
+                                v.clone(),
+                            );
+                        }
+                    },
                 }
             }
         }

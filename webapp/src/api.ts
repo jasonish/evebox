@@ -283,8 +283,17 @@ export interface GroupByQueryRequest {
   q?: string;
 }
 
+export interface GroupByQueryResponse {
+  rows: GroupByQueryResponseRow[];
+}
+
+export interface GroupByQueryResponseRow {
+  count: number;
+  key: any;
+}
+
 export async function groupBy(
   request: GroupByQueryRequest
-): Promise<{ rows: { count: number; key: any }[] }> {
+): Promise<GroupByQueryResponse> {
   return get("/api/1/groupby", request).then((response) => response.data);
 }

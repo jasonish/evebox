@@ -7,3 +7,8 @@
   padding-top: 0 !important;
   margin-top: 0 !important;
 }
+
+// Helps align bootstrap icons with the text they are next to.
+.bi-inline {
+  vertical-align: -0.2em;
+}
