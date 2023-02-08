@@ -2,8 +2,17 @@
 //
 // SPDX-License-Identifier: MIT
 
-pub(crate) fn parse_duration(
-    duration: &str,
-) -> Result<std::time::Duration, humantime::DurationError> {
-    humantime::parse_duration(duration)
+use anyhow::Result;
+use std::time::Duration;
+use std::time::UNIX_EPOCH;
+
+/// Parse a string representing a duration.
+///
+/// This is a wrapper around humantime with special handlers for "",
+/// "all" and "*" which will return the duration since the unix epoch.
+pub(crate) fn parse_duration(duration: &str) -> Result<Duration> {
+    match duration {
+        "" | "all" | "*" => Ok(UNIX_EPOCH.elapsed()?),
+        _ => Ok(humantime::parse_duration(duration)?),
+    }
 }

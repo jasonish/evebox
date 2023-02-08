@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
+pub mod builder;
 pub mod configrepo;
 pub mod connection;
 pub mod eventstore;
 pub mod importer;
 pub mod retention;
-pub mod builder;
 
 use crate::prelude::*;
 pub use connection::init_event_db;

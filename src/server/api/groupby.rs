@@ -4,6 +4,7 @@
 
 use super::{util::parse_duration, ApiError};
 use crate::prelude::*;
+use crate::server::api::parse_query_string;
 use crate::server::{main::SessionExtractor, ServerContext};
 use axum::{extract::State, response::IntoResponse, Form, Json};
 use serde::Deserialize;
@@ -34,6 +35,8 @@ pub(crate) struct GroupByParams {
     /// Sort order, desc or asc.
     #[serde(default = "default_order")]
     order: String,
+    /// Optional query string.
+    q: Option<String>,
 }
 
 pub(crate) async fn group_by(
@@ -44,19 +47,30 @@ pub(crate) async fn group_by(
     let duration = parse_duration(&form.time_range)
         .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
     let min_timestamp = time::OffsetDateTime::now_utc().sub(duration);
+
+    let qs = if let Some(q) = &form.q {
+        Some(
+            parse_query_string(q, None)
+                .map_err(|err| ApiError::bad_request(format!("q: {err}")))?,
+        )
+    } else {
+        None
+    };
+
     let results = context
         .datastore
-        .group_by(&form.field, min_timestamp, form.size, &form.order)
+        .group_by(&form.field, min_timestamp, form.size, &form.order, qs)
         .await
         .map_err(|err| {
             error!("Datastore group by failed: {err}");
             ApiError::InternalServerError
         })?;
+    #[rustfmt::skip]
     let response = json!({
-    "rows": results,
-    "debug": {
-                "parsed_timerange": duration,
-    }
+	"rows": results,
+	"debug": {
+            "parsed_timerange": duration,
+	}
     });
     Ok(Json(response))
 }

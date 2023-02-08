@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 use super::SQLiteEventStore;
-use crate::{datastore::DatastoreError, sqlite::builder::SelectQueryBuilder};
+use crate::{
+    datastore::DatastoreError, searchquery::Element, server::api::QueryStringParts,
+    sqlite::builder::SelectQueryBuilder,
+};
 use rusqlite::types::{FromSqlError, ValueRef};
 
 impl SQLiteEventStore {
@@ -13,6 +16,7 @@ impl SQLiteEventStore {
         min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
+        q: Option<QueryStringParts>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut builder = SelectQueryBuilder::new();
         builder
@@ -29,12 +33,28 @@ impl SQLiteEventStore {
             .order_by("count", order)
             .limit(size as i64);
 
-        // TODO: Add an event_type field, or take it from the query
-        // string. Really speeds things up.
+        // Some internal optimizing, may be provided on the query
+        // string already.
         if field.starts_with("alert.") {
             builder.where_value("json_extract(events.source, '$.event_type') = ?", "alert");
         } else if field.starts_with("dns.") {
             builder.where_value("json_extract(events.source, '$.event_type') = ?", "dns");
+        }
+
+        if let Some(q) = &q {
+            for e in &q.elements {
+                match e {
+                    Element::String(s) => {
+                        builder.where_value("events.source LIKE ?", s.clone());
+                    }
+                    Element::KeyVal(k, v) => {
+                        builder.where_value(
+                            format!("json_extract(events.source, '$.{k}') = ?"),
+                            v.clone(),
+                        );
+                    }
+                }
+            }
         }
 
         let results = self

@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
-use std::fmt::Display;
 use rusqlite::ToSql;
+use std::fmt::Display;
 
 #[derive(Default)]
 pub struct SelectQueryBuilder {
@@ -68,7 +68,7 @@ impl SelectQueryBuilder {
     }
 
     pub fn params(&self) -> &[Box<dyn ToSql + Send + Sync + 'static>] {
-	&self.params
+        &self.params
     }
 
     pub fn build(&mut self) -> String {

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::query_string_query;
+use super::request::term_filter;
 use super::Client;
 use super::ElasticError;
 use super::HistoryEntry;
@@ -12,13 +13,17 @@ use super::TAG_ESCALATED;
 use crate::datastore::HistogramInterval;
 use crate::datastore::{self, DatastoreError};
 use crate::elastic::importer::Importer;
+use crate::elastic::request::exists_filter;
+use crate::elastic::request::range_gte_filter;
 use crate::elastic::{
     format_timestamp, request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED,
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::prelude::*;
 use crate::searchquery;
+use crate::searchquery::Element;
 use crate::server::api;
+use crate::server::api::QueryStringParts;
 use crate::server::session::Session;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -105,7 +110,7 @@ impl EventStore {
                 "ssh.server.software_version" => "ssh.server.software_version.keyword",
                 "traffic.id" => "traffic.id.keyword",
                 "traffic.label" => "traffic.label.keyword",
-		"tls.sni" => "tls.sni.keyword",
+                "tls.sni" => "tls.sni.keyword",
                 _ => name,
             }
             .to_string()
@@ -383,14 +388,14 @@ impl EventStore {
         filters
     }
 
-    fn query_string_element_to_filter(&self, el: &searchquery::Element) -> serde_json::Value {
+    fn query_string_element_to_filter(&self, el: &Element) -> serde_json::Value {
         match el {
-            searchquery::Element::KeyVal(key, val) => match key.as_ref() {
+            Element::KeyVal(key, val) => match key.as_ref() {
                 "@before" => request::range_lte_filter("@timestamp", val),
                 "@after" => request::range_gte_filter("@timestamp", val),
                 _ => request::term_filter(&self.map_field(key), val),
             },
-            searchquery::Element::String(val) => query_string_query(val),
+            Element::String(val) => query_string_query(val),
         }
     }
 
@@ -863,55 +868,64 @@ impl EventStore {
         min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
+        q: Option<QueryStringParts>,
     ) -> Result<Vec<JsonValue>, DatastoreError> {
+        let mut filter = vec![];
 
-	let formatted_min_timestamp = format_timestamp(min_timestamp);
+        if let Some(q) = &q {
+            for x in &q.elements {
+                match x {
+                    Element::String(_v) => todo!(),
+                    Element::KeyVal(k, v) => {
+                        filter.push(term_filter(&self.map_field(k), v));
+                    }
+                }
+            }
+        }
 
-	let agg = if order == "asc" {
-	    // We're after a rare terms...
-	    json!({
+        #[rustfmt::skip]
+        let agg = if order == "asc" {
+            // We're after a rare terms...
+            json!({
 		"rare_terms": {
-		    "field": self.map_field(field),
-		    // Increase the max_doc_count, otherwise only
-		    // terms that appear once will be returned, but
-		    // we're after the least occurring, but those
-		    // numbers could still be high.
-		    "max_doc_count": 100,
+                    "field": self.map_field(field),
+                    // Increase the max_doc_count, otherwise only
+                    // terms that appear once will be returned, but
+                    // we're after the least occurring, but those
+                    // numbers could still be high.
+                    "max_doc_count": 100,
 		}
-	    })
-	} else {
-	    // This is a normal "Top 10"...
-	    json!({
+            })
+        } else {
+            // This is a normal "Top 10"...
+            json!({
 		"terms": {
-		    "field": self.map_field(field),
-		    "size": size,
+                    "field": self.map_field(field),
+                    "size": size,
 		},
-	    })
-	};
+            })
+        };
 
-	let query = json!({
-	    "query": {
+        filter.push(exists_filter("event_type"));
+        filter.push(range_gte_filter(
+            "@timestamp",
+            &format_timestamp(min_timestamp),
+        ));
+
+        #[rustfmt::skip]
+        let query = json!({
+            "query": {
 		"bool": {
-		    "filter": [
-			// Make sure the doc looks like an Eve record.
-			{"exists": { "field": "event_type" }},
-			{
-			    "range": {
-				"@timestamp": {
-				    "gte": formatted_min_timestamp,
-				}
-			    },
-			}
-	            ],
+		    "filter": filter,
 		},
-	    },
-	    // Not interested in individual documents, just the
-	    // aggregations on the filtered data.
-	    "size": 0,
-	    "aggs": {
+            },
+            // Not interested in individual documents, just the
+            // aggregations on the filtered data.
+            "size": 0,
+            "aggs": {
 		"agg": agg,
-	    },
-	});
+            },
+        });
         let response: JsonValue = self.search(&query).await?.json().await?;
         let mut data = vec![];
         if let JsonValue::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
@@ -922,14 +936,14 @@ impl EventStore {
                 });
                 data.push(entry);
 
-		// Elasticsearch doesn't take a size for rare terms,
-		// so stop when we've hit the requested size.
-		if data.len() == size {
-		    break;
-		}
+                // Elasticsearch doesn't take a size for rare terms,
+                // so stop when we've hit the requested size.
+                if data.len() == size {
+                    break;
+                }
             }
         }
-	Ok(data)
+        Ok(data)
     }
 
     pub async fn flow_histogram(

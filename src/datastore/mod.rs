@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::importer::Importer;
-use crate::server::api;
+use crate::server::api::{self, QueryStringParts};
 use crate::server::session::Session;
 use crate::sqlite::eventstore::SQLiteEventStore;
 use crate::{elastic, searchquery};
@@ -245,11 +245,12 @@ impl Datastore {
         min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
+        q: Option<QueryStringParts>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
-	match self {
-	    Datastore::Elastic(ds) => ds.group_by(field, min_timestamp, size, order).await,
-	    Datastore::SQLite(ds) => ds.group_by(field, min_timestamp, size, order).await,
-	}
+        match self {
+            Datastore::Elastic(ds) => ds.group_by(field, min_timestamp, size, order, q).await,
+            Datastore::SQLite(ds) => ds.group_by(field, min_timestamp, size, order, q).await,
+        }
     }
 }
 
