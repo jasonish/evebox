@@ -4,10 +4,7 @@
 
 use super::{util::parse_duration, ApiError};
 use crate::prelude::*;
-use crate::{
-    datastore::Datastore,
-    server::{main::SessionExtractor, ServerContext},
-};
+use crate::server::{main::SessionExtractor, ServerContext};
 use axum::{extract::State, response::IntoResponse, Form, Json};
 use serde::Deserialize;
 use std::{ops::Sub, sync::Arc};
@@ -47,25 +44,19 @@ pub(crate) async fn group_by(
     let duration = parse_duration(&form.time_range)
         .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
     let min_timestamp = time::OffsetDateTime::now_utc().sub(duration);
-
-    match &context.datastore {
-        Datastore::Elastic(_) => Err(ApiError::Unimplemented),
-        Datastore::SQLite(ds) => {
-            let results = ds
-                .group_by(&form.field, min_timestamp, form.size, &form.order)
-                .await
-                .map_err(|err| {
-                    error!("Datastore group by failed: {err}");
-                    ApiError::InternalServerError
-                })?;
-            #[rustfmt::skip]
-            let response = json!({
-		"rows": results,
-		"debug": {
-                    "parsed_timerange": duration,
-		}
-            });
-            Ok(Json(response))
-        }
+    let results = context
+        .datastore
+        .group_by(&form.field, min_timestamp, form.size, &form.order)
+        .await
+        .map_err(|err| {
+            error!("Datastore group by failed: {err}");
+            ApiError::InternalServerError
+        })?;
+    let response = json!({
+    "rows": results,
+    "debug": {
+                "parsed_timerange": duration,
     }
+    });
+    Ok(Json(response))
 }

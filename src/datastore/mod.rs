@@ -238,6 +238,19 @@ impl Datastore {
             _ => Err(DatastoreError::Unimplemented),
         }
     }
+
+    pub async fn group_by(
+        &self,
+        field: &str,
+        min_timestamp: time::OffsetDateTime,
+        size: usize,
+        order: &str,
+    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+	match self {
+	    Datastore::Elastic(ds) => ds.group_by(field, min_timestamp, size, order).await,
+	    Datastore::SQLite(ds) => ds.group_by(field, min_timestamp, size, order).await,
+	}
+    }
 }
 
 #[derive(Default, Debug)]

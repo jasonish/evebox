@@ -105,6 +105,7 @@ impl EventStore {
                 "ssh.server.software_version" => "ssh.server.software_version.keyword",
                 "traffic.id" => "traffic.id.keyword",
                 "traffic.label" => "traffic.label.keyword",
+		"tls.sni" => "tls.sni.keyword",
                 _ => name,
             }
             .to_string()
@@ -854,6 +855,81 @@ impl EventStore {
         });
 
         Ok(response)
+    }
+
+    pub async fn group_by(
+        &self,
+        field: &str,
+        min_timestamp: time::OffsetDateTime,
+        size: usize,
+        order: &str,
+    ) -> Result<Vec<JsonValue>, DatastoreError> {
+
+	let formatted_min_timestamp = format_timestamp(min_timestamp);
+
+	let agg = if order == "asc" {
+	    // We're after a rare terms...
+	    json!({
+		"rare_terms": {
+		    "field": self.map_field(field),
+		    // Increase the max_doc_count, otherwise only
+		    // terms that appear once will be returned, but
+		    // we're after the least occurring, but those
+		    // numbers could still be high.
+		    "max_doc_count": 100,
+		}
+	    })
+	} else {
+	    // This is a normal "Top 10"...
+	    json!({
+		"terms": {
+		    "field": self.map_field(field),
+		    "size": size,
+		},
+	    })
+	};
+
+	let query = json!({
+	    "query": {
+		"bool": {
+		    "filter": [
+			// Make sure the doc looks like an Eve record.
+			{"exists": { "field": "event_type" }},
+			{
+			    "range": {
+				"@timestamp": {
+				    "gte": formatted_min_timestamp,
+				}
+			    },
+			}
+	            ],
+		},
+	    },
+	    // Not interested in individual documents, just the
+	    // aggregations on the filtered data.
+	    "size": 0,
+	    "aggs": {
+		"agg": agg,
+	    },
+	});
+        let response: JsonValue = self.search(&query).await?.json().await?;
+        let mut data = vec![];
+        if let JsonValue::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
+            for bucket in buckets {
+                let entry = json!({
+                    "key": bucket["key"],
+                    "count": bucket["doc_count"],
+                });
+                data.push(entry);
+
+		// Elasticsearch doesn't take a size for rare terms,
+		// so stop when we've hit the requested size.
+		if data.len() == size {
+		    break;
+		}
+            }
+        }
+	Ok(data)
     }
 
     pub async fn flow_histogram(
