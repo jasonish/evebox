@@ -5,7 +5,7 @@
 use crate::{
     datastore::{DatastoreError, EventQueryParams},
     eve::eve::EveJson,
-    searchquery::Element,
+    querystring::Element,
 };
 
 use super::{ParamBuilder, SQLiteEventStore};

@@ -4,7 +4,7 @@
 
 use super::SQLiteEventStore;
 use crate::{
-    datastore::DatastoreError, searchquery::Element, server::api::QueryStringParts,
+    datastore::DatastoreError, querystring::Element, server::api::QueryStringParts,
     sqlite::builder::SelectQueryBuilder,
 };
 use rusqlite::types::{FromSqlError, ValueRef};

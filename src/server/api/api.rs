@@ -17,11 +17,11 @@ use serde_json::json;
 
 use crate::datastore::HistogramInterval;
 use crate::datastore::{self, EventQueryParams};
-use crate::searchquery::Element;
+use crate::querystring::Element;
 use crate::server::filters::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
-use crate::{elastic, searchquery};
+use crate::{elastic, querystring};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AlertGroupSpec {
@@ -623,12 +623,12 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
 pub struct QueryStringParts {
     pub before: Option<time::OffsetDateTime>,
     pub after: Option<time::OffsetDateTime>,
-    pub elements: Vec<searchquery::Element>,
+    pub elements: Vec<querystring::Element>,
 }
 
 pub fn parse_query_string(query: &str, tz_offset: Option<&str>) -> Result<QueryStringParts> {
     let mut parts = QueryStringParts::default();
-    match searchquery::parse(query) {
+    match querystring::parse(query) {
         Err(err) => {
             bail!("Failed to parse query string: {:?}", err);
         }

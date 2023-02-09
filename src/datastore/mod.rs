@@ -6,7 +6,7 @@ use crate::importer::Importer;
 use crate::server::api::{self, QueryStringParts};
 use crate::server::session::Session;
 use crate::sqlite::eventstore::SQLiteEventStore;
-use crate::{elastic, searchquery};
+use crate::{elastic, querystring};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -21,7 +21,7 @@ pub struct EventQueryParams {
     pub event_type: Option<String>,
     pub size: Option<u64>,
     pub sort_by: Option<String>,
-    pub query_string_elements: Vec<searchquery::Element>,
+    pub query_string_elements: Vec<querystring::Element>,
 }
 
 pub enum Datastore {

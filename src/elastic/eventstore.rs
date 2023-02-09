@@ -19,8 +19,8 @@ use crate::elastic::{
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::prelude::*;
-use crate::searchquery;
-use crate::searchquery::Element;
+use crate::querystring;
+use crate::querystring::Element;
 use crate::server::api;
 use crate::server::api::parse_query_string;
 use crate::server::api::QueryStringParts;
@@ -380,7 +380,7 @@ impl EventStore {
 
     fn query_string_to_filters(&self, query: &str) -> Vec<serde_json::Value> {
         let mut filters = Vec::new();
-        match searchquery::parse(query) {
+        match querystring::parse(query) {
             Err(err) => {
                 error!("Failed to parse query string: {} -- {}", &query, err);
             }

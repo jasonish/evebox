@@ -7,7 +7,7 @@ use crate::prelude::*;
 use crate::{
     datastore::DatastoreError,
     elastic::AlertQueryOptions,
-    searchquery::{self, Element},
+    querystring::{self, Element},
     sqlite::{eventstore::parse_timestamp, format_sqlite_timestamp},
 };
 
@@ -82,7 +82,7 @@ impl SQLiteEventStore {
 
                     // Query string.
                     if let Some(query_string) = options.query_string {
-                        match searchquery::parse(&query_string) {
+                        match querystring::parse(&query_string) {
                             Err(err) => {
                                 error!(
                                     "Failed to parse query string: error={}, query string={}",
