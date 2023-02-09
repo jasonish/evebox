@@ -380,11 +380,11 @@ impl EventStore {
 
     fn query_string_to_filters(&self, query: &str) -> Vec<serde_json::Value> {
         let mut filters = Vec::new();
-        match querystring::parse(query) {
+        match querystring::parse(query, None) {
             Err(err) => {
                 error!("Failed to parse query string: {} -- {}", &query, err);
             }
-            Ok((_, elements)) => {
+            Ok(elements) => {
                 for element in &elements {
                     filters.push(self.query_string_element_to_filter(element));
                 }
@@ -415,7 +415,7 @@ impl EventStore {
                 Element::Ip(ip) => {
                     should.push(json!({"term": {self.map_field("src_ip"): ip}}));
                     should.push(json!({"term": {self.map_field("dest_ip"): ip}}));
-		}
+                }
             }
         }
     }

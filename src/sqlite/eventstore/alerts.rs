@@ -82,17 +82,14 @@ impl SQLiteEventStore {
 
                     // Query string.
                     if let Some(query_string) = options.query_string {
-                        match querystring::parse(&query_string) {
+                        match querystring::parse(&query_string, None) {
                             Err(err) => {
                                 error!(
                                     "Failed to parse query string: error={}, query string={}",
                                     &err, &query_string
                                 );
                             }
-                            Ok((unparsed, elements)) => {
-                                if !unparsed.is_empty() {
-                                    error!("Unparsed characters in query string: {unparsed}");
-                                }
+                            Ok(elements) => {
                                 for el in &elements {
                                     debug!("Parsed query string element: {:?}", el);
                                     match el {

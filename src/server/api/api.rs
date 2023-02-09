@@ -412,111 +412,9 @@ impl IntoResponse for ApiError {
     }
 }
 
-fn parse_timestamp2(timestamp: &str, offset: Option<&str>) -> Result<time::OffsetDateTime> {
-    if let Some(timestamp) = timestamp_preprocess(timestamp, offset) {
-        Ok(crate::eve::parse_eve_timestamp(&timestamp)?)
-    } else {
-        bail!("badly formatted date")
-    }
-}
-
-/// Preprocesses a user supplied timestamp into something that can be parsed by the stricter
-/// EVE timestamp format parser.
-///
-/// Requires at last a year.
-fn timestamp_preprocess(s: &str, offset: Option<&str>) -> Option<String> {
-    let default_offset = offset.unwrap_or("+0000");
-    let re = regex::Regex::new(
-        r"^(\d{4})-?(\d{2})?-?(\d{2})?[T ]?(\d{2})?:?(\d{2})?:?(\d{2})?(\.(\d+))?(([+\-]\d{4})|Z)?$",
-    )
-    .unwrap();
-    if let Some(c) = re.captures(s) {
-        let year = c.get(1).map_or("", |m| m.as_str());
-        let month = c.get(2).map_or("01", |m| m.as_str());
-        let day = c.get(3).map_or("01", |m| m.as_str());
-        let hour = c.get(4).map_or("00", |m| m.as_str());
-        let minute = c.get(5).map_or("00", |m| m.as_str());
-        let second = c.get(6).map_or("00", |m| m.as_str());
-        let subs = c.get(8).map_or("0", |m| m.as_str());
-        let offset = c.get(9).map_or(default_offset, |m| m.as_str());
-        return Some(format!(
-            "{}-{}-{}T{}:{}:{}.{}{}",
-            year,
-            month,
-            day,
-            hour,
-            minute,
-            second,
-            subs,
-            if offset == "Z" { "+0000" } else { offset },
-        ));
-    }
-    None
-}
-
 #[cfg(test)]
 mod test {
-    use crate::server::api::api::timestamp_preprocess;
     use crate::server::filters::GenericQuery;
-
-    #[test]
-    fn test_timestamp_preprocess() {
-        assert_eq!(
-            timestamp_preprocess("2023", None).unwrap(),
-            "2023-01-01T00:00:00.0+0000"
-        );
-        assert_eq!(
-            timestamp_preprocess("2023-01-01", None).unwrap(),
-            "2023-01-01T00:00:00.0+0000"
-        );
-        assert_eq!(
-            timestamp_preprocess("2023-01-01T01", None).unwrap(),
-            "2023-01-01T01:00:00.0+0000"
-        );
-        assert_eq!(
-            timestamp_preprocess("2023-01-01T01:02", None).unwrap(),
-            "2023-01-01T01:02:00.0+0000"
-        );
-        assert_eq!(
-            timestamp_preprocess("2023-01-01 01:02", None).unwrap(),
-            "2023-01-01T01:02:00.0+0000"
-        );
-        assert_eq!(
-            timestamp_preprocess("2023-01-01T01:02:03", None).unwrap(),
-            "2023-01-01T01:02:03.0+0000"
-        );
-        assert_eq!(
-            timestamp_preprocess("2023-01-01T01:02:03.123", None).unwrap(),
-            "2023-01-01T01:02:03.123+0000"
-        );
-        assert_eq!(
-            timestamp_preprocess("2023-01-01T01:02:03.123-0600", None).unwrap(),
-            "2023-01-01T01:02:03.123-0600"
-        );
-
-        // Timezone offset without sub-seconds.
-        assert_eq!(
-            timestamp_preprocess("2023-01-01T01:02:03-0600", None).unwrap(),
-            "2023-01-01T01:02:03.0-0600"
-        );
-
-        // '-' in the date and ':' in the time are optional.
-        assert_eq!(
-            timestamp_preprocess("20230101T010203.123-0600", None).unwrap(),
-            "2023-01-01T01:02:03.123-0600"
-        );
-
-        assert_eq!(
-            timestamp_preprocess("2023-01-01T01:02:03.123", Some("+1200")).unwrap(),
-            "2023-01-01T01:02:03.123+1200"
-        );
-
-        // 'Z' as timezone offset.
-        assert_eq!(
-            timestamp_preprocess("2023-01-01T01:02:03.123Z", None).unwrap(),
-            "2023-01-01T01:02:03.123+0000"
-        );
-    }
 
     #[test]
     fn test_query_params_mints_from_time_range() {
@@ -559,7 +457,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
         if params.min_timestamp.is_some() {
             debug!("Ignoring min_timestamp, @after provided in query string");
         } else {
-            match parse_timestamp2(min_timestamp, default_tz_offset) {
+            match crate::querystring::parse_timestamp(min_timestamp, default_tz_offset) {
                 Ok(ts) => params.min_timestamp = Some(ts),
                 Err(err) => {
                     error!(
@@ -580,7 +478,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
         if params.max_timestamp.is_some() {
             debug!("Ignoring max_timestamp, @before provided in query string");
         } else {
-            match parse_timestamp2(max_timestamp, default_tz_offset) {
+            match crate::querystring::parse_timestamp(max_timestamp, default_tz_offset) {
                 Ok(ts) => params.max_timestamp = Some(ts),
                 Err(err) => {
                     error!(
@@ -628,15 +526,15 @@ pub struct QueryStringParts {
 
 pub fn parse_query_string(query: &str, tz_offset: Option<&str>) -> Result<QueryStringParts> {
     let mut parts = QueryStringParts::default();
-    match querystring::parse(query) {
+    match querystring::parse(query, None) {
         Err(err) => {
             bail!("Failed to parse query string: {:?}", err);
         }
-        Ok((_, elements)) => {
+        Ok(elements) => {
             for element in elements {
                 match element {
                     Element::KeyVal(ref key, ref val) => match key.as_ref() {
-                        "@before" => match parse_timestamp2(val, tz_offset) {
+                        "@before" => match crate::querystring::parse_timestamp(val, tz_offset) {
                             Ok(timestamp) => {
                                 parts.before = Some(timestamp);
                             }
@@ -647,7 +545,7 @@ pub fn parse_query_string(query: &str, tz_offset: Option<&str>) -> Result<QueryS
                                 );
                             }
                         },
-                        "@after" => match parse_timestamp2(val, tz_offset) {
+                        "@after" => match crate::querystring::parse_timestamp(val, tz_offset) {
                             Ok(timestamp) => {
                                 parts.after = Some(timestamp);
                             }
