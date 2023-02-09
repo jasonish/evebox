@@ -10,8 +10,17 @@ use nom::IResult;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Element {
+    /// Bare string.
     String(String),
+    /// A key value pair, (eg: alert.signature_id:222222)
     KeyVal(String, String),
+    /// A timestamp specified with @before.
+    BeforeTimestamp(time::OffsetDateTime),
+    /// A timestamp specified with @after.
+    AfterTimestamp(time::OffsetDateTime),
+    /// IP address specified with @ip which is used to match on the
+    /// source or destination IP address.
+    Ip(String),
 }
 
 /// Parse a quote string.

@@ -71,6 +71,9 @@ impl SQLiteEventStore {
                                     params.push(format!("%{val}%"));
                                 }
                             }
+                            Element::BeforeTimestamp(_) => todo!(),
+                            Element::AfterTimestamp(_) => todo!(),
+                            Element::Ip(_) => todo!(),
                         }
                     }
 

@@ -414,6 +414,9 @@ impl EventStore {
                     }
                     _ => filter.push(request::term_filter(&self.map_field(key), val)),
                 },
+                Element::BeforeTimestamp(_) => todo!(),
+                Element::AfterTimestamp(_) => todo!(),
+                Element::Ip(_) => todo!(),
             }
         }
     }
@@ -426,6 +429,9 @@ impl EventStore {
                 _ => request::term_filter(&self.map_field(key), val),
             },
             Element::String(val) => query_string_query(val),
+            Element::BeforeTimestamp(_) => todo!(),
+            Element::AfterTimestamp(_) => todo!(),
+            Element::Ip(_) => todo!(),
         }
     }
 

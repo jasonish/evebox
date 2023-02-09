@@ -61,6 +61,9 @@ impl SQLiteEventStore {
                             );
                         }
                     },
+                    Element::BeforeTimestamp(_) => todo!(),
+                    Element::AfterTimestamp(_) => todo!(),
+                    Element::Ip(_) => todo!(),
                 }
             }
         }
