@@ -142,45 +142,6 @@ pub(crate) async fn alert_group_archive(
     }
 }
 
-pub(crate) async fn agg(
-    Extension(context): Extension<Arc<ServerContext>>,
-    SessionExtractor(_session): SessionExtractor,
-    Form(query): Form<GenericQuery>,
-) -> impl IntoResponse {
-    let min_timestamp = match query.mints_from_time_range(&time::OffsetDateTime::now_utc()) {
-        Ok(ts) => ts,
-        Err(err) => {
-            error!("api/agg: {:?}", err);
-            return (
-                StatusCode::BAD_REQUEST,
-                "failed to parse time range".to_string(),
-            )
-                .into_response();
-        }
-    };
-    let agg = if let Some(agg) = query.agg {
-        agg
-    } else {
-        return (StatusCode::BAD_REQUEST, "agg is a required parameter").into_response();
-    };
-    let params = datastore::AggParameters {
-        min_timestamp: min_timestamp,
-        event_type: query.event_type,
-        dns_type: query.dns_type,
-        query_string: query.query_string,
-        address_filter: query.address_filter,
-        size: query.size.unwrap_or(10),
-        agg: agg,
-    };
-    match context.datastore.agg(params).await {
-        Err(err) => {
-            error!("Aggregation failed: {:?}", err);
-            return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
-        }
-        Ok(agg) => Json(agg).into_response(),
-    }
-}
-
 pub(crate) async fn histogram(
     Extension(context): Extension<Arc<ServerContext>>,
     SessionExtractor(_session): SessionExtractor,

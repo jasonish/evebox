@@ -211,13 +211,6 @@ impl Datastore {
         }
     }
 
-    pub async fn agg(&self, params: AggParameters) -> Result<JsonValue, DatastoreError> {
-        match self {
-            Datastore::Elastic(ds) => ds.agg(params).await,
-            _ => Err(DatastoreError::Unimplemented),
-        }
-    }
-
     pub async fn flow_histogram(
         &self,
         params: FlowHistogramParameters,
