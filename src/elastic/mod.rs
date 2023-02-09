@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use crate::datastore::DatastoreError;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use serde_json::Value as JsonValue;
 use thiserror::Error;
 use time::macros::format_description;
 use time::OffsetDateTime;
@@ -69,7 +68,7 @@ pub fn format_timestamp(dt: time::OffsetDateTime) -> String {
     dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
 }
 
-pub fn query_string_query(query_string: &str) -> JsonValue {
+pub fn query_string_query(query_string: &str) -> serde_json::Value {
     json!({
         "query_string": {
             "default_operator": "AND",
@@ -84,14 +83,14 @@ pub struct ElasticResponse {
     pub hits: Option<serde_json::Value>,
     pub error: Option<ElasticResponseError>,
     pub status: Option<u64>,
-    pub failures: Option<Vec<JsonValue>>,
+    pub failures: Option<Vec<serde_json::Value>>,
     pub total: Option<u64>,
     pub updated: Option<u64>,
     pub aggregations: Option<serde_json::Value>,
     pub version: Option<response::Version>,
 
     #[serde(flatten)]
-    pub other: std::collections::HashMap<String, JsonValue>,
+    pub other: std::collections::HashMap<String, serde_json::Value>,
 }
 
 pub mod response {
@@ -106,5 +105,5 @@ pub mod response {
 pub struct ElasticResponseError {
     pub reason: String,
     #[serde(flatten)]
-    pub other: std::collections::HashMap<String, JsonValue>,
+    pub other: std::collections::HashMap<String, serde_json::Value>,
 }

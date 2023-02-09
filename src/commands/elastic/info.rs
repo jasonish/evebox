@@ -1,10 +1,9 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use crate::elastic::request::Request;
 use crate::elastic::{self, Client};
-use crate::types::JsonValue;
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let url = args.value_of("elasticsearch").unwrap();
@@ -41,7 +40,7 @@ async fn check_logstash(client: &Client) -> anyhow::Result<()> {
     request.push_filter(elastic::request::exists_filter("src_ip"));
     request.push_filter(elastic::request::exists_filter("dest_ip"));
     request.size(1);
-    let response: JsonValue = client
+    let response: serde_json::Value = client
         .post(&format!("{index_pattern}/_search"))?
         .json(&request)
         .send()
@@ -71,7 +70,7 @@ async fn check_filebeat(client: &Client) -> anyhow::Result<()> {
     request.push_filter(elastic::request::exists_filter("src_ip"));
     request.push_filter(elastic::request::exists_filter("dest_ip"));
     request.size(1);
-    let response: JsonValue = client
+    let response: serde_json::Value = client
         .post(&format!("{index_pattern}/_search"))?
         .json(&request)
         .send()
@@ -100,7 +99,7 @@ async fn check_filebeat_ecs(client: &Client) -> anyhow::Result<()> {
     request.push_filter(elastic::request::exists_filter("ecs"));
     request.push_filter(elastic::request::exists_filter("suricata.eve.event_type"));
     request.size(1);
-    let response: JsonValue = client
+    let response: serde_json::Value = client
         .post(&format!("{index_pattern}/_search"))?
         .json(&request)
         .send()

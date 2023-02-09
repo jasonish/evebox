@@ -7,7 +7,6 @@ use crate::server::api::{self, QueryStringParts};
 use crate::server::session::Session;
 use crate::sqlite::eventstore::SQLiteEventStore;
 use crate::{elastic, searchquery};
-use serde_json::Value as JsonValue;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -214,7 +213,7 @@ impl Datastore {
     pub async fn flow_histogram(
         &self,
         params: FlowHistogramParameters,
-    ) -> Result<JsonValue, DatastoreError> {
+    ) -> Result<serde_json::Value, DatastoreError> {
         match self {
             Datastore::Elastic(ds) => ds.flow_histogram(params).await,
             _ => Err(DatastoreError::Unimplemented),
@@ -225,7 +224,7 @@ impl Datastore {
         &self,
         what: &str,
         params: &EventQueryParams,
-    ) -> Result<JsonValue, DatastoreError> {
+    ) -> Result<serde_json::Value, DatastoreError> {
         match self {
             Datastore::Elastic(ds) => elastic::report::dhcp::dhcp_report(ds, what, params).await,
             _ => Err(DatastoreError::Unimplemented),

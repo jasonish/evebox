@@ -1,36 +1,16 @@
-// Copyright (C) 2020 Jason Ish
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// SPDX-License-Identifier: MIT
 
 use super::super::eventstore::EventStore;
+use crate::datastore::{DatastoreError, EventQueryParams};
 use crate::elastic::{self, query_string_query, request::Request};
-use crate::{
-    datastore::{DatastoreError, EventQueryParams},
-    types::JsonValue,
-};
 
 pub async fn dhcp_report(
     ds: &EventStore,
     what: &str,
     params: &EventQueryParams,
-) -> Result<JsonValue, DatastoreError> {
+) -> Result<serde_json::Value, DatastoreError> {
     let mut filters = vec![elastic::request::term_filter(
         &ds.map_field("event_type"),
         "dhcp",
@@ -56,8 +36,8 @@ pub async fn dhcp_report(
 
 pub async fn dhcp_report_ack(
     ds: &EventStore,
-    mut filters: Vec<JsonValue>,
-) -> Result<JsonValue, DatastoreError> {
+    mut filters: Vec<serde_json::Value>,
+) -> Result<serde_json::Value, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
         &ds.map_field("dhcp.dhcp_type"),
@@ -89,7 +69,7 @@ pub async fn dhcp_report_ack(
     request["aggs"] = aggs;
     request.size(0);
 
-    let response: JsonValue = ds.search(&request).await?.json().await?;
+    let response: serde_json::Value = ds.search(&request).await?.json().await?;
 
     let mut results = Vec::new();
 
@@ -108,8 +88,8 @@ pub async fn dhcp_report_ack(
 
 pub async fn dhcp_report_request(
     ds: &EventStore,
-    mut filters: Vec<JsonValue>,
-) -> Result<JsonValue, DatastoreError> {
+    mut filters: Vec<serde_json::Value>,
+) -> Result<serde_json::Value, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
         &ds.map_field("dhcp.dhcp_type"),
@@ -143,7 +123,7 @@ pub async fn dhcp_report_request(
     request["aggs"] = aggs;
     request.size(0);
 
-    let response: JsonValue = ds.search(&request).await?.json().await?;
+    let response: serde_json::Value = ds.search(&request).await?.json().await?;
 
     let mut results = Vec::new();
 
@@ -163,8 +143,8 @@ pub async fn dhcp_report_request(
 /// Return all IP addresses that appear to be DHCP servers.
 pub async fn servers(
     ds: &EventStore,
-    mut filters: Vec<JsonValue>,
-) -> Result<JsonValue, DatastoreError> {
+    mut filters: Vec<serde_json::Value>,
+) -> Result<serde_json::Value, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
         &ds.map_field("dhcp.type"),
@@ -184,7 +164,7 @@ pub async fn servers(
     request["aggs"] = aggs;
     request.size(0);
 
-    let response: JsonValue = ds.search(&request).await?.json().await?;
+    let response: serde_json::Value = ds.search(&request).await?.json().await?;
     let mut results = Vec::new();
 
     if let Some(buckets) = response["aggregations"]["servers"]["buckets"].as_array() {
@@ -206,8 +186,8 @@ pub async fn servers(
 /// been assigned.
 pub async fn mac(
     ds: &EventStore,
-    mut filters: Vec<JsonValue>,
-) -> Result<JsonValue, DatastoreError> {
+    mut filters: Vec<serde_json::Value>,
+) -> Result<serde_json::Value, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
         &ds.map_field("dhcp.type"),
@@ -234,16 +214,16 @@ pub async fn mac(
     request["aggs"] = aggs;
     request.size(0);
 
-    let response: JsonValue = ds.search(&request).await?.json().await?;
+    let response: serde_json::Value = ds.search(&request).await?.json().await?;
 
     let mut results = Vec::new();
 
-    if let JsonValue::Array(buckets) = &response["aggregations"]["client_mac"]["buckets"] {
+    if let serde_json::Value::Array(buckets) = &response["aggregations"]["client_mac"]["buckets"] {
         for bucket in buckets {
             let mut addrs = Vec::new();
-            if let JsonValue::Array(buckets) = &bucket["assigned_ip"]["buckets"] {
+            if let serde_json::Value::Array(buckets) = &bucket["assigned_ip"]["buckets"] {
                 for v in buckets {
-                    if let JsonValue::String(v) = &v["key"] {
+                    if let serde_json::Value::String(v) = &v["key"] {
                         // Not really interested in 0.0.0.0.
                         if v != "0.0.0.0" {
                             addrs.push(v);
@@ -267,7 +247,10 @@ pub async fn mac(
 
 /// For each assigned IP address, return a list of MAC addresses that have been
 /// assigned that IP address.
-pub async fn ip(ds: &EventStore, mut filters: Vec<JsonValue>) -> Result<JsonValue, DatastoreError> {
+pub async fn ip(
+    ds: &EventStore,
+    mut filters: Vec<serde_json::Value>,
+) -> Result<serde_json::Value, DatastoreError> {
     let mut request = elastic::request::new_request();
     filters.push(elastic::request::term_filter(
         &ds.map_field("dhcp.type"),
@@ -294,22 +277,22 @@ pub async fn ip(ds: &EventStore, mut filters: Vec<JsonValue>) -> Result<JsonValu
     request["aggs"] = aggs;
     request.size(0);
 
-    let response: JsonValue = ds.search(&request).await?.json().await?;
+    let response: serde_json::Value = ds.search(&request).await?.json().await?;
 
     let mut results = Vec::new();
 
-    if let JsonValue::Array(buckets) = &response["aggregations"]["assigned_ip"]["buckets"] {
+    if let serde_json::Value::Array(buckets) = &response["aggregations"]["assigned_ip"]["buckets"] {
         for bucket in buckets {
             // Skip 0.0.0.0.
             // TODO: Filter out in the query.
-            if bucket["key"] == JsonValue::String("0.0.0.0".to_string()) {
+            if bucket["key"] == serde_json::Value::String("0.0.0.0".to_string()) {
                 continue;
             }
 
             let mut addrs = Vec::new();
-            if let JsonValue::Array(buckets) = &bucket["client_mac"]["buckets"] {
+            if let serde_json::Value::Array(buckets) = &bucket["client_mac"]["buckets"] {
                 for v in buckets {
-                    if let JsonValue::String(v) = &v["key"] {
+                    if let serde_json::Value::String(v) = &v["key"] {
                         addrs.push(v);
                     }
                 }
@@ -328,7 +311,7 @@ pub async fn ip(ds: &EventStore, mut filters: Vec<JsonValue>) -> Result<JsonValu
     }))
 }
 
-fn map_dhcp_event(event: &JsonValue, ecs: bool) -> JsonValue {
+fn map_dhcp_event(event: &serde_json::Value, ecs: bool) -> serde_json::Value {
     if ecs {
         json!({
             "timestamp": event["@timestamp"],

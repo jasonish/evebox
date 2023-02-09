@@ -1,18 +1,17 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
-use crate::types::JsonValue;
 use time::macros::format_description;
 
 pub trait Request {
-    fn push_filter(&mut self, filter: JsonValue);
+    fn push_filter(&mut self, filter: serde_json::Value);
     fn size(&mut self, size: u64);
-    fn set_filters(&mut self, filters: Vec<JsonValue>);
+    fn set_filters(&mut self, filters: Vec<serde_json::Value>);
 }
 
-impl Request for JsonValue {
-    fn push_filter(&mut self, filter: JsonValue) {
+impl Request for serde_json::Value {
+    fn push_filter(&mut self, filter: serde_json::Value) {
         if let Some(filters) = self["query"]["bool"]["filter"].as_array_mut() {
             filters.push(filter);
         }
@@ -22,12 +21,12 @@ impl Request for JsonValue {
         self["size"] = size.into();
     }
 
-    fn set_filters(&mut self, filters: Vec<JsonValue>) {
+    fn set_filters(&mut self, filters: Vec<serde_json::Value>) {
         self["query"]["bool"]["filter"] = filters.into();
     }
 }
 
-pub fn new_request() -> JsonValue {
+pub fn new_request() -> serde_json::Value {
     json!({
         "query": {
             "bool": {
@@ -44,7 +43,7 @@ pub fn format_datetime(dt: time::OffsetDateTime) -> String {
     dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
 }
 
-pub fn timestamp_gte_filter(dt: time::OffsetDateTime) -> JsonValue {
+pub fn timestamp_gte_filter(dt: time::OffsetDateTime) -> serde_json::Value {
     json!({
         "range": {
             "@timestamp": {"gte": format_datetime(dt)}
@@ -52,7 +51,7 @@ pub fn timestamp_gte_filter(dt: time::OffsetDateTime) -> JsonValue {
     })
 }
 
-pub fn timestamp_lte_filter(dt: time::OffsetDateTime) -> JsonValue {
+pub fn timestamp_lte_filter(dt: time::OffsetDateTime) -> serde_json::Value {
     json!({
         "range": {
             "@timestamp": {"lte": format_datetime(dt)}
@@ -60,11 +59,11 @@ pub fn timestamp_lte_filter(dt: time::OffsetDateTime) -> JsonValue {
     })
 }
 
-pub fn term_filter(field: &str, value: &str) -> JsonValue {
+pub fn term_filter(field: &str, value: &str) -> serde_json::Value {
     json!({"term": {field: value}})
 }
 
-pub fn exists_filter(field: &str) -> JsonValue {
+pub fn exists_filter(field: &str) -> serde_json::Value {
     json!({"exists": {"field": field}})
 }
 

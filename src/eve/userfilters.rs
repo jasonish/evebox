@@ -1,9 +1,8 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2022 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use serde::Deserialize;
-use serde_json::Value as JsonValue;
 use serde_yaml;
 use serde_yaml::Value as YamlValue;
 use std::collections::HashMap;
@@ -17,7 +16,7 @@ enum UserFilterMatcher {
 }
 
 impl UserFilterMatcher {
-    pub fn is_match(&self, value: &JsonValue) -> bool {
+    pub fn is_match(&self, value: &serde_json::Value) -> bool {
         match self {
             Self::Regex(m) => m.is_match(value),
             Self::StartsWith(m) => m.is_match(value),
@@ -28,15 +27,15 @@ impl UserFilterMatcher {
 
 #[derive(Debug, Clone)]
 pub struct ExactMatcher {
-    value: JsonValue,
+    value: serde_json::Value,
 }
 
 impl ExactMatcher {
-    pub fn new(value: JsonValue) -> Self {
+    pub fn new(value: serde_json::Value) -> Self {
         Self { value }
     }
 
-    pub fn is_match(&self, value: &JsonValue) -> bool {
+    pub fn is_match(&self, value: &serde_json::Value) -> bool {
         value == &self.value
     }
 }
@@ -51,7 +50,7 @@ impl StartsWithMatcher {
         Self { starts_with }
     }
 
-    pub fn is_match(&self, value: &JsonValue) -> bool {
+    pub fn is_match(&self, value: &serde_json::Value) -> bool {
         if let Some(s) = value.as_str() {
             if s.starts_with(&self.starts_with) {
                 return true;
@@ -88,7 +87,7 @@ impl RegularExpression {
         self
     }
 
-    pub fn is_match(&self, value: &JsonValue) -> bool {
+    pub fn is_match(&self, value: &serde_json::Value) -> bool {
         if let Some(s) = value.as_str() {
             for pattern in &self.patterns {
                 if pattern.is_match(s) {
@@ -151,9 +150,9 @@ impl EveUserFilter {
     }
 }
 
-fn yaml_val_to_json(v: &YamlValue) -> anyhow::Result<JsonValue> {
+fn yaml_val_to_json(v: &YamlValue) -> anyhow::Result<serde_json::Value> {
     let s = serde_yaml::to_string(v)?;
-    let js: JsonValue = serde_yaml::from_str(&s)?;
+    let js: serde_json::Value = serde_yaml::from_str(&s)?;
     Ok(js)
 }
 

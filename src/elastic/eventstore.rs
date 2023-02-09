@@ -26,7 +26,6 @@ use crate::server::api::QueryStringParts;
 use crate::server::session::Session;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use serde_json::Value as JsonValue;
 use std::sync::Arc;
 
 mod stats;
@@ -504,11 +503,13 @@ impl EventStore {
 
         let mut alerts = Vec::new();
         if let Some(aggregrations) = response.aggregations {
-            if let JsonValue::Array(buckets) = &aggregrations["signatures"]["buckets"] {
+            if let serde_json::Value::Array(buckets) = &aggregrations["signatures"]["buckets"] {
                 for bucket in buckets {
-                    if let JsonValue::Array(buckets) = &bucket["sources"]["buckets"] {
+                    if let serde_json::Value::Array(buckets) = &bucket["sources"]["buckets"] {
                         for bucket in buckets {
-                            if let JsonValue::Array(buckets) = &bucket["destinations"]["buckets"] {
+                            if let serde_json::Value::Array(buckets) =
+                                &bucket["destinations"]["buckets"]
+                            {
                                 for bucket in buckets {
                                     let mut newest = bucket["newest"]["hits"]["hits"][0].clone();
                                     let mut oldest = bucket["oldest"]["hits"]["hits"][0].clone();
@@ -645,7 +646,7 @@ impl EventStore {
             "size": size,
         });
 
-        let response: JsonValue = self.search(&body).await?.json().await?;
+        let response: serde_json::Value = self.search(&body).await?.json().await?;
         let hits = &response["hits"]["hits"];
 
         let mut events = vec![];
@@ -788,10 +789,10 @@ impl EventStore {
             }
         });
 
-        let response: JsonValue = self.search(&body).await?.json().await?;
+        let response: serde_json::Value = self.search(&body).await?.json().await?;
         let buckets = &response["aggregations"]["events_over_time"]["buckets"];
         let mut data = Vec::new();
-        if let JsonValue::Array(buckets) = buckets {
+        if let serde_json::Value::Array(buckets) = buckets {
             for bucket in buckets {
                 data.push(json!({
                     "key": bucket["key"],
@@ -815,7 +816,7 @@ impl EventStore {
         size: usize,
         order: &str,
         q: Option<QueryStringParts>,
-    ) -> Result<Vec<JsonValue>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filter = vec![];
         let mut should = vec![];
 
@@ -872,14 +873,14 @@ impl EventStore {
             query["query"]["bool"]["minimum_should_match"] = 1.into();
         }
 
-        let response: JsonValue = self.search(&query).await?.json().await?;
+        let response: serde_json::Value = self.search(&query).await?.json().await?;
 
         if let Some(error) = response["error"].as_object() {
             error!("Elasticsearch \"group_by\" query failed: {error:?}");
             Err(DatastoreError::ElasticSearchError(format!("{error:?}")))
         } else {
             let mut data = vec![];
-            if let JsonValue::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
+            if let serde_json::Value::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
                 for bucket in buckets {
                     let entry = json!({
                         "key": bucket["key"],
@@ -901,7 +902,7 @@ impl EventStore {
     pub async fn flow_histogram(
         &self,
         params: datastore::FlowHistogramParameters,
-    ) -> Result<JsonValue, datastore::DatastoreError> {
+    ) -> Result<serde_json::Value, datastore::DatastoreError> {
         let mut filters = vec![
             request::term_filter(&self.map_field("event_type"), "flow"),
             request::exists_filter(&self.map_field("event_type")),
@@ -935,15 +936,16 @@ impl EventStore {
                 }
             }
         });
-        let response: JsonValue = self.search(&query).await?.json().await?;
+        let response: serde_json::Value = self.search(&query).await?.json().await?;
         let mut data = Vec::new();
-        if let JsonValue::Array(buckets) = &response["aggregations"]["histogram"]["buckets"] {
+        if let serde_json::Value::Array(buckets) = &response["aggregations"]["histogram"]["buckets"]
+        {
             for bucket in buckets {
                 let mut entry = json!({
                     "key": bucket["key"],
                     "events": bucket["doc_count"],
                 });
-                if let JsonValue::Array(buckets) = &bucket["app_proto"]["buckets"] {
+                if let serde_json::Value::Array(buckets) = &bucket["app_proto"]["buckets"] {
                     let mut app_protos = json!({});
                     for bucket in buckets {
                         if let Some(key) = bucket["key"].as_str() {
@@ -965,7 +967,7 @@ impl EventStore {
         return Ok(response);
     }
 
-    fn build_alert_group_filter(&self, request: &api::AlertGroupSpec) -> Vec<JsonValue> {
+    fn build_alert_group_filter(&self, request: &api::AlertGroupSpec) -> Vec<serde_json::Value> {
         let mut filter = Vec::new();
         filter.push(json!({"exists": {"field": self.map_field("event_type")}}));
         filter.push(json!({"term": {self.map_field("event_type"): "alert"}}));
