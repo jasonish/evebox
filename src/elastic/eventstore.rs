@@ -22,6 +22,7 @@ use crate::prelude::*;
 use crate::searchquery;
 use crate::searchquery::Element;
 use crate::server::api;
+use crate::server::api::parse_query_string;
 use crate::server::api::QueryStringParts;
 use crate::server::session::Session;
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,8 @@ use serde_json::json;
 use std::sync::Arc;
 
 mod stats;
+
+const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";
 
 /// Elasticsearch eventstore - for searching events.
 #[derive(Debug, Clone)]
@@ -390,6 +393,7 @@ impl EventStore {
         filters
     }
 
+    /// Process a query string into filter and should JSON.
     fn process_query_string(
         &self,
         q: &QueryStringParts,
@@ -427,14 +431,32 @@ impl EventStore {
 
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
         let mut filters = Vec::new();
+        let mut should = Vec::new();
+        let mut min_timestamp = options.timestamp_gte;
+
+        let q = if let Some(q) = &options.query_string {
+            if let Ok(q) = parse_query_string(q, None) {
+                Some(q)
+            } else {
+                error!("Failed to parse query string: {q}");
+                None
+            }
+        } else {
+            None
+        };
+
+        if let Some(q) = q {
+            if let Some(after) = q.after {
+                min_timestamp = Some(after);
+            }
+            self.process_query_string(&q, &mut filters, &mut should);
+        }
+
         filters.push(json!({"exists": {"field": self.map_field("event_type")}}));
         filters.push(json!({"term": {self.map_field("event_type"): "alert"}}));
-        if let Some(timestamp_gte) = options.timestamp_gte {
+        if let Some(timestamp_gte) = min_timestamp {
             filters
                 .push(json!({"range": {"@timestamp": {"gte": format_timestamp(timestamp_gte)}}}));
-        }
-        if let Some(query_string) = options.query_string {
-            filters.extend(self.query_string_to_filters(&query_string));
         }
 
         let mut must_not = Vec::new();
@@ -457,7 +479,7 @@ impl EventStore {
             }
         }
 
-        let query = json!({
+        let mut query = json!({
             "query": {
                 "bool": {
                     "filter": filters,
@@ -486,6 +508,11 @@ impl EventStore {
                 }
             }
         });
+
+        if !should.is_empty() {
+            query["query"]["bool"]["should"] = should.into();
+            query["query"]["bool"][MINIMUM_SHOULD_MATCH] = 1.into();
+        }
 
         query
     }
@@ -779,7 +806,7 @@ impl EventStore {
                     "filter": filters,
                     "must_not": [{"term": {self.map_field("event_type"): "stats"}}],
                     "should": should,
-                    "minimum_should_match": min_should_match,
+                    MINIMUM_SHOULD_MATCH: min_should_match,
                 },
             },
             "size": 0,
@@ -870,7 +897,7 @@ impl EventStore {
 
         if !should.is_empty() {
             query["query"]["bool"]["should"] = should.into();
-            query["query"]["bool"]["minimum_should_match"] = 1.into();
+            query["query"]["bool"][MINIMUM_SHOULD_MATCH] = 1.into();
         }
 
         let response: serde_json::Value = self.search(&query).await?.json().await?;
