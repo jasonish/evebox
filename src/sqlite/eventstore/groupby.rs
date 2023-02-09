@@ -4,7 +4,8 @@
 
 use super::SQLiteEventStore;
 use crate::{
-    datastore::DatastoreError, querystring::Element, server::api::QueryStringParts,
+    datastore::DatastoreError,
+    querystring::{self, Element},
     sqlite::builder::SelectQueryBuilder,
 };
 use rusqlite::types::{FromSqlError, ValueRef};
@@ -16,7 +17,7 @@ impl SQLiteEventStore {
         min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
-        q: Option<QueryStringParts>,
+        q0: Option<Vec<querystring::Element>>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut builder = SelectQueryBuilder::new();
         builder
@@ -41,8 +42,8 @@ impl SQLiteEventStore {
             builder.where_value("json_extract(events.source, '$.event_type') = ?", "dns");
         }
 
-        if let Some(q) = &q {
-            for e in &q.elements {
+        if let Some(q) = &q0 {
+            for e in q {
                 match e {
                     Element::String(s) => {
                         builder.where_value("events.source LIKE ?", s.clone());
@@ -53,8 +54,12 @@ impl SQLiteEventStore {
                             v.clone(),
                         );
                     }
-                    Element::BeforeTimestamp(_) => todo!(),
-                    Element::AfterTimestamp(_) => todo!(),
+                    Element::BeforeTimestamp(ts) => {
+                        builder.where_value("timestamp <= ?", ts.unix_timestamp_nanos() as u64);
+                    }
+                    Element::AfterTimestamp(ts) => {
+                        builder.where_value("timestamp >= ?", ts.unix_timestamp_nanos() as u64);
+                    }
                     Element::Ip(ip) => {
                         builder.push_where("(json_extract(events.source, '$.src_ip') = ? OR json_extract(events.source, '$.dest_ip') = ?)");
                         builder.push_param(ip.to_string());

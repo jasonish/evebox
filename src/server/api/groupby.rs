@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 use super::{util::parse_duration, ApiError};
-use crate::prelude::*;
-use crate::server::api::parse_query_string;
 use crate::server::{main::SessionExtractor, ServerContext};
+use crate::{prelude::*, querystring};
 use axum::{extract::State, response::IntoResponse, Form, Json};
 use serde::Deserialize;
 use std::{ops::Sub, sync::Arc};
@@ -48,9 +47,9 @@ pub(crate) async fn group_by(
         .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
     let min_timestamp = time::OffsetDateTime::now_utc().sub(duration);
 
-    let qs = if let Some(q) = &form.q {
+    let q = if let Some(q) = &form.q {
         Some(
-            parse_query_string(q, None)
+            querystring::parse(q, None)
                 .map_err(|err| ApiError::bad_request(format!("q: {err}")))?,
         )
     } else {
@@ -59,7 +58,7 @@ pub(crate) async fn group_by(
 
     let results = context
         .datastore
-        .group_by(&form.field, min_timestamp, form.size, &form.order, qs)
+        .group_by(&form.field, min_timestamp, form.size, &form.order, q)
         .await
         .map_err(|err| {
             error!("Datastore group by failed: {err}");

@@ -17,11 +17,11 @@ use serde_json::json;
 
 use crate::datastore::HistogramInterval;
 use crate::datastore::{self, EventQueryParams};
+use crate::elastic;
 use crate::querystring::Element;
 use crate::server::filters::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
-use crate::{elastic, querystring};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AlertGroupSpec {
@@ -447,10 +447,20 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
     let default_tz_offset: Option<&str> = query.tz_offset.as_ref().map(|s| s.as_ref());
 
     if let Some(query_string) = &query.query_string {
-        let parts = parse_query_string(query_string, default_tz_offset)?;
-        params.min_timestamp = parts.after;
-        params.max_timestamp = parts.before;
-        params.query_string_elements = parts.elements;
+        let parts = crate::querystring::parse(query_string, default_tz_offset)?;
+        // Pull out the before and after timestamps from the elements.
+        for e in &parts {
+            match e {
+                Element::BeforeTimestamp(ts) => {
+                    params.max_timestamp = Some(*ts);
+                }
+                Element::AfterTimestamp(ts) => {
+                    params.min_timestamp = Some(*ts);
+                }
+                _ => {}
+            }
+        }
+        params.query_string_elements = parts;
     }
 
     if let Some(min_timestamp) = &query.min_timestamp {
@@ -515,57 +525,4 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
     }
 
     Ok(params)
-}
-
-#[derive(Default, Debug)]
-pub struct QueryStringParts {
-    pub before: Option<time::OffsetDateTime>,
-    pub after: Option<time::OffsetDateTime>,
-    pub elements: Vec<querystring::Element>,
-}
-
-pub fn parse_query_string(query: &str, tz_offset: Option<&str>) -> Result<QueryStringParts> {
-    let mut parts = QueryStringParts::default();
-    match querystring::parse(query, None) {
-        Err(err) => {
-            bail!("Failed to parse query string: {:?}", err);
-        }
-        Ok(elements) => {
-            for element in elements {
-                match element {
-                    Element::KeyVal(ref key, ref val) => match key.as_ref() {
-                        "@before" => match crate::querystring::parse_timestamp(val, tz_offset) {
-                            Ok(timestamp) => {
-                                parts.before = Some(timestamp);
-                            }
-                            Err(err) => {
-                                error!(
-                                    "Failed to parse @after timestamp: {}, error={:?}",
-                                    &val, err
-                                );
-                            }
-                        },
-                        "@after" => match crate::querystring::parse_timestamp(val, tz_offset) {
-                            Ok(timestamp) => {
-                                parts.after = Some(timestamp);
-                            }
-                            Err(err) => {
-                                error!(
-                                    "Failed to parse @after timestamp: {}, error={:?}",
-                                    &val, err
-                                );
-                            }
-                        },
-                        _ => {
-                            parts.elements.push(element);
-                        }
-                    },
-                    _ => {
-                        parts.elements.push(element);
-                    }
-                }
-            }
-        }
-    }
-    Ok(parts)
 }

@@ -24,7 +24,7 @@ pub enum Element {
     Ip(String),
 }
 
-pub fn parse(qs: &str, _tz_offset: Option<&str>) -> Result<Vec<Element>> {
+pub fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
     let mut elements = vec![];
     let (_, tokens) = tokenize(qs).map_err(|err| {
         anyhow!(
@@ -43,6 +43,12 @@ pub fn parse(qs: &str, _tz_offset: Option<&str>) -> Result<Vec<Element>> {
             }
             Element::KeyVal(ref key, ref val) => match key.as_ref() {
                 "@ip" => elements.push(Element::Ip(val.to_string())),
+                "@before" => {
+                    elements.push(Element::BeforeTimestamp(parse_timestamp(val, tz_offset)?))
+                }
+                "@after" => {
+                    elements.push(Element::AfterTimestamp(parse_timestamp(val, tz_offset)?))
+                }
                 _ => elements.push(token),
             },
             _ => bail!("Unexpected element in tokenized query string: {:?}", token),

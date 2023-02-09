@@ -22,8 +22,6 @@ use crate::prelude::*;
 use crate::querystring;
 use crate::querystring::Element;
 use crate::server::api;
-use crate::server::api::parse_query_string;
-use crate::server::api::QueryStringParts;
 use crate::server::session::Session;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -393,25 +391,34 @@ impl EventStore {
         filters
     }
 
-    /// Process a query string into filter and should JSON.
     fn process_query_string(
         &self,
-        q: &QueryStringParts,
+        q: &Vec<querystring::Element>,
         filter: &mut Vec<serde_json::Value>,
         should: &mut Vec<serde_json::Value>,
     ) {
-        for el in &q.elements {
+        for el in q {
             match el {
                 Element::String(s) => {
                     filter.push(query_string_query(s));
                 }
                 Element::KeyVal(key, val) => match key.as_ref() {
-                    "@before" => filter.push(request::range_lte_filter("@timestamp", val)),
-                    "@after" => filter.push(request::range_gte_filter("@timestamp", val)),
+                    "@before" => panic!("@before not allowed here"),
+                    "@after" => panic!("@after not allowed here"),
                     _ => filter.push(request::term_filter(&self.map_field(key), val)),
                 },
-                Element::BeforeTimestamp(_) => todo!(),
-                Element::AfterTimestamp(_) => todo!(),
+                Element::BeforeTimestamp(ts) => {
+                    filter.push(request::range_lte_filter(
+                        "@timestamp",
+                        &format_timestamp(*ts),
+                    ));
+                }
+                Element::AfterTimestamp(ts) => {
+                    filter.push(request::range_gte_filter(
+                        "@timestamp",
+                        &format_timestamp(*ts),
+                    ));
+                }
                 Element::Ip(ip) => {
                     should.push(json!({"term": {self.map_field("src_ip"): ip}}));
                     should.push(json!({"term": {self.map_field("dest_ip"): ip}}));
@@ -423,13 +430,17 @@ impl EventStore {
     fn query_string_element_to_filter(&self, el: &Element) -> serde_json::Value {
         match el {
             Element::KeyVal(key, val) => match key.as_ref() {
-                "@before" => request::range_lte_filter("@timestamp", val),
-                "@after" => request::range_gte_filter("@timestamp", val),
+                "@before" => panic!("@before not allowed here"),
+                "@after" => panic!("@after now allowed here"),
                 _ => request::term_filter(&self.map_field(key), val),
             },
             Element::String(val) => query_string_query(val),
-            Element::BeforeTimestamp(_) => todo!(),
-            Element::AfterTimestamp(_) => todo!(),
+            Element::BeforeTimestamp(ts) => {
+                request::range_lte_filter("@timestamp", &format_timestamp(*ts))
+            }
+            Element::AfterTimestamp(ts) => {
+                request::range_gte_filter("@timestamp", &format_timestamp(*ts))
+            }
             Element::Ip(_) => todo!(),
         }
     }
@@ -437,31 +448,34 @@ impl EventStore {
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
         let mut filters = Vec::new();
         let mut should = Vec::new();
-        let mut min_timestamp = options.timestamp_gte;
 
-        let q = if let Some(q) = &options.query_string {
-            if let Ok(q) = parse_query_string(q, None) {
-                Some(q)
-            } else {
-                error!("Failed to parse query string: {q}");
-                None
-            }
-        } else {
-            None
-        };
+        // Set to true if the min timestamp is set in the query string
+        let mut has_min_timestamp = false;
 
-        if let Some(q) = q {
-            if let Some(after) = q.after {
-                min_timestamp = Some(after);
+        if let Some(q) = &options.query_string {
+            match crate::querystring::parse(q, None) {
+                Ok(q) => {
+                    self.process_query_string(&q, &mut filters, &mut should);
+                    has_min_timestamp = q
+                        .iter()
+                        .any(|e| matches!(&e, Element::AfterTimestamp(_)));
+                }
+                Err(err) => {
+                    error!(
+                        "Failed to parse query string: error={}, query-string={}",
+                        q, err
+                    );
+                }
             }
-            self.process_query_string(&q, &mut filters, &mut should);
         }
 
         filters.push(json!({"exists": {"field": self.map_field("event_type")}}));
         filters.push(json!({"term": {self.map_field("event_type"): "alert"}}));
-        if let Some(timestamp_gte) = min_timestamp {
-            filters
-                .push(json!({"range": {"@timestamp": {"gte": format_timestamp(timestamp_gte)}}}));
+
+        if !has_min_timestamp {
+            if let Some(ts) = options.timestamp_gte {
+                filters.push(json!({"range": {"@timestamp": {"gte": format_timestamp(ts)}}}));
+            }
         }
 
         let mut must_not = Vec::new();
@@ -847,7 +861,7 @@ impl EventStore {
         min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
-        q: Option<QueryStringParts>,
+        q: Option<Vec<querystring::Element>>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filter = vec![];
         let mut should = vec![];
