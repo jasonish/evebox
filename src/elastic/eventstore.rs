@@ -408,15 +408,14 @@ impl EventStore {
                 Element::KeyVal(key, val) => match key.as_ref() {
                     "@before" => filter.push(request::range_lte_filter("@timestamp", val)),
                     "@after" => filter.push(request::range_gte_filter("@timestamp", val)),
-                    "@ip" => {
-                        should.push(json!({"term": {self.map_field("src_ip"): val}}));
-                        should.push(json!({"term": {self.map_field("dest_ip"): val}}));
-                    }
                     _ => filter.push(request::term_filter(&self.map_field(key), val)),
                 },
                 Element::BeforeTimestamp(_) => todo!(),
                 Element::AfterTimestamp(_) => todo!(),
-                Element::Ip(_) => todo!(),
+                Element::Ip(ip) => {
+                    should.push(json!({"term": {self.map_field("src_ip"): ip}}));
+                    should.push(json!({"term": {self.map_field("dest_ip"): ip}}));
+		}
             }
         }
     }

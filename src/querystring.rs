@@ -23,6 +23,29 @@ pub enum Element {
     Ip(String),
 }
 
+pub fn parse(mut input: &str) -> IResult<&str, Vec<Element>> {
+    let mut tokens = vec![];
+    loop {
+        if input.is_empty() {
+            break;
+        }
+        let (next, _) = multispace0(input)?;
+        let (next, token) = alt((parse_quoted, parse_string))(next)?;
+        if next.starts_with(':') {
+            let (next, value) = preceded(tag(":"), alt((parse_quoted, parse_string)))(next)?;
+            match token {
+                "@ip" => tokens.push(Element::Ip(value.to_string())),
+                _ => tokens.push(Element::KeyVal(token.to_string(), value.to_string())),
+            }
+            input = next;
+        } else {
+            tokens.push(Element::String(token.to_string()));
+            input = next;
+        }
+    }
+    Ok(("", tokens))
+}
+
 /// Parse a quote string.
 ///
 /// Parsed and consumes up to the first non-escaped quote. Leading and terminating quotes are
@@ -44,26 +67,6 @@ fn parse_string(input: &str) -> IResult<&str, &str> {
         one_of(":\\"), // Note, this will not detect invalid unicode escapes.
     );
     parse_escaped(input)
-}
-
-pub fn parse(mut input: &str) -> IResult<&str, Vec<Element>> {
-    let mut tokens = vec![];
-    loop {
-        if input.is_empty() {
-            break;
-        }
-        let (next, _) = multispace0(input)?;
-        let (next, token) = alt((parse_quoted, parse_string))(next)?;
-        if next.starts_with(':') {
-            let (next, value) = preceded(tag(":"), alt((parse_quoted, parse_string)))(next)?;
-            tokens.push(Element::KeyVal(token.to_string(), value.to_string()));
-            input = next;
-        } else {
-            tokens.push(Element::String(token.to_string()));
-            input = next;
-        }
-    }
-    Ok(("", tokens))
 }
 
 #[cfg(test)]
