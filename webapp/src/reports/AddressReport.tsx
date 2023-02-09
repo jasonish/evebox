@@ -449,7 +449,7 @@ export function AddressReport() {
     <>
       <Top />
       <Container fluid>
-        <Row>
+        <Row class={"mt-2"}>
           <Col>
             <RefreshButton
               loading={loading()}
