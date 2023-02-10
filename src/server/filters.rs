@@ -1,12 +1,8 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use serde::Deserialize;
-use std::ops::Sub;
-use std::str::FromStr;
-
-use crate::server::api::ApiError;
 
 #[derive(Deserialize, Debug, Default)]
 pub struct GenericQuery {
@@ -25,23 +21,4 @@ pub struct GenericQuery {
     pub agg: Option<String>,
     pub sensor_name: Option<String>,
     pub tz_offset: Option<String>,
-}
-
-impl GenericQuery {
-    pub fn mints_from_time_range(
-        &self,
-        now: &time::OffsetDateTime,
-    ) -> Result<Option<time::OffsetDateTime>, ApiError> {
-        if let Some(time_range) = &self.time_range {
-            if time_range == "0s" {
-                return Ok(None);
-            }
-            let duration = humantime::Duration::from_str(time_range)
-                .map_err(|_| ApiError::TimeRangeParseError(time_range.to_string()))?;
-            let mints = now.sub(*duration.as_ref());
-            Ok(Some(mints))
-        } else {
-            Ok(None)
-        }
-    }
 }

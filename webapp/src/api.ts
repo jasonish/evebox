@@ -91,6 +91,7 @@ export interface ConfigResponse {
     time_range?: string;
   };
   "event-services": any[];
+  datastore: string;
 }
 
 export async function getConfig(): Promise<ConfigResponse> {
@@ -296,4 +297,14 @@ export async function groupBy(
   request: GroupByQueryRequest
 ): Promise<GroupByQueryResponse> {
   return get("/api/1/groupby", request).then((response) => response.data);
+}
+
+export async function histogram_time(request: {
+  time_range: string;
+  interval: string;
+  event_type: string;
+}) {
+  return get("/api/1/report/histogram/time", request).then(
+    (response) => response.data
+  );
 }

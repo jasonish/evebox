@@ -53,6 +53,7 @@ impl SelectQueryBuilder {
         self
     }
 
+    /// Add a where statement without requiring a value.
     pub fn push_where<S>(&mut self, col: S) -> &mut Self
     where
         S: Into<String>,

@@ -13,6 +13,7 @@ export interface EventServiceConfig {
   url: string;
   target: string;
   name: string;
+  datastore: string;
 }
 
 export function serverConfigSet(config: ConfigResponse) {

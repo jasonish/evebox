@@ -9,11 +9,12 @@ use super::HistoryEntry;
 use super::ACTION_ARCHIVED;
 use super::ACTION_COMMENT;
 use super::TAG_ESCALATED;
-use crate::datastore::HistogramInterval;
+use crate::datastore::HistogramParams;
 use crate::datastore::{self, DatastoreError};
 use crate::elastic::importer::Importer;
 use crate::elastic::request::exists_filter;
 use crate::elastic::request::range_gte_filter;
+use crate::elastic::request::term_filter;
 use crate::elastic::{
     format_timestamp, request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED,
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
@@ -456,9 +457,7 @@ impl EventStore {
             match crate::querystring::parse(q, None) {
                 Ok(q) => {
                     self.process_query_string(&q, &mut filters, &mut should);
-                    has_min_timestamp = q
-                        .iter()
-                        .any(|e| matches!(&e, Element::AfterTimestamp(_)));
+                    has_min_timestamp = q.iter().any(|e| matches!(&e, Element::AfterTimestamp(_)));
                 }
                 Err(err) => {
                     error!(
@@ -729,130 +728,57 @@ impl EventStore {
         self.add_tags_by_alert_group(alert_group, &[], &entry).await
     }
 
-    pub async fn histogram(
+    pub async fn histogram_time(
         &self,
-        params: datastore::HistogramParameters,
-    ) -> Result<serde_json::Value, DatastoreError> {
-        let mut bound_max = None;
-        let mut bound_min = None;
-        let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
-        if let Some(ts) = params.min_timestamp {
-            filters.push(request::timestamp_gte_filter(ts));
-            bound_min = Some(format_timestamp(ts));
+        p: HistogramParams,
+    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        let mut filters = vec![exists_filter(&self.map_field("event_type"))];
+
+        if let Some(event_type) = p.event_type {
+            filters.push(term_filter(&self.map_field("event_type"), &event_type));
         }
-        if let Some(ts) = params.max_timestamp {
-            filters.push(json!({"range":{"@timestamp":{"lte":format_timestamp(ts)}}}));
-            bound_max = Some(format_timestamp(ts));
-        }
-        if let Some(event_type) = params.event_type {
-            filters.push(request::term_filter(
-                &self.map_field("event_type"),
-                &event_type,
+
+        if let Some(min_timestamp) = p.min_timestamp {
+            filters.push(range_gte_filter(
+                "@timestamp",
+                &format_timestamp(min_timestamp),
             ));
         }
-        if let Some(dns_type) = params.dns_type {
-            filters.push(request::term_filter(&self.map_field("dns.type"), &dns_type));
-        }
 
-        if let Some(query_string) = params.query_string {
-            filters.extend(self.query_string_to_filters(&query_string));
-        }
-
-        if !self.ecs {
-            if let Some(sensor_name) = params.sensor_name {
-                if !sensor_name.is_empty() {
-                    filters.push(request::term_filter(&self.map_field("host"), &sensor_name));
-                }
-            }
-        }
-
-        let mut should = Vec::new();
-        let mut min_should_match = 0;
-        if let Some(address_filter) = params.address_filter {
-            should.push(request::term_filter(
-                &self.map_field("src_ip"),
-                &address_filter,
-            ));
-            should.push(request::term_filter(
-                &self.map_field("dest_ip"),
-                &address_filter,
-            ));
-            min_should_match = 1;
-        }
-
-        let interval = match params.interval {
-            Some(interval) => match interval {
-                HistogramInterval::Minute => "1m",
-                HistogramInterval::Hour => "1h",
-                HistogramInterval::Day => "1d",
-            },
-            None => "1h",
-        };
-
-        let major_version = match self.client.get_version().await {
-            Ok(version) => version.major,
-            Err(_) => 6,
-        };
-        let events_over_time = if major_version < 7 {
-            json!({
-                "date_histogram": {
-                    "field": "@timestamp",
-                    "interval": interval,
-                    "min_doc_count": 0,
-                    "extended_bounds": {
-                        "max": bound_max,
-                        "min": bound_min,
-                    },
-                }
-            })
-        } else {
-            json!({
-                "date_histogram": {
-                    "field": "@timestamp",
-                    "calendar_interval": interval,
-                    "min_doc_count": 0,
-                    "extended_bounds": {
-                        "max": bound_max,
-                        "min": bound_min,
-                    },
-                }
-            })
-        };
-
-        let body = json!({
+        #[rustfmt::skip]
+        let request = json!({
             "query": {
-                "bool": {
+		"bool": {
                     "filter": filters,
-                    "must_not": [{"term": {self.map_field("event_type"): "stats"}}],
-                    "should": should,
-                    MINIMUM_SHOULD_MATCH: min_should_match,
-                },
+		},
             },
-            "size": 0,
+	    "size": 0,
             "sort":[{"@timestamp":{"order":"desc"}}],
-            "aggs": {
-                "events_over_time": events_over_time,
-            }
+	    "aggs": {
+		"histogram": {
+		    "date_histogram": {
+			"field": "@timestamp",
+			"fixed_interval": format!("{}s", p.interval),
+			"min_doc_count": 0,
+			// May need max extended bounds to now... Or a little bit in the future.
+		    },
+		},
+	    },
         });
 
-        let response: serde_json::Value = self.search(&body).await?.json().await?;
-        let buckets = &response["aggregations"]["events_over_time"]["buckets"];
+        let response: serde_json::Value = self.search(&request).await?.json().await?;
+        let buckets = &response["aggregations"]["histogram"]["buckets"];
         let mut data = Vec::new();
         if let serde_json::Value::Array(buckets) = buckets {
             for bucket in buckets {
                 data.push(json!({
-                    "key": bucket["key"],
+                    "time": bucket["key"],
                     "count": bucket["doc_count"],
-                    "key_as_string": bucket["key_as_string"],
                 }));
             }
         }
 
-        let response = json!({
-            "data": data,
-        });
-
-        Ok(response)
+        Ok(data)
     }
 
     pub async fn group_by(

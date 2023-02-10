@@ -3,10 +3,53 @@
 // SPDX-License-Identifier: MIT
 
 use super::{sqlite_format_interval, SQLiteEventStore};
-use crate::{datastore::StatsAggQueryParams, sqlite::eventstore::nanos_to_rfc3339};
+use crate::{
+    datastore::{DatastoreError, HistogramParams, StatsAggQueryParams},
+    sqlite::{builder::SelectQueryBuilder, eventstore::nanos_to_rfc3339},
+};
 use anyhow::Result;
 
 impl SQLiteEventStore {
+    pub async fn histogram_time(
+        &self,
+        p: HistogramParams,
+    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        let interval = p.interval;
+        let event_type = p.event_type.as_ref().unwrap().to_string();
+        self.pool
+            .get()
+            .await?
+            .interact(move |conn| -> Result<_, _> {
+                let mut builder = SelectQueryBuilder::new();
+                let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
+                builder.select(&timestamp);
+                builder.select(format!("count({timestamp})"));
+                builder.from("events");
+                builder
+                    .push_where("json_extract(events.source, '$.event_type') = ?")
+                    .push_param(event_type);
+                builder.group_by(timestamp.to_string());
+                builder.order_by("timestamp", "asc");
+                if let Some(min_timestamp) = p.min_timestamp {
+                    builder.where_value(
+                        "timestamp >= ?",
+                        min_timestamp.unix_timestamp_nanos() as u64,
+                    );
+                }
+
+                let mut st = conn.prepare(&builder.build())?;
+                let mut rows = st.query(rusqlite::params_from_iter(builder.params()))?;
+                let mut results = vec![];
+                while let Some(row) = rows.next()? {
+                    let time: i64 = row.get(0)?;
+                    let count: i64 = row.get(1)?;
+                    results.push(json!({"time": time * 1000, "count": count}));
+                }
+                Ok(results)
+            })
+            .await?
+    }
+
     async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(u64, u64)>> {
         let qp = qp.clone();
         let conn = self.pool.get().await?;

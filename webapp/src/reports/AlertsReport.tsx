@@ -5,9 +5,13 @@
 import { TIME_RANGE, Top } from "../Top";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import * as API from "../api";
-import { Button, Card, Col, Container, Row, Table } from "solid-bootstrap";
+import { Card, Col, Container, Row, Table } from "solid-bootstrap";
 import { GroupByQueryRequest } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
+import { Chart, ChartConfiguration } from "chart.js";
+import { serverConfig } from "../config";
+import { parse_timerange } from "../datetime";
+import dayjs from "dayjs";
 
 interface CountValueRow {
   count: number;
@@ -23,6 +27,8 @@ export function AlertsReport() {
   const [mostDestAddrs, setMostDestAddrs] = createSignal<CountValueRow[]>([]);
   const [loading, setLoading] = createSignal(0);
 
+  let histogram: any = undefined;
+
   createEffect(() => {
     refresh(TIME_RANGE());
   });
@@ -32,7 +38,94 @@ export function AlertsReport() {
     refresh(TIME_RANGE());
   }
 
+  function buildChart(response: any) {
+    const dataValues: number[] = [];
+    const dataLabels: number[] = [];
+    response.data.forEach((e: any) => {
+      dataValues.push(e.count);
+      dataLabels.push(e.time);
+    });
+
+    const ctx = (
+      document.getElementById("histogram") as HTMLCanvasElement
+    ).getContext("2d") as CanvasRenderingContext2D;
+
+    const config: ChartConfiguration = {
+      type: "bar",
+      data: {
+        labels: dataLabels,
+        datasets: [
+          {
+            data: dataValues,
+          },
+        ],
+      },
+      options: {
+        plugins: {
+          title: {
+            display: true,
+            text: "Alerts Over Time",
+            padding: 0,
+          },
+          legend: {
+            display: false,
+          },
+        },
+        scales: {
+          x: {
+            type: "time",
+            time: {
+              //unit: "minute",
+            },
+            ticks: {
+              source: "auto",
+            },
+          },
+        },
+      },
+    };
+    if (histogram) {
+      histogram.destroy();
+    }
+    histogram = new Chart(ctx, config);
+  }
+
+  function getInterval(rangeSeconds: number | undefined): string {
+    let bounds = [
+      { seconds: 60, interval: "1s" },
+      { seconds: 3600 * 1, interval: "1m" },
+      { seconds: 3600 * 3, interval: "2m" },
+      { seconds: 3600 * 6, interval: "5m" },
+      { seconds: 3600 * 12, interval: "15m" },
+      { seconds: 3600 * 24, interval: "30m" },
+      { seconds: 3600 * 24 * 3, interval: "2h" },
+      { seconds: 3600 * 24 * 7, interval: "3h" },
+    ];
+
+    if (!rangeSeconds) {
+      return "1d";
+    } else {
+      for (const bound of bounds) {
+        if (rangeSeconds <= bound.seconds) {
+          return bound.interval;
+        }
+      }
+      return "1d";
+    }
+  }
+
   function refresh(timeRange: string) {
+    const rangeSeconds = parse_timerange(timeRange);
+    const interval = getInterval(rangeSeconds);
+
+    API.histogram_time({
+      time_range: timeRange,
+      interval: interval,
+      event_type: "alert",
+    }).then((response) => {
+      buildChart(response);
+    });
+
     let loaders = [
       // Top alerting signatures.
       {
@@ -96,6 +189,15 @@ export function AlertsReport() {
         <Row class="mt-2">
           <Col>
             <RefreshButton loading={loading()} refresh={forceRefresh} />
+          </Col>
+        </Row>
+
+        <Row>
+          <Col>
+            <canvas
+              id={"histogram"}
+              style="max-height: 250px; height: 300px"
+            ></canvas>
           </Col>
         </Row>
 

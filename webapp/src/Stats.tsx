@@ -2,21 +2,14 @@
 //
 // SPDX-License-Identifier: MIT
 
-import {
-  createEffect,
-  createSignal,
-  For,
-  JSX,
-  onCleanup,
-  onMount,
-} from "solid-js";
+import { createEffect, createSignal, For, JSX, onCleanup } from "solid-js";
 import { Top } from "./Top";
 import { Button, Col, Container, Row } from "solid-bootstrap";
 import { timeRangeAsSeconds } from "./settings";
 import { getSensors, statsAgg } from "./api";
 import { Chart } from "chart.js";
 import { parse_timestamp } from "./datetime";
-import "chartjs-adapter-dayjs-4";
+//import "chartjs-adapter-dayjs-4";
 import { useSearchParams } from "@solidjs/router";
 
 interface ChartConfig {

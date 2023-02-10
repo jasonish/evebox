@@ -200,16 +200,6 @@ impl Datastore {
         }
     }
 
-    pub async fn histogram(
-        &self,
-        params: HistogramParameters,
-    ) -> Result<serde_json::Value, DatastoreError> {
-        match self {
-            Datastore::Elastic(ds) => ds.histogram(params).await,
-            _ => Err(DatastoreError::Unimplemented),
-        }
-    }
-
     pub async fn flow_histogram(
         &self,
         params: FlowHistogramParameters,
@@ -250,30 +240,12 @@ impl Datastore {
 pub struct HistogramParameters {
     pub min_timestamp: Option<time::OffsetDateTime>,
     pub max_timestamp: Option<time::OffsetDateTime>,
-    pub interval: Option<HistogramInterval>,
     pub event_type: Option<String>,
     pub dns_type: Option<String>,
     pub address_filter: Option<String>,
     pub query_string: Option<String>,
     pub sensor_name: Option<String>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum HistogramInterval {
-    Minute,
-    Hour,
-    Day,
-}
-
-impl HistogramInterval {
-    pub fn from_str(s: &str) -> Result<HistogramInterval, DatastoreError> {
-        match s {
-            "minute" => Ok(HistogramInterval::Minute),
-            "hour" => Ok(HistogramInterval::Hour),
-            "day" => Ok(HistogramInterval::Day),
-            _ => Err(DatastoreError::HistogramIntervalParseError(s.to_string())),
-        }
-    }
+    pub interval: Option<String>,
 }
 
 #[derive(Default, Debug)]
@@ -293,15 +265,10 @@ pub struct FlowHistogramParameters {
     pub query_string: Option<String>,
 }
 
-#[cfg(test)]
-mod test {
-    use super::HistogramInterval;
-
-    #[test]
-    fn test_histogram_interval_from_str() {
-        let r = HistogramInterval::from_str("minute");
-        assert!(r.is_ok());
-        assert_eq!(r.unwrap(), HistogramInterval::Minute);
-        assert!(HistogramInterval::from_str("bad").is_err());
-    }
+#[derive(Debug, Clone)]
+pub struct HistogramParams {
+    pub min_timestamp: Option<time::OffsetDateTime>,
+    /// Seconds.
+    pub interval: u64,
+    pub event_type: Option<String>,
 }

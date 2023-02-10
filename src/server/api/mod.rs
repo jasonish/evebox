@@ -11,6 +11,6 @@ pub mod helpers;
 pub mod login;
 pub mod stats;
 pub mod submit;
-mod util;
+pub mod util;
 
 pub use api::*;

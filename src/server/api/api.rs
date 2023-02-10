@@ -15,13 +15,15 @@ use crate::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::datastore::HistogramInterval;
-use crate::datastore::{self, EventQueryParams};
+use crate::datastore::Datastore;
+use crate::datastore::{EventQueryParams, HistogramParams};
 use crate::elastic;
 use crate::querystring::Element;
 use crate::server::filters::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
+
+use super::util::parse_duration;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AlertGroupSpec {
@@ -36,6 +38,10 @@ pub(crate) async fn config(
     context: Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
 ) -> impl IntoResponse {
+    let datastore = match context.datastore {
+        Datastore::Elastic(_) => "elasticsearch",
+        Datastore::SQLite(_) => "sqlite",
+    };
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
         "event-services": context.event_services,
@@ -44,6 +50,7 @@ pub(crate) async fn config(
         },
         "features": &context.features,
         "defaults": &context.defaults,
+    "datastore": datastore,
     });
     Json(config)
 }
@@ -142,31 +149,42 @@ pub(crate) async fn alert_group_archive(
     }
 }
 
-pub(crate) async fn histogram(
+pub(crate) async fn histogram_time(
+    _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
-    SessionExtractor(_session): SessionExtractor,
     Form(query): Form<GenericQuery>,
-) -> impl IntoResponse {
-    let mut params = datastore::HistogramParameters::default();
-    let now = time::OffsetDateTime::now_utc();
-    params.min_timestamp = query.mints_from_time_range(&now).unwrap();
-    if params.min_timestamp.is_some() {
-        params.max_timestamp = Some(now);
-    }
-    if let Some(interval) = query.interval {
-        let interval = HistogramInterval::from_str(&interval)
-            .map_err(|_| ApiError::BadRequest(format!("failed to parse interval: {interval}")))
-            .unwrap();
-        params.interval = Some(interval);
-    }
-    params.event_type = query.event_type;
-    params.dns_type = query.dns_type;
-    params.address_filter = query.address_filter;
-    params.query_string = query.query_string;
-    params.sensor_name = query.sensor_name;
+) -> Result<impl IntoResponse, ApiError> {
+    let min_timestamp = query
+        .time_range
+        .as_ref()
+        .map(|v| parse_duration(v).map(|v| time::OffsetDateTime::now_utc().sub(v)))
+        .transpose()
+        .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
 
-    let response = context.datastore.histogram(params).await.unwrap();
-    Json(response)
+    let interval = query
+        .interval
+        .as_ref()
+        .map(|v| parse_duration(v).map(|v| v.as_secs()))
+        .transpose()
+        .map_err(|err| ApiError::bad_request(format!("interval: {err}")))?
+        .ok_or(ApiError::bad_request("interval required"))?;
+
+    let params = HistogramParams {
+        min_timestamp,
+        interval,
+        event_type: query.event_type.clone(),
+    };
+
+    let results = match &context.datastore {
+        Datastore::Elastic(ds) => ds.histogram_time(params.clone()).await,
+        Datastore::SQLite(ds) => ds.histogram_time(params.clone()).await,
+    }
+    .map_err(|err| {
+        error!("Histogram/time error: params={:?}, error={:?}", &query, err);
+        ApiError::InternalServerError
+    })?;
+
+    Ok(Json(json!({ "data": results })))
 }
 
 pub(crate) async fn alerts(
@@ -409,29 +427,6 @@ impl IntoResponse for ApiError {
             "error": message,
         }));
         (status, body).into_response()
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::server::filters::GenericQuery;
-
-    #[test]
-    fn test_query_params_mints_from_time_range() {
-        let now = time::OffsetDateTime::now_utc();
-
-        let query = GenericQuery {
-            ..Default::default()
-        };
-        let r = query.mints_from_time_range(&now).unwrap();
-        dbg!(r);
-
-        let query = GenericQuery {
-            time_range: Some("3600s".to_string()),
-            ..Default::default()
-        };
-        let r = query.mints_from_time_range(&now).unwrap();
-        dbg!(r);
     }
 }
 
