@@ -16,9 +16,5 @@ pub struct GenericQuery {
     pub sort_by: Option<String>,
     pub size: Option<u64>,
     pub interval: Option<String>,
-    pub address_filter: Option<String>,
-    pub dns_type: Option<String>,
-    pub agg: Option<String>,
-    pub sensor_name: Option<String>,
     pub tz_offset: Option<String>,
 }
