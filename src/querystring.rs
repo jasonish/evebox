@@ -9,7 +9,7 @@ use nom::character::complete::{multispace0, one_of};
 use nom::sequence::{delimited, preceded};
 use nom::IResult;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Element {
     /// Bare string.
     String(String),
