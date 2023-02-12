@@ -495,15 +495,23 @@ async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
             let eventstore = sqlite::eventstore::SQLiteEventStore::new(connection_builder, pool);
 
             // Setup retention job.
-            if let Some(period) = config.database_retention_period {
-                if period > 0 {
-                    info!("Setting data retention period to {} days", period);
-                    let retention_config = sqlite::retention::RetentionConfig { days: period };
-                    let connection = connection;
-                    tokio::task::spawn_blocking(|| {
-                        sqlite::retention::retention_task(retention_config, connection);
-                    });
-                }
+            let retention_period = if let Some(p) = config.database_retention_period {
+                p
+            } else {
+                warn!("No event retention period set, defaulting to 7 days");
+                7
+            };
+            if retention_period == 0 {
+                warn!("Event retention period disabled. This is not recommended for SQLite");
+            } else {
+                info!("Setting data retention period to {} days", retention_period);
+                let retention_config = sqlite::retention::RetentionConfig {
+                    days: retention_period,
+                };
+                let connection = connection;
+                tokio::task::spawn_blocking(|| {
+                    sqlite::retention::retention_task(retention_config, connection);
+                });
             }
 
             return Ok(Datastore::SQLite(eventstore));

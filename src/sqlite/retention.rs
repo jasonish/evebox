@@ -1,15 +1,22 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use crate::prelude::*;
+use anyhow::Result;
+use core::ops::Sub;
+use rusqlite::params;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
-use rusqlite::params;
+/// How often to run the retention job.  Currently 60 seconds.
+const INTERVAL: u64 = 60;
 
-const DELAY: u64 = 60;
+/// The time to sleep between retention runs if not all old events
+/// were deleted.
+const REPEAT_INTERVAL: u64 = 4;
+
+/// Number of events to delete per run.
 const LIMIT: u64 = 1000;
 
 pub struct RetentionConfig {
@@ -17,7 +24,7 @@ pub struct RetentionConfig {
 }
 
 pub fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connection>>) {
-    let default_delay = Duration::from_secs(DELAY);
+    let default_delay = Duration::from_secs(INTERVAL);
     let report_interval = Duration::from_secs(60);
 
     // Delay on startup.
@@ -28,10 +35,12 @@ pub fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connect
 
     loop {
         let mut delay = default_delay;
+        let now = Instant::now();
         match do_retention(&config, conn.clone()) {
             Ok(n) => {
+                debug!("Deleted {} events in {} ms", n, now.elapsed().as_millis());
                 if n == LIMIT {
-                    delay = Duration::from_secs(1);
+                    delay = Duration::from_secs(REPEAT_INTERVAL);
                 }
                 count += n;
             }
@@ -40,7 +49,7 @@ pub fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connect
             }
         }
         if last_report.elapsed() > report_interval {
-            debug!("Events purged in last {:?}: {}", report_interval, count);
+            info!("Events purged in last {:?}: {}", report_interval, count);
             count = 0;
             last_report = Instant::now();
         }
@@ -49,10 +58,10 @@ pub fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connect
 }
 
 fn do_retention(config: &RetentionConfig, conn: Arc<Mutex<rusqlite::Connection>>) -> Result<u64> {
-    use core::ops::Sub;
     let now = time::OffsetDateTime::now_utc();
     let period = std::time::Duration::from_secs(config.days * 86400);
     let older_than = now.sub(period);
+    debug!("Deleting events from before {}", &older_than);
     let mut conn = conn.lock().unwrap();
     let tx = conn.transaction()?;
     let sql = r#"DELETE FROM events
