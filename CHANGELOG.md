@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.17.0 - unreleased
+
+- Move to SolidJS for frontend development.
+- New special query string keywords:
+  - @ip: match src_ip or dest_ip
+  - @earliest:TIMESTAMP
+  - @latest:TIMESTAMP
+- Feature parity between SQLite and Elasticsearch. This means that
+  some reports were removed, but should come back for both SQLite and
+  Elasticsearch.
+- [sqlite] Enable event retention by default to a value of 7 days. If
+  an SQLite database becomes too large, it can be hard to trim back
+  down to a usable size without significant downtime.
+
 ## 0.16.0 - 2022-11-12
 
 - [server] Fix authentication:
