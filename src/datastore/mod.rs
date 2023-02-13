@@ -266,9 +266,10 @@ pub struct FlowHistogramParameters {
 }
 
 #[derive(Debug, Clone)]
-pub struct HistogramParams {
-    pub min_timestamp: Option<time::OffsetDateTime>,
+pub(crate) struct HistogramTimeParams {
+    pub(crate) min_timestamp: Option<time::OffsetDateTime>,
     /// Seconds.
-    pub interval: u64,
-    pub event_type: Option<String>,
+    pub(crate) interval: u64,
+    pub(crate) event_type: Option<String>,
+    pub(crate) query_string: Option<Vec<querystring::Element>>,
 }

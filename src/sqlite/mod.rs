@@ -15,6 +15,8 @@ pub use connection::ConnectionBuilder;
 use std::path::PathBuf;
 use time::macros::format_description;
 
+pub const LOG_QUERIES: bool = false;
+
 pub async fn open_pool<T: Into<PathBuf>>(filename: T) -> anyhow::Result<deadpool_sqlite::Pool> {
     use deadpool_sqlite::{Config, Runtime};
     let config = Config::new(filename);

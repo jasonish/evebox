@@ -303,6 +303,7 @@ export async function histogram_time(request: {
   time_range: string;
   interval: string;
   event_type: string;
+  query_string: string;
 }) {
   return get("/api/1/report/histogram/time", request).then(
     (response) => response.data

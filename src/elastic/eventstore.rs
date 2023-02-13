@@ -9,7 +9,7 @@ use super::HistoryEntry;
 use super::ACTION_ARCHIVED;
 use super::ACTION_COMMENT;
 use super::TAG_ESCALATED;
-use crate::datastore::HistogramParams;
+use crate::datastore::HistogramTimeParams;
 use crate::datastore::{self, DatastoreError};
 use crate::elastic::importer::Importer;
 use crate::elastic::request::exists_filter;
@@ -403,11 +403,9 @@ impl EventStore {
                 Element::String(s) => {
                     filter.push(query_string_query(s));
                 }
-                Element::KeyVal(key, val) => match key.as_ref() {
-                    "@before" => panic!("@before not allowed here"),
-                    "@after" => panic!("@after not allowed here"),
-                    _ => filter.push(request::term_filter(&self.map_field(key), val)),
-                },
+                Element::KeyVal(key, val) => {
+                    filter.push(request::term_filter(&self.map_field(key), val))
+                }
                 Element::BeforeTimestamp(ts) => {
                     filter.push(request::range_lte_filter(
                         "@timestamp",
@@ -728,11 +726,12 @@ impl EventStore {
         self.add_tags_by_alert_group(alert_group, &[], &entry).await
     }
 
-    pub async fn histogram_time(
+    pub(crate) async fn histogram_time(
         &self,
-        p: HistogramParams,
+        p: HistogramTimeParams,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
+	let mut should = vec![];
 
         if let Some(event_type) = p.event_type {
             filters.push(term_filter(&self.map_field("event_type"), &event_type));
@@ -744,6 +743,10 @@ impl EventStore {
                 &format_timestamp(min_timestamp),
             ));
         }
+
+	if let Some(query_string) = &p.query_string {
+	    self.process_query_string(query_string, &mut filters, &mut should);
+	}
 
         #[rustfmt::skip]
         let request = json!({

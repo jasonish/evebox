@@ -43,9 +43,9 @@ pub(crate) async fn group_by(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<GroupByParams>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let duration = parse_duration(&form.time_range)
+    let min_timestamp = parse_duration(&form.time_range)
+        .map(|v| time::OffsetDateTime::now_utc().sub(v))
         .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
-    let min_timestamp = time::OffsetDateTime::now_utc().sub(duration);
 
     let q = if let Some(q) = &form.q {
         Some(
@@ -67,9 +67,6 @@ pub(crate) async fn group_by(
     #[rustfmt::skip]
     let response = json!({
 	"rows": results,
-	"debug": {
-            "parsed_timerange": duration,
-	}
     });
     Ok(Json(response))
 }

@@ -5,13 +5,14 @@
 import { TIME_RANGE, Top } from "../Top";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import * as API from "../api";
-import { Card, Col, Container, Row, Table } from "solid-bootstrap";
+import { Card, Col, Container, Form, Row, Table } from "solid-bootstrap";
 import { GroupByQueryRequest } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { serverConfig } from "../config";
 import { parse_timerange } from "../datetime";
 import dayjs from "dayjs";
+import { useSearchParams } from "@solidjs/router";
 
 interface CountValueRow {
   count: number;
@@ -26,17 +27,13 @@ export function AlertsReport() {
   );
   const [mostDestAddrs, setMostDestAddrs] = createSignal<CountValueRow[]>([]);
   const [loading, setLoading] = createSignal(0);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   let histogram: any = undefined;
 
   createEffect(() => {
-    refresh(TIME_RANGE());
+    refresh();
   });
-
-  function forceRefresh() {
-    console.log("AlertsReport.forceRefresh");
-    refresh(TIME_RANGE());
-  }
 
   function buildChart(response: any) {
     const dataValues: number[] = [];
@@ -114,7 +111,9 @@ export function AlertsReport() {
     }
   }
 
-  function refresh(timeRange: string) {
+  function refresh() {
+    console.log("AlertsReport.refresh");
+    const timeRange = TIME_RANGE();
     const rangeSeconds = parse_timerange(timeRange);
     const interval = getInterval(rangeSeconds);
 
@@ -122,16 +121,25 @@ export function AlertsReport() {
       time_range: timeRange,
       interval: interval,
       event_type: "alert",
+      query_string: searchParams.q,
     }).then((response) => {
       buildChart(response);
     });
 
-    let loaders = [
+    let loaders: {
+      request: {
+        field: string;
+        q: string;
+        order: "desc" | "asc";
+      };
+      setter: (arg0: any) => void;
+    }[] = [
       // Top alerting signatures.
       {
         request: {
           field: "alert.signature",
           q: "event_type:alert",
+          order: "desc",
         },
         setter: setMostAlerts,
       },
@@ -169,6 +177,9 @@ export function AlertsReport() {
         time_range: timeRange,
         ...loader.request,
       } as GroupByQueryRequest;
+      if (searchParams.q) {
+        request.q = `${request.q} ${searchParams.q}`;
+      }
       setLoading((n) => n + 1);
       loader.setter([]);
       API.groupBy(request)
@@ -188,12 +199,55 @@ export function AlertsReport() {
       <Container fluid={true}>
         <Row class="mt-2">
           <Col>
-            <RefreshButton loading={loading()} refresh={forceRefresh} />
+            <RefreshButton loading={loading()} refresh={refresh} />
+          </Col>
+
+          <Col>
+            <Form
+              class="input-group"
+              onsubmit={(e) => {
+                e.preventDefault();
+                // blurInputs();
+                // applyFilter(e.currentTarget.filter.value);
+                setSearchParams({ q: e.currentTarget.filter.value });
+              }}
+            >
+              <input
+                id="filter-input"
+                type="text"
+                class="form-control"
+                name="filter"
+                placeholder="Search..."
+                value={searchParams.q || ""}
+                onkeydown={(e) => {
+                  if (
+                    e.code === "Escape" ||
+                    e.key === "Escape" ||
+                    e.keyCode === 27
+                  ) {
+                    // blurInputs();
+                  }
+                  e.stopPropagation();
+                }}
+              />
+              <button class="btn btn-secondary" type="submit">
+                Apply
+              </button>
+              <button
+                class="btn btn-secondary"
+                type="button"
+                onclick={() => {
+                  setSearchParams({ q: undefined });
+                }}
+              >
+                Clear
+              </button>
+            </Form>
           </Col>
         </Row>
 
         <Row>
-          <Col>
+          <Col class={"mt-2"}>
             <canvas
               id={"histogram"}
               style="max-height: 250px; height: 300px"

@@ -11,12 +11,12 @@ use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::prelude::*;
+use crate::{prelude::*, querystring};
 use serde::Deserialize;
 use serde_json::json;
 
 use crate::datastore::Datastore;
-use crate::datastore::{EventQueryParams, HistogramParams};
+use crate::datastore::{EventQueryParams, HistogramTimeParams};
 use crate::elastic;
 use crate::querystring::Element;
 use crate::server::filters::GenericQuery;
@@ -169,10 +169,18 @@ pub(crate) async fn histogram_time(
         .map_err(|err| ApiError::bad_request(format!("interval: {err}")))?
         .ok_or(ApiError::bad_request("interval required"))?;
 
-    let params = HistogramParams {
+    let query_string = query
+        .query_string
+        .as_ref()
+        .map(|v| querystring::parse(v, None))
+        .transpose()
+        .map_err(|err| ApiError::bad_request(format!("query_string: {err}")))?;
+
+    let params = HistogramTimeParams {
         min_timestamp,
         interval,
         event_type: query.event_type.clone(),
+	query_string,
     };
 
     let results = match &context.datastore {

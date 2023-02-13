@@ -4,6 +4,7 @@
 
 use super::{QueryParam, SQLiteEventStore};
 use crate::prelude::*;
+use crate::sqlite::LOG_QUERIES;
 use crate::{
     datastore::DatastoreError,
     elastic::AlertQueryOptions,
@@ -149,6 +150,10 @@ impl SQLiteEventStore {
 
                     let query = query.replace("%WHERE%", &filters.join(" AND "));
                     let query = query.replace("%FROM%", &from.join(", "));
+
+		    if LOG_QUERIES {
+			info!("{}", &query);
+		    }
 
                     let tx = conn.transaction()?;
                     let mut st = tx.prepare(&query)?;

@@ -4,15 +4,15 @@
 
 use super::{sqlite_format_interval, SQLiteEventStore};
 use crate::{
-    datastore::{DatastoreError, HistogramParams, StatsAggQueryParams},
+    datastore::{DatastoreError, HistogramTimeParams, StatsAggQueryParams},
     sqlite::{builder::SelectQueryBuilder, eventstore::nanos_to_rfc3339},
 };
 use anyhow::Result;
 
 impl SQLiteEventStore {
-    pub async fn histogram_time(
+    pub(crate) async fn histogram_time(
         &self,
-        p: HistogramParams,
+        p: HistogramTimeParams,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let interval = p.interval;
         let event_type = p.event_type.as_ref().unwrap().to_string();
