@@ -15,7 +15,6 @@ impl SQLiteEventStore {
         p: HistogramTimeParams,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let interval = p.interval;
-        let event_type = p.event_type.as_ref().unwrap().to_string();
         self.pool
             .get()
             .await?
@@ -25,11 +24,11 @@ impl SQLiteEventStore {
                 builder.select(&timestamp);
                 builder.select(format!("count({timestamp})"));
                 builder.from("events");
-                builder
-                    .push_where("json_extract(events.source, '$.event_type') = ?")
-                    .push_param(event_type);
                 builder.group_by(timestamp.to_string());
                 builder.order_by("timestamp", "asc");
+
+                builder.apply_query_string(&p.query_string);
+
                 if let Some(min_timestamp) = p.min_timestamp {
                     builder.where_value(
                         "timestamp >= ?",

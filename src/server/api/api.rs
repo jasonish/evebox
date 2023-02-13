@@ -169,18 +169,25 @@ pub(crate) async fn histogram_time(
         .map_err(|err| ApiError::bad_request(format!("interval: {err}")))?
         .ok_or(ApiError::bad_request("interval required"))?;
 
-    let query_string = query
+    let mut query_string = query
         .query_string
         .as_ref()
         .map(|v| querystring::parse(v, None))
         .transpose()
-        .map_err(|err| ApiError::bad_request(format!("query_string: {err}")))?;
+        .map_err(|err| ApiError::bad_request(format!("query_string: {err}")))?
+        .unwrap_or(vec![]);
+
+    if let Some(event_type) = &query.event_type {
+        query_string.push(Element::KeyVal(
+            "event_type".to_string(),
+            event_type.to_string(),
+        ));
+    }
 
     let params = HistogramTimeParams {
         min_timestamp,
         interval,
-        event_type: query.event_type.clone(),
-	query_string,
+        query_string,
     };
 
     let results = match &context.datastore {

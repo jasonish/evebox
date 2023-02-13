@@ -5,7 +5,7 @@
 use super::SQLiteEventStore;
 use crate::{
     datastore::DatastoreError,
-    querystring::{self, Element},
+    querystring::{self},
     sqlite::builder::SelectQueryBuilder,
 };
 use rusqlite::types::{FromSqlError, ValueRef};
@@ -17,7 +17,7 @@ impl SQLiteEventStore {
         min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
-        q0: Option<Vec<querystring::Element>>,
+        q: Option<Vec<querystring::Element>>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut builder = SelectQueryBuilder::new();
         builder
@@ -42,31 +42,8 @@ impl SQLiteEventStore {
             builder.where_value("json_extract(events.source, '$.event_type') = ?", "dns");
         }
 
-        if let Some(q) = &q0 {
-            for e in q {
-                match e {
-                    Element::String(s) => {
-                        builder.where_value("events.source LIKE ?", s.clone());
-                    }
-                    Element::KeyVal(k, v) => {
-                        builder.where_value(
-                            format!("json_extract(events.source, '$.{k}') = ?"),
-                            v.clone(),
-                        );
-                    }
-                    Element::BeforeTimestamp(ts) => {
-                        builder.where_value("timestamp <= ?", ts.unix_timestamp_nanos() as u64);
-                    }
-                    Element::AfterTimestamp(ts) => {
-                        builder.where_value("timestamp >= ?", ts.unix_timestamp_nanos() as u64);
-                    }
-                    Element::Ip(ip) => {
-                        builder.push_where("(json_extract(events.source, '$.src_ip') = ? OR json_extract(events.source, '$.dest_ip') = ?)");
-                        builder.push_param(ip.to_string());
-                        builder.push_param(ip.to_string());
-                    }
-                }
-            }
+        if let Some(q) = &q {
+            builder.apply_query_string(q);
         }
 
         let results = self

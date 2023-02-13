@@ -17,7 +17,7 @@ pub async fn dhcp_report(
     )];
 
     if let Some(dt) = params.min_timestamp {
-        filters.push(elastic::request::timestamp_gte_filter(dt));
+        filters.push(elastic::request::timestamp_gte_filter(&dt));
     }
 
     if let Some(query_string) = &params.query_string {

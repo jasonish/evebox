@@ -37,26 +37,10 @@ pub fn new_request() -> serde_json::Value {
 }
 
 /// Format: "%Y-%m-%dT%H:%M:%S.%3fZ";
-pub fn format_datetime(dt: time::OffsetDateTime) -> String {
+pub fn format_datetime(dt: &time::OffsetDateTime) -> String {
     let format =
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z");
     dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
-}
-
-pub fn timestamp_gte_filter(dt: time::OffsetDateTime) -> serde_json::Value {
-    json!({
-        "range": {
-            "@timestamp": {"gte": format_datetime(dt)}
-        }
-    })
-}
-
-pub fn timestamp_lte_filter(dt: time::OffsetDateTime) -> serde_json::Value {
-    json!({
-        "range": {
-            "@timestamp": {"lte": format_datetime(dt)}
-        }
-    })
 }
 
 pub fn term_filter(field: &str, value: &str) -> serde_json::Value {
@@ -73,4 +57,36 @@ pub fn range_lte_filter(field: &str, value: &str) -> serde_json::Value {
 
 pub fn range_gte_filter(field: &str, value: &str) -> serde_json::Value {
     json!({"range": {field: {"gte": value}}})
+}
+
+pub fn range_lt_filter(field: &str, value: &str) -> serde_json::Value {
+    json!({"range": {field: {"lt": value}}})
+}
+
+pub fn range_gt_filter(field: &str, value: &str) -> serde_json::Value {
+    json!({"range": {field: {"gt": value}}})
+}
+
+pub fn timestamp_gte_filter(dt: &time::OffsetDateTime) -> serde_json::Value {
+    json!({
+        "range": {
+            "@timestamp": {"gte": format_datetime(dt)}
+        }
+    })
+}
+
+pub fn timestamp_lte_filter(dt: &time::OffsetDateTime) -> serde_json::Value {
+    json!({
+        "range": {
+            "@timestamp": {"lte": format_datetime(dt)}
+        }
+    })
+}
+
+pub fn timestamp_gt_filter(dt: &time::OffsetDateTime) -> serde_json::Value {
+    range_gt_filter("@timestamp", &format_datetime(dt))
+}
+
+pub fn timestamp_lt_filter(dt: &time::OffsetDateTime) -> serde_json::Value {
+    range_lt_filter("@timestamp", &format_datetime(dt))
 }

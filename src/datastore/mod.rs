@@ -270,6 +270,5 @@ pub(crate) struct HistogramTimeParams {
     pub(crate) min_timestamp: Option<time::OffsetDateTime>,
     /// Seconds.
     pub(crate) interval: u64,
-    pub(crate) event_type: Option<String>,
-    pub(crate) query_string: Option<Vec<querystring::Element>>,
+    pub(crate) query_string: Vec<querystring::Element>,
 }

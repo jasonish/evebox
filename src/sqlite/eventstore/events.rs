@@ -74,6 +74,8 @@ impl SQLiteEventStore {
                             Element::BeforeTimestamp(_) => todo!(),
                             Element::AfterTimestamp(_) => todo!(),
                             Element::Ip(_) => todo!(),
+                            Element::EarliestTimestamp(_) => todo!(),
+                            Element::LatestTimestamp(_) => todo!(),
                         }
                     }
 

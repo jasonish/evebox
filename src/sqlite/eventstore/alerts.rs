@@ -142,6 +142,8 @@ impl SQLiteEventStore {
                                         Element::BeforeTimestamp(_) => todo!(),
                                         Element::AfterTimestamp(_) => todo!(),
                                         Element::Ip(_) => todo!(),
+                                        Element::EarliestTimestamp(_) => todo!(),
+                                        Element::LatestTimestamp(_) => todo!(),
                                     }
                                 }
                             }
@@ -151,9 +153,9 @@ impl SQLiteEventStore {
                     let query = query.replace("%WHERE%", &filters.join(" AND "));
                     let query = query.replace("%FROM%", &from.join(", "));
 
-		    if LOG_QUERIES {
-			info!("{}", &query);
-		    }
+                    if LOG_QUERIES {
+                        info!("{}", &query);
+                    }
 
                     let tx = conn.transaction()?;
                     let mut st = tx.prepare(&query)?;

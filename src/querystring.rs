@@ -19,6 +19,8 @@ pub enum Element {
     BeforeTimestamp(time::OffsetDateTime),
     /// A timestamp specified with @after.
     AfterTimestamp(time::OffsetDateTime),
+    EarliestTimestamp(time::OffsetDateTime),
+    LatestTimestamp(time::OffsetDateTime),
     /// IP address specified with @ip which is used to match on the
     /// source or destination IP address.
     Ip(String),

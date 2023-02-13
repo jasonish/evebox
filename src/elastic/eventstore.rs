@@ -14,7 +14,6 @@ use crate::datastore::{self, DatastoreError};
 use crate::elastic::importer::Importer;
 use crate::elastic::request::exists_filter;
 use crate::elastic::request::range_gte_filter;
-use crate::elastic::request::term_filter;
 use crate::elastic::{
     format_timestamp, request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED,
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
@@ -392,7 +391,7 @@ impl EventStore {
         filters
     }
 
-    fn process_query_string(
+    fn apply_query_string(
         &self,
         q: &Vec<querystring::Element>,
         filter: &mut Vec<serde_json::Value>,
@@ -407,20 +406,20 @@ impl EventStore {
                     filter.push(request::term_filter(&self.map_field(key), val))
                 }
                 Element::BeforeTimestamp(ts) => {
-                    filter.push(request::range_lte_filter(
-                        "@timestamp",
-                        &format_timestamp(*ts),
-                    ));
+                    filter.push(request::timestamp_lt_filter(ts));
                 }
                 Element::AfterTimestamp(ts) => {
-                    filter.push(request::range_gte_filter(
-                        "@timestamp",
-                        &format_timestamp(*ts),
-                    ));
+                    filter.push(request::timestamp_gt_filter(ts));
                 }
                 Element::Ip(ip) => {
                     should.push(json!({"term": {self.map_field("src_ip"): ip}}));
                     should.push(json!({"term": {self.map_field("dest_ip"): ip}}));
+                }
+                Element::EarliestTimestamp(ts) => {
+                    filter.push(request::timestamp_gte_filter(ts));
+                }
+                Element::LatestTimestamp(ts) => {
+                    filter.push(request::timestamp_lte_filter(ts));
                 }
             }
         }
@@ -441,6 +440,8 @@ impl EventStore {
                 request::range_gte_filter("@timestamp", &format_timestamp(*ts))
             }
             Element::Ip(_) => todo!(),
+            Element::EarliestTimestamp(_) => todo!(),
+            Element::LatestTimestamp(_) => todo!(),
         }
     }
 
@@ -454,7 +455,7 @@ impl EventStore {
         if let Some(q) = &options.query_string {
             match crate::querystring::parse(q, None) {
                 Ok(q) => {
-                    self.process_query_string(&q, &mut filters, &mut should);
+                    self.apply_query_string(&q, &mut filters, &mut should);
                     has_min_timestamp = q.iter().any(|e| matches!(&e, Element::AfterTimestamp(_)));
                 }
                 Err(err) => {
@@ -668,11 +669,11 @@ impl EventStore {
         }
 
         if let Some(timestamp) = params.min_timestamp {
-            filters.push(request::timestamp_gte_filter(timestamp));
+            filters.push(request::timestamp_gte_filter(&timestamp));
         }
 
         if let Some(timestamp) = params.max_timestamp {
-            filters.push(request::timestamp_lte_filter(timestamp));
+            filters.push(request::timestamp_lte_filter(&timestamp));
         }
 
         let sort_by = params.sort_by.unwrap_or_else(|| "@timestamp".to_string());
@@ -731,11 +732,7 @@ impl EventStore {
         p: HistogramTimeParams,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
-	let mut should = vec![];
-
-        if let Some(event_type) = p.event_type {
-            filters.push(term_filter(&self.map_field("event_type"), &event_type));
-        }
+        let mut should = vec![];
 
         if let Some(min_timestamp) = p.min_timestamp {
             filters.push(range_gte_filter(
@@ -744,9 +741,7 @@ impl EventStore {
             ));
         }
 
-	if let Some(query_string) = &p.query_string {
-	    self.process_query_string(query_string, &mut filters, &mut should);
-	}
+        self.apply_query_string(&p.query_string, &mut filters, &mut should);
 
         #[rustfmt::skip]
         let request = json!({
@@ -796,7 +791,7 @@ impl EventStore {
         let mut should = vec![];
 
         if let Some(q) = &q {
-            self.process_query_string(q, &mut filter, &mut should);
+            self.apply_query_string(q, &mut filter, &mut should);
         }
 
         #[rustfmt::skip]
@@ -883,7 +878,7 @@ impl EventStore {
             request::exists_filter(&self.map_field("event_type")),
         ];
         if let Some(mints) = params.mints {
-            filters.push(request::timestamp_gte_filter(mints));
+            filters.push(request::timestamp_gte_filter(&mints));
         }
         if let Some(query_string) = params.query_string {
             filters.extend(self.query_string_to_filters(&query_string));

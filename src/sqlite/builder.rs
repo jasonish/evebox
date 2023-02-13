@@ -5,6 +5,8 @@
 use rusqlite::ToSql;
 use std::fmt::Display;
 
+use crate::querystring::{self, Element};
+
 #[derive(Default)]
 pub struct SelectQueryBuilder {
     select: Vec<String>,
@@ -79,6 +81,39 @@ impl SelectQueryBuilder {
 
     pub fn params(&self) -> &[Box<dyn ToSql + Send + Sync + 'static>] {
         &self.params
+    }
+
+    pub fn apply_query_string(&mut self, q: &[querystring::Element]) {
+        for e in q {
+            match e {
+                Element::String(s) => {
+                    self.where_value("events.source LIKE ?", format!("%{s}%"));
+                }
+                Element::KeyVal(k, v) => {
+                    self.where_value(
+                        format!("json_extract(events.source, '$.{k}') = ?"),
+                        v.to_string(),
+                    );
+                }
+                Element::BeforeTimestamp(ts) => {
+                    self.where_value("timestamp = <", ts.unix_timestamp_nanos() as u64);
+                }
+                Element::AfterTimestamp(ts) => {
+                    self.where_value("timestamp = >", ts.unix_timestamp_nanos() as u64);
+                }
+                Element::EarliestTimestamp(ts) => {
+                    self.where_value("timestamp >= ?", ts.unix_timestamp_nanos() as u64);
+                }
+                Element::LatestTimestamp(ts) => {
+                    self.where_value("timestamp <= ?", ts.unix_timestamp_nanos() as u64);
+                }
+                Element::Ip(ip) => {
+                    self.push_where("(json_extract(events.source, '$.src_ip') = ? OR json_extract(events.source, '$.dest_ip') = ?)");
+                    self.push_param(ip.to_string());
+                    self.push_param(ip.to_string());
+                }
+            }
+        }
     }
 
     pub fn build(&mut self) -> String {
