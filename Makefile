@@ -143,3 +143,7 @@ rpm:
 	    rpm/evebox.sysconfig=/etc/sysconfig/evebox \
 	    rpm/evebox.service=/lib/systemd/system/evebox.service \
 	    rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+
+fmt:
+	cargo fmt
+	cd webapp && npm run fmt
