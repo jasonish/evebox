@@ -224,14 +224,13 @@ impl Datastore {
     pub async fn group_by(
         &self,
         field: &str,
-        min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
-        q: Option<Vec<querystring::Element>>,
+        q: Vec<querystring::Element>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.group_by(field, min_timestamp, size, order, q).await,
-            Datastore::SQLite(ds) => ds.group_by(field, min_timestamp, size, order, q).await,
+            Datastore::Elastic(ds) => ds.group_by(field, size, order, q).await,
+            Datastore::SQLite(ds) => ds.group_by(field, size, order, q).await,
         }
     }
 }
@@ -263,12 +262,4 @@ pub struct FlowHistogramParameters {
     pub mints: Option<time::OffsetDateTime>,
     pub interval: Option<String>,
     pub query_string: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct HistogramTimeParams {
-    pub(crate) min_timestamp: Option<time::OffsetDateTime>,
-    /// Seconds.
-    pub(crate) interval: u64,
-    pub(crate) query_string: Vec<querystring::Element>,
 }

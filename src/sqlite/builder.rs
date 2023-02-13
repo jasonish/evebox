@@ -95,12 +95,6 @@ impl SelectQueryBuilder {
                         v.to_string(),
                     );
                 }
-                Element::BeforeTimestamp(ts) => {
-                    self.where_value("timestamp = <", ts.unix_timestamp_nanos() as u64);
-                }
-                Element::AfterTimestamp(ts) => {
-                    self.where_value("timestamp = >", ts.unix_timestamp_nanos() as u64);
-                }
                 Element::EarliestTimestamp(ts) => {
                     self.where_value("timestamp >= ?", ts.unix_timestamp_nanos() as u64);
                 }

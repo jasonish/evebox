@@ -9,11 +9,9 @@ use super::HistoryEntry;
 use super::ACTION_ARCHIVED;
 use super::ACTION_COMMENT;
 use super::TAG_ESCALATED;
-use crate::datastore::HistogramTimeParams;
 use crate::datastore::{self, DatastoreError};
 use crate::elastic::importer::Importer;
 use crate::elastic::request::exists_filter;
-use crate::elastic::request::range_gte_filter;
 use crate::elastic::{
     format_timestamp, request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED,
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
@@ -393,7 +391,7 @@ impl EventStore {
 
     fn apply_query_string(
         &self,
-        q: &Vec<querystring::Element>,
+        q: &[querystring::Element],
         filter: &mut Vec<serde_json::Value>,
         should: &mut Vec<serde_json::Value>,
     ) {
@@ -404,12 +402,6 @@ impl EventStore {
                 }
                 Element::KeyVal(key, val) => {
                     filter.push(request::term_filter(&self.map_field(key), val))
-                }
-                Element::BeforeTimestamp(ts) => {
-                    filter.push(request::timestamp_lt_filter(ts));
-                }
-                Element::AfterTimestamp(ts) => {
-                    filter.push(request::timestamp_gt_filter(ts));
                 }
                 Element::Ip(ip) => {
                     should.push(json!({"term": {self.map_field("src_ip"): ip}}));
@@ -427,21 +419,15 @@ impl EventStore {
 
     fn query_string_element_to_filter(&self, el: &Element) -> serde_json::Value {
         match el {
-            Element::KeyVal(key, val) => match key.as_ref() {
-                "@before" => panic!("@before not allowed here"),
-                "@after" => panic!("@after now allowed here"),
-                _ => request::term_filter(&self.map_field(key), val),
-            },
+            Element::KeyVal(key, val) => request::term_filter(&self.map_field(key), val),
             Element::String(val) => query_string_query(val),
-            Element::BeforeTimestamp(ts) => {
-                request::range_lte_filter("@timestamp", &format_timestamp(*ts))
-            }
-            Element::AfterTimestamp(ts) => {
+            Element::Ip(_) => todo!(),
+            Element::EarliestTimestamp(ts) => {
                 request::range_gte_filter("@timestamp", &format_timestamp(*ts))
             }
-            Element::Ip(_) => todo!(),
-            Element::EarliestTimestamp(_) => todo!(),
-            Element::LatestTimestamp(_) => todo!(),
+            Element::LatestTimestamp(ts) => {
+                request::range_lte_filter("@timestamp", &format_timestamp(*ts))
+            }
         }
     }
 
@@ -456,7 +442,9 @@ impl EventStore {
             match crate::querystring::parse(q, None) {
                 Ok(q) => {
                     self.apply_query_string(&q, &mut filters, &mut should);
-                    has_min_timestamp = q.iter().any(|e| matches!(&e, Element::AfterTimestamp(_)));
+                    has_min_timestamp = q
+                        .iter()
+                        .any(|e| matches!(&e, Element::EarliestTimestamp(_)));
                 }
                 Err(err) => {
                     error!(
@@ -729,19 +717,12 @@ impl EventStore {
 
     pub(crate) async fn histogram_time(
         &self,
-        p: HistogramTimeParams,
+        interval: u64,
+        q: &[querystring::Element],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
-
-        if let Some(min_timestamp) = p.min_timestamp {
-            filters.push(range_gte_filter(
-                "@timestamp",
-                &format_timestamp(min_timestamp),
-            ));
-        }
-
-        self.apply_query_string(&p.query_string, &mut filters, &mut should);
+        self.apply_query_string(q, &mut filters, &mut should);
 
         #[rustfmt::skip]
         let request = json!({
@@ -756,7 +737,7 @@ impl EventStore {
 		"histogram": {
 		    "date_histogram": {
 			"field": "@timestamp",
-			"fixed_interval": format!("{}s", p.interval),
+			"fixed_interval": format!("{interval}s"),
 			"min_doc_count": 0,
 			// May need max extended bounds to now... Or a little bit in the future.
 		    },
@@ -782,17 +763,14 @@ impl EventStore {
     pub async fn group_by(
         &self,
         field: &str,
-        min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
-        q: Option<Vec<querystring::Element>>,
+        q: Vec<querystring::Element>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filter = vec![];
         let mut should = vec![];
 
-        if let Some(q) = &q {
-            self.apply_query_string(q, &mut filter, &mut should);
-        }
+        self.apply_query_string(&q, &mut filter, &mut should);
 
         #[rustfmt::skip]
         let agg = if order == "asc" {
@@ -818,10 +796,6 @@ impl EventStore {
         };
 
         filter.push(exists_filter("event_type"));
-        filter.push(range_gte_filter(
-            "@timestamp",
-            &format_timestamp(min_timestamp),
-        ));
 
         #[rustfmt::skip]
         let mut query = json!({

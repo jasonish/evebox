@@ -4,7 +4,8 @@
 
 use super::{sqlite_format_interval, SQLiteEventStore};
 use crate::{
-    datastore::{DatastoreError, HistogramTimeParams, StatsAggQueryParams},
+    datastore::{DatastoreError, StatsAggQueryParams},
+    querystring,
     sqlite::{builder::SelectQueryBuilder, eventstore::nanos_to_rfc3339},
 };
 use anyhow::Result;
@@ -12,9 +13,10 @@ use anyhow::Result;
 impl SQLiteEventStore {
     pub(crate) async fn histogram_time(
         &self,
-        p: HistogramTimeParams,
+        interval: u64,
+        q: &[querystring::Element],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
-        let interval = p.interval;
+        let q = q.to_vec();
         self.pool
             .get()
             .await?
@@ -27,14 +29,7 @@ impl SQLiteEventStore {
                 builder.group_by(timestamp.to_string());
                 builder.order_by("timestamp", "asc");
 
-                builder.apply_query_string(&p.query_string);
-
-                if let Some(min_timestamp) = p.min_timestamp {
-                    builder.where_value(
-                        "timestamp >= ?",
-                        min_timestamp.unix_timestamp_nanos() as u64,
-                    );
-                }
+                builder.apply_query_string(&q);
 
                 let mut st = conn.prepare(&builder.build())?;
                 let mut rows = st.query(rusqlite::params_from_iter(builder.params()))?;

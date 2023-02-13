@@ -14,10 +14,9 @@ impl SQLiteEventStore {
     pub async fn group_by(
         &self,
         field: &str,
-        min_timestamp: time::OffsetDateTime,
         size: usize,
         order: &str,
-        q: Option<Vec<querystring::Element>>,
+        q: Vec<querystring::Element>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut builder = SelectQueryBuilder::new();
         builder
@@ -26,10 +25,6 @@ impl SQLiteEventStore {
             ))
             .select(format!("json_extract(events.source, '$.{field}')"))
             .from("events")
-            .where_value(
-                "timestamp >= ?",
-                min_timestamp.unix_timestamp_nanos() as u64,
-            )
             .group_by(format!("json_extract(events.source, '$.{field}')"))
             .order_by("count", order)
             .limit(size as i64);
@@ -42,9 +37,7 @@ impl SQLiteEventStore {
             builder.where_value("json_extract(events.source, '$.event_type') = ?", "dns");
         }
 
-        if let Some(q) = &q {
-            builder.apply_query_string(q);
-        }
+        builder.apply_query_string(&q);
 
         let results = self
             .pool

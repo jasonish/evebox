@@ -16,9 +16,9 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::datastore::Datastore;
-use crate::datastore::{EventQueryParams, HistogramTimeParams};
+use crate::datastore::EventQueryParams;
 use crate::elastic;
-use crate::querystring::Element;
+use crate::querystring::{Element, QueryString};
 use crate::server::filters::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
@@ -154,13 +154,6 @@ pub(crate) async fn histogram_time(
     Extension(context): Extension<Arc<ServerContext>>,
     Form(query): Form<GenericQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let min_timestamp = query
-        .time_range
-        .as_ref()
-        .map(|v| parse_duration(v).map(|v| time::OffsetDateTime::now_utc().sub(v)))
-        .transpose()
-        .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
-
     let interval = query
         .interval
         .as_ref()
@@ -184,15 +177,23 @@ pub(crate) async fn histogram_time(
         ));
     }
 
-    let params = HistogramTimeParams {
-        min_timestamp,
-        interval,
-        query_string,
-    };
+    // Only parse the time range if a earliest time is not provided in
+    // the query string.
+    if !query_string.has_low_timestamp() && query.time_range.is_some() {
+        let min_timestamp = query
+            .time_range
+            .as_ref()
+            .map(|v| parse_duration(v).map(|v| time::OffsetDateTime::now_utc().sub(v)))
+            .transpose()
+            .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
+        if let Some(min_timestamp) = min_timestamp {
+            query_string.push(Element::EarliestTimestamp(min_timestamp));
+        }
+    }
 
     let results = match &context.datastore {
-        Datastore::Elastic(ds) => ds.histogram_time(params.clone()).await,
-        Datastore::SQLite(ds) => ds.histogram_time(params.clone()).await,
+        Datastore::Elastic(ds) => ds.histogram_time(interval, &query_string).await,
+        Datastore::SQLite(ds) => ds.histogram_time(interval, &query_string).await,
     }
     .map_err(|err| {
         error!("Histogram/time error: params={:?}, error={:?}", &query, err);
@@ -461,10 +462,10 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
         // Pull out the before and after timestamps from the elements.
         for e in &parts {
             match e {
-                Element::BeforeTimestamp(ts) => {
+                Element::LatestTimestamp(ts) => {
                     params.max_timestamp = Some(*ts);
                 }
-                Element::AfterTimestamp(ts) => {
+                Element::EarliestTimestamp(ts) => {
                     params.min_timestamp = Some(*ts);
                 }
                 _ => {}
@@ -475,7 +476,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
 
     if let Some(min_timestamp) = &query.min_timestamp {
         if params.min_timestamp.is_some() {
-            debug!("Ignoring min_timestamp, @after provided in query string");
+            debug!("Ignoring min_timestamp, @earliest provided in query string");
         } else {
             match crate::querystring::parse_timestamp(min_timestamp, default_tz_offset) {
                 Ok(ts) => params.min_timestamp = Some(ts),
@@ -496,7 +497,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
 
     if let Some(max_timestamp) = &query.max_timestamp {
         if params.max_timestamp.is_some() {
-            debug!("Ignoring max_timestamp, @before provided in query string");
+            debug!("Ignoring max_timestamp, @latest provided in query string");
         } else {
             match crate::querystring::parse_timestamp(max_timestamp, default_tz_offset) {
                 Ok(ts) => params.max_timestamp = Some(ts),

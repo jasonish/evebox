@@ -9,7 +9,7 @@ use crate::{
     datastore::DatastoreError,
     elastic::AlertQueryOptions,
     querystring::{self, Element},
-    sqlite::{eventstore::parse_timestamp, format_sqlite_timestamp},
+    sqlite::format_sqlite_timestamp,
 };
 
 impl SQLiteEventStore {
@@ -98,49 +98,19 @@ impl SQLiteEventStore {
                                             filters.push("events.source LIKE ?".into());
                                             params.push(Box::new(format!("%{val}%")));
                                         }
-                                        Element::KeyVal(key, val) => match key.as_ref() {
-                                            "@before" => {
-                                                if let Ok(ts) = parse_timestamp(val) {
-                                                    filters.push("timestamp <= ?".to_string());
-                                                    params.push(Box::new(
-                                                        ts.unix_timestamp_nanos() as i64,
-                                                    ));
-                                                } else {
-                                                    error!(
-                                                        "Failed to parse {} timestamp of {}",
-                                                        &key, &val
-                                                    );
-                                                }
+                                        Element::KeyVal(key, val) => {
+                                            if let Ok(val) = val.parse::<i64>() {
+                                                filters.push(format!(
+                                                    "json_extract(events.source, '$.{key}') = ?"
+                                                ));
+                                                params.push(Box::new(val));
+                                            } else {
+                                                filters.push(format!(
+                                                    "json_extract(events.source, '$.{key}') LIKE ?"
+                                                ));
+                                                params.push(Box::new(format!("%{val}%")));
                                             }
-                                            "@after" => {
-                                                if let Ok(ts) = parse_timestamp(val) {
-                                                    filters.push("timestamp >= ?".to_string());
-                                                    params.push(Box::new(
-                                                        ts.unix_timestamp_nanos() as i64,
-                                                    ));
-                                                } else {
-                                                    error!(
-                                                        "Failed to parse {} timestamp of {}",
-                                                        &key, &val
-                                                    );
-                                                }
-                                            }
-                                            _ => {
-                                                if let Ok(val) = val.parse::<i64>() {
-                                                    filters.push(format!(
-							"json_extract(events.source, '$.{key}') = ?"
-                                                    ));
-                                                    params.push(Box::new(val));
-                                                } else {
-                                                    filters.push(format!(
-							"json_extract(events.source, '$.{key}') LIKE ?"
-                                                    ));
-                                                    params.push(Box::new(format!("%{val}%")));
-                                                }
-                                            }
-                                        },
-                                        Element::BeforeTimestamp(_) => todo!(),
-                                        Element::AfterTimestamp(_) => todo!(),
+                                        }
                                         Element::Ip(_) => todo!(),
                                         Element::EarliestTimestamp(_) => todo!(),
                                         Element::LatestTimestamp(_) => todo!(),

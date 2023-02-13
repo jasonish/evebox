@@ -15,15 +15,24 @@ pub enum Element {
     String(String),
     /// A key value pair, (eg: alert.signature_id:222222)
     KeyVal(String, String),
-    /// A timestamp specified with @before.
-    BeforeTimestamp(time::OffsetDateTime),
-    /// A timestamp specified with @after.
-    AfterTimestamp(time::OffsetDateTime),
+    /// A timestamp specified with @earliest.
     EarliestTimestamp(time::OffsetDateTime),
+    /// A timestamp specified with @latest.
     LatestTimestamp(time::OffsetDateTime),
     /// IP address specified with @ip which is used to match on the
     /// source or destination IP address.
     Ip(String),
+}
+
+pub trait QueryString {
+    fn has_low_timestamp(&self) -> bool;
+}
+
+impl QueryString for Vec<Element> {
+    fn has_low_timestamp(&self) -> bool {
+        self.iter()
+            .any(|e| matches!(&e, Element::EarliestTimestamp(_)))
+    }
 }
 
 pub fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
@@ -37,7 +46,7 @@ pub fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
     })?;
 
     // Now post-process the simple elements into higher level elements
-    // like @ip, @before, etc.
+    // like @ip, @earliest, @latest, etc.
     for token in tokens {
         match token {
             Element::String(_) => {
@@ -45,11 +54,11 @@ pub fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
             }
             Element::KeyVal(ref key, ref val) => match key.as_ref() {
                 "@ip" => elements.push(Element::Ip(val.to_string())),
-                "@before" => {
-                    elements.push(Element::BeforeTimestamp(parse_timestamp(val, tz_offset)?))
+                "@earliest" => {
+                    elements.push(Element::EarliestTimestamp(parse_timestamp(val, tz_offset)?))
                 }
-                "@after" => {
-                    elements.push(Element::AfterTimestamp(parse_timestamp(val, tz_offset)?))
+                "@latest" => {
+                    elements.push(Element::LatestTimestamp(parse_timestamp(val, tz_offset)?))
                 }
                 _ => elements.push(token),
             },
@@ -318,5 +327,17 @@ mod test {
             timestamp_preprocess("2023-01-01T01:02:03.123Z", None).unwrap(),
             "2023-01-01T01:02:03.123+0000"
         );
+    }
+
+    #[test]
+    fn test_query_string_has_low_timestamp() {
+        let mut query_string: Vec<Element> = vec![Element::String("INFO".to_string())];
+        assert!(!query_string.has_low_timestamp());
+
+        query_string.push(Element::LatestTimestamp(time::OffsetDateTime::now_utc()));
+        assert!(!query_string.has_low_timestamp());
+
+        query_string.push(Element::EarliestTimestamp(time::OffsetDateTime::now_utc()));
+        assert!(query_string.has_low_timestamp());
     }
 }

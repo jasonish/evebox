@@ -344,13 +344,3 @@ fn nanos_to_rfc3339(nanos: i128) -> anyhow::Result<String> {
     let rfc3339 = ts.format(&time::format_description::well_known::Rfc3339)?;
     Ok(rfc3339)
 }
-
-fn parse_timestamp(
-    timestamp: &str,
-) -> Result<time::OffsetDateTime, Box<dyn std::error::Error + Sync + Send>> {
-    // The webapp may send the timestamp with an improperly encoded +, which will be received
-    // as space. Help the parsing out by replacing spaces with "+".
-    let timestamp = timestamp.replace(' ', "+");
-    let ts = percent_encoding::percent_decode_str(&timestamp).decode_utf8_lossy();
-    Ok(eve::parse_eve_timestamp(&ts)?)
-}

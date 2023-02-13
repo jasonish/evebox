@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::{util::parse_duration, ApiError};
+use crate::querystring::{Element, QueryString};
 use crate::server::{main::SessionExtractor, ServerContext};
 use crate::{prelude::*, querystring};
 use axum::{extract::State, response::IntoResponse, Form, Json};
@@ -43,22 +44,26 @@ pub(crate) async fn group_by(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<GroupByParams>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let min_timestamp = parse_duration(&form.time_range)
-        .map(|v| time::OffsetDateTime::now_utc().sub(v))
-        .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
+    // First parse the query string.
+    let mut q = form
+        .q
+        .as_ref()
+        .map(|q| querystring::parse(q, None))
+        .unwrap_or_else(|| Ok(vec![]))
+        .map_err(|err| ApiError::bad_request(format!("q: {err}")))?;
 
-    let q = if let Some(q) = &form.q {
-        Some(
-            querystring::parse(q, None)
-                .map_err(|err| ApiError::bad_request(format!("q: {err}")))?,
-        )
-    } else {
-        None
-    };
+    // Only apply the time range if the query string does not contain
+    // an low timestamp.
+    if !q.has_low_timestamp() {
+        let min_timestamp = parse_duration(&form.time_range)
+            .map(|v| time::OffsetDateTime::now_utc().sub(v))
+            .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
+        q.push(Element::EarliestTimestamp(min_timestamp));
+    }
 
     let results = context
         .datastore
-        .group_by(&form.field, min_timestamp, form.size, &form.order, q)
+        .group_by(&form.field, form.size, &form.order, q)
         .await
         .map_err(|err| {
             error!("Datastore group by failed: {err}");
