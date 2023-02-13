@@ -78,7 +78,7 @@ async function post(url: string, params: any = {}): Promise<any> {
 }
 
 export async function getUser(): Promise<UserResponse> {
-  let response = await get("/api/1/user");
+  let response = await get("api/1/user");
   return response.data;
 }
 
@@ -95,7 +95,7 @@ export interface ConfigResponse {
 }
 
 export async function getConfig(): Promise<ConfigResponse> {
-  return get("/api/1/config").then((response) => response.data);
+  return get("api/1/config").then((response) => response.data);
 }
 
 export async function login(
@@ -107,7 +107,7 @@ export async function login(
     password: password,
   });
 
-  let response = await axios.post<LoginResponse>("/api/1/login", params);
+  let response = await axios.post<LoginResponse>("api/1/login", params);
   setSessionId(response.data.session_id);
   return [true, response.data];
 }
@@ -131,7 +131,7 @@ export async function alerts(options?: {
   if (options?.tags) {
     params.tags = options.tags.join(",");
   }
-  return get("/api/1/alerts", params).then((response) => response.data);
+  return get("api/1/alerts", params).then((response) => response.data);
 }
 
 export interface GetEventsOptions {
@@ -175,7 +175,7 @@ export async function getEvents(
   if (options?.max_timestamp) {
     params.max_timestamp = options.max_timestamp;
   }
-  return get("/api/1/events", params).then((response) => response.data);
+  return get("api/1/events", params).then((response) => response.data);
 }
 
 export async function archiveAggregateAlert(alert: EventWrapper) {
@@ -187,13 +187,13 @@ export async function archiveAggregateAlert(alert: EventWrapper) {
     max_timestamp: alert._metadata?.max_timestamp,
   };
   return queueAdd(() => {
-    return post("/api/1/alert-group/archive", params);
+    return post("api/1/alert-group/archive", params);
   });
 }
 
 export async function archiveEvent(event: EventWrapper): Promise<any> {
   return queueAdd(() => {
-    return post(`/api/1/event/${event._id}/archive`);
+    return post(`api/1/event/${event._id}/archive`);
   });
 }
 
@@ -206,7 +206,7 @@ export async function escalateAggregateAlert(alert: EventWrapper) {
     max_timestamp: alert._metadata?.max_timestamp,
   };
   return queueAdd(() => {
-    return post("/api/1/alert-group/star", params);
+    return post("api/1/alert-group/star", params);
   });
 }
 
@@ -219,19 +219,19 @@ export async function unescalateAggregateAlert(alert: EventWrapper) {
     max_timestamp: alert._metadata?.max_timestamp,
   };
   return queueAdd(() => {
-    return post("/api/1/alert-group/unstar", params);
+    return post("api/1/alert-group/unstar", params);
   });
 }
 
 export async function getEventById(id: string): Promise<EventWrapper> {
-  return get(`/api/1/event/${id}`).then((response) => response.data);
+  return get(`api/1/event/${id}`).then((response) => response.data);
 }
 
 export async function getVersion(): Promise<{
   revision: string;
   version: string;
 }> {
-  return get("/api/1/version").then((response) => response.data);
+  return get("api/1/version").then((response) => response.data);
 }
 
 export interface LoginOptions {
@@ -261,9 +261,9 @@ export async function statsAgg(
 ): Promise<StatsAggResponse> {
   let url;
   if (differential) {
-    url = "/api/1/stats/agg/diff";
+    url = "api/1/stats/agg/diff";
   } else {
-    url = "/api/1/stats/agg";
+    url = "api/1/stats/agg";
   }
   return get(url, {
     field: field,
@@ -273,7 +273,7 @@ export async function statsAgg(
 }
 
 export async function getSensors(): Promise<{ data: string[] }> {
-  return get("/api/1/sensors").then((response) => response.data);
+  return get("api/1/sensors").then((response) => response.data);
 }
 
 export interface GroupByQueryRequest {
@@ -296,7 +296,7 @@ export interface GroupByQueryResponseRow {
 export async function groupBy(
   request: GroupByQueryRequest
 ): Promise<GroupByQueryResponse> {
-  return get("/api/1/groupby", request).then((response) => response.data);
+  return get("api/1/groupby", request).then((response) => response.data);
 }
 
 export async function histogram_time(request: {
@@ -305,7 +305,7 @@ export async function histogram_time(request: {
   event_type: string;
   query_string: string;
 }) {
-  return get("/api/1/report/histogram/time", request).then(
+  return get("api/1/report/histogram/time", request).then(
     (response) => response.data
   );
 }
