@@ -143,11 +143,6 @@ export function Events() {
   function loadEvents() {
     let options: GetEventsOptions = {};
 
-    if (TIME_RANGE()) {
-      let time_range = parse_timerange(TIME_RANGE());
-      options.time_range = time_range;
-    }
-
     if (searchParams.event_type) {
       options.event_type = searchParams.event_type;
       setEventType(options.event_type);
@@ -247,7 +242,7 @@ export function Events() {
 
   return (
     <>
-      <Top />
+      <Top disableRange />
       <Container fluid>
         <Row>
           <div class={"col-auto mt-2"}>

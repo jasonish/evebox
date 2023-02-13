@@ -61,8 +61,9 @@ function getInitialTimeRange(): string {
 export const [TIME_RANGE, SET_TIME_RANGE] =
   createSignal<string>(DEFAULT_TIME_RANGE);
 
-export function Top(props: { brand?: string }) {
+export function Top(props: { brand?: string; disableRange?: boolean }) {
   console.log("Top");
+  console.log(`Top: disableRange=${props.disableRange}`);
   const navigate = useNavigate();
   const [_searchParams, setSearchParams] = useSearchParams();
   const brand = props.brand || "EveBox";
@@ -110,9 +111,11 @@ export function Top(props: { brand?: string }) {
   });
 
   createEffect(() => {
-    for (let opt of TIME_RANGE_OPTIONS) {
-      if (opt[0] === TIME_RANGE()) {
-        document.getElementById("time-range-dropdown")!.innerHTML = opt[1]!;
+    if (!props.disableRange) {
+      for (let opt of TIME_RANGE_OPTIONS) {
+        if (opt[0] === TIME_RANGE()) {
+          document.getElementById("time-range-dropdown")!.innerHTML = opt[1]!;
+        }
       }
     }
   });
@@ -174,37 +177,39 @@ export function Top(props: { brand?: string }) {
                   </button>
                 </Nav.Item>
               </Show>
-              <Nav.Item>
-                {
-                  // A dropdown is used here instead of a traditional select as it allows us to drop it down
-                  // with a keyboard shortcut.
-                }
-                <Dropdown>
-                  <Dropdown.Toggle
-                    id={"time-range-dropdown"}
-                    variant="outline-secondary"
-                    style={"width: 9em;"}
-                  ></Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <For each={TIME_RANGE_OPTIONS}>
-                      {(o) => {
-                        return (
-                          <>
-                            <Dropdown.Item
-                              onClick={(e) => {
-                                updateTimeRange(o[0] as string);
-                                e.currentTarget.blur();
-                              }}
-                            >
-                              {o[1]}
-                            </Dropdown.Item>
-                          </>
-                        );
-                      }}
-                    </For>
-                  </Dropdown.Menu>
-                </Dropdown>
-              </Nav.Item>
+              <Show when={!props.disableRange}>
+                <Nav.Item>
+                  {
+                    // A dropdown is used here instead of a traditional select as it allows us to drop it down
+                    // with a keyboard shortcut.
+                  }
+                  <Dropdown>
+                    <Dropdown.Toggle
+                      id={"time-range-dropdown"}
+                      variant="outline-secondary"
+                      style={"width: 9em;"}
+                    ></Dropdown.Toggle>
+                    <Dropdown.Menu>
+                      <For each={TIME_RANGE_OPTIONS}>
+                        {(o) => {
+                          return (
+                            <>
+                              <Dropdown.Item
+                                onClick={(e) => {
+                                  updateTimeRange(o[0] as string);
+                                  e.currentTarget.blur();
+                                }}
+                              >
+                                {o[1]}
+                              </Dropdown.Item>
+                            </>
+                          );
+                        }}
+                      </For>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </Nav.Item>
+              </Show>
               <Nav.Link onClick={openHelp}>Help</Nav.Link>
               <NavDropdown
                 title={<BiGear />}
