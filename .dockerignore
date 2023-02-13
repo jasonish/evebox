@@ -10,3 +10,4 @@
 /.gitlab-ci.yml
 /target
 /build.sh
+/data
