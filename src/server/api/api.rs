@@ -179,7 +179,7 @@ pub(crate) async fn histogram_time(
 
     // Only parse the time range if a earliest time is not provided in
     // the query string.
-    if !query_string.has_low_timestamp() && query.time_range.is_some() {
+    if !query_string.has_earliest() && query.time_range.is_some() {
         let min_timestamp = query
             .time_range
             .as_ref()

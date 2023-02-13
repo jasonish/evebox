@@ -54,7 +54,7 @@ pub(crate) async fn group_by(
 
     // Only apply the time range if the query string does not contain
     // an low timestamp.
-    if !q.has_low_timestamp() {
+    if !q.has_earliest() {
         let min_timestamp = parse_duration(&form.time_range)
             .map(|v| time::OffsetDateTime::now_utc().sub(v))
             .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;

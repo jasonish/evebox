@@ -25,11 +25,11 @@ pub enum Element {
 }
 
 pub trait QueryString {
-    fn has_low_timestamp(&self) -> bool;
+    fn has_earliest(&self) -> bool;
 }
 
 impl QueryString for Vec<Element> {
-    fn has_low_timestamp(&self) -> bool {
+    fn has_earliest(&self) -> bool {
         self.iter()
             .any(|e| matches!(&e, Element::EarliestTimestamp(_)))
     }
@@ -332,12 +332,12 @@ mod test {
     #[test]
     fn test_query_string_has_low_timestamp() {
         let mut query_string: Vec<Element> = vec![Element::String("INFO".to_string())];
-        assert!(!query_string.has_low_timestamp());
+        assert!(!query_string.has_earliest());
 
         query_string.push(Element::LatestTimestamp(time::OffsetDateTime::now_utc()));
-        assert!(!query_string.has_low_timestamp());
+        assert!(!query_string.has_earliest());
 
         query_string.push(Element::EarliestTimestamp(time::OffsetDateTime::now_utc()));
-        assert!(query_string.has_low_timestamp());
+        assert!(query_string.has_earliest());
     }
 }
