@@ -46,7 +46,7 @@ impl SQLiteEventStore {
             .interact(
                 move |conn| -> Result<Vec<serde_json::Value>, DatastoreError> {
                     let tx = conn.transaction()?;
-                    let mut st = tx.prepare(&builder.build())?;
+                    let mut st = tx.prepare(&builder.sql())?;
                     let mut rows = st.query(rusqlite::params_from_iter(builder.params()))?;
                     let mut results = vec![];
                     while let Some(row) = rows.next()? {

@@ -10,7 +10,6 @@ use crate::server::api::AlertGroupSpec;
 use crate::sqlite::ConnectionBuilder;
 use rusqlite::{params, Connection, ToSql};
 use serde_json::json;
-use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -29,26 +28,6 @@ pub struct SQLiteEventStore {
 
 /// A type alias over ToSql allowing us to create vectors of parameters.
 type QueryParam = dyn ToSql + Send + Sync + 'static;
-
-#[derive(Default)]
-struct ParamBuilder {
-    pub params: Vec<Box<dyn ToSql + Send + Sync + 'static>>,
-    pub debug: Vec<String>,
-}
-
-impl ParamBuilder {
-    fn new() -> Self {
-        Default::default()
-    }
-
-    fn push<T>(&mut self, v: T)
-    where
-        T: ToSql + Display + Send + Sync + 'static,
-    {
-        self.debug.push(v.to_string());
-        self.params.push(Box::new(v));
-    }
-}
 
 impl SQLiteEventStore {
     pub fn new(connection_builder: Arc<ConnectionBuilder>, pool: deadpool_sqlite::Pool) -> Self {

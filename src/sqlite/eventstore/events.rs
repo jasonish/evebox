@@ -2,13 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
+use super::SQLiteEventStore;
 use crate::{
     datastore::{DatastoreError, EventQueryParams},
     eve::eve::EveJson,
-    querystring::Element,
+    sqlite::builder::SelectQueryBuilder,
 };
-
-use super::{ParamBuilder, SQLiteEventStore};
 
 impl SQLiteEventStore {
     pub async fn events(
@@ -21,82 +20,43 @@ impl SQLiteEventStore {
             .await?
             .interact(
                 move |conn| -> Result<Vec<serde_json::Value>, rusqlite::Error> {
-                    let query = r#"
-		    SELECT 
-			events.rowid AS id, 
-			events.archived AS archived, 
-			events.escalated AS escalated, 
-			events.source AS source
-		    FROM %FROM%
-		    WHERE %WHERE%
-		    ORDER BY events.timestamp %ORDER%
-		    LIMIT 500
-		"#;
-                    let mut from: Vec<&str> = vec![];
-                    let mut filters: Vec<String> = vec![];
-                    let mut params = ParamBuilder::new();
+                    let mut builder = SelectQueryBuilder::new();
 
-                    from.push("events");
+                    builder
+                        .select("events.rowid AS id")
+                        .select("events.archived AS archived")
+                        .select("events.escalated AS escalated")
+                        .select("events.source AS source");
+                    builder.from("events");
+                    builder.limit(500);
 
                     if let Some(event_type) = options.event_type {
-                        filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
-                        params.push(event_type);
+                        builder.where_value(
+                            "json_extract(events.source, '$.event_type') = ?",
+                            event_type,
+                        );
                     }
 
-                    if let Some(dt) = options.max_timestamp {
-                        filters.push("timestamp <= ?".to_string());
-                        params.push(dt.unix_timestamp_nanos() as i64);
+                    if let Some(dt) = &options.max_timestamp {
+                        builder.latest_timestamp(dt);
                     }
 
-                    if let Some(dt) = options.min_timestamp {
-                        filters.push("timestamp >= ?".to_string());
-                        params.push(dt.unix_timestamp_nanos() as i64);
-                    }
-                    for element in &options.query_string_elements {
-                        match element {
-                            Element::String(val) => {
-                                filters.push("events.source LIKE ?".into());
-                                params.push(format!("%{val}%"));
-                            }
-                            Element::KeyVal(key, val) => {
-                                if let Ok(val) = val.parse::<i64>() {
-                                    filters.push(format!(
-                                        "json_extract(events.source, '$.{key}') = ?"
-                                    ));
-                                    params.push(val);
-                                } else {
-                                    filters.push(format!(
-                                        "json_extract(events.source, '$.{key}') LIKE ?"
-                                    ));
-                                    params.push(format!("%{val}%"));
-                                }
-                            }
-                            Element::Ip(_) => todo!(),
-                            Element::EarliestTimestamp(_) => todo!(),
-                            Element::LatestTimestamp(_) => todo!(),
-                        }
+                    if let Some(dt) = &options.min_timestamp {
+                        builder.earliest_timestamp(dt);
                     }
 
-                    let order = if let Some(order) = options.order {
-                        order
+                    builder.apply_query_string(&options.query_string_elements);
+
+                    if let Some(order) = &options.order {
+                        builder.order_by("events.timestamp", order);
                     } else {
-                        "DESC".to_string()
-                    };
-
-                    let query = query.replace("%FROM%", &from.join(", "));
-                    let query = query.replace("%WHERE%", &filters.join(" AND "));
-                    let query = query.replace("%ORDER%", &order);
-
-                    // TODO: Cleanup query building.
-                    let mut query = query;
-                    if filters.is_empty() {
-                        query = query.replace("WHERE", "");
+                        builder.order_by("events.timestamp", "DESC");
                     }
 
                     let tx = conn.transaction()?;
-                    let mut st = tx.prepare(&query)?;
-                    let rows =
-                        st.query_and_then(rusqlite::params_from_iter(&params.params), row_mapper)?;
+                    let mut st = tx.prepare(&builder.sql())?;
+                    let rows = st
+                        .query_and_then(rusqlite::params_from_iter(builder.params()), row_mapper)?;
                     let mut events = vec![];
                     for row in rows {
                         events.push(row?);

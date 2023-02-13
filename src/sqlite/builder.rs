@@ -90,16 +90,20 @@ impl SelectQueryBuilder {
                     self.where_value("events.source LIKE ?", format!("%{s}%"));
                 }
                 Element::KeyVal(k, v) => {
-                    self.where_value(
-                        format!("json_extract(events.source, '$.{k}') = ?"),
-                        v.to_string(),
-                    );
+                    if let Ok(i) = v.parse::<i64>() {
+                        self.where_value(format!("json_extract(events.source, '$.{k}') = ?"), i);
+                    } else {
+                        self.where_value(
+                            format!("json_extract(events.source, '$.{k}') = ?"),
+                            v.to_string(),
+                        );
+                    }
                 }
                 Element::EarliestTimestamp(ts) => {
-                    self.where_value("timestamp >= ?", ts.unix_timestamp_nanos() as u64);
+                    self.earliest_timestamp(ts);
                 }
                 Element::LatestTimestamp(ts) => {
-                    self.where_value("timestamp <= ?", ts.unix_timestamp_nanos() as u64);
+                    self.latest_timestamp(ts);
                 }
                 Element::Ip(ip) => {
                     self.push_where("(json_extract(events.source, '$.src_ip') = ? OR json_extract(events.source, '$.dest_ip') = ?)");
@@ -110,7 +114,17 @@ impl SelectQueryBuilder {
         }
     }
 
-    pub fn build(&mut self) -> String {
+    pub fn earliest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
+        self.where_value("timestamp >= ?", ts.unix_timestamp_nanos() as i64);
+        self
+    }
+
+    pub fn latest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
+        self.where_value("timestamp <= ?", ts.unix_timestamp_nanos() as i64);
+        self
+    }
+
+    pub fn sql(&mut self) -> String {
         let mut sql = String::new();
 
         sql.push_str("select ");
