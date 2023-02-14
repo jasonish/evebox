@@ -115,6 +115,14 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
     }
 
     embedded::migrations::runner().run(db).unwrap();
+
+    if let Some(indexes) = crate::resource::get_string("sqlite/Indexes.sql") {
+        info!("Updating SQLite indexes");
+        if let Err(err) = db.execute_batch(&indexes) {
+            error!("Failed to update SQLite indexes: {err}");
+        }
+    }
+
     Ok(())
 }
 

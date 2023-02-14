@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: MIT
 
 use super::{QueryParam, SQLiteEventStore};
-use crate::prelude::*;
-use crate::sqlite::LOG_QUERIES;
 use crate::{
     datastore::DatastoreError,
     elastic::AlertQueryOptions,
     querystring::{self, Element},
     sqlite::format_sqlite_timestamp,
 };
+use crate::{prelude::*, LOG_QUERIES};
+use std::time::Instant;
 
 impl SQLiteEventStore {
     pub async fn alerts(
@@ -123,18 +123,24 @@ impl SQLiteEventStore {
                     let query = query.replace("%WHERE%", &filters.join(" AND "));
                     let query = query.replace("%FROM%", &from.join(", "));
 
-                    if LOG_QUERIES {
-                        info!("{}", &query);
+                    if *LOG_QUERIES {
+                        info!("query={}", &query);
                     }
 
                     let tx = conn.transaction()?;
                     let mut st = tx.prepare(&query)?;
+                    let now = Instant::now();
                     let rows =
                         st.query_and_then(rusqlite::params_from_iter(params), alert_row_mapper)?;
                     let mut results = vec![];
                     for row in rows {
                         results.push(row?);
                     }
+                    debug!(
+                        "Rows={}, Elapsed={} ms",
+                        results.len(),
+                        now.elapsed().as_millis()
+                    );
                     Ok(results)
                 },
             )

@@ -16,7 +16,7 @@ pub struct SelectQueryBuilder {
     order_by: Option<(String, String)>,
     limit: i64,
     params: Vec<Box<dyn ToSql + Send + Sync + 'static>>,
-    pub debug: Vec<String>,
+    debug: Vec<String>,
 }
 
 impl SelectQueryBuilder {
@@ -81,6 +81,10 @@ impl SelectQueryBuilder {
 
     pub fn params(&self) -> &[Box<dyn ToSql + Send + Sync + 'static>] {
         &self.params
+    }
+
+    pub fn debug_params(&self) -> &[String] {
+        &self.debug
     }
 
     pub fn apply_query_string(&mut self, q: &[querystring::Element]) {

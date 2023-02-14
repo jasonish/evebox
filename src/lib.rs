@@ -37,3 +37,7 @@ extern crate anyhow;
 
 #[macro_use]
 extern crate serde_json;
+
+lazy_static! {
+    pub static ref LOG_QUERIES: bool = std::env::var_os("EVEBOX_LOG_QUERIES").is_some();
+}

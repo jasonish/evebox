@@ -7,7 +7,10 @@ use crate::{
     datastore::{DatastoreError, EventQueryParams},
     eve::eve::EveJson,
     sqlite::builder::SelectQueryBuilder,
+    LOG_QUERIES,
 };
+use std::time::Instant;
+use tracing::{debug, info};
 
 impl SQLiteEventStore {
     pub async fn events(
@@ -53,14 +56,24 @@ impl SQLiteEventStore {
                         builder.order_by("events.timestamp", "DESC");
                     }
 
+                    if *LOG_QUERIES {
+                        info!("query={} args={:?}", builder.sql(), builder.debug_params());
+                    }
+
                     let tx = conn.transaction()?;
                     let mut st = tx.prepare(&builder.sql())?;
+                    let now = Instant::now();
                     let rows = st
                         .query_and_then(rusqlite::params_from_iter(builder.params()), row_mapper)?;
                     let mut events = vec![];
                     for row in rows {
                         events.push(row?);
                     }
+                    debug!(
+                        "Rows={}, Elapsed={} ms",
+                        events.len(),
+                        now.elapsed().as_millis()
+                    );
                     Ok(events)
                 },
             )
