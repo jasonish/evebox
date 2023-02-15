@@ -9,6 +9,7 @@ use rusqlite::types::ToSqlOutput;
 use rusqlite::{ToSql, TransactionBehavior};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use time::macros::format_description;
 
 #[derive(thiserror::Error, Debug)]
@@ -57,7 +58,7 @@ impl Clone for Importer {
 impl Importer {
     pub fn new(conn: Arc<Mutex<rusqlite::Connection>>) -> Self {
         Self {
-            conn: conn,
+            conn,
             queue: Vec::new(),
         }
     }
@@ -91,7 +92,6 @@ impl Importer {
     }
 
     pub async fn commit(&mut self) -> anyhow::Result<usize> {
-        debug!("Commiting {} events", self.pending());
         let mut conn = self.conn.lock().unwrap();
         loop {
             match conn.transaction_with_behavior(TransactionBehavior::Immediate) {
@@ -100,6 +100,7 @@ impl Importer {
                     std::thread::sleep(std::time::Duration::from_secs(1));
                 }
                 Ok(tx) => {
+		    let start = Instant::now();
                     let n = self.queue.len();
                     for r in &self.queue {
                         // Run the execute in a loop as we can get lock errors here as well.
@@ -128,7 +129,9 @@ impl Importer {
                             err, source
                         );
                         return Err(IndexError::SQLiteError(err).into());
-                    }
+                    } else {
+			debug!("Committed {} events in {} us", n, start.elapsed().as_micros());
+		    }
                     self.queue.truncate(0);
                     return Ok(n);
                 }
