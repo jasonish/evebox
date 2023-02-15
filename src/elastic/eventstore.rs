@@ -795,7 +795,7 @@ impl EventStore {
             })
         };
 
-        filter.push(exists_filter("event_type"));
+        filter.push(exists_filter(&self.map_field("event_type")));
 
         #[rustfmt::skip]
         let mut query = json!({
