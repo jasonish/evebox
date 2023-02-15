@@ -15,7 +15,7 @@ use std::sync::Arc;
 use crate::eve::eve::EveJson;
 use crate::server::ServerContext;
 
-pub(crate) async fn handler_new(
+pub(crate) async fn handler(
     Extension(context): Extension<Arc<ServerContext>>,
     body: Bytes,
 ) -> impl IntoResponse {
