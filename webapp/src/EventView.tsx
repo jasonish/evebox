@@ -195,7 +195,7 @@ export function EventView() {
       commonDetails.push([
         "Source",
         <>
-          <SearchLink value={source.src_ip}>
+          <SearchLink field={"@ip"} value={source.src_ip}>
             {formatAddressWithPort(source.src_ip, source.src_port)}
           </SearchLink>
           <A class={"ps-1"} href={`/reports/address/${source.src_ip}`}>
@@ -208,7 +208,7 @@ export function EventView() {
       commonDetails.push([
         "Destination",
         <>
-          <SearchLink value={source.dest_ip}>
+          <SearchLink field={"@ip"} value={source.dest_ip}>
             {formatAddressWithPort(source.dest_ip, source.dest_port)}
           </SearchLink>
           <A class={"ps-1"} href={`/reports/address/${source.dest_ip}`}>

@@ -35,10 +35,8 @@ pub fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connect
 
     loop {
         let mut delay = default_delay;
-        let now = Instant::now();
         match do_retention(&config, conn.clone()) {
             Ok(n) => {
-                debug!("Deleted {} events in {} ms", n, now.elapsed().as_millis());
                 if n == LIMIT {
                     delay = Duration::from_secs(REPEAT_INTERVAL);
                 }
@@ -67,10 +65,12 @@ fn do_retention(config: &RetentionConfig, conn: Arc<Mutex<rusqlite::Connection>>
     let sql = r#"DELETE FROM events
                 WHERE rowid IN
                     (SELECT rowid FROM events WHERE timestamp < ? and escalated = 0 LIMIT ?)"#;
+    let timer = Instant::now();
     let n = tx.execute(
         sql,
         params![older_than.unix_timestamp_nanos() as i64, LIMIT as i64],
     )?;
     tx.commit()?;
+    debug!("Deleted {n} events in {} ms", timer.elapsed().as_millis());
     Ok(n as u64)
 }

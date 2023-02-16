@@ -40,7 +40,7 @@ pub struct ConfigRepo {
 
 impl ConfigRepo {
     pub fn new(filename: Option<&PathBuf>) -> Result<Self, ConfigRepoError> {
-        let mut conn = ConnectionBuilder::filename(filename).open()?;
+        let mut conn = ConnectionBuilder::filename(filename).open(true)?;
         init_db(&mut conn)?;
         Ok(Self {
             db: Arc::new(Mutex::new(conn)),

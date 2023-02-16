@@ -24,20 +24,28 @@ pub struct SQLiteEventStore {
     pub importer: super::importer::Importer,
     pub connection_builder: Arc<ConnectionBuilder>,
     pub pool: deadpool_sqlite::Pool,
+    pub fts: bool,
 }
 
 /// A type alias over ToSql allowing us to create vectors of parameters.
 type QueryParam = dyn ToSql + Send + Sync + 'static;
 
 impl SQLiteEventStore {
-    pub fn new(connection_builder: Arc<ConnectionBuilder>, pool: deadpool_sqlite::Pool) -> Self {
+    pub fn new(
+        connection_builder: Arc<ConnectionBuilder>,
+        pool: deadpool_sqlite::Pool,
+        fts: bool,
+    ) -> Self {
+        debug!("SQLite event store created: fts={fts}");
         Self {
-            connection: Arc::new(Mutex::new(connection_builder.open().unwrap())),
-            importer: super::importer::Importer::new(Arc::new(Mutex::new(
-                connection_builder.open().unwrap(),
-            ))),
+            connection: Arc::new(Mutex::new(connection_builder.open(false).unwrap())),
+            importer: super::importer::Importer::new(
+                Arc::new(Mutex::new(connection_builder.open(false).unwrap())),
+                fts,
+            ),
             connection_builder,
             pool,
+            fts,
         }
     }
 

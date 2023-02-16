@@ -8,7 +8,10 @@ use std::fmt::Display;
 use crate::querystring::{self, Element};
 
 #[derive(Default)]
-pub struct SelectQueryBuilder {
+pub struct EventQueryBuilder {
+    /// Is FTS available?
+    fts: bool,
+
     select: Vec<String>,
     from: Vec<String>,
     wheres: Vec<String>,
@@ -17,11 +20,15 @@ pub struct SelectQueryBuilder {
     limit: i64,
     params: Vec<Box<dyn ToSql + Send + Sync + 'static>>,
     debug: Vec<String>,
+    fts_phrases: Vec<String>,
 }
 
-impl SelectQueryBuilder {
-    pub fn new() -> Self {
-        Default::default()
+impl EventQueryBuilder {
+    pub fn new(fts: bool) -> Self {
+        Self {
+            fts,
+            ..Default::default()
+        }
     }
 
     pub fn select<T: Into<String>>(&mut self, field: T) -> &mut Self {
@@ -44,23 +51,20 @@ impl SelectQueryBuilder {
         self
     }
 
-    /// Bind a parameter, basically set a where and a value.
-    pub fn where_value<S, T>(&mut self, col: S, val: T) -> &mut Self
-    where
-        S: Into<String>,
-        T: ToSql + Display + Send + Sync + 'static,
-    {
-        self.wheres.push(col.into());
-        self.push_param(val);
-        self
-    }
-
     /// Add a where statement without requiring a value.
     pub fn push_where<S>(&mut self, col: S) -> &mut Self
     where
         S: Into<String>,
     {
         self.wheres.push(col.into());
+        self
+    }
+
+    pub fn push_fts<S>(&mut self, val: S) -> &mut Self
+    where
+        S: Into<String>,
+    {
+        self.fts_phrases.push(format!("\"{}\"", val.into()));
         self
     }
 
@@ -91,16 +95,31 @@ impl SelectQueryBuilder {
         for e in q {
             match e {
                 Element::String(s) => {
-                    self.where_value("events.source LIKE ?", format!("%{s}%"));
+                    if self.fts {
+                        self.push_fts(s);
+                    } else {
+                        self.push_where("events.source LIKE ?")
+                            .push_param(format!("%{s}%"));
+                    }
                 }
                 Element::KeyVal(k, v) => {
                     if let Ok(i) = v.parse::<i64>() {
-                        self.where_value(format!("json_extract(events.source, '$.{k}') = ?"), i);
+                        self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
+                            .push_param(i);
                     } else {
-                        self.where_value(
-                            format!("json_extract(events.source, '$.{k}') = ?"),
-                            v.to_string(),
-                        );
+                        self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
+                            .push_param(v.to_string());
+
+                        // If FTS is enabled, some key/val searches
+                        // can really benefit from it.
+                        if self.fts {
+                            match k.as_ref() {
+                                "community_id" | "timestamp" => {
+                                    self.push_fts(v);
+                                }
+                                _ => {}
+                            }
+                        }
                     }
                 }
                 Element::EarliestTimestamp(ts) => {
@@ -110,25 +129,33 @@ impl SelectQueryBuilder {
                     self.latest_timestamp(ts);
                 }
                 Element::Ip(ip) => {
-                    self.push_where("(json_extract(events.source, '$.src_ip') = ? OR json_extract(events.source, '$.dest_ip') = ?)");
-                    self.push_param(ip.to_string());
-                    self.push_param(ip.to_string());
+                    self.push_where("(json_extract(events.source, '$.src_ip') = ? OR json_extract(events.source, '$.dest_ip') = ?)")
+			.push_param(ip.to_string())
+			.push_param(ip.to_string());
                 }
             }
         }
     }
 
     pub fn earliest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
-        self.where_value("timestamp >= ?", ts.unix_timestamp_nanos() as i64);
+        self.push_where("timestamp >= ?")
+            .push_param(ts.unix_timestamp_nanos() as i64);
         self
     }
 
     pub fn latest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
-        self.where_value("timestamp <= ?", ts.unix_timestamp_nanos() as i64);
+        self.push_where("timestamp <= ?")
+            .push_param(ts.unix_timestamp_nanos() as i64);
         self
     }
 
-    pub fn sql(&mut self) -> String {
+    pub fn build(
+        mut self,
+    ) -> (
+        String,
+        Vec<Box<dyn ToSql + Send + Sync + 'static>>,
+        Vec<String>,
+    ) {
         let mut sql = String::new();
 
         sql.push_str("select ");
@@ -136,6 +163,12 @@ impl SelectQueryBuilder {
 
         sql.push_str(" from ");
         sql.push_str(&self.from.join(", "));
+
+        if !self.fts_phrases.is_empty() {
+            let query = self.fts_phrases.join(" AND ");
+            self.push_where("events.rowid in (select rowid from fts where fts match ?)");
+            self.push_param(query);
+        }
 
         if !self.wheres.is_empty() {
             sql.push_str(" where ");
@@ -155,6 +188,6 @@ impl SelectQueryBuilder {
             sql.push_str(&format!(" limit {}", self.limit));
         }
 
-        sql
+        (sql, self.params, self.debug)
     }
 }

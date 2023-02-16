@@ -6,9 +6,11 @@ use super::SQLiteEventStore;
 use crate::{
     datastore::DatastoreError,
     querystring::{self},
-    sqlite::builder::SelectQueryBuilder,
+    sqlite::builder::EventQueryBuilder,
+    LOG_QUERIES,
 };
 use rusqlite::types::{FromSqlError, ValueRef};
+use tracing::info;
 
 impl SQLiteEventStore {
     pub async fn group_by(
@@ -18,7 +20,7 @@ impl SQLiteEventStore {
         order: &str,
         q: Vec<querystring::Element>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
-        let mut builder = SelectQueryBuilder::new();
+        let mut builder = EventQueryBuilder::new(self.fts);
         builder
             .select(format!(
                 "count(json_extract(events.source, '$.{field}')) as count"
@@ -32,9 +34,13 @@ impl SQLiteEventStore {
         // Some internal optimizing, may be provided on the query
         // string already.
         if field.starts_with("alert.") {
-            builder.where_value("json_extract(events.source, '$.event_type') = ?", "alert");
+            builder
+                .push_where("json_extract(events.source, '$.event_type') = ?")
+                .push_param("alert");
         } else if field.starts_with("dns.") {
-            builder.where_value("json_extract(events.source, '$.event_type') = ?", "dns");
+            builder
+                .push_where("json_extract(events.source, '$.event_type') = ?")
+                .push_param("dns");
         }
 
         builder.apply_query_string(&q);
@@ -46,11 +52,19 @@ impl SQLiteEventStore {
             .interact(
                 move |conn| -> Result<Vec<serde_json::Value>, DatastoreError> {
                     let tx = conn.transaction()?;
-                    let mut st = tx.prepare(&builder.sql())?;
-                    let mut rows = st.query(rusqlite::params_from_iter(builder.params()))?;
+                    let (sql, params, debug_params) = builder.build();
+                    if *LOG_QUERIES {
+                        info!("sql={}, params={:?}", &sql, debug_params);
+                    }
+                    dbg!("preparing");
+                    let mut st = tx.prepare(&sql)?;
+                    dbg!("send query");
+                    let mut rows = st.query(rusqlite::params_from_iter(params))?;
                     let mut results = vec![];
+                    dbg!("processing results");
                     while let Some(row) = rows.next()? {
                         let count: i64 = row.get(0)?;
+                        dbg!(count);
                         if count > 0 {
                             let val = rusqlite_to_json(row.get_ref(1)?)?;
                             results.push(json!({"count": count, "key": val}));
@@ -60,6 +74,7 @@ impl SQLiteEventStore {
                 },
             )
             .await??;
+        dbg!("return results");
         Ok(results)
     }
 }

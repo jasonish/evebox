@@ -2,7 +2,10 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    sqlite::{util::fts_create, SqliteExt},
+};
 use rusqlite::{params, Connection, DatabaseName, OpenFlags};
 use std::path::PathBuf;
 use time::format_description::well_known::Rfc3339;
@@ -18,11 +21,11 @@ impl ConnectionBuilder {
         }
     }
 
-    pub fn open(&self) -> Result<Connection, rusqlite::Error> {
-        let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
-            | OpenFlags::SQLITE_OPEN_CREATE
-            | OpenFlags::SQLITE_OPEN_SHARED_CACHE
-            | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
+    pub fn open(&self, create: bool) -> Result<Connection, rusqlite::Error> {
+        let mut flags = OpenFlags::SQLITE_OPEN_READ_WRITE;
+        if create {
+            flags |= OpenFlags::SQLITE_OPEN_CREATE;
+        }
         if let Some(filename) = &self.filename {
             rusqlite::Connection::open_with_flags(filename, flags)
         } else {
@@ -65,12 +68,15 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
         }
     }
 
+    // This will only be a value if we have a database from before the
+    // use of refinery.
     let version = db
         .query_row("select max(version) from schema", [], |row| {
             let version: i64 = row.get(0).unwrap();
             Ok(version)
         })
         .unwrap_or(-1);
+
     if version > -1 && version <= 3 {
         // We may have to provide the refinery table, unless it was already created.
         debug!("SQLite configuration DB at v1, checking if setup required for Refinery migrations");
@@ -114,6 +120,8 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
         }
     }
 
+    let fresh_install = !db.has_table("events")?;
+
     embedded::migrations::runner().run(db).unwrap();
 
     if let Some(indexes) = crate::resource::get_string("sqlite/Indexes.sql") {
@@ -121,6 +129,15 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
         if let Err(err) = db.execute_batch(&indexes) {
             error!("Failed to update SQLite indexes: {err}");
         }
+    }
+
+    if fresh_install {
+        info!("Enabling FTS");
+        let tx = db.transaction()?;
+        fts_create(&tx)?;
+        tx.commit()?;
+    } else if !db.has_table("fts")? {
+        info!("FTS not enabled, consider enabling for query performance improvements");
     }
 
     Ok(())

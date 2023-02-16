@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -27,7 +27,9 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let db_connection_builder = Arc::new(sqlite::ConnectionBuilder::filename(Some(
         &PathBuf::from(&db_filename),
     )));
-    let mut db = sqlite::ConnectionBuilder::filename(Some(&PathBuf::from(&db_filename))).open()?;
+    let mut db =
+        sqlite::ConnectionBuilder::filename(Some(&PathBuf::from(&db_filename))).open(true)?;
+    let fts = false;
     sqlite::init_event_db(&mut db)?;
     let db = Arc::new(Mutex::new(db));
     let pool = sqlite::open_pool(&db_filename).await?;
@@ -35,7 +37,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let import_task = {
         let db = db.clone();
         tokio::spawn(async move {
-            if let Err(err) = run_import(db, limit, &input).await {
+            if let Err(err) = run_import(db, limit, &input, fts).await {
                 error!("Import failure: {}", err);
             }
         })
@@ -60,6 +62,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 let sqlite_datastore = sqlite::eventstore::SQLiteEventStore::new(
                     db_connection_builder.clone(),
                     pool.clone(),
+                    fts,
                 );
                 let ds = crate::datastore::Datastore::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
@@ -143,12 +146,13 @@ async fn run_import(
     db: Arc<Mutex<rusqlite::Connection>>,
     limit: u64,
     input: &str,
+    fts: bool,
 ) -> anyhow::Result<()> {
     let geoipdb = match geoip::GeoIP::open(None) {
         Ok(geoipdb) => Some(geoipdb),
         Err(_) => None,
     };
-    let mut indexer = sqlite::importer::Importer::new(db);
+    let mut indexer = sqlite::importer::Importer::new(db, fts);
     let mut reader = eve::reader::EveReader::new(input);
     info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;

@@ -6,7 +6,7 @@ use super::{sqlite_format_interval, SQLiteEventStore};
 use crate::{
     datastore::{DatastoreError, StatsAggQueryParams},
     querystring,
-    sqlite::{builder::SelectQueryBuilder, eventstore::nanos_to_rfc3339},
+    sqlite::{builder::EventQueryBuilder, eventstore::nanos_to_rfc3339},
 };
 use anyhow::Result;
 
@@ -16,12 +16,12 @@ impl SQLiteEventStore {
         interval: u64,
         q: &[querystring::Element],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        let mut builder = EventQueryBuilder::new(self.fts);
         let q = q.to_vec();
         self.pool
             .get()
             .await?
             .interact(move |conn| -> Result<_, _> {
-                let mut builder = SelectQueryBuilder::new();
                 let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
                 builder.select(&timestamp);
                 builder.select(format!("count({timestamp})"));
@@ -31,8 +31,9 @@ impl SQLiteEventStore {
 
                 builder.apply_query_string(&q);
 
-                let mut st = conn.prepare(&builder.sql())?;
-                let mut rows = st.query(rusqlite::params_from_iter(builder.params()))?;
+                let (sql, params, _) = builder.build();
+                let mut st = conn.prepare(&sql)?;
+                let mut rows = st.query(rusqlite::params_from_iter(params))?;
                 let mut results = vec![];
                 while let Some(row) = rows.next()? {
                     let time: i64 = row.get(0)?;

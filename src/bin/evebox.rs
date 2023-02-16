@@ -42,16 +42,6 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .subcommand(clap::Command::new("version").about("Display version"));
 
-    let sqlite_import = Command::new("sqlite-import")
-        .about("Import to SQLite")
-        .arg(
-            Arg::new("oneshot")
-                .long("oneshot")
-                .help("One shot mode (exit on EOF"),
-        )
-        .arg(Arg::new("end").long("end").help("Start at end of file"))
-        .arg(Arg::new("INPUT").required(true).index(1));
-
     let server = clap::Command::new("server")
         .about("EveBox Server")
         .arg(
@@ -321,10 +311,10 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(elastic_import)
         .subcommand(oneshot)
         .subcommand(evebox::commands::agent::command())
-        .subcommand(sqlite_import)
         .subcommand(evebox::commands::config::config_subcommand())
         .subcommand(evebox::commands::print::command())
-        .subcommand(evebox::commands::elastic::main::main_options());
+        .subcommand(evebox::commands::elastic::main::main_options())
+        .subcommand(evebox::commands::sqlite::command());
     let matches = parser.clone().get_matches();
 
     // Initialize logging.
@@ -350,7 +340,6 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             version::print_version();
             Ok(())
         }
-        Some(("sqlite-import", args)) => evebox::commands::sqlite_import::main(args).await,
         Some(("elastic-import", args)) => {
             if let Err(err) = evebox::commands::elastic_import::main(args).await {
                 error!("{}", err);
@@ -363,6 +352,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("config", args)) => evebox::commands::config::main(args),
         Some(("print", args)) => evebox::commands::print::main(args),
         Some(("elastic", args)) => evebox::commands::elastic::main::main(args).await,
+        Some(("sqlite", args)) => evebox::commands::sqlite::main(args).await,
         _ => {
             parser.print_help().ok();
             println!();

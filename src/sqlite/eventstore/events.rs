@@ -6,7 +6,7 @@ use super::SQLiteEventStore;
 use crate::{
     datastore::{DatastoreError, EventQueryParams},
     eve::eve::EveJson,
-    sqlite::builder::SelectQueryBuilder,
+    sqlite::builder::EventQueryBuilder,
     LOG_QUERIES,
 };
 use std::time::Instant;
@@ -17,14 +17,13 @@ impl SQLiteEventStore {
         &self,
         options: EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
+        let mut builder = EventQueryBuilder::new(self.fts);
         let result = self
             .pool
             .get()
             .await?
             .interact(
                 move |conn| -> Result<Vec<serde_json::Value>, rusqlite::Error> {
-                    let mut builder = SelectQueryBuilder::new();
-
                     builder
                         .select("events.rowid AS id")
                         .select("events.archived AS archived")
@@ -34,10 +33,9 @@ impl SQLiteEventStore {
                     builder.limit(500);
 
                     if let Some(event_type) = options.event_type {
-                        builder.where_value(
-                            "json_extract(events.source, '$.event_type') = ?",
-                            event_type,
-                        );
+                        builder
+                            .push_where("json_extract(events.source, '$.event_type') = ?")
+                            .push_param(event_type);
                     }
 
                     if let Some(dt) = &options.max_timestamp {
@@ -56,15 +54,16 @@ impl SQLiteEventStore {
                         builder.order_by("events.timestamp", "DESC");
                     }
 
+                    let (sql, params, debug_params) = builder.build();
+
                     if *LOG_QUERIES {
-                        info!("query={} args={:?}", builder.sql(), builder.debug_params());
+                        info!("query={} args={:?}", &sql, debug_params);
                     }
 
                     let tx = conn.transaction()?;
-                    let mut st = tx.prepare(&builder.sql())?;
+                    let mut st = tx.prepare(&sql)?;
                     let now = Instant::now();
-                    let rows = st
-                        .query_and_then(rusqlite::params_from_iter(builder.params()), row_mapper)?;
+                    let rows = st.query_and_then(rusqlite::params_from_iter(params), row_mapper)?;
                     let mut events = vec![];
                     for row in rows {
                         events.push(row?);
