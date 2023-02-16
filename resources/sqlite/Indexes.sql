@@ -5,20 +5,25 @@
 CREATE INDEX IF NOT EXISTS events_timestamp_index
   ON events (timestamp);
 
+-- Dropped in 0.17.0
 -- CREATE INDEX IF NOT EXISTS events_archived_index
 --   ON events (archived);
 
+-- Dropped in 0.17.0
 -- CREATE INDEX IF NOT EXISTS events_escalated_index
 --   ON events (escalated);
 
+-- Dropped in 0.17.0
 -- CREATE INDEX IF NOT EXISTS events_event_type_index
 --   ON events (json_extract(source, '$.event_type'));
 
-CREATE INDEX IF NOT EXISTS events_src_ip_index
-  ON events (json_extract(source, '$.src_ip'));
+-- Dropped in 0.17.0
+-- CREATE INDEX IF NOT EXISTS events_src_ip_index
+--   ON events (json_extract(source, '$.src_ip'));
 
-CREATE INDEX IF NOT EXISTS events_dest_ip_index
-  ON events (json_extract(source, '$.dest_ip'));
+-- Dropped in 0.17.0
+-- CREATE INDEX IF NOT EXISTS events_dest_ip_index
+--   ON events (json_extract(source, '$.dest_ip'));
 
 CREATE INDEX IF NOT EXISTS events_alert_signature_index
   ON events (json_extract(source, '$.alert.signature'));
@@ -69,7 +74,17 @@ DROP INDEX IF EXISTS events_escalated_index;
 CREATE INDEX IF NOT EXISTS events_escalated_v1
   ON events (escalated, timestamp);
 
---
+-- Drop address based indexes in favour of address indexes that also
+-- cover the timestamp in descending order. Speeds up queries using an
+-- OR query for the src and dest IP addresses.
+DROP INDEX IF EXISTS events_src_ip_index;
+DROP INDEX IF EXISTS events_dest_ip_index;
+
+CREATE INDEX IF NOT EXISTS events_src_ip_index_v1
+  ON events (json_extract(source, '$.src_ip'), timestamp DESC);
+
+CREATE INDEX IF NOT EXISTS events_dest_ip_index_v1
+  ON events (json_extract(source, '$.dest_ip'), timestamp DESC);
 
 --
 -- V3 Drops
@@ -93,4 +108,5 @@ CREATE INDEX IF NOT EXISTS events_escalated_v1
 
 -- DROP INDEX IF EXISTS events_event_type_timestamp_index_v1
 -- DROP INDEX IF EXISTS events_escalated_v1;
-
+-- DROP INDEX IF EIXSTS events_src_ip_index_v1;
+-- DROP INDEX IF EIXSTS events_dest_ip_index_v1;
