@@ -56,15 +56,11 @@ impl SQLiteEventStore {
                     if *LOG_QUERIES {
                         info!("sql={}, params={:?}", &sql, debug_params);
                     }
-                    dbg!("preparing");
                     let mut st = tx.prepare(&sql)?;
-                    dbg!("send query");
                     let mut rows = st.query(rusqlite::params_from_iter(params))?;
                     let mut results = vec![];
-                    dbg!("processing results");
                     while let Some(row) = rows.next()? {
                         let count: i64 = row.get(0)?;
-                        dbg!(count);
                         if count > 0 {
                             let val = rusqlite_to_json(row.get_ref(1)?)?;
                             results.push(json!({"count": count, "key": val}));
@@ -74,7 +70,6 @@ impl SQLiteEventStore {
                 },
             )
             .await??;
-        dbg!("return results");
         Ok(results)
     }
 }

@@ -24,14 +24,40 @@ pub enum Element {
     Ip(String),
 }
 
-pub trait QueryString {
+pub(crate) trait QueryString {
     fn has_earliest(&self) -> bool;
+    fn get_earliest(&self) -> Option<time::OffsetDateTime>;
+}
+
+impl QueryString for &[Element] {
+    fn has_earliest(&self) -> bool {
+        self.iter()
+            .any(|e| matches!(&e, Element::EarliestTimestamp(_)))
+    }
+
+    fn get_earliest(&self) -> Option<time::OffsetDateTime> {
+        for e in self.iter() {
+            if let Element::EarliestTimestamp(timestamp) = e {
+                return Some(*timestamp);
+            }
+        }
+        None
+    }
 }
 
 impl QueryString for Vec<Element> {
     fn has_earliest(&self) -> bool {
         self.iter()
             .any(|e| matches!(&e, Element::EarliestTimestamp(_)))
+    }
+
+    fn get_earliest(&self) -> Option<time::OffsetDateTime> {
+        for e in self {
+            if let Element::EarliestTimestamp(timestamp) = e {
+                return Some(*timestamp);
+            }
+        }
+        None
     }
 }
 

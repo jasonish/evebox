@@ -17,8 +17,7 @@ use crate::elastic::{
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::prelude::*;
-use crate::querystring;
-use crate::querystring::Element;
+use crate::querystring::{self, Element, QueryString};
 use crate::server::api;
 use crate::server::session::Session;
 use serde::{Deserialize, Serialize};
@@ -101,6 +100,7 @@ impl EventStore {
                 "dns.rrtype" => "dns.rrtype.keyword",
                 "dns.rcode" => "dns.rcode.keyword",
                 "dns.rdata" => "dns.rdata.keyword",
+                "event_type" => "event_type.keyword",
                 "host" => "host.keyword",
                 "http.hostname" => "http.hostname.keyword",
                 "http.http_user_agent" => "http.http_user_agent.keyword",
@@ -715,6 +715,34 @@ impl EventStore {
         self.add_tags_by_alert_group(alert_group, &[], &entry).await
     }
 
+    async fn get_earliest_timestamp(&self) -> Result<Option<String>, DatastoreError> {
+        #[rustfmt::skip]
+	let request = json!({
+	    "query": {
+		"bool": {
+		    "filter": [
+			{
+			    "exists": {
+				"field": "event_type",
+			    },
+			},
+		    ],
+		},
+	    },
+	    "sort": [{"@timestamp": {"order": "asc"}}],
+	    "size": 1,
+	});
+        let response: serde_json::Value = self.search(&request).await?.json().await?;
+        if let Some(hits) = response["hits"]["hits"].as_array() {
+            for hit in hits {
+                if let serde_json::Value::String(timestamp) = &hit["_source"]["@timestamp"] {
+                    return Ok(Some(timestamp.to_string()));
+                }
+            }
+        }
+        Ok(None)
+    }
+
     pub(crate) async fn histogram_time(
         &self,
         interval: u64,
@@ -723,6 +751,16 @@ impl EventStore {
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
         self.apply_query_string(q, &mut filters, &mut should);
+
+        let bound_max = format_timestamp(time::OffsetDateTime::now_utc());
+        let bound_min = if let Some(timestamp) = q.get_earliest() {
+            format_timestamp(timestamp)
+        } else if let Some(timestamp) = self.get_earliest_timestamp().await? {
+            timestamp
+        } else {
+            warn!("Unable to determine earliest timestamp from Elasticsearch, assuming no events.");
+            return Ok(vec![]);
+        };
 
         #[rustfmt::skip]
         let request = json!({
@@ -739,7 +777,10 @@ impl EventStore {
 			"field": "@timestamp",
 			"fixed_interval": format!("{interval}s"),
 			"min_doc_count": 0,
-			// May need max extended bounds to now... Or a little bit in the future.
+			"extended_bounds": {
+			    "max": bound_max,
+			    "min": bound_min,
+			},
 		    },
 		},
 	    },

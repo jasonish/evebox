@@ -119,9 +119,7 @@ impl<'a> Config<'a> {
 
     pub fn get_present_arg(&self, name: &str) {
         if self.args.is_valid_arg(name) {
-            dbg!(self.args.value_of(name));
-            let values: Vec<&str> = self.args.values_of(name).unwrap().collect();
-            dbg!(values);
+            let _values: Vec<&str> = self.args.values_of(name).unwrap().collect();
         }
     }
 

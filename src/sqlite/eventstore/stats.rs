@@ -5,10 +5,11 @@
 use super::{sqlite_format_interval, SQLiteEventStore};
 use crate::{
     datastore::{DatastoreError, StatsAggQueryParams},
-    querystring,
-    sqlite::{builder::EventQueryBuilder, eventstore::nanos_to_rfc3339},
+    querystring::{self},
+    sqlite::{builder::EventQueryBuilder, eventstore::nanos_to_rfc3339, format_sqlite_timestamp},
 };
 use anyhow::Result;
+use rusqlite::{Connection, OptionalExtension};
 
 impl SQLiteEventStore {
     pub(crate) async fn histogram_time(
@@ -22,6 +23,21 @@ impl SQLiteEventStore {
             .get()
             .await?
             .interact(move |conn| -> Result<_, _> {
+                // Get the earliest timestamp, either from the query or the database.
+                let earliest = if let Some(earliest) = querystring::QueryString::get_earliest(&q) {
+                    earliest
+                } else if let Some(earliest) = Self::earliest_timestamp(conn)? {
+                    time::OffsetDateTime::from_unix_timestamp_nanos(earliest as i128)?
+                } else {
+                    return Ok(vec![]);
+                };
+
+                let mut next_time =
+                    ((earliest.unix_timestamp() as u64) / interval * interval) as i64;
+                let last_time = time::OffsetDateTime::now_utc().unix_timestamp()
+                    / (interval as i64)
+                    * (interval as i64);
+
                 let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
                 builder.select(&timestamp);
                 builder.select(format!("count({timestamp})"));
@@ -32,17 +48,44 @@ impl SQLiteEventStore {
                 builder.apply_query_string(&q);
 
                 let (sql, params, _) = builder.build();
+                dbg!(&sql);
                 let mut st = conn.prepare(&sql)?;
                 let mut rows = st.query(rusqlite::params_from_iter(params))?;
                 let mut results = vec![];
                 while let Some(row) = rows.next()? {
                     let time: i64 = row.get(0)?;
                     let count: i64 = row.get(1)?;
-                    results.push(json!({"time": time * 1000, "count": count}));
+                    let debug = time::OffsetDateTime::from_unix_timestamp(time).unwrap();
+                    while next_time < time {
+                        let dt = time::OffsetDateTime::from_unix_timestamp(next_time).unwrap();
+                        results.push(json!({"time": next_time * 1000,
+					    "count": 0,
+					    "debug": format_sqlite_timestamp(&dt)}));
+                        next_time += interval as i64;
+                    }
+                    results.push(json!({"time": time * 1000,
+			       "count": count,
+			       "debug": format_sqlite_timestamp(&debug)}));
+                    next_time += interval as i64;
+                }
+                while next_time <= last_time {
+                    let dt = time::OffsetDateTime::from_unix_timestamp(next_time).unwrap();
+                    results.push(json!({"time": next_time * 1000,
+					"count": 0,
+					"debug": format_sqlite_timestamp(&dt)}));
+                    next_time += interval as i64;
                 }
                 Ok(results)
             })
             .await?
+    }
+
+    fn earliest_timestamp(conn: &Connection) -> Result<Option<i64>, rusqlite::Error> {
+        conn.query_row("select min(timestamp) from events", [], |row| {
+            let timestamp: i64 = row.get(0)?;
+            Ok(timestamp)
+        })
+        .optional()
     }
 
     async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(u64, u64)>> {

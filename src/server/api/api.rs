@@ -179,15 +179,14 @@ pub(crate) async fn histogram_time(
 
     // Only parse the time range if a earliest time is not provided in
     // the query string.
-    if !query_string.has_earliest() && query.time_range.is_some() {
-        let min_timestamp = query
-            .time_range
-            .as_ref()
-            .map(|v| parse_duration(v).map(|v| time::OffsetDateTime::now_utc().sub(v)))
-            .transpose()
-            .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
-        if let Some(min_timestamp) = min_timestamp {
-            query_string.push(Element::EarliestTimestamp(min_timestamp));
+    if !query_string.has_earliest() {
+        if let Some(time_range) = &query.time_range {
+            if !time_range.is_empty() {
+                let earliest = parse_duration(time_range)
+                    .map(|v| time::OffsetDateTime::now_utc().sub(v))
+                    .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
+                query_string.push(Element::EarliestTimestamp(earliest));
+            }
         }
     }
 
