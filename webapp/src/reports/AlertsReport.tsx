@@ -92,9 +92,9 @@ export function AlertsReport() {
       { seconds: 60, interval: "1s" },
       { seconds: 3600 * 1, interval: "1m" },
       { seconds: 3600 * 3, interval: "2m" },
-      { seconds: 3600 * 6, interval: "5m" },
-      { seconds: 3600 * 12, interval: "15m" },
-      { seconds: 3600 * 24, interval: "30m" },
+      { seconds: 3600 * 6, interval: "3m" },
+      { seconds: 3600 * 12, interval: "5m" },
+      { seconds: 3600 * 24, interval: "15m" },
       { seconds: 3600 * 24 * 3, interval: "1h" },
       { seconds: 3600 * 24 * 7, interval: "3h" },
     ];
