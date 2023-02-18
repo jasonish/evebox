@@ -13,6 +13,9 @@
 - [sqlite] Enable event retention by default to a value of 7 days. If
   an SQLite database becomes too large, it can be hard to trim back
   down to a usable size without significant downtime.
+- Start on a new overview report.
+- Fix issue where alert report graph didn't refresh over time change:
+  https://github.com/jasonish/evebox/issues/247
 
 ## 0.16.0 - 2022-11-12
 
