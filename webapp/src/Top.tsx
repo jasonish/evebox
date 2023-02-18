@@ -158,6 +158,9 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
                 title="Reports"
                 active={location.pathname.startsWith("/reports")}
               >
+                <A href={"/reports/overview"} class={"dropdown-item"}>
+                  Overview
+                </A>
                 <A href={"/reports/alerts"} class={"dropdown-item"}>
                   Alerts
                 </A>

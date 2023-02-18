@@ -10,7 +10,7 @@ import { GroupByQueryRequest } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { serverConfig } from "../config";
-import { parse_timerange } from "../datetime";
+import { getInterval, parse_timerange } from "../datetime";
 import dayjs from "dayjs";
 import { useSearchParams } from "@solidjs/router";
 
@@ -85,30 +85,6 @@ export function AlertsReport() {
       histogram.destroy();
     }
     histogram = new Chart(ctx, config);
-  }
-
-  function getInterval(rangeSeconds: number | undefined): string {
-    let bounds = [
-      { seconds: 60, interval: "1s" },
-      { seconds: 3600 * 1, interval: "1m" },
-      { seconds: 3600 * 3, interval: "2m" },
-      { seconds: 3600 * 6, interval: "3m" },
-      { seconds: 3600 * 12, interval: "5m" },
-      { seconds: 3600 * 24, interval: "15m" },
-      { seconds: 3600 * 24 * 3, interval: "1h" },
-      { seconds: 3600 * 24 * 7, interval: "3h" },
-    ];
-
-    if (!rangeSeconds) {
-      return "1d";
-    } else {
-      for (const bound of bounds) {
-        if (rangeSeconds <= bound.seconds) {
-          return bound.interval;
-        }
-      }
-      return "1d";
-    }
   }
 
   function refresh() {

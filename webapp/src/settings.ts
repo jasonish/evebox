@@ -7,6 +7,7 @@ import light from "./styles/light.scss";
 import { createSignal } from "solid-js";
 import { TIME_RANGE } from "./Top";
 import { parse_timerange } from "./datetime";
+import { Chart } from "chart.js";
 
 const DEFAULT_THEME = "light";
 const DEFAULT_VIEW_SIZE = 100;
@@ -27,10 +28,12 @@ export function setTheme(name: string) {
     case "dark":
       e.innerHTML = dark;
       name = "dark";
+      Chart.defaults.color = "#fff";
       break;
     default:
       e.innerHTML = light;
       name = "light";
+      Chart.defaults.color = "#666";
       break;
   }
   document.body.appendChild(e);

@@ -17,7 +17,7 @@ let SESSION_ID: string | null = localStorage.getItem("SESSION_ID");
 
 export const [QUEUE_SIZE, SET_QUEUE_SIZE] = createSignal(0);
 
-const QUEUE = new Queue({ concurrency: 4 });
+const QUEUE = new Queue({ concurrency: 1 });
 
 function queueAdd(func: any): Promise<any> {
   const p = new Promise<any>((resolve, reject) => {
@@ -309,3 +309,22 @@ export async function histogram_time(request: {
     (response) => response.data
   );
 }
+
+class Api {
+  async groupBy(request: GroupByQueryRequest): Promise<GroupByQueryResponse> {
+    return get("api/1/groupby", request).then((response) => response.data);
+  }
+
+  async histogramTime(request: {
+    time_range: string;
+    interval: string;
+    event_type: string;
+    query_string: string;
+  }): Promise<{ data: { count: number; time: number }[] }> {
+    return get("api/1/report/histogram/time", request).then(
+      (response) => response.data
+    );
+  }
+}
+
+export const API = new Api();
