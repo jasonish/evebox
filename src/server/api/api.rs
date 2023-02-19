@@ -159,8 +159,7 @@ pub(crate) async fn histogram_time(
         .as_ref()
         .map(|v| parse_duration(v).map(|v| v.as_secs()))
         .transpose()
-        .map_err(|err| ApiError::bad_request(format!("interval: {err}")))?
-        .ok_or(ApiError::bad_request("interval required"))?;
+        .map_err(|err| ApiError::bad_request(format!("interval: {err}")))?;
 
     let mut query_string = query
         .query_string

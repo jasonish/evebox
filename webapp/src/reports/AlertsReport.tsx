@@ -4,14 +4,10 @@
 
 import { TIME_RANGE, Top } from "../Top";
 import { createEffect, createSignal, For, Show } from "solid-js";
-import * as API from "../api";
 import { Card, Col, Container, Form, Row, Table } from "solid-bootstrap";
-import { GroupByQueryRequest } from "../api";
+import { API, GroupByQueryRequest } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
-import { serverConfig } from "../config";
-import { getInterval, parse_timerange } from "../datetime";
-import dayjs from "dayjs";
 import { useSearchParams } from "@solidjs/router";
 
 interface CountValueRow {
@@ -90,12 +86,9 @@ export function AlertsReport() {
   function refresh() {
     console.log("AlertsReport.refresh");
     const timeRange = TIME_RANGE();
-    const rangeSeconds = parse_timerange(timeRange);
-    const interval = getInterval(rangeSeconds);
 
-    API.histogram_time({
+    API.histogramTime({
       time_range: timeRange,
-      interval: interval,
       event_type: "alert",
       query_string: searchParams.q,
     }).then((response) => {

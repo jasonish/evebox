@@ -293,23 +293,6 @@ export interface GroupByQueryResponseRow {
   key: any;
 }
 
-export async function groupBy(
-  request: GroupByQueryRequest
-): Promise<GroupByQueryResponse> {
-  return get("api/1/groupby", request).then((response) => response.data);
-}
-
-export async function histogram_time(request: {
-  time_range: string;
-  interval: string;
-  event_type: string;
-  query_string: string;
-}) {
-  return get("api/1/report/histogram/time", request).then(
-    (response) => response.data
-  );
-}
-
 class Api {
   async groupBy(request: GroupByQueryRequest): Promise<GroupByQueryResponse> {
     return get("api/1/groupby", request).then((response) => response.data);
@@ -317,9 +300,9 @@ class Api {
 
   async histogramTime(request: {
     time_range: string;
-    interval: string;
+    interval?: string;
     event_type: string;
-    query_string: string;
+    query_string?: string;
   }): Promise<{ data: { count: number; time: number }[] }> {
     return get("api/1/report/histogram/time", request).then(
       (response) => response.data

@@ -23,7 +23,6 @@ use crate::server::api;
 use crate::server::session::Session;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::ops::Sub;
 use std::sync::Arc;
 
 mod stats;
@@ -717,7 +716,7 @@ impl EventStore {
         self.add_tags_by_alert_group(alert_group, &[], &entry).await
     }
 
-    async fn get_earliest_timestamp(&self) -> Result<Option<String>, DatastoreError> {
+    async fn get_earliest_timestamp(&self) -> Result<Option<time::OffsetDateTime>, DatastoreError> {
         #[rustfmt::skip]
 	let request = json!({
 	    "query": {
@@ -738,7 +737,7 @@ impl EventStore {
         if let Some(hits) = response["hits"]["hits"].as_array() {
             for hit in hits {
                 if let serde_json::Value::String(timestamp) = &hit["_source"]["@timestamp"] {
-                    return Ok(Some(timestamp.to_string()));
+                    return Ok(Some(parse_timestamp(timestamp, None)?));
                 }
             }
         }
@@ -746,30 +745,30 @@ impl EventStore {
     }
 
     fn histogram_interval(&self, range: i64) -> u64 {
-	if range <= 60 {
-	    1
-	} else if range <= 3600 {
-	    60
-	} else if range <= 3600 * 3 {
-	    60 * 2
-	} else if range <= 3600 * 6 {
-	    60 * 3
-	} else if range <= 3600 * 12 {
-	    60 * 5
-	} else if range <= 3600 * 24 {
-	    60 * 15
-	} else if range <= 3600 * 24 * 3 {
-	    3600
-	} else if range <= 3600 * 24 * 7 {
-	    3600 * 3
-	} else {
-	    3600 * 24
-	}
+        if range <= 60 {
+            1
+        } else if range <= 3600 {
+            60
+        } else if range <= 3600 * 3 {
+            60 * 2
+        } else if range <= 3600 * 6 {
+            60 * 3
+        } else if range <= 3600 * 12 {
+            60 * 5
+        } else if range <= 3600 * 24 {
+            60 * 15
+        } else if range <= 3600 * 24 * 3 {
+            3600
+        } else if range <= 3600 * 24 * 7 {
+            3600 * 3
+        } else {
+            3600 * 24
+        }
     }
 
     pub(crate) async fn histogram_time(
         &self,
-        mut interval: u64,
+        interval: Option<u64>,
         q: &[querystring::Element],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
@@ -778,21 +777,26 @@ impl EventStore {
 
         let bound_max = time::OffsetDateTime::now_utc();
         let bound_min = if let Some(timestamp) = q.get_earliest() {
-            format_timestamp(timestamp)
-        } else if let Some(timestamp) = self.get_earliest_timestamp().await? {
-	    // Override interval if earliest event was used for the
-	    // earliest time, this prevents a client side selection of
-	    // 1 day buckets where there might only be a few hours of
-	    // events.
-	    //
-	    // TODO: Make the interval optional from the client side.
-            let parsed = parse_timestamp(&timestamp, None)?;
-            let range = bound_max.sub(parsed).whole_seconds();
-	    interval = self.histogram_interval(range);
             timestamp
+        } else if let Some(timestamp) = self.get_earliest_timestamp().await? {
+            let earliest = timestamp;
+            debug!(
+                "No time-range provided by client, using earliest from database of {}",
+                &earliest
+            );
+            earliest
         } else {
             warn!("Unable to determine earliest timestamp from Elasticsearch, assuming no events.");
             return Ok(vec![]);
+        };
+
+        let interval = if let Some(interval) = interval {
+            interval
+        } else {
+            let range = bound_max.unix_timestamp() - bound_min.unix_timestamp();
+            let interval = self.histogram_interval(range);
+            debug!("No interval provided by client, using {interval}s");
+            interval
         };
 
         #[rustfmt::skip]
@@ -812,7 +816,7 @@ impl EventStore {
 			"min_doc_count": 0,
 			"extended_bounds": {
 			    "max": format_timestamp(bound_max),
-			    "min": bound_min,
+			    "min": format_timestamp(bound_min),
 			},
 		    },
 		},

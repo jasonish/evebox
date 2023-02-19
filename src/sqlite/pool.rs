@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
-use std::path::PathBuf;
 use crate::prelude::*;
+use std::path::PathBuf;
 
 pub async fn open_pool<T: Into<PathBuf>>(filename: T) -> Result<deadpool_sqlite::Pool> {
     use deadpool_sqlite::{Config, Runtime};

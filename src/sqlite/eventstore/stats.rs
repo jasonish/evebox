@@ -5,16 +5,39 @@
 use super::{sqlite_format_interval, SQLiteEventStore};
 use crate::{
     datastore::{DatastoreError, StatsAggQueryParams},
-    querystring::{self},
+    querystring::{self, QueryString},
     sqlite::{builder::EventQueryBuilder, eventstore::nanos_to_rfc3339, format_sqlite_timestamp},
 };
 use anyhow::Result;
 use rusqlite::{Connection, OptionalExtension};
+use tracing::debug;
 
 impl SQLiteEventStore {
+    fn histogram_interval(range: i64) -> u64 {
+        if range <= 60 {
+            1
+        } else if range <= 3600 {
+            60
+        } else if range <= 3600 * 3 {
+            60 * 2
+        } else if range <= 3600 * 6 {
+            60 * 3
+        } else if range <= 3600 * 12 {
+            60 * 5
+        } else if range <= 3600 * 24 {
+            60 * 15
+        } else if range <= 3600 * 24 * 3 {
+            3600
+        } else if range <= 3600 * 24 * 7 {
+            3600 * 3
+        } else {
+            3600 * 24
+        }
+    }
+
     pub(crate) async fn histogram_time(
         &self,
-        interval: u64,
+        interval: Option<u64>,
         q: &[querystring::Element],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut builder = EventQueryBuilder::new(self.fts);
@@ -23,20 +46,38 @@ impl SQLiteEventStore {
             .get()
             .await?
             .interact(move |conn| -> Result<_, _> {
+                // The timestamp (in seconds) of the latest event to
+                // consider. This is to determine the bucket interval
+                // as well as fill wholes at the end of the dataset.
+                let now = time::OffsetDateTime::now_utc().unix_timestamp();
+
                 // Get the earliest timestamp, either from the query or the database.
-                let earliest = if let Some(earliest) = querystring::QueryString::get_earliest(&q) {
+                let earliest = if let Some(earliest) = q.get_earliest() {
                     earliest
-                } else if let Some(earliest) = Self::earliest_timestamp(conn)? {
-                    time::OffsetDateTime::from_unix_timestamp_nanos(earliest as i128)?
+                } else if let Some(earliest) = Self::get_earliest_timestamp(conn)? {
+                    let earliest =
+                        time::OffsetDateTime::from_unix_timestamp_nanos(earliest as i128)?;
+                    debug!(
+                        "No time-range provided by client, using earliest from database of {}",
+                        &earliest
+                    );
+                    earliest
                 } else {
                     return Ok(vec![]);
                 };
 
+                let interval = if let Some(interval) = interval {
+                    interval
+                } else {
+                    let interval =
+                        Self::histogram_interval(now - earliest.unix_timestamp());
+                    debug!("No interval provided by client, using {interval}s");
+                    interval
+                };
+
+                let last_time = now / (interval as i64) * (interval as i64);
                 let mut next_time =
                     ((earliest.unix_timestamp() as u64) / interval * interval) as i64;
-                let last_time = time::OffsetDateTime::now_utc().unix_timestamp()
-                    / (interval as i64)
-                    * (interval as i64);
 
                 let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
                 builder.select(&timestamp);
@@ -48,7 +89,6 @@ impl SQLiteEventStore {
                 builder.apply_query_string(&q);
 
                 let (sql, params, _) = builder.build();
-                dbg!(&sql);
                 let mut st = conn.prepare(&sql)?;
                 let mut rows = st.query(rusqlite::params_from_iter(params))?;
                 let mut results = vec![];
@@ -80,7 +120,7 @@ impl SQLiteEventStore {
             .await?
     }
 
-    fn earliest_timestamp(conn: &Connection) -> Result<Option<i64>, rusqlite::Error> {
+    fn get_earliest_timestamp(conn: &Connection) -> Result<Option<i64>, rusqlite::Error> {
         conn.query_row("select min(timestamp) from events", [], |row| {
             let timestamp: i64 = row.get(0)?;
             Ok(timestamp)

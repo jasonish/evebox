@@ -7,7 +7,7 @@ import { API } from "../api";
 import { TIME_RANGE, Top } from "../Top";
 import { Card, Col, Container, Row } from "solid-bootstrap";
 import { Chart, ChartConfiguration, Colors } from "chart.js";
-import { getInterval, parse_timerange } from "../datetime";
+import { parse_timerange } from "../datetime";
 import { RefreshButton } from "../common/RefreshButton";
 
 Chart.register(Colors);
@@ -41,7 +41,6 @@ export function OverviewReport() {
     setLoading((n) => n + 1);
     initChart();
     let timeRange = TIME_RANGE();
-    let interval = getInterval(parse_timerange(timeRange));
     API.groupBy({
       field: "event_type",
       size: 100,
@@ -56,9 +55,7 @@ export function OverviewReport() {
           setLoading((n) => n + 1);
           API.histogramTime({
             time_range: TIME_RANGE(),
-            interval: interval,
             event_type: e.key,
-            query_string: "",
           })
             .then((response) => {
               if (labels.length === 0) {

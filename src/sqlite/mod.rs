@@ -7,9 +7,9 @@ pub mod configrepo;
 pub mod connection;
 pub mod eventstore;
 pub mod importer;
+pub mod pool;
 pub mod retention;
 pub mod util;
-pub mod pool;
 
 use crate::prelude::*;
 pub use connection::init_event_db;
