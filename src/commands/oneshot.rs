@@ -32,7 +32,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let fts = false;
     sqlite::init_event_db(&mut db)?;
     let db = Arc::new(Mutex::new(db));
-    let pool = sqlite::open_pool(&db_filename).await?;
+    let pool = sqlite::pool::open_pool(&db_filename).await?;
 
     let import_task = {
         let db = db.clone();

@@ -492,7 +492,7 @@ async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
             let has_fts = connection.has_table("fts")?;
             info!("FTS enabled: {has_fts}");
             let connection = Arc::new(Mutex::new(connection));
-            let pool = sqlite::open_pool(&db_filename).await?;
+            let pool = sqlite::pool::open_pool(&db_filename).await?;
 
             let eventstore =
                 sqlite::eventstore::SQLiteEventStore::new(connection.clone(), pool, has_fts);

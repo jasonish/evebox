@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-const DEFAULT_BATCH_SIZE: usize = 3000;
+const DEFAULT_BATCH_SIZE: usize = 100;
 
 pub struct Processor {
     pub reader: EveReader,

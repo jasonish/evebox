@@ -27,6 +27,7 @@ impl ConnectionBuilder {
             flags |= OpenFlags::SQLITE_OPEN_CREATE;
         }
         if let Some(filename) = &self.filename {
+            debug!("Opening database {}", filename.display());
             rusqlite::Connection::open_with_flags(filename, flags)
         } else {
             rusqlite::Connection::open_in_memory()
