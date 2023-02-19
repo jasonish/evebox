@@ -42,6 +42,12 @@ function isValidTimeRange(range: string): boolean {
 
 function getInitialTimeRange(): string {
   const localTimeRange = localStorage.getItem("TIME_RANGE");
+  console.log(`Time-range from localStorage: ${localTimeRange}`);
+
+  if (localTimeRange === "") {
+    return "";
+  }
+
   if (localTimeRange && isValidTimeRange(localTimeRange)) {
     console.log(`Using local storage time range of ${localTimeRange}`);
     return localTimeRange;
