@@ -6,7 +6,6 @@ use crate::datastore::DatastoreError;
 use crate::eve::eve::EveJson;
 use crate::prelude::*;
 use crate::server::api::AlertGroupSpec;
-use crate::sqlite::ConnectionBuilder;
 use crate::{eve, LOG_QUERIES};
 use rusqlite::{params, Connection, ToSql};
 use serde_json::json;
@@ -22,7 +21,6 @@ mod stats;
 pub struct SQLiteEventStore {
     pub connection: Arc<Mutex<Connection>>,
     pub importer: super::importer::Importer,
-    pub connection_builder: Arc<ConnectionBuilder>,
     pub pool: deadpool_sqlite::Pool,
     pub fts: bool,
 }
@@ -31,19 +29,11 @@ pub struct SQLiteEventStore {
 type QueryParam = dyn ToSql + Send + Sync + 'static;
 
 impl SQLiteEventStore {
-    pub fn new(
-        connection_builder: Arc<ConnectionBuilder>,
-        pool: deadpool_sqlite::Pool,
-        fts: bool,
-    ) -> Self {
+    pub fn new(connection: Arc<Mutex<Connection>>, pool: deadpool_sqlite::Pool, fts: bool) -> Self {
         debug!("SQLite event store created: fts={fts}");
         Self {
-            connection: Arc::new(Mutex::new(connection_builder.open(false).unwrap())),
-            importer: super::importer::Importer::new(
-                Arc::new(Mutex::new(connection_builder.open(false).unwrap())),
-                fts,
-            ),
-            connection_builder,
+            connection: connection.clone(),
+            importer: super::importer::Importer::new(connection, fts),
             pool,
             fts,
         }
@@ -140,22 +130,14 @@ impl SQLiteEventStore {
             info!("sql={}", &sql);
         }
 
-        let result = self
-            .pool
-            .get()
-            .await?
-            .interact(move |conn| Self::retry_execute_loop(conn, &sql, &params))
-            .await?;
-
-        match result {
-            Ok(n) => {
-                debug!("Archived {} alerts in {} ms", n, now.elapsed().as_millis());
-            }
-            Err(err) => {
-                error!("Failed to archive alert group: error={:?}", err);
-                return Err(err)?;
-            }
-        }
+        let conn = self.connection.clone();
+        let n = tokio::task::spawn_blocking(move || {
+            let mut conn = conn.lock().unwrap();
+            Self::retry_execute_loop(&mut conn, &sql, &params)
+        })
+        .await
+        .unwrap()?;
+        debug!("Archived {n} alerts in {} ms", now.elapsed().as_millis());
 
         Ok(())
     }
@@ -190,7 +172,7 @@ impl SQLiteEventStore {
         ";
 
         let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        let mut params: Vec<Box<QueryParam>> = Vec::new();
 
         filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
         params.push(Box::new("alert".to_string()));
@@ -215,9 +197,16 @@ impl SQLiteEventStore {
         params.push(Box::new(maxts.unix_timestamp_nanos() as i64));
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-        let conn = self.connection.lock().unwrap();
-        let n = conn.execute(&sql, rusqlite::params_from_iter(params))?;
-        info!("Escalated {} alerts in alert group", n);
+
+        let connection = self.connection.clone();
+        let n = tokio::task::spawn_blocking(move || {
+            let conn = connection.lock().unwrap();
+            conn.execute(&sql, rusqlite::params_from_iter(params))
+        })
+        .await
+        .unwrap()?;
+        info!("Escalated {n} alerts in alert group");
+
         Ok(())
     }
 
@@ -232,7 +221,7 @@ impl SQLiteEventStore {
         ";
 
         let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        let mut params: Vec<Box<QueryParam>> = Vec::new();
 
         filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
         params.push(Box::new("alert".to_string()));
@@ -257,9 +246,15 @@ impl SQLiteEventStore {
         params.push(Box::new(maxts.unix_timestamp_nanos() as i64));
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-        let conn = self.connection.lock().unwrap();
-        let n = conn.execute(&sql, rusqlite::params_from_iter(params))?;
-        info!("De-escalated {} alerts in alert group", n);
+
+        let connection = self.connection.clone();
+        let n = tokio::task::spawn_blocking(move || {
+            let conn = connection.lock().unwrap();
+            conn.execute(&sql, rusqlite::params_from_iter(params))
+        })
+        .await
+        .unwrap()?;
+        info!("De-escalated {n} alerts in alert group");
         Ok(())
     }
 

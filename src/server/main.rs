@@ -487,15 +487,15 @@ async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
             let connection_builder = Arc::new(sqlite::ConnectionBuilder::filename(Some(
                 db_filename.clone(),
             )));
-            let connection = connection_builder.open(true)?;
-            sqlite::init_event_db(&mut connection_builder.open(true)?)?;
+            let mut connection = connection_builder.open(true)?;
+            sqlite::init_event_db(&mut connection)?;
             let has_fts = connection.has_table("fts")?;
             info!("FTS enabled: {has_fts}");
             let connection = Arc::new(Mutex::new(connection));
             let pool = sqlite::open_pool(&db_filename).await?;
 
             let eventstore =
-                sqlite::eventstore::SQLiteEventStore::new(connection_builder, pool, has_fts);
+                sqlite::eventstore::SQLiteEventStore::new(connection.clone(), pool, has_fts);
 
             // Setup retention job.
             let retention_period = if let Some(p) = config.database_retention_period {

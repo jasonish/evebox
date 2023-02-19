@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-const DEFAULT_BATCH_SIZE: usize = 300;
+const DEFAULT_BATCH_SIZE: usize = 3000;
 
 pub struct Processor {
     pub reader: EveReader,
@@ -38,8 +38,8 @@ pub struct Processor {
 impl Processor {
     pub fn new(reader: EveReader, importer: Importer) -> Self {
         Self {
-            reader: reader,
-            importer: importer,
+            reader,
+            importer,
             filters: Arc::new(Vec::new()),
             bookmark_filename: None,
             report_interval: Duration::from_secs(0),
@@ -138,7 +138,7 @@ impl Processor {
                     }
                     count += 1;
                     let commit = self.importer.submit(event).await.unwrap();
-                    if commit || self.importer.pending() >= 100 {
+                    if commit || self.importer.pending() >= DEFAULT_BATCH_SIZE {
                         self.commit().await;
                         commits += 1;
                     }
