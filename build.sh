@@ -78,23 +78,53 @@ build_cross() {
         ${TAG} make $what
 }
 
+cross_run() {
+    target="$1"
+    shift
+    if [ "${target}" = "" ]; then
+        echo "error: target must be set for build_cross"
+        exit 1
+    fi
+    DOCKERFILE="./docker/builder/Dockerfile.cross"
+    TAG=${BUILDER_TAG:-"evebox/builder:cross"}
+    docker build \
+        --build-arg REAL_UID="$(id -u)" \
+        --build-arg REAL_GID="$(id -g)" \
+        --cache-from ${TAG} \
+	-t ${TAG} \
+	-f ${DOCKERFILE} .
+    docker run --rm ${it} --privileged \
+        -v "$(pwd):/src:z" \
+        -v /var/run/docker.sock:/var/run/docker.sock:z \
+        -w /src \
+        -e BUILD_REV="${BUILD_REV}" \
+        -e TARGET="${target}" \
+        -u builder \
+        --group-add $(getent group docker | cut -f3 -d:) \
+        ${TAG} $@
+}
+
 build_linux() {
-    build_cross x86_64-unknown-linux-musl "dist rpm deb"
+    #build_cross x86_64-unknown-linux-musl "dist rpm deb"
+    cross_run x86_64-unknown-linux-musl make dist rpm
+    cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
 }
 COMMANDS[linux]=build_linux
 
 build_linux_arm64() {
-    build_cross aarch64-unknown-linux-musl dist
+    cross_run aarch64-unknown-linux-musl make dist
+    cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
 }
 COMMANDS[linux-arm64]=build_linux_arm64
 
 build_linux_arm32() {
-    build_cross arm-unknown-linux-musleabihf dist
+    cross_run arm-unknown-linux-musleabihf make dist
+    cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm
 }
 COMMANDS[linux-arm32]=build_linux_arm32
 
 build_windows() {
-    build_cross x86_64-pc-windows-gnu dist
+    cross_run x86_64-pc-windows-gnu make dist
 }
 COMMANDS[windows]=build_windows
 

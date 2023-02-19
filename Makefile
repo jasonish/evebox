@@ -46,7 +46,7 @@ EVEBOX_BIN :=	target/$(TARGET)/release/$(APP)$(APP_EXT)
 all: evebox
 
 clean:
-	rm -rf dist target resources/public
+	rm -rf dist target resources/public resource/webapp
 	find . -name \*~ -exec rm -f {} \;
 	$(MAKE) -C webapp clean
 
@@ -71,45 +71,6 @@ dist: webapp
 	cp examples/agent.yaml $(DIST_DIR)/examples/
 	cp examples/evebox.yaml $(DIST_DIR)/examples/
 	cd dist && zip -r $(DIST_NAME).zip $(DIST_NAME)
-
-# Debian packaging. Due to a versioning screwup early on, we now need
-# to set the epoch to 1 for those updating with apt.
-deb: EPOCH := 1
-ifneq ($(VERSION_SUFFIX),)
-deb: TILDE := ~$(VERSION_SUFFIX)$(BUILD_DATE)
-deb: OUTPUT := dist/evebox-latest-amd64.deb
-else
-deb: OUTPUT := dist/
-endif
-deb: STAGE_DIR := dist/_stage-deb
-deb:
-	rm -rf $(STAGE_DIR) && mkdir -p $(STAGE_DIR)
-	install -m 0644 \
-		examples/evebox.yaml \
-		examples/agent.yaml \
-		deb/evebox.default \
-		deb/evebox.service \
-		deb/evebox-agent.service \
-		$(STAGE_DIR)
-	install -m 0755 $(EVEBOX_BIN) $(STAGE_DIR)
-	fpm --force -s dir \
-		-t deb \
-		-p $(OUTPUT) \
-		-n evebox \
-		--epoch $(EPOCH) \
-		-v $(VERSION)$(TILDE) \
-		--after-install=deb/after-install.sh \
-		--after-upgrade=deb/after-upgrade.sh \
-		--deb-no-default-config-files \
-		--config-files /etc/default/evebox \
-		$(STAGE_DIR)/evebox=/usr/bin/evebox \
-	        $(STAGE_DIR)/evebox.yaml=/etc/evebox/evebox.yaml.example \
-		$(STAGE_DIR)/agent.yaml=/etc/evebox/agent.yaml.example \
-		$(STAGE_DIR)/evebox.default=/etc/default/evebox \
-		$(STAGE_DIR)/evebox.service=/lib/systemd/system/evebox.service \
-		$(STAGE_DIR)/evebox-agent.service=/lib/systemd/system/evebox-agent.service
-	rm -rf $(STAGE_DIR)
-	ar p dist/*.deb data.tar.gz | tar ztvf -
 
 # RPM packaging.
 ifneq ($(VERSION_SUFFIX),)
