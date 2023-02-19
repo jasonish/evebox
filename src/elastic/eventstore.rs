@@ -21,6 +21,7 @@ use crate::querystring::parse_timestamp;
 use crate::querystring::{self, Element, QueryString};
 use crate::server::api;
 use crate::server::session::Session;
+use crate::util;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -744,28 +745,6 @@ impl EventStore {
         Ok(None)
     }
 
-    fn histogram_interval(&self, range: i64) -> u64 {
-        if range <= 60 {
-            1
-        } else if range <= 3600 {
-            60
-        } else if range <= 3600 * 3 {
-            60 * 2
-        } else if range <= 3600 * 6 {
-            60 * 3
-        } else if range <= 3600 * 12 {
-            60 * 5
-        } else if range <= 3600 * 24 {
-            60 * 15
-        } else if range <= 3600 * 24 * 3 {
-            3600
-        } else if range <= 3600 * 24 * 7 {
-            3600 * 3
-        } else {
-            3600 * 24
-        }
-    }
-
     pub(crate) async fn histogram_time(
         &self,
         interval: Option<u64>,
@@ -794,7 +773,7 @@ impl EventStore {
             interval
         } else {
             let range = bound_max.unix_timestamp() - bound_min.unix_timestamp();
-            let interval = self.histogram_interval(range);
+            let interval = util::histogram_interval(range);
             debug!("No interval provided by client, using {interval}s");
             interval
         };

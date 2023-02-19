@@ -27,6 +27,7 @@ pub mod resource;
 mod rules;
 pub mod server;
 pub mod sqlite;
+pub(crate) mod util;
 pub mod version;
 
 #[macro_use]
