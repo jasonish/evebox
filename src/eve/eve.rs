@@ -12,7 +12,7 @@ pub trait Eve {
     fn add_tag(&mut self, tag: &str);
 }
 
-impl Eve for EveJson {
+impl Eve for serde_json::Value {
     fn timestamp(&self) -> Option<time::OffsetDateTime> {
         if let EveJson::String(ts) = &self["timestamp"] {
             if let Ok(dt) = parse_eve_timestamp(ts) {

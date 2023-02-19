@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: MIT
 
 use crate::datastore::DatastoreError;
-use crate::{eve, LOG_QUERIES};
 use crate::eve::eve::EveJson;
 use crate::prelude::*;
 use crate::server::api::AlertGroupSpec;
 use crate::sqlite::ConnectionBuilder;
+use crate::{eve, LOG_QUERIES};
 use rusqlite::{params, Connection, ToSql};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
@@ -136,9 +136,9 @@ impl SQLiteEventStore {
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
-	if *LOG_QUERIES {
-	    info!("sql={}", &sql);
-	}
+        if *LOG_QUERIES {
+            info!("sql={}", &sql);
+        }
 
         let result = self
             .pool

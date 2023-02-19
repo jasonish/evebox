@@ -4,7 +4,7 @@
 
 use super::{FtsArgs, FtsCommand};
 use crate::sqlite::{
-    importer::flatten, init_event_db, util::fts_create, ConnectionBuilder, SqliteExt,
+    importer::extract_values, init_event_db, util::fts_create, ConnectionBuilder, SqliteExt,
 };
 use anyhow::Result;
 use rusqlite::{params, Transaction};
@@ -92,8 +92,7 @@ fn reindex_fts(tx: &Transaction) -> Result<usize> {
         let timestamp: u64 = row.get(1)?;
         let source: String = row.get(2)?;
         let source: Value = serde_json::from_str(&source)?;
-        let mut flat = String::new();
-        flatten(&source, &mut flat);
+        let flat = extract_values(&source);
 
         tx.execute(
             "update events set source_values = ? where rowid = ?",

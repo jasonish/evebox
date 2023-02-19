@@ -2,10 +2,9 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::sqlite::{init_event_db, ConnectionBuilder};
+use crate::sqlite::{init_event_db, ConnectionBuilder, SqliteExt};
 use anyhow::Result;
 use clap::{ArgMatches, Command, FromArgMatches, IntoApp, Parser, Subcommand};
-use rusqlite::params;
 use std::fs::File;
 use tracing::info;
 
@@ -68,6 +67,9 @@ enum FtsCommand {
 
 #[derive(Debug, Parser)]
 struct LoadArgs {
+    /// Limit the number of events to count
+    #[clap(long, value_name = "COUNT")]
+    count: Option<usize>,
     /// EVE file to load into database
     #[clap(short, long)]
     input: String,
@@ -106,21 +108,24 @@ fn load(args: &LoadArgs) -> Result<()> {
     let reader = BufReader::new(input).lines();
     let mut conn = ConnectionBuilder::filename(Some(&args.filename)).open(true)?;
     init_event_db(&mut conn)?;
+    let fts = conn.has_table("fts")?;
     info!("Loading events");
     let mut count = 0;
     let tx = conn.transaction()?;
     {
-        let mut st = tx.prepare("insert into events (timestamp, source) values (?, ?)")?;
         for line in reader {
             let line = line?;
-            let eve: serde_json::Value = serde_json::from_str(&line)?;
-            let timestamp = eve["timestamp"]
-                .as_str()
-                .ok_or_else(|| anyhow::anyhow!("no timestamp"))?;
-            let timestamp =
-                crate::eve::parse_eve_timestamp(timestamp)?.unix_timestamp_nanos() as u64;
-            st.execute(params![&timestamp, &line])?;
+            let mut eve: serde_json::Value = serde_json::from_str(&line)?;
+            for statement in crate::sqlite::importer::prepare_sql(&mut eve, fts)? {
+                let mut st = tx.prepare_cached(&statement.statement)?;
+                st.execute(rusqlite::params_from_iter(&statement.params))?;
+            }
             count += 1;
+            if let Some(limit) = args.count {
+                if count >= limit {
+                    break;
+                }
+            }
         }
     }
     info!("Committing {count} events");

@@ -22,7 +22,7 @@ pub enum IndexError {
     SQLiteError(#[from] rusqlite::Error),
 }
 
-enum Value {
+pub(crate) enum Value {
     String(String),
     I64(i64),
 }
@@ -36,14 +36,14 @@ impl ToSql for Value {
     }
 }
 
-struct QueuedRecord {
-    sql: String,
-    params: Vec<Value>,
+pub(crate) struct QueuedStatement {
+    pub(crate) statement: String,
+    pub(crate) params: Vec<Value>,
 }
 
 pub struct Importer {
     conn: Arc<Mutex<rusqlite::Connection>>,
-    queue: Vec<QueuedRecord>,
+    queue: Vec<QueuedStatement>,
     fts: bool,
 }
 
@@ -57,6 +57,48 @@ impl Clone for Importer {
     }
 }
 
+/// Prepare SQL statements for adding an event to the database.
+pub(crate) fn prepare_sql(
+    event: &mut serde_json::Value,
+    fts: bool,
+) -> Result<Vec<QueuedStatement>, IndexError> {
+    let ts = event
+        .timestamp()
+        .ok_or_else(|| IndexError::TimestampParseError)?;
+    reformat_timestamps(event);
+    let source_values = extract_values(event);
+    eve::eve::add_evebox_metadata(event, None);
+
+    let mut statements = vec![];
+
+    let statement = "INSERT INTO events (timestamp, source, source_values) VALUES (?, ?, ?)";
+    let params = vec![
+        Value::I64(ts.unix_timestamp_nanos() as i64),
+        Value::String(event.to_string()),
+        Value::String(source_values.clone()),
+    ];
+
+    statements.push(QueuedStatement {
+        statement: statement.to_string(),
+        params,
+    });
+
+    if fts {
+        let statement =
+            "INSERT INTO fts (rowid, timestamp, source_values) VALUES (last_insert_rowid(), ?, ?)";
+        let params = vec![
+            Value::I64(ts.unix_timestamp_nanos() as i64),
+            Value::String(source_values),
+        ];
+        statements.push(QueuedStatement {
+            statement: statement.to_string(),
+            params,
+        });
+    }
+
+    Ok(statements)
+}
+
 impl Importer {
     pub fn new(conn: Arc<Mutex<rusqlite::Connection>>, fts: bool) -> Self {
         Self {
@@ -67,43 +109,9 @@ impl Importer {
     }
 
     pub async fn submit(&mut self, mut event: EveJson) -> Result<bool, IndexError> {
-        let ts = match event.timestamp() {
-            Some(ts) => ts,
-            None => {
-                return Err(IndexError::TimestampParseError);
-            }
-        };
-
-        let mut source_values = String::new();
-        reformat_timestamps(&mut event);
-        flatten(&event, &mut source_values);
-
-        eve::eve::add_evebox_metadata(&mut event, None);
-
-        // Queue event insert.
-        let sql = "INSERT INTO events (timestamp, source, source_values) VALUES (?1, ?2, ?3)";
-        let params = vec![
-            Value::I64(ts.unix_timestamp_nanos() as i64),
-            Value::String(event.to_string()),
-            Value::String(source_values.clone()),
-        ];
-        self.queue.push(QueuedRecord {
-            sql: sql.to_string(),
-            params,
-        });
-
-        if self.fts {
-            let sql = "INSERT INTO fts (rowid, timestamp, source_values) VALUES (last_insert_rowid(), ?1, ?2)";
-            let params = vec![
-                Value::I64(ts.unix_timestamp_nanos() as i64),
-                Value::String(source_values),
-            ];
-            self.queue.push(QueuedRecord {
-                sql: sql.to_string(),
-                params,
-            });
+        for statement in prepare_sql(&mut event, self.fts)? {
+            self.queue.push(statement);
         }
-
         Ok(false)
     }
 
@@ -124,7 +132,7 @@ impl Importer {
                         // TODO: Break out to own function, but need to replace (or get rid of)
                         //    the mutex with an async aware mutex.
                         loop {
-                            let mut st = tx.prepare_cached(&r.sql)?;
+                            let mut st = tx.prepare_cached(&r.statement)?;
                             match st.execute(rusqlite::params_from_iter(&r.params)) {
                                 Ok(_) => {
                                     break;
@@ -161,16 +169,16 @@ impl Importer {
     }
 }
 
-fn reformat_timestamps(eve: &mut EveJson) {
-    if let EveJson::String(ts) = &eve["timestamp"] {
+fn reformat_timestamps(eve: &mut serde_json::Value) {
+    if let serde_json::Value::String(ts) = &eve["timestamp"] {
         eve["timestamp"] = reformat_timestamp(ts).into();
     }
 
-    if let EveJson::String(ts) = &eve["flow"]["start"] {
+    if let serde_json::Value::String(ts) = &eve["flow"]["start"] {
         eve["flow"]["start"] = reformat_timestamp(ts).into();
     }
 
-    if let EveJson::String(ts) = &eve["flow"]["end"] {
+    if let serde_json::Value::String(ts) = &eve["flow"]["end"] {
         eve["flow"]["end"] = reformat_timestamp(ts).into();
     }
 }
@@ -186,37 +194,49 @@ fn reformat_timestamp(ts: &str) -> String {
     }
 }
 
-pub(crate) fn flatten(input: &serde_json::Value, output: &mut String) {
-    match input {
-        serde_json::Value::Null | serde_json::Value::Bool(_) => {
-            // Intentionally empty.
-        }
-        serde_json::Value::Number(n) => {
-            if !output.is_empty() {
-                output.push(' ');
+/// Extract the values from the JSON and return them as a string,
+/// space separated.
+///
+/// Simple values like null and bools are not returned. Also known
+/// non-printable values (like base64 data) is not included. This is
+/// used as the input to the full text search engine.
+pub(crate) fn extract_values(input: &serde_json::Value) -> String {
+    fn inner(input: &serde_json::Value, output: &mut String) {
+        match input {
+            serde_json::Value::Null | serde_json::Value::Bool(_) => {
+                // Intentionally empty.
             }
-            output.push_str(&n.to_string());
-        }
-        serde_json::Value::String(s) => {
-            if !output.is_empty() {
-                output.push(' ');
+            serde_json::Value::Number(n) => {
+                if !output.is_empty() {
+                    output.push(' ');
+                }
+                output.push_str(&n.to_string());
             }
-            output.push_str(s);
-        }
-        serde_json::Value::Array(a) => {
-            for e in a {
-                flatten(e, output);
+            serde_json::Value::String(s) => {
+                if !output.is_empty() {
+                    output.push(' ');
+                }
+                output.push_str(s);
             }
-        }
-        serde_json::Value::Object(o) => {
-            for (k, v) in o {
-                match k.as_ref() {
-                    "packet" | "payload" | "rule" => {}
-                    _ => {
-                        flatten(v, output);
+            serde_json::Value::Array(a) => {
+                for e in a {
+                    inner(e, output);
+                }
+            }
+            serde_json::Value::Object(o) => {
+                for (k, v) in o {
+                    match k.as_ref() {
+                        "packet" | "payload" | "rule" => {}
+                        _ => {
+                            inner(v, output);
+                        }
                     }
                 }
             }
         }
     }
+
+    let mut flattened = String::new();
+    inner(input, &mut flattened);
+    flattened
 }
