@@ -17,11 +17,13 @@ use crate::elastic::{
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::prelude::*;
+use crate::querystring::parse_timestamp;
 use crate::querystring::{self, Element, QueryString};
 use crate::server::api;
 use crate::server::session::Session;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::ops::Sub;
 use std::sync::Arc;
 
 mod stats;
@@ -723,7 +725,7 @@ impl EventStore {
 		    "filter": [
 			{
 			    "exists": {
-				"field": "event_type",
+				"field": self.map_field("event_type"),
 			    },
 			},
 		    ],
@@ -743,19 +745,50 @@ impl EventStore {
         Ok(None)
     }
 
+    fn histogram_interval(&self, range: i64) -> u64 {
+	if range <= 60 {
+	    1
+	} else if range <= 3600 {
+	    60
+	} else if range <= 3600 * 3 {
+	    60 * 2
+	} else if range <= 3600 * 6 {
+	    60 * 3
+	} else if range <= 3600 * 12 {
+	    60 * 5
+	} else if range <= 3600 * 24 {
+	    60 * 15
+	} else if range <= 3600 * 24 * 3 {
+	    3600
+	} else if range <= 3600 * 24 * 7 {
+	    3600 * 3
+	} else {
+	    3600 * 24
+	}
+    }
+
     pub(crate) async fn histogram_time(
         &self,
-        interval: u64,
+        mut interval: u64,
         q: &[querystring::Element],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
         self.apply_query_string(q, &mut filters, &mut should);
 
-        let bound_max = format_timestamp(time::OffsetDateTime::now_utc());
+        let bound_max = time::OffsetDateTime::now_utc();
         let bound_min = if let Some(timestamp) = q.get_earliest() {
             format_timestamp(timestamp)
         } else if let Some(timestamp) = self.get_earliest_timestamp().await? {
+	    // Override interval if earliest event was used for the
+	    // earliest time, this prevents a client side selection of
+	    // 1 day buckets where there might only be a few hours of
+	    // events.
+	    //
+	    // TODO: Make the interval optional from the client side.
+            let parsed = parse_timestamp(&timestamp, None)?;
+            let range = bound_max.sub(parsed).whole_seconds();
+	    interval = self.histogram_interval(range);
             timestamp
         } else {
             warn!("Unable to determine earliest timestamp from Elasticsearch, assuming no events.");
@@ -778,7 +811,7 @@ impl EventStore {
 			"fixed_interval": format!("{interval}s"),
 			"min_doc_count": 0,
 			"extended_bounds": {
-			    "max": bound_max,
+			    "max": format_timestamp(bound_max),
 			    "min": bound_min,
 			},
 		    },
