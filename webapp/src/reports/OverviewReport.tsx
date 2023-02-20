@@ -7,8 +7,9 @@ import { API } from "../api";
 import { TIME_RANGE, Top } from "../Top";
 import { Card, Col, Container, Row } from "solid-bootstrap";
 import { Chart, ChartConfiguration, Colors } from "chart.js";
-import { parse_timerange } from "../datetime";
 import { RefreshButton } from "../common/RefreshButton";
+import { SelectSensor } from "./AlertsReport";
+import { useSearchParams } from "@solidjs/router";
 
 Chart.register(Colors);
 
@@ -20,6 +21,8 @@ export function OverviewReport() {
     stats: true,
     netflow: true,
   };
+  const [sensors, setSensors] = createSignal<string[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   createEffect(() => {
     refresh();
@@ -38,6 +41,17 @@ export function OverviewReport() {
         return;
       }
     });
+
+    API.getSensors().then((response) => {
+      setSensors(response.data);
+    });
+
+    let q: string[] = [];
+
+    if (searchParams.sensor) {
+      q.push(searchParams.sensor);
+    }
+
     setLoading((n) => n + 1);
     initChart();
     let timeRange = TIME_RANGE();
@@ -45,6 +59,7 @@ export function OverviewReport() {
       field: "event_type",
       size: 100,
       time_range: timeRange,
+      q: q.length > 0 ? q.join(" ") : undefined,
     })
       .then((response) => {
         let eventTypes: string[] = [];
@@ -56,6 +71,7 @@ export function OverviewReport() {
           API.histogramTime({
             time_range: TIME_RANGE(),
             event_type: e.key,
+            query_string: q.length > 0 ? q.join(" ") : undefined,
           })
             .then((response) => {
               if (labels.length === 0) {
@@ -162,11 +178,20 @@ export function OverviewReport() {
       <Container fluid>
         <Row>
           <Col class={"mt-2"}>
-            <RefreshButton
-              loading={loading()}
-              refresh={refresh}
-              showProgress={true}
-            />
+            <form class={"row row-cols-lg-auto align-items-center"}>
+              <div class={"col-12"}>
+                <RefreshButton loading={loading()} refresh={refresh} />
+              </div>
+              <div class={"col-12"}>
+                <SelectSensor
+                  sensors={sensors()}
+                  selected={searchParams.sensor}
+                  onchange={(sensor) => {
+                    setSearchParams({ sensor: sensor });
+                  }}
+                />
+              </div>
+            </form>
           </Col>
         </Row>
         <Row>

@@ -276,7 +276,6 @@ pub(crate) fn build_axum_service(
             post(api::deescalate_event_by_id),
         )
         .route("/api/1/report/histogram/time", get(api::histogram_time))
-        .route("/api/1/flow/histogram", get(api::flow_histogram::handler))
         .route("/api/1/report/dhcp/:what", get(api::report_dhcp))
         .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
         .route("/api/1/submit", post(api::submit::handler))

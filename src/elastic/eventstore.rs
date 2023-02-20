@@ -80,6 +80,7 @@ impl EventStore {
                 "dns.type" => name.to_string(),
                 "src_ip" => "source.address".to_string(),
                 "src_port" => "source.port".to_string(),
+                "host" => "agent.name".to_string(),
                 _ => {
                     if name.starts_with("suricata") {
                         // Don't remap.
@@ -376,21 +377,6 @@ impl EventStore {
         Ok(None)
     }
 
-    fn query_string_to_filters(&self, query: &str) -> Vec<serde_json::Value> {
-        let mut filters = Vec::new();
-        match querystring::parse(query, None) {
-            Err(err) => {
-                error!("Failed to parse query string: {} -- {}", &query, err);
-            }
-            Ok(elements) => {
-                for element in &elements {
-                    filters.push(self.query_string_element_to_filter(element));
-                }
-            }
-        }
-        filters
-    }
-
     fn apply_query_string(
         &self,
         q: &[querystring::Element],
@@ -415,20 +401,6 @@ impl EventStore {
                 Element::LatestTimestamp(ts) => {
                     filter.push(request::timestamp_lte_filter(ts));
                 }
-            }
-        }
-    }
-
-    fn query_string_element_to_filter(&self, el: &Element) -> serde_json::Value {
-        match el {
-            Element::KeyVal(key, val) => request::term_filter(&self.map_field(key), val),
-            Element::String(val) => query_string_query(val),
-            Element::Ip(_) => todo!(),
-            Element::EarliestTimestamp(ts) => {
-                request::range_gte_filter("@timestamp", &format_timestamp(*ts))
-            }
-            Element::LatestTimestamp(ts) => {
-                request::range_lte_filter("@timestamp", &format_timestamp(*ts))
             }
         }
     }
@@ -646,6 +618,7 @@ impl EventStore {
         params: datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
+	let mut should = vec![];
 
         if let Some(event_type) = params.event_type {
             filters.push(request::term_filter(
@@ -654,9 +627,7 @@ impl EventStore {
             ));
         }
 
-        for element in &params.query_string_elements {
-            filters.push(self.query_string_element_to_filter(element));
-        }
+	self.apply_query_string(&params.query_string_elements, &mut filters, &mut should);
 
         if let Some(timestamp) = params.min_timestamp {
             filters.push(request::timestamp_gte_filter(&timestamp));
@@ -670,7 +641,7 @@ impl EventStore {
         let sort_order = params.order.unwrap_or_else(|| "desc".to_string());
         let size = params.size.unwrap_or(500);
 
-        let body = json!({
+        let mut body = json!({
             "query": {
                 "bool": {
                     "filter": filters,
@@ -679,6 +650,11 @@ impl EventStore {
             "sort": [{sort_by: {"order": sort_order}}],
             "size": size,
         });
+
+        if !should.is_empty() {
+            body["query"]["bool"]["should"] = should.into();
+            body["query"]["bool"][MINIMUM_SHOULD_MATCH] = 1.into();
+        }
 
         let response: serde_json::Value = self.search(&body).await?.json().await?;
         let hits = &response["hits"]["hits"];
@@ -898,74 +874,6 @@ impl EventStore {
             }
             Ok(data)
         }
-    }
-
-    pub async fn flow_histogram(
-        &self,
-        params: datastore::FlowHistogramParameters,
-    ) -> Result<serde_json::Value, datastore::DatastoreError> {
-        let mut filters = vec![
-            request::term_filter(&self.map_field("event_type"), "flow"),
-            request::exists_filter(&self.map_field("event_type")),
-        ];
-        if let Some(mints) = params.mints {
-            filters.push(request::timestamp_gte_filter(&mints));
-        }
-        if let Some(query_string) = params.query_string {
-            filters.extend(self.query_string_to_filters(&query_string));
-        }
-        let query = json!({
-            "query": {
-                "bool": {
-                    "filter": filters,
-                }
-            },
-            "sort":[{"@timestamp":{"order":"desc"}}],
-            "aggs": {
-                "histogram": {
-                    "aggs": {
-                        "app_proto": {
-                            "terms":{
-                                "field": self.map_field("app_proto"),
-                            }
-                        }
-                    },
-                    "date_histogram": {
-                        "field": "@timestamp",
-                        "interval": params.interval,
-                    }
-                }
-            }
-        });
-        let response: serde_json::Value = self.search(&query).await?.json().await?;
-        let mut data = Vec::new();
-        if let serde_json::Value::Array(buckets) = &response["aggregations"]["histogram"]["buckets"]
-        {
-            for bucket in buckets {
-                let mut entry = json!({
-                    "key": bucket["key"],
-                    "events": bucket["doc_count"],
-                });
-                if let serde_json::Value::Array(buckets) = &bucket["app_proto"]["buckets"] {
-                    let mut app_protos = json!({});
-                    for bucket in buckets {
-                        if let Some(key) = bucket["key"].as_str() {
-                            if let Some(count) = bucket["doc_count"].as_u64() {
-                                app_protos[key] = count.into();
-                            }
-                        }
-                    }
-                    entry["app_proto"] = app_protos;
-                }
-                data.push(entry);
-            }
-        }
-
-        let response = json!({
-            "data": data,
-        });
-
-        return Ok(response);
     }
 
     fn build_alert_group_filter(&self, request: &api::AlertGroupSpec) -> Vec<serde_json::Value> {

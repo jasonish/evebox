@@ -24,6 +24,7 @@ export function AlertsReport() {
   const [mostDestAddrs, setMostDestAddrs] = createSignal<CountValueRow[]>([]);
   const [loading, setLoading] = createSignal(0);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [sensors, setSensors] = createSignal<string[]>(["a", "b", "c"]);
 
   let histogram: any = undefined;
 
@@ -87,68 +88,75 @@ export function AlertsReport() {
     console.log("AlertsReport.refresh");
     const timeRange = TIME_RANGE();
 
+    API.getSensors().then((response) => {
+      setSensors(response.data);
+    });
+
+    let queryString = [];
+    if (searchParams.q) {
+      queryString.push(searchParams);
+    }
+    if (searchParams.sensor) {
+      queryString.push(`host:${searchParams.sensor}`);
+    }
+
     API.histogramTime({
       time_range: timeRange,
       event_type: "alert",
-      query_string: searchParams.q,
+      query_string: queryString.length > 0 ? queryString.join(" ") : undefined,
     }).then((response) => {
       buildChart(response);
     });
 
     let loaders: {
-      request: {
-        field: string;
-        q: string;
-        order: "desc" | "asc";
-      };
+      field: string;
+      q: string;
+      order: "desc" | "asc";
       setter: (arg0: any) => void;
     }[] = [
       // Top alerting signatures.
       {
-        request: {
-          field: "alert.signature",
-          q: "event_type:alert",
-          order: "desc",
-        },
+        field: "alert.signature",
+        q: "event_type:alert",
+        order: "desc",
         setter: setMostAlerts,
       },
       // Least alerting signatures.
       {
-        request: {
-          field: "alert.signature",
-          q: "event_type:alert",
-          order: "asc",
-        },
+        field: "alert.signature",
+        q: "event_type:alert",
+        order: "asc",
         setter: setLeastAlerts,
       },
       // Top alerting source addresses.
       {
-        request: {
-          field: "src_ip",
-          q: "event_type:alert",
-          order: "desc",
-        },
+        field: "src_ip",
+        q: "event_type:alert",
+        order: "desc",
         setter: setMostSourceAddrs,
       },
       // Top alerting destination addresses.
       {
-        request: {
-          field: "dest_ip",
-          q: "event_type:alert",
-          order: "desc",
-        },
+        field: "dest_ip",
+        q: "event_type:alert",
+        order: "desc",
         setter: setMostDestAddrs,
       },
     ];
 
     for (const loader of loaders) {
+      let q = [...queryString];
+      if (loader.q) {
+        q.push(loader.q);
+      }
+
       let request = {
         time_range: timeRange,
-        ...loader.request,
-      } as GroupByQueryRequest;
-      if (searchParams.q) {
-        request.q = `${request.q} ${searchParams.q}`;
-      }
+        field: loader.field,
+        order: loader.order,
+        q: q.length > 0 ? q.join(" ") : undefined,
+      };
+
       setLoading((n) => n + 1);
       loader.setter([]);
       API.groupBy(request)
@@ -168,7 +176,20 @@ export function AlertsReport() {
       <Container fluid={true}>
         <Row class="mt-2">
           <Col>
-            <RefreshButton loading={loading()} refresh={refresh} />
+            <form class={"row row-cols-lg-auto align-items-center"}>
+              <div class={"col-12"}>
+                <RefreshButton loading={loading()} refresh={refresh} />
+              </div>
+              <div class={"col-12"}>
+                <SelectSensor
+                  sensors={sensors()}
+                  selected={searchParams.sensor}
+                  onchange={(sensor) => {
+                    setSearchParams({ sensor: sensor });
+                  }}
+                />
+              </div>
+            </form>
           </Col>
 
           <Col>
@@ -302,5 +323,36 @@ export function CountValueTable(props: {
         </Show>
       </Card>
     </Show>
+  );
+}
+
+export function SelectSensor(props: {
+  sensors: string[];
+  selected: string;
+  onchange: (value: string | undefined) => void;
+}) {
+  return (
+    <form class={"row row-cols-lg-auto align-items-center"}>
+      <div class="input-group">
+        <label class="input-group-text">Sensor</label>
+        <select
+          class="form-select"
+          onchange={(e) => {
+            console.log("changed");
+            props.onchange(e.currentTarget.value);
+            e.currentTarget.blur();
+          }}
+        >
+          <option value={""}>All</option>
+          <For each={props.sensors}>
+            {(sensor) => (
+              <option value={sensor} selected={sensor == props.selected}>
+                {sensor}
+              </option>
+            )}
+          </For>
+        </select>
+      </div>
+    </form>
   );
 }

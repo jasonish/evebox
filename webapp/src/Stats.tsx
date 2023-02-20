@@ -11,6 +11,8 @@ import { Chart } from "chart.js";
 import { parse_timestamp } from "./datetime";
 //import "chartjs-adapter-dayjs-4";
 import { useSearchParams } from "@solidjs/router";
+import { RefreshButton } from "./common/RefreshButton";
+import { SelectSensor } from "./reports/AlertsReport";
 
 interface ChartConfig {
   title: string;
@@ -62,7 +64,7 @@ export function Stats(): JSX.Element {
   });
 
   createEffect(() => {
-    loadData(timeRangeAsSeconds(), searchParams.sensor);
+    refresh();
   });
 
   function destroyAllCharts() {
@@ -71,6 +73,10 @@ export function Stats(): JSX.Element {
       const chart = charts.pop();
       chart.destroy();
     }
+  }
+
+  function refresh() {
+    loadData(timeRangeAsSeconds(), searchParams.sensor);
   }
 
   function loadData(timeRange: undefined | number, sensor: string | undefined) {
@@ -108,43 +114,23 @@ export function Stats(): JSX.Element {
       <Top />
       <Container fluid>
         <Row class={"mt-2"}>
-          <Col sm={1}>
-            <Button variant={"secondary"}>Refresh</Button>
-          </Col>
           <Col>
-            <div class={"row align-items-center"}>
-              <label for={"event-type-selector"} class={"col-auto"}>
-                Sensor:
-              </label>
-              <div class={"col-auto"}>
-                <select
-                  class="form-select"
-                  id={"event-type-selector"}
-                  onchange={(e) => {
-                    setSearchParams({ sensor: e.currentTarget.value });
-                    e.currentTarget.blur();
-                  }}
-                >
-                  <option value="" selected={searchParams.sensor == undefined}>
-                    All
-                  </option>
-                  <For each={sensors()}>
-                    {(sensor) => {
-                      return (
-                        <>
-                          <option
-                            value={sensor}
-                            selected={sensor == searchParams.sensor}
-                          >
-                            {sensor}
-                          </option>
-                        </>
-                      );
-                    }}
-                  </For>
-                </select>
+            <form class={"row row-cols-lg-auto align-items-center"}>
+              <div class={"col-12"}>
+                <Button variant={"secondary"} onclick={refresh}>
+                  Refresh
+                </Button>
               </div>
-            </div>
+              <div class={"col-12"}>
+                <SelectSensor
+                  sensors={sensors()}
+                  selected={searchParams.sensor}
+                  onchange={(sensor) => {
+                    setSearchParams({ sensor: sensor });
+                  }}
+                />
+              </div>
+            </form>
           </Col>
         </Row>
         <For each={CHARTS}>

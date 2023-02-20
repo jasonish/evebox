@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 #[allow(clippy::module_inception)]
 mod api;
 pub mod eve2pcap;
-pub mod flow_histogram;
 pub mod groupby;
 pub mod helpers;
 pub mod login;

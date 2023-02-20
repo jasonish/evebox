@@ -5,9 +5,8 @@
 import { TIME_RANGE, Top } from "../Top";
 import { useParams } from "@solidjs/router";
 import { createEffect, createSignal, For, Show } from "solid-js";
-import * as API from "../api";
-import { Button, Col, Container, Row } from "solid-bootstrap";
-import { GroupByQueryRequest, GroupByQueryResponseRow } from "../api";
+import { Col, Container, Row } from "solid-bootstrap";
+import { API, GroupByQueryRequest, GroupByQueryResponseRow } from "../api";
 import { CountValueTable } from "./AlertsReport";
 import { createStore } from "solid-js/store";
 import { RefreshButton } from "../common/RefreshButton";

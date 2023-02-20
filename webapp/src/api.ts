@@ -308,6 +308,10 @@ class Api {
       (response) => response.data
     );
   }
+
+  async getSensors(): Promise<{ data: string[] }> {
+    return get("api/1/sensors").then((response) => response.data);
+  }
 }
 
 export const API = new Api();

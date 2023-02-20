@@ -200,16 +200,6 @@ impl Datastore {
         }
     }
 
-    pub async fn flow_histogram(
-        &self,
-        params: FlowHistogramParameters,
-    ) -> Result<serde_json::Value, DatastoreError> {
-        match self {
-            Datastore::Elastic(ds) => ds.flow_histogram(params).await,
-            _ => Err(DatastoreError::Unimplemented),
-        }
-    }
-
     pub async fn report_dhcp(
         &self,
         what: &str,
@@ -256,10 +246,4 @@ pub struct AggParameters {
     pub min_timestamp: Option<time::OffsetDateTime>,
     pub agg: String,
     pub size: u64,
-}
-
-pub struct FlowHistogramParameters {
-    pub mints: Option<time::OffsetDateTime>,
-    pub interval: Option<String>,
-    pub query_string: Option<String>,
 }
