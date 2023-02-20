@@ -52,9 +52,9 @@ clean:
 
 .PHONY: dist rpm deb
 
-resources/public/index.html: $(WEBAPP_SRCS)
+resources/webapp/index.html: $(WEBAPP_SRCS)
 	cd webapp && $(MAKE)
-webapp: resources/public/index.html
+webapp: resources/webapp/index.html
 
 # Build's EveBox for the host platform.
 evebox: webapp
