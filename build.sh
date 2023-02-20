@@ -105,9 +105,9 @@ cross_run() {
 }
 
 build_linux() {
-    #build_cross x86_64-unknown-linux-musl "dist rpm deb"
-    cross_run x86_64-unknown-linux-musl make dist rpm
+    cross_run x86_64-unknown-linux-musl make dist
     cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
+    cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
 }
 COMMANDS[linux]=build_linux
 

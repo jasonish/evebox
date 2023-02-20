@@ -72,39 +72,6 @@ dist: webapp
 	cp examples/evebox.yaml $(DIST_DIR)/examples/
 	cd dist && zip -r $(DIST_NAME).zip $(DIST_NAME)
 
-# RPM packaging.
-ifneq ($(VERSION_SUFFIX),)
-# Setup non-release versioning.
-rpm: RPM_ITERATION := 0.$(VERSION_SUFFIX)$(BUILD_DATE)
-rpm: OUTPUT := dist/evebox-latest-x86_64.rpm
-else
-# Setup release versioning.
-rpm: RPM_ITERATION := 1
-rpm: OUTPUT := dist/
-endif
-rpm:
-	fpm --force -s dir \
-	    -t rpm \
-	    -p $(OUTPUT) \
-	    -n evebox \
-	    -v $(VERSION) \
-	    --iteration $(RPM_ITERATION) \
-	    --before-install=./packaging/rpm/before-install.sh \
-	    --after-upgrade=./packaging/rpm/after-upgrade.sh \
-	    --config-files /etc/sysconfig/evebox \
-	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox.service \
-	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox-agent.service \
-	    --rpm-attr 0755,root,root:/usr/bin/evebox \
-	    --rpm-attr 0644,root,root:/etc/evebox/evebox.yaml.example \
-	    --rpm-attr 0644,root,root:/etc/evebox/agent.yaml.example \
-	    --rpm-attr 0644,root,root:/etc/sysconfig/evebox.service \
-	    ${EVEBOX_BIN}=/usr/bin/evebox \
-	    examples/evebox.yaml=/etc/evebox/evebox.yaml.example \
-	    examples/agent.yaml=/etc/evebox/agent.yaml.example \
-	    ./packaging/rpm/evebox.sysconfig=/etc/sysconfig/evebox \
-	    ./packaging/rpm/evebox.service=/lib/systemd/system/evebox.service \
-	    ./packaging/rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
-
 fmt:
 	cargo fmt
 	cd webapp && npm run fmt

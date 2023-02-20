@@ -33,12 +33,13 @@ fi
 if [ "${VERSION_SUFFIX}" ]; then
     FILENAME="evebox-latest-${ARCH}.deb"
 else
-    FILENAME="$evebox-${VERSION}-${ARCH}.deb"
+    FILENAME="evebox-${VERSION}-${ARCH}.deb"
 fi
 
 fpm --verbose -t deb -n evebox -s dir --epoch 1 \
     -a "${ARCH}" \
-    -p "dist/${FILENAME}" -v "${VERSION}" \
+    -p "dist/${FILENAME}" \
+    -v "${VERSION}" \
     --force \
     --after-install=./packaging/debian/after-install.sh \
     --after-upgrade=./packaging/debian/after-upgrade.sh \
