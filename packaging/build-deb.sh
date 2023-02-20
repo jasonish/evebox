@@ -44,13 +44,15 @@ fpm -t deb -n evebox -s dir --epoch 1 "${ARGS[@]}" \
     -a "${ARCH}" \
     -p "dist/${FILENAME}" -v "${VERSION}" \
     --force \
-    --after-install=deb/after-install.sh \
-    --after-upgrade=deb/after-upgrade.sh \
+    --after-install=./packaging/debian/after-install.sh \
+    --after-upgrade=./packaging/debian/after-upgrade.sh \
     --deb-no-default-config-files \
-    --config-files /etc/default/evebox \
+    --config-files=/etc/default/evebox \
+    --config-files=/etc/evebox/evebox.yaml \
     "${BIN}"=/usr/bin/evebox \
     ./examples/evebox.yaml=/etc/evebox/evebox.yaml.example \
     ./examples/agent.yaml=/etc/evebox/agent.yaml.example \
-    ./deb/evebox.default=/etc/default/evebox \
-    ./deb/evebox.service=/lib/systemd/system/evebox.service \
-    ./deb/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+    ./packaging/evebox.yaml=/etc/evebox/evebox.yaml \
+    ./packaging/debian/evebox.default=/etc/default/evebox \
+    ./packaging/debian/evebox.service=/lib/systemd/system/evebox.service \
+    ./packaging/debian/evebox-agent.service=/lib/systemd/system/evebox-agent.service

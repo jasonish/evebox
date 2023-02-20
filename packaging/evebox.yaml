@@ -1,0 +1,31 @@
+# This is a minimal evebox.yaml for Elasticsearch and SQLite.
+
+http:
+  ## By default, EveBox binds to localhost. Uncomment this line to open
+  ## it up.
+  #host: "0.0.0.0"
+
+database:
+  type: elasticsearch
+
+  elasticsearch:
+    url: http://127.0.0.1:9200
+
+    ## If using the Filebeat Suricata module, you'll probably want to
+    ## change the index to "filebeat".
+    #index: logstash
+
+    ## If your Elasticsearch is using a self-signed certificate,
+    ## you'll likely need to set this to true.
+    #disable-certificate-check: false
+
+    ## If your Elasticsearch requires a username and password, provide
+    ## them here.
+    #username:
+    #password:
+
+  ## Retention period in days. 7 days is the default. Set to 0 to
+  ## disable.
+  ##
+  ## NOTE: Only applies to SQLite at this time.
+  #retention-period: 7

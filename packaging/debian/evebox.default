@@ -1,0 +1,1 @@
+EVEBOX_OPTS="-c /etc/evebox/evebox.yaml"
