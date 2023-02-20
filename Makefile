@@ -89,8 +89,8 @@ rpm:
 	    -n evebox \
 	    -v $(VERSION) \
 	    --iteration $(RPM_ITERATION) \
-	    --before-install=rpm/before-install.sh \
-	    --after-upgrade=rpm/after-upgrade.sh \
+	    --before-install=./packaging/rpm/before-install.sh \
+	    --after-upgrade=./packaging/rpm/after-upgrade.sh \
 	    --config-files /etc/sysconfig/evebox \
 	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox.service \
 	    --rpm-attr 0644,root,root:/lib/systemd/system/evebox-agent.service \
@@ -101,9 +101,9 @@ rpm:
 	    ${EVEBOX_BIN}=/usr/bin/evebox \
 	    examples/evebox.yaml=/etc/evebox/evebox.yaml.example \
 	    examples/agent.yaml=/etc/evebox/agent.yaml.example \
-	    rpm/evebox.sysconfig=/etc/sysconfig/evebox \
-	    rpm/evebox.service=/lib/systemd/system/evebox.service \
-	    rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
+	    ./packaging/rpm/evebox.sysconfig=/etc/sysconfig/evebox \
+	    ./packaging/rpm/evebox.service=/lib/systemd/system/evebox.service \
+	    ./packaging/rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service
 
 fmt:
 	cargo fmt
