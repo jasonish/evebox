@@ -52,5 +52,5 @@ fpm -t deb -n evebox -s dir --epoch 1 "${ARGS[@]}" \
     ./examples/evebox.yaml=/etc/evebox/evebox.yaml.example \
     ./examples/agent.yaml=/etc/evebox/agent.yaml.example \
     ./deb/evebox.default=/etc/default/evebox \
-    ./deb/evebox.service=/lib/systemd/system/evebox.server \
+    ./deb/evebox.service=/lib/systemd/system/evebox.service \
     ./deb/evebox-agent.service=/lib/systemd/system/evebox-agent.service
