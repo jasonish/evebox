@@ -55,8 +55,8 @@ impl SQLiteEventStore {
 
                     from.push("events");
 
-                    filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
-                    params.push(Box::new("alert"));
+                    filters
+                        .push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
 
                     for tag in options.tags {
                         match tag.as_ref() {

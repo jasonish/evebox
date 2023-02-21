@@ -100,8 +100,7 @@ impl SQLiteEventStore {
         let mut filters: Vec<String> = Vec::new();
         let mut params: Vec<Box<QueryParam>> = Vec::new();
 
-        filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
-        params.push(Box::new("alert".to_string()));
+        filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
 
         filters.push("archived = 0".to_string());
 
@@ -174,8 +173,7 @@ impl SQLiteEventStore {
         let mut filters: Vec<String> = Vec::new();
         let mut params: Vec<Box<QueryParam>> = Vec::new();
 
-        filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
-        params.push(Box::new("alert".to_string()));
+        filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
 
         filters.push("escalated = 0".to_string());
 
@@ -223,8 +221,7 @@ impl SQLiteEventStore {
         let mut filters: Vec<String> = Vec::new();
         let mut params: Vec<Box<QueryParam>> = Vec::new();
 
-        filters.push("json_extract(events.source, '$.event_type') = ?".to_string());
-        params.push(Box::new("alert".to_string()));
+        filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
 
         filters.push("escalated = 1".to_string());
 
