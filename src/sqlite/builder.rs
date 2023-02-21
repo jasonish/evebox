@@ -107,8 +107,17 @@ impl EventQueryBuilder {
                         self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
                             .push_param(i);
                     } else {
-                        self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
-                            .push_param(v.to_string());
+                        if k == "host" {
+                            // Do not hit the timestamp/host index if
+                            // host is specified. Its not ideal for
+                            // this query.  Revisit at some point as
+                            // that index may be removed.
+                            self.push_where(format!("+json_extract(events.source, '$.{k}') = ?"))
+                                .push_param(v.to_string());
+                        } else {
+                            self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
+                                .push_param(v.to_string());
+                        }
 
                         // If FTS is enabled, some key/val searches
                         // can really benefit from it.
