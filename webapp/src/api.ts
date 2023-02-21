@@ -17,7 +17,7 @@ let SESSION_ID: string | null = localStorage.getItem("SESSION_ID");
 
 export const [QUEUE_SIZE, SET_QUEUE_SIZE] = createSignal(0);
 
-const QUEUE = new Queue({ concurrency: 1 });
+const QUEUE = new Queue({ concurrency: 3 });
 
 function queueAdd(func: any): Promise<any> {
   const p = new Promise<any>((resolve, reject) => {
