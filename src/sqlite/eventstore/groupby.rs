@@ -34,13 +34,9 @@ impl SQLiteEventStore {
         // Some internal optimizing, may be provided on the query
         // string already.
         if field.starts_with("alert.") {
-            builder
-                .push_where("json_extract(events.source, '$.event_type') = ?")
-                .push_param("alert");
+            builder.push_where("json_extract(events.source, '$.event_type') = 'alert'");
         } else if field.starts_with("dns.") {
-            builder
-                .push_where("json_extract(events.source, '$.event_type') = ?")
-                .push_param("dns");
+            builder.push_where("json_extract(events.source, '$.event_type') = 'dns'");
         }
 
         builder.apply_query_string(&q);
