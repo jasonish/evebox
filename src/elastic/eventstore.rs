@@ -618,7 +618,7 @@ impl EventStore {
         params: datastore::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
-	let mut should = vec![];
+        let mut should = vec![];
 
         if let Some(event_type) = params.event_type {
             filters.push(request::term_filter(
@@ -627,7 +627,7 @@ impl EventStore {
             ));
         }
 
-	self.apply_query_string(&params.query_string_elements, &mut filters, &mut should);
+        self.apply_query_string(&params.query_string_elements, &mut filters, &mut should);
 
         if let Some(timestamp) = params.min_timestamp {
             filters.push(request::timestamp_gte_filter(&timestamp));
