@@ -3,15 +3,14 @@
 // SPDX-License-Identifier: MIT
 
 use super::{sqlite_format_interval, SQLiteEventStore};
+use crate::prelude::*;
 use crate::{
     datastore::{DatastoreError, StatsAggQueryParams},
     querystring::{self, QueryString},
     sqlite::{builder::EventQueryBuilder, eventstore::nanos_to_rfc3339, format_sqlite_timestamp},
-    util,
+    util, LOG_QUERIES,
 };
-use anyhow::Result;
 use rusqlite::{Connection, OptionalExtension};
-use tracing::debug;
 
 impl SQLiteEventStore {
     pub(crate) async fn histogram_time(
@@ -134,10 +133,13 @@ impl SQLiteEventStore {
                     (":start_time", &start_time),
                 ];
                 if let Some(sensor_name) = qp.sensor_name.as_ref() {
-                    filters.push("json_extract(events.source, '$.host') = :sensor_name");
+                    filters.push("+json_extract(events.source, '$.host') = :sensor_name");
                     params.push((":sensor_name", sensor_name));
                 }
                 let sql = sql.replace("%WHERE%", &filters.join(" AND "));
+                if *LOG_QUERIES {
+                    info!("sql={}", &sql);
+                }
                 let mut stmt = conn.prepare(&sql)?;
                 let rows =
                     stmt.query_map(params.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?;
@@ -148,7 +150,7 @@ impl SQLiteEventStore {
                 Ok(entries)
             })
             .await
-            .map_err(|err| anyhow::anyhow!("sqlite interact error:: {:?}", err))??;
+            .map_err(|err| anyhow!("sqlite interact error:: {:?}", err))??;
         Ok(result)
     }
 
