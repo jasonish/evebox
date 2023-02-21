@@ -14,7 +14,7 @@ const INTERVAL: u64 = 60;
 
 /// The time to sleep between retention runs if not all old events
 /// were deleted.
-const REPEAT_INTERVAL: u64 = 4;
+const REPEAT_INTERVAL: u64 = 3;
 
 /// Number of events to delete per run.
 const LIMIT: u64 = 1000;
@@ -61,11 +61,11 @@ fn do_retention(config: &RetentionConfig, conn: Arc<Mutex<rusqlite::Connection>>
     let older_than = now.sub(period);
     debug!("Deleting events from before {}", &older_than);
     let mut conn = conn.lock().unwrap();
+    let timer = Instant::now();
     let tx = conn.transaction()?;
     let sql = r#"DELETE FROM events
                 WHERE rowid IN
-                    (SELECT rowid FROM events WHERE timestamp < ? and escalated = 0 LIMIT ?)"#;
-    let timer = Instant::now();
+                    (SELECT rowid FROM events WHERE timestamp < ? and escalated = 0 ORDER BY timestamp ASC LIMIT ?)"#;
     let n = tx.execute(
         sql,
         params![older_than.unix_timestamp_nanos() as i64, LIMIT as i64],
