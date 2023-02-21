@@ -2,7 +2,10 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::sqlite::{init_event_db, ConnectionBuilder, SqliteExt};
+use crate::sqlite::{
+    connection::{get_auto_vacuum, get_journal_mode, get_synchronous},
+    init_event_db, ConnectionBuilder, SqliteExt,
+};
 use anyhow::Result;
 use clap::{ArgMatches, Command, FromArgMatches, IntoApp, Parser, Subcommand};
 use std::fs::File;
@@ -34,6 +37,14 @@ enum Commands {
         filename: String,
         sql: String,
     },
+    Info(InfoArgs),
+}
+
+#[derive(Parser, Debug)]
+struct InfoArgs {
+    #[clap(long, short = 'D')]
+    data_directory: Option<String>,
+    filename: Option<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -88,7 +99,68 @@ pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
         Commands::Load(args) => load(args),
         Commands::Fts(args) => fts::fts(args),
         Commands::Query { filename, sql } => query(filename, sql),
+        Commands::Info(args) => info(args),
     }
+}
+
+fn info(args: &InfoArgs) -> Result<()> {
+    let filename = if let Some(filename) = &args.filename {
+        filename.to_string()
+    } else if let Some(dir) = &args.data_directory {
+        format!("{dir}/events.sqlite")
+    } else {
+        bail!("a filename or data directory must be specified");
+    };
+
+    let conn = ConnectionBuilder::filename(Some(&filename)).open(false)?;
+    println!("Filename: {filename}");
+    println!("Auto vacuum: {}", get_auto_vacuum(&conn)?);
+    println!("Journal mode: {}", get_journal_mode(&conn)?);
+    println!("Synchronous: {}", get_synchronous(&conn)?);
+    println!("FTS enabled: {}", conn.has_table("fts")?);
+
+    let min_rowid: i64 =
+        conn.query_row_and_then("select min(rowid) from events", [], |row| row.get(0))?;
+    let max_rowid: i64 =
+        conn.query_row_and_then("select max(rowid) from events", [], |row| row.get(0))?;
+
+    println!("Minimum rowid: {min_rowid}");
+    println!("Maximum rowid: {max_rowid}");
+    println!("Number of events (estimate): {}", max_rowid - min_rowid);
+
+    let schema_version: i64 = conn.query_row_and_then(
+        "select max(version) from refinery_schema_history",
+        [],
+        |row| row.get(0),
+    )?;
+    println!("Schema version: {schema_version}");
+
+    let min_timestamp = conn.query_row_and_then(
+        "select min(timestamp) from events",
+        [],
+        |row| -> anyhow::Result<time::OffsetDateTime> {
+            let timestamp: i64 = row.get(0)?;
+            Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
+                timestamp as i128,
+            )?)
+        },
+    )?;
+
+    let max_timestamp = conn.query_row_and_then(
+        "select max(timestamp) from events",
+        [],
+        |row| -> anyhow::Result<time::OffsetDateTime> {
+            let timestamp: i64 = row.get(0)?;
+            Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
+                timestamp as i128,
+            )?)
+        },
+    )?;
+
+    println!("Oldest event: {}", min_timestamp);
+    println!("Latest event: {}", max_timestamp);
+
+    Ok(())
 }
 
 fn dump(filename: &str) -> Result<()> {
@@ -112,19 +184,17 @@ fn load(args: &LoadArgs) -> Result<()> {
     info!("Loading events");
     let mut count = 0;
     let tx = conn.transaction()?;
-    {
-        for line in reader {
-            let line = line?;
-            let mut eve: serde_json::Value = serde_json::from_str(&line)?;
-            for statement in crate::sqlite::importer::prepare_sql(&mut eve, fts)? {
-                let mut st = tx.prepare_cached(&statement.statement)?;
-                st.execute(rusqlite::params_from_iter(&statement.params))?;
-            }
-            count += 1;
-            if let Some(limit) = args.count {
-                if count >= limit {
-                    break;
-                }
+    for line in reader {
+        let line = line?;
+        let mut eve: serde_json::Value = serde_json::from_str(&line)?;
+        for statement in crate::sqlite::importer::prepare_sql(&mut eve, fts)? {
+            let mut st = tx.prepare_cached(&statement.statement)?;
+            st.execute(rusqlite::params_from_iter(&statement.params))?;
+        }
+        count += 1;
+        if let Some(limit) = args.count {
+            if count >= limit {
+                break;
             }
         }
     }

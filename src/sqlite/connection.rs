@@ -144,7 +144,7 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
     Ok(())
 }
 
-fn get_auto_vacuum(db: &Connection) -> Result<u8, rusqlite::Error> {
+pub(crate) fn get_auto_vacuum(db: &Connection) -> Result<u8, rusqlite::Error> {
     db.query_row_and_then("SELECT auto_vacuum FROM pragma_auto_vacuum", [], |row| {
         row.get(0)
     })
@@ -152,6 +152,18 @@ fn get_auto_vacuum(db: &Connection) -> Result<u8, rusqlite::Error> {
 
 fn enable_auto_vacuum(db: &Connection) -> Result<(), rusqlite::Error> {
     db.pragma_update(Some(DatabaseName::Main), "auto_vacuum", 2)
+}
+
+pub(crate) fn get_journal_mode(db: &Connection) -> Result<String, rusqlite::Error> {
+    db.query_row_and_then("SELECT journal_mode FROM pragma_journal_mode", [], |row| {
+        row.get(0)
+    })
+}
+
+pub(crate) fn get_synchronous(db: &Connection) -> Result<u8, rusqlite::Error> {
+    db.query_row_and_then("SELECT synchronous FROM pragma_synchronous", [], |row| {
+        row.get(0)
+    })
 }
 
 mod embedded {
