@@ -49,7 +49,7 @@ export function OverviewReport() {
     let q: string[] = [];
 
     if (searchParams.sensor) {
-      q.push(searchParams.sensor);
+      q.push(`host:${searchParams.sensor}`);
     }
 
     setLoading((n) => n + 1);
