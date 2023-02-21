@@ -138,6 +138,7 @@ impl Importer {
                                     break;
                                 }
                                 Err(err) => {
+                                    error!("Insert statement failed: {err}");
                                     if err.to_string().contains("locked") {
                                         std::thread::sleep(std::time::Duration::from_millis(10));
                                     } else {
