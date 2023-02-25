@@ -513,6 +513,16 @@ export function Alerts() {
     }
   }
 
+  function filterBySignatureId(signatureId: number) {
+    let q = searchParams.q;
+    if (q) {
+      q = `alert.signature_id:${signatureId} ${q}`;
+    } else {
+      q = `alert.signature_id:${signatureId}`;
+    }
+    setSearchParams({ q: q });
+  }
+
   return (
     <>
       <Top />
@@ -790,6 +800,13 @@ export function Alerts() {
                                       }
                                     >
                                       Select all with SID {alert.signature_id}
+                                    </Dropdown.Item>
+                                    <Dropdown.Item
+                                      onClick={() =>
+                                        filterBySignatureId(alert.signature_id)
+                                      }
+                                    >
+                                      Filter on SID {alert.signature_id}
                                     </Dropdown.Item>
                                   </Dropdown.Menu>
                                 </Dropdown>
