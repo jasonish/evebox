@@ -179,7 +179,16 @@ export function Alerts() {
       },
       "Shift+* a": () => {
         console.log("Toggle select all");
-        toggleSelectAll();
+        selectAll();
+      },
+      "Shift+* n": () => {
+        unselectAll();
+      },
+      "Shift+* 1": () => {
+        let event = visibleEvents()[cursor()];
+        if (event) {
+          selectBySignatureId(event._source.alert?.signature_id!);
+        }
       },
     });
 

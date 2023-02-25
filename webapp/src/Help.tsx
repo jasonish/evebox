@@ -62,6 +62,9 @@ function Keyboard() {
     { s: "Control+\\", h: "Clear all filters and search" },
     { s: "Shift+h", h: "Goto first row" },
     { s: "Shift+g", h: "Goto last row" },
+    { s: "* a", h: "Select all alerts in view" },
+    { s: "* n", h: "Deselect all alerts" },
+    { s: "* 1", h: "Select all alerts with current SID" },
   ];
 
   return (
