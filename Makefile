@@ -46,7 +46,7 @@ EVEBOX_BIN :=	target/$(TARGET)/release/$(APP)$(APP_EXT)
 all: evebox
 
 clean:
-	rm -rf dist target resources/public resource/webapp
+	rm -rf dist target resources/public resources/webapp
 	find . -name \*~ -exec rm -f {} \;
 	$(MAKE) -C webapp clean
 
