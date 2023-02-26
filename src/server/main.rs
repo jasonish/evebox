@@ -49,7 +49,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     crate::version::log_version();
 
     // Load the configuration file if provided.
-    let config_filename = args.value_of("config");
+    let config_filename = args.get_one::<String>("config").map(|s| &**s);
     let config = match crate::config::Config::new(args, config_filename) {
         Err(err) => {
             error!(
@@ -131,7 +131,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     }
 
     let input_enabled = {
-        if config.args.occurrences_of("input.filename") > 0 {
+        if config.args.contains_id("input.filename") {
             true
         } else {
             config.get_bool("input.enabled")?
@@ -182,7 +182,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     for input_filename in &input_filenames {
         let end = config.get_bool("end")?;
-        let bookmark_directory: Option<String> = config.get("input.bookmark-directory")?;
+        let bookmark_directory: Option<String> = config.get_string("input.bookmark-directory");
         let bookmark_filename = get_bookmark_filename(
             input_filename,
             bookmark_directory.as_deref(),

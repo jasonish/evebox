@@ -35,17 +35,20 @@ impl<'a> Config<'a> {
     /// with the Clap builder API.
     pub fn get<T>(&self, name: &str) -> anyhow::Result<Option<T>>
     where
-        T: FromStr + DeserializeOwned + std::fmt::Debug,
+        T: FromStr + DeserializeOwned + std::fmt::Debug + Sync + Send + Clone + 'static,
         <T as FromStr>::Err: Display,
     {
-        // This will return the value if set on the command line, or in an environment
-        // variable.
-        if self.args.is_valid_arg(name)
-            && (self.args.occurrences_of(name) > 0
-                || (self.args.is_present(name)
-                    && self.args.value_source(name) == Some(ValueSource::EnvVariable)))
-        {
-            return Ok(Some(self.args.value_of_t(name)?));
+        let mut default_value: Option<T> = None;
+        if let Ok(Some(value)) = self.args.try_get_one::<T>(name) {
+            match self.args.value_source(name) {
+                Some(ValueSource::CommandLine) | Some(ValueSource::EnvVariable) => {
+                    return Ok(Some(value.clone()));
+                }
+                Some(ValueSource::DefaultValue) => {
+                    default_value = Some(value.clone());
+                }
+                _ => {}
+            }
         }
 
         // database.elasticsearch.url
@@ -60,15 +63,7 @@ impl<'a> Config<'a> {
             return Ok(Some(serde_yaml::from_value(val.clone())?));
         }
 
-        // Maybe Clap as a default value.
-        if self.args.is_valid_arg(name)
-            && self.args.is_present(name)
-            && self.args.value_source(name) == Some(ValueSource::DefaultValue)
-        {
-            return Ok(Some(self.args.value_of_t(name)?));
-        }
-
-        Ok(None)
+        Ok(default_value)
     }
 
     pub fn get_env<T>(&self, name: &str) -> anyhow::Result<Option<T>>
@@ -100,9 +95,10 @@ impl<'a> Config<'a> {
     /// is not found, false will be returned.
     pub fn get_bool(&self, name: &str) -> anyhow::Result<bool> {
         // This will catch the argument set on the command line or in the environment.
-        if self.args.is_valid_arg(name) && self.args.is_present(name) {
-            Ok(true)
-        } else if let Some(val) = self.get_node(&self.root, name) {
+        if let Ok(Some(value)) = self.args.try_get_one::<bool>(name) {
+            return Ok(*value);
+        }
+        if let Some(val) = self.get_node(&self.root, name) {
             // Catch "yes" and "no".
             if let serde_yaml::Value::String(s) = val {
                 if s == "yes" {
@@ -117,34 +113,22 @@ impl<'a> Config<'a> {
         }
     }
 
-    pub fn get_present_arg(&self, name: &str) {
-        if self.args.is_valid_arg(name) {
-            let _values: Vec<&str> = self.args.values_of(name).unwrap().collect();
-        }
-    }
-
     pub fn get_arg_strings(&self, name: &str) -> Option<Vec<String>> {
-        if self.args.is_valid_arg(name) {
-            if let Some(values) = self.args.values_of(name) {
-                return Some(values.map(|s| s.to_string()).collect());
-            }
+        if let Ok(Some(values)) = self.args.try_get_many::<String>(name) {
+            let values: Vec<String> = values.map(|s| s.to_string()).collect();
+            return Some(values);
         }
-        None
+        return None;
     }
 
+    /// NOTE: Only checks configuration file, not command line args.
     pub fn get_strings(&self, name: &str) -> anyhow::Result<Option<Vec<String>>> {
-        if self.args.is_valid_arg(name) && self.args.occurrences_of(name) > 0 {
-            if let Some(strings) = self.args.values_of(name) {
-                let strings: Vec<String> = strings.map(|s| s.to_string()).collect();
-                return Ok(Some(strings));
-            }
-        }
         self.get_config_value(name)
     }
 
     pub fn get_arg(&self, name: &str) -> Option<&str> {
-        if self.args.is_valid_arg(name) {
-            self.args.value_of(name)
+        if let Ok(value) = self.args.try_get_one::<String>(name) {
+            value.map(|s| &**s)
         } else {
             None
         }

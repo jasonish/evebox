@@ -4,6 +4,7 @@
 
 #![allow(clippy::redundant_field_names)]
 
+use clap::{value_parser, ArgAction};
 use clap::{Arg, Command};
 use evebox::logger;
 use evebox::prelude::*;
@@ -25,9 +26,9 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .version(std::env!("CARGO_PKG_VERSION"))
         .arg(
             Arg::new("verbose")
+                .action(clap::ArgAction::Count)
                 .long("verbose")
                 .short('v')
-                .multiple_occurrences(true)
                 .global(true)
                 .help("Increase verbosity"),
         )
@@ -69,6 +70,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .takes_value(true)
                 .default_value("5636")
                 .env("EVEBOX_HTTP_PORT")
+                .value_parser(value_parser!(u16))
                 .help("Port to bind to"),
         )
         .arg(
@@ -92,12 +94,14 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             Arg::new("database.elasticsearch.no-index-suffix")
+                .action(clap::ArgAction::SetTrue)
                 .long("no-index-suffix")
                 .takes_value(false)
                 .help("Do not add a suffix to the index name"),
         )
         .arg(
             Arg::new("database.elasticsearch.ecs")
+                .action(ArgAction::SetTrue)
                 .long("ecs")
                 .help("Enable Elastic ECS support"),
         )
@@ -120,12 +124,14 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             clap::Arg::new("no-check-certificate")
+                .action(ArgAction::SetTrue)
                 .short('k')
                 .long("no-check-certificate")
                 .help("Disable TLS certificate validation"),
         )
         .arg(
             Arg::new("http.request-logging")
+                .action(ArgAction::SetTrue)
                 .long("http-request-logging")
                 .env("EVEBOX_HTTP_REQUEST_LOGGING")
                 .hide_env(true)
@@ -133,6 +139,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             Arg::new("http.tls.enabled")
+                .action(ArgAction::SetTrue)
                 .long("tls")
                 .help("Enable TLS")
                 .env("EVEBOX_HTTP_TLS_ENABLED")
@@ -161,6 +168,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             Arg::new("end")
+                .action(ArgAction::SetTrue)
                 .long("end")
                 .help("Read from end (tail) of input file"),
         )
@@ -319,7 +327,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize logging.
     let log_level = {
-        let verbosity = matches.occurrences_of("verbose");
+        let verbosity = matches.get_count("verbose");
         if verbosity > 1 {
             tracing::Level::TRACE
         } else if verbosity > 0 {

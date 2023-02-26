@@ -8,7 +8,7 @@ use crate::bookmark;
 use crate::config::Config;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::importer::Importer;
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::collections::HashMap;
@@ -40,11 +40,13 @@ pub fn command() -> clap::Command<'static> {
         )
         .arg(
             Arg::new("geoip.enabled")
+                .action(ArgAction::SetTrue)
                 .long("enable-geoip")
                 .help("Enable MaxMind GeoIP"),
         )
         .arg(
             Arg::new("stdout")
+                .action(ArgAction::SetTrue)
                 .long("stdout")
                 .help("Print events to stdout"),
         )
@@ -69,7 +71,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         std::process::exit(0);
     });
 
-    let config_filename = match args.value_of("config") {
+    let config_filename = match args.get_one::<String>("config").map(|s| s.as_str()) {
         Some(v) => Some(v),
         None => find_config_filename(),
     };
@@ -95,7 +97,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         bail!("No EVE log files provided. Exiting as there is nothing to do.");
     }
 
-    let enable_geoip = args.occurrences_of("geoip.enabled") > 0;
+    let enable_geoip = args.get_one::<bool>("geoip.enabled").map_or(false, |v| *v);
 
     // Get additional fields to add to events.
     let additional_fields = get_additional_fields(&config)?;
@@ -257,11 +259,11 @@ fn get_additional_fields(config: &Config) -> anyhow::Result<Option<HashMap<Strin
 fn get_eve_filenames(config: &Config) -> anyhow::Result<Vec<String>> {
     let mut eve_filenames: Vec<String> = vec![];
 
-    if config.args.is_present("filenames") {
+    if config.args.contains_id("filenames") {
         eve_filenames.extend(
             config
                 .args
-                .values_of("filenames")
+                .get_many::<String>("filenames")
                 .unwrap()
                 .map(String::from)
                 .collect::<Vec<String>>(),

@@ -85,7 +85,7 @@ fn open_config_repo(data_directory: Option<&str>) -> Result<ConfigRepo> {
 }
 
 fn list(args: &clap::ArgMatches) -> Result<()> {
-    let repo = open_config_repo(args.value_of("data-directory"))?;
+    let repo = open_config_repo(args.get_one::<String>("data-directory").map(|s| &**s))?;
     let users = repo.get_users()?;
     for user in users {
         println!("{}", serde_json::to_string(&user).unwrap());
@@ -102,9 +102,9 @@ fn get_input(prompt: &str) -> Result<String> {
 }
 
 fn add(args: &clap::ArgMatches) -> Result<()> {
-    let repo = open_config_repo(args.value_of("data-directory"))?;
+    let repo = open_config_repo(args.get_one::<String>("data-directory").map(|s| &**s))?;
 
-    let username = if let Some(username) = args.value_of("username") {
+    let username = if let Some(username) = args.get_one::<String>("username") {
         username.to_string()
     } else {
         get_input("Username: ")?
@@ -113,7 +113,7 @@ fn add(args: &clap::ArgMatches) -> Result<()> {
         return Err(anyhow!("empty username not allowed"));
     }
 
-    let password = if let Some(password) = args.value_of("password") {
+    let password = if let Some(password) = args.get_one::<String>("password") {
         password.to_string()
     } else {
         // Yes, we're allowing empty passwords.
@@ -131,8 +131,8 @@ fn add(args: &clap::ArgMatches) -> Result<()> {
 }
 
 fn remove(args: &clap::ArgMatches) -> Result<()> {
-    let repo = open_config_repo(args.value_of("data-directory"))?;
-    let username = args.value_of("username").unwrap();
+    let repo = open_config_repo(args.get_one::<String>("data-directory").map(|s| &**s))?;
+    let username = args.get_one::<String>("username").unwrap();
     if repo.remove_user(username)? == 0 {
         return Err(anyhow!("user does not exist"));
     }
@@ -141,8 +141,8 @@ fn remove(args: &clap::ArgMatches) -> Result<()> {
 }
 
 fn password(args: &clap::ArgMatches) -> Result<()> {
-    let username = args.value_of("username").unwrap();
-    let repo = open_config_repo(args.value_of("data-directory"))?;
+    let username = args.get_one::<String>("username").unwrap();
+    let repo = open_config_repo(args.get_one::<String>("data-directory").map(|s| &**s))?;
     let user = repo.get_user_by_name(username)?;
     let password = rpassword::read_password_from_tty(Some("Password: "))?;
     if password.is_empty() {

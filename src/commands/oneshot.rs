@@ -20,7 +20,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let no_wait: bool = config_loader.get_bool("no-wait")?;
     let db_filename: String = config_loader.get("database-filename")?.unwrap();
     let host: String = config_loader.get("http.host")?.unwrap();
-    let input = args.value_of("INPUT").unwrap().to_string();
+    let input = args.get_one::<String>("INPUT").unwrap().to_string();
 
     info!("Using database filename {}", &db_filename);
 

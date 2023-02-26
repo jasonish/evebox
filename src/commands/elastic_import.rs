@@ -2,6 +2,8 @@
 //
 // Copyright (C) 2020-2022 Jason Ish
 
+use clap::ValueSource;
+
 use crate::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
@@ -37,8 +39,8 @@ struct ElasticImportConfig {
 }
 
 pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
-    let config_filename = args.value_of("config");
-    let loader = crate::config::Config::new(args, config_filename)?;
+    let config_filename = args.get_one::<String>("config");
+    let loader = crate::config::Config::new(args, config_filename.map(|x| &**x))?;
 
     let config = ElasticImportConfig {
         elastic_url: loader.get_string("elasticsearch").unwrap(),
@@ -67,12 +69,15 @@ pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Err
     };
 
     // Bookmark filename and bookmark directory can't be used together.
-    if args.occurrences_of("bookmark-filename") > 0 && args.occurrences_of("bookmark-dir") > 0 {
+    if args.value_source("bookmark-filename") == Some(ValueSource::CommandLine)
+        && args.value_source("bookmark-dir") == Some(ValueSource::CommandLine)
+    {
         return Err("--bookmark-filename and --bookmark-dir not allowed together".into());
     }
 
     // If multiple inputs are used, --bookmark-filename cannot be used.
-    if inputs.len() > 1 && args.occurrences_of("bookmark-filename") > 0 {
+    if inputs.len() > 1 && args.value_source("bookmark-filename") == Some(ValueSource::CommandLine)
+    {
         return Err("--bookmark-filename cannot be used with multiple inputs".into());
     }
 

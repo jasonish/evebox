@@ -157,8 +157,8 @@ fn info(args: &InfoArgs) -> Result<()> {
         },
     )?;
 
-    println!("Oldest event: {}", min_timestamp);
-    println!("Latest event: {}", max_timestamp);
+    println!("Oldest event: {min_timestamp}");
+    println!("Latest event: {max_timestamp}");
 
     Ok(())
 }

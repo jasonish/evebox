@@ -157,7 +157,10 @@ impl Importer {
                         return Err(IndexError::SQLiteError(err).into());
                     } else {
                         let count = if self.fts { n / 2 } else { n };
-                        debug!("Committed {count} events in {} ms", start.elapsed().as_millis());
+                        debug!(
+                            "Committed {count} events in {} ms",
+                            start.elapsed().as_millis()
+                        );
                     }
                     self.queue.truncate(0);
                     return Ok(n);

@@ -6,7 +6,7 @@ use crate::elastic::request::Request;
 use crate::elastic::{self, Client};
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
-    let url = args.value_of("elasticsearch").unwrap();
+    let url = args.get_one::<String>("elasticsearch").unwrap();
     let client = Client::new(url);
     let version = client.get_version().await?;
     let ignore_dot = true;
