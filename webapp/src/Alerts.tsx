@@ -35,7 +35,14 @@ import * as API from "./api";
 import { QUEUE_SIZE } from "./api";
 import { parse_timerange } from "./datetime";
 import { EventWrapper } from "./types";
-import { BiCaretRightFill, BiStar, BiStarFill, BiStarHalf } from "./icons";
+import {
+  BiCaretDownFill,
+  BiCaretRightFill,
+  BiCaretUpFill,
+  BiStar,
+  BiStarFill,
+  BiStarHalf,
+} from "./icons";
 import tinykeys from "tinykeys";
 import { scrollToClass } from "./scroll";
 import { Transition } from "solid-transition-group";
@@ -78,6 +85,8 @@ export function Alerts() {
   const [searchParams, setSearchParams] = useSearchParams<{
     q: string;
     offset: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   }>();
   const [cursor, setCursor] = createSignal(0);
   const [isLoading, setIsLoading] = createSignal(false);
@@ -314,6 +323,16 @@ export function Alerts() {
     refreshEvents({ query_string: searchParams.q });
   }
 
+  // A bit of a hack to force a refresh when the sortBy or orderOrder search parameters change.
+  //
+  // TODO: This could be better. There is no reason for a refresh here. In fact the whole
+  //   reactivity of this module should be redone. As this was how I learned SolidJS.
+  createEffect(() => {
+    const _sortBy = searchParams.sortBy;
+    const _sortOrder = searchParams.sortOrder;
+    onRefresh();
+  });
+
   function refreshEvents(options: { query_string?: string } = {}) {
     console.log("Alerts.refreshEvents: " + JSON.stringify(options));
     let params: any = {};
@@ -344,21 +363,18 @@ export function Alerts() {
     API.alerts(params)
       .then((response) => {
         const events: EventWrapper[] = response.events;
-        events.sort((a, b) => {
-          if (a._metadata!.max_timestamp < b._metadata!.max_timestamp) {
-            return -1;
-          } else if (a._metadata!.max_timestamp > b._metadata!.max_timestamp) {
-            return 1;
-          } else {
-            return 0;
-          }
-        });
+        sortAlerts(
+          events,
+          searchParams.sortBy || "timestamp",
+          searchParams.sortOrder || "desc"
+        );
         events.forEach((event) => {
           event.__private = {
             selected: false,
           };
         });
         events.reverse();
+
         if (eventStore.events.length === 0 && events.length === 0) {
           // Do nothing...
         } else {
@@ -371,6 +387,59 @@ export function Alerts() {
       .finally(() => {
         setIsLoading(false);
       });
+  }
+
+  function sortAlerts(
+    alerts: EventWrapper[],
+    sortBy: string,
+    order: string
+  ): void {
+    console.log(`sortAlerts: sortBy=${sortBy}, order=${order}`);
+
+    function compare(a: any, b: any): number {
+      if (a < b) {
+        return -1;
+      } else if (a > b) {
+        return 1;
+      }
+      return 0;
+    }
+
+    switch (sortBy) {
+      case "signature":
+        alerts.sort((a: any, b: any) => {
+          return compare(
+            a._source.alert.signature.toUpperCase(),
+            b._source.alert.signature.toUpperCase()
+          );
+        });
+        break;
+      case "count":
+        alerts.sort((a: any, b: any) => {
+          return a._metadata.count - b._metadata.count;
+        });
+        break;
+      case "source":
+        alerts.sort((a: any, b: any) => {
+          return compare(a._source.src_ip, b._source.src_ip);
+        });
+        break;
+      case "dest":
+        alerts.sort((a: any, b: any) => {
+          return compare(a._source.dest_ip, b._source.dest_ip);
+        });
+        break;
+      case "timestamp":
+        alerts.sort((a: any, b: any) => {
+          return compare(b._metadata.max_timestamp, a._metadata.max_timestamp);
+        });
+        break;
+    }
+
+    if (order === "desc") {
+      console.log(`sortAlerts: reversing as order is descending`);
+      alerts.reverse();
+    }
   }
 
   const applyFilter = (filter: string) => {
@@ -530,6 +599,27 @@ export function Alerts() {
       q = `alert.signature_id:${signatureId}`;
     }
     setSearchParams({ q: q });
+  }
+
+  function updateSort(key: string) {
+    console.log("Sorting by " + key);
+    let order = getSortOrder();
+    if (key === getSortBy()) {
+      if (order === "asc") {
+        order = "desc";
+      } else {
+        order = "asc";
+      }
+    }
+    setSearchParams({ sortBy: key, sortOrder: order });
+  }
+
+  function getSortOrder() {
+    return searchParams.sortOrder || "desc";
+  }
+
+  function getSortBy() {
+    return searchParams.sortBy || "timestamp";
   }
 
   return (
@@ -693,10 +783,44 @@ export function Alerts() {
                       />
                     </th>
                     <th class={"col-star"}></th>
-                    <th class={"col-count"}>#</th>
-                    <th class="col-timestamp">Timestamp</th>
-                    <th class="col-address">Src / Dst</th>
-                    <th>Signature</th>
+                    <SortHeader
+                      title={"#"}
+                      key={"count"}
+                      sortBy={getSortBy()}
+                      sortOrder={getSortOrder()}
+                      class={"col-count"}
+                      onclick={updateSort}
+                    />
+                    <SortHeader
+                      title={"Timestamp"}
+                      key={"timestamp"}
+                      sortBy={getSortBy()}
+                      sortOrder={getSortOrder()}
+                      class={"col-timestamp"}
+                      onclick={updateSort}
+                    />
+                    <th class="col-address" style={"cursor: pointer"}>
+                      <span onclick={() => updateSort("source")}>
+                        Src{" "}
+                        <Show when={getSortBy() === "source"}>
+                          <SortCaret order={getSortOrder()}></SortCaret>
+                        </Show>
+                      </span>
+                      /{" "}
+                      <span onclick={() => updateSort("dest")}>
+                        Dst
+                        <Show when={getSortBy() === "dest"}>
+                          <SortCaret order={getSortOrder()}></SortCaret>
+                        </Show>
+                      </span>
+                    </th>
+                    <SortHeader
+                      title={"Signature"}
+                      key={"signature"}
+                      sortBy={getSortBy()}
+                      sortOrder={getSortOrder()}
+                      onclick={updateSort}
+                    />
                     <th></th>
                   </tr>
                 </thead>
@@ -944,6 +1068,43 @@ function PagerRow(props: {
           </div>
         </Row>
       </Show>
+    </>
+  );
+}
+
+function SortCaret(props: { order: "desc" | "asc" }) {
+  return (
+    <>
+      <Show when={props.order === "desc"}>
+        <BiCaretDownFill />
+      </Show>
+      <Show when={props.order === "asc"}>
+        <BiCaretUpFill />
+      </Show>
+    </>
+  );
+}
+
+function SortHeader(props: {
+  title: string;
+  key: string;
+  sortBy: string;
+  sortOrder: "asc" | "desc";
+  class?: string;
+  onclick: (key: string) => void;
+}) {
+  return (
+    <>
+      <th
+        class={props.class}
+        onclick={() => props.onclick(props.key)}
+        style={"cursor: pointer;"}
+      >
+        {props.title}
+        <Show when={props.sortBy === props.key}>
+          <SortCaret order={props.sortOrder} />
+        </Show>
+      </th>
     </>
   );
 }
