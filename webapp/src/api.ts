@@ -312,6 +312,40 @@ class Api {
   async getSensors(): Promise<{ data: string[] }> {
     return get("api/1/sensors").then((response) => response.data);
   }
+
+  escalateAggregateAlert(alert: EventWrapper) {
+    const params = {
+      signature_id: alert._source.alert!.signature_id,
+      src_ip: alert._source.src_ip,
+      dest_ip: alert._source.dest_ip,
+      min_timestamp: alert._metadata?.min_timestamp,
+      max_timestamp: alert._metadata?.max_timestamp,
+    };
+    return queueAdd(() => {
+      return post("api/1/alert-group/star", params);
+    });
+  }
+
+  deEscalateAggregateAlert(alert: EventWrapper) {
+    const params = {
+      signature_id: alert._source.alert!.signature_id,
+      src_ip: alert._source.src_ip,
+      dest_ip: alert._source.dest_ip,
+      min_timestamp: alert._metadata?.min_timestamp,
+      max_timestamp: alert._metadata?.max_timestamp,
+    };
+    return queueAdd(() => {
+      return post("api/1/alert-group/unstar", params);
+    });
+  }
+
+  escalateEvent(event: EventWrapper) {
+    return post(`api/1/event/${event._id}/escalate`);
+  }
+
+  deEscalateEvent(event: EventWrapper) {
+    return post(`api/1/event/${event._id}/de-escalate`);
+  }
 }
 
 export const API = new Api();

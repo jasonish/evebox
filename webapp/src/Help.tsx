@@ -6,7 +6,6 @@ import { createSignal, For, Show, Suspense } from "solid-js";
 import { Button, Modal, Tab, Tabs } from "solid-bootstrap";
 import { closeHelp, showHelp } from "./Top";
 
-import "./Help.scss";
 import { createResource } from "solid-js";
 import { getVersion, SERVER_REVISION } from "./api";
 import { GIT_REV } from "./gitrev";
@@ -49,9 +48,9 @@ function Keyboard() {
       s: "e",
       h: "Archive selected events, or event at cursor if none selected",
     },
-    { s: "f8", h: "Archive event at cursor" },
+    { s: "F8", h: "Archive event at cursor" },
+    { s: "F9, Shift+s", h: "Escalate and archive event at cursor" },
     { s: "x", h: "Select event at cursor" },
-    { s: "Shift+x", h: "Select all alerts with SID at cursor" },
     {
       s: "s",
       h: "Escalated selected events, or event at cursor if none selected",
@@ -69,13 +68,18 @@ function Keyboard() {
 
   return (
     <>
-      <table class={"table table-bordered table-sm"}>
+      <table class={"table table-bordered table-sm mb-0"}>
         <tbody>
           <For each={shortcuts}>
             {(e, i) => (
               <>
                 <tr>
-                  <td class={"shortcut"}>{e.s}</td>
+                  <td
+                    class={"shortcut"}
+                    style={"white-space: nowrap !important;"}
+                  >
+                    {e.s}
+                  </td>
                   <td>{e.h}</td>
                 </tr>
               </>

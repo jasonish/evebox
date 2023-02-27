@@ -13,7 +13,7 @@ import {
   Show,
   untrack,
 } from "solid-js";
-import * as API from "./api";
+import { API, getEventById } from "./api";
 import { archiveAggregateAlert } from "./api";
 import {
   Button,
@@ -30,7 +30,13 @@ import { AggregateAlert, EcsGeo, EveDns, Event, EventWrapper } from "./types";
 import { parse_timestamp } from "./datetime";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import tinykeys from "tinykeys";
-import { eventIsArchived, eventSetArchived } from "./event";
+import {
+  eventIsArchived,
+  eventIsEscalated,
+  eventSetArchived,
+  eventSetEscalated,
+  eventUnsetEscalated,
+} from "./event";
 import { eventStore } from "./eventstore";
 import { addNotification } from "./Notifications";
 import { eventNameFromType } from "./Events";
@@ -138,7 +144,7 @@ export function EventView() {
         setEvent(eventStore.active);
       } else {
         console.log("Event.createEffect: Fetching event by ID: " + params.id);
-        API.getEventById(params.id)
+        getEventById(params.id)
           .then((event) => {
             setEvent(event);
           })
@@ -303,6 +309,23 @@ export function EventView() {
     return event()?._metadata?.count! > 0;
   }
 
+  function isEscalated(): boolean {
+    let ev = event();
+    if (ev) {
+      if (ev._metadata) {
+        if (
+          ev._metadata.escalated_count > 0 &&
+          ev._metadata.escalated_count === ev._metadata.count
+        ) {
+          return true;
+        }
+      } else {
+        return eventIsEscalated(ev);
+      }
+    }
+    return false;
+  }
+
   function archiveAlert() {
     if (event()?._metadata) {
       const alert = event() as AggregateAlert;
@@ -311,6 +334,34 @@ export function EventView() {
     }
 
     goBack();
+  }
+
+  function escalate() {
+    let ev = event();
+    if (ev) {
+      if (isAggregateAlert()) {
+        API.escalateAggregateAlert(ev);
+      } else {
+        API.escalateEvent(ev);
+      }
+      eventSetEscalated(ev);
+      ev._metadata!.escalated_count = ev._metadata!.count;
+      setEvent({ ...ev });
+    }
+  }
+
+  function deEscalate() {
+    let ev = event();
+    if (ev) {
+      if (isAggregateAlert()) {
+        API.deEscalateAggregateAlert(ev);
+      } else {
+        API.deEscalateEvent(ev);
+      }
+      eventUnsetEscalated(ev);
+      ev._metadata!.escalated_count = 0;
+      setEvent({ ...ev });
+    }
   }
 
   // Go "back". If it appears like we came here from an internal click on event, use the back button
@@ -453,16 +504,34 @@ export function EventView() {
             </Button>
             <Show when={event() && event()?._source.event_type === "alert"}>
               <Show when={eventIsArchived(event()!)}>
-                <Button variant={"outline-secondary"} disabled={true}>
+                <Button
+                  variant={"outline-secondary"}
+                  disabled={true}
+                  class="me-2"
+                >
                   Archive
                 </Button>
               </Show>
               <Show when={!eventIsArchived(event()!)}>
-                <Button variant={"secondary"} onclick={archiveAlert}>
+                <Button
+                  variant={"secondary"}
+                  onclick={archiveAlert}
+                  class={"me-2"}
+                >
                   Archive{" "}
                   <Show when={isAggregateAlert()}>
                     ({event()?._metadata?.count})
                   </Show>
+                </Button>
+              </Show>
+              <Show when={!isEscalated()}>
+                <Button variant={"secondary"} onclick={escalate}>
+                  Escalate
+                </Button>
+              </Show>
+              <Show when={isEscalated()}>
+                <Button variant={"secondary"} onclick={deEscalate}>
+                  De-escalate
                 </Button>
               </Show>
             </Show>

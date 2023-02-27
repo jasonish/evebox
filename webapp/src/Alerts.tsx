@@ -161,20 +161,20 @@ export function Alerts() {
           }
         }
       },
+      "Shift+s": () => {
+        escalateArchive(cursor());
+      },
       x: () => {
         toggleSelected(cursor());
-      },
-      "Shift+x": () => {
-        const event = visibleEvents()[cursor()];
-        if (event) {
-          selectBySignatureId(event._source.alert?.signature_id!);
-        }
       },
       r: () => {
         onRefresh();
       },
       f8: () => {
         archive(cursor());
+      },
+      f9: () => {
+        escalateArchive(cursor());
       },
       o: () => {
         openEventAtCursor();
@@ -194,7 +194,7 @@ export function Alerts() {
         unselectAll();
       },
       "Shift+* 1": () => {
-        let event = visibleEvents()[cursor()];
+        const event = visibleEvents()[cursor()];
         if (event) {
           selectBySignatureId(event._source.alert?.signature_id!);
         }
@@ -270,7 +270,7 @@ export function Alerts() {
   createEffect(() => {
     let checked = false;
     let indeterminate = false;
-    const selected = getSelected();
+    const selected = getSelectedIndexes();
     if (selected.length === 0) {
       checked = false;
       indeterminate = false;
@@ -452,7 +452,7 @@ export function Alerts() {
   };
 
   // Get the indexes of all event rows that are selected.
-  function getSelected(): number[] {
+  function getSelectedIndexes(): number[] {
     let selected: number[] = [];
     visibleEvents().forEach((e, i) => {
       if (e.__private?.selected) {
@@ -464,7 +464,7 @@ export function Alerts() {
   }
 
   function archiveSelected(): boolean {
-    const selected = getSelected();
+    const selected = getSelectedIndexes();
     if (selected.length === 0) {
       return false;
     }
@@ -498,22 +498,22 @@ export function Alerts() {
     }
   }
 
-  function escalate(i: number) {
+  function escalate(i: number): Promise<any> {
     let event = visibleEvents()[i];
     if (event._metadata!.count != event._metadata!.escalated_count) {
-      let ignore = API.escalateAggregateAlert(event);
-
       // Optimistically set event as escalated.
       eventSetEscalated(event);
       event._metadata!.escalated_count = event._metadata!.count;
+
+      return API.escalateAggregateAlert(event);
     } else {
-      let ignore = API.unescalateAggregateAlert(event);
       event._metadata!.escalated_count = 0;
+      return API.unescalateAggregateAlert(event);
     }
   }
 
   function escalateSelected(): boolean {
-    const selected = getSelected();
+    const selected = getSelectedIndexes();
     if (selected.length === 0) {
       return false;
     }
@@ -524,7 +524,7 @@ export function Alerts() {
   }
 
   function toggleSelectAll() {
-    if (getSelected().length > 0) {
+    if (getSelectedIndexes().length > 0) {
       unselectAll();
     } else {
       selectAll();
@@ -534,7 +534,7 @@ export function Alerts() {
   function isAllSelected(): boolean {
     return (
       visibleEvents().length > 0 &&
-      getSelected().length === visibleEvents().length
+      getSelectedIndexes().length === visibleEvents().length
     );
   }
 
@@ -622,6 +622,10 @@ export function Alerts() {
     return searchParams.sortBy || "timestamp";
   }
 
+  function escalateArchive(index: number) {
+    escalate(index).then(() => archive(index));
+  }
+
   return (
     <>
       <Top />
@@ -690,7 +694,7 @@ export function Alerts() {
                 Unselect All
               </button>
             </Show>
-            <Show when={getSelected().length > 0}>
+            <Show when={getSelectedIndexes().length > 0}>
               <button
                 class={"btn btn-secondary me-2"}
                 onclick={archiveSelected}
@@ -698,7 +702,7 @@ export function Alerts() {
                 Archive
               </button>
             </Show>
-            <Show when={getSelected().length > 0}>
+            <Show when={getSelectedIndexes().length > 0}>
               <button
                 class={"btn btn-secondary me-2"}
                 onclick={escalateSelected}
@@ -940,6 +944,11 @@ export function Alerts() {
                                       }
                                     >
                                       Filter on SID {alert.signature_id}
+                                    </Dropdown.Item>
+                                    <Dropdown.Item
+                                      onClick={() => escalateArchive(i())}
+                                    >
+                                      Escalate and Archive
                                     </Dropdown.Item>
                                   </Dropdown.Menu>
                                 </Dropdown>
