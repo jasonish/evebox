@@ -67,13 +67,28 @@ pub(crate) fn prepare_sql(
         .ok_or_else(|| IndexError::TimestampParseError)?;
     reformat_timestamps(event);
     let source_values = extract_values(event);
+    let mut archived = 0;
+
+    if let Some(actions) = event["alert"]["metadata"]["evebox-action"].as_array() {
+        for action in actions {
+            if let serde_json::Value::String(action) = action {
+                if action == "archive" {
+                    archived = 1;
+                    break;
+                }
+            }
+        }
+    }
+
     eve::eve::add_evebox_metadata(event, None);
 
     let mut statements = vec![];
 
-    let statement = "INSERT INTO events (timestamp, source, source_values) VALUES (?, ?, ?)";
+    let statement =
+        "INSERT INTO events (timestamp, archived, source, source_values) VALUES (?, ?, ?, ?)";
     let params = vec![
         Value::I64(ts.unix_timestamp_nanos() as i64),
+        Value::I64(archived),
         Value::String(event.to_string()),
         Value::String(source_values.clone()),
     ];
