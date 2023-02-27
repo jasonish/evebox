@@ -7,14 +7,15 @@ use crate::sqlite::{
     init_event_db, ConnectionBuilder, SqliteExt,
 };
 use anyhow::Result;
-use clap::{ArgMatches, Command, FromArgMatches, IntoApp, Parser, Subcommand};
+use clap::CommandFactory;
+use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
 use std::fs::File;
 use tracing::info;
 
 mod fts;
 
 #[derive(Parser, Debug)]
-#[clap(name = "sqlite", about = "SQLite utilities")]
+#[command(name = "sqlite", about = "SQLite utilities")]
 pub struct Args {
     #[clap(subcommand)]
     command: Commands,
@@ -33,7 +34,7 @@ enum Commands {
     Fts(FtsArgs),
     /// Run an SQL query
     Query {
-        #[clap(value_name = "DB_FILENAME")]
+        #[arg(value_name = "DB_FILENAME")]
         filename: String,
         sql: String,
     },
@@ -42,7 +43,7 @@ enum Commands {
 
 #[derive(Parser, Debug)]
 struct InfoArgs {
-    #[clap(long, short = 'D')]
+    #[arg(long, short = 'D')]
     data_directory: Option<String>,
     filename: Option<String>,
 }
@@ -57,21 +58,21 @@ struct FtsArgs {
 enum FtsCommand {
     /// Enable FTS
     Enable {
-        #[clap(long)]
+        #[arg(long)]
         force: bool,
-        #[clap(value_name = "DB_FILENAME")]
+        #[arg(value_name = "DB_FILENAME")]
         filename: String,
     },
     /// Disable FTS
     Disable {
-        #[clap(long)]
+        #[arg(long)]
         force: bool,
-        #[clap(value_name = "DB_FILENAME")]
+        #[arg(value_name = "DB_FILENAME")]
         filename: String,
     },
     /// Check FTS integrity
     Check {
-        #[clap(value_name = "DB_FILENAME")]
+        #[arg(value_name = "DB_FILENAME")]
         filename: String,
     },
 }
@@ -79,16 +80,16 @@ enum FtsCommand {
 #[derive(Debug, Parser)]
 struct LoadArgs {
     /// Limit the number of events to count
-    #[clap(long, value_name = "COUNT")]
+    #[arg(long, value_name = "COUNT")]
     count: Option<usize>,
     /// EVE file to load into database
-    #[clap(short, long)]
+    #[arg(short, long)]
     input: String,
     /// Filename of SQLite database
     filename: String,
 }
 
-pub fn command() -> Command<'static> {
+pub fn command() -> Command {
     Args::command()
 }
 

@@ -2,7 +2,7 @@
 //
 // Copyright (C) 2022 Jason Ish
 
-use clap::{ArgMatches, ValueSource};
+use clap::{parser::ValueSource, ArgMatches};
 use serde::de::DeserializeOwned;
 use serde_yaml::Value;
 use std::fmt::Display;

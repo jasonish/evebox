@@ -2,14 +2,6 @@
 //
 // Copyright (C) 2020-2022 Jason Ish
 
-use clap::ValueSource;
-
-use crate::prelude::*;
-use std::path::Path;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
-
 use crate::bookmark;
 use crate::elastic;
 use crate::elastic::template_installer;
@@ -17,6 +9,12 @@ use crate::eve;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::eve::Processor;
 use crate::importer::Importer;
+use crate::prelude::*;
+use clap::parser::ValueSource;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 
 pub const DEFAULT_BATCH_SIZE: u64 = 300;
 pub const NO_CHECK_CERTIFICATE: &str = "no-check-certificate";

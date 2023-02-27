@@ -20,20 +20,20 @@ use tracing::info;
 use tracing::warn;
 
 /// Command line parser for the `agent` sub-command.
-pub fn command() -> clap::Command<'static> {
+pub fn command() -> clap::Command {
     Command::new("agent")
         .about("EveBox Agent")
         .arg(
             Arg::new("config")
                 .long("config")
                 .short('c')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .help("Agent configuration file"),
         )
         .arg(
             Arg::new("server.url")
                 .long("server")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("URL")
                 .help("EveBox server URL")
                 .env("EVEBOX_SERVER_URL"),
@@ -53,12 +53,12 @@ pub fn command() -> clap::Command<'static> {
         .arg(
             Arg::new("bookmark-directory")
                 .long("bookmark-directory")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .hide(true),
         )
         .arg(
             Arg::new("filenames")
-                .multiple_values(true)
+                .action(ArgAction::Append)
                 .help("List of EVE filenames"),
         )
 }

@@ -28,7 +28,7 @@ use clap::Command;
 
 use crate::sqlite::configrepo::ConfigRepo;
 
-pub fn users_subcommand() -> clap::Command<'static> {
+pub fn users_subcommand() -> clap::Command {
     clap::Command::new("users")
         .subcommand(Command::new("list").alias("ls").about("List users"))
         .subcommand(

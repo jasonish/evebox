@@ -3,16 +3,16 @@
 // Copyright (C) 2022 Jason Ish
 
 use crate::commands::elastic::info;
-use clap::Command;
+use clap::{ArgAction, Command};
 
-pub fn main_options() -> Command<'static> {
+pub fn main_options() -> Command {
     let info = Command::new("info");
     Command::new("elastic")
         .arg(
             clap::Arg::new("elasticsearch")
                 .short('e')
                 .long("elasticsearch")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("http://localhost:9200")
                 .hide_default_value(true)
                 .help("Elastic Search URL")

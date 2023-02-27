@@ -24,6 +24,7 @@ fn main() {
 async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
     let parser = clap::Command::new("EveBox")
         .version(std::env!("CARGO_PKG_VERSION"))
+        .color(clap::ColorChoice::Always)
         .arg(
             Arg::new("verbose")
                 .action(clap::ArgAction::Count)
@@ -36,7 +37,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("data-directory")
                 .long("data-directory")
                 .short('D')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("DIR")
                 .help("Data directory")
                 .global(true),
@@ -49,7 +50,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             clap::Arg::new("config")
                 .long("config")
                 .short('c')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("FILE")
                 .help("Configuration filename"),
         )
@@ -57,7 +58,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             clap::Arg::new("http.host")
                 .long("host")
                 .value_name("HOSTNAME")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("127.0.0.1")
                 .env("EVEBOX_HTTP_HOST")
                 .help("Hostname/IP address to bind to"),
@@ -67,7 +68,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .short('p')
                 .long("port")
                 .value_name("PORT")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("5636")
                 .env("EVEBOX_HTTP_PORT")
                 .value_parser(value_parser!(u16))
@@ -77,7 +78,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             clap::Arg::new("database.elasticsearch.url")
                 .short('e')
                 .long("elasticsearch")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("URL")
                 .default_value("http://localhost:9200")
                 .env("EVEBOX_ELASTICSEARCH_URL")
@@ -87,7 +88,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             clap::Arg::new("database.elasticsearch.index")
                 .short('i')
                 .long("index")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("logstash")
                 .value_name("INDEX")
                 .help("Elastic Search index prefix"),
@@ -96,7 +97,6 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("database.elasticsearch.no-index-suffix")
                 .action(clap::ArgAction::SetTrue)
                 .long("no-index-suffix")
-                .takes_value(false)
                 .help("Do not add a suffix to the index name"),
         )
         .arg(
@@ -108,8 +108,8 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("database.type")
                 .long("database")
-                .aliases(&["datastore"])
-                .takes_value(true)
+                .aliases(["datastore"])
+                .action(ArgAction::Set)
                 .value_name("DATABASE")
                 .default_value("elasticsearch")
                 .help("Database type"),
@@ -117,7 +117,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("sqlite-filename")
                 .long("sqlite-filename")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("FILENAME")
                 .default_value("events.sqlite")
                 .help("SQLite events filename"),
@@ -139,7 +139,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             Arg::new("http.tls.enabled")
-                .action(ArgAction::SetTrue)
+                .action(ArgAction::Set)
                 .long("tls")
                 .help("Enable TLS")
                 .env("EVEBOX_HTTP_TLS_ENABLED")
@@ -148,21 +148,21 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("http.tls.certificate")
                 .long("tls-cert")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("FILENAME")
                 .help("TLS certificate filename"),
         )
         .arg(
             Arg::new("http.tls.key")
                 .long("tls-key")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("FILENAME")
                 .help("TLS key filename"),
         )
         .arg(
             Arg::new("input.filename")
                 .long("input")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("FILENAME")
                 .help("Input Eve file to read"),
         )
@@ -179,7 +179,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("limit")
                 .long("limit")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .help("Limit the number of events read"),
         )
         .arg(
@@ -195,7 +195,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("database-filename")
                 .long("database-filename")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("./oneshot.sqlite")
                 .help("Database filename"),
         )
@@ -205,7 +205,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             clap::Arg::new("http.host")
                 .long("host")
                 .value_name("HOSTNAME")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("127.0.0.1")
                 .help("Hostname/IP address to bind to"),
         )
@@ -217,12 +217,13 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("config")
                 .short('c')
                 .long("config")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .help("Configuration file"),
         )
         .arg(
             Arg::new("oneshot")
                 .long("oneshot")
+                .action(ArgAction::SetTrue)
                 .help("One shot mode (exit on EOF)"),
         )
         .arg(Arg::new("end").long("end").help("Start at end of file"))
@@ -230,7 +231,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             clap::Arg::new("elasticsearch")
                 .short('e')
                 .long("elasticsearch")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("http://localhost:9200")
                 .hide_default_value(true)
                 .help("Elastic Search URL"),
@@ -238,7 +239,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("index")
                 .long("index")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("logstash")
                 .hide_default_value(true)
                 .help("Elastic Search index prefix"),
@@ -246,7 +247,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("no-index-suffix")
                 .long("no-index-suffix")
-                .takes_value(false)
+                .action(ArgAction::SetTrue)
                 .help("Do not add a suffix to the index name"),
         )
         .arg(
@@ -257,7 +258,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("bookmark-filename")
                 .long("bookmark-filename")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("")
                 .hide_default_value(true)
                 .help("Bookmark filename"),
@@ -265,7 +266,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("bookmark-dir")
                 .long("bookmark-dir")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value(".")
                 .hide_default_value(true)
                 .help("Bookmark directory"),
@@ -279,14 +280,14 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("username")
                 .long("username")
                 .short('u')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .help("Elasticsearch username"),
         )
         .arg(
             Arg::new("password")
                 .long("password")
                 .short('p')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .help("Elasticsearch password"),
         )
         .arg(
@@ -303,13 +304,13 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("geoip.database-filename")
                 .long("geoip-database")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("filename")
                 .help("GeoIP database filename"),
         )
         .arg(
             Arg::new("input")
-                .multiple_values(true)
+                .action(ArgAction::Append)
                 .value_name("INPUT")
                 .index(1),
         );

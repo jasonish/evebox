@@ -4,7 +4,7 @@
 
 use clap::Command;
 
-pub fn command() -> clap::Command<'static> {
+pub fn command() -> clap::Command {
     Command::new("print")
         .about("EveBox Print Info")
         .subcommand(Command::new("agent.yaml"))
