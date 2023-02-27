@@ -17,7 +17,9 @@ import {
   Container,
   Dropdown,
   Form,
+  OverlayTrigger,
   Row,
+  Tooltip,
 } from "solid-bootstrap";
 import {
   batch,
@@ -36,6 +38,7 @@ import { QUEUE_SIZE } from "./api";
 import { parse_timerange } from "./datetime";
 import { EventWrapper } from "./types";
 import {
+  BiArchive,
   BiCaretDownFill,
   BiCaretRightFill,
   BiCaretUpFill,
@@ -925,6 +928,29 @@ export function Alerts() {
                                   >
                                     Archive
                                   </Button>
+
+                                  <OverlayTrigger
+                                    placement="left"
+                                    delay={{ show: 700, hide: 100 }}
+                                    overlay={
+                                      <Tooltip id="button-tooltip">
+                                        Escalate and Archive
+                                      </Tooltip>
+                                    }
+                                  >
+                                    <Button
+                                      variant="secondary"
+                                      onclick={() => escalateArchive(i())}
+                                      style={"position: relative;"}
+                                    >
+                                      <BiArchive />
+                                      <BiStar
+                                        style={
+                                          "position: absolute; top: 7px; left: 18px;"
+                                        }
+                                      />
+                                    </Button>
+                                  </OverlayTrigger>
                                   <Dropdown.Toggle
                                     split
                                     variant="secondary"
