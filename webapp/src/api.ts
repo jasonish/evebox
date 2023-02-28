@@ -4,10 +4,11 @@
 
 import axios, { AxiosResponse } from "axios";
 import { EventWrapper } from "./types";
-import { Event } from "./types";
 import Queue from "queue";
 import { createSignal } from "solid-js";
 import { get_timezone_offset_str } from "./datetime";
+
+const SESSION_ID_HEADER = "x-evebox-session-id";
 
 export const [SERVER_REVISION, SET_SERVER_REVISION] = createSignal<
   null | string
@@ -345,6 +346,33 @@ class Api {
 
   deEscalateEvent(event: EventWrapper) {
     return post(`api/1/event/${event._id}/de-escalate`);
+  }
+
+  eventToPcap(event: EventWrapper, what: "packet" | "payload") {
+    // Set a cook with the session key to expire in 60 seconds from now.
+    const expires = new Date(new Date().getTime() + 60000);
+    const cookie = `${SESSION_ID_HEADER}=${SESSION_ID}; expires=${expires.toUTCString()}`;
+    console.log("Setting cookie: " + cookie);
+    document.cookie = cookie;
+
+    const form = document.createElement("form") as HTMLFormElement;
+    form.setAttribute("method", "post");
+    form.setAttribute("action", "api/1/eve2pcap");
+
+    const whatField = document.createElement("input") as HTMLElement;
+    whatField.setAttribute("type", "hidden");
+    whatField.setAttribute("name", "what");
+    whatField.setAttribute("value", what);
+    form.appendChild(whatField);
+
+    const eventField = document.createElement("input") as HTMLElement;
+    eventField.setAttribute("type", "hidden");
+    eventField.setAttribute("name", "event");
+    eventField.setAttribute("value", JSON.stringify(event._source));
+    form.appendChild(eventField);
+
+    document.body.appendChild(form);
+    form.submit();
   }
 }
 

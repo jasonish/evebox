@@ -44,6 +44,9 @@ import { EventServiceConfig, serverConfig } from "./config";
 import { createStore } from "solid-js/store";
 import { BiInfoCircle } from "./icons";
 
+const PCAP_BUTTON_STYLE =
+  "--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .7rem;";
+
 export function EventView() {
   console.log("***** EventView *****");
   const params = useParams<{ id: string }>();
@@ -493,6 +496,12 @@ export function EventView() {
     return serviceLinks;
   }
 
+  function eventToPcap(what: "packet" | "payload") {
+    if (event()) {
+      API.eventToPcap(event()!, what);
+    }
+  }
+
   return (
     <>
       <Top />
@@ -766,6 +775,14 @@ export function EventView() {
                 <Base64BufferCard
                   title={"Payload"}
                   buffer={event()!._source.payload}
+                  addOn={
+                    <Button
+                      onclick={() => eventToPcap("packet")}
+                      style={PCAP_BUTTON_STYLE}
+                    >
+                      PCAP
+                    </Button>
+                  }
                 />
               </Col>
             </Row>
@@ -778,6 +795,14 @@ export function EventView() {
                 <Base64BufferCard
                   title={"Packet"}
                   buffer={event()!._source.packet}
+                  addOn={
+                    <Button
+                      onclick={() => eventToPcap("payload")}
+                      style={PCAP_BUTTON_STYLE}
+                    >
+                      PCAP
+                    </Button>
+                  }
                 />
               </Col>
             </Row>
@@ -990,10 +1015,19 @@ function PrettyJson(props: any) {
   );
 }
 
-function Base64BufferCard(props: { title: string; buffer: string }) {
+function Base64BufferCard(props: {
+  title: string;
+  buffer: string;
+  addOn?: any;
+}) {
   return (
     <Card>
-      <Card.Header>{props.title}</Card.Header>
+      <Card.Header>
+        {props.title}
+        <Show when={props.addOn}>
+          <span class={"float-end"}>{props.addOn}</span>
+        </Show>
+      </Card.Header>
       <Card.Body>
         <Row>
           <Col md={12} xl={6} class={"pb-2"}>
