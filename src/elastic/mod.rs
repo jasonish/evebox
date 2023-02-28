@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 use crate::datastore::DatastoreError;
+pub use client::Version;
+pub use client::{Client, ClientBuilder};
+pub use eventstore::EventStore;
+pub use importer::Importer;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
@@ -10,16 +14,9 @@ use time::macros::format_description;
 use time::OffsetDateTime;
 
 pub mod client;
-pub use client::{Client, ClientBuilder};
-pub mod importer;
-pub use importer::Importer;
 pub mod eventstore;
-pub use client::Version;
-pub use eventstore::EventStore;
-
-pub mod report;
+pub mod importer;
 pub mod request;
-
 pub mod template_installer;
 
 pub const ACTION_ARCHIVED: &str = "archived";

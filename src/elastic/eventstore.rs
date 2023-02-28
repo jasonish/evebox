@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 
+mod dhcp;
 mod stats;
 
 const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";

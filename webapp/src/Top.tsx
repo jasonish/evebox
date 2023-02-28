@@ -170,6 +170,9 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
                 <A href={"/reports/alerts"} class={"dropdown-item"}>
                   Alerts
                 </A>
+                <A href={"/reports/dhcp"} class={"dropdown-item"}>
+                  DHCP
+                </A>
               </NavDropdown>
             </Nav>
             <Nav>

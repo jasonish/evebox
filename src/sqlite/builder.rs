@@ -2,10 +2,23 @@
 //
 // SPDX-License-Identifier: MIT
 
-use rusqlite::ToSql;
+use crate::querystring::{self, Element};
+use rusqlite::{types::ToSqlOutput, ToSql};
 use std::fmt::Display;
 
-use crate::querystring::{self, Element};
+pub(crate) enum SqliteValue {
+    String(String),
+    I64(i64),
+}
+
+impl ToSql for SqliteValue {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        match self {
+            Self::I64(v) => Ok(ToSqlOutput::Owned((*v).into())),
+            Self::String(v) => Ok(ToSqlOutput::Owned(v.to_string().into())),
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct EventQueryBuilder {

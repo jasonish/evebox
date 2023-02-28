@@ -31,6 +31,7 @@ import { serverConfigSet } from "./config";
 import { AddressReport } from "./reports/AddressReport";
 import { AlertsReport } from "./reports/AlertsReport";
 import { OverviewReport } from "./reports/OverviewReport";
+import { DhcpReport } from "./reports/DhcpReport";
 
 const Report: Component = () => {
   return (
@@ -75,9 +76,10 @@ export function App() {
         <Route path={"event/:id"} component={EventView} />
         <Route path={"settings"} component={Settings} />
         <Route path={"reports"} component={Report} />
-        <Route path={"reports/address/:address"} component={AddressReport} />
-        <Route path={"reports/alerts"} component={AlertsReport} />
         <Route path={"reports/overview"} component={OverviewReport} />
+        <Route path={"reports/alerts"} component={AlertsReport} />
+        <Route path={"reports/dhcp"} component={DhcpReport} />
+        <Route path={"reports/address/:address"} component={AddressReport} />
         <Route path={"stats"} component={Stats} />
         <Route path={"*"} element={<Navigate href={"/inbox"} />} />
       </Route>

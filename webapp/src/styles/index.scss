@@ -12,3 +12,9 @@
 .bi-inline {
   vertical-align: -0.2em;
 }
+
+table.evebox-table-never-wrap {
+  td {
+    white-space: nowrap;
+  }
+}

@@ -199,17 +199,6 @@ impl Datastore {
         }
     }
 
-    pub async fn report_dhcp(
-        &self,
-        what: &str,
-        params: &EventQueryParams,
-    ) -> Result<serde_json::Value, DatastoreError> {
-        match self {
-            Datastore::Elastic(ds) => elastic::report::dhcp::dhcp_report(ds, what, params).await,
-            _ => Err(DatastoreError::Unimplemented),
-        }
-    }
-
     pub async fn group_by(
         &self,
         field: &str,

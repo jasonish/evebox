@@ -2,28 +2,26 @@
 //
 // SPDX-License-Identifier: MIT
 
-use axum::extract::{Extension, Form, Path};
+use super::genericquery::TimeRange;
+use super::util::parse_duration;
+use crate::datastore::EventQueryParams;
+use crate::datastore::{Datastore, DatastoreError};
+use crate::elastic;
+use crate::querystring::{Element, QueryString};
+use crate::server::api::genericquery::GenericQuery;
+use crate::server::main::SessionExtractor;
+use crate::server::ServerContext;
+use crate::{prelude::*, querystring};
+use axum::extract::{Extension, Form, Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Response;
 use axum::Json;
+use serde::Deserialize;
+use serde_json::json;
 use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
-
-use crate::{prelude::*, querystring};
-use serde::Deserialize;
-use serde_json::json;
-
-use crate::datastore::Datastore;
-use crate::datastore::EventQueryParams;
-use crate::elastic;
-use crate::querystring::{Element, QueryString};
-use crate::server::filters::GenericQuery;
-use crate::server::main::SessionExtractor;
-use crate::server::ServerContext;
-
-use super::util::parse_duration;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct AlertGroupSpec {
@@ -70,41 +68,33 @@ pub(crate) async fn get_version() -> impl IntoResponse {
     axum::Json(version)
 }
 
-#[derive(Deserialize, Debug)]
-pub struct ReportDhcpRequest {
-    pub time_range: Option<String>,
-    pub query_string: Option<String>,
+#[derive(Deserialize, Debug, Default)]
+pub struct DhcpAckQuery {
+    pub time_range: Option<TimeRange>,
+    pub sensor: Option<String>,
 }
 
-pub(crate) async fn report_dhcp(
-    Extension(context): Extension<Arc<ServerContext>>,
-    SessionExtractor(_session): SessionExtractor,
-    Path(what): Path<String>,
-    Form(request): Form<ReportDhcpRequest>,
-) -> impl IntoResponse {
-    let mut params = EventQueryParams::default();
-    if let Some(time_range) = request.time_range {
-        let now = time::OffsetDateTime::now_utc();
-        match parse_then_from_duration(&now, &time_range) {
-            Some(then) => {
-                params.min_timestamp = Some(then);
-            }
-            None => {
-                warn!("Failed to parse time range: {}", time_range);
-            }
-        }
-    }
+pub(crate) async fn dhcp_ack(
+    _session: SessionExtractor,
+    State(context): State<Arc<ServerContext>>,
+    Form(query): Form<DhcpAckQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    let earliest = query
+        .time_range
+        .map(|x| x.parse_time_range_as_min_timestamp())
+        .transpose()?;
 
-    if let Some(query_string) = request.query_string {
-        if !query_string.is_empty() {
-            params.query_string = Some(query_string);
-        }
-    }
+    let response = match &context.datastore {
+        Datastore::Elastic(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
+        Datastore::SQLite(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
+    };
 
-    match context.datastore.report_dhcp(&what, &params).await {
-        Ok(response) => Json(response).into_response(),
-        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
-    }
+    #[rustfmt::skip]
+    let response = json!({
+	"events": response,
+    });
+
+    Ok(Json(response))
 }
 
 pub(crate) async fn alert_group_star(
@@ -413,6 +403,10 @@ pub enum ApiError {
     InternalServerError,
     #[error("unimplemented")]
     Unimplemented,
+    #[error("internal server error")]
+    AnyhowHandler(#[from] anyhow::Error),
+    #[error("internal server error")]
+    DatastoreError(#[from] DatastoreError),
 }
 
 impl ApiError {
@@ -431,7 +425,9 @@ impl IntoResponse for ApiError {
                 StatusCode::BAD_REQUEST,
                 "query string parse error".to_string(),
             ),
-            ApiError::InternalServerError => (
+            ApiError::InternalServerError
+            | ApiError::AnyhowHandler(_)
+            | ApiError::DatastoreError(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal server error".to_string(),
             ),

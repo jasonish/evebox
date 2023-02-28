@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: MIT
 
+use super::builder::SqliteValue;
 use crate::eve::eve::EveJson;
 use crate::eve::{self, Eve};
 use crate::prelude::*;
-use rusqlite::types::ToSqlOutput;
-use rusqlite::{ToSql, TransactionBehavior};
+use rusqlite::TransactionBehavior;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -22,23 +22,9 @@ pub enum IndexError {
     SQLiteError(#[from] rusqlite::Error),
 }
 
-pub(crate) enum Value {
-    String(String),
-    I64(i64),
-}
-
-impl ToSql for Value {
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        match self {
-            Value::I64(v) => Ok(ToSqlOutput::Owned((*v).into())),
-            Value::String(v) => Ok(ToSqlOutput::Owned(v.to_string().into())),
-        }
-    }
-}
-
 pub(crate) struct QueuedStatement {
     pub(crate) statement: String,
-    pub(crate) params: Vec<Value>,
+    pub(crate) params: Vec<SqliteValue>,
 }
 
 pub struct Importer {
@@ -87,10 +73,10 @@ pub(crate) fn prepare_sql(
     let statement =
         "INSERT INTO events (timestamp, archived, source, source_values) VALUES (?, ?, ?, ?)";
     let params = vec![
-        Value::I64(ts.unix_timestamp_nanos() as i64),
-        Value::I64(archived),
-        Value::String(event.to_string()),
-        Value::String(source_values.clone()),
+        SqliteValue::I64(ts.unix_timestamp_nanos() as i64),
+        SqliteValue::I64(archived),
+        SqliteValue::String(event.to_string()),
+        SqliteValue::String(source_values.clone()),
     ];
 
     statements.push(QueuedStatement {
@@ -102,8 +88,8 @@ pub(crate) fn prepare_sql(
         let statement =
             "INSERT INTO fts (rowid, timestamp, source_values) VALUES (last_insert_rowid(), ?, ?)";
         let params = vec![
-            Value::I64(ts.unix_timestamp_nanos() as i64),
-            Value::String(source_values),
+            SqliteValue::I64(ts.unix_timestamp_nanos() as i64),
+            SqliteValue::String(source_values),
         ];
         statements.push(QueuedStatement {
             statement: statement.to_string(),

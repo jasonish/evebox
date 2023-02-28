@@ -2,26 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-
-use anyhow::Result;
-use axum::body::Full;
-use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts};
-use axum::http::header::HeaderName;
-use axum::http::{HeaderValue, StatusCode, Uri};
-use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use axum::{async_trait, TypedHeader};
-use axum::{Router, Server};
-use hyper::server::conn::AddrIncoming;
-use tower_http::trace::TraceLayer;
-use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
-use tracing::Level;
-
+use super::{ServerConfig, ServerContext};
 use crate::bookmark;
 use crate::datastore::Datastore;
 use crate::elastic;
@@ -34,8 +15,24 @@ use crate::server::session::Session;
 use crate::server::{api, AuthenticationType};
 use crate::sqlite::configrepo::ConfigRepo;
 use crate::sqlite::{self, SqliteExt};
-
-use super::{ServerConfig, ServerContext};
+use anyhow::Result;
+use axum::body::Full;
+use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
+use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts};
+use axum::http::header::HeaderName;
+use axum::http::{HeaderValue, StatusCode, Uri};
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
+use axum::{async_trait, TypedHeader};
+use axum::{Router, Server};
+use hyper::server::conn::AddrIncoming;
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tower_http::trace::TraceLayer;
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
+use tracing::Level;
 
 fn load_event_services(filename: &str) -> Result<serde_json::Value> {
     let finput = std::fs::File::open(filename)?;
@@ -276,7 +273,7 @@ pub(crate) fn build_axum_service(
             post(api::deescalate_event_by_id),
         )
         .route("/api/1/report/histogram/time", get(api::histogram_time))
-        .route("/api/1/report/dhcp/:what", get(api::report_dhcp))
+        .route("/api/1/dhcp/ack", get(api::dhcp_ack))
         .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
         .route("/api/1/submit", post(api::submit::handler))
         .route("/api/1/sensors", get(api::stats::get_sensor_names))

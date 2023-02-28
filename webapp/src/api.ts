@@ -348,6 +348,10 @@ class Api {
     return post(`api/1/event/${event._id}/de-escalate`);
   }
 
+  dhcpAck(query: { time_range?: string; sensor?: string }): Promise<any> {
+    return get(`api/1/dhcp/ack`, query).then((response) => response.data);
+  }
+
   eventToPcap(event: EventWrapper, what: "packet" | "payload") {
     // Set a cook with the session key to expire in 60 seconds from now.
     const expires = new Date(new Date().getTime() + 60000);

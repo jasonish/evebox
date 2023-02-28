@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 mod alerts;
+mod dhcp;
 mod events;
 mod groupby;
 mod stats;

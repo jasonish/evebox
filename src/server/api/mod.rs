@@ -5,6 +5,7 @@
 #[allow(clippy::module_inception)]
 mod api;
 pub mod eve2pcap;
+pub mod genericquery;
 pub mod groupby;
 pub mod helpers;
 pub mod login;
