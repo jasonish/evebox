@@ -5,7 +5,7 @@
 import { TIME_RANGE, Top } from "../Top";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { Card, Col, Container, Form, Row, Table } from "solid-bootstrap";
-import { API, GroupByQueryRequest } from "../api";
+import { API } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";

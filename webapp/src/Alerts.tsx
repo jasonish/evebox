@@ -27,6 +27,7 @@ import {
   createSignal,
   For,
   Match,
+  on,
   onCleanup,
   onMount,
   Show,
@@ -60,6 +61,7 @@ import { AddressCell, TimestampCell } from "./TimestampCell";
 import { IdleTimer } from "./idletimer";
 import { eventStore } from "./eventstore";
 import { AppProtoBadge } from "./Events";
+import { Logger } from "./util";
 
 enum View {
   Inbox,
@@ -82,7 +84,7 @@ export function AlertState() {
 }
 
 export function Alerts() {
-  console.log("***** Alerts *****");
+  const logger = new Logger("Alerts", true);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams<{
@@ -119,7 +121,8 @@ export function Alerts() {
   }
 
   onMount(() => {
-    console.log("Inbox.onMount");
+    const logger = new Logger("Alerts.onMount");
+    logger.log("Start");
 
     bindings = tinykeys(window, {
       j: () => {
@@ -171,7 +174,7 @@ export function Alerts() {
         toggleSelected(cursor());
       },
       r: () => {
-        onRefresh();
+        refresh();
       },
       f8: () => {
         archive(cursor());
@@ -209,6 +212,7 @@ export function Alerts() {
       let i = eventStore.events.length;
       while (i--) {
         if (eventIsArchived(eventStore.events[i])) {
+          logger.log(`Removing event at index ${i} as it is now archived`);
           eventStore.events.splice(i, 1);
         }
       }
@@ -221,11 +225,11 @@ export function Alerts() {
 
     if (eventStore.events.length === 0) {
       if (QUEUE_SIZE() === 0) {
-        refreshEvents({ query_string: searchParams.q });
+        refresh();
       }
     }
 
-    console.log("Alerts.onMount: done");
+    logger.log("End");
   });
 
   onCleanup(() => {
@@ -248,13 +252,13 @@ export function Alerts() {
 
   // Update the visible events as the offset is changed.
   createEffect(() => {
-    console.log(`Alerts.createEffect: Updating visible events.`);
+    const logger = new Logger("Alerts.createEffect: visible events", true);
     batch(() => {
       setVisibleEvents(
         eventStore.events.slice(getOffset(), getOffset() + VIEW_SIZE())
       );
       if (visibleEvents().length === 0 && getOffset() > 0) {
-        console.log(`- No more visible events, moving to previous page.`);
+        logger.log("No more visible events, moving to previous page");
         setOffset(getOffset() - VIEW_SIZE());
       }
     });
@@ -262,10 +266,8 @@ export function Alerts() {
 
   createEffect(() => {
     if (idleTimer.timeout()) {
-      console.log("Alerts.createEffect: Idle timeout: refreshing");
-      untrack(() => {
-        onRefresh();
-      });
+      logger.log("Idle timeout, refreshing");
+      refresh();
     }
   });
 
@@ -300,96 +302,76 @@ export function Alerts() {
     event.__private.selected = !event.__private.selected;
   }
 
-  createEffect(
-    (prev: any) => {
-      console.log(
-        `Alerts.createEffect: query_string: previous=${prev.q}, current=${searchParams.q}`
-      );
-      console.log(
-        `Alerts.createEffect: time_range: previous=${
-          prev.time_range
-        }, current=${TIME_RANGE()}`
-      );
-
-      if (searchParams.q != prev.q || prev.time_range != TIME_RANGE()) {
-        console.log(`- Search parameters have changed, refreshing events.`);
-        refreshEvents({ query_string: searchParams.q });
-      } else {
-        console.log(`- No change to search parameters`);
-      }
-      return { q: searchParams.q || undefined, time_range: TIME_RANGE() };
-    },
-    { q: searchParams.q || undefined, time_range: TIME_RANGE() }
-  );
-
-  function onRefresh() {
-    refreshEvents({ query_string: searchParams.q });
-  }
-
-  // A bit of a hack to force a refresh when the sortBy or orderOrder search parameters change.
-  //
-  // TODO: This could be better. There is no reason for a refresh here. In fact the whole
-  //   reactivity of this module should be redone. As this was how I learned SolidJS.
-  createEffect(() => {
-    const _sortBy = searchParams.sortBy;
-    const _sortOrder = searchParams.sortOrder;
-    onRefresh();
+  // Effect to subscribe to all actions that should trigger a refresh.
+  createEffect((prev) => {
+    let _options = {
+      sortBy: searchParams.sortBy,
+      sortOrder: searchParams.sortOrder,
+      q: searchParams.q,
+      timeRange: TIME_RANGE(),
+    };
+    if (prev === undefined) {
+      logger.log("Initial check of sortBy and sortOrder, not refreshing");
+    } else {
+      logger.log("Calling onRefresh as sortBy or sortOrder have changed");
+      refresh();
+    }
+    return true;
   });
 
-  function refreshEvents(options: { query_string?: string } = {}) {
-    console.log("Alerts.refreshEvents: " + JSON.stringify(options));
-    let params: any = {};
-
+  function refresh() {
+    // Run untracked. Other effects will watch for the required changes and call as needed.
+    //
+    // This is to avoid being called on first load unless needed.
     untrack(() => {
-      let time_range = TIME_RANGE();
-      if (time_range) {
-        params.time_range = parse_timerange(time_range) || undefined;
+      const logger = new Logger("Alerts.refreshEvents", true);
+      let params: any = {
+        query_string: searchParams.q,
+        time_range: parse_timerange(TIME_RANGE()) || undefined,
+      };
+
+      switch (view) {
+        case View.Inbox:
+          params.tags = [`-${Tag.Archived}`];
+          break;
+        case View.Escalated:
+          params.tags = [`${Tag.Escalated}`];
+          break;
+        default:
+          break;
       }
-    });
 
-    if (options.query_string) {
-      params.query_string = options.query_string;
-    }
-    switch (view) {
-      case View.Inbox:
-        params.tags = [`-${Tag.Archived}`];
-        break;
-      case View.Escalated:
-        params.tags = [`${Tag.Escalated}`];
-        break;
-      default:
-        break;
-    }
+      setIsLoading(true);
 
-    setIsLoading(true);
-
-    API.alerts(params)
-      .then((response) => {
-        const events: EventWrapper[] = response.events;
-        sortAlerts(
-          events,
-          searchParams.sortBy || "timestamp",
-          searchParams.sortOrder || "desc"
-        );
-        events.forEach((event) => {
-          event.__private = {
-            selected: false,
-          };
-        });
-        events.reverse();
-
-        if (eventStore.events.length === 0 && events.length === 0) {
-          // Do nothing...
-        } else {
-          batch(() => {
-            eventStore.events = events;
-            eventStore.active = null;
+      API.alerts(params)
+        .then((response) => {
+          const events: EventWrapper[] = response.events;
+          sortAlerts(
+            events,
+            searchParams.sortBy || "timestamp",
+            searchParams.sortOrder || "desc"
+          );
+          events.forEach((event) => {
+            event.__private = {
+              selected: false,
+            };
           });
-        }
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+          events.reverse();
+
+          if (eventStore.events.length === 0 && events.length === 0) {
+            // Do nothing...
+          } else {
+            batch(() => {
+              eventStore.events = events;
+              eventStore.active = null;
+            });
+            logger.log(`Fetch ${events.length} events`);
+          }
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    });
   }
 
   function sortAlerts(
@@ -665,7 +647,7 @@ export function Alerts() {
               <button
                 class={"btn btn-secondary me-2"}
                 style="width: 7em;"
-                onclick={onRefresh}
+                onclick={refresh}
               >
                 Refresh
               </button>
