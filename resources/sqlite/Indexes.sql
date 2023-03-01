@@ -108,5 +108,5 @@ CREATE INDEX IF NOT EXISTS events_dest_ip_index_v1
 
 -- DROP INDEX IF EXISTS events_event_type_timestamp_index_v1
 -- DROP INDEX IF EXISTS events_escalated_v1;
--- DROP INDEX IF EIXSTS events_src_ip_index_v1;
--- DROP INDEX IF EIXSTS events_dest_ip_index_v1;
+-- DROP INDEX IF EXISTS events_src_ip_index_v1;
+-- DROP INDEX IF EXISTS events_dest_ip_index_v1;
