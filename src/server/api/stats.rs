@@ -91,7 +91,6 @@ async fn agg(
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
         duration,
-        interval: bucket_interval(duration),
         start_time,
     };
 
@@ -118,7 +117,6 @@ async fn agg_differential(
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
         duration,
-        interval: bucket_interval(duration),
         start_time,
     };
 

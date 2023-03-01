@@ -110,7 +110,8 @@ impl SQLiteEventStore {
         let conn = self.pool.get().await?;
         let field = format!("$.{}", &qp.field);
         let start_time = qp.start_time.unix_timestamp_nanos() as i64;
-        let interval = sqlite_format_interval(qp.interval);
+        let range = (time::OffsetDateTime::now_utc() - qp.start_time).whole_seconds();
+        let interval = crate::util::histogram_interval(range);
         let result = conn
             .interact(move |conn| -> Result<Vec<(u64, u64)>, rusqlite::Error> {
                 let sql = r#"
@@ -124,7 +125,7 @@ impl SQLiteEventStore {
                     "#;
 
                 let mut filters = vec![
-                    "json_extract(events.source, '$.event_type') == 'stats'",
+                    "json_extract(events.source, '$.event_type') = 'stats'",
                     "timestamp >= :start_time",
                 ];
                 let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![
@@ -138,7 +139,10 @@ impl SQLiteEventStore {
                 }
                 let sql = sql.replace("%WHERE%", &filters.join(" AND "));
                 if *LOG_QUERIES {
-                    info!("sql={}", &sql);
+                    info!(
+                        "sql={}, interval={interval}, field={field}, start_time={start_time}",
+                        &sql
+                    );
                 }
                 let mut stmt = conn.prepare(&sql)?;
                 let rows =

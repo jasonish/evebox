@@ -67,7 +67,6 @@ pub enum DatastoreError {
 pub struct StatsAggQueryParams {
     pub field: String,
     pub duration: time::Duration,
-    pub interval: time::Duration,
     pub sensor_name: Option<String>,
     pub start_time: time::OffsetDateTime,
 }

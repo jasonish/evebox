@@ -3,23 +3,20 @@
 // SPDX-License-Identifier: MIT
 
 use super::EventStore;
-use crate::{datastore::StatsAggQueryParams, elastic::eventstore::elastic_format_interval};
+use crate::{datastore::StatsAggQueryParams, elastic::eventstore::elastic_format_interval, util};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 impl EventStore {
     pub async fn stats_agg(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
-        let version = self.client.get_version().await?;
-        let date_histogram_interval_field_name = if version.major < 7 {
-            "interval"
-        } else {
-            "fixed_interval"
-        };
+        let range = time::OffsetDateTime::now_utc() - params.start_time;
+        let range = range.whole_seconds();
+        let interval = util::histogram_interval(range);
+
         let start_time = params
             .start_time
             .format(&time::format_description::well_known::Rfc3339)
             .unwrap();
-        let interval = elastic_format_interval(params.interval);
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
@@ -39,7 +36,7 @@ impl EventStore {
                "histogram": {
                   "date_histogram": {
                     "field": "@timestamp",
-                    date_histogram_interval_field_name: interval,
+                      "fixed_interval": format!("{interval}s"),
                     },
               "aggs": {
                 "memuse": {
@@ -81,17 +78,12 @@ impl EventStore {
     }
 
     pub async fn stats_agg_diff(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
-        let version = self.client.get_version().await.unwrap();
-        let date_histogram_interval_field_name = if version.major < 7 {
-            "interval"
-        } else {
-            "fixed_interval"
-        };
         let start_time = params
             .start_time
             .format(&time::format_description::well_known::Rfc3339)
             .unwrap();
-        let interval = elastic_format_interval(params.interval);
+        let range = (time::OffsetDateTime::now_utc() - params.start_time).whole_seconds();
+        let interval = crate::util::histogram_interval(range);
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
@@ -111,7 +103,7 @@ impl EventStore {
             "histogram": {
               "date_histogram": {
                 "field": "@timestamp",
-                date_histogram_interval_field_name: interval,
+                  "fixed_interval": format!("{interval}s"),
               },
               "aggs": {
                 "values": {
