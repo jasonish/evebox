@@ -4,17 +4,25 @@
 
 - Move to SolidJS for frontend development.
 - New special query string keywords:
-  - @ip: match src_ip or dest_ip
+  - @ip: match src_ip or dest_ip, and other fields known to be IP addresses
   - @earliest:TIMESTAMP
   - @latest:TIMESTAMP
 - Feature parity between SQLite and Elasticsearch. This means that
   some reports were removed, but should come back for both SQLite and
-  Elasticsearch.
+  Elasticsearch: https://github.com/jasonish/evebox/issues/95
 - [sqlite] Enable event retention by default to a value of 7 days. If
   an SQLite database becomes too large, it can be hard to trim back
   down to a usable size without significant downtime.
 - Start on a new overview report.
 - Fix issue where alert report graph didn't refresh over time change:
+  https://github.com/jasonish/evebox/issues/247
+- Don't allow the agent to send a payload larger than the server can
+  receive: https://github.com/jasonish/evebox/issues/248
+- [webapp] Fix broken filter on SIDs search:
+  https://github.com/jasonish/evebox/issues/251
+- [packaging] Add default configuration file:
+  https://github.com/jasonish/evebox/pull/221
+- [webapp] Alert graph failing to refresh on time range change:
   https://github.com/jasonish/evebox/issues/247
 
 ## 0.16.0 - 2022-11-12
