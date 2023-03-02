@@ -52,6 +52,8 @@ impl EventStore {
 
         if let Some(hits) = response["hits"]["hits"].as_array() {
             for hit in hits {
+                let mut hit = hit.clone();
+                self.transform_ecs(&mut hit);
                 let source = &hit["_source"];
                 if source.is_object() {
                     events.push(source.clone());
