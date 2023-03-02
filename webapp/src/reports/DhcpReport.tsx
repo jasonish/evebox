@@ -17,7 +17,7 @@ import { API } from "../api";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { EventSource } from "../types";
 import { parse_timestamp } from "../datetime";
-import { useSearchParams } from "@solidjs/router";
+import { A, useSearchParams } from "@solidjs/router";
 
 export function DhcpReport() {
   const [acks, setAcks] = createSignal<EventSource[]>([]);
@@ -111,9 +111,24 @@ export function DhcpReport() {
                               )}
                             </td>
                             <td>{ack.host}</td>
-                            <td>{ack.dhcp!.client_mac}</td>
-                            <td>{ack.dhcp!.assigned_ip}</td>
-                            <td>{ack.dhcp!.hostname}</td>
+                            <td>
+                              <SearchLink
+                                value={ack.dhcp!.client_mac}
+                                field={"dhcp.client_mac"}
+                              >
+                                {ack.dhcp!.client_mac}
+                              </SearchLink>
+                            </td>
+                            <td>
+                              <SearchLink value={ack.dhcp!.assigned_ip}>
+                                {ack.dhcp!.assigned_ip}
+                              </SearchLink>
+                            </td>
+                            <td>
+                              <SearchLink value={ack.dhcp!.hostname}>
+                                {ack.dhcp!.hostname}
+                              </SearchLink>
+                            </td>
                             <td>{ack.dhcp!.lease_time}</td>
                           </tr>
                         </>
@@ -142,7 +157,11 @@ export function DhcpReport() {
                           {(server) => (
                             <>
                               <tr>
-                                <td>{server}</td>
+                                <td class={"ps-2"}>
+                                  <SearchLink value={server}>
+                                    {server}
+                                  </SearchLink>
+                                </td>
                               </tr>
                             </>
                           )}
@@ -175,7 +194,14 @@ export function DhcpReport() {
                             {(addr) => (
                               <>
                                 <tr>
-                                  <td>{addr}</td>
+                                  <td class={"ps-2"}>
+                                    <SearchLink
+                                      value={addr}
+                                      field={"dhcp.client_mac"}
+                                    >
+                                      {addr}
+                                    </SearchLink>
+                                  </td>
                                 </tr>
                               </>
                             )}
@@ -229,4 +255,21 @@ export function SensorSelector(props: {
       </select>
     </div>
   );
+}
+
+function SearchLink(props: { children?: any; field?: string; value: any }) {
+  let q;
+  switch (typeof props.value) {
+    case "number":
+      q = encodeURIComponent(
+        `${props.field ? props.field + ":" : ""}${props.value}`
+      );
+      break;
+    default:
+      q = encodeURIComponent(
+        `${props.field ? props.field + ":" : ""}"${props.value}"`
+      );
+      break;
+  }
+  return <A href={`/events?q=${q}`}>{props.children || props.value}</A>;
 }
