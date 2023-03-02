@@ -43,7 +43,7 @@ enum Commands {
 
 #[derive(Parser, Debug)]
 struct InfoArgs {
-    #[arg(long, short = 'D')]
+    #[arg(from_global, id = "data-directory")]
     data_directory: Option<String>,
     filename: Option<String>,
 }
