@@ -66,10 +66,11 @@ pub fn format_timestamp(dt: time::OffsetDateTime) -> String {
 }
 
 pub fn query_string_query(query_string: &str) -> serde_json::Value {
+    let escaped = query_string.replace(':', "\\:");
     json!({
         "query_string": {
             "default_operator": "AND",
-            "query": query_string,
+            "query": escaped,
             "lenient": true,
         }
     })

@@ -15,7 +15,6 @@ use axum::routing::get;
 use axum::{Json, Router};
 use serde::Deserialize;
 use std::sync::Arc;
-use time::Duration;
 
 pub(crate) fn router() -> Router<Arc<ServerContext>> {
     Router::new()
@@ -63,21 +62,6 @@ impl StatsAggQuery {
         };
         Ok(start_time)
     }
-}
-
-fn bucket_interval(duration: time::Duration) -> time::Duration {
-    let result = if duration > time::Duration::days(7) {
-        time::Duration::minutes(5)
-    } else if duration <= Duration::minutes(1) {
-        time::Duration::seconds(5)
-    } else {
-        time::Duration::minutes(1)
-    };
-    debug!(
-        "Converted duration of {:?} to bucket interval of {:?}",
-        duration, result
-    );
-    result
 }
 
 async fn agg(

@@ -62,6 +62,19 @@ export function DhcpReport() {
       setDhcpServers(servers);
     });
   }
+
+  function earliest(timestamp: string): string {
+    return parse_timestamp(timestamp)
+      .subtract(1, "minute")
+      .format("YYYY-MM-DDTHH:mm:ss.sssZZ");
+  }
+
+  function latest(timestamp: string): string {
+    return parse_timestamp(timestamp)
+      .add(1, "minute")
+      .format("YYYY-MM-DDTHH:mm:ss.sssZZ");
+  }
+
   return (
     <>
       <Top />
@@ -106,21 +119,29 @@ export function DhcpReport() {
                         <>
                           <tr>
                             <td class={"ps-2"}>
-                              {parse_timestamp(ack.timestamp).format(
-                                "YYYY-MM-DD HH:mm:ss"
-                              )}
+                              <RawSearchLink
+                                q={`event_type:dhcp dhcp.id:${
+                                  ack.dhcp?.id
+                                } @earliest:"${earliest(
+                                  ack.timestamp
+                                )}" @latest:"${latest(ack.timestamp)}"`}
+                              >
+                                {parse_timestamp(ack.timestamp).format(
+                                  "YYYY-MM-DD HH:mm:ss"
+                                )}
+                              </RawSearchLink>
                             </td>
                             <td>{ack.host}</td>
                             <td>
-                              <SearchLink
-                                value={ack.dhcp!.client_mac}
-                                field={"dhcp.client_mac"}
-                              >
+                              <SearchLink value={ack.dhcp!.client_mac}>
                                 {ack.dhcp!.client_mac}
                               </SearchLink>
                             </td>
                             <td>
-                              <SearchLink value={ack.dhcp!.assigned_ip}>
+                              <SearchLink
+                                value={ack.dhcp!.assigned_ip}
+                                field="@ip"
+                              >
                                 {ack.dhcp!.assigned_ip}
                               </SearchLink>
                             </td>
@@ -158,7 +179,7 @@ export function DhcpReport() {
                             <>
                               <tr>
                                 <td class={"ps-2"}>
-                                  <SearchLink value={server}>
+                                  <SearchLink value={server} field="@ip">
                                     {server}
                                   </SearchLink>
                                 </td>
@@ -195,10 +216,7 @@ export function DhcpReport() {
                               <>
                                 <tr>
                                   <td class={"ps-2"}>
-                                    <SearchLink
-                                      value={addr}
-                                      field={"dhcp.client_mac"}
-                                    >
+                                    <SearchLink value={addr}>
                                       {addr}
                                     </SearchLink>
                                   </td>
@@ -272,4 +290,9 @@ function SearchLink(props: { children?: any; field?: string; value: any }) {
       break;
   }
   return <A href={`/events?q=${q}`}>{props.children || props.value}</A>;
+}
+
+function RawSearchLink(props: { children: any; q: string }) {
+  const encoded = encodeURIComponent(props.q);
+  return <A href={`/events?q=${encoded}`}>{props.children}</A>;
 }

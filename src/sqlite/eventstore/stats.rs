@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::{sqlite_format_interval, SQLiteEventStore};
+use super::SQLiteEventStore;
 use crate::prelude::*;
 use crate::{
     datastore::{DatastoreError, StatsAggQueryParams},

@@ -22,6 +22,7 @@ use crate::querystring::{self, Element, QueryString};
 use crate::server::api;
 use crate::server::session::Session;
 use crate::util;
+use crate::LOG_QUERIES;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -395,6 +396,12 @@ impl EventStore {
                 Element::Ip(ip) => {
                     should.push(json!({"term": {self.map_field("src_ip"): ip}}));
                     should.push(json!({"term": {self.map_field("dest_ip"): ip}}));
+                    should.push(json!({"term": {self.map_field("dhcp.assigned_ip"): ip}}));
+                    should.push(json!({"term": {self.map_field("dhcp.client_ip"): ip}}));
+                    should.push(json!({"term": {self.map_field("dhcp.next_server_ip"): ip}}));
+                    should.push(json!({"term": {self.map_field("dhcp.routers"): ip}}));
+                    should.push(json!({"term": {self.map_field("dhcp.relay_ip"): ip}}));
+                    should.push(json!({"term": {self.map_field("dhcp.subnet_mask"): ip}}));
                 }
                 Element::EarliestTimestamp(ts) => {
                     filter.push(request::timestamp_gte_filter(ts));
@@ -655,6 +662,10 @@ impl EventStore {
         if !should.is_empty() {
             body["query"]["bool"]["should"] = should.into();
             body["query"]["bool"][MINIMUM_SHOULD_MATCH] = 1.into();
+        }
+
+        if *LOG_QUERIES {
+            info!("{}", &body);
         }
 
         let response: serde_json::Value = self.search(&body).await?.json().await?;
@@ -918,14 +929,4 @@ impl EventStore {
         let sensors: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
         return Ok(sensors);
     }
-}
-
-fn elastic_format_interval(duration: time::Duration) -> String {
-    let result = if duration < time::Duration::minutes(1) {
-        format!("{}s", duration.whole_seconds())
-    } else {
-        format!("{}m", duration.whole_minutes())
-    };
-    debug!("Formatted duration of {:?} as {}", duration, &result);
-    result
 }

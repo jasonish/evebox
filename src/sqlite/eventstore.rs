@@ -319,10 +319,6 @@ impl SQLiteEventStore {
     }
 }
 
-fn sqlite_format_interval(duration: time::Duration) -> i64 {
-    duration.whole_seconds()
-}
-
 fn nanos_to_rfc3339(nanos: i128) -> anyhow::Result<String> {
     let ts = time::OffsetDateTime::from_unix_timestamp_nanos(nanos)?;
     let rfc3339 = ts.format(&time::format_description::well_known::Rfc3339)?;

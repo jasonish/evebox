@@ -139,7 +139,11 @@ impl EventQueryBuilder {
                                 "community_id" | "timestamp" => {
                                     self.push_fts(v);
                                 }
-                                _ => {}
+                                _ => {
+                                    if k.starts_with("dhcp") {
+                                        self.push_fts(v);
+                                    }
+                                }
                             }
                         }
                     }
@@ -151,9 +155,22 @@ impl EventQueryBuilder {
                     self.latest_timestamp(ts);
                 }
                 Element::Ip(ip) => {
-                    self.push_where("(json_extract(events.source, '$.src_ip') = ? OR json_extract(events.source, '$.dest_ip') = ?)")
-			.push_param(ip.to_string())
-			.push_param(ip.to_string());
+                    let fields = [
+                        "src_ip",
+                        "dest_ip",
+                        "dhcp.assigned_ip",
+                        "dhcp.client_ip",
+                        "dhcp.next_server_ip",
+                        "dhcp.routers",
+                        "dhcp.relay_ip",
+                        "dhcp.subnet_mask",
+                    ];
+                    let mut ors = vec![];
+                    for field in fields {
+                        ors.push(format!("json_extract(events.source, '$.{}') = ?", field));
+                        self.push_param(ip.to_string());
+                    }
+                    self.push_where(format!("({})", ors.join(" OR ")));
                 }
             }
         }

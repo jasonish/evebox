@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::EventStore;
-use crate::{datastore::StatsAggQueryParams, elastic::eventstore::elastic_format_interval, util};
+use crate::{datastore::StatsAggQueryParams, util};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
