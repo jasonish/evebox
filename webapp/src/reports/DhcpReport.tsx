@@ -216,9 +216,7 @@ export function DhcpReport() {
                               <>
                                 <tr>
                                   <td class={"ps-2"}>
-                                    <SearchLink value={addr}>
-                                      {addr}
-                                    </SearchLink>
+                                    <SearchLink value={addr}>{addr}</SearchLink>
                                   </td>
                                 </tr>
                               </>
