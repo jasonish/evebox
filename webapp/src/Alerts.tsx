@@ -36,7 +36,7 @@ import {
 } from "solid-js";
 import * as API from "./api";
 import { QUEUE_SIZE } from "./api";
-import { parse_timerange } from "./datetime";
+import { parse_timerange, parse_timestamp } from "./datetime";
 import { EventWrapper } from "./types";
 import {
   BiArchive,
@@ -62,6 +62,9 @@ import { IdleTimer } from "./idletimer";
 import { eventStore } from "./eventstore";
 import { AppProtoBadge } from "./Events";
 import { Logger } from "./util";
+
+const DEFAULT_SORTBY = "timestamp";
+const DEFAULT_SORTORDER = "desc";
 
 enum View {
   Inbox,
@@ -305,8 +308,8 @@ export function Alerts() {
   // Effect to subscribe to all actions that should trigger a refresh.
   createEffect((prev) => {
     let _options = {
-      sortBy: searchParams.sortBy,
-      sortOrder: searchParams.sortOrder,
+      // sortBy: searchParams.sortBy,
+      // sortOrder: searchParams.sortOrder,
       q: searchParams.q,
       timeRange: TIME_RANGE(),
     };
@@ -315,6 +318,33 @@ export function Alerts() {
     } else {
       logger.log("Calling onRefresh as sortBy or sortOrder have changed");
       refresh();
+    }
+    return true;
+  });
+
+  createEffect((prev) => {
+    let sortBy = searchParams.sortBy || DEFAULT_SORTBY;
+    let sortOrder = searchParams.sortOrder || DEFAULT_SORTORDER;
+    if (prev) {
+      console.log("updating sort order");
+      let events: EventWrapper[] = [];
+      untrack(() => {
+        events.push(...eventStore.events);
+      });
+      sortAlerts(events, sortBy, sortOrder);
+      eventStore.events = events;
+      //untrack(() => {
+      // let events;
+      // untrack(() => {
+      //   events = [...eventStore.events];
+      // });
+      // sortAlerts(events, sortBy, sortOrder);
+      // eventStore.events = events;
+      //});
+
+      // sortAlerts(eventStore.events, sortBy, sortOrder);
+    } else {
+      console.log("**** IGNORING sort");
     }
     return true;
   });
@@ -346,17 +376,12 @@ export function Alerts() {
       API.alerts(params)
         .then((response) => {
           const events: EventWrapper[] = response.events;
-          sortAlerts(
-            events,
-            searchParams.sortBy || "timestamp",
-            searchParams.sortOrder || "desc"
-          );
+          sortAlerts(events, getSortBy(), getSortOrder());
           events.forEach((event) => {
             event.__private = {
               selected: false,
             };
           });
-          events.reverse();
 
           if (eventStore.events.length === 0 && events.length === 0) {
             // Do nothing...
@@ -416,7 +441,9 @@ export function Alerts() {
         break;
       case "timestamp":
         alerts.sort((a: any, b: any) => {
-          return compare(b._metadata.max_timestamp, a._metadata.max_timestamp);
+          const da = parse_timestamp(a._metadata.max_timestamp);
+          const db = parse_timestamp(b._metadata.max_timestamp);
+          return compare(da, db);
         });
         break;
     }
@@ -600,11 +627,11 @@ export function Alerts() {
   }
 
   function getSortOrder() {
-    return searchParams.sortOrder || "desc";
+    return searchParams.sortOrder || DEFAULT_SORTORDER;
   }
 
   function getSortBy() {
-    return searchParams.sortBy || "timestamp";
+    return searchParams.sortBy || DEFAULT_SORTBY;
   }
 
   function escalateArchive(index: number) {
