@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use crate::prelude::*;
+use crate::server::ServerContext;
 use axum::body::Bytes;
 use axum::extract::Extension;
 use axum::http::StatusCode;
@@ -11,9 +12,6 @@ use axum::Json;
 use serde_json::json;
 use std::io::BufRead;
 use std::sync::Arc;
-
-use crate::eve::eve::EveJson;
-use crate::server::ServerContext;
 
 pub(crate) async fn handler(
     Extension(context): Extension<Arc<ServerContext>>,
@@ -42,7 +40,7 @@ pub(crate) async fn handler(
                     // EOF.
                     break;
                 }
-                match serde_json::from_str::<EveJson>(&line) {
+                match serde_json::from_str::<serde_json::Value>(&line) {
                     Err(err) => {
                         errors.push(format!(
                             "Failed to decode event from request body ({err}): {line}"

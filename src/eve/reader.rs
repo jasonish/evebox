@@ -1,25 +1,7 @@
-// Copyright (C) 2020 Jason Ish
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// SPDX-License-Identifier: MIT
 
-use crate::eve::eve::EveJson;
 use crate::prelude::*;
 use std::fs::File;
 use std::io::BufRead;
@@ -149,7 +131,7 @@ impl EveReader {
     }
 
     /// Not named next as we don't implement the iterator pattern (yet).
-    pub fn next_record(&mut self) -> Result<Option<EveJson>, EveReaderError> {
+    pub fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
         if self.reader.is_none() {
             self.open()?;
         }
@@ -157,7 +139,7 @@ impl EveReader {
             let line = self.next_line()?;
             if let Some(line) = line {
                 if !line.is_empty() {
-                    let record: EveJson = serde_json::from_str(line).map_err(|err| {
+                    let record: serde_json::Value = serde_json::from_str(line).map_err(|err| {
                         error!("Failed to parse event: {}", err);
                         EveReaderError::ParseError(line.to_string())
                     })?;

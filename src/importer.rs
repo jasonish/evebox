@@ -16,7 +16,7 @@ pub enum Importer {
 impl Importer {
     pub async fn submit(
         &mut self,
-        event: crate::eve::eve::EveJson,
+        event: serde_json::Value,
     ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         match self {
             Importer::EveBox(importer) => importer.submit(event).await,

@@ -1,8 +1,7 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
-use crate::eve::eve::EveJson;
 use crate::prelude::*;
 use maxminddb::{geoip2, Reader};
 use std::sync::{Arc, Mutex};
@@ -132,13 +131,13 @@ impl GeoIP {
         Ok(city)
     }
 
-    pub fn add_geoip_to_eve(&self, eve: &mut EveJson) {
-        if let EveJson::String(addr) = &eve["dest_ip"] {
+    pub fn add_geoip_to_eve(&self, eve: &mut serde_json::Value) {
+        if let serde_json::Value::String(addr) = &eve["dest_ip"] {
             if let Ok(city) = self.lookup_city_from_str(addr) {
                 eve["geoip_destination"] = self.as_json(city);
             }
         }
-        if let EveJson::String(addr) = &eve["src_ip"] {
+        if let serde_json::Value::String(addr) = &eve["src_ip"] {
             if let Ok(city) = self.lookup_city_from_str(addr) {
                 eve["geoip_source"] = self.as_json(city);
             }

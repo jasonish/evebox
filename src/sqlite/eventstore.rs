@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 use crate::datastore::DatastoreError;
-use crate::eve::eve::EveJson;
 use crate::prelude::*;
 use crate::server::api::AlertGroupSpec;
 use crate::{eve, LOG_QUERIES};
@@ -57,7 +56,7 @@ impl SQLiteEventStore {
             let rowid: i64 = row.get(0)?;
             let archived: i8 = row.get(1)?;
             let escalated: i8 = row.get(2)?;
-            let mut parsed: EveJson = row.get(3)?;
+            let mut parsed: serde_json::Value = row.get(3)?;
 
             if let serde_json::Value::Null = &parsed["tags"] {
                 let tags: Vec<String> = Vec::new();

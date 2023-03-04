@@ -1,29 +1,10 @@
-// Copyright (C) 2020 Jason Ish
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// SPDX-License-Identifier: MIT
 
+use crate::packet;
 use bytes::{BufMut, BytesMut};
 use std::net::IpAddr;
-
-use crate::eve::eve::EveJson;
-use crate::packet;
 
 const MAGIC: u32 = 0xa1b2_c3d4;
 const VERSION_MAJOR: u16 = 2;
@@ -74,7 +55,7 @@ impl LinkType {
     }
 }
 
-pub fn packet_from_payload(event: &EveJson) -> Result<Vec<u8>, Error> {
+pub fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, Error> {
     let payload = if let Some(payload) = &event["payload"].as_str() {
         base64::decode(payload).map_err(Error::PayloadDecodeError)?
     } else {
@@ -200,7 +181,7 @@ mod test {
 
     #[test]
     fn test_packet_from_payload() {
-        let event: EveJson = serde_json::from_str(TEST_EVE_RECORD).unwrap();
+        let event: serde_json::Value = serde_json::from_str(TEST_EVE_RECORD).unwrap();
         let packet = super::packet_from_payload(&event).unwrap();
         let ts = event.timestamp().unwrap();
         let _pcap_buffer = super::create(LinkType::Raw as u32, ts, &packet);

@@ -1,11 +1,9 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 pub use super::EveReader;
 use time::macros::format_description;
-
-pub type EveJson = serde_json::Value;
 
 pub trait Eve {
     fn timestamp(&self) -> Option<time::OffsetDateTime>;
@@ -14,7 +12,7 @@ pub trait Eve {
 
 impl Eve for serde_json::Value {
     fn timestamp(&self) -> Option<time::OffsetDateTime> {
-        if let EveJson::String(ts) = &self["timestamp"] {
+        if let serde_json::Value::String(ts) = &self["timestamp"] {
             if let Ok(dt) = parse_eve_timestamp(ts) {
                 return Some(dt);
             }
@@ -23,20 +21,20 @@ impl Eve for serde_json::Value {
     }
 
     fn add_tag(&mut self, tag: &str) {
-        if let EveJson::Null = self["tags"] {
-            self["tags"] = EveJson::Array(vec![]);
+        if let serde_json::Value::Null = self["tags"] {
+            self["tags"] = serde_json::Value::Array(vec![]);
         }
-        if let EveJson::Array(ref mut tags) = &mut self["tags"] {
+        if let serde_json::Value::Array(ref mut tags) = &mut self["tags"] {
             tags.push(tag.into());
         }
     }
 }
 
-pub fn add_evebox_metadata(event: &mut EveJson, filename: Option<String>) {
-    if let EveJson::Null = event["evebox"] {
+pub fn add_evebox_metadata(event: &mut serde_json::Value, filename: Option<String>) {
+    if let serde_json::Value::Null = event["evebox"] {
         event["evebox"] = serde_json::json!({});
     }
-    if let EveJson::Object(_) = &event["evebox"] {
+    if let serde_json::Value::Object(_) = &event["evebox"] {
         if let Some(filename) = filename {
             event["evebox"]["filename"] = filename.into();
         }

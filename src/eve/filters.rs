@@ -1,28 +1,9 @@
-// Copyright (C) 2020 Jason Ish
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// SPDX-License-Identifier: MIT
 
-use crate::eve::eve::EveJson;
 use crate::prelude::*;
 use crate::rules::RuleMap;
-
 use serde_json::json;
 use std::sync::Arc;
 
@@ -37,7 +18,7 @@ pub enum EveFilter {
 }
 
 impl EveFilter {
-    pub fn run(&self, event: &mut EveJson) {
+    pub fn run(&self, event: &mut serde_json::Value) {
         match self {
             EveFilter::GeoIP(geoip) => {
                 geoip.add_geoip_to_eve(event);
@@ -69,14 +50,14 @@ pub struct EveBoxMetadataFilter {
 }
 
 impl EveBoxMetadataFilter {
-    pub fn run(&self, event: &mut EveJson) {
+    pub fn run(&self, event: &mut serde_json::Value) {
         // Create the "evebox" object.
-        if let EveJson::Null = event["evebox"] {
+        if let serde_json::Value::Null = event["evebox"] {
             event["evebox"] = json!({});
         }
 
         // Add fields to the EveBox object.
-        if let EveJson::Object(_) = &event["evebox"] {
+        if let serde_json::Value::Object(_) = &event["evebox"] {
             if let Some(filename) = &self.filename {
                 event["evebox"]["filename"] = filename.to_string().into();
             }
@@ -109,7 +90,7 @@ impl CustomFieldFilter {
         }
     }
 
-    pub fn run(&self, event: &mut EveJson) {
+    pub fn run(&self, event: &mut serde_json::Value) {
         event[&self.field] = self.value.clone().into();
     }
 }
@@ -126,8 +107,8 @@ pub struct AddRuleFilter {
 }
 
 impl AddRuleFilter {
-    pub fn run(&self, event: &mut EveJson) {
-        if let EveJson::String(_) = event["alert"]["rule"] {
+    pub fn run(&self, event: &mut serde_json::Value) {
+        if let serde_json::Value::String(_) = event["alert"]["rule"] {
             return;
         }
         if let Some(sid) = &event["alert"]["signature_id"].as_u64() {
@@ -144,7 +125,7 @@ impl AddRuleFilter {
 pub struct AutoArchiveFilter {}
 
 impl AutoArchiveFilter {
-    pub fn run(&self, event: &mut EveJson) {
+    pub fn run(&self, event: &mut serde_json::Value) {
         // Look for alert.metadata.
         let action = event["alert"]["metadata"]["evebox-action"]
             .as_array()

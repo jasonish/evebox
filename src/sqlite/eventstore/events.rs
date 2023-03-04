@@ -5,7 +5,6 @@
 use super::SQLiteEventStore;
 use crate::{
     datastore::{DatastoreError, EventQueryParams},
-    eve::eve::EveJson,
     sqlite::builder::EventQueryBuilder,
     LOG_QUERIES,
 };
@@ -89,7 +88,7 @@ fn row_mapper(row: &rusqlite::Row) -> Result<serde_json::Value, rusqlite::Error>
     let id: i64 = row.get(0)?;
     let archived: i8 = row.get(1)?;
     let escalated: i8 = row.get(2)?;
-    let mut parsed: EveJson = row.get(3)?;
+    let mut parsed: serde_json::Value = row.get(3)?;
 
     if let Some(timestamp) = parsed.get("timestamp") {
         parsed["@timestamp"] = timestamp.clone();

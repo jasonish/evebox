@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 use super::builder::SqliteValue;
-use crate::eve::eve::EveJson;
 use crate::eve::{self, Eve};
 use crate::prelude::*;
 use rusqlite::TransactionBehavior;
@@ -109,7 +108,7 @@ impl Importer {
         }
     }
 
-    pub async fn submit(&mut self, mut event: EveJson) -> Result<bool, IndexError> {
+    pub async fn submit(&mut self, mut event: serde_json::Value) -> Result<bool, IndexError> {
         for statement in prepare_sql(&mut event, self.fts)? {
             self.queue.push(statement);
         }

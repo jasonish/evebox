@@ -4,10 +4,8 @@
 
 // EveBox agent import. For importing events to an EveBox server.
 
-use tracing::trace;
-
 use crate::agent::client::Client;
-use crate::eve::eve::EveJson;
+use tracing::trace;
 
 // The server, 0.17.0+ should have a receive size limit of 32 megabytes. We'll do climate side
 // limiting at 16 MB.
@@ -32,7 +30,7 @@ impl EveboxImporter {
     /// The result will be true if the user should `commit` before submitting new events.
     pub async fn submit(
         &mut self,
-        event: EveJson,
+        event: serde_json::Value,
     ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         let as_string = event.to_string();
         self.size += as_string.len();

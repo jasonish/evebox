@@ -1,20 +1,17 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
-use axum::extract::{Extension, Form};
-use axum::response::IntoResponse;
-use std::sync::Arc;
-
-use crate::prelude::*;
-use serde::Deserialize;
-
-use crate::eve::eve::EveJson;
 use crate::eve::Eve;
 use crate::pcap;
+use crate::prelude::*;
 use crate::server::api::ApiError;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
+use axum::extract::{Extension, Form};
+use axum::response::IntoResponse;
+use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Deserialize, Debug)]
 pub struct PcapForm {
@@ -32,7 +29,7 @@ pub(crate) async fn handler(
         ("content-disposition", "attachment; filename=event.pcap"),
     ];
 
-    let event: EveJson = serde_json::from_str(&form.event)
+    let event: serde_json::Value = serde_json::from_str(&form.event)
         .map_err(|err| ApiError::BadRequest(format!("failed to decode event: {err}")))?;
     match form.what.as_ref() {
         "packet" => {
