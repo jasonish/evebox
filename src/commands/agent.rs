@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use crate::agent::client::Client;
 use crate::agent::importer::EveboxImporter;
@@ -8,7 +8,7 @@ use crate::bookmark;
 use crate::config::Config;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::importer::Importer;
-use clap::{Arg, ArgAction, Command};
+use clap::{CommandFactory, Parser};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::collections::HashMap;
@@ -19,48 +19,32 @@ use tracing::debug;
 use tracing::info;
 use tracing::warn;
 
-/// Command line parser for the `agent` sub-command.
+#[derive(Parser, Debug)]
+#[command(name = "agent", about = "EveBox Agent")]
+struct Args {
+    /// Agent configuration filename
+    #[arg(short, long)]
+    config: Option<String>,
+
+    /// EveBox Server or Elasticsearch URL
+    #[arg(long, id = "server.url", value_name = "URL")]
+    server: Option<String>,
+
+    /// Enable GeoIP
+    #[arg(long = "enable-geoip", id = "geoip.enabled")]
+    geoip: bool,
+
+    #[arg(long, id = "bookmark-directory", hide(true))]
+    bookmark_directory: Option<String>,
+
+    #[arg(from_global, id = "data-directory")]
+    data_directory: Option<String>,
+
+    filenames: Vec<String>,
+}
+
 pub fn command() -> clap::Command {
-    Command::new("agent")
-        .about("EveBox Agent")
-        .arg(
-            Arg::new("config")
-                .long("config")
-                .short('c')
-                .action(ArgAction::Set)
-                .help("Agent configuration file"),
-        )
-        .arg(
-            Arg::new("server.url")
-                .long("server")
-                .action(ArgAction::Set)
-                .value_name("URL")
-                .help("EveBox server URL")
-                .env("EVEBOX_SERVER_URL"),
-        )
-        .arg(
-            Arg::new("geoip.enabled")
-                .action(ArgAction::SetTrue)
-                .long("enable-geoip")
-                .help("Enable MaxMind GeoIP"),
-        )
-        .arg(
-            Arg::new("stdout")
-                .action(ArgAction::SetTrue)
-                .long("stdout")
-                .help("Print events to stdout"),
-        )
-        .arg(
-            Arg::new("bookmark-directory")
-                .long("bookmark-directory")
-                .action(ArgAction::Set)
-                .hide(true),
-        )
-        .arg(
-            Arg::new("filenames")
-                .action(ArgAction::Append)
-                .help("List of EVE filenames"),
-        )
+    Args::command()
 }
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
