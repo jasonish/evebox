@@ -34,12 +34,14 @@ struct Args {
     #[arg(long = "enable-geoip", id = "geoip.enabled")]
     geoip: bool,
 
+    /// Bookmark directory (deprecated).
     #[arg(long, id = "bookmark-directory", hide(true))]
     bookmark_directory: Option<String>,
 
     #[arg(from_global, id = "data-directory")]
     data_directory: Option<String>,
 
+    /// Log file names/patterns to process
     filenames: Vec<String>,
 }
 
@@ -130,6 +132,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         server_password.clone(),
         disable_certificate_check,
     );
+    let importer = Importer::EveBox(EveboxImporter::new(client.clone()));
 
     let bookmark_directory = config.get_string("bookmark-directory");
     if bookmark_directory.is_some() {
@@ -154,7 +157,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                     log_runners.insert(path.clone(), true);
                     let task = start_runner(
                         &path,
-                        client.clone(),
+                        importer.clone(),
                         bookmark_directory.clone(),
                         filters.clone(),
                     );
@@ -173,13 +176,12 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
 fn start_runner(
     filename: &str,
-    client: Client,
+    importer: Importer,
     bookmark_directory: Option<String>,
     mut filters: Vec<EveFilter>,
 ) -> JoinHandle<()> {
     let mut end = false;
     let reader = crate::eve::reader::EveReader::new(filename);
-    let importer = EveboxImporter::new(client);
     let bookmark_filename = get_bookmark_filename(filename, bookmark_directory);
     if let Some(bookmark_filename) = &bookmark_filename {
         info!("Using bookmark file: {:?}", bookmark_filename);
@@ -187,7 +189,7 @@ fn start_runner(
         warn!("Failed to determine usable bookmark filename, will start reading at end of file");
         end = true;
     }
-    let mut processor = crate::eve::Processor::new(reader, Importer::EveBox(importer));
+    let mut processor = crate::eve::Processor::new(reader, importer);
     processor.end = end;
 
     filters.push(crate::eve::filters::EveFilter::EveBoxMetadataFilter(

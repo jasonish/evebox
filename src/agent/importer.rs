@@ -22,7 +22,7 @@ impl EveboxImporter {
     pub fn new(client: Client) -> Self {
         Self {
             queue: Vec::new(),
-            client: client,
+            client,
             size: 0,
         }
     }
