@@ -86,6 +86,21 @@ CREATE INDEX IF NOT EXISTS events_src_ip_index_v1
 CREATE INDEX IF NOT EXISTS events_dest_ip_index_v1
   ON events (json_extract(source, '$.dest_ip'), timestamp DESC);
 
+-- Speeds up inbox and archive from inbox queries/executions.
+create index if not exists events_archive_index_v1
+  on events (
+    archived,
+    json_extract(source, '$.alert.signature_id'),
+    json_extract(source, '$.src_ip'),
+    json_extract(source, '$.dest_ip'),
+    timestamp)
+  where json_extract(source, '$.event_type') = 'alert'
+    and archived = 0;
+
+-- Speeds up querying by sensor name.
+create index if not exists events_sensors_timestamp_index_v1 on events (
+  json_extract(source, '$.host'), json_extract(source, '$.event_type'), timestamp);
+
 --
 -- V3 Drops
 --
