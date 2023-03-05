@@ -42,12 +42,15 @@ pub fn init_logger(level: Level) {
         }
     };
 
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    let builder = tracing_subscriber::FmtSubscriber::builder()
         .with_env_filter(format!("{level},hyper=off,tower_http=debug"))
         .with_writer(std::io::stderr)
-        .with_timer(timer)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+        .with_timer(timer);
+
+    #[cfg(target_os = "windows")]
+    let builder = builder.with_ansi(false);
+
+    tracing::subscriber::set_global_default(builder.finish()).expect("setting default subscriber failed");
 }
 
 pub fn init_stdlog() {
