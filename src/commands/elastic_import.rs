@@ -37,6 +37,7 @@ struct ElasticImportConfig {
 }
 
 pub async fn main(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    error!("elastic-import is deprecated, use the agent instead");
     let config_filename = args.get_one::<String>("config");
     let loader = crate::config::Config::new(args, config_filename.map(|x| &**x))?;
 
