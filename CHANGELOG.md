@@ -24,6 +24,8 @@
   https://github.com/jasonish/evebox/pull/221
 - [webapp] Alert graph failing to refresh on time range change:
   https://github.com/jasonish/evebox/issues/247
+- [agent] Add Elasticsearch as the submission endpoint for events.
+- [elastic-import] Deprecated, use the agent instead.
 
 ## 0.16.0 - 2022-11-12
 
