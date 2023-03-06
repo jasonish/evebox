@@ -2,17 +2,17 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::SQLiteEventStore;
+use super::SqliteEventRepo;
 use crate::prelude::*;
 use crate::{
-    datastore::{DatastoreError, StatsAggQueryParams},
+    eventrepo::{DatastoreError, StatsAggQueryParams},
     querystring::{self, QueryString},
-    sqlite::{builder::EventQueryBuilder, eventstore::nanos_to_rfc3339, format_sqlite_timestamp},
+    sqlite::{builder::EventQueryBuilder, eventrepo::nanos_to_rfc3339, format_sqlite_timestamp},
     util, LOG_QUERIES,
 };
 use rusqlite::{Connection, OptionalExtension};
 
-impl SQLiteEventStore {
+impl SqliteEventRepo {
     pub(crate) async fn histogram_time(
         &self,
         interval: Option<u64>,

@@ -66,7 +66,7 @@ pub(crate) async fn group_by(
         .group_by(&form.field, form.size, &form.order, q)
         .await
         .map_err(|err| {
-            error!("Datastore group by failed: {err}");
+            error!("Event repo group by failed: {err}");
             ApiError::InternalServerError
         })?;
     #[rustfmt::skip]

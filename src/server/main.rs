@@ -4,12 +4,12 @@
 
 use super::{ServerConfig, ServerContext};
 use crate::bookmark;
-use crate::datastore::Datastore;
 use crate::elastic;
 use crate::elastic::Client;
 use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
 use crate::eve::processor::Processor;
 use crate::eve::EveReader;
+use crate::eventrepo::EventRepo;
 use crate::prelude::*;
 use crate::server::session::Session;
 use crate::server::{api, AuthenticationType};
@@ -385,7 +385,7 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-pub async fn build_context(config: ServerConfig, datastore: Datastore) -> Result<ServerContext> {
+pub async fn build_context(config: ServerConfig, datastore: EventRepo) -> Result<ServerContext> {
     let config_repo = if let Some(directory) = &config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
         info!("Configuration database filename: {:?}", filename);
@@ -399,7 +399,7 @@ pub async fn build_context(config: ServerConfig, datastore: Datastore) -> Result
 
     #[allow(clippy::single_match)]
     match context.datastore {
-        Datastore::Elastic(_) => {
+        EventRepo::Elastic(_) => {
             context.features.comments = true;
             context.features.reporting = true;
         }
@@ -426,7 +426,7 @@ async fn wait_for_version(client: &Client) -> elastic::client::Version {
     }
 }
 
-async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
+async fn configure_datastore(config: &ServerConfig) -> Result<EventRepo> {
     match config.datastore.as_ref() {
         "elasticsearch" => {
             let mut client = elastic::ClientBuilder::new(&config.elastic_url);
@@ -457,7 +457,7 @@ async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
                 format!("{}-*", config.elastic_index)
             };
 
-            let eventstore = elastic::EventStore {
+            let eventstore = elastic::ElasticEventRepo {
                 base_index: config.elastic_index.clone(),
                 index_pattern: index_pattern,
                 client: client,
@@ -470,7 +470,7 @@ async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
                 &eventstore.index_pattern
             );
             debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
-            return Ok(Datastore::Elastic(eventstore));
+            return Ok(EventRepo::Elastic(eventstore));
         }
         "sqlite" => {
             let db_filename = if let Some(dir) = &config.data_directory {
@@ -491,7 +491,7 @@ async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
             let pool = sqlite::pool::open_pool(&db_filename).await?;
 
             let eventstore =
-                sqlite::eventstore::SQLiteEventStore::new(connection.clone(), pool, has_fts);
+                sqlite::eventrepo::SqliteEventRepo::new(connection.clone(), pool, has_fts);
 
             // Setup retention job.
             let retention_period = if let Some(p) = config.database_retention_period {
@@ -513,7 +513,7 @@ async fn configure_datastore(config: &ServerConfig) -> Result<Datastore> {
                 });
             }
 
-            return Ok(Datastore::SQLite(eventstore));
+            return Ok(EventRepo::SQLite(eventstore));
         }
         _ => panic!("unsupported datastore"),
     }

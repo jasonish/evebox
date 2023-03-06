@@ -2,16 +2,16 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::SQLiteEventStore;
+use super::SqliteEventRepo;
 use crate::{
-    datastore::{DatastoreError, EventQueryParams},
+    eventrepo::{DatastoreError, EventQueryParams},
     sqlite::builder::EventQueryBuilder,
     LOG_QUERIES,
 };
 use std::time::Instant;
 use tracing::{debug, info};
 
-impl SQLiteEventStore {
+impl SqliteEventRepo {
     pub async fn events(
         &self,
         options: EventQueryParams,

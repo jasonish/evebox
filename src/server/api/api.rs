@@ -4,9 +4,9 @@
 
 use super::genericquery::TimeRange;
 use super::util::parse_duration;
-use crate::datastore::EventQueryParams;
-use crate::datastore::{Datastore, DatastoreError};
 use crate::elastic;
+use crate::eventrepo::EventQueryParams;
+use crate::eventrepo::{DatastoreError, EventRepo};
 use crate::querystring::{Element, QueryString};
 use crate::server::api::genericquery::GenericQuery;
 use crate::server::main::SessionExtractor;
@@ -37,8 +37,8 @@ pub(crate) async fn config(
     _session: SessionExtractor,
 ) -> impl IntoResponse {
     let datastore = match context.datastore {
-        Datastore::Elastic(_) => "elasticsearch",
-        Datastore::SQLite(_) => "sqlite",
+        EventRepo::Elastic(_) => "elasticsearch",
+        EventRepo::SQLite(_) => "sqlite",
     };
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
@@ -85,8 +85,8 @@ pub(crate) async fn dhcp_ack(
         .transpose()?;
 
     let response = match &context.datastore {
-        Datastore::Elastic(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
-        Datastore::SQLite(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
+        EventRepo::Elastic(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
+        EventRepo::SQLite(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
     };
 
     #[rustfmt::skip]
@@ -180,8 +180,8 @@ pub(crate) async fn histogram_time(
     }
 
     let results = match &context.datastore {
-        Datastore::Elastic(ds) => ds.histogram_time(interval, &query_string).await,
-        Datastore::SQLite(ds) => ds.histogram_time(interval, &query_string).await,
+        EventRepo::Elastic(ds) => ds.histogram_time(interval, &query_string).await,
+        EventRepo::SQLite(ds) => ds.histogram_time(interval, &query_string).await,
     }
     .map_err(|err| {
         error!("Histogram/time error: params={:?}, error={:?}", &query, err);

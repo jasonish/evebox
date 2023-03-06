@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::datastore::Datastore;
+use crate::eventrepo::EventRepo;
 use crate::sqlite::configrepo::ConfigRepo;
 pub(crate) use main::build_axum_server;
 pub use main::build_context;
@@ -55,7 +55,7 @@ pub struct Defaults {
 
 pub struct ServerContext {
     pub config: ServerConfig,
-    pub datastore: Datastore,
+    pub datastore: EventRepo,
     pub features: Features,
     pub session_store: session::SessionStore,
     pub config_repo: Arc<ConfigRepo>,
@@ -64,7 +64,7 @@ pub struct ServerContext {
 }
 
 impl ServerContext {
-    pub fn new(config: ServerConfig, config_repo: Arc<ConfigRepo>, datastore: Datastore) -> Self {
+    pub fn new(config: ServerConfig, config_repo: Arc<ConfigRepo>, datastore: EventRepo) -> Self {
         Self {
             config: config,
             datastore,

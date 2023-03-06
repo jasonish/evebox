@@ -9,13 +9,13 @@ use super::HistoryEntry;
 use super::ACTION_ARCHIVED;
 use super::ACTION_COMMENT;
 use super::TAG_ESCALATED;
-use crate::datastore::{self, DatastoreError};
 use crate::elastic::importer::Importer;
 use crate::elastic::request::exists_filter;
 use crate::elastic::{
     format_timestamp, request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED,
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
+use crate::eventrepo::{self, DatastoreError};
 use crate::prelude::*;
 use crate::querystring::parse_timestamp;
 use crate::querystring::{self, Element, QueryString};
@@ -34,7 +34,7 @@ const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";
 
 /// Elasticsearch eventstore - for searching events.
 #[derive(Debug, Clone)]
-pub struct EventStore {
+pub struct ElasticEventRepo {
     pub base_index: String,
     pub index_pattern: String,
     pub client: Client,
@@ -42,7 +42,7 @@ pub struct EventStore {
     pub no_index_suffix: bool,
 }
 
-impl EventStore {
+impl ElasticEventRepo {
     pub fn get_importer(&self) -> Importer {
         super::importer::Importer::new(self.client.clone(), &self.base_index, false)
     }
@@ -623,7 +623,7 @@ impl EventStore {
 
     pub async fn events(
         &self,
-        params: datastore::EventQueryParams,
+        params: eventrepo::EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];

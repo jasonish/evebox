@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::datastore;
-use crate::datastore::Datastore;
+use crate::eventrepo;
+use crate::eventrepo::EventRepo;
 use crate::prelude::*;
 use crate::server::api::ApiError;
 use crate::server::main::SessionExtractor;
@@ -71,7 +71,7 @@ async fn agg(
 ) -> Result<impl IntoResponse, ApiError> {
     let duration = form.duration();
     let start_time = form.start_time().unwrap();
-    let params = datastore::StatsAggQueryParams {
+    let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
         duration,
@@ -97,7 +97,7 @@ async fn agg_differential(
 ) -> Result<impl IntoResponse, ApiError> {
     let duration = form.duration();
     let start_time = form.start_time().unwrap();
-    let params = datastore::StatsAggQueryParams {
+    let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
         duration,
@@ -121,7 +121,7 @@ pub(crate) async fn get_sensor_names(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
 ) -> Result<impl IntoResponse, ApiError> {
-    if let Datastore::Elastic(elastic) = &context.datastore {
+    if let EventRepo::Elastic(elastic) = &context.datastore {
         let sensors = elastic.get_sensors().await.map_err(|err| {
             error!("Failed to get sensors: {:?}", err);
             ApiError::InternalServerError
@@ -130,7 +130,7 @@ pub(crate) async fn get_sensor_names(
             "data": sensors,
         });
         return Ok(Json(response).into_response());
-    } else if let Datastore::SQLite(sqlite) = &context.datastore {
+    } else if let EventRepo::SQLite(sqlite) = &context.datastore {
         let sensors = sqlite.get_sensors().await.map_err(|err| {
             error!("Failed to get sensors from datastore: {:?}", err);
             ApiError::InternalServerError

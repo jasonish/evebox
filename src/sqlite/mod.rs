@@ -5,7 +5,7 @@
 pub mod builder;
 pub mod configrepo;
 pub mod connection;
-pub mod eventstore;
+pub mod eventrepo;
 pub mod importer;
 pub mod pool;
 pub mod retention;

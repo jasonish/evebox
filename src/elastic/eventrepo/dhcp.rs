@@ -2,15 +2,15 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::EventStore;
+use super::ElasticEventRepo;
 use crate::{
-    datastore::DatastoreError,
     elastic::request::{term_filter, timestamp_gte_filter},
+    eventrepo::DatastoreError,
     prelude::*,
 };
 use time::OffsetDateTime;
 
-impl EventStore {
+impl ElasticEventRepo {
     pub async fn dhcp_ack(
         &self,
         earliest: Option<OffsetDateTime>,

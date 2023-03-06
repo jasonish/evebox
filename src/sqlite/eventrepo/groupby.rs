@@ -2,9 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::SQLiteEventStore;
 use crate::{
-    datastore::DatastoreError,
+    eventrepo::DatastoreError,
     querystring::{self},
     sqlite::builder::EventQueryBuilder,
     LOG_QUERIES,
@@ -12,7 +11,9 @@ use crate::{
 use rusqlite::types::{FromSqlError, ValueRef};
 use tracing::info;
 
-impl SQLiteEventStore {
+use super::SqliteEventRepo;
+
+impl SqliteEventRepo {
     pub async fn group_by(
         &self,
         field: &str,

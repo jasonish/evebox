@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::datastore::DatastoreError;
+use crate::eventrepo::DatastoreError;
 use crate::prelude::*;
 use crate::server::api::AlertGroupSpec;
 use crate::{eve, LOG_QUERIES};
@@ -18,7 +18,7 @@ mod groupby;
 mod stats;
 
 /// SQLite implementation of the event datastore.
-pub struct SQLiteEventStore {
+pub struct SqliteEventRepo {
     pub connection: Arc<Mutex<Connection>>,
     pub importer: super::importer::Importer,
     pub pool: deadpool_sqlite::Pool,
@@ -28,7 +28,7 @@ pub struct SQLiteEventStore {
 /// A type alias over ToSql allowing us to create vectors of parameters.
 type QueryParam = dyn ToSql + Send + Sync + 'static;
 
-impl SQLiteEventStore {
+impl SqliteEventRepo {
     pub fn new(connection: Arc<Mutex<Connection>>, pool: deadpool_sqlite::Pool, fts: bool) -> Self {
         debug!("SQLite event store created: fts={fts}");
         Self {

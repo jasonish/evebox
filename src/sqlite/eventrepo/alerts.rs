@@ -2,17 +2,17 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::{QueryParam, SQLiteEventStore};
+use super::{QueryParam, SqliteEventRepo};
 use crate::{
-    datastore::DatastoreError,
     elastic::AlertQueryOptions,
+    eventrepo::DatastoreError,
     querystring::{self, Element},
     sqlite::format_sqlite_timestamp,
 };
 use crate::{prelude::*, LOG_QUERIES};
 use std::time::Instant;
 
-impl SQLiteEventStore {
+impl SqliteEventRepo {
     pub async fn alerts(
         &self,
         options: AlertQueryOptions,

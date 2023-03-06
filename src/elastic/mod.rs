@@ -2,10 +2,10 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::datastore::DatastoreError;
+use crate::eventrepo::DatastoreError;
 pub use client::Version;
 pub use client::{Client, ClientBuilder};
-pub use eventstore::EventStore;
+pub use eventrepo::ElasticEventRepo;
 pub use importer::Importer;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -14,7 +14,7 @@ use time::macros::format_description;
 use time::OffsetDateTime;
 
 pub mod client;
-pub mod eventstore;
+pub mod eventrepo;
 pub mod importer;
 pub mod request;
 pub mod template_installer;

@@ -5,7 +5,7 @@
 use crate::importer::Importer;
 use crate::server::api::{self};
 use crate::server::session::Session;
-use crate::sqlite::eventstore::SQLiteEventStore;
+use crate::sqlite::eventrepo::SqliteEventRepo;
 use crate::{elastic, querystring};
 use std::sync::Arc;
 use thiserror::Error;
@@ -24,9 +24,9 @@ pub struct EventQueryParams {
     pub query_string_elements: Vec<querystring::Element>,
 }
 
-pub enum Datastore {
-    Elastic(crate::elastic::EventStore),
-    SQLite(SQLiteEventStore),
+pub enum EventRepo {
+    Elastic(crate::elastic::ElasticEventRepo),
+    SQLite(SqliteEventRepo),
 }
 
 #[derive(Error, Debug)]
@@ -72,35 +72,35 @@ pub struct StatsAggQueryParams {
 }
 
 #[allow(unreachable_patterns)]
-impl Datastore {
+impl EventRepo {
     pub fn get_importer(&self) -> Option<Importer> {
         match self {
-            Datastore::Elastic(ds) => Some(Importer::Elastic(ds.get_importer())),
-            Datastore::SQLite(ds) => Some(Importer::SQLite(ds.get_importer())),
+            EventRepo::Elastic(ds) => Some(Importer::Elastic(ds.get_importer())),
+            EventRepo::SQLite(ds) => Some(Importer::SQLite(ds.get_importer())),
             _ => None,
         }
     }
 
     pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.archive_event_by_id(event_id).await,
-            Datastore::SQLite(ds) => ds.archive_event_by_id(event_id).await,
+            EventRepo::Elastic(ds) => ds.archive_event_by_id(event_id).await,
+            EventRepo::SQLite(ds) => ds.archive_event_by_id(event_id).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
 
     pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.escalate_event_by_id(event_id).await,
-            Datastore::SQLite(ds) => ds.escalate_event_by_id(event_id).await,
+            EventRepo::Elastic(ds) => ds.escalate_event_by_id(event_id).await,
+            EventRepo::SQLite(ds) => ds.escalate_event_by_id(event_id).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
 
     pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.deescalate_event_by_id(event_id).await,
-            Datastore::SQLite(ds) => ds.deescalate_event_by_id(event_id).await,
+            EventRepo::Elastic(ds) => ds.deescalate_event_by_id(event_id).await,
+            EventRepo::SQLite(ds) => ds.deescalate_event_by_id(event_id).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -110,8 +110,8 @@ impl Datastore {
         event_id: String,
     ) -> Result<Option<serde_json::Value>, DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.get_event_by_id(event_id).await,
-            Datastore::SQLite(ds) => ds.get_event_by_id(event_id).await,
+            EventRepo::Elastic(ds) => ds.get_event_by_id(event_id).await,
+            EventRepo::SQLite(ds) => ds.get_event_by_id(event_id).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -121,8 +121,8 @@ impl Datastore {
         options: elastic::AlertQueryOptions,
     ) -> Result<serde_json::Value, DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.alerts(options).await,
-            Datastore::SQLite(ds) => ds.alerts(options).await,
+            EventRepo::Elastic(ds) => ds.alerts(options).await,
+            EventRepo::SQLite(ds) => ds.alerts(options).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -132,8 +132,8 @@ impl Datastore {
         alert_group: api::AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.archive_by_alert_group(alert_group).await,
-            Datastore::SQLite(ds) => ds.archive_by_alert_group(alert_group).await,
+            EventRepo::Elastic(ds) => ds.archive_by_alert_group(alert_group).await,
+            EventRepo::SQLite(ds) => ds.archive_by_alert_group(alert_group).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -144,8 +144,8 @@ impl Datastore {
         session: Arc<Session>,
     ) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.escalate_by_alert_group(alert_group, session).await,
-            Datastore::SQLite(ds) => ds.escalate_by_alert_group(alert_group).await,
+            EventRepo::Elastic(ds) => ds.escalate_by_alert_group(alert_group, session).await,
+            EventRepo::SQLite(ds) => ds.escalate_by_alert_group(alert_group).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -155,8 +155,8 @@ impl Datastore {
         alert_group: api::AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.deescalate_by_alert_group(alert_group).await,
-            Datastore::SQLite(ds) => ds.deescalate_by_alert_group(alert_group).await,
+            EventRepo::Elastic(ds) => ds.deescalate_by_alert_group(alert_group).await,
+            EventRepo::SQLite(ds) => ds.deescalate_by_alert_group(alert_group).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -168,7 +168,7 @@ impl Datastore {
         username: &str,
     ) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => {
+            EventRepo::Elastic(ds) => {
                 ds.comment_by_alert_group(alert_group, comment, username)
                     .await
             }
@@ -181,8 +181,8 @@ impl Datastore {
         params: EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.events(params).await,
-            Datastore::SQLite(ds) => ds.events(params).await,
+            EventRepo::Elastic(ds) => ds.events(params).await,
+            EventRepo::SQLite(ds) => ds.events(params).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -194,7 +194,7 @@ impl Datastore {
         username: &str,
     ) -> Result<(), DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.comment_event_by_id(event_id, comment, username).await,
+            EventRepo::Elastic(ds) => ds.comment_event_by_id(event_id, comment, username).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -207,8 +207,8 @@ impl Datastore {
         q: Vec<querystring::Element>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         match self {
-            Datastore::Elastic(ds) => ds.group_by(field, size, order, q).await,
-            Datastore::SQLite(ds) => ds.group_by(field, size, order, q).await,
+            EventRepo::Elastic(ds) => ds.group_by(field, size, order, q).await,
+            EventRepo::SQLite(ds) => ds.group_by(field, size, order, q).await,
         }
     }
 }

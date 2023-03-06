@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::EventStore;
-use crate::{datastore::StatsAggQueryParams, util};
+use super::ElasticEventRepo;
+use crate::{eventrepo::StatsAggQueryParams, util};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-impl EventStore {
+impl ElasticEventRepo {
     pub async fn stats_agg(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
         let range = time::OffsetDateTime::now_utc() - params.start_time;
         let range = range.whole_seconds();

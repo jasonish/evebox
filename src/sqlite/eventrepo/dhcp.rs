@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::SQLiteEventStore;
-use crate::{datastore::DatastoreError, prelude::*, sqlite::builder::SqliteValue};
+use super::SqliteEventRepo;
+use crate::{eventrepo::DatastoreError, prelude::*, sqlite::builder::SqliteValue};
 use rusqlite::params_from_iter;
 use time::OffsetDateTime;
 
-impl SQLiteEventStore {
+impl SqliteEventRepo {
     pub async fn dhcp_ack(
         &self,
         earliest: Option<OffsetDateTime>,
