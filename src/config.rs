@@ -1,13 +1,12 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2022 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use clap::{parser::ValueSource, ArgMatches};
 use serde::de::DeserializeOwned;
 use serde_yaml::Value;
 use std::fmt::Display;
 use std::str::FromStr;
-use tracing::debug;
 
 pub struct Config<'a> {
     pub args: &'a ArgMatches,
@@ -78,15 +77,7 @@ impl<'a> Config<'a> {
     }
 
     pub fn get_string(&self, name: &str) -> Option<String> {
-        if let Some(val) = self.get_arg(name) {
-            debug!("Found {} in command line arguments: {}", name, val);
-            Some(val.to_string())
-        } else if let Some(val) = self.get_node(&self.root, name) {
-            debug!("Found {} in configuration file: {:?}", name, val);
-            Some(val.as_str().unwrap().to_string())
-        } else {
-            None
-        }
+        self.get(name).unwrap_or(None)
     }
 
     /// Return the configuration value as a boolean.
@@ -94,23 +85,8 @@ impl<'a> Config<'a> {
     /// If the value cannot be converted to a boolean an error will be returned. If the value
     /// is not found, false will be returned.
     pub fn get_bool(&self, name: &str) -> anyhow::Result<bool> {
-        // This will catch the argument set on the command line or in the environment.
-        if let Ok(Some(value)) = self.args.try_get_one::<bool>(name) {
-            return Ok(*value);
-        }
-        if let Some(val) = self.get_node(&self.root, name) {
-            // Catch "yes" and "no".
-            if let serde_yaml::Value::String(s) = val {
-                if s == "yes" {
-                    return Ok(true);
-                } else if s == "no" {
-                    return Ok(false);
-                }
-            }
-            Ok(serde_yaml::from_value(val.clone())?)
-        } else {
-            Ok(false)
-        }
+        let val = self.get(name)?;
+        Ok(val.unwrap_or(false))
     }
 
     pub fn get_arg_strings(&self, name: &str) -> Option<Vec<String>> {

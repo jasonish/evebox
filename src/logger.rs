@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
 use time::macros::format_description;
 use time::UtcOffset;
 pub use tracing::debug;
@@ -19,7 +20,7 @@ pub fn init_offset() {
     unsafe { OFFSET = Some(offset) };
 }
 
-pub fn init_logger(level: Level) {
+pub fn init_logger(level: Level) -> Result<()> {
     let level = match level {
         Level::TRACE => "trace",
         Level::DEBUG => "debug",
@@ -50,7 +51,7 @@ pub fn init_logger(level: Level) {
     #[cfg(target_os = "windows")]
     let builder = builder.with_ansi(false);
 
-    tracing::subscriber::set_global_default(builder.finish()).expect("setting default subscriber failed");
+    Ok(tracing::subscriber::set_global_default(builder.finish())?)
 }
 
 pub fn init_stdlog() {

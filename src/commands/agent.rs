@@ -8,6 +8,7 @@ use crate::bookmark;
 use crate::config::Config;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::importer::Importer;
+use crate::prelude::*;
 use clap::{CommandFactory, Parser};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -15,9 +16,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
-use tracing::debug;
-use tracing::info;
-use tracing::warn;
 
 #[derive(Parser, Debug)]
 #[command(name = "agent", about = "EveBox Agent")]
@@ -41,6 +39,39 @@ struct Args {
     #[arg(from_global, id = "data-directory")]
     data_directory: Option<String>,
 
+    /// Submit events to Elasticsearch instead of EveBox.
+    #[arg(
+        short,
+        long,
+        id = "elasticsearch.enabled",
+        env = "EVEBOX_ELASTICSEARCH_ENABLED"
+    )]
+    elasticsearch: bool,
+
+    /// Elasticsearch URL
+    #[arg(
+        long,
+        id = "elasticsearch.url",
+        value_name = "URL",
+        default_value = "http://localhost:9200",
+        env = "EVEBOX_ELASTICSEARCH_URL"
+    )]
+    elasticsearch_url: String,
+
+    /// Elasticsearch index
+    #[arg(
+        long,
+        default_value = "logstash",
+        value_name = "NAME",
+        id = "elasticsearch.index",
+        env = "EVEBOX_ELASTICSEARCH_INDEX"
+    )]
+    elasticsearch_index: String,
+
+    /// Don't use an Elasticsearch index date suffix.
+    #[arg(long, id = "elasticsearch.nodate", env = "EVEBOX_ELASTICSEARCH_NODATE")]
+    elasticsearch_nodate: bool,
+
     /// Log file names/patterns to process
     filenames: Vec<String>,
 }
@@ -49,7 +80,7 @@ pub fn command() -> clap::Command {
     Args::command()
 }
 
-pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
+pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     tokio::spawn(async move {
         tokio::signal::ctrl_c()
             .await
@@ -57,14 +88,14 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         std::process::exit(0);
     });
 
-    let config_filename = match args.get_one::<String>("config").map(|s| s.as_str()) {
+    let config_filename = match args_matches.get_one::<String>("config").map(|s| s.as_str()) {
         Some(v) => Some(v),
         None => find_config_filename(),
     };
     if let Some(filename) = config_filename {
         debug!("Using configuration file {}", filename);
     }
-    let config = Config::new(args, config_filename)?;
+    let config = Config::new(args_matches, config_filename)?;
 
     let server_url = config
         .get_string("server.url")
@@ -83,7 +114,9 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         bail!("No EVE log files provided. Exiting as there is nothing to do.");
     }
 
-    let enable_geoip = args.get_one::<bool>("geoip.enabled").map_or(false, |v| *v);
+    let enable_geoip = args_matches
+        .get_one::<bool>("geoip.enabled")
+        .map_or(false, |v| *v);
 
     // Get additional fields to add to events.
     let additional_fields = get_additional_fields(&config)?;
@@ -126,13 +159,31 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
     let mut log_runners: HashMap<String, bool> = HashMap::new();
 
-    let client = Client::new(
-        &server_url,
-        server_username.clone(),
-        server_password.clone(),
-        disable_certificate_check,
-    );
-    let importer = Importer::EveBox(EveboxImporter::new(client.clone()));
+    let importer = if config.get_bool("elasticsearch.enabled")? {
+        let url = config.get_string("elasticsearch.url").unwrap();
+        let mut client = crate::elastic::ClientBuilder::new(&url);
+        client.disable_certificate_validation(disable_certificate_check);
+        if let Some(username) = config.get_string("elasticsearch.username") {
+            client.with_username(&username);
+        }
+        if let Some(password) = config.get_string("elasticsearch.password") {
+            client.with_password(&password);
+        }
+        let nodate = config.get_bool("elasticsearch.nodate")?;
+        let index = config.get_string("elasticsearch.index").unwrap();
+        info!("Sending events to Elasticsearch: {url}, index={index}, nodate={nodate}");
+        let importer = crate::elastic::importer::Importer::new(client.build(), &index, nodate);
+        Importer::Elastic(importer)
+    } else {
+        let client = Client::new(
+            &server_url,
+            server_username,
+            server_password,
+            disable_certificate_check,
+        );
+        info!("Sending events to EveBox server: {server_url}");
+        Importer::EveBox(EveboxImporter::new(client))
+    };
 
     let bookmark_directory = config.get_string("bookmark-directory");
     if bookmark_directory.is_some() {

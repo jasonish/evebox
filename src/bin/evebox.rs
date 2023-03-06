@@ -337,7 +337,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::Level::INFO
         }
     };
-    logger::init_logger(log_level);
+    logger::init_logger(log_level)?;
     logger::init_stdlog();
 
     let rc: anyhow::Result<()> = match matches.subcommand() {

@@ -246,7 +246,7 @@ mod test {
 
     #[test]
     fn test_from_str() {
-        init_logger(tracing::Level::DEBUG);
+        init_logger(tracing::Level::DEBUG).unwrap();
 
         let yaml_string = r#"
   - action: archive

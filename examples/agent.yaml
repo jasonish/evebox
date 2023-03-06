@@ -12,6 +12,19 @@ server:
   #username: username
   #password: password
 
+# Enable output to Elasticsearch. If enabled, the above server section
+# will not be used.
+elasticsearch:
+  enabled: true
+  url: http://10.16.1.10:9200
+  index: logstash
+
+  # Set to true if the index is a datastream.
+  #nodate: false
+
+  #username: username
+  #password: password
+
 # Directory to store data and state information required by the agent. This
 # isn't always required. If the agent has write access to the log directory it
 # can store bookmark information along side the eve log files.
@@ -21,17 +34,11 @@ server:
 # self signed, certificate validation can be disabled.
 #disable-certificate-check: true
 
-# Path to log file. Only a single path is allowed at this time.
+# Path to Suricata Eve log files.
 input:
-  #filename: "/var/log/suricata/eve.json"
-
-  # The filename parameter can also contain a wildcard.
-  filename: "/var/log/suricata/eve*.json"
-
-  # If multiple paths are required, use "paths" instead of filename.
-  #paths:
-  #  - "/var/log/suricata/sensor1/eve.json"
-  #  - "/var/log/suricata/sensor2/eve.*.json"
+  paths:
+    - "/var/log/suricata/eve.json"
+    - "/var/log/suricata/eve.*.json"
 
 # Additional fields that will be added to each event. This is currently limited
 # to strings at this time.
