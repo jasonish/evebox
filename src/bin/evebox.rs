@@ -164,6 +164,12 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("end")
                 .help("Read from end (tail) of input file"),
         )
+        .arg(
+            Arg::new("sqlite")
+                .action(ArgAction::SetTrue)
+                .long("sqlite")
+                .help("Use SQLite"),
+        )
         .arg(Arg::new("input-start").long("input-start").hide(true));
 
     let oneshot = Command::new("oneshot")

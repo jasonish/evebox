@@ -59,12 +59,20 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     };
 
     let mut server_config = ServerConfig::default();
+
+    // Database type. Specific datastore type command line option
+    // takes precedence.
+    if args.get_flag("sqlite") {
+        server_config.datastore = "sqlite".to_string();
+    } else {
+        server_config.datastore = config.get("database.type")?.unwrap();
+    }
+
     server_config.port = config.get("http.port")?.unwrap();
     server_config.host = config.get("http.host")?.unwrap();
     server_config.tls_enabled = config.get_bool("http.tls.enabled")?;
     server_config.tls_cert_filename = config.get("http.tls.certificate")?;
     server_config.tls_key_filename = config.get("http.tls.key")?;
-    server_config.datastore = config.get("database.type")?.unwrap();
     server_config.elastic_url = config.get("database.elasticsearch.url")?.unwrap();
     server_config.elastic_index = config.get("database.elasticsearch.index")?.unwrap();
     server_config.elastic_no_index_suffix =
