@@ -177,6 +177,16 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
     let oneshot = Command::new("oneshot")
         .about("Import a single eve.json and review in EveBox")
         .arg(
+            // This is here just to hide -D from oneshot mode.
+            Arg::new("data-directory")
+                .long("data-directory")
+                .short('D')
+                .action(ArgAction::Set)
+                .value_name("DIR")
+                .help("Data directory")
+                .hide(true),
+        )
+        .arg(
             Arg::new("limit")
                 .long("limit")
                 .action(ArgAction::Set)

@@ -2,16 +2,14 @@
 //
 // SPDX-License-Identifier: MIT
 
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-
-use tokio::sync;
-
 use crate::config::Config;
 use crate::eve;
 use crate::geoip;
 use crate::prelude::*;
 use crate::sqlite;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use tokio::sync;
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let config_loader = Config::new(args, None)?;
