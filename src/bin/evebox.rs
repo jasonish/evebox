@@ -131,7 +131,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             Arg::new("http.tls.enabled")
-                .action(ArgAction::Set)
+                .action(ArgAction::SetTrue)
                 .long("tls")
                 .help("Enable TLS")
                 .env("EVEBOX_HTTP_TLS_ENABLED")
@@ -193,11 +193,13 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("no-open")
                 .long("no-open")
+                .action(ArgAction::SetTrue)
                 .help("Don't open browser"),
         )
         .arg(
             Arg::new("no-wait")
                 .long("no-wait")
+                .action(ArgAction::SetTrue)
                 .help("Don't wait for events to load"),
         )
         .arg(
@@ -205,6 +207,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("database-filename")
                 .action(ArgAction::Set)
                 .default_value("./oneshot.sqlite")
+                .value_name("FILENAME")
                 .help("Database filename"),
         )
         // --host, but keep th name as http.host to be campatible with the

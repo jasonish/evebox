@@ -44,7 +44,8 @@ struct Args {
         short,
         long,
         id = "elasticsearch.enabled",
-        env = "EVEBOX_ELASTICSEARCH_ENABLED"
+        env = "EVEBOX_ELASTICSEARCH_ENABLED",
+        hide_env(true)
     )]
     elasticsearch: bool,
 
@@ -54,7 +55,8 @@ struct Args {
         id = "elasticsearch.url",
         value_name = "URL",
         default_value = "http://localhost:9200",
-        env = "EVEBOX_ELASTICSEARCH_URL"
+        env = "EVEBOX_ELASTICSEARCH_URL",
+        hide_env(true)
     )]
     elasticsearch_url: String,
 
@@ -64,12 +66,18 @@ struct Args {
         default_value = "logstash",
         value_name = "NAME",
         id = "elasticsearch.index",
-        env = "EVEBOX_ELASTICSEARCH_INDEX"
+        env = "EVEBOX_ELASTICSEARCH_INDEX",
+        hide_env(true)
     )]
     elasticsearch_index: String,
 
     /// Don't use an Elasticsearch index date suffix.
-    #[arg(long, id = "elasticsearch.nodate", env = "EVEBOX_ELASTICSEARCH_NODATE")]
+    #[arg(
+        long,
+        id = "elasticsearch.nodate",
+        env = "EVEBOX_ELASTICSEARCH_NODATE",
+        hide_env(true)
+    )]
     elasticsearch_nodate: bool,
 
     /// Log file names/patterns to process
