@@ -4,6 +4,7 @@
 
 import { Button } from "solid-bootstrap";
 import { Show } from "solid-js";
+import { Transition } from "solid-transition-group";
 
 export function RefreshButton(props: {
   loading: number;
@@ -16,13 +17,31 @@ export function RefreshButton(props: {
         style={"width: 7em;"}
         disabled={props.loading > 0}
         onclick={props.refresh}
-        classList={{ "ps-0": props.loading > 0 }}
       >
-        <Show when={props.loading == 0}>Refresh</Show>
-        <Show when={props.loading > 0}>
-          Loading
-          <Show when={props.showProgress}>:{props.loading}</Show>
-        </Show>
+        <div style={"position: relative; height: 24px;"}>
+          <Transition name={"fade"}>
+            {(props.loading > 0 && (
+              <span
+                style={
+                  "position: absolute; top: 0; bottom: 0; left: 3.5em; margin-left: -3em;"
+                }
+              >
+                Loading
+                <Show when={props.showProgress}>:{props.loading}</Show>
+              </span>
+            )) || (
+              <>
+                <span
+                  style={
+                    "position: absolute; top: 0; bottom: 0; left: 3.5em; margin-left: -2.7em;"
+                  }
+                >
+                  Refresh
+                </span>
+              </>
+            )}
+          </Transition>
+        </div>
       </Button>
     </>
   );

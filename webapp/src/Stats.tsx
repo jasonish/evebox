@@ -9,10 +9,10 @@ import { timeRangeAsSeconds } from "./settings";
 import { getSensors, statsAgg } from "./api";
 import { Chart } from "chart.js";
 import { parse_timestamp } from "./datetime";
-//import "chartjs-adapter-dayjs-4";
 import { useSearchParams } from "@solidjs/router";
+import { SensorSelect } from "./common/SensorSelect";
 import { RefreshButton } from "./common/RefreshButton";
-import { SelectSensor } from "./reports/AlertsReport";
+import { trackLoading } from "./util";
 
 interface ChartConfig {
   title: string;
@@ -55,8 +55,8 @@ const CHARTS: ChartConfig[] = [
 ];
 
 export function Stats(): JSX.Element {
-  const [sensors, setSensors] = createSignal<string[]>([]);
   const [searchParams, setSearchParams] = useSearchParams<{ sensor: string }>();
+  const [loadingCounter, setLoadingCounter] = createSignal(0);
   let charts: any[] = [];
 
   onCleanup(() => {
@@ -82,15 +82,16 @@ export function Stats(): JSX.Element {
   function loadData(timeRange: undefined | number, sensor: string | undefined) {
     destroyAllCharts();
 
-    getSensors().then((response) => {
-      setSensors(response.data);
-    });
-
     console.log("Loading chart...");
 
     for (const chart of CHARTS) {
-      statsAgg(chart.field, chart.differential, timeRange, sensor).then(
-        (response) => {
+      trackLoading(setLoadingCounter, () => {
+        return statsAgg(
+          chart.field,
+          chart.differential,
+          timeRange,
+          sensor
+        ).then((response) => {
           const labels: any[] = [];
           const values: any[] = [];
           response.data.forEach((e) => {
@@ -104,8 +105,8 @@ export function Stats(): JSX.Element {
             values
           );
           charts.push(canvas);
-        }
-      );
+        });
+      });
     }
   }
 
@@ -117,13 +118,14 @@ export function Stats(): JSX.Element {
           <Col>
             <form class={"row row-cols-lg-auto align-items-center"}>
               <div class={"col-12"}>
-                <Button variant={"secondary"} onclick={refresh}>
-                  Refresh
-                </Button>
+                <RefreshButton
+                  loading={loadingCounter()}
+                  refresh={refresh}
+                  showProgress={true}
+                />
               </div>
               <div class={"col-12"}>
-                <SelectSensor
-                  sensors={sensors()}
+                <SensorSelect
                   selected={searchParams.sensor}
                   onchange={(sensor) => {
                     setSearchParams({ sensor: sensor });

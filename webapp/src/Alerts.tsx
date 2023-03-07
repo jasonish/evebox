@@ -333,16 +333,6 @@ export function Alerts() {
       });
       sortAlerts(events, sortBy, sortOrder);
       eventStore.events = events;
-      //untrack(() => {
-      // let events;
-      // untrack(() => {
-      //   events = [...eventStore.events];
-      // });
-      // sortAlerts(events, sortBy, sortOrder);
-      // eventStore.events = events;
-      //});
-
-      // sortAlerts(eventStore.events, sortBy, sortOrder);
     } else {
       console.log("**** IGNORING sort");
     }

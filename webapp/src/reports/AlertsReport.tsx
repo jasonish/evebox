@@ -9,6 +9,8 @@ import { API } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";
+import { SensorSelect } from "../common/SensorSelect";
+import { trackLoading } from "../util";
 
 interface CountValueRow {
   count: number;
@@ -68,9 +70,6 @@ export function AlertsReport() {
         scales: {
           x: {
             type: "time",
-            time: {
-              //unit: "minute",
-            },
             ticks: {
               source: "auto",
             },
@@ -157,15 +156,13 @@ export function AlertsReport() {
         q: q.length > 0 ? q.join(" ") : undefined,
       };
 
-      setLoading((n) => n + 1);
       loader.setter([]);
-      API.groupBy(request)
-        .then((response) => {
+
+      trackLoading(setLoading, () => {
+        return API.groupBy(request).then((response) => {
           loader.setter(response.rows);
-        })
-        .finally(() => {
-          setLoading((n) => n - 1);
         });
+      });
     }
   }
 
@@ -178,11 +175,14 @@ export function AlertsReport() {
           <Col>
             <form class={"row row-cols-lg-auto align-items-center"}>
               <div class={"col-12"}>
-                <RefreshButton loading={loading()} refresh={refresh} />
+                <RefreshButton
+                  loading={loading()}
+                  refresh={refresh}
+                  showProgress={true}
+                />
               </div>
               <div class={"col-12"}>
-                <SelectSensor
-                  sensors={sensors()}
+                <SensorSelect
                   selected={searchParams.sensor}
                   onchange={(sensor) => {
                     setSearchParams({ sensor: sensor });
@@ -323,36 +323,5 @@ export function CountValueTable(props: {
         </Show>
       </Card>
     </Show>
-  );
-}
-
-export function SelectSensor(props: {
-  sensors: string[];
-  selected: string;
-  onchange: (value: string | undefined) => void;
-}) {
-  return (
-    <form class={"row row-cols-lg-auto align-items-center"}>
-      <div class="input-group">
-        <label class="input-group-text">Sensor</label>
-        <select
-          class="form-select"
-          onchange={(e) => {
-            console.log("changed");
-            props.onchange(e.currentTarget.value);
-            e.currentTarget.blur();
-          }}
-        >
-          <option value={""}>All</option>
-          <For each={props.sensors}>
-            {(sensor) => (
-              <option value={sensor} selected={sensor == props.selected}>
-                {sensor}
-              </option>
-            )}
-          </For>
-        </select>
-      </div>
-    </form>
   );
 }

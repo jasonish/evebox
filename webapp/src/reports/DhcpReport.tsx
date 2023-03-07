@@ -14,52 +14,64 @@ import {
 } from "solid-bootstrap";
 import { TIME_RANGE, Top } from "../Top";
 import { API } from "../api";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, Setter, Show } from "solid-js";
 import { EventSource } from "../types";
 import { parse_timestamp } from "../datetime";
 import { A, useSearchParams } from "@solidjs/router";
+import { SensorSelect } from "../common/SensorSelect";
+import { RefreshButton } from "../common/RefreshButton";
+import { trackLoading } from "../util";
 
 export function DhcpReport() {
   const [acks, setAcks] = createSignal<EventSource[]>([]);
   const [dhcpServers, setDhcpServers] = createSignal<string[]>([]);
   const [dhcpClients, setDhcpClients] = createSignal<string[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [loading, setLoading] = createSignal(0);
+
   createEffect(() => {
     refresh();
   });
 
   function refresh() {
-    API.dhcpAck({ time_range: TIME_RANGE(), sensor: searchParams.sensor }).then(
-      (response) => {
+    trackLoading(setLoading, () => {
+      return API.dhcpAck({
+        time_range: TIME_RANGE(),
+        sensor: searchParams.sensor,
+      }).then((response) => {
         setAcks(response.events);
-      }
-    );
+      });
+    });
 
     let sensor = "";
     if (searchParams.sensor) {
       sensor = ` host:${searchParams.sensor}`;
     }
 
-    API.groupBy({
-      field: "dhcp.client_mac",
-      size: 100,
-      time_range: TIME_RANGE(),
-      order: "desc",
-      q: `event_type:dhcp dhcp.dhcp_type:request${sensor}`,
-    }).then((response) => {
-      let clients = response.rows.map((e) => e.key);
-      setDhcpClients(clients);
+    trackLoading(setLoading, () => {
+      return API.groupBy({
+        field: "dhcp.client_mac",
+        size: 100,
+        time_range: TIME_RANGE(),
+        order: "desc",
+        q: `event_type:dhcp dhcp.dhcp_type:request${sensor}`,
+      }).then((response) => {
+        let clients = response.rows.map((e) => e.key);
+        setDhcpClients(clients);
+      });
     });
 
-    API.groupBy({
-      field: "src_ip",
-      size: 100,
-      time_range: TIME_RANGE(),
-      order: "desc",
-      q: `event_type:dhcp dhcp.dhcp_type:ack${sensor}`,
-    }).then((response) => {
-      let servers = response.rows.map((e) => e.key);
-      setDhcpServers(servers);
+    trackLoading(setLoading, () => {
+      return API.groupBy({
+        field: "src_ip",
+        size: 100,
+        time_range: TIME_RANGE(),
+        order: "desc",
+        q: `event_type:dhcp dhcp.dhcp_type:ack${sensor}`,
+      }).then((response) => {
+        let servers = response.rows.map((e) => e.key);
+        setDhcpServers(servers);
+      });
     });
   }
 
@@ -81,10 +93,14 @@ export function DhcpReport() {
       <Container fluid={true}>
         <Row>
           <Col class={"pt-2 col-auto"}>
-            <Button onclick={refresh}>Refresh</Button>
+            <RefreshButton
+              loading={loading()}
+              refresh={refresh}
+              showProgress={true}
+            />
           </Col>
           <Col class={"pt-2 col-auto"}>
-            <SensorSelector
+            <SensorSelect
               onchange={(sensor) => {
                 setSearchParams({ sensor: sensor });
               }}
@@ -233,43 +249,6 @@ export function DhcpReport() {
         </Row>
       </Container>
     </>
-  );
-}
-
-export function SensorSelector(props: {
-  selected: string | undefined;
-  onchange: (value: string | undefined) => void;
-}) {
-  const [sensors, setSensors] = createSignal<string[]>([]);
-
-  createEffect(() => {
-    API.getSensors().then((response) => {
-      setSensors(response.data);
-    });
-  });
-  function setSensor(event: any) {
-    let sensor = event.currentTarget.value;
-    if (sensor === "") {
-      props.onchange(undefined);
-    } else {
-      props.onchange(sensor);
-    }
-  }
-
-  return (
-    <div class="input-group">
-      <label class="input-group-text">Sensors</label>
-      <select class="form-select" onchange={setSensor}>
-        <option value={""}>All</option>
-        <For each={sensors()}>
-          {(sensor) => (
-            <option value={sensor} selected={sensor == props.selected}>
-              {sensor}
-            </option>
-          )}
-        </For>
-      </select>
-    </div>
   );
 }
 

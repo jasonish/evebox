@@ -8,8 +8,8 @@ import { TIME_RANGE, Top } from "../Top";
 import { Card, Col, Container, Row } from "solid-bootstrap";
 import { Chart, ChartConfiguration, Colors } from "chart.js";
 import { RefreshButton } from "../common/RefreshButton";
-import { SelectSensor } from "./AlertsReport";
 import { useSearchParams } from "@solidjs/router";
+import { SensorSelect } from "../common/SensorSelect";
 
 Chart.register(Colors);
 
@@ -180,11 +180,14 @@ export function OverviewReport() {
           <Col class={"mt-2"}>
             <form class={"row row-cols-lg-auto align-items-center"}>
               <div class={"col-12"}>
-                <RefreshButton loading={loading()} refresh={refresh} />
+                <RefreshButton
+                  loading={loading()}
+                  refresh={refresh}
+                  showProgress={true}
+                />
               </div>
               <div class={"col-12"}>
-                <SelectSensor
-                  sensors={sensors()}
+                <SensorSelect
                   selected={searchParams.sensor}
                   onchange={(sensor) => {
                     setSearchParams({ sensor: sensor });
