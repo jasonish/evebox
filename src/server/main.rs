@@ -475,8 +475,6 @@ async fn configure_datastore(config: &ServerConfig) -> Result<EventRepo> {
         "sqlite" => {
             let db_filename = if let Some(dir) = &config.data_directory {
                 std::path::PathBuf::from(dir).join("events.sqlite")
-            } else if let Some(filename) = &config.sqlite_filename {
-                std::path::PathBuf::from(filename)
             } else {
                 panic!("data-directory required");
             };

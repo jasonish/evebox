@@ -115,14 +115,6 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Database type"),
         )
         .arg(
-            Arg::new("sqlite-filename")
-                .long("sqlite-filename")
-                .action(ArgAction::Set)
-                .value_name("FILENAME")
-                .default_value("events.sqlite")
-                .help("SQLite events filename"),
-        )
-        .arg(
             clap::Arg::new("no-check-certificate")
                 .action(ArgAction::SetTrue)
                 .short('k')
