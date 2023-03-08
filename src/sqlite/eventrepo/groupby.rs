@@ -49,9 +49,9 @@ impl SqliteEventRepo {
             .interact(
                 move |conn| -> Result<Vec<serde_json::Value>, DatastoreError> {
                     let tx = conn.transaction()?;
-                    let (sql, params, debug_params) = builder.build();
+                    let (sql, params) = builder.build();
                     if *LOG_QUERIES {
-                        info!("sql={}, params={:?}", &sql, debug_params);
+                        info!("sql={}, params={:?}", &sql, &params);
                     }
                     let mut st = tx.prepare(&sql)?;
                     let mut rows = st.query(rusqlite::params_from_iter(params))?;

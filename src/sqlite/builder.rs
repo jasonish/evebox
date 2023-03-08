@@ -4,8 +4,9 @@
 
 use crate::querystring::{self, Element};
 use rusqlite::{types::ToSqlOutput, ToSql};
-use std::fmt::Display;
+use std::collections::HashMap;
 
+#[derive(Debug)]
 pub(crate) enum SqliteValue {
     String(String),
     I64(i64),
@@ -20,8 +21,52 @@ impl ToSql for SqliteValue {
     }
 }
 
+impl From<i64> for SqliteValue {
+    fn from(value: i64) -> Self {
+        Self::I64(value)
+    }
+}
+
+impl From<String> for SqliteValue {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<&str> for SqliteValue {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_string())
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct NamedParams {
+    params: HashMap<String, SqliteValue>,
+}
+
+impl NamedParams {
+    pub fn new() -> Self {
+        Self {
+            params: HashMap::default(),
+        }
+    }
+
+    pub fn set<K: Into<String>, V: Into<SqliteValue>>(&mut self, key: K, val: V) {
+        self.params.insert(key.into(), val.into());
+    }
+
+    pub fn build(&self) -> Vec<(&str, &dyn ToSql)> {
+        let mut params = vec![];
+        for (k, v) in &self.params {
+            let v: &dyn ToSql = v;
+            params.push((&**k, v));
+        }
+        return params;
+    }
+}
+
 #[derive(Default)]
-pub struct EventQueryBuilder {
+pub(crate) struct EventQueryBuilder {
     /// Is FTS available?
     fts: bool,
 
@@ -31,8 +76,7 @@ pub struct EventQueryBuilder {
     group_by: Vec<String>,
     order_by: Option<(String, String)>,
     limit: i64,
-    params: Vec<Box<dyn ToSql + Send + Sync + 'static>>,
-    debug: Vec<String>,
+    params: Vec<SqliteValue>,
     fts_phrases: Vec<String>,
 }
 
@@ -81,27 +125,14 @@ impl EventQueryBuilder {
         self
     }
 
-    /// Add a parameter.
-    pub fn push_param<T>(&mut self, v: T) -> &mut Self
-    where
-        T: ToSql + Display + Send + Sync + 'static,
-    {
-        self.debug.push(v.to_string());
-        self.params.push(Box::new(v));
+    pub fn push_param<V: Into<SqliteValue>>(&mut self, val: V) -> &mut Self {
+        self.params.push(val.into());
         self
     }
 
     pub fn limit(&mut self, limit: i64) -> &mut Self {
         self.limit = limit;
         self
-    }
-
-    pub fn params(&self) -> &[Box<dyn ToSql + Send + Sync + 'static>] {
-        &self.params
-    }
-
-    pub fn debug_params(&self) -> &[String] {
-        &self.debug
     }
 
     pub fn apply_query_string(&mut self, q: &[querystring::Element]) {
@@ -188,13 +219,7 @@ impl EventQueryBuilder {
         self
     }
 
-    pub fn build(
-        mut self,
-    ) -> (
-        String,
-        Vec<Box<dyn ToSql + Send + Sync + 'static>>,
-        Vec<String>,
-    ) {
+    pub fn build(mut self) -> (String, Vec<SqliteValue>) {
         let mut sql = String::new();
 
         sql.push_str("select ");
@@ -227,6 +252,6 @@ impl EventQueryBuilder {
             sql.push_str(&format!(" limit {}", self.limit));
         }
 
-        (sql, self.params, self.debug)
+        (sql, self.params)
     }
 }

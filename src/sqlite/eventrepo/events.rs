@@ -53,10 +53,10 @@ impl SqliteEventRepo {
                         builder.order_by("events.timestamp", "DESC");
                     }
 
-                    let (sql, params, debug_params) = builder.build();
+                    let (sql, params) = builder.build();
 
                     if *LOG_QUERIES {
-                        info!("query={} args={:?}", &sql, debug_params);
+                        info!("query={} args={:?}", &sql, &params);
                     }
 
                     let tx = conn.transaction()?;

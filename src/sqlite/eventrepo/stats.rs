@@ -4,6 +4,7 @@
 
 use super::SqliteEventRepo;
 use crate::prelude::*;
+use crate::sqlite::builder::NamedParams;
 use crate::{
     eventrepo::{DatastoreError, StatsAggQueryParams},
     querystring::{self, QueryString},
@@ -11,6 +12,7 @@ use crate::{
     util, LOG_QUERIES,
 };
 use rusqlite::{Connection, OptionalExtension};
+use std::time::Instant;
 
 impl SqliteEventRepo {
     pub(crate) async fn histogram_time(
@@ -65,7 +67,12 @@ impl SqliteEventRepo {
 
                 builder.apply_query_string(&q);
 
-                let (sql, params, _) = builder.build();
+                let (sql, params) = builder.build();
+
+                if *LOG_QUERIES {
+                    info!("sql={sql}, params={:?}", &params);
+                }
+
                 let mut st = conn.prepare(&sql)?;
                 let mut rows = st.query(rusqlite::params_from_iter(params))?;
                 let mut results = vec![];
@@ -114,6 +121,7 @@ impl SqliteEventRepo {
         let interval = crate::util::histogram_interval(range);
         let result = conn
             .interact(move |conn| -> Result<Vec<(u64, u64)>, rusqlite::Error> {
+                let mut named_params = NamedParams::new();
                 let sql = r#"
                         SELECT
                             (timestamp / 1000000000 / :interval) * :interval AS a,
@@ -128,29 +136,34 @@ impl SqliteEventRepo {
                     "json_extract(events.source, '$.event_type') = 'stats'",
                     "timestamp >= :start_time",
                 ];
-                let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![
-                    (":interval", &interval),
-                    (":field", &field),
-                    (":start_time", &start_time),
-                ];
+
+                named_params.set(":interval", interval as i64);
+                named_params.set(":field", field.to_string());
+                named_params.set(":start_time", start_time);
+
                 if let Some(sensor_name) = qp.sensor_name.as_ref() {
                     filters.push("+json_extract(events.source, '$.host') = :sensor_name");
-                    params.push((":sensor_name", sensor_name));
+                    named_params.set(":sensor_name", sensor_name.as_ref());
                 }
                 let sql = sql.replace("%WHERE%", &filters.join(" AND "));
                 if *LOG_QUERIES {
-                    info!(
-                        "sql={}, interval={interval}, field={field}, start_time={start_time}",
-                        &sql
-                    );
+                    info!("sql={}, params={:?}", &sql, named_params);
                 }
+
+                let timer = Instant::now();
                 let mut stmt = conn.prepare(&sql)?;
-                let rows =
-                    stmt.query_map(params.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?;
+                let rows = stmt.query_map(named_params.build().as_slice(), |row| {
+                    Ok((row.get(0)?, row.get(1)?))
+                })?;
                 let mut entries = vec![];
                 for row in rows {
                     entries.push(row?);
                 }
+                debug!(
+                    "Returning {} stats records for {field} in {} ms",
+                    entries.len(),
+                    timer.elapsed().as_millis()
+                );
                 Ok(entries)
             })
             .await
