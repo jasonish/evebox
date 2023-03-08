@@ -6,7 +6,7 @@ use crate::querystring::{self, Element};
 use rusqlite::{types::ToSqlOutput, ToSql};
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum SqliteValue {
     String(String),
     I64(i64),

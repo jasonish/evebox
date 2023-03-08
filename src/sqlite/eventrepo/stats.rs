@@ -73,8 +73,9 @@ impl SqliteEventRepo {
                     info!("sql={sql}, params={:?}", &params);
                 }
 
+                let timer = Instant::now();
                 let mut st = conn.prepare(&sql)?;
-                let mut rows = st.query(rusqlite::params_from_iter(params))?;
+                let mut rows = st.query(rusqlite::params_from_iter(params.clone()))?;
                 let mut results = vec![];
                 while let Some(row) = rows.next()? {
                     let time: i64 = row.get(0)?;
@@ -99,6 +100,15 @@ impl SqliteEventRepo {
 					"debug": format_sqlite_timestamp(&dt)}));
                     next_time += interval as i64;
                 }
+
+                if *LOG_QUERIES {
+                    info!(
+                        "Query time: {} ms, params={:?}",
+                        timer.elapsed().as_millis(),
+                        params
+                    );
+                }
+
                 Ok(results)
             })
             .await?
