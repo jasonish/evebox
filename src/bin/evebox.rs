@@ -85,6 +85,21 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Elastic Search URL"),
         )
         .arg(
+            clap::Arg::new("database.elasticsearch.username")
+                .long("elasticsearch-username")
+                .action(ArgAction::Set)
+                .value_name("NAME")
+                .env("EVEBOX_ELASTICSEARCH_USERNAME")
+                .hide(true),
+        )
+        .arg(
+            clap::Arg::new("database.elasticsearch.password")
+                .action(ArgAction::Set)
+                .value_name("PASS")
+                .env("EVEBOX_ELASTICSEARCH_PASSWORD")
+                .hide(true),
+        )
+        .arg(
             clap::Arg::new("database.elasticsearch.index")
                 .short('i')
                 .long("index")

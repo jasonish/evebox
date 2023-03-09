@@ -5,7 +5,7 @@
 use super::{ServerConfig, ServerContext};
 use crate::bookmark;
 use crate::elastic;
-use crate::elastic::Client;
+use crate::elastic::Version;
 use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
 use crate::eve::processor::Processor;
 use crate::eve::EveReader;
@@ -418,23 +418,6 @@ pub async fn build_context(config: ServerConfig, datastore: EventRepo) -> Result
     Ok(context)
 }
 
-async fn wait_for_version(client: &Client) -> elastic::client::Version {
-    loop {
-        match client.get_version().await {
-            Err(err) => {
-                warn!(
-                    "Failed to get Elasticsearch version from {}, will try again: {:?}",
-                    client.url, err
-                );
-            }
-            Ok(version) => {
-                return version;
-            }
-        }
-        tokio::time::sleep(Duration::from_secs(3)).await;
-    }
-}
-
 async fn configure_datastore(config: &ServerConfig) -> Result<EventRepo> {
     match config.datastore.as_ref() {
         "elasticsearch" => {
@@ -449,16 +432,34 @@ async fn configure_datastore(config: &ServerConfig) -> Result<EventRepo> {
 
             let client = client.build();
 
-            let version = wait_for_version(&client).await;
-            if version.major < 6 {
-                return Err(anyhow!(
-                    "Elasticsearch versions less than 6 are not supported"
-                ));
+            let server_info = client.wait_for_info().await;
+            if matches!(
+                server_info.version.distribution.as_deref(),
+                Some("opensearch")
+            ) {
+                info!("Found Opensearch version {}", &server_info.version.number);
+                if let Ok(version) = Version::parse(&server_info.version.number) {
+                    if version.major < 2 || (version.major < 3 && version.minor < 6) {
+                        error!("Opensearch versions less than 2.6.0 not supported. EveBox likely won't work properly.");
+                    }
+                } else {
+                    error!("Failed to parse Opensearch version, EveBox likely won't work properly");
+                }
+            } else {
+                info!(
+                    "Found Elasticsearch version {}",
+                    &server_info.version.number
+                );
+                if let Ok(version) = Version::parse(&server_info.version.number) {
+                    if version.major < 7 || (version.major < 8 && version.minor < 10) {
+                        error!("Elasticsearch versions less than 7.10 not support. EveBox likely won't work properly.");
+                    }
+                } else {
+                    error!(
+                        "Failed to parse Elasticsearch version, EveBox likely won't work properly"
+                    );
+                }
             }
-            info!(
-                "Found Elasticsearch version {} at {}",
-                version.version, &config.elastic_url
-            );
 
             let index_pattern = if config.elastic_no_index_suffix {
                 config.elastic_index.clone()

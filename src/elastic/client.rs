@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2020-2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
@@ -9,6 +10,7 @@ use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::RwLock;
+use std::time::Duration;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
@@ -102,7 +104,27 @@ impl Client {
         Ok(request)
     }
 
-    #[inline(always)]
+    pub async fn get_info(&self) -> Result<InfoResponse, ClientError> {
+        Ok(self.get("/")?.send().await?.json().await?)
+    }
+
+    pub async fn wait_for_info(&self) -> InfoResponse {
+        loop {
+            match self.get_info().await {
+                Ok(response) => {
+                    return response;
+                }
+                Err(err) => {
+                    warn!(
+                        "Failed to get Elasticsearch version from {}, will try again: {:?}",
+                        self.url, err
+                    );
+                    tokio::time::sleep(Duration::from_secs(3)).await;
+                }
+            }
+        }
+    }
+
     pub async fn get_version(&self) -> Result<Version, ClientError> {
         if let Ok(version) = self.version.read() {
             if let Some(version) = &*version {
@@ -304,6 +326,22 @@ impl BulkResponse {
         }
         None
     }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct InfoResponse {
+    pub name: String,
+    pub cluster_name: String,
+    pub cluster_uuid: String,
+    pub version: InfoResponseVersion,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct InfoResponseVersion {
+    pub distribution: Option<String>,
+    pub number: String,
+    pub minimum_wire_compatibility_version: String,
+    pub minimum_index_compatibility_version: String,
 }
 
 #[cfg(test)]

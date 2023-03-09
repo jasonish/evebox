@@ -56,17 +56,12 @@ impl Importer {
         event["@timestamp"] = at_timestamp.into();
         self.auto_archive_filter.run(&mut event);
 
-        let mut header = serde_json::json!({
+        let header = serde_json::json!({
             "create": {
                 "_index": index,
                 "_id": event_id,
             }
         });
-
-        let version = self.client.get_version().await?;
-        if version.major < 7 {
-            header["create"]["_type"] = "_doc".into();
-        }
 
         self.queue.push(header.to_string());
         self.queue.push(event.to_string());
