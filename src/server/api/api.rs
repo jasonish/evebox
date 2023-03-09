@@ -97,6 +97,29 @@ pub(crate) async fn dhcp_ack(
     Ok(Json(response))
 }
 
+pub(crate) async fn dhcp_request(
+    _session: SessionExtractor,
+    State(context): State<Arc<ServerContext>>,
+    Form(query): Form<DhcpAckQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    let earliest = query
+        .time_range
+        .map(|x| x.parse_time_range_as_min_timestamp())
+        .transpose()?;
+
+    let response = match &context.datastore {
+        EventRepo::Elastic(ds) => ds.dhcp_request(earliest, query.sensor).await?,
+        EventRepo::SQLite(ds) => ds.dhcp_request(earliest, query.sensor).await?,
+    };
+
+    #[rustfmt::skip]
+    let response = json!({
+	"events": response,
+    });
+
+    Ok(Json(response))
+}
+
 pub(crate) async fn alert_group_star(
     Extension(context): Extension<Arc<ServerContext>>,
     SessionExtractor(session): SessionExtractor,

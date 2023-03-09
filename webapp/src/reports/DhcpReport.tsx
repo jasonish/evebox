@@ -35,11 +35,28 @@ export function DhcpReport() {
 
   function refresh() {
     trackLoading(setLoading, () => {
-      return API.dhcpAck({
-        time_range: TIME_RANGE(),
-        sensor: searchParams.sensor,
-      }).then((response) => {
-        setAcks(response.events);
+      const query = { time_range: TIME_RANGE(), sensor: searchParams.sensor };
+
+      return API.dhcpRequest(query).then((response) => {
+        let requestHostnames: { [key: number]: string } = {};
+        for (const event of response.events) {
+          if (event.dhcp?.hostname) {
+            requestHostnames[event.dhcp.id] = event.dhcp?.hostname;
+          }
+        }
+        return API.dhcpAck(query).then((response) => {
+          response.events.forEach((event: EventSource) => {
+            const hostname = requestHostnames[event.dhcp!.id];
+            if (hostname) {
+              if (!event.dhcp!.hostname) {
+                event.dhcp!.hostname = hostname;
+              } else if (event.dhcp!.hostname != hostname) {
+                event.dhcp!.hostname = `${event.dhcp?.hostname} (${hostname})`;
+              }
+            }
+          });
+          setAcks(response.events);
+        });
       });
     });
 

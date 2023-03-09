@@ -282,6 +282,7 @@ pub(crate) fn build_axum_service(
         )
         .route("/api/1/report/histogram/time", get(api::histogram_time))
         .route("/api/1/dhcp/ack", get(api::dhcp_ack))
+        .route("/api/1/dhcp/request", get(api::dhcp_request))
         .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
         .route("/api/1/submit", post(api::submit::handler))
         .route("/api/1/sensors", get(api::stats::get_sensor_names))

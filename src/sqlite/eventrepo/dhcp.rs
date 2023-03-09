@@ -8,21 +8,25 @@ use rusqlite::params_from_iter;
 use time::OffsetDateTime;
 
 impl SqliteEventRepo {
-    pub async fn dhcp_ack(
+    pub async fn dhcp(
         &self,
         earliest: Option<OffsetDateTime>,
+        dhcp_type: &str,
         sensor: Option<String>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
-        let mut wheres = vec!["json_extract(events.source, '$.event_type') = 'dhcp'"];
+        let mut wheres = vec![
+            "json_extract(events.source, '$.event_type') = 'dhcp'".to_string(),
+            format!("json_extract(events.source, '$.dhcp.dhcp_type') = '{dhcp_type}'"),
+        ];
         let mut params = vec![];
 
         if let Some(earliest) = earliest {
             params.push(SqliteValue::I64(earliest.unix_timestamp_nanos() as i64));
-            wheres.push("timestamp >= ?")
+            wheres.push("timestamp >= ?".to_string())
         }
 
         if let Some(sensor) = &sensor {
-            wheres.push("json_extract(events.source, '$.host') = ?");
+            wheres.push("json_extract(events.source, '$.host') = ?".to_string());
             params.push(SqliteValue::String(sensor.to_string()));
         }
 
@@ -63,5 +67,21 @@ impl SqliteEventRepo {
             .await??;
 
         Ok(events)
+    }
+
+    pub async fn dhcp_request(
+        &self,
+        earliest: Option<OffsetDateTime>,
+        sensor: Option<String>,
+    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        self.dhcp(earliest, "request", sensor).await
+    }
+
+    pub async fn dhcp_ack(
+        &self,
+        earliest: Option<OffsetDateTime>,
+        sensor: Option<String>,
+    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        self.dhcp(earliest, "ack", sensor).await
     }
 }

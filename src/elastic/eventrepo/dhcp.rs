@@ -11,9 +11,10 @@ use crate::{
 use time::OffsetDateTime;
 
 impl ElasticEventRepo {
-    pub async fn dhcp_ack(
+    pub async fn dhcp(
         &self,
         earliest: Option<OffsetDateTime>,
+        dhcp_type: &str,
         sensor: Option<String>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filters = vec![];
@@ -25,7 +26,7 @@ impl ElasticEventRepo {
             filters.push(term_filter(&self.map_field("host"), sensor));
         }
 
-        filters.push(term_filter(&self.map_field("dhcp.dhcp_type"), "ack"));
+        filters.push(term_filter(&self.map_field("dhcp.dhcp_type"), dhcp_type));
 
         #[rustfmt::skip]
         let request = json!({
@@ -62,5 +63,21 @@ impl ElasticEventRepo {
         }
 
         Ok(events)
+    }
+
+    pub async fn dhcp_request(
+        &self,
+        earliest: Option<OffsetDateTime>,
+        sensor: Option<String>,
+    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        self.dhcp(earliest, "request", sensor).await
+    }
+
+    pub async fn dhcp_ack(
+        &self,
+        earliest: Option<OffsetDateTime>,
+        sensor: Option<String>,
+    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        self.dhcp(earliest, "ack", sensor).await
     }
 }
