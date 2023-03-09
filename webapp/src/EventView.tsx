@@ -657,7 +657,7 @@ export function EventView() {
                   <Card.Body class={"p-0"}>
                     <table
                       class={
-                        "table table-sm table-striped table-bordered detail-table"
+                        "mb-0 table table-sm table-striped table-bordered detail-table"
                       }
                     >
                       <tbody>
@@ -699,7 +699,7 @@ export function EventView() {
                             <Card.Body class={"p-0"}>
                               <table
                                 class={
-                                  "table table-sm table-striped table-bordered detail-table"
+                                  "mb-0 table table-sm table-striped table-bordered detail-table"
                                 }
                               >
                                 <tbody>
@@ -739,7 +739,7 @@ export function EventView() {
                             <Tab eventKey={t.key} title={t.title}>
                               <table
                                 class={
-                                  "table table-sm table-striped table-bordered detail-table"
+                                  "mb-0 table table-sm table-striped table-bordered detail-table"
                                 }
                               >
                                 <tbody>
@@ -815,7 +815,7 @@ export function EventView() {
                 <Card.Body class="p-0">
                   <table
                     class={
-                      "table table-sm table-striped table-bordered detail-table"
+                      "mb-0 table table-sm table-striped table-bordered detail-table"
                     }
                   >
                     <tbody>
