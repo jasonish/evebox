@@ -29,11 +29,13 @@ export function setTheme(name: string) {
       e.innerHTML = dark;
       name = "dark";
       Chart.defaults.color = "#fff";
+      document.getElementsByTagName("body")[0].className = "dark";
       break;
     default:
       e.innerHTML = light;
       name = "light";
       Chart.defaults.color = "#666";
+      document.getElementsByTagName("body")[0].className = "light";
       break;
   }
   document.body.appendChild(e);

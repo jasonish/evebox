@@ -98,3 +98,10 @@ $enable-smooth-scroll: false;
     color: green;
   }
 }
+
+.light {
+  .event-detail-card a:link,
+  .event-detail-card a:visited {
+    color: #2e3236;
+  }
+}

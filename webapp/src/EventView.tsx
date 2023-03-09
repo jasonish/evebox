@@ -8,9 +8,11 @@ import {
   createEffect,
   createSignal,
   For,
+  Match,
   onCleanup,
   onMount,
   Show,
+  Switch,
   untrack,
 } from "solid-js";
 import { API, getEventById } from "./api";
@@ -43,6 +45,7 @@ import { eventNameFromType } from "./Events";
 import { EventServiceConfig, serverConfig } from "./config";
 import { createStore } from "solid-js/store";
 import { BiInfoCircle } from "./icons";
+import { SearchLink } from "./common/SearchLink";
 
 const PCAP_BUTTON_STYLE =
   "--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .7rem;";
@@ -685,53 +688,85 @@ export function EventView() {
             </Row>
           </Show>
 
-          {/* Object Cards */}
-          <Row>
-            <For each={[objectColumns.col1, objectColumns.col2]}>
-              {(col) => (
-                <>
-                  <Col class={"col-sm-12 col-md-6"}>
-                    <For each={col}>
-                      {(o) => (
-                        <>
-                          <Card class={"mb-2"}>
-                            <Card.Header>{o.title}</Card.Header>
-                            <Card.Body class={"p-0"}>
-                              <table
-                                class={
-                                  "mb-0 table table-sm table-striped table-bordered detail-table"
-                                }
-                              >
-                                <tbody>
-                                  <For each={o.rows}>
-                                    {(e) => (
-                                      <>
-                                        <tr>
-                                          <td>{e.key}</td>
-                                          <td class="force-wrap">{e.val}</td>
-                                        </tr>
-                                      </>
-                                    )}
-                                  </For>
-                                </tbody>
-                              </table>
-                            </Card.Body>
-                          </Card>
-                        </>
-                      )}
-                    </For>
-                  </Col>
-                </>
-              )}
-            </For>
-          </Row>
-
           {/* Tabbed? */}
           <Row>
             <Col class={"mb-2"}>
               <Card class={""} style={""}>
                 <Card.Body class={"p-0"}>
-                  <Tabs defaultActiveKey={event()?._source.event_type}>
+                  <Tabs defaultActiveKey={"All"}>
+                    <Tab eventKey="All" title="All">
+                      {/* Object Cards */}
+                      <Row>
+                        <For each={[objectColumns.col1, objectColumns.col2]}>
+                          {(col) => (
+                            <>
+                              <Col class={"col-sm-12 col-md-6"}>
+                                <For each={col}>
+                                  {(o) => (
+                                    <>
+                                      <Card class={"m-2 event-detail-card"}>
+                                        <Card.Header>{o.title}</Card.Header>
+                                        <Card.Body class={"p-0"}>
+                                          <table
+                                            class={
+                                              "mb-0 table table-sm table-striped table-bordered detail-table"
+                                            }
+                                          >
+                                            <tbody>
+                                              <For each={o.rows}>
+                                                {(e) => (
+                                                  <>
+                                                    <tr>
+                                                      <td>{e.key}</td>
+                                                      <td class="force-wrap">
+                                                        <Switch
+                                                          fallback={
+                                                            <SearchLink
+                                                              value={e.val}
+                                                            >
+                                                              {e.val}
+                                                            </SearchLink>
+                                                          }
+                                                        >
+                                                          <Match
+                                                            when={
+                                                              o.key ==
+                                                                "alert" &&
+                                                              e.key == "rule"
+                                                            }
+                                                          >
+                                                            <SearchLink
+                                                              field={
+                                                                "alert.signature"
+                                                              }
+                                                              value={
+                                                                event()?._source
+                                                                  .alert
+                                                                  ?.signature
+                                                              }
+                                                            >
+                                                              {e.val}
+                                                            </SearchLink>
+                                                          </Match>
+                                                        </Switch>
+                                                      </td>
+                                                    </tr>
+                                                  </>
+                                                )}
+                                              </For>
+                                            </tbody>
+                                          </table>
+                                        </Card.Body>
+                                      </Card>
+                                    </>
+                                  )}
+                                </For>
+                              </Col>
+                            </>
+                          )}
+                        </For>
+                      </Row>
+                    </Tab>
                     <For each={displayObjects()}>
                       {(t, i) => {
                         return (
@@ -750,7 +785,32 @@ export function EventView() {
                                           <th class={""} style={"width: 1%;"}>
                                             {e.key}
                                           </th>
-                                          <td class="force-wrap">{e.val}</td>
+                                          <td class="force-wrap">
+                                            <Switch
+                                              fallback={
+                                                <SearchLink value={e.val}>
+                                                  {e.val}
+                                                </SearchLink>
+                                              }
+                                            >
+                                              <Match
+                                                when={
+                                                  t.key == "alert" &&
+                                                  e.key == "rule"
+                                                }
+                                              >
+                                                <SearchLink
+                                                  field={"alert.signature"}
+                                                  value={
+                                                    event()?._source.alert
+                                                      ?.signature
+                                                  }
+                                                >
+                                                  {e.val}
+                                                </SearchLink>
+                                              </Match>
+                                            </Switch>
+                                          </td>
                                         </tr>
                                       </>
                                     )}
@@ -929,17 +989,6 @@ function toPrettyHex(data: string): [string, string][] {
   return output;
 }
 
-function InfoCard(props: any) {
-  return (
-    <>
-      <div class={"card"}>
-        <div class={"card-header"}>{props.title}</div>
-        <div class={"card-body"}>{props.children}</div>
-      </div>
-    </>
-  );
-}
-
 function formatTitle(event: Event): string {
   return `${event._source.event_type.toUpperCase()}: ${formatEventDescription(
     event
@@ -981,7 +1030,7 @@ function flattenJson(
       default:
         const full_key = key_prefix.join(".");
         if (!full_key.startsWith("__private.")) {
-          output.push({ key: key_prefix.join("."), val: val.toString() });
+          output.push({ key: key_prefix.join("."), val: val });
         }
         break;
     }
@@ -1028,19 +1077,19 @@ function Base64BufferCard(props: {
           <span class={"float-end"}>{props.addOn}</span>
         </Show>
       </Card.Header>
-      <Card.Body>
+      <Card.Body class={"p-2"}>
         <Row>
           <Col md={12} xl={6} class={"pb-2"}>
             <Card>
-              <Card.Body>
+              <Card.Body class={"p-2"}>
                 <pre class={"force-wrap"}>{atob(props.buffer)}</pre>
               </Card.Body>
             </Card>
           </Col>
           <Col md={12} xl={6}>
             <Card>
-              <Card.Body>
-                <table class={"table table-borderless table-striped"}>
+              <Card.Body class={"p-2"}>
+                <table class={"m-0 table table-borderless table-striped"}>
                   <tbody>
                     <For each={toPrettyHex(atob(props.buffer))}>
                       {(e) => (

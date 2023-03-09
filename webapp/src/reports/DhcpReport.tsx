@@ -21,6 +21,7 @@ import { A, useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { RefreshButton } from "../common/RefreshButton";
 import { trackLoading } from "../util";
+import { RawSearchLink, SearchLink } from "../common/SearchLink";
 
 export function DhcpReport() {
   const [acks, setAcks] = createSignal<EventSource[]>([]);
@@ -267,26 +268,4 @@ export function DhcpReport() {
       </Container>
     </>
   );
-}
-
-function SearchLink(props: { children?: any; field?: string; value: any }) {
-  let q;
-  switch (typeof props.value) {
-    case "number":
-      q = encodeURIComponent(
-        `${props.field ? props.field + ":" : ""}${props.value}`
-      );
-      break;
-    default:
-      q = encodeURIComponent(
-        `${props.field ? props.field + ":" : ""}"${props.value}"`
-      );
-      break;
-  }
-  return <A href={`/events?q=${q}`}>{props.children || props.value}</A>;
-}
-
-function RawSearchLink(props: { children: any; q: string }) {
-  const encoded = encodeURIComponent(props.q);
-  return <A href={`/events?q=${encoded}`}>{props.children}</A>;
 }
