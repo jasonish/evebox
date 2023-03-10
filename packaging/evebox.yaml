@@ -15,6 +15,9 @@ database:
     ## change the index to "filebeat".
     #index: logstash
 
+    # If using the Filebeat Suricata module this needs to be true.
+    #ecs: false
+
     ## If your Elasticsearch is using a self-signed certificate,
     ## you'll likely need to set this to true.
     #disable-certificate-check: false
