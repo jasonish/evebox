@@ -9,6 +9,10 @@ export function SearchLink(props: {
   field?: string;
   value: any;
 }) {
+  if (props.value === undefined) {
+    return <></>;
+  }
+
   let q;
   switch (typeof props.value) {
     case "number":
@@ -18,7 +22,12 @@ export function SearchLink(props: {
       );
       break;
     default:
-      let value = props.value.replaceAll('"', '\\"');
+      let value;
+      try {
+        value = props.value.replaceAll('"', '\\"');
+      } catch (_err) {
+        console.log(`Failed to escape ${props.value}`);
+      }
       q = encodeURIComponent(
         `${props.field ? props.field + ":" : ""}"${value}"`
       );
