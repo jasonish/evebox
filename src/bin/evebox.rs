@@ -102,6 +102,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             clap::Arg::new("database.elasticsearch.password")
+                .long("elasticsearch-password")
                 .action(ArgAction::Set)
                 .value_name("PASS")
                 .env("EVEBOX_ELASTICSEARCH_PASSWORD")
@@ -126,6 +127,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("database.elasticsearch.ecs")
                 .action(ArgAction::SetTrue)
                 .long("ecs")
+                .env("EVEBOX_ELASTICSEARCH_ECS")
                 .help("Enable Elastic ECS support"),
         )
         .arg(
