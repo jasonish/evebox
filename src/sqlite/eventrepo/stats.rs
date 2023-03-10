@@ -132,27 +132,28 @@ impl SqliteEventRepo {
         let result = conn
             .interact(move |conn| -> Result<Vec<(u64, u64)>, rusqlite::Error> {
                 let mut named_params = NamedParams::new();
-                let sql = r#"
+                let sql = format!(
+                    "
                         SELECT
-                            (timestamp / 1000000000 / :interval) * :interval AS a,
+                            (timestamp / 1000000000 / {interval}) * {interval} AS a,
                             MAX(json_extract(events.source, :field))
                         FROM events
                         WHERE %WHERE%
                         GROUP BY a
                         ORDER BY a
-                    "#;
+                    "
+                );
 
                 let mut filters = vec![
                     "json_extract(events.source, '$.event_type') = 'stats'",
                     "timestamp >= :start_time",
                 ];
 
-                named_params.set(":interval", interval as i64);
                 named_params.set(":field", field.to_string());
                 named_params.set(":start_time", start_time);
 
                 if let Some(sensor_name) = qp.sensor_name.as_ref() {
-                    filters.push("+json_extract(events.source, '$.host') = :sensor_name");
+                    filters.push("json_extract(events.source, '$.host') = :sensor_name");
                     named_params.set(":sensor_name", sensor_name.as_ref());
                 }
                 let sql = sql.replace("%WHERE%", &filters.join(" AND "));
