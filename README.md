@@ -1,8 +1,10 @@
-# EveBox [![Documentation Status](https://readthedocs.org/projects/evebox/badge/?version=latest)](https://evebox.readthedocs.io/en/latest/?badge=latest)
+# EveBox
 
 EveBox is a web based Suricata "EVE" event viewer for Elastic Search.
 
-![EveBox](https://evebox.org/inbox.png)
+- Homepage and documentation: https://evebox.org
+
+![EveBox](https://evebox.org/img/evebox-inbox-dark.png)
 
 ## Features
 
@@ -39,7 +41,7 @@ Example:
 Then visit http://localhost:5636 with your browser.
 
 Available downloads including RPM and Debian package repositories can be found
-at [https://evebox.org/downloads](https://evebox.org/downloads).
+at [https://evebox.org/#downloads](https://evebox.org/#downloads).
 
 ### SELKS
 
