@@ -990,9 +990,13 @@ function toPrettyHex(data: string): [string, string][] {
 }
 
 function formatTitle(event: Event): string {
-  return `${event._source.event_type.toUpperCase()}: ${formatEventDescription(
-    event
-  )}`;
+  try {
+    return `${event._source.event_type.toUpperCase()}: ${formatEventDescription(
+      event
+    )}`;
+  } catch (err) {
+    return JSON.strinfigy(event);
+  }
 }
 
 function bgClassForSeverity(event: Event) {

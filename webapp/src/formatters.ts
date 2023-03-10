@@ -184,7 +184,11 @@ export function formatEventDescription(event: Event): string {
     }
     case "ssh": {
       const ssh = event._source.ssh;
-      return `${ssh?.client.software_version}/${ssh?.client.proto_version} => ${ssh?.server.software_version}/${ssh?.server.proto_version}`;
+      return `${ssh?.client?.software_version || "Unknown"}/${
+        ssh?.client?.proto_version || "Unknown"
+      } => ${ssh?.server?.software_version || "Unknown"}/${
+        ssh?.server?.proto_version || "Unknown"
+      }`;
     }
     case "stats": {
       const stats = event._source.stats!;
