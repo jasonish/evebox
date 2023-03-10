@@ -346,12 +346,12 @@ export function EventView() {
     let ev = event();
     if (ev) {
       if (isAggregateAlert()) {
-        API.escalateAggregateAlert(ev);
+        void API.escalateAggregateAlert(ev);
+        ev._metadata!.escalated_count = ev._metadata!.count;
       } else {
-        API.escalateEvent(ev);
+        void API.escalateEvent(ev);
       }
       eventSetEscalated(ev);
-      ev._metadata!.escalated_count = ev._metadata!.count;
       setEvent({ ...ev });
     }
   }
@@ -360,12 +360,12 @@ export function EventView() {
     let ev = event();
     if (ev) {
       if (isAggregateAlert()) {
-        API.deEscalateAggregateAlert(ev);
+        void API.deEscalateAggregateAlert(ev);
+        ev._metadata!.escalated_count = 0;
       } else {
-        API.deEscalateEvent(ev);
+        void API.deEscalateEvent(ev);
       }
       eventUnsetEscalated(ev);
-      ev._metadata!.escalated_count = 0;
       setEvent({ ...ev });
     }
   }
@@ -995,7 +995,7 @@ function formatTitle(event: Event): string {
       event
     )}`;
   } catch (err) {
-    return JSON.strinfigy(event);
+    return JSON.stringify(event);
   }
 }
 
