@@ -12,13 +12,13 @@ export function SearchLink(props: {
   let q;
   switch (typeof props.value) {
     case "number":
+    case "boolean":
       q = encodeURIComponent(
         `${props.field ? props.field + ":" : ""}${props.value}`
       );
       break;
     default:
       let value = props.value.replaceAll('"', '\\"');
-      console.log(value);
       q = encodeURIComponent(
         `${props.field ? props.field + ":" : ""}"${value}"`
       );
