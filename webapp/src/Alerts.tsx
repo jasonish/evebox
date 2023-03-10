@@ -8,7 +8,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "@solidjs/router";
-import { TIME_RANGE, Top } from "./Top";
+import { SET_TIME_RANGE, TIME_RANGE, Top } from "./Top";
 import {
   Badge,
   Button,
@@ -105,6 +105,11 @@ export function Alerts() {
   let bindings: any = null;
   let view: View | undefined = undefined;
 
+  // If this is the escalated view we'll move to the "All" time range. The time
+  // range upon entering the escalated view is stored here and will be returned
+  // to when we leave the escalated view.
+  let savedTimeRange: undefined | string = undefined;
+
   switch (location.pathname) {
     case "/inbox":
       view = View.Inbox;
@@ -126,6 +131,13 @@ export function Alerts() {
   onMount(() => {
     const logger = new Logger("Alerts.onMount");
     logger.log("Start");
+
+    if (view == View.Escalated) {
+      untrack(() => {
+        savedTimeRange = TIME_RANGE();
+        SET_TIME_RANGE("");
+      });
+    }
 
     bindings = tinykeys(window, {
       j: () => {
@@ -240,6 +252,11 @@ export function Alerts() {
       bindings();
     }
     idleTimer.stop();
+    untrack(() => {
+      if (savedTimeRange) {
+        SET_TIME_RANGE(savedTimeRange);
+      }
+    });
   });
 
   function getOffset(): number {
@@ -340,9 +357,9 @@ export function Alerts() {
   });
 
   function refresh() {
-    // Run untracked. Other effects will watch for the required changes and call as needed.
-    //
-    // This is to avoid being called on first load unless needed.
+    // Run untracked. Other effects will watch for the required changes and
+    // call as needed.  This is to avoid being called on first load unless
+    // needed.
     untrack(() => {
       const logger = new Logger("Alerts.refreshEvents", true);
       let params: any = {
