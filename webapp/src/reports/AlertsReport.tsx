@@ -11,6 +11,7 @@ import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { trackLoading } from "../util";
+import { SearchLink } from "../common/SearchLink";
 
 interface CountValueRow {
   count: number;
@@ -24,9 +25,12 @@ export function AlertsReport() {
     []
   );
   const [mostDestAddrs, setMostDestAddrs] = createSignal<CountValueRow[]>([]);
+  const [leastSourceAddrs, setLeastSourcesAddrs] = createSignal<
+    CountValueRow[]
+  >([]);
+  const [leastDestAddrs, setLeastDestAddrs] = createSignal<CountValueRow[]>([]);
   const [loading, setLoading] = createSignal(0);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [sensors, setSensors] = createSignal<string[]>(["a", "b", "c"]);
 
   let histogram: any = undefined;
 
@@ -87,10 +91,6 @@ export function AlertsReport() {
     console.log("AlertsReport.refresh");
     const timeRange = TIME_RANGE();
 
-    API.getSensors().then((response) => {
-      setSensors(response.data);
-    });
-
     let queryString = [];
     if (searchParams.q) {
       queryString.push(searchParams);
@@ -140,6 +140,18 @@ export function AlertsReport() {
         q: "event_type:alert",
         order: "desc",
         setter: setMostDestAddrs,
+      },
+      {
+        field: "src_ip",
+        q: "event_type:alert",
+        order: "asc",
+        setter: setLeastSourcesAddrs,
+      },
+      {
+        field: "dest_ip",
+        q: "event_type:alert",
+        order: "asc",
+        setter: setLeastDestAddrs,
       },
     ];
 
@@ -268,6 +280,7 @@ export function AlertsReport() {
             <CountValueTable
               title={"Most Alerting Source Addresses"}
               label={"Address"}
+              searchField={"@ip"}
               rows={mostSourceAddrs()}
             />
           </Col>
@@ -275,7 +288,27 @@ export function AlertsReport() {
             <CountValueTable
               title={"Most Alerting Destination Addresses"}
               label={"Address"}
+              searchField={"@ip"}
               rows={mostDestAddrs()}
+            />
+          </Col>
+        </Row>
+
+        <Row>
+          <Col class={"mt-2"}>
+            <CountValueTable
+              title={"Least Alerting Source Addresses"}
+              label={"Address"}
+              searchField={"@ip"}
+              rows={leastSourceAddrs()}
+            />
+          </Col>
+          <Col class={"mt-2"}>
+            <CountValueTable
+              title={"Least Alerting Destination Addresses"}
+              label={"Address"}
+              searchField={"@ip"}
+              rows={leastDestAddrs()}
             />
           </Col>
         </Row>
@@ -284,12 +317,27 @@ export function AlertsReport() {
   );
 }
 
+// Creates a table where the first column is a count, and the second column is value.
 export function CountValueTable(props: {
   title: string;
   label: string;
+  searchField?: string;
   rows: { count: number; key: any }[];
 }) {
   const showNoData = true;
+
+  function searchLink(value: any) {
+    if (props.searchField) {
+      return (
+        <SearchLink value={value} field={props.searchField}>
+          {value}
+        </SearchLink>
+      );
+    } else {
+      return <SearchLink value={value}>{value}</SearchLink>;
+    }
+  }
+
   return (
     <Show when={showNoData || props.rows.length > 0}>
       <Card>
@@ -304,7 +352,7 @@ export function CountValueTable(props: {
             <Table size={"sm"} hover striped>
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th style={"width: 6em;"}>#</th>
                   <th>{props.label}</th>
                 </tr>
               </thead>
@@ -312,8 +360,8 @@ export function CountValueTable(props: {
                 <For each={props.rows}>
                   {(row) => (
                     <tr>
-                      <td>{row.count}</td>
-                      <td>{row.key}</td>
+                      <td style={"width: 6em;"}>{row.count}</td>
+                      <td>{searchLink(row.key)}</td>
                     </tr>
                   )}
                 </For>
