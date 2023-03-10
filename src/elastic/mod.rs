@@ -17,7 +17,6 @@ pub mod client;
 pub mod eventrepo;
 pub mod importer;
 pub mod request;
-pub mod template_installer;
 
 pub const ACTION_ARCHIVED: &str = "archived";
 pub const ACTION_ESCALATED: &str = "escalated";

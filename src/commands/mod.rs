@@ -5,7 +5,6 @@
 pub mod agent;
 pub mod config;
 pub mod elastic;
-pub mod elastic_import;
 pub mod oneshot;
 pub mod print;
 pub mod sqlite;

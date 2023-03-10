@@ -22,6 +22,14 @@ fn main() {
 }
 
 async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(command) = std::env::args().nth(1) {
+        if command == "elastic-import" {
+            logger::init_logger(tracing::Level::INFO).unwrap();
+            error!("elastic-import has been deprecated. The Agent can now be used to send events to Elasticsearch.");
+            std::process::exit(1);
+        }
+    }
+
     let parser = clap::Command::new("EveBox")
         .version(std::env!("CARGO_PKG_VERSION"))
         .color(clap::ColorChoice::Always)
@@ -237,113 +245,8 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .arg(Arg::new("INPUT").required(true).index(1));
 
-    let elastic_import = Command::new("elastic-import")
-        .about("Import to Elastic Search")
-        .arg(
-            Arg::new("config")
-                .short('c')
-                .long("config")
-                .action(ArgAction::Set)
-                .help("Configuration file"),
-        )
-        .arg(
-            Arg::new("oneshot")
-                .long("oneshot")
-                .action(ArgAction::SetTrue)
-                .help("One shot mode (exit on EOF)"),
-        )
-        .arg(Arg::new("end").long("end").help("Start at end of file"))
-        .arg(
-            clap::Arg::new("elasticsearch")
-                .short('e')
-                .long("elasticsearch")
-                .action(ArgAction::Set)
-                .default_value("http://localhost:9200")
-                .hide_default_value(true)
-                .help("Elastic Search URL"),
-        )
-        .arg(
-            Arg::new("index")
-                .long("index")
-                .action(ArgAction::Set)
-                .default_value("logstash")
-                .hide_default_value(true)
-                .help("Elastic Search index prefix"),
-        )
-        .arg(
-            Arg::new("no-index-suffix")
-                .long("no-index-suffix")
-                .action(ArgAction::SetTrue)
-                .help("Do not add a suffix to the index name"),
-        )
-        .arg(
-            Arg::new("bookmark")
-                .long("bookmark")
-                .help("Enable bookmarking"),
-        )
-        .arg(
-            Arg::new("bookmark-filename")
-                .long("bookmark-filename")
-                .action(ArgAction::Set)
-                .default_value("")
-                .hide_default_value(true)
-                .help("Bookmark filename"),
-        )
-        .arg(
-            Arg::new("bookmark-dir")
-                .long("bookmark-dir")
-                .action(ArgAction::Set)
-                .default_value(".")
-                .hide_default_value(true)
-                .help("Bookmark directory"),
-        )
-        .arg(
-            Arg::new("stdout")
-                .long("stdout")
-                .help("Print events to stdout"),
-        )
-        .arg(
-            Arg::new("username")
-                .long("username")
-                .short('u')
-                .action(ArgAction::Set)
-                .help("Elasticsearch username"),
-        )
-        .arg(
-            Arg::new("password")
-                .long("password")
-                .short('p')
-                .action(ArgAction::Set)
-                .help("Elasticsearch password"),
-        )
-        .arg(
-            clap::Arg::new(evebox::commands::elastic_import::NO_CHECK_CERTIFICATE)
-                .short('k')
-                .long("no-check-certificate")
-                .help("Disable TLS certificate validation"),
-        )
-        .arg(
-            Arg::new("geoip.disabled")
-                .long("no-geoip")
-                .help("Disable GeoIP"),
-        )
-        .arg(
-            Arg::new("geoip.database-filename")
-                .long("geoip-database")
-                .action(ArgAction::Set)
-                .value_name("filename")
-                .help("GeoIP database filename"),
-        )
-        .arg(
-            Arg::new("input")
-                .action(ArgAction::Append)
-                .value_name("INPUT")
-                .index(1),
-        );
-
     let mut parser = parser
         .subcommand(server)
-        .subcommand(elastic_import)
         .subcommand(oneshot)
         .subcommand(evebox::commands::agent::command())
         .subcommand(evebox::commands::config::config_subcommand())
@@ -373,13 +276,6 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(("version", _)) => {
             version::print_version();
-            Ok(())
-        }
-        Some(("elastic-import", args)) => {
-            if let Err(err) = evebox::commands::elastic_import::main(args).await {
-                error!("{}", err);
-                std::process::exit(1);
-            }
             Ok(())
         }
         Some(("oneshot", args)) => evebox::commands::oneshot::main(args).await,
