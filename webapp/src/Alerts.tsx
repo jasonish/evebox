@@ -1017,6 +1017,16 @@ export function AlertDescription(props: { event: EventWrapper }) {
         <Badge class={"bg-warning me-1"}>{alert.action.toUpperCase()}</Badge>
       </Show>
       {alert.signature}
+      <Show
+        when={
+          props.event._source.tags &&
+          props.event._source.tags.indexOf("evebox.auto-archived") > -1
+        }
+      >
+        <Badge bg={"secondary"} class={"ms-2"}>
+          auto-archived
+        </Badge>
+      </Show>
       <AppProtoBadge event={props.event} class={"ms-2"} />
     </>
   );
