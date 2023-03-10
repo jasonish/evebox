@@ -3,13 +3,11 @@
 // SPDX-License-Identifier: MIT
 
 use crate::prelude::*;
-use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::sync::RwLock;
 use std::time::Duration;
 
 #[derive(Debug, thiserror::Error)]
@@ -30,18 +28,15 @@ pub struct Client {
     disable_certificate_validation: bool,
     username: Option<String>,
     password: Option<String>,
-    pub version: RwLock<Option<Version>>,
 }
 
 impl Clone for Client {
     fn clone(&self) -> Self {
-        let version = self.version.read().unwrap();
         Self {
             url: self.url.clone(),
             disable_certificate_validation: self.disable_certificate_validation,
             username: self.username.clone(),
             password: self.password.clone(),
-            version: RwLock::new(version.clone()),
         }
     }
 }
@@ -123,37 +118,6 @@ impl Client {
                 }
             }
         }
-    }
-
-    pub async fn get_version(&self) -> Result<Version, ClientError> {
-        if let Ok(version) = self.version.read() {
-            if let Some(version) = &*version {
-                return Ok(version.clone());
-            }
-        }
-
-        let r = self.get("")?.send().await?;
-        let status_code = r.status();
-        if status_code != StatusCode::OK {
-            let body = r.text().await?;
-            let err = format!("{} -- {}", status_code.as_u16(), body.trim());
-            return Err(ClientError::String(err));
-        }
-
-        let body = r.text().await?;
-        let response: super::ElasticResponse = serde_json::from_str(&body)?;
-        if let Some(error) = response.error {
-            return Err(ClientError::String(error.reason));
-        }
-        if response.version.is_none() {
-            return Err(ClientError::String(
-                "request for version did not return a version".to_string(),
-            ));
-        }
-        let version = Version::parse(&response.version.unwrap().number)?;
-        let mut locked = self.version.write().unwrap();
-        *locked = Some(version.clone());
-        Ok(version)
     }
 
     pub async fn put_template(&self, name: &str, template: String) -> Result<(), ClientError> {
@@ -285,7 +249,6 @@ impl ClientBuilder {
             disable_certificate_validation: self.disable_certificate_validation,
             username: self.username.clone(),
             password: self.password.clone(),
-            version: RwLock::new(None),
         }
     }
 }

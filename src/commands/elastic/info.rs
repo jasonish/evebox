@@ -8,9 +8,9 @@ use crate::elastic::{self, Client};
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let url = args.get_one::<String>("elasticsearch").unwrap();
     let client = Client::new(url);
-    let version = client.get_version().await?;
+    let server_info = client.get_info().await?;
     let ignore_dot = true;
-    println!("Elasticsearch version: {}", version.version);
+    println!("Elasticsearch version: {}", server_info.version.number);
 
     let indices = client.get_indices().await?;
     for index in indices.keys() {
