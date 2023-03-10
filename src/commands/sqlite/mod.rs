@@ -9,7 +9,7 @@ use crate::sqlite::{
 use anyhow::Result;
 use clap::CommandFactory;
 use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
-use std::fs::File;
+use std::{fs::File, time::Instant};
 use tracing::info;
 
 mod fts;
@@ -215,12 +215,13 @@ fn load(args: &LoadArgs) -> Result<()> {
 
 fn query(filename: &str, sql: &str) -> Result<()> {
     let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
+    let timer = Instant::now();
     let mut st = conn.prepare(sql)?;
     let mut rows = st.query([])?;
     let mut count = 0;
     while let Some(_row) = rows.next()? {
         count += 1;
     }
-    println!("Query returned {count} rows");
+    println!("Query returned {count} rows in {:?}", timer.elapsed());
     Ok(())
 }
