@@ -48,15 +48,6 @@ database:
     # If using the Filebeat Suricata module this needs to be true.
     #ecs: false
 
-    # The keyword to use for terms query. EveBox will do its best to
-    # figure this out on its own, but if you need to override it, you
-    # can do so here. The usual values are:
-    #    raw     -> Logstash / Elastic Search < 5.
-    #    keyword -> Logstash / Elastic Search >= 5.
-    #    ""      -> Filebeat / Elastic Search >= 5.
-    # Note that a quoted empty string is required to force an empty string.
-    #keyword: ""
-
     #username: username
     #password: password
 
