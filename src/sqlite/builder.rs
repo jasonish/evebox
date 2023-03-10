@@ -193,6 +193,9 @@ impl EventQueryBuilder {
                         self.push_param(ip.to_string());
                     }
                     self.push_where(format!("({})", ors.join(" OR ")));
+                    if self.fts {
+                        self.push_fts(ip);
+                    }
                 }
             }
         }
