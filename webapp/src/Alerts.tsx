@@ -8,7 +8,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "@solidjs/router";
-import { SET_TIME_RANGE, TIME_RANGE, Top } from "./Top";
+import { _SET_TIME_RANGE, SET_TIME_RANGE, TIME_RANGE, Top } from "./Top";
 import {
   Badge,
   Button,
@@ -135,7 +135,7 @@ export function Alerts() {
     if (view == View.Escalated) {
       untrack(() => {
         savedTimeRange = TIME_RANGE();
-        SET_TIME_RANGE("");
+        _SET_TIME_RANGE("");
       });
     }
 
@@ -254,6 +254,7 @@ export function Alerts() {
     idleTimer.stop();
     untrack(() => {
       if (savedTimeRange) {
+        console.log("Restoring time range of " + savedTimeRange);
         SET_TIME_RANGE(savedTimeRange);
       }
     });

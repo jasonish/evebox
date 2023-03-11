@@ -64,8 +64,13 @@ function getInitialTimeRange(): string {
 }
 
 /* START: Init TIME_RANGE */
-export const [TIME_RANGE, SET_TIME_RANGE] =
+export const [TIME_RANGE, _SET_TIME_RANGE] =
   createSignal<string>(DEFAULT_TIME_RANGE);
+
+export function SET_TIME_RANGE(range: string) {
+  _SET_TIME_RANGE(range);
+  localStorage.setItem("TIME_RANGE", range);
+}
 
 export function Top(props: { brand?: string; disableRange?: boolean }) {
   console.log("Top");
@@ -78,12 +83,7 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
   // in the dropdown will not cause the dropdown to close.
   let [toolDropDownOpen, setToolDropDownOpen] = createSignal(false);
 
-  SET_TIME_RANGE(getInitialTimeRange());
-
-  function updateTimeRange(range: string) {
-    SET_TIME_RANGE(range);
-    localStorage.setItem("TIME_RANGE", range);
-  }
+  _SET_TIME_RANGE(getInitialTimeRange());
 
   onMount(() => {
     tinykeys(window, {
@@ -208,7 +208,7 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
                             <>
                               <Dropdown.Item
                                 onClick={(e) => {
-                                  updateTimeRange(o[0] as string);
+                                  SET_TIME_RANGE(o[0] as string);
                                   e.currentTarget.blur();
                                 }}
                               >
