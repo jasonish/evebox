@@ -2,7 +2,7 @@
 
 # Server information.
 server:
-  url: http://10.16.1.10:5636
+  url: http://127.0.0.1:5636
 
   # Username and password. Note that at this time even with
   # authentication enabled on the EveBox server, agents can still
@@ -16,7 +16,7 @@ server:
 # will not be used.
 elasticsearch:
   enabled: true
-  url: http://10.16.1.10:9200
+  url: http://127.0.0.1:9200
   index: logstash
 
   # Set to true if the index is a datastream.
