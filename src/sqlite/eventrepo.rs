@@ -203,7 +203,7 @@ impl SqliteEventRepo {
         })
         .await
         .unwrap()?;
-        info!("Escalated {n} alerts in alert group");
+        debug!("Escalated {n} alerts in alert group");
 
         Ok(())
     }
@@ -251,7 +251,7 @@ impl SqliteEventRepo {
         })
         .await
         .unwrap()?;
-        info!("De-escalated {n} alerts in alert group");
+        debug!("De-escalated {n} alerts in alert group");
         Ok(())
     }
 

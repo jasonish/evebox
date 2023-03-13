@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync;
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
-    let config_loader = Config::new(args, None)?;
+    let config_loader = Config::new(args.clone(), None)?;
     let limit: u64 = config_loader.get("limit")?.unwrap_or(0);
     let no_open: bool = config_loader.get_bool("no-open")?;
     let no_wait: bool = config_loader.get_bool("no-wait")?;

@@ -8,13 +8,14 @@ use serde_yaml::Value;
 use std::fmt::Display;
 use std::str::FromStr;
 
-pub struct Config<'a> {
-    pub args: &'a ArgMatches,
+#[derive(Clone)]
+pub struct Config {
+    pub args: ArgMatches,
     root: Value,
 }
 
-impl<'a> Config<'a> {
-    pub fn new(args: &'a clap::ArgMatches, filename: Option<&str>) -> anyhow::Result<Self> {
+impl Config {
+    pub fn new(args: clap::ArgMatches, filename: Option<&str>) -> anyhow::Result<Self> {
         let root = if let Some(filename) = filename {
             Self::load_file(filename)?
         } else {
@@ -124,7 +125,7 @@ impl<'a> Config<'a> {
 
     /// Suppress clippy warning for another day...
     #[allow(clippy::only_used_in_recursion)]
-    pub fn get_node(&self, root: &'a Value, name: &str) -> Option<&'a Value> {
+    pub fn get_node<'a>(&self, root: &'a Value, name: &str) -> Option<&'a Value> {
         let parts: Vec<&str> = name.splitn(2, '.').collect();
         let key = Value::String(parts[0].to_string());
         if let Value::Mapping(map) = root {

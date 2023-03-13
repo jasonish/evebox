@@ -103,7 +103,7 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     if let Some(filename) = config_filename {
         debug!("Using configuration file {}", filename);
     }
-    let config = Config::new(args_matches, config_filename)?;
+    let config = Config::new(args_matches.clone(), config_filename)?;
 
     let server_url = config
         .get_string("server.url")

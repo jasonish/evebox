@@ -16,6 +16,7 @@ pub mod config;
 mod elastic;
 pub mod eve;
 mod eventrepo;
+pub(crate) mod file;
 pub mod geoip;
 pub mod importer;
 pub mod packet;

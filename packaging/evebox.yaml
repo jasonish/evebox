@@ -27,8 +27,14 @@ database:
     #username:
     #password:
 
-  ## Retention period in days. 7 days is the default. Set to 0 to
-  ## disable.
-  ##
-  ## NOTE: Only applies to SQLite at this time.
-  #retention-period: 7
+  retention:
+    # Only keep events for the past 7 days.
+    # - SQLite only
+    # - Default 7 days
+    # - Set to 0 to disable
+    #days: 7
+
+    # Maximum database size.
+    # - SQLite only
+    # - No default
+    #size: "20 GB"

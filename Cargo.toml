@@ -64,6 +64,7 @@ webbrowser = "0.8.7"
 yaml-rust = "0.4.5"
 futures = "0.3.21"
 regex = "1.5.5"
+libc = { version = "0.2.140", default_features = false }
 
 [patch.crates-io]
 # Patch Rusqlite for now. 0.28.0 uses SQLite 3.39, but 3.40 is much

@@ -26,6 +26,8 @@
   https://github.com/jasonish/evebox/issues/247
 - [agent] Add Elasticsearch as the submission endpoint for events.
 - [elastic-import] Deprecated, use the agent instead.
+- [sqlite] Database file size based event retention:
+  https://github.com/jasonish/evebox/issues/256
 
 ## 0.16.0 - 2022-11-12
 

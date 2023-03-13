@@ -37,12 +37,15 @@ impl ConnectionBuilder {
 
 pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
     let auto_vacuum = get_auto_vacuum(db)?;
-    if auto_vacuum == 0 {
+    if auto_vacuum == 2 {
+        info!("Change auto-vacuum from incremental to full");
         enable_auto_vacuum(db)?;
-        if get_auto_vacuum(db)? == 0 {
-            info!("Auto-vacuum not enabled");
-        }
+    } else if auto_vacuum == 0 {
+        info!("Attempting to enable auto-vacuum");
+        enable_auto_vacuum(db)?;
     }
+    let auto_vacuum = get_auto_vacuum(db)?;
+    info!("Auto-vacuum: {auto_vacuum}");
 
     // Set WAL mode.
     let mode = db.pragma_update_and_check(None, "journal_mode", "WAL", |row| {
@@ -151,7 +154,7 @@ pub(crate) fn get_auto_vacuum(db: &Connection) -> Result<u8, rusqlite::Error> {
 }
 
 fn enable_auto_vacuum(db: &Connection) -> Result<(), rusqlite::Error> {
-    db.pragma_update(Some(DatabaseName::Main), "auto_vacuum", 2)
+    db.pragma_update(Some(DatabaseName::Main), "auto_vacuum", 1)
 }
 
 pub(crate) fn get_journal_mode(db: &Connection) -> Result<String, rusqlite::Error> {

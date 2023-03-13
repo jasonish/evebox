@@ -4,6 +4,7 @@
 
 use super::{ServerConfig, ServerContext};
 use crate::bookmark;
+use crate::config::Config;
 use crate::elastic;
 use crate::elastic::Version;
 use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
@@ -47,7 +48,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     // Load the configuration file if provided.
     let config_filename = args.get_one::<String>("config").map(|s| &**s);
-    let config = match crate::config::Config::new(args, config_filename) {
+    let config = match crate::config::Config::new(args.clone(), config_filename) {
         Err(err) => {
             error!(
                 "Failed to load configuration: {:?} - filename={:?}",
@@ -81,7 +82,6 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     server_config.elastic_username = config.get("database.elasticsearch.username")?;
     server_config.elastic_password = config.get("database.elasticsearch.password")?;
     server_config.data_directory = config.get("data-directory")?;
-    server_config.database_retention_period = config.get("database.retention-period")?;
     server_config.no_check_certificate = config
         .get_bool("database.elasticsearch.disable-certificate-check")?
         || config.get_bool("no-check-certificate")?;
@@ -121,7 +121,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         std::process::exit(0);
     });
 
-    let datastore = configure_datastore(&server_config).await?;
+    let datastore = configure_datastore(config.clone(), &server_config).await?;
     let mut context = build_context(server_config.clone(), datastore).await?;
 
     if let Some(filename) = config_filename {
@@ -418,17 +418,17 @@ pub async fn build_context(config: ServerConfig, datastore: EventRepo) -> Result
     Ok(context)
 }
 
-async fn configure_datastore(config: &ServerConfig) -> Result<EventRepo> {
-    match config.datastore.as_ref() {
+async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Result<EventRepo> {
+    match server_config.datastore.as_ref() {
         "elasticsearch" => {
-            let mut client = elastic::ClientBuilder::new(&config.elastic_url);
-            if let Some(username) = &config.elastic_username {
+            let mut client = elastic::ClientBuilder::new(&server_config.elastic_url);
+            if let Some(username) = &server_config.elastic_username {
                 client.with_username(username);
             }
-            if let Some(password) = &config.elastic_password {
+            if let Some(password) = &server_config.elastic_password {
                 client.with_password(password);
             }
-            client.disable_certificate_validation(config.no_check_certificate);
+            client.disable_certificate_validation(server_config.no_check_certificate);
 
             let client = client.build();
 
@@ -461,18 +461,18 @@ async fn configure_datastore(config: &ServerConfig) -> Result<EventRepo> {
                 }
             }
 
-            let index_pattern = if config.elastic_no_index_suffix {
-                config.elastic_index.clone()
+            let index_pattern = if server_config.elastic_no_index_suffix {
+                server_config.elastic_index.clone()
             } else {
-                format!("{}-*", config.elastic_index)
+                format!("{}-*", server_config.elastic_index)
             };
 
             let eventstore = elastic::ElasticEventRepo {
-                base_index: config.elastic_index.clone(),
+                base_index: server_config.elastic_index.clone(),
                 index_pattern: index_pattern,
                 client: client,
-                ecs: config.elastic_ecs,
-                no_index_suffix: config.elastic_no_index_suffix,
+                ecs: server_config.elastic_ecs,
+                no_index_suffix: server_config.elastic_no_index_suffix,
             };
             debug!("Elasticsearch base index: {}", &eventstore.base_index);
             debug!(
@@ -483,7 +483,7 @@ async fn configure_datastore(config: &ServerConfig) -> Result<EventRepo> {
             return Ok(EventRepo::Elastic(eventstore));
         }
         "sqlite" => {
-            let db_filename = if let Some(dir) = &config.data_directory {
+            let db_filename = if let Some(dir) = &server_config.data_directory {
                 std::path::PathBuf::from(dir).join("events.sqlite")
             } else {
                 panic!("data-directory required");
@@ -501,25 +501,8 @@ async fn configure_datastore(config: &ServerConfig) -> Result<EventRepo> {
             let eventstore =
                 sqlite::eventrepo::SqliteEventRepo::new(connection.clone(), pool, has_fts);
 
-            // Setup retention job.
-            let retention_period = if let Some(p) = config.database_retention_period {
-                p
-            } else {
-                warn!("No event retention period set, defaulting to 7 days");
-                7
-            };
-            if retention_period == 0 {
-                warn!("Event retention period disabled. This is not recommended for SQLite");
-            } else {
-                info!("Setting data retention period to {} days", retention_period);
-                let retention_config = sqlite::retention::RetentionConfig {
-                    days: retention_period,
-                };
-                let connection = connection;
-                tokio::task::spawn_blocking(|| {
-                    sqlite::retention::retention_task(retention_config, connection);
-                });
-            }
+            // Start retention task.
+            sqlite::retention::start_retention_task(config.clone(), connection.clone())?;
 
             return Ok(EventRepo::SQLite(eventstore));
         }

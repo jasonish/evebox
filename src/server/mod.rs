@@ -66,11 +66,11 @@ pub struct ServerContext {
 impl ServerContext {
     pub fn new(config: ServerConfig, config_repo: Arc<ConfigRepo>, datastore: EventRepo) -> Self {
         Self {
-            config: config,
+            config,
             datastore,
             features: Features::default(),
             session_store: SessionStore::new(),
-            config_repo: config_repo,
+            config_repo,
             event_services: None,
             defaults: Defaults::default(),
         }
@@ -96,7 +96,6 @@ pub struct ServerConfig {
     pub data_directory: Option<String>,
     pub authentication_required: bool,
     pub authentication_type: AuthenticationType,
-    pub database_retention_period: Option<u64>,
     pub http_reverse_proxy: bool,
     pub http_request_logging: bool,
 }
