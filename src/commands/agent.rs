@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: MIT
 
 use crate::agent::client::Client;
-use crate::agent::importer::EveboxImporter;
+use crate::agent::importer::EveBoxEventSink;
 use crate::bookmark;
 use crate::config::Config;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
-use crate::importer::Importer;
+use crate::importer::EventSink;
 use crate::prelude::*;
 use clap::{CommandFactory, Parser};
 use futures::stream::FuturesUnordered;
@@ -180,8 +180,9 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         let nodate = config.get_bool("elasticsearch.nodate")?;
         let index = config.get_string("elasticsearch.index").unwrap();
         info!("Sending events to Elasticsearch: {url}, index={index}, nodate={nodate}");
-        let importer = crate::elastic::importer::Importer::new(client.build(), &index, nodate);
-        Importer::Elastic(importer)
+        let importer =
+            crate::elastic::importer::ElasticEventSink::new(client.build(), &index, nodate);
+        EventSink::Elastic(importer)
     } else {
         let client = Client::new(
             &server_url,
@@ -190,7 +191,7 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
             disable_certificate_check,
         );
         info!("Sending events to EveBox server: {server_url}");
-        Importer::EveBox(EveboxImporter::new(client))
+        EventSink::EveBox(EveBoxEventSink::new(client))
     };
 
     let bookmark_directory = config.get_string("bookmark-directory");
@@ -235,12 +236,12 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
 
 fn start_runner(
     filename: &str,
-    importer: Importer,
+    importer: EventSink,
     bookmark_directory: Option<String>,
     mut filters: Vec<EveFilter>,
 ) -> JoinHandle<()> {
     let mut end = false;
-    let reader = crate::eve::reader::EveReader::new(filename);
+    let reader = crate::eve::reader::EveReader::new(filename.into());
     let bookmark_filename = get_bookmark_filename(filename, bookmark_directory);
     if let Some(bookmark_filename) = &bookmark_filename {
         info!("Using bookmark file: {:?}", bookmark_filename);

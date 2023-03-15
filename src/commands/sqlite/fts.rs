@@ -102,6 +102,10 @@ fn reindex_fts(tx: &Transaction) -> Result<usize> {
             "insert into fts (rowid, timestamp, source_values) values (?, ?, ?)",
             params![rowid, timestamp, &flat],
         )?;
+        tx.execute(
+            "insert into fts2 (rowid, timestamp, source_values) values (?, ?, ?)",
+            params![rowid, timestamp, &flat],
+        )?;
 
         count += 1;
     }

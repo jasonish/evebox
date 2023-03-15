@@ -10,7 +10,7 @@
 use crate::bookmark;
 use crate::eve::filters::EveFilter;
 use crate::eve::reader::EveReader;
-use crate::importer::Importer;
+use crate::importer::EventSink;
 use crate::prelude::*;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -20,7 +20,7 @@ const DEFAULT_BATCH_SIZE: usize = 100;
 
 pub struct Processor {
     pub reader: EveReader,
-    pub importer: Importer,
+    pub importer: EventSink,
     pub filters: Arc<Vec<EveFilter>>,
     pub bookmark_filename: Option<PathBuf>,
     pub report_interval: Duration,
@@ -36,7 +36,7 @@ pub struct Processor {
 }
 
 impl Processor {
-    pub fn new(reader: EveReader, importer: Importer) -> Self {
+    pub fn new(reader: EveReader, importer: EventSink) -> Self {
         Self {
             reader,
             importer,

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::importer::Importer;
+use crate::importer::EventSink;
 use crate::server::api::{self};
 use crate::server::session::Session;
 use crate::sqlite::eventrepo::SqliteEventRepo;
@@ -73,11 +73,10 @@ pub struct StatsAggQueryParams {
 
 #[allow(unreachable_patterns)]
 impl EventRepo {
-    pub fn get_importer(&self) -> Option<Importer> {
+    pub fn get_importer(&self) -> Option<EventSink> {
         match self {
-            EventRepo::Elastic(ds) => Some(Importer::Elastic(ds.get_importer())),
-            EventRepo::SQLite(ds) => Some(Importer::SQLite(ds.get_importer())),
-            _ => None,
+            EventRepo::Elastic(ds) => ds.get_importer().map(EventSink::Elastic),
+            EventRepo::SQLite(ds) => Some(EventSink::SQLite(ds.get_importer())),
         }
     }
 

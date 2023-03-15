@@ -9,7 +9,7 @@ use crate::prelude::*;
 use time::macros::format_description;
 
 #[derive(Clone, Debug)]
-pub struct Importer {
+pub struct ElasticEventSink {
     index: String,
     queue: Vec<String>,
     client: crate::elastic::Client,
@@ -17,7 +17,7 @@ pub struct Importer {
     auto_archive_filter: AutoArchiveFilter,
 }
 
-impl Importer {
+impl ElasticEventSink {
     pub fn new(client: crate::elastic::Client, index: &str, no_index_suffix: bool) -> Self {
         Self {
             index: index.to_string(),

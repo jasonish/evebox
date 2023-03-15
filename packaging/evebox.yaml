@@ -38,3 +38,13 @@ database:
     # - SQLite only
     # - No default
     #size: "20 GB"
+
+# The server can process events itself when using SQLite or a classic
+# Logstash style Elasticsearch template.
+input:
+  enabled: false
+
+  # Suricata EVE file patterns to look for and read.
+  paths:
+    - "/var/log/suricata/eve.json"
+    - "/var/log/suricata/eve.*.json"

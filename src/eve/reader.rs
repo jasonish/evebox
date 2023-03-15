@@ -10,6 +10,7 @@ use std::io::Seek;
 use std::io::SeekFrom;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
+use std::path::PathBuf;
 
 #[derive(thiserror::Error, Debug)]
 pub enum EveReaderError {
@@ -26,7 +27,7 @@ impl From<std::io::Error> for EveReaderError {
 }
 
 pub struct EveReader {
-    pub filename: String,
+    pub filename: PathBuf,
     line: String,
     reader: Option<BufReader<std::fs::File>>,
     lineno: u64,
@@ -34,9 +35,9 @@ pub struct EveReader {
 }
 
 impl EveReader {
-    pub fn new(filename: &str) -> Self {
+    pub fn new(filename: PathBuf) -> Self {
         Self {
-            filename: filename.to_string(),
+            filename: filename,
             line: String::new(),
             reader: None,
             lineno: 0,
@@ -159,7 +160,7 @@ impl EveReader {
                 }
                 Ok(meta) => {
                     let metadata = Metadata {
-                        filename: self.filename.clone(),
+                        filename: self.filename.display().to_string(),
                         lineno: self.lineno,
                         size: meta.len(),
                         inode: self.inode(&meta),

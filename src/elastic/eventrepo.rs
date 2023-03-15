@@ -9,7 +9,7 @@ use super::HistoryEntry;
 use super::ACTION_ARCHIVED;
 use super::ACTION_COMMENT;
 use super::TAG_ESCALATED;
-use crate::elastic::importer::Importer;
+use crate::elastic::importer::ElasticEventSink;
 use crate::elastic::request::exists_filter;
 use crate::elastic::{
     format_timestamp, request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED,
@@ -43,8 +43,16 @@ pub struct ElasticEventRepo {
 }
 
 impl ElasticEventRepo {
-    pub fn get_importer(&self) -> Importer {
-        super::importer::Importer::new(self.client.clone(), &self.base_index, false)
+    pub fn get_importer(&self) -> Option<ElasticEventSink> {
+        if self.ecs {
+            None
+        } else {
+            Some(super::importer::ElasticEventSink::new(
+                self.client.clone(),
+                &self.base_index,
+                false,
+            ))
+        }
     }
 
     async fn post<T: Serialize + ?Sized>(

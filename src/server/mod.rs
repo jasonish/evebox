@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 pub mod api;
 mod asset;
-mod main;
+pub(crate) mod main;
 mod rejection;
 mod response;
 pub mod session;

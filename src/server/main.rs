@@ -7,9 +7,8 @@ use crate::bookmark;
 use crate::config::Config;
 use crate::elastic;
 use crate::elastic::Version;
-use crate::eve::filters::{AddRuleFilter, EveBoxMetadataFilter};
-use crate::eve::processor::Processor;
-use crate::eve::EveReader;
+use crate::eve::filters::{AddFieldFilter, AddRuleFilter};
+use crate::eve::watcher::EvePatternWatcher;
 use crate::eventrepo::EventRepo;
 use crate::prelude::*;
 use crate::server::session::Session;
@@ -27,10 +26,10 @@ use axum::routing::{get, post};
 use axum::{async_trait, TypedHeader};
 use axum::{Router, Server};
 use hyper::server::conn::AddrIncoming;
+use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tower_http::trace::TraceLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 use tracing::Level;
@@ -135,98 +134,64 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         }
     }
 
-    let input_enabled = {
-        if config.args.contains_id("input.filename") {
-            true
-        } else {
-            config.get_bool("input.enabled")?
+    if is_input_enabled(&config) {
+        let input_patterns = get_input_patterns(&config)?;
+        if input_patterns.is_empty() {
+            bail!("EVE input enabled, but no paths provided");
         }
-    };
+        let sink = context.datastore.get_importer().ok_or(anyhow!(
+            "An event importer is not implemented for this datastore"
+        ))?;
 
-    // This needs some cleanup. We load the input file names here, but configure
-    // it later down.  Also, the filters (rules) are unlikely required if we
-    // don't have an input enabled.
-    let input_filenames = if input_enabled {
-        let input_filename: Option<String> = config.get("input.filename")?;
-        let mut input_filenames = Vec::new();
-        if let Some(input_filename) = &input_filename {
-            for path in crate::path::expand(input_filename)? {
-                let path = path.display().to_string();
-                input_filenames.push(path);
+        let mut filters = Vec::new();
+
+        match config.get_config_value::<Vec<String>>("input.rules") {
+            Ok(Some(rules)) => {
+                let rulemap = crate::rules::load_rules(&rules);
+                let rulemap = Arc::new(rulemap);
+                filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
+                    AddRuleFilter {
+                        map: rulemap.clone(),
+                    },
+                ));
+                crate::rules::watch_rules(rulemap);
+            }
+            Ok(None) => {}
+            Err(err) => {
+                error!("Failed to read input.rules configuration: {}", err);
             }
         }
-        input_filenames
-    } else {
-        Vec::new()
-    };
 
-    let mut shared_filters = Vec::new();
+        filters.push(crate::eve::filters::EveFilter::AutoArchiveFilter(
+            crate::eve::filters::AutoArchiveFilter::default(),
+        ));
 
-    match config.get_config_value::<Vec<String>>("input.rules") {
-        Ok(Some(rules)) => {
-            let rulemap = crate::rules::load_rules(&rules);
-            let rulemap = Arc::new(rulemap);
-            shared_filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
-                AddRuleFilter {
-                    map: rulemap.clone(),
-                },
-            ));
-            crate::rules::watch_rules(rulemap);
+        let additional_fields: Option<HashMap<String, serde_yaml::Value>> =
+            config.get_value("input.additional-fields")?;
+        if let Some(fields) = additional_fields {
+            for (k, v) in fields {
+                let v = serde_json::from_str(&serde_json::to_string(&v)?)?;
+                let filter = AddFieldFilter::new(k, v);
+                filters.push(crate::eve::filters::EveFilter::AddFieldFilter(filter));
+            }
         }
-        Ok(None) => {}
-        Err(err) => {
-            error!("Failed to read input.rules configuration: {}", err);
-        }
-    }
 
-    shared_filters.push(crate::eve::filters::EveFilter::AutoArchiveFilter(
-        crate::eve::filters::AutoArchiveFilter::default(),
-    ));
-
-    let shared_filters = Arc::new(shared_filters);
-
-    for input_filename in &input_filenames {
         let end = config.get_bool("end")?;
+
         let bookmark_directory: Option<String> = config.get_string("input.bookmark-directory");
-        let bookmark_filename = get_bookmark_filename(
-            input_filename,
-            bookmark_directory.as_deref(),
-            server_config.data_directory.as_deref(),
+        let data_directory = server_config.data_directory.clone();
+        let watcher = EvePatternWatcher::new(
+            input_patterns,
+            sink,
+            filters,
+            end,
+            bookmark_directory,
+            data_directory,
         );
-        info!(
-            "Using bookmark filename {:?} for input {:?}",
-            bookmark_filename, input_filename
-        );
-
-        let importer = if let Some(importer) = context.datastore.get_importer() {
-            importer
-        } else {
-            error!("No importer implementation for this database.");
-            std::process::exit(1);
-        };
-
-        let filters = vec![
-            crate::eve::filters::EveFilter::Filters(shared_filters.clone()),
-            EveBoxMetadataFilter {
-                filename: Some(input_filename.clone()),
-            }
-            .into(),
-        ];
-
-        let reader = EveReader::new(input_filename);
-        let mut processor = Processor::new(reader, importer.clone());
-        processor.report_interval = Duration::from_secs(60);
-        processor.filters = Arc::new(filters);
-        processor.end = end;
-        processor.bookmark_filename = bookmark_filename;
-        info!("Starting reader for {}", input_filename);
-        tokio::spawn(async move {
-            processor.run().await;
-        });
+        watcher.run();
     }
 
     let context = Arc::new(context);
-
     info!(
         "Starting server on {}:{}, tls={}",
         server_config.host, server_config.port, server_config.tls_enabled
@@ -242,6 +207,24 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+fn is_input_enabled(config: &Config) -> bool {
+    config.args.contains_id("input.filename") || config.get_bool("input.enabled").unwrap_or(false)
+}
+
+fn get_input_patterns(config: &Config) -> Result<Vec<String>> {
+    let mut input_pattern_set = HashSet::new();
+    if let Some(filename) = config.get::<String>("input.filename")? {
+        input_pattern_set.insert(filename);
+    }
+    if let Some(paths) = config.get_value::<Vec<String>>("input.paths")? {
+        for path in &paths {
+            input_pattern_set.insert(path.clone());
+        }
+    }
+    let input_patterns: Vec<String> = input_pattern_set.iter().map(|s| s.to_string()).collect();
+    Ok(input_patterns)
 }
 
 pub(crate) fn build_axum_service(
@@ -618,8 +601,8 @@ where
     }
 }
 
-fn get_bookmark_filename(
-    input_filename: &str,
+pub(crate) fn get_bookmark_filename<P: AsRef<Path> + Clone>(
+    input_filename: P,
     input_bookmark_dir: Option<&str>,
     data_directory: Option<&str>,
 ) -> Option<PathBuf> {
@@ -630,7 +613,7 @@ fn get_bookmark_filename(
 
     // Otherwise see if there is a file with the same name as the input filename but
     // suffixed with ".bookmark".
-    let legacy_filename = format!("{input_filename}.bookmark");
+    let legacy_filename = format!("{}.bookmark", input_filename.as_ref().display());
     if let Ok(_meta) = std::fs::metadata(&legacy_filename) {
         warn!(
             "Found legacy bookmark file, checking if writable: {}",
@@ -652,7 +635,7 @@ fn get_bookmark_filename(
 
     // Do we have a global data-directory, and is it writable?
     if let Some(directory) = data_directory {
-        let bookmark_filename = bookmark::bookmark_filename(input_filename, directory);
+        let bookmark_filename = bookmark::bookmark_filename(input_filename.clone(), directory);
         debug!("Checking {:?} for writability", &bookmark_filename);
         if let Err(err) = test_writable(&bookmark_filename) {
             error!("{:?} not writable: {}", &bookmark_filename, err);

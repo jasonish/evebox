@@ -30,7 +30,9 @@ pub mod unix {
             }
             #[allow(clippy::unnecessary_cast)]
             let block_size = sfs.f_bsize as u64;
+            #[allow(clippy::unnecessary_cast)]
             let bytes_total = sfs.f_blocks as u64 * block_size;
+            #[allow(clippy::unnecessary_cast)]
             let bytes_free = sfs.f_bavail as u64 * block_size;
             let bytes_used = bytes_total - bytes_free;
             let percent_used = bytes_used * 100 / bytes_total;

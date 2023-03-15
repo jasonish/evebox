@@ -12,13 +12,13 @@ use tracing::trace;
 const LIMIT: usize = 1024 * 1024 * 16;
 
 #[derive(Debug, Clone)]
-pub struct EveboxImporter {
+pub struct EveBoxEventSink {
     pub client: Client,
     pub queue: Vec<String>,
     pub size: usize,
 }
 
-impl EveboxImporter {
+impl EveBoxEventSink {
     pub fn new(client: Client) -> Self {
         Self {
             queue: Vec::new(),

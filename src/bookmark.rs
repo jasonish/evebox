@@ -26,6 +26,7 @@ use std::io::prelude::*;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Bookmark {
@@ -93,7 +94,7 @@ impl Bookmark {
     }
 }
 
-pub fn bookmark_filename(input_filename: &str, bookmark_dir: &str) -> std::path::PathBuf {
+pub fn bookmark_filename<P: AsRef<Path>>(input_filename: P, bookmark_dir: &str) -> PathBuf {
     let directory = match std::fs::canonicalize(bookmark_dir) {
         Ok(directory) => directory,
         Err(err) => {
@@ -102,7 +103,7 @@ pub fn bookmark_filename(input_filename: &str, bookmark_dir: &str) -> std::path:
         }
     };
 
-    let hash = md5::compute(input_filename);
+    let hash = md5::compute(input_filename.as_ref().display().to_string());
     let filename = format!("{hash:x}.bookmark");
     let path = directory.join(filename);
     return path;

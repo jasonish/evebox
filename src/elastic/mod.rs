@@ -6,7 +6,7 @@ use crate::eventrepo::DatastoreError;
 pub use client::Version;
 pub use client::{Client, ClientBuilder};
 pub use eventrepo::ElasticEventRepo;
-pub use importer::Importer;
+pub use importer::ElasticEventSink;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;

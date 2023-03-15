@@ -26,13 +26,13 @@ pub(crate) struct QueuedStatement {
     pub(crate) params: Vec<SqliteValue>,
 }
 
-pub struct Importer {
+pub struct SqliteEventSink {
     conn: Arc<Mutex<rusqlite::Connection>>,
     queue: Vec<QueuedStatement>,
     fts: bool,
 }
 
-impl Clone for Importer {
+impl Clone for SqliteEventSink {
     fn clone(&self) -> Self {
         Self {
             conn: self.conn.clone(),
@@ -99,7 +99,7 @@ pub(crate) fn prepare_sql(
     Ok(statements)
 }
 
-impl Importer {
+impl SqliteEventSink {
     pub fn new(conn: Arc<Mutex<rusqlite::Connection>>, fts: bool) -> Self {
         Self {
             conn,

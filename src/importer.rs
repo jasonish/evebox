@@ -2,48 +2,46 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::agent::importer::EveboxImporter;
+use crate::agent::importer::EveBoxEventSink;
+use crate::elastic::ElasticEventSink;
+use crate::sqlite::importer::SqliteEventSink;
 
 /// The importer interface, an enum wrapper around various implementations of an importer for Eve events.
 #[derive(Clone)]
-pub enum Importer {
-    EveBox(EveboxImporter),
-    Elastic(crate::elastic::importer::Importer),
-    SQLite(crate::sqlite::importer::Importer),
+pub enum EventSink {
+    EveBox(EveBoxEventSink),
+    Elastic(ElasticEventSink),
+    SQLite(SqliteEventSink),
 }
 
-#[allow(unreachable_patterns)]
-impl Importer {
+impl EventSink {
     pub async fn submit(
         &mut self,
         event: serde_json::Value,
     ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         match self {
-            Importer::EveBox(importer) => importer.submit(event).await,
-            Importer::Elastic(importer) => importer.submit(event).await,
-            Importer::SQLite(importer) => match importer.submit(event).await {
+            EventSink::EveBox(importer) => importer.submit(event).await,
+            EventSink::Elastic(importer) => importer.submit(event).await,
+            EventSink::SQLite(importer) => match importer.submit(event).await {
                 Ok(commit) => Ok(commit),
                 Err(err) => Err(Box::new(err)),
             },
-            _ => unimplemented!(),
         }
     }
 
     pub async fn commit(&mut self) -> anyhow::Result<usize> {
         match self {
-            Importer::EveBox(importer) => importer.commit().await,
-            Importer::Elastic(importer) => importer.commit().await,
-            Importer::SQLite(importer) => importer.commit().await,
-            _ => unimplemented!(),
+            EventSink::EveBox(importer) => importer.commit().await,
+            EventSink::Elastic(importer) => importer.commit().await,
+            EventSink::SQLite(importer) => importer.commit().await,
         }
     }
 
     pub fn pending(&self) -> usize {
         match self {
-            Importer::EveBox(importer) => importer.pending(),
-            Importer::Elastic(importer) => importer.pending(),
-            Importer::SQLite(importer) => importer.pending(),
-            _ => unimplemented!(),
+            EventSink::EveBox(importer) => importer.pending(),
+            EventSink::Elastic(importer) => importer.pending(),
+            EventSink::SQLite(importer) => importer.pending(),
         }
     }
 }

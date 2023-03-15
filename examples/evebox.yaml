@@ -84,8 +84,10 @@ input:
   # Toggle to disable the input without commenting it out.
   enabled: false
 
-  # Filename to read.
-  filename: "/var/log/suricata/eve.json"
+  # Suricata EVE file patterns to look for and read.
+  paths:
+    - "/var/log/suricata/eve.json"
+    - "/var/log/suricata/eve.*.json"
 
   # Bookmark directory, as with the agent if the server can't write to
   # the directory where the above log file is, you need to provide
@@ -94,7 +96,7 @@ input:
 
   # Custom fields to add to the event. Only top level fields can be set,
   # and only simple values (string, integer) can be set.
-  custom-fields:
+  additional-fields:
     # Set a host field. This will override the "host" field set by
     # Suricata if the Suricata "sensor-name" option is set.
     #host: "evebox-server"

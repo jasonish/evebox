@@ -15,6 +15,7 @@ pub enum EveFilter {
     AddRuleFilter(AddRuleFilter),
     AutoArchiveFilter(AutoArchiveFilter),
     Filters(Arc<Vec<EveFilter>>),
+    AddFieldFilter(AddFieldFilter),
 }
 
 impl EveFilter {
@@ -27,6 +28,9 @@ impl EveFilter {
                 filter.run(event);
             }
             EveFilter::CustomFieldFilter(filter) => {
+                filter.run(event);
+            }
+            EveFilter::AddFieldFilter(filter) => {
                 filter.run(event);
             }
             EveFilter::AddRuleFilter(filter) => {
@@ -73,6 +77,25 @@ impl EveBoxMetadataFilter {
 impl From<EveBoxMetadataFilter> for EveFilter {
     fn from(filter: EveBoxMetadataFilter) -> Self {
         EveFilter::EveBoxMetadataFilter(filter)
+    }
+}
+
+#[derive(Clone)]
+pub struct AddFieldFilter {
+    pub field: String,
+    pub value: serde_json::Value,
+}
+
+impl AddFieldFilter {
+    pub fn new<S: Into<String>>(field: S, value: serde_json::Value) -> Self {
+        Self {
+            field: field.into(),
+            value,
+        }
+    }
+
+    pub fn run(&self, event: &mut serde_json::Value) {
+        event[&self.field] = self.value.clone();
     }
 }
 

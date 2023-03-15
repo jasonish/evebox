@@ -8,6 +8,7 @@ pub mod filters;
 pub mod processor;
 pub mod reader;
 pub mod userfilters;
+pub mod watcher;
 
 pub use eve::parse_eve_timestamp;
 pub use eve::Eve;

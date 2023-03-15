@@ -20,7 +20,7 @@ mod stats;
 /// SQLite implementation of the event datastore.
 pub struct SqliteEventRepo {
     pub connection: Arc<Mutex<Connection>>,
-    pub importer: super::importer::Importer,
+    pub importer: super::importer::SqliteEventSink,
     pub pool: deadpool_sqlite::Pool,
     pub fts: bool,
 }
@@ -33,13 +33,13 @@ impl SqliteEventRepo {
         debug!("SQLite event store created: fts={fts}");
         Self {
             connection: connection.clone(),
-            importer: super::importer::Importer::new(connection, fts),
+            importer: super::importer::SqliteEventSink::new(connection, fts),
             pool,
             fts,
         }
     }
 
-    pub fn get_importer(&self) -> super::importer::Importer {
+    pub fn get_importer(&self) -> super::importer::SqliteEventSink {
         self.importer.clone()
     }
 
