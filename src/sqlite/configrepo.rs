@@ -65,10 +65,7 @@ impl ConfigRepo {
                 let username: String = row.get(1)?;
                 let password_hash: String = row.get(2)?;
                 if bcrypt::verify(password_in, &password_hash)? {
-                    Ok(User {
-                        uuid: uuid,
-                        username: username,
-                    })
+                    Ok(User { uuid, username })
                 } else {
                     Err(ConfigRepoError::BadPassword(username))
                 }
@@ -99,6 +96,12 @@ impl ConfigRepo {
                 _ => err.into(),
             })?;
         Ok(user)
+    }
+
+    pub fn has_users(&self) -> Result<bool, ConfigRepoError> {
+        let conn = self.db.lock().unwrap();
+        let count: u64 = conn.query_row("SELECT count(*) FROM users", [], |row| row.get(0))?;
+        Ok(count > 0)
     }
 
     pub fn get_users(&self) -> Result<Vec<User>, ConfigRepoError> {

@@ -106,7 +106,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     }
 
     // Do we need a data-directory? If so, make sure its set.
-    let data_directory_required = server_config.datastore == "sqlite";
+    let data_directory_required = server_config.datastore == "sqlite"
+        || server_config.authentication_type == AuthenticationType::UsernamePassword;
 
     if data_directory_required && server_config.data_directory.is_none() {
         error!("A data-directory is required");
@@ -122,6 +123,12 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     let datastore = configure_datastore(config.clone(), &server_config).await?;
     let mut context = build_context(server_config.clone(), datastore).await?;
+
+    if let AuthenticationType::UsernamePassword = server_config.authentication_type {
+        if !context.config_repo.has_users()? {
+            bail!("Username/password authentication is required, but no users exist");
+        }
+    }
 
     if let Some(filename) = config_filename {
         match load_event_services(filename) {
