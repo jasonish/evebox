@@ -19,19 +19,5 @@ pub fn fts_create(tx: &Transaction) -> Result<(), rusqlite::Error> {
         [],
     )?;
 
-    tx.execute(
-        "create virtual table fts2
-            using fts5(timestamp unindexed, source_values, content=events, content_rowid=rowid, tokenize='trigram')",
-        [],
-    )?;
-    tx.execute(
-        "
-        create trigger events_ad_trigger2 after delete on events begin
-          insert into fts2(fts, rowid, timestamp, source_values)
-            values ('delete', old.rowid, old.timestamp, old.source_values);
-        end",
-        [],
-    )?;
-
     Ok(())
 }
