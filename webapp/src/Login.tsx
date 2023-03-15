@@ -14,6 +14,7 @@ import { createStore } from "solid-js/store";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { LoginOptions } from "./api";
 import * as API from "./api";
+import { SET_IS_AUTHENTICATED } from "./global";
 
 async function getLoginOptions(): Promise<LoginOptions> {
   let response = await fetch("/api/1/login", {
@@ -39,6 +40,7 @@ export const Login = () => {
 
     API.login(loginForm.username, loginForm.password)
       .then(() => {
+        SET_IS_AUTHENTICATED(true);
         navigate(searchParams.redirectTo || "/inbox");
       })
       .catch(() => {

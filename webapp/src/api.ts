@@ -7,6 +7,7 @@ import { EventWrapper } from "./types";
 import Queue from "queue";
 import { createSignal } from "solid-js";
 import { get_timezone_offset_str } from "./datetime";
+import { SET_IS_AUTHENTICATED } from "./global";
 
 const SESSION_ID_HEADER = "x-evebox-session-id";
 
@@ -61,12 +62,19 @@ async function get(url: string, params: any = {}): Promise<any> {
   let headers = {
     "x-evebox-session-id": SESSION_ID,
   };
+
   return axios
     .get(url, {
       headers: headers,
       params: params,
     })
-    .then(update_revision);
+    .then(update_revision)
+    .catch((error) => {
+      if (error.response.status === 401) {
+        SET_IS_AUTHENTICATED(false);
+      }
+      throw error;
+    });
 }
 
 async function post(url: string, params: any = {}): Promise<any> {

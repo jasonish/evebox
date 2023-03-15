@@ -11,7 +11,7 @@ import {
   useNavigate,
 } from "@solidjs/router";
 import type { Component } from "solid-js";
-import { createSignal, onMount } from "solid-js";
+import { createEffect, createSignal, onMount } from "solid-js";
 import { Transition } from "solid-transition-group";
 
 import * as API from "./api";
@@ -32,6 +32,7 @@ import { AddressReport } from "./reports/AddressReport";
 import { AlertsReport } from "./reports/AlertsReport";
 import { OverviewReport } from "./reports/OverviewReport";
 import { DhcpReport } from "./reports/DhcpReport";
+import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 
 const Report: Component = () => {
   return (
@@ -92,8 +93,22 @@ function Wrapper() {
   const [loading, setLoading] = createSignal(true);
   const navigate = useNavigate();
   const location = useLocation();
+  let mounted = false;
 
-  onMount(async () => {
+  createEffect(() => {
+    if (!IS_AUTHENTICATED() && mounted) {
+      console.log(
+        "App is mounted but not authenticated, redirecting to login."
+      );
+      navigate(
+        `/login?redirectTo=${encodeURIComponent(
+          location.pathname + "?" + location.search
+        )}`
+      );
+    }
+  });
+
+  onMount(() => {
     console.log("Wrapper.onMount: checking user");
     API.getUser()
       .then((user) => {
@@ -111,6 +126,7 @@ function Wrapper() {
           )}`
         );
       });
+    mounted = true;
   });
 
   return (
