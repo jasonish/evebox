@@ -114,6 +114,10 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         std::process::exit(1);
     }
 
+    if let Some(directory) = &server_config.data_directory {
+        debug!("Using data-directory {}", directory);
+    }
+
     tokio::spawn(async move {
         tokio::signal::ctrl_c()
             .await

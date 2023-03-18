@@ -48,6 +48,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .action(ArgAction::Set)
                 .value_name("DIR")
                 .help("Data directory")
+                .env("EVEBOX_DATA_DIRECTORY")
                 .global(true),
         )
         .subcommand(clap::Command::new("version").about("Display version"));

@@ -199,6 +199,9 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         warn!("Found deprecated option bookmark-directory, please use data-directory");
     }
     let data_directory = config.get_string("data-directory");
+    if let Some(directory) = &data_directory {
+        debug!("Using data-directory {}", directory);
+    }
 
     let bookmark_directory = if bookmark_directory.is_some() {
         bookmark_directory
