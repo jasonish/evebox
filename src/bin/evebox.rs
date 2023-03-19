@@ -196,6 +196,12 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("sqlite")
                 .help("Use SQLite"),
         )
+        .arg(
+            Arg::new("geoip.disabled")
+                .action(ArgAction::SetTrue)
+                .long("disable-geoip")
+                .help("Disable GeoIP"),
+        )
         .arg(Arg::new("input-start").long("input-start").hide(true));
 
     let oneshot = Command::new("oneshot")

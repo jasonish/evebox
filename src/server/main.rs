@@ -173,6 +173,21 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             }
         }
 
+        let geoip_disabled = config.get_bool("geoip.disabled")?;
+        if geoip_disabled {
+            debug!("GeoIP disabled");
+        } else {
+            let geoip_database = config.get_string("geoip.database");
+            match crate::geoip::GeoIP::open(geoip_database) {
+                Ok(db) => {
+                    filters.push(crate::eve::filters::EveFilter::GeoIP(db));
+                }
+                Err(err) => {
+                    warn!("Failed to open GeoIP database: error={}", err);
+                }
+            }
+        }
+
         filters.push(crate::eve::filters::EveFilter::AutoArchiveFilter(
             crate::eve::filters::AutoArchiveFilter::default(),
         ));

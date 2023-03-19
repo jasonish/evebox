@@ -25,7 +25,8 @@ pub struct GeoIP {
 impl GeoIP {
     pub fn open(filename: Option<String>) -> Result<GeoIP, Box<dyn std::error::Error>> {
         let (filename, reader) = if let Some(filename) = &filename {
-            let reader = Reader::open_readfile(filename)?;
+            let reader = Reader::open_readfile(filename)
+                .map_err(|err| anyhow!("failed to open {}: {}", filename, err))?;
             (filename.clone(), reader)
         } else if let Some(filename) = find_database() {
             let reader = Reader::open_readfile(&filename)?;
