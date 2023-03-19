@@ -74,11 +74,11 @@ pub(crate) async fn handler(
                 // Kept capitolized for compatibility with the Go agent.
                 "Count": n,
             });
-            return Json(response).into_response();
+            Json(response).into_response()
         }
         Err(err) => {
             error!("Failed to commit events (received {}): {}", count, err);
-            return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
+            (StatusCode::INTERNAL_SERVER_ERROR, "").into_response()
         }
     }
 }

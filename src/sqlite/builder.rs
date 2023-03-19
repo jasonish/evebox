@@ -61,7 +61,7 @@ impl NamedParams {
             let v: &dyn ToSql = v;
             params.push((&**k, v));
         }
-        return params;
+        params
     }
 }
 

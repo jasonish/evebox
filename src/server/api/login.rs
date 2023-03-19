@@ -112,11 +112,11 @@ pub(crate) async fn post(
             .into_response();
     }
 
-    return (
+    (
         StatusCode::UNAUTHORIZED,
         Json(json!({"error": "login failed"})),
     )
-        .into_response();
+        .into_response()
 }
 
 pub(crate) async fn logout_new(

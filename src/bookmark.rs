@@ -85,7 +85,7 @@ impl Bookmark {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     #[cfg(not(unix))]
@@ -105,6 +105,6 @@ pub fn bookmark_filename<P: AsRef<Path>>(input_filename: P, bookmark_dir: &str) 
 
     let hash = md5::compute(input_filename.as_ref().display().to_string());
     let filename = format!("{hash:x}.bookmark");
-    let path = directory.join(filename);
-    return path;
+
+    directory.join(filename)
 }

@@ -97,14 +97,10 @@ pub fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, Error> 
                         .protocol(proto)
                         .payload(tcp)
                         .build();
-                    return Ok(packet);
+                    Ok(packet)
                 }
-                (IpAddr::V6(_src), IpAddr::V6(_dst)) => {
-                    return Err(Error::Ipv6NotSupported);
-                }
-                _ => {
-                    return Err(Error::MissMatchedIpAddrVersions);
-                }
+                (IpAddr::V6(_src), IpAddr::V6(_dst)) => Err(Error::Ipv6NotSupported),
+                _ => Err(Error::MissMatchedIpAddrVersions),
             }
         }
         packet::Protocol::Udp => {
@@ -125,19 +121,13 @@ pub fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, Error> 
                         .protocol(proto)
                         .payload(udp)
                         .build();
-                    return Ok(packet);
+                    Ok(packet)
                 }
-                (IpAddr::V6(_src), IpAddr::V6(_dst)) => {
-                    return Err(Error::Ipv6NotSupported);
-                }
-                _ => {
-                    return Err(Error::MissMatchedIpAddrVersions);
-                }
+                (IpAddr::V6(_src), IpAddr::V6(_dst)) => Err(Error::Ipv6NotSupported),
+                _ => Err(Error::MissMatchedIpAddrVersions),
             }
         }
-        _ => {
-            return Err(Error::ProtocolNotSupported(format!("{proto:?}")));
-        }
+        _ => Err(Error::ProtocolNotSupported(format!("{proto:?}"))),
     }
 }
 

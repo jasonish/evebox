@@ -28,6 +28,6 @@ pub fn config_subcommand() -> clap::Command {
 pub fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     match args.subcommand() {
         Some(("users", args)) => users::main(args),
-        _ => return Err(anyhow!("no subcommand provided")),
+        _ => Err(anyhow!("no subcommand provided")),
     }
 }

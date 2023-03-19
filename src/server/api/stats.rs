@@ -129,7 +129,7 @@ pub(crate) async fn get_sensor_names(
         let response = json!({
             "data": sensors,
         });
-        return Ok(Json(response).into_response());
+        Ok(Json(response).into_response())
     } else if let EventRepo::SQLite(sqlite) = &context.datastore {
         let sensors = sqlite.get_sensors().await.map_err(|err| {
             error!("Failed to get sensors from datastore: {:?}", err);

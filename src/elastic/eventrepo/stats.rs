@@ -74,7 +74,7 @@ impl ElasticEventRepo {
             "data": buckets,
         });
 
-        return Ok(response);
+        Ok(response)
     }
 
     pub async fn stats_agg_diff(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {

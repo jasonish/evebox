@@ -193,9 +193,9 @@ impl SqliteEventRepo {
                 })
             })
             .collect();
-        return Ok(json!({
+        Ok(json!({
             "data": response_data,
-        }));
+        }))
     }
 
     pub async fn stats_agg_diff(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
@@ -212,8 +212,8 @@ impl SqliteEventRepo {
                 "timestamp": nanos_to_rfc3339((e.0 * 1000000000) as i128)?,
             }));
         }
-        return Ok(json!({
+        Ok(json!({
             "data": response_data,
-        }));
+        }))
     }
 }

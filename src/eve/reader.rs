@@ -37,7 +37,7 @@ pub struct EveReader {
 impl EveReader {
     pub fn new(filename: PathBuf) -> Self {
         Self {
-            filename: filename,
+            filename,
             line: String::new(),
             reader: None,
             lineno: 0,
@@ -105,7 +105,7 @@ impl EveReader {
                 return pos;
             }
         }
-        return 0;
+        0
     }
 
     fn next_line(&mut self) -> Result<Option<&str>, EveReaderError> {
@@ -128,7 +128,7 @@ impl EveReader {
                 }
             }
         }
-        return Ok(None);
+        Ok(None)
     }
 
     /// Not named next as we don't implement the iterator pattern (yet).
@@ -230,7 +230,7 @@ impl EveReader {
             return true;
         }
 
-        return false;
+        false
     }
 
     /// Get the size of the file. This is taken directly from disk, so may not be the

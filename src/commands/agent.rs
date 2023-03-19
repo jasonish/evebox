@@ -283,9 +283,7 @@ fn find_config_filename() -> Option<&'static str> {
 
 fn get_additional_fields(config: &Config) -> anyhow::Result<Option<HashMap<String, String>>> {
     match config.get_value::<HashMap<String, String>>("additional-fields") {
-        Ok(Some(fields)) => {
-            return Ok(Some(fields));
-        }
+        Ok(Some(fields)) => Ok(Some(fields)),
         Ok(None) => {
             // No `additional-fields` found, check `input.custom-fields`.
             match config.get_value::<HashMap<String, String>>("input.custom-fields") {
@@ -406,5 +404,5 @@ pub fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<P
             }
         }
     }
-    return None;
+    None
 }

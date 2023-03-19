@@ -22,7 +22,7 @@ impl ElasticEventSink {
         Self {
             index: index.to_string(),
             queue: Vec::new(),
-            client: client,
+            client,
             no_index_suffix,
             auto_archive_filter: AutoArchiveFilter::default(),
         }

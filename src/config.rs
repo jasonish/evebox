@@ -95,7 +95,7 @@ impl Config {
             let values: Vec<String> = values.map(|s| s.to_string()).collect();
             return Some(values);
         }
-        return None;
+        None
     }
 
     /// NOTE: Only checks configuration file, not command line args.

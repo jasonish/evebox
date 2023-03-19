@@ -56,12 +56,12 @@ impl Processor {
             match bookmark::Bookmark::from_file(bookmark_filename) {
                 Err(err) => {
                     warn!("Fail to load bookmark: {}", err);
-                    return false;
+                    false
                 }
                 Ok(bookmark) => {
                     if let Err(err) = bookmark.is_valid() {
                         info!("Invalid bookmark found: {}", err);
-                        return false;
+                        false
                     } else {
                         info!(
                             "Valid bookmark found, jumping to record: {}",
@@ -71,12 +71,12 @@ impl Processor {
                             warn!("Failed to skip to line {}, error={}", bookmark.offset, err);
                             return false;
                         }
-                        return true;
+                        true
                     }
                 }
             }
         } else {
-            return false;
+            false
         }
     }
 

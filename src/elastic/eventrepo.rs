@@ -911,7 +911,7 @@ impl ElasticEventRepo {
         filter.push(json!({"term": {self.map_field("src_ip"): request.src_ip}}));
         filter.push(json!({"term": {self.map_field("dest_ip"): request.dest_ip}}));
         filter.push(json!({"term": {self.map_field("alert.signature_id"): request.signature_id}}));
-        return filter;
+        filter
     }
 
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
@@ -935,6 +935,6 @@ impl ElasticEventRepo {
 
         let buckets: Vec<Bucket> = serde_json::from_value(buckets)?;
         let sensors: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
-        return Ok(sensors);
+        Ok(sensors)
     }
 }

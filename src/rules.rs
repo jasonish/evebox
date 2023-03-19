@@ -75,7 +75,7 @@ impl RuleMap {
         if let Some(rule) = inner.map.get(&sid) {
             return Some(rule.to_string());
         }
-        return None;
+        None
     }
 
     pub fn rescan(&self) {
@@ -134,7 +134,7 @@ fn parse_line(line: &str) -> Option<(u64, String)> {
             trace!("Failed to parse as a rule ({}): {}", err, line);
         }
     }
-    return None;
+    None
 }
 
 fn parse_sid(tokenized_rule: &parser::TokenizedRule) -> Result<Option<u64>, ParseIntError> {
@@ -160,7 +160,7 @@ pub fn load_rules(filenames: &[String]) -> RuleMap {
     map.rescan();
     info!("Loaded {} rules", map.count());
 
-    return map;
+    map
 }
 
 /// Watch the known rule files for changes.  This is a polling loop as the

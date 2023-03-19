@@ -63,16 +63,16 @@ impl GeoIP {
         };
 
         let inner = Inner {
-            reader: reader,
-            last_modified: last_modified,
+            reader,
+            last_modified,
             last_update_check: std::time::Instant::now(),
         };
 
         let geoip = GeoIP {
-            filename: filename,
+            filename,
             inner: Arc::new(Mutex::new(inner)),
         };
-        return Ok(geoip);
+        Ok(geoip)
     }
 
     pub fn get_last_modified(filename: &str) -> Result<u64, Box<dyn std::error::Error>> {
@@ -198,7 +198,7 @@ impl GeoIP {
                 }
             }
         }
-        return obj;
+        obj
     }
 }
 

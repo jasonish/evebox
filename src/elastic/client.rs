@@ -127,7 +127,7 @@ impl Client {
             return Ok(());
         }
         let body = response.text().await?;
-        return Err(ClientError::String(body));
+        Err(ClientError::String(body))
     }
 
     pub async fn get_template(
@@ -142,7 +142,7 @@ impl Client {
         } else if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
         }
-        return Err(format!("Failed to get template: {}", response.status()).into());
+        Err(format!("Failed to get template: {}", response.status()).into())
     }
 
     pub async fn get_indices(&self) -> anyhow::Result<HashMap<String, Value>> {
@@ -270,7 +270,7 @@ impl BulkResponse {
         if self.error.is_some() {
             return true;
         }
-        return false;
+        false
     }
 
     pub fn first_error(&self) -> Option<String> {

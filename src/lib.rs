@@ -2,10 +2,6 @@
 //
 // SPDX-License-Identifier: MIT
 
-// Clippy suppressions. These are the global ones I don't care about.
-#![allow(clippy::needless_return)]
-#![allow(clippy::redundant_field_names)]
-
 #[macro_use]
 pub mod logger;
 

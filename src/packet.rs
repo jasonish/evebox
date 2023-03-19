@@ -82,8 +82,8 @@ impl UdpBuilder {
         buf.put_u16(8 + payload.len() as u16);
         buf.put_u16(0);
         buf.extend_from_slice(&payload);
-        let udp_buf = buf.to_vec();
-        return udp_buf;
+
+        buf.to_vec()
     }
 }
 
@@ -126,7 +126,7 @@ impl TcpBuilder {
 
         buf.extend_from_slice(&self.payload);
 
-        return buf.to_vec();
+        buf.to_vec()
     }
 }
 
@@ -214,7 +214,7 @@ impl Ip4Builder {
             out[37] = (csum & 0xff) as u8;
         }
 
-        return out;
+        out
     }
 
     fn ip_checksum(&self, input: &[u8]) -> u16 {
@@ -226,7 +226,7 @@ impl Ip4Builder {
                 result -= 0xffff;
             }
         }
-        return !result as u16;
+        !result as u16
     }
 
     fn tcpudp_checksum(&self, input: &[u8], proto: Protocol) -> u16 {
@@ -260,7 +260,7 @@ impl Ip4Builder {
             }
         }
 
-        return !result as u16;
+        !result as u16
     }
 }
 

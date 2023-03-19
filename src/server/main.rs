@@ -390,7 +390,7 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
                 "error": "no resource at path",
                 "path": &path,
             });
-            return (StatusCode::NOT_FOUND, axum::Json(response)).into_response();
+            (StatusCode::NOT_FOUND, axum::Json(response)).into_response()
         }
         Some(body) => {
             let mime = mime_guess::from_path(&path).first_or_octet_stream();
@@ -478,8 +478,8 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
 
             let eventstore = elastic::ElasticEventRepo {
                 base_index: server_config.elastic_index.clone(),
-                index_pattern: index_pattern,
-                client: client,
+                index_pattern,
+                client,
                 ecs: server_config.elastic_ecs,
                 no_index_suffix: server_config.elastic_no_index_suffix,
             };
@@ -489,7 +489,7 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 &eventstore.index_pattern
             );
             debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
-            return Ok(EventRepo::Elastic(eventstore));
+            Ok(EventRepo::Elastic(eventstore))
         }
         "sqlite" => {
             let db_filename = if let Some(dir) = &server_config.data_directory {
@@ -513,7 +513,7 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             // Start retention task.
             sqlite::retention::start_retention_task(config.clone(), connection.clone())?;
 
-            return Ok(EventRepo::SQLite(eventstore));
+            Ok(EventRepo::SQLite(eventstore))
         }
         _ => panic!("unsupported datastore"),
     }

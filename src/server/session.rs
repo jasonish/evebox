@@ -95,9 +95,9 @@ impl Session {
 
     pub fn username(&self) -> &str {
         if let Some(username) = &self.username {
-            return username;
+            username
         } else {
-            return "<anonymous>";
+            "<anonymous>"
         }
     }
 }

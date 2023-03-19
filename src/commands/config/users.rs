@@ -68,9 +68,7 @@ pub fn main(args: &clap::ArgMatches) -> Result<()> {
         Some(("add", args)) => add(args),
         Some(("rm", args)) => remove(args),
         Some(("passwd", args)) => password(args),
-        _ => {
-            return Err(anyhow!("config users: no subcommand provided"));
-        }
+        _ => Err(anyhow!("config users: no subcommand provided")),
     }
 }
 
