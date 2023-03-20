@@ -202,7 +202,13 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("disable-geoip")
                 .help("Disable GeoIP"),
         )
-        .arg(Arg::new("input-start").long("input-start").hide(true));
+        .arg(
+            Arg::new("input-start")
+                .long("input-start")
+                .hide(true)
+                .value_name("FILENAMES"),
+        )
+        .arg(Arg::new("tail-inputs"));
 
     let oneshot = Command::new("oneshot")
         .about("Import a single eve.json and review in EveBox")

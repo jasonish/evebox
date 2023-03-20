@@ -236,19 +236,31 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 }
 
 fn is_input_enabled(config: &Config) -> bool {
-    config.args.contains_id("input.filename") || config.get_bool("input.enabled").unwrap_or(false)
+    config.args.contains_id("input.filename")
+        || config.get_bool("input.enabled").unwrap_or(false)
+        || config.args.contains_id("tail-inputs")
 }
 
 fn get_input_patterns(config: &Config) -> Result<Vec<String>> {
     let mut input_pattern_set = HashSet::new();
+
     if let Some(filename) = config.get::<String>("input.filename")? {
         input_pattern_set.insert(filename);
     }
+
     if let Some(paths) = config.get_value::<Vec<String>>("input.paths")? {
         for path in &paths {
             input_pattern_set.insert(path.clone());
         }
     }
+
+    // The patterns provided at the end of the server command line.
+    if let Some(paths) = config.args.get_many::<String>("tail-inputs") {
+        for path in paths {
+            input_pattern_set.insert(path.to_string());
+        }
+    }
+
     let input_patterns: Vec<String> = input_pattern_set.iter().map(|s| s.to_string()).collect();
     Ok(input_patterns)
 }
