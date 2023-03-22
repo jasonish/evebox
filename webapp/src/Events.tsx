@@ -137,7 +137,11 @@ export function Events() {
   });
 
   function openEventById(id: string) {
-    navigate(`/event/${id}`);
+    navigate(`/event/${id}`, {
+      state: {
+        referer: location.pathname,
+      },
+    });
   }
 
   function loadEvents() {

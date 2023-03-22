@@ -578,13 +578,11 @@ export function Alerts() {
       eventStore.viewOffset = getOffset();
       eventStore.cursor = cursor();
       console.log(`EVENT_STORE.active._id=${eventStore.active?._id}`);
-      setTimeout(() => {
-        navigate(`${location.pathname}/${event._id}`, {
-          state: {
-            referer: location.pathname,
-          },
-        });
-      }, 0);
+      navigate(`${location.pathname}/${event._id}`, {
+        state: {
+          referer: location.pathname,
+        },
+      });
     });
   }
 
