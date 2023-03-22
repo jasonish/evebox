@@ -1,41 +1,44 @@
-// Copyright (C) 2022 Jason Ish
+// SPDX-FileCopyrightText: (C) 2022 Jason Ish <jason@codemonkey.net>
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// SPDX-License-Identifier: MIT
 
 use crate::prelude::*;
 use std::collections::HashMap;
-use std::num::ParseIntError;
+use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use suricata_rule_parser as parser;
 
 struct Inner {
     map: HashMap<u64, String>,
     files: HashMap<PathBuf, i64>,
 }
 
+pub fn read_next_rule(input: &mut dyn BufRead) -> Result<Option<String>, std::io::Error> {
+    let mut line = String::new();
+    loop {
+        let mut tmp = String::new();
+        let n = input.read_line(&mut tmp)?;
+        if n == 0 {
+            return Ok(None);
+        }
+
+        let tmp = tmp.trim();
+
+        if !tmp.ends_with('\\') {
+            line.push_str(tmp);
+            break;
+        }
+
+        line.push_str(&tmp[..tmp.len() - 1]);
+    }
+    Ok(Some(line))
+}
+
 impl Inner {
     fn load_path(&mut self, path: &Path) {
         if let Ok(file) = std::fs::File::open(path) {
             let mut reader = std::io::BufReader::new(file);
-            while let Ok(Some(line)) = parser::read_next_rule(&mut reader) {
+            while let Ok(Some(line)) = read_next_rule(&mut reader) {
                 if let Some(rule) = parse_line(&line) {
                     self.map.insert(rule.0, rule.1);
                 }
@@ -124,30 +127,22 @@ fn parse_line(line: &str) -> Option<(u64, String)> {
     if line.starts_with('#') {
         offset = 1;
     }
-    match parser::parse_rule(&line[offset..]) {
-        Ok(rule) => {
-            if let Ok(Some(sid)) = parse_sid(&rule) {
-                return Some((sid, rule.original));
+
+    let original = &line[offset..];
+    match suricatax_rule_parser::parse_elements(original) {
+        Ok((_, elements)) => {
+            for element in &elements {
+                if let suricatax_rule_parser::Element::Sid(sid) = element {
+                    return Some((*sid, original.to_string()));
+                }
             }
         }
         Err(err) => {
-            trace!("Failed to parse as a rule ({}): {}", err, line);
+            debug!("Failed to parse as rule: {:?}: {}", err, line);
         }
     }
+
     None
-}
-
-fn parse_sid(tokenized_rule: &parser::TokenizedRule) -> Result<Option<u64>, ParseIntError> {
-    let mut sid: Option<u64> = None;
-
-    for option in &tokenized_rule.options {
-        if option.key == "sid" {
-            let val = option.val.as_ref().unwrap().parse::<u64>()?;
-            sid = Some(val);
-        }
-    }
-
-    Ok(sid)
 }
 
 pub fn load_rules(filenames: &[String]) -> RuleMap {

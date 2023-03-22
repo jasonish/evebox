@@ -50,7 +50,7 @@ serde_json = "1.0.53"
 serde_urlencoded = "0.6.1"
 serde_yaml = "0.8.13"
 stdlog = { package = "log", version = "0.4.8" }
-suricata-rule-parser = { path = "./suricata-rule-parser", package = "evebox-suricata-rule-parser", version = "0.2.0" }
+suricatax-rule-parser = { git = "https://github.com/jasonish/rust-suricatax-rule-parser" }
 time = { version = "0.3.17", features = ["formatting", "local-offset", "macros", "parsing"] }
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
 tower-http = { version = "0.3.4", features = ["set-header", "trace", "limit"] }
