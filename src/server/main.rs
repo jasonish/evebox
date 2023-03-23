@@ -25,6 +25,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{async_trait, TypedHeader};
 use axum::{Router, Server};
+use axum_extra::extract::CookieJar;
 use hyper::server::conn::AddrIncoming;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -558,9 +559,20 @@ where
                 .unwrap();
         let headers = &req.headers;
 
-        let session_id = headers
-            .get("x-evebox-session-id")
-            .and_then(|h| h.to_str().ok());
+        let get_session_id = || {
+            let header_session_id = headers
+                .get("x-evebox-session-id")
+                .and_then(|h| h.to_str().map(|s| s.to_string()).ok());
+            if header_session_id.is_some() {
+                return header_session_id;
+            }
+
+            CookieJar::from_headers(headers)
+                .get("x-evebox-session-id")
+                .map(|c| c.value().to_string())
+        };
+
+        let session_id = get_session_id();
 
         let remote_user = headers
             .get("remote_user")
@@ -578,7 +590,7 @@ where
         let _remote_addr = forwarded_for.unwrap_or_else(|| remote_addr.to_string());
 
         if let Some(session_id) = session_id {
-            let session = context.session_store.get(session_id);
+            let session = context.session_store.get(&session_id);
             if let Some(session) = session {
                 return Ok(SessionExtractor(session));
             }

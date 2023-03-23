@@ -28,6 +28,8 @@
 - [elastic-import] Deprecated, use the agent instead.
 - [sqlite] Database file size based event retention:
   https://github.com/jasonish/evebox/issues/256
+- [server] Fix PCAP downloads when authentication fails:
+  https://github.com/jasonish/evebox/issues/262
 
 ## 0.16.0 - 2022-11-12
 
