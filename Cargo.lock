@@ -478,7 +478,7 @@ dependencies = [
 
 [[package]]
 name = "evebox"
-version = "0.17.0-dev"
+version = "0.17.0"
 dependencies = [
  "anyhow",
  "axum",

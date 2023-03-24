@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.17.0 - unreleased
+## 0.17.0 - 2023-03-23 - SQLite
 
 - Move to SolidJS for frontend development.
 - New special query string keywords:
