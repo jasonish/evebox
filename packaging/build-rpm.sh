@@ -8,10 +8,16 @@ VERSION=$(echo ${CARGO_VERSION} | sed 's/\(.*\)\-.*/\1/')
 VERSION_SUFFIX=$(echo ${CARGO_VERSION} | sed -n 's/.*-\(.*\)/\1/p')
 DATE=$(date +%s)
 
+if [ "${VERSION_SUFFIX}" != "" ]; then
+    BIN_SRC_VER="latest"
+else
+    BIN_SRC_VER="${VERSION}"
+fi
+
 case "${1}" in
     "x86_64"|"amd64")
 	ARCH="x86_64"
-	BIN="./dist/evebox-latest-linux-x64/evebox"
+	BIN="./dist/evebox-${BIN_SRC_VER}-linux-x64/evebox"
 	;;
     *)
 	echo "error: invalid ARCH"
