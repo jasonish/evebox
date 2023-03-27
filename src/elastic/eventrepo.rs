@@ -91,6 +91,7 @@ impl ElasticEventRepo {
                 "src_ip" => "source.address".to_string(),
                 "src_port" => "source.port".to_string(),
                 "host" => "agent.name".to_string(),
+                "timestamp" => "@timestamp".to_string(),
                 _ => {
                     if name.starts_with("suricata") {
                         // Don't remap.
@@ -185,7 +186,11 @@ impl ElasticEventRepo {
             0
         };
         if updated == 0 {
-            warn!(?response, "No events updated");
+            warn!(
+                ?response,
+                "No events updated: query={}",
+                serde_json::to_string(&body).unwrap()
+            );
         }
 
         Ok(())
@@ -493,8 +498,8 @@ impl ElasticEventRepo {
                                     "terms": {"field": self.map_field("dest_ip"), "size": 500},
                                     "aggs": {
                                         "escalated": {"filter": {"term": {"tags": "evebox.escalated"}}},
-                                        "newest": {"top_hits": {"size": 1, "sort": [{"@timestamp": {"order": "desc"}}]}},
-                                        "oldest": {"top_hits": {"size": 1, "sort": [{"@timestamp": {"order": "asc"}}]}}
+                                        "newest": {"top_hits": {"size": 1, "sort": [{self.map_field("timestamp"): {"order": "desc"}}]}},
+                                        "oldest": {"top_hits": {"size": 1, "sort": [{self.map_field("timestamp"): {"order": "asc"}}]}}
                                     },
                                 },
                             },
@@ -902,7 +907,7 @@ impl ElasticEventRepo {
         filter.push(json!({"term": {self.map_field("event_type"): "alert"}}));
         filter.push(json!({
             "range": {
-                "@timestamp": {
+                self.map_field("timestamp"): {
                     "gte": request.min_timestamp,
                     "lte": request.max_timestamp,
                 }
