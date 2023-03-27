@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.17.1 - 2023-03-27
+
+- [elastic] Fix timestamp used in archive queries:
+	https://github.com/jasonish/evebox/issues/263
+
 ## 0.17.0 - 2023-03-23 - SQLite
 
 - Move to SolidJS for frontend development.
