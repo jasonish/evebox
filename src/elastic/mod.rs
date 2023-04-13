@@ -75,8 +75,7 @@ pub fn query_string_query(query_string: &str) -> serde_json::Value {
         .replace('[', "\\[")
         .replace(']', "\\]")
         .replace('<', "\\<")
-        .replace('>', "\\>")
-        .replace('-', "\\-");
+        .replace('>', "\\>");
     json!({
         "query_string": {
             "default_operator": "AND",
