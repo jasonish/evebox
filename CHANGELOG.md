@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.17.2 - unreleased
+
+- [elastic] Fixing negation queries using '-':
+  https://github.com/jasonish/evebox/issues/266
+- [server] Don't error out if authentication enabled but no users
+  exist, instead just log an error:
+  https://github.com/jasonish/evebox/issues/267
+
 ## 0.17.1 - 2023-03-27
 
 - [elastic] Fix timestamp used in archive queries:
