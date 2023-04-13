@@ -131,7 +131,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     if let AuthenticationType::UsernamePassword = server_config.authentication_type {
         if !context.config_repo.has_users()? {
-            bail!("Username/password authentication is required, but no users exist");
+            warn!("Username/password authentication is required, but no users exist");
         }
     }
 
