@@ -9,6 +9,8 @@
   https://github.com/jasonish/evebox/issues/267
 - [webapp] Use relative login URL:
   https://github.com/jasonish/evebox/issues/268
+- [packaging] Fix quotes in systemd unit files:
+  https://github.com/jasonish/evebox/issues/270
 
 ## 0.17.1 - 2023-03-27
 
