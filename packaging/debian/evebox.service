@@ -6,7 +6,7 @@ User=evebox
 Group=evebox
 ExecStart=/usr/bin/evebox server $ELASTICSEARCH_URL $CONFIG $EVEBOX_OPTS
 EnvironmentFile=-/etc/default/evebox
-Environment=CONFIG="-c /etc/evebox/evebox.yaml"
+Environment="CONFIG=-c /etc/evebox/evebox.yaml"
 Environment=EVEBOX_DATA_DIRECTORY=/var/lib/evebox
 
 [Install]
