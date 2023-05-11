@@ -7,6 +7,8 @@
 - [server] Don't error out if authentication enabled but no users
   exist, instead just log an error:
   https://github.com/jasonish/evebox/issues/267
+- [webapp] Use relative login URL:
+  https://github.com/jasonish/evebox/issues/268
 
 ## 0.17.1 - 2023-03-27
 

@@ -17,7 +17,7 @@ import * as API from "./api";
 import { SET_IS_AUTHENTICATED } from "./global";
 
 async function getLoginOptions(): Promise<LoginOptions> {
-  let response = await fetch("/api/1/login", {
+  let response = await fetch("api/1/login", {
     method: "get",
   });
   const json = await response.json();
