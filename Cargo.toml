@@ -1,7 +1,7 @@
 [package]
 name = "evebox"
 # Suffix with -dev when not a release.
-version = "0.17.1"
+version = "0.17.2"
 authors = ["Jason Ish <ish@unx.ca>"]
 edition = "2021"
 description = "A web based Suricata event manager"
@@ -35,7 +35,7 @@ refinery = { version = "0.8.6", features = ["rusqlite"] }
 filetime = "0.2.12"
 glob = "0.3.0"
 humantime = "2.0.0"
-hyper = "0.14.15"
+hyper = "0.14.26"
 lazy_static = "1.4.0"
 maxminddb = "0.13.0"
 md5 = "0.7.0"
@@ -43,7 +43,7 @@ mime_guess = "2.0.3"
 nom = "7.1.0"
 percent-encoding = "2.1.0"
 rand = "0.7.3"
-reqwest = { version = "0.11.11", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots"] }
+reqwest = { version = "0.11.18", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots"] }
 rpassword = "4.0.5"
 rust-embed = { version = "6.3.0", features = ["compression", "debug-embed"] }
 serde = { version = "1.0.110", features = ["derive"] }

@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.17.2 - unreleased
+## 0.17.2 - 2023-05-27
 
 - [elastic] Fixing negation queries using '-':
   https://github.com/jasonish/evebox/issues/266
