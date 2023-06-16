@@ -34,7 +34,7 @@ CARGO_BUILD_ARGS += --target $(TARGET)
 endif
 
 ifneq ($(VERSION_SUFFIX),)
-DIST_VERSION := latest
+DIST_VERSION := devel
 else
 DIST_VERSION :=	$(VERSION)
 endif
