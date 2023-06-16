@@ -1,7 +1,0 @@
-# This is a multiline rule.
-alert ip any any -> any any (msg:"Multiline rule"; \
-    sid:1; \
-    rev:1;)
-
-# And a rule on a single line.
-alert ip any any -> any any (msg:"Second rule"; sid:2; rev:1;)
