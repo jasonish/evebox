@@ -124,12 +124,6 @@ Or to build a release package:
 make dist
 ```
 
-If you don't want to bother with the required development tools, but do have
-Docker installed, you can build a Linux release with the following command:
-```
-./build.sh linux
-```
-
 ### Possible Issues
 
 #### JavaScript heap out of memory

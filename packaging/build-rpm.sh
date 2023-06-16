@@ -9,7 +9,7 @@ VERSION_SUFFIX=$(echo ${CARGO_VERSION} | sed -n 's/.*-\(.*\)/\1/p')
 DATE=$(date +%s)
 
 if [ "${VERSION_SUFFIX}" != "" ]; then
-    BIN_SRC_VER="latest"
+    BIN_SRC_VER="devel"
 else
     BIN_SRC_VER="${VERSION}"
 fi
@@ -26,7 +26,7 @@ esac
 
 if [ "${VERSION_SUFFIX}" ]; then
     RPM_ITERATION="0.${VERSION_SUFFIX}${DATE}"
-    OUTPUT="evebox-latest-${ARCH}.rpm"
+    OUTPUT="evebox-devel-${ARCH}.rpm"
 else
     RPM_ITERATION="1"
     OUTPUT=""

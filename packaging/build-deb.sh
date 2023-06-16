@@ -9,7 +9,7 @@ VERSION_SUFFIX=$(echo ${CARGO_VERSION} | sed -n 's/.*-\(.*\)/\1/p')
 DATE=$(date +%s)
 
 if [ "${VERSION_SUFFIX}" != "" ]; then
-    BIN_SRC_VER="latest"
+    BIN_SRC_VER="devel"
 else
     BIN_SRC_VER="${VERSION}"
 fi
@@ -37,7 +37,7 @@ if [ "${VERSION_SUFFIX}" ]; then
 fi
 
 if [ "${VERSION_SUFFIX}" ]; then
-    FILENAME="evebox-latest-${ARCH}.deb"
+    FILENAME="evebox-devel-${ARCH}.deb"
 else
     FILENAME="evebox-${VERSION}-${ARCH}.deb"
 fi
