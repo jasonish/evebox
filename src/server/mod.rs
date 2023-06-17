@@ -9,6 +9,7 @@ pub use main::build_context;
 pub use main::main;
 use serde::Serialize;
 use session::SessionStore;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 pub mod api;
@@ -85,8 +86,8 @@ pub struct ServerConfig {
     pub datastore: String,
     pub sqlite_filename: Option<String>,
     pub tls_enabled: bool,
-    pub tls_cert_filename: Option<String>,
-    pub tls_key_filename: Option<String>,
+    pub tls_cert_filename: Option<PathBuf>,
+    pub tls_key_filename: Option<PathBuf>,
     pub elastic_url: String,
     pub elastic_index: String,
     pub elastic_no_index_suffix: bool,

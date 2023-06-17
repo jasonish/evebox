@@ -7,6 +7,7 @@ pub mod logger;
 
 pub mod agent;
 pub mod bookmark;
+pub(crate) mod cert;
 pub mod commands;
 pub mod config;
 mod elastic;

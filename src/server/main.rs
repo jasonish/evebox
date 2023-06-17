@@ -224,6 +224,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         server_config.host, server_config.port, server_config.tls_enabled
     );
     if server_config.tls_enabled {
+        if server_config.tls_key_filename.is_none() && server_config.tls_cert_filename.is_none() {
+            let (cert_path, key_path) = crate::cert::get_or_create_cert("./certs")?;
+            server_config.tls_cert_filename = Some(cert_path);
+            server_config.tls_key_filename = Some(key_path);
+        }
         debug!("TLS key filename: {:?}", server_config.tls_key_filename);
         debug!("TLS cert filename: {:?}", server_config.tls_cert_filename);
         if let Err(err) = run_axum_server_with_tls(&server_config, context).await {
