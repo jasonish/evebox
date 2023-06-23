@@ -12,141 +12,17 @@ on:
 
 jobs:
 
-  tests:
-    name: Tests
+  cargo-test:
+    name: Cargo Test
     runs-on: ubuntu-latest
     container: rust:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: cargo test --all
 
-  webapp:
-    name: Webapp
+  build-dist:
+    name: Build Distributions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-
-      - run: echo "BUILDER_TAG=docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-linux:webapp" >> $GITHUB_ENV
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
-      - run: docker pull ${BUILDER_TAG} || true
-      - run: ./build.sh webapp
-      - run: docker push ${BUILDER_TAG} || true
-      - uses: actions/upload-artifact@v2
-        with:
-          name: webapp
-          path: resources/public
-
-  linux:
-    name: Linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: echo "BUILDER_TAG=docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-linux:latest" >> $GITHUB_ENV
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
-      - run: docker pull ${BUILDER_TAG} || true
-      - run: ./build.sh linux
-      - run: docker push ${BUILDER_TAG} || true
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: linux-x64-build
-          path: dist/*.zip
-      - uses: actions/upload-artifact@v2
-        with:
-          name: linux-x64-rpm
-          path: dist/*.rpm
-      - uses: actions/upload-artifact@v2
-        with:
-          name: linux-x64-deb
-          path: dist/*.deb
-
-  linux-arm32:
-    name: Arm 32
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: echo "BUILDER_TAG=docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-arm32:latest" >> $GITHUB_ENV
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
-      - run: docker pull ${BUILDER_TAG} || true
-      - run: ./build.sh linux-arm32
-      - run: docker push ${BUILDER_TAG} || true
-      - uses: actions/upload-artifact@v2
-        with:
-          name: linux-arm32-build
-          path: dist/*.zip
-
-  linux-arm64:
-    name: Arm 64
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: echo "BUILDER_TAG=docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-armv64:latest" >> $GITHUB_ENV
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
-      - run: docker pull ${BUILDER_TAG} || true
-      - run: ./build.sh linux-arm64
-      - run: docker push ${BUILDER_TAG} || true
-      - uses: actions/upload-artifact@v2
-        with:
-          name: linux-arm64-build
-          path: dist/*.zip
-
-  windows:
-    name: Windows
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: echo "BUILDER_TAG=docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-windows:latest" >> $GITHUB_ENV
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
-      - run: docker pull ${BUILDER_TAG} || true
-      - run: ./build.sh windows
-      - run: docker push ${BUILDER_TAG} || true
-      - uses: actions/upload-artifact@v2
-        with:
-          name: windows-build
-          path: dist/*.zip
-
-  macos:
-    name: MacOS
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: echo "BUILDER_TAG=docker.pkg.github.com/$GITHUB_ACTOR/evebox/builder-macos:latest" >> $GITHUB_ENV
-
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login -u $GITHUB_ACTOR --password-stdin docker.pkg.github.com
-      - run: docker pull ${BUILDER_TAG} || true
-      - run: ./build.sh macos
-      - run: docker push ${BUILDER_TAG} || true
-      - uses: actions/upload-artifact@v2
-        with:
-          name: macos-build
-          path: dist/*.zip
-
-  docker:
-    name: Docker
-    runs-on: ubuntu-latest
-    needs: [linux, linux-arm32, linux-arm64]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
-      - uses: crazy-max/ghaction-docker-buildx@v3
-      - run: |
-          mkdir -p ~/.docker
-          echo '{"experimental": "enabled"}' > ~/.docker/config.json
-      - run: |
-          mkdir -p dist
-          cd dist
-          unzip ../linux-x64-build/evebox-*-linux-x64.zip
-          unzip ../linux-arm32-build/evebox-*-linux-arm.zip
-          unzip ../linux-arm64-build/evebox-*-linux-arm64.zip
-      - run: ./build.sh docker
-      - name: Push Docker images and manifest
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
-          ./build.sh docker-push
+      - uses: actions/checkout@v3
+      - run: ./build-dist.sh
