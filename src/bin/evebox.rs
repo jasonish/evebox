@@ -156,11 +156,21 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Enable HTTP access logging"),
         )
         .arg(
+            Arg::new("http.tls.disabled")
+                .action(ArgAction::SetTrue)
+                .long("no-tls")
+                .help("Disable TLS")
+                .env("EVEBOX_HTTP_TLS_DISABLED")
+                .conflicts_with("http.tls.enabled")
+                .hide_env(true),
+        )
+        .arg(
             Arg::new("http.tls.enabled")
                 .action(ArgAction::SetTrue)
                 .long("tls")
                 .help("Enable TLS")
                 .env("EVEBOX_HTTP_TLS_ENABLED")
+                .conflicts_with("http.tls.disabled")
                 .hide_env(true),
         )
         .arg(
