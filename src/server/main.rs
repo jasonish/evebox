@@ -225,7 +225,31 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     );
     if server_config.tls_enabled {
         if server_config.tls_key_filename.is_none() && server_config.tls_cert_filename.is_none() {
-            let (cert_path, key_path) = crate::cert::get_or_create_cert("./certs")?;
+            // No TLS certificate or key filenames have been provided,
+            // generate self signed certificates.
+            //
+            // We'll first try to use the user provided
+            // data-directory, falling back to XDG type directories,
+            // but with support for Windows.
+            let tls_dir = if let Some(dir) = &server_config.data_directory {
+                PathBuf::from(dir)
+            } else if let Some(dirs) = directories::ProjectDirs::from("org", "evebox", "evebox") {
+                dirs.config_local_dir().to_path_buf()
+            } else {
+                error!("Unable to determine what directory to store TLS certificate and key in, please provide a data directory or start with --no-tls to disable TLS");
+                std::process::exit(1);
+            };
+            info!(
+                "Using directory {} for self signed TLS certificate and key files",
+                tls_dir.display()
+            );
+
+            if !tls_dir.exists() {
+                debug!("Creating directory {}", tls_dir.display());
+                std::fs::create_dir_all(&tls_dir)?;
+            }
+
+            let (cert_path, key_path) = crate::cert::get_or_create_cert(tls_dir)?;
             server_config.tls_cert_filename = Some(cert_path);
             server_config.tls_key_filename = Some(key_path);
         }

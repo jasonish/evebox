@@ -65,6 +65,7 @@ regex = "1.5.5"
 libc = { version = "0.2.140", default_features = false }
 
 rcgen = { git = "https://github.com/jasonish/rcgen", branch = "0.11.0-disable-botan" }
+directories = "5.0.1"
 
 [patch.crates-io]
 # Patch Rusqlite for now. 0.28.0 uses SQLite 3.39, but 3.40 is much
