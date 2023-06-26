@@ -12,7 +12,6 @@ use std::sync::Arc;
 
 use crate::server::main::SessionExtractor;
 use crate::server::session::Session;
-use crate::server::AuthenticationType;
 use crate::server::ServerContext;
 use crate::sqlite::configrepo::ConfigRepoError;
 
@@ -28,7 +27,7 @@ pub(crate) async fn options(
     let response = json!({
         "authentication": {
             "required": context.config.authentication_required,
-            "type": context.config.authentication_type.to_string(),
+            "type": "usernamepassword",
         }
     });
     Json(response)
@@ -39,32 +38,9 @@ pub(crate) async fn post(
     _session: Option<SessionExtractor>,
     form: axum::extract::Form<LoginForm>,
 ) -> impl IntoResponse {
-    // No authentication required.
-    if context.config.authentication_type == AuthenticationType::Anonymous {
-        return (StatusCode::OK, Json(serde_json::json!({}))).into_response();
-    }
-
-    // We just take the username.
-    if context.config.authentication_type == AuthenticationType::Username {
-        let username = match &form.username {
-            None => {
-                return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({}))).into_response();
-            }
-            Some(username) => username.to_owned(),
-        };
-        info!("Creating anonymous session for username={}", &username);
-        let session = Arc::new(Session::anonymous(Some(username)));
-        let _ = context.session_store.put(session.clone());
-        return (
-            StatusCode::OK,
-            Json(serde_json::json!({
-                "session_id": session.session_id,
-            })),
-        )
-            .into_response();
-    }
-
-    if context.config.authentication_type == AuthenticationType::UsernamePassword {
+    if !context.config.authentication_required {
+        (StatusCode::OK, Json(serde_json::json!({}))).into_response()
+    } else {
         let username = match &form.username {
             None => {
                 return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({}))).into_response();
@@ -103,20 +79,14 @@ pub(crate) async fn post(
         session.username = Some(user.username);
         let session = Arc::new(session);
         context.session_store.put(session.clone()).unwrap();
-        return (
+        (
             StatusCode::OK,
             Json(serde_json::json!({
                 "session_id": session.session_id,
             })),
         )
-            .into_response();
+            .into_response()
     }
-
-    (
-        StatusCode::UNAUTHORIZED,
-        Json(json!({"error": "login failed"})),
-    )
-        .into_response()
 }
 
 pub(crate) async fn logout_new(

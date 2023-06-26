@@ -58,6 +58,20 @@ impl Config {
             }
         }
 
+        // Check from environment variables. Clap does some of this in
+        // command line parsing, but there may be cases we want to
+        // respect environment variables, but don't go through command
+        // line parsing.
+        let environment_value = match name {
+            "authentication.required" => Some("EVEBOX_AUTHENTICATION_REQUIRED"),
+            _ => None,
+        };
+        if let Some(environment_value) = environment_value {
+            if let Ok(Some(v)) = self.get_env(environment_value) {
+                return Ok(Some(v));
+            }
+        }
+
         // Now the configuration file.
         if let Some(val) = self.get_node(&self.root, name) {
             return Ok(Some(serde_yaml::from_value(val.clone())?));
@@ -88,6 +102,12 @@ impl Config {
     pub fn get_bool(&self, name: &str) -> anyhow::Result<bool> {
         let val = self.get(name)?;
         Ok(val.unwrap_or(false))
+    }
+
+    /// Return a boolean configuration using a default value if the
+    /// value is not found.
+    pub fn get_bool_with_default(&self, name: &str, default: bool) -> bool {
+        self.get(name).unwrap_or(Some(default)).unwrap_or(default)
     }
 
     pub fn get_arg_strings(&self, name: &str) -> Option<Vec<String>> {

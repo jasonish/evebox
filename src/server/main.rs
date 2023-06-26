@@ -11,8 +11,8 @@ use crate::eve::filters::{AddFieldFilter, AddRuleFilter};
 use crate::eve::watcher::EvePatternWatcher;
 use crate::eventrepo::EventRepo;
 use crate::prelude::*;
+use crate::server::api;
 use crate::server::session::Session;
-use crate::server::{api, AuthenticationType};
 use crate::sqlite::configrepo::ConfigRepo;
 use crate::sqlite::{self, SqliteExt};
 use anyhow::Result;
@@ -93,22 +93,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         server_config.no_check_certificate,
     );
 
-    server_config.authentication_required = config.get_bool("authentication.required")?;
-    if server_config.authentication_required {
-        if let Some(auth_type) = config.get::<String>("authentication.type")? {
-            server_config.authentication_type = match auth_type.as_ref() {
-                "username" => AuthenticationType::Username,
-                "usernamepassword" => AuthenticationType::UsernamePassword,
-                _ => {
-                    return Err(anyhow!("Bad authentication type: {}", auth_type));
-                }
-            };
-        }
-    }
+    server_config.authentication_required = is_authentication_required(&config);
 
     // Do we need a data-directory? If so, make sure its set.
-    let data_directory_required = server_config.datastore == "sqlite"
-        || server_config.authentication_type == AuthenticationType::UsernamePassword;
+    let data_directory_required =
+        server_config.datastore == "sqlite" || server_config.authentication_required;
 
     if data_directory_required && server_config.data_directory.is_none() {
         error!("A data-directory is required");
@@ -129,10 +118,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     let datastore = configure_datastore(config.clone(), &server_config).await?;
     let mut context = build_context(server_config.clone(), datastore).await?;
 
-    if let AuthenticationType::UsernamePassword = server_config.authentication_type {
-        if !context.config_repo.has_users()? {
-            warn!("Username/password authentication is required, but no users exist");
-        }
+    if server_config.authentication_required && !context.config_repo.has_users()? {
+        warn!("Username/password authentication is required, but no users exist");
     }
 
     if let Some(filename) = config_filename {
@@ -263,6 +250,17 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+fn is_authentication_required(config: &Config) -> bool {
+    // First check if authentication has been explicitly disabled.
+    if !config.get_bool_with_default("authentication.required", true) {
+        info!("Authentication disabled by configuration");
+        return false;
+    }
+
+    // Default to true.
+    true
 }
 
 fn is_input_enabled(config: &Config) -> bool {
@@ -641,41 +639,30 @@ where
             None
         };
 
-        match context.config.authentication_type {
-            AuthenticationType::Anonymous => {
-                return Ok(Self(Arc::new(Session::anonymous(remote_user))));
-            }
-            AuthenticationType::Username => {
-                if let Some(basic) = authorization {
-                    let username = basic.username();
-                    if username.is_empty() {
-                        return Err((StatusCode::UNAUTHORIZED, "no username provided"));
+        if context.config.authentication_required {
+            if let Some(basic) = authorization {
+                match context
+                    .config_repo
+                    .get_user_by_username_password(basic.username(), basic.password())
+                    .await
+                {
+                    Ok(user) => {
+                        return Ok(Self(Arc::new(Session::with_username(&user.username))));
                     }
-                    return Ok(Self(Arc::new(Session::with_username(username))));
-                }
-            }
-            AuthenticationType::UsernamePassword => {
-                if let Some(basic) = authorization {
-                    match context
-                        .config_repo
-                        .get_user_by_username_password(basic.username(), basic.password())
-                        .await
-                    {
-                        Ok(user) => {
-                            return Ok(Self(Arc::new(Session::with_username(&user.username))));
-                        }
-                        Err(err) => {
-                            warn!(
-                                "Basic authentication failure for username {}, error={:?}",
-                                basic.username(),
-                                err
-                            );
-                        }
+                    Err(err) => {
+                        warn!(
+                            "Basic authentication failure for username {}, error={:?}",
+                            basic.username(),
+                            err
+                        );
                     }
                 }
-                info!("Authentication required but no session found.");
             }
+            info!("Authentication required but no session found.");
+        } else {
+            return Ok(Self(Arc::new(Session::anonymous(remote_user))));
         }
+
         return Err((StatusCode::UNAUTHORIZED, "authentication required"));
     }
 }

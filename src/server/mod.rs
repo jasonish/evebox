@@ -19,30 +19,6 @@ mod rejection;
 mod response;
 pub mod session;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AuthenticationType {
-    Anonymous,
-    Username,
-    UsernamePassword,
-}
-
-impl ToString for AuthenticationType {
-    fn to_string(&self) -> String {
-        let s = match self {
-            AuthenticationType::Anonymous => "anonymous",
-            AuthenticationType::Username => "username",
-            AuthenticationType::UsernamePassword => "usernamepassword",
-        };
-        s.to_string()
-    }
-}
-
-impl Default for AuthenticationType {
-    fn default() -> Self {
-        Self::Anonymous
-    }
-}
-
 #[derive(Serialize, Default, Debug)]
 pub struct Features {
     pub comments: bool,
@@ -96,7 +72,6 @@ pub struct ServerConfig {
     pub elastic_ecs: bool,
     pub data_directory: Option<String>,
     pub authentication_required: bool,
-    pub authentication_type: AuthenticationType,
     pub http_reverse_proxy: bool,
     pub http_request_logging: bool,
 }
