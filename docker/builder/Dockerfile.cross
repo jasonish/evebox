@@ -1,4 +1,4 @@
-FROM fedora:36
+FROM fedora:38
 
 RUN dnf -y install \
         curl \
@@ -19,7 +19,7 @@ RUN dnf -y install \
         ruby-devel \
         rubygem-ffi \
         ruby-devel
-RUN gem install --no-document --bindir=/usr/local/bin fpm -v 1.14.0
+RUN gem install --no-document --bindir=/usr/local/bin fpm -v 1.15.1
 
 ARG REAL_UID=1000
 ARG REAL_GID=1000
