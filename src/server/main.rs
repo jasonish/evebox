@@ -119,7 +119,12 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     let mut context = build_context(server_config.clone(), datastore).await?;
 
     if server_config.authentication_required && !context.config_repo.has_users()? {
-        warn!("Username/password authentication is required, but no users exist");
+        warn!("Username/password authentication is required, but no users exist, creating a user");
+        let (username, password) = create_admin_user(&context)?;
+        warn!(
+            "Created administrator username and password: username={}, password={}",
+            username, password
+        );
     }
 
     if let Some(filename) = config_filename {
@@ -261,6 +266,19 @@ fn is_authentication_required(config: &Config) -> bool {
 
     // Default to true.
     true
+}
+
+fn create_admin_user(context: &ServerContext) -> Result<(String, String)> {
+    use rand::Rng;
+    let rng = rand::thread_rng();
+    let username = "admin";
+    let password: String = rng
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(12)
+        .map(char::from)
+        .collect();
+    context.config_repo.add_user(username, &password)?;
+    Ok((username.to_string(), password))
 }
 
 fn is_input_enabled(config: &Config) -> bool {
