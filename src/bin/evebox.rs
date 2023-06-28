@@ -49,6 +49,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_name("DIR")
                 .help("Data directory")
                 .env("EVEBOX_DATA_DIRECTORY")
+                .hide_env(true)
                 .global(true),
         )
         .subcommand(clap::Command::new("version").about("Display version"));
@@ -70,6 +71,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .action(ArgAction::Set)
                 .default_value("127.0.0.1")
                 .env("EVEBOX_HTTP_HOST")
+                .hide_env(true)
                 .help("Hostname/IP address to bind to"),
         )
         .arg(
@@ -80,6 +82,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .action(ArgAction::Set)
                 .default_value("5636")
                 .env("EVEBOX_HTTP_PORT")
+                .hide_env(true)
                 .value_parser(value_parser!(u16))
                 .help("Port to bind to"),
         )
@@ -91,6 +94,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_name("URL")
                 .default_value("http://localhost:9200")
                 .env("EVEBOX_ELASTICSEARCH_URL")
+                .hide_env(true)
                 .help("Elastic Search URL"),
         )
         .arg(
@@ -129,6 +133,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .action(ArgAction::SetTrue)
                 .long("ecs")
                 .env("EVEBOX_ELASTICSEARCH_ECS")
+                .hide_env(true)
                 .help("Enable Elastic ECS support"),
         )
         .arg(
