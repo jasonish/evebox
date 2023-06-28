@@ -156,6 +156,14 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Enable HTTP access logging"),
         )
         .arg(
+            Arg::new("authentication.required")
+                .action(ArgAction::SetFalse)
+                .long("no-auth")
+                .help("Disable authentication")
+                .alias("no-authentication")
+                .alias("disable-authentication"),
+        )
+        .arg(
             Arg::new("http.tls.disabled")
                 .action(ArgAction::SetTrue)
                 .long("no-tls")
