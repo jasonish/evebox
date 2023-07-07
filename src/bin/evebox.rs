@@ -169,22 +169,20 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .alias("disable-authentication"),
         )
         .arg(
-            Arg::new("http.tls.disabled")
-                .action(ArgAction::SetTrue)
+            Arg::new("http.tls.enabled")
+                .action(ArgAction::SetFalse)
                 .long("no-tls")
                 .help("Disable TLS")
-                .env("EVEBOX_HTTP_TLS_DISABLED")
-                .conflicts_with("http.tls.enabled")
+                .env("EVEBOX_HTTP_TLS_ENABLED")
                 .hide_env(true),
         )
         .arg(
-            Arg::new("http.tls.enabled")
-                .action(ArgAction::SetTrue)
+            // We accept, but ignore --tls as TLS is now enabled by
+            // default and can be turned off with --no-tls.
+            Arg::new("http.tls.__ignore_enabled")
                 .long("tls")
-                .help("Enable TLS")
-                .env("EVEBOX_HTTP_TLS_ENABLED")
-                .conflicts_with("http.tls.disabled")
-                .hide_env(true),
+                .action(ArgAction::SetTrue)
+                .hide(true),
         )
         .arg(
             Arg::new("http.tls.certificate")
