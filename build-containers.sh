@@ -2,7 +2,6 @@
 #
 # Arguments:
 #
-# --skip-make       Skips building (making) EveBox
 # --push            Push images and manifest
 # --latest          Also tag as "latest"
 #
@@ -18,7 +17,6 @@ BUILD_REV=$(git rev-parse --short HEAD)
 DOCKER_NAME="${REGISTRY}/jasonish/evebox"
 
 push="no"
-skip_make="no"
 latest="no"
 
 aliases=()
@@ -27,9 +25,6 @@ for a in $@; do
     case "$a" in
         --push)
             push="yes"
-            ;;
-        --skip-make)
-            skip_make="yes"
             ;;
         --latest)
             latest="yes"
@@ -51,7 +46,6 @@ if [[ "${tag}" = "" ]]; then
     case "${version}" in
         devel)
             tag=${version}
-            aliases+=("master")
             ;;
         *)
             tag=${version}
@@ -84,14 +78,6 @@ cross_run() {
         --group-add $(getent group docker | cut -f3 -d:) \
         ${TAG} $@
 }
-
-if [[ "${skip_make}" = "yes" ]]; then
-    echo "===> Skipping make of EveBox"
-else
-    cross_run x86_64-unknown-linux-musl    make dist
-    cross_run aarch64-unknown-linux-musl   make dist
-    cross_run arm-unknown-linux-musleabihf make dist
-fi
 
 bins=(
     ./dist/evebox-${version}-linux-x64/evebox
