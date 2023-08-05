@@ -129,10 +129,12 @@ fn info(args: &InfoArgs) -> Result<()> {
     println!("Synchronous: {}", get_synchronous(&conn)?);
     println!("FTS enabled: {}", conn.has_table("fts")?);
 
-    let min_rowid: i64 =
-        conn.query_row_and_then("select min(rowid) from events", [], |row| row.get(0))?;
-    let max_rowid: i64 =
-        conn.query_row_and_then("select max(rowid) from events", [], |row| row.get(0))?;
+    let min_rowid: i64 = conn
+        .query_row_and_then("select min(rowid) from events", [], |row| row.get(0))
+        .unwrap_or(0);
+    let max_rowid: i64 = conn
+        .query_row_and_then("select max(rowid) from events", [], |row| row.get(0))
+        .unwrap_or(0);
 
     println!("Minimum rowid: {min_rowid}");
     println!("Maximum rowid: {max_rowid}");
@@ -154,7 +156,7 @@ fn info(args: &InfoArgs) -> Result<()> {
                 timestamp as i128,
             )?)
         },
-    )?;
+    ).ok();
 
     let max_timestamp = conn.query_row_and_then(
         "select max(timestamp) from events",
@@ -165,10 +167,10 @@ fn info(args: &InfoArgs) -> Result<()> {
                 timestamp as i128,
             )?)
         },
-    )?;
+    ).ok();
 
-    println!("Oldest event: {min_timestamp}");
-    println!("Latest event: {max_timestamp}");
+    println!("Oldest event: {min_timestamp:?}");
+    println!("Latest event: {max_timestamp:?}");
 
     Ok(())
 }
