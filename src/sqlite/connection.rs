@@ -6,7 +6,7 @@ use crate::{
     prelude::*,
     sqlite::{util::fts_create, SqliteExt},
 };
-use rusqlite::{params, Connection, DatabaseName, OpenFlags};
+use rusqlite::{params, types::FromSql, Connection, DatabaseName, OpenFlags};
 use std::path::PathBuf;
 use time::format_description::well_known::Rfc3339;
 
@@ -167,6 +167,11 @@ pub(crate) fn get_synchronous(db: &Connection) -> Result<u8, rusqlite::Error> {
     db.query_row_and_then("SELECT synchronous FROM pragma_synchronous", [], |row| {
         row.get(0)
     })
+}
+
+pub(crate) fn get_pragma<T: FromSql>(db: &Connection, name: &str) -> Result<T, rusqlite::Error> {
+    let sql = format!("SELECT {name} FROM pragma_{name}");
+    db.query_row_and_then(&sql, [], |row| row.get(0))
 }
 
 mod embedded {

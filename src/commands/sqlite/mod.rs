@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::sqlite::{
-    connection::{get_auto_vacuum, get_journal_mode, get_synchronous},
+    connection::{get_auto_vacuum, get_journal_mode, get_pragma, get_synchronous},
     init_event_db, ConnectionBuilder, SqliteExt,
 };
 use anyhow::Result;
@@ -51,6 +51,8 @@ struct ScratchArgs {
 
 #[derive(Parser, Debug)]
 struct InfoArgs {
+    #[arg(long, help = "Count events")]
+    count: bool,
     #[arg(from_global, id = "data-directory")]
     data_directory: Option<String>,
     filename: Option<String>,
@@ -129,6 +131,18 @@ fn info(args: &InfoArgs) -> Result<()> {
     println!("Synchronous: {}", get_synchronous(&conn)?);
     println!("FTS enabled: {}", conn.has_table("fts")?);
 
+    let page_size: i64 = get_pragma::<i64>(&conn, "page_size")?;
+    let page_count: i64 = get_pragma::<i64>(&conn, "page_count")?;
+    let freelist_count: i64 = get_pragma::<i64>(&conn, "freelist_count")?;
+
+    println!("Page size: {page_size}");
+    println!("Page count: {page_count}");
+    println!("Free list count: {freelist_count}");
+    println!(
+        "Data size (page size * page count): {}",
+        page_size * page_count
+    );
+
     let min_rowid: i64 = conn
         .query_row_and_then("select min(rowid) from events", [], |row| row.get(0))
         .unwrap_or(0);
@@ -138,7 +152,14 @@ fn info(args: &InfoArgs) -> Result<()> {
 
     println!("Minimum rowid: {min_rowid}");
     println!("Maximum rowid: {max_rowid}");
-    println!("Number of events (estimate): {}", max_rowid - min_rowid);
+
+    if args.count {
+        let event_count: i64 =
+            conn.query_row_and_then("select count(*) from events", [], |row| row.get(0))?;
+        println!("Number of events: {event_count}");
+    } else {
+        println!("Number of events (estimate): {}", max_rowid - min_rowid);
+    }
 
     let schema_version: i64 = conn.query_row_and_then(
         "select max(version) from refinery_schema_history",
@@ -147,27 +168,31 @@ fn info(args: &InfoArgs) -> Result<()> {
     )?;
     println!("Schema version: {schema_version}");
 
-    let min_timestamp = conn.query_row_and_then(
-        "select min(timestamp) from events",
-        [],
-        |row| -> anyhow::Result<time::OffsetDateTime> {
-            let timestamp: i64 = row.get(0)?;
-            Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
-                timestamp as i128,
-            )?)
-        },
-    ).ok();
+    let min_timestamp = conn
+        .query_row_and_then(
+            "select min(timestamp) from events",
+            [],
+            |row| -> anyhow::Result<time::OffsetDateTime> {
+                let timestamp: i64 = row.get(0)?;
+                Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
+                    timestamp as i128,
+                )?)
+            },
+        )
+        .ok();
 
-    let max_timestamp = conn.query_row_and_then(
-        "select max(timestamp) from events",
-        [],
-        |row| -> anyhow::Result<time::OffsetDateTime> {
-            let timestamp: i64 = row.get(0)?;
-            Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
-                timestamp as i128,
-            )?)
-        },
-    ).ok();
+    let max_timestamp = conn
+        .query_row_and_then(
+            "select max(timestamp) from events",
+            [],
+            |row| -> anyhow::Result<time::OffsetDateTime> {
+                let timestamp: i64 = row.get(0)?;
+                Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
+                    timestamp as i128,
+                )?)
+            },
+        )
+        .ok();
 
     println!("Oldest event: {min_timestamp:?}");
     println!("Latest event: {max_timestamp:?}");
