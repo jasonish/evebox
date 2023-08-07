@@ -1,5 +1,11 @@
 # Change Log
 
+## unreleased
+
+- [agent] Add hostname of machine the alert was read from. This
+  includes the server when instructed to input events. The hostname of
+  the machine generating the alert is added to "evebox" field.
+
 ## 0.17.2 - 2023-05-27
 
 - [elastic] Fixing negation queries using '-':

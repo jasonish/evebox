@@ -67,6 +67,11 @@ impl EveBoxMetadataFilter {
             }
         }
 
+        // Add the hostname.
+        if let Ok(hostname) = gethostname::gethostname().into_string() {
+            event["evebox"]["hostname"] = hostname.into();
+        }
+
         // Add a tags object.
         if event.get("tags").is_none() {
             event["tags"] = serde_json::Value::Array(vec![]);
