@@ -192,6 +192,7 @@ fn delete_by_range(conn: &Arc<Mutex<Connection>>, range: usize, limit: usize) ->
     let older_than = now.sub(period);
     let mut conn = conn.lock().unwrap();
     let timer = Instant::now();
+    trace!("Deleting events older than {range} days");
     let tx = conn.transaction()?;
     let sql = r#"DELETE FROM events
                 WHERE rowid IN
@@ -203,7 +204,7 @@ fn delete_by_range(conn: &Arc<Mutex<Connection>>, range: usize, limit: usize) ->
     tx.commit()?;
     if n > 0 {
         debug!(
-            "Deleted {n} events older than {} in {} ms",
+            "Deleted {n} events older than {} ({range} days) in {} ms",
             &older_than,
             timer.elapsed().as_millis()
         );

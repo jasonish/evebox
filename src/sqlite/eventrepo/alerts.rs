@@ -124,7 +124,7 @@ impl SqliteEventRepo {
                     let query = query.replace("%FROM%", &from.join(", "));
 
                     if *LOG_QUERIES {
-                        info!("query={}", &query);
+                        info!("query={}", &query.trim());
                     }
 
                     let tx = conn.transaction()?;
