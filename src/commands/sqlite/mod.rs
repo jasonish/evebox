@@ -85,6 +85,12 @@ enum FtsCommand {
         #[arg(value_name = "DB_FILENAME")]
         filename: String,
     },
+
+    /// Optimize FTS data
+    Optimize {
+        #[arg(value_name = "DB_FILENAME")]
+        filename: String,
+    },
 }
 
 #[derive(Debug, Parser)]

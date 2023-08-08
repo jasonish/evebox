@@ -9,13 +9,14 @@ use crate::sqlite::{
 use anyhow::Result;
 use rusqlite::{params, Transaction};
 use serde_json::Value;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 pub(super) fn fts(args: &FtsArgs) -> Result<()> {
     match &args.command {
         FtsCommand::Enable { force, filename } => fts_enable(force, filename),
         FtsCommand::Disable { force, filename } => fts_disable(force, filename),
         FtsCommand::Check { filename } => fts_check(filename),
+        FtsCommand::Optimize { filename } => fts_optimize(filename),
     }
 }
 
@@ -80,6 +81,41 @@ fn fts_check(filename: &str) -> Result<()> {
         bail!("FTS data corrupt");
     }
     info!("FTS data OK");
+    Ok(())
+}
+
+fn fts_optimize(filename: &str) -> Result<()> {
+    let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
+
+    if !conn.has_table("fts")? {
+        warn!("FTS is not enabled");
+        return Ok(());
+    }
+
+    let get_total_changes = || -> Result<i64> {
+        let rows = conn.query_row("select total_changes()", [], |row| {
+            let count: i64 = row.get(0)?;
+            Ok(count)
+        })?;
+        Ok(rows)
+    };
+
+    let mut last_total_changes = get_total_changes()?;
+
+    let mut st = conn.prepare("insert into fts(fts, rank) values ('merge', -500)")?;
+    st.execute([])?;
+
+    loop {
+        conn.execute("insert into fts(fts, rank) values ('merge', 500)", [])?;
+        let total_changes = get_total_changes()?;
+        let changes = total_changes - last_total_changes;
+        debug!("Modified rows: {changes}");
+        if changes < 2 {
+            break;
+        }
+        last_total_changes = total_changes;
+    }
+
     Ok(())
 }
 
