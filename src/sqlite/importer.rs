@@ -15,7 +15,7 @@ use time::macros::format_description;
 pub enum IndexError {
     #[error("timestamp parse error")]
     TimestampParseError,
-    #[error("timestamp missing")]
+    #[error("event has no timestamp field")]
     TimestampMissing,
     #[error("sqlite error: {0}")]
     SQLiteError(#[from] rusqlite::Error),
@@ -49,7 +49,7 @@ pub(crate) fn prepare_sql(
 ) -> Result<Vec<QueuedStatement>, IndexError> {
     let ts = event
         .timestamp()
-        .ok_or_else(|| IndexError::TimestampParseError)?;
+        .ok_or_else(|| IndexError::TimestampMissing)?;
     reformat_timestamps(event);
     let source_values = extract_values(event);
     let mut archived = 0;
