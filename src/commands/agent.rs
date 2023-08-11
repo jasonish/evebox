@@ -80,6 +80,10 @@ struct Args {
     )]
     elasticsearch_nodate: bool,
 
+    /// Disable TLS certificate checks.
+    #[arg(long, short = 'k', id = "disable-certificate-check", aliases = &["no-certificate-check"])]
+    disable_certificate_check: bool,
+
     /// Log file names/patterns to process
     filenames: Vec<String>,
 }
@@ -110,10 +114,8 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         .unwrap_or_else(|| "http://localhost:5636".to_string());
     let server_username = config.get_string("server.username");
     let server_password = config.get_string("server.password");
-
-    let disable_certificate_check: bool = config
-        .get_value("disable-certificate-check")
-        .unwrap_or(Some(false))
+    let disable_certificate_check = config
+        .get_bool("disable-certificate-check")
         .unwrap_or(false);
 
     // Collect eve filenames.
