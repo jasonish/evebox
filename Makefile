@@ -62,8 +62,9 @@ evebox: webapp
 
 dist: DIST_NAME ?= $(APP)-$(DIST_VERSION)-$(OS)-$(DIST_ARCH)
 dist: DIST_DIR ?= dist/$(DIST_NAME)
-dist: webapp
+dist:
 	echo "Building $(DIST_NAME)..."
+	$(MAKE) -C webapp
 	$(CARGO) build --release $(CARGO_BUILD_ARGS)
 	mkdir -p $(DIST_DIR)
 	cp $(EVEBOX_BIN) $(DIST_DIR)/
