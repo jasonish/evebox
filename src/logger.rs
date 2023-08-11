@@ -44,7 +44,9 @@ pub fn init_logger(level: Level) -> Result<()> {
     };
 
     let builder = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(format!("{level},h2=off,hyper=off,tower_http=debug"))
+        .with_env_filter(format!(
+            "{level},h2=off,hyper=off,tokio_util=off,tower_http=debug"
+        ))
         .with_writer(std::io::stderr)
         .with_timer(timer);
 
