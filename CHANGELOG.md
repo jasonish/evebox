@@ -2,6 +2,27 @@
 
 ## unreleased
 
+### Upgrade Notes
+
+- The EveBox server will now enable HTTPS and authentication by
+  default. This is done by generating a self-signed TLS certificate by
+  default, and creating a user of the name "admin" with a randomly
+  generated password that will be output in the server log.
+  - To disable authentication on the server, one of the following can be done:
+    - Add the command line option `--no-auth`
+    - Set the environment variable: `EVEBOX_AUTHENTICATION_REQUIRED=false`
+    - Set the configuration file field `authentication.required: false`
+  - To disable HTTPS on the server, one of the following can be done:
+    - Add the command line option `--no-tls`
+    - Set the environment variable: `EVEBOX_HTTP_TLS_ENABLED=false`
+    - Set the configuration file field `http.tls.enabled: false`
+  - While the agent configuration file already support
+    `disable-certificate-check` in the configuration file, this has
+    also been added to the `agent` command line with
+    `--disable-certificate-check` (or `-k`).
+
+### Changes
+
 - [agent] Add hostname of machine the alert was read from. This
   includes the server when instructed to input events. The hostname of
   the machine generating the alert is added to "evebox" field.
