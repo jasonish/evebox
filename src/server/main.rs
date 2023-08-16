@@ -96,15 +96,26 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     server_config.authentication_required = is_authentication_required(&config);
 
     // Do we need a data-directory? If so, make sure its set.
-    let data_directory_required =
-        server_config.datastore == "sqlite" || server_config.authentication_required;
+    let data_directory_required = server_config.datastore == "sqlite"
+        || server_config.authentication_required
+        || (server_config.tls_enabled
+            && server_config.tls_key_filename.is_none()
+            && server_config.tls_cert_filename.is_none());
 
+    // If no data-directory has been provided by the user, attempt to
+    // find one. For EveBox at this time, the config and data
+    // directory are the same.
     if data_directory_required && server_config.data_directory.is_none() {
-        error!("A data-directory is required");
-        std::process::exit(1);
-    }
-
-    if let Some(directory) = &server_config.data_directory {
+        if let Some(dir) = directories::ProjectDirs::from("org", "evebox", "evebox")
+            .map(|dirs| dirs.config_local_dir().to_owned())
+        {
+            warn!("No data-directory provided, will use {}", dir.display());
+            server_config.data_directory = Some(dir.display().to_string());
+        } else {
+            error!("A data-directory is required");
+            std::process::exit(1);
+        }
+    } else if let Some(directory) = &server_config.data_directory {
         debug!("Using data-directory {}", directory);
     }
 
@@ -219,14 +230,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         if server_config.tls_key_filename.is_none() && server_config.tls_cert_filename.is_none() {
             // No TLS certificate or key filenames have been provided,
             // generate self signed certificates.
-            //
-            // We'll first try to use the user provided
-            // data-directory, falling back to XDG type directories,
-            // but with support for Windows.
             let tls_dir = if let Some(dir) = &server_config.data_directory {
                 PathBuf::from(dir)
-            } else if let Some(dirs) = directories::ProjectDirs::from("org", "evebox", "evebox") {
-                dirs.config_local_dir().to_path_buf()
             } else {
                 error!("Unable to determine what directory to store TLS certificate and key in, please provide a data directory or start with --no-tls to disable TLS");
                 std::process::exit(1);
