@@ -49,85 +49,21 @@ $event-table-border-color: $gray-800;
 
 // Background colors for event rows based on alert severity.
 .evebox-row-info {
-  @extend .bg-info;
+  @extend .table-info;
 }
 
 .evebox-row-warning {
-  @extend .bg-warning;
+  @extend .table-warning;
 }
 
 .evebox-row-danger {
-  @extend .bg-danger;
+  @extend .table-danger;
 }
 
-//
-//.table {
-//  &-secondary {
-//    &,
-//    > th,
-//    > td {
-//      background-color: $primary;
-//    }
-//  }
-//}
-//
-//.alert-danger {
-//  background-color: $danger;
-//}
-//
-//// The idea here is to darken up the "white" text and backgrounds a little,
-//// to be a bit more like the slate theme from Bootswatch for Bootstrap 3.
-//
-//input,
-//select {
-//  background-color: $gray-300 !important;
-//}
-//
-//body,
-//tr {
-//  color: $gray-300 !important;
-//}
-//
-//button {
-//  color: $gray-200 !important;
-//}
-//
-//.evebox-event-table {
-//  tr.evebox-danger {
-//    @extend .table-danger;
-//  }
-//
-//  tr.evebox-warning {
-//    @extend .table-warning;
-//  }
-//
-//  tr.evebox-info {
-//    @extend .table-info;
-//  }
-//
-//  tr.evebox-success {
-//    background-color: $gray-800;
-//  }
-//}
-//
+.evebox-row-success {
+ @extend .table-primary;
+}
 
-//.evebox-bg-danger {
-//  @extend .bg-danger;
-//}
-//
-//.evebox-bg-warning {
-//  @extend .bg-warning;
-//}
-//
-//.evebox-bg-info {
-//  @extend .bg-info;
-//}
-//
-//.evebox-bg-success {
-//  @extend .bg-success;
-//  background-color: transparentize($success, 0.8) !important;
-//}
-//
 .rule {
   .rule-header-action {
     font-weight: bold;

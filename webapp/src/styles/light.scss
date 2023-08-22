@@ -1,4 +1,3 @@
-//$event-table-border-color: #ddd;
 $enable-smooth-scroll: false;
 
 @import "bootstrap/scss/bootstrap";
@@ -28,45 +27,25 @@ $enable-smooth-scroll: false;
 
 // Background colors for event rows based on alert severity.
 .evebox-row-info {
-  @extend .bg-info;
+  @extend .table-info;
   background-color: transparentize($info, 0.8) !important;
 }
 
 .evebox-row-warning {
-  @extend .bg-warning;
+  @extend .table-warning;
   background-color: transparentize($warning, 0.8) !important;
 }
 
 .evebox-row-danger {
-  @extend .bg-danger;
+  @extend .table-danger;
   background-color: transparentize($danger, 0.8) !important;
 }
 
 .evebox-row-success {
-  @extend .bg-success;
+  @extend .table-success;
   background-color: transparentize($success, 0.8) !important;
 }
 
-//.evebox-bg-danger {
-//  @extend .bg-danger;
-//  background-color: transparentize($danger, 0.8) !important;
-//}
-//
-//.evebox-bg-warning {
-//  @extend .bg-warning;
-//  background-color: transparentize($warning, 0.8) !important;
-//}
-//
-//.evebox-bg-info {
-//  @extend .bg-info;
-//  background-color: transparentize($info, 0.8) !important;
-//}
-//
-//.evebox-bg-success {
-//  @extend .bg-success;
-//  background-color: transparentize($success, 0.8) !important;
-//}
-//
 .rule {
   .rule-header-action {
     font-weight: bold;
