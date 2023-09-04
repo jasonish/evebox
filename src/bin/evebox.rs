@@ -224,12 +224,11 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Disable GeoIP"),
         )
         .arg(
-            Arg::new("input-start")
-                .long("input-start")
-                .hide(true)
-                .value_name("FILENAMES"),
-        )
-        .arg(Arg::new("tail-inputs"));
+            Arg::new("tail-inputs")
+                .value_name("EVE")
+                .num_args(0..)
+                .help("One or more Suricata EVE/JSON files"),
+        );
 
     let oneshot = Command::new("oneshot")
         .about("Import a single eve.json and review in EveBox")
