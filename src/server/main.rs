@@ -241,11 +241,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
                 tls_dir.display()
             );
 
-            if !tls_dir.exists() {
-                debug!("Creating directory {}", tls_dir.display());
-                std::fs::create_dir_all(&tls_dir)?;
-            }
-
+            crate::path::ensure_exists(&tls_dir)?;
             let (cert_path, key_path) = crate::cert::get_or_create_cert(tls_dir)?;
             server_config.tls_cert_filename = Some(cert_path);
             server_config.tls_key_filename = Some(key_path);
@@ -549,6 +545,7 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
         }
         "sqlite" => {
             let db_filename = if let Some(dir) = &server_config.data_directory {
+                crate::path::ensure_exists(dir)?;
                 std::path::PathBuf::from(dir).join("events.sqlite")
             } else {
                 panic!("data-directory required");
@@ -556,7 +553,8 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             let connection_builder = Arc::new(sqlite::ConnectionBuilder::filename(Some(
                 db_filename.clone(),
             )));
-            let mut connection = connection_builder.open(true)?;
+
+            let mut connection = connection_builder.open(true).unwrap();
             sqlite::init_event_db(&mut connection)?;
             let has_fts = connection.has_table("fts")?;
             info!("FTS enabled: {has_fts}");
