@@ -2,7 +2,7 @@
 
 ## unreleased
 
-### Upgrade Notes
+### Upgrade Notes (**Breaking Changes**)
 
 - The EveBox server will now enable HTTPS and authentication by
   default. This is done by generating a self-signed TLS certificate by
@@ -16,7 +16,7 @@
     - Add the command line option `--no-tls`
     - Set the environment variable: `EVEBOX_HTTP_TLS_ENABLED=false`
     - Set the configuration file field `http.tls.enabled: false`
-  - While the agent configuration file already support
+  - While the agent configuration file already supported
     `disable-certificate-check` in the configuration file, this has
     also been added to the `agent` command line with
     `--disable-certificate-check` (or `-k`).
