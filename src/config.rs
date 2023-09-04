@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+use anyhow::Result;
 use clap::{parser::ValueSource, ArgMatches};
 use serde::de::DeserializeOwned;
 use serde_yaml::Value;
@@ -166,6 +167,20 @@ impl Config {
             Ok(Some(serde_yaml::from_value(node.clone())?))
         } else {
             Ok(None)
+        }
+    }
+
+    /// Return an array of values, first from the command line then
+    /// from the configuration file.
+    pub fn get_many<T: DeserializeOwned + Sync + Send + Clone + 'static>(
+        &self,
+        key: &str,
+    ) -> Result<Option<Vec<T>>> {
+        if let Some(values) = self.args.get_many::<T>(key) {
+            let values: Vec<T> = values.cloned().collect();
+            Ok(Some(values))
+        } else {
+            self.get_config_value(key)
         }
     }
 }

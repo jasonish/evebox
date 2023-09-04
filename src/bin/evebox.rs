@@ -224,7 +224,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Disable GeoIP"),
         )
         .arg(
-            Arg::new("tail-inputs")
+            Arg::new("input.paths")
                 .value_name("EVE")
                 .num_args(0..)
                 .help("One or more Suricata EVE/JSON files"),

@@ -288,8 +288,8 @@ fn create_admin_user(context: &ServerContext) -> Result<(String, String)> {
 
 fn is_input_enabled(config: &Config) -> bool {
     config.args.contains_id("input.filename")
+        || config.args.contains_id("input.paths")
         || config.get_bool("input.enabled").unwrap_or(false)
-        || config.args.contains_id("tail-inputs")
 }
 
 fn get_input_patterns(config: &Config) -> Result<Vec<String>> {
@@ -299,16 +299,9 @@ fn get_input_patterns(config: &Config) -> Result<Vec<String>> {
         input_pattern_set.insert(filename);
     }
 
-    if let Some(paths) = config.get_value::<Vec<String>>("input.paths")? {
+    if let Some(paths) = config.get_many::<String>("input.paths")? {
         for path in &paths {
             input_pattern_set.insert(path.clone());
-        }
-    }
-
-    // The patterns provided at the end of the server command line.
-    if let Some(paths) = config.args.get_many::<String>("tail-inputs") {
-        for path in paths {
-            input_pattern_set.insert(path.to_string());
         }
     }
 
