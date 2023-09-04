@@ -15,6 +15,8 @@ set -e
 REGISTRY=${REGISTRY:-docker.io}
 BUILD_REV=$(git rev-parse --short HEAD)
 DOCKER_NAME="${REGISTRY}/jasonish/evebox"
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+GIT_TAG=$(git describe --tags --abbrev=0 --exact-match 2> /dev/null || echo "")
 
 push="no"
 latest="no"
@@ -37,20 +39,29 @@ for a in $@; do
     esac
 done
 
+if [[ "${GIT_TAG}" ]]; then
+    echo "Building container for version ${GIT_TAG}"
+    version="${GIT_TAG}"
+elif [[ "${GIT_BRANCH}" = "main" ]]; then
+    echo "Building devel version from branch main"
+    version="devel"
+    tag="main"
+    aliases+=("master")
+else
+    echo "Not building from branch or tag."
+    echo "  - version and tag must be set"
+fi
+
+echo "BRANCH=${GIT_BRANCH}"
+
 if [[ "${version}" = "" ]]; then
     echo "error: version must be set"
     exit 1
 fi
 
 if [[ "${tag}" = "" ]]; then
-    case "${version}" in
-        devel)
-            tag=${version}
-            ;;
-        *)
-            tag=${version}
-            ;;
-    esac
+    echo "error: tag must be set"
+    exit 1
 fi
 
 cross_run() {
