@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 use std::io::{stdin, stdout, Write};
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use anyhow::Result;
 use clap::CommandFactory;
 use clap::FromArgMatches;
 use clap::Parser;
 use clap::Subcommand;
+use tracing::info;
 
 use crate::sqlite::configrepo::ConfigRepo;
 
@@ -74,12 +75,18 @@ pub(crate) fn main(args: &clap::ArgMatches) -> Result<()> {
     }
 }
 
-fn open_config_repo(data_directory: Option<&str>) -> Result<ConfigRepo> {
-    if data_directory.is_none() {
-        return Err(anyhow!("--data-directory required"));
-    }
-    let data_directory = data_directory.unwrap();
-    let filename = PathBuf::from(data_directory).join("config.sqlite");
+fn open_config_repo<P: AsRef<Path>>(data_directory: Option<P>) -> Result<ConfigRepo> {
+    let data_directory = data_directory
+        .map(|p| PathBuf::from(p.as_ref()))
+        .or_else(crate::path::data_directory);
+    let data_directory = match data_directory {
+        Some(data_directory) => data_directory,
+        None => {
+            return Err(anyhow!("--data-directory required"));
+        }
+    };
+    info!("Using data directory {}", data_directory.display());
+    let filename = data_directory.join("config.sqlite");
     let repo = ConfigRepo::new(Some(&filename))?;
     Ok(repo)
 }
@@ -140,8 +147,8 @@ fn remove(username: String, dir: Option<String>) -> Result<()> {
     Ok(())
 }
 
-fn password(username: String, dir: Option<String>) -> Result<()> {
-    let repo = open_config_repo(dir.as_deref())?;
+fn password(username: String, data_directory: Option<String>) -> Result<()> {
+    let repo = open_config_repo(data_directory)?;
     let user = repo.get_user_by_name(&username)?;
     let password = rpassword::read_password_from_tty(Some("Password: "))?;
     if password.is_empty() {

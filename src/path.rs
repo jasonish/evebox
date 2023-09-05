@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 use anyhow::Result;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::debug;
+
+pub const SYSTEM_DATA_DIR: &str = "/var/lib/evebox";
 
 pub fn expand(path: &str) -> anyhow::Result<Vec<std::path::PathBuf>> {
     Ok(glob::glob(path)?.flatten().collect())
@@ -18,6 +19,31 @@ pub(crate) fn ensure_exists<P: AsRef<Path>>(path: P) -> Result<()> {
         std::fs::create_dir_all(path)?;
     }
     Ok(())
+}
+
+pub(crate) fn data_directory() -> Option<PathBuf> {
+    let system_default = Path::new(SYSTEM_DATA_DIR);
+    if system_default.exists() {
+        debug!(
+            "Found default system data directory {}",
+            system_default.display()
+        );
+        let test_filename = system_default.join(format!("{}.test_write", uuid::Uuid::new_v4()));
+        if std::fs::File::create(&test_filename).is_ok() {
+            let _ = std::fs::remove_file(&test_filename);
+            return Some(system_default.to_owned());
+        } else {
+            debug!(
+                "Default system data directory {} not writable",
+                system_default.display()
+            );
+        }
+    }
+
+    if let Some(dirs) = directories::ProjectDirs::from("org", "evebox", "evebox") {
+        return Some(dirs.config_local_dir().to_owned());
+    }
+    None
 }
 
 #[cfg(test)]
