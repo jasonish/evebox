@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 use anyhow::Result;
-use tracing::debug;
 use std::path::Path;
+use tracing::debug;
 
 pub fn expand(path: &str) -> anyhow::Result<Vec<std::path::PathBuf>> {
     Ok(glob::glob(path)?.flatten().collect())
