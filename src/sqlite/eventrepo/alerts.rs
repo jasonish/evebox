@@ -98,6 +98,10 @@ impl SqliteEventRepo {
                                             filters.push("events.source LIKE ?".into());
                                             params.push(Box::new(format!("%{val}%")));
                                         }
+                                        Element::NotString(val) => {
+                                            filters.push("events.source NOT LIKE ?".into());
+                                            params.push(Box::new(format!("%{val}%")));
+                                        }
                                         Element::KeyVal(key, val) => {
                                             if let Ok(val) = val.parse::<i64>() {
                                                 filters.push(format!(

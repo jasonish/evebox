@@ -146,6 +146,10 @@ impl EventQueryBuilder {
                             .push_param(format!("%{s}%"));
                     }
                 }
+                Element::NotString(s) => {
+                    self.push_where("events.source NOT LIKE ?")
+                        .push_param(format!("%{s}%"));
+                }
                 Element::KeyVal(k, v) => {
                     if let Ok(i) = v.parse::<i64>() {
                         self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))

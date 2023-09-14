@@ -397,11 +397,15 @@ impl ElasticEventRepo {
         q: &[querystring::Element],
         filter: &mut Vec<serde_json::Value>,
         should: &mut Vec<serde_json::Value>,
+        must_not: &mut Vec<serde_json::Value>,
     ) {
         for el in q {
             match el {
                 Element::String(s) => {
                     filter.push(query_string_query(s));
+                }
+                Element::NotString(s) => {
+                    must_not.push(query_string_query(s));
                 }
                 Element::KeyVal(key, val) => {
                     filter.push(request::term_filter(&self.map_field(key), val))
@@ -429,6 +433,7 @@ impl ElasticEventRepo {
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
         let mut filters = Vec::new();
         let mut should = Vec::new();
+        let mut must_not = Vec::new();
 
         // Set to true if the min timestamp is set in the query string
         let mut has_min_timestamp = false;
@@ -436,7 +441,7 @@ impl ElasticEventRepo {
         if let Some(q) = &options.query_string {
             match crate::querystring::parse(q, None) {
                 Ok(q) => {
-                    self.apply_query_string(&q, &mut filters, &mut should);
+                    self.apply_query_string(&q, &mut filters, &mut should, &mut must_not);
                     has_min_timestamp = q
                         .iter()
                         .any(|e| matches!(&e, Element::EarliestTimestamp(_)));
@@ -459,7 +464,6 @@ impl ElasticEventRepo {
             }
         }
 
-        let mut must_not = Vec::new();
         for tag in options.tags {
             if let Some(tag) = tag.strip_prefix('-') {
                 if tag == "archived" {
@@ -640,6 +644,7 @@ impl ElasticEventRepo {
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
+        let mut must_not = vec![];
 
         if let Some(event_type) = params.event_type {
             filters.push(request::term_filter(
@@ -648,7 +653,12 @@ impl ElasticEventRepo {
             ));
         }
 
-        self.apply_query_string(&params.query_string_elements, &mut filters, &mut should);
+        self.apply_query_string(
+            &params.query_string_elements,
+            &mut filters,
+            &mut should,
+            &mut must_not,
+        );
 
         if let Some(timestamp) = params.min_timestamp {
             filters.push(request::timestamp_gte_filter(&timestamp));
@@ -666,6 +676,7 @@ impl ElasticEventRepo {
             "query": {
                 "bool": {
                     "filter": filters,
+                    "must_not": must_not,
                 }
             },
             "sort": [{sort_by: {"order": sort_order}}],
@@ -753,7 +764,8 @@ impl ElasticEventRepo {
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
-        self.apply_query_string(q, &mut filters, &mut should);
+        let mut must_not = vec![];
+        self.apply_query_string(q, &mut filters, &mut should, &mut must_not);
 
         let bound_max = time::OffsetDateTime::now_utc();
         let bound_min = if let Some(timestamp) = q.get_earliest() {
@@ -784,6 +796,7 @@ impl ElasticEventRepo {
             "query": {
 		"bool": {
                     "filter": filters,
+                    "must_not": must_not,
 		},
             },
 	    "size": 0,
@@ -827,8 +840,9 @@ impl ElasticEventRepo {
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filter = vec![];
         let mut should = vec![];
+        let mut must_not = vec![];
 
-        self.apply_query_string(&q, &mut filter, &mut should);
+        self.apply_query_string(&q, &mut filter, &mut should, &mut must_not);
 
         #[rustfmt::skip]
         let agg = if order == "asc" {
@@ -860,6 +874,7 @@ impl ElasticEventRepo {
             "query": {
 		"bool": {
 		    "filter": filter,
+                    "must_not": must_not,
 		},
             },
             // Not interested in individual documents, just the

@@ -6,6 +6,7 @@ use anyhow::Result;
 use nom::branch::alt;
 use nom::bytes::complete::{escaped, tag, take_while1};
 use nom::character::complete::{multispace0, one_of};
+use nom::combinator::opt;
 use nom::sequence::{delimited, preceded};
 use nom::IResult;
 
@@ -13,6 +14,8 @@ use nom::IResult;
 pub enum Element {
     /// Bare string.
     String(String),
+    /// A "NOT" string, like -"ET INFO" in Elasticsearch.
+    NotString(String),
     /// A key value pair, (eg: alert.signature_id:222222)
     KeyVal(String, String),
     /// A timestamp specified with @earliest.
@@ -75,7 +78,7 @@ pub fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
     // like @ip, @earliest, @latest, etc.
     for token in tokens {
         match token {
-            Element::String(_) => {
+            Element::String(_) | Element::NotString(_) => {
                 elements.push(token);
             }
             Element::KeyVal(ref key, ref val) => match key.as_ref() {
@@ -103,13 +106,18 @@ pub fn tokenize(mut input: &str) -> IResult<&str, Vec<Element>> {
             break;
         }
         let (next, _) = multispace0(input)?;
+        let (next, op) = opt(tag("-"))(next)?;
         let (next, token) = alt((parse_quoted, parse_string))(next)?;
         if next.starts_with(':') {
             let (next, value) = preceded(tag(":"), alt((parse_quoted, parse_string)))(next)?;
             tokens.push(Element::KeyVal(token.to_string(), value.to_string()));
             input = next;
         } else {
-            tokens.push(Element::String(token.to_string()));
+            if op == Some("-") {
+                tokens.push(Element::NotString(token.to_string()));
+            } else {
+                tokens.push(Element::String(token.to_string()));
+            }
             input = next;
         }
     }
@@ -264,6 +272,12 @@ mod test {
             first,
             &Element::KeyVal("alert.signature".to_string(), "WPAD".to_string())
         );
+
+        let (_, parsed) = tokenize("-\"ET INFO\"").unwrap();
+        assert_eq!(&parsed[0], &Element::NotString("ET INFO".to_string()));
+
+        let (_, parsed) = tokenize("-ET").unwrap();
+        assert_eq!(&parsed[0], &Element::NotString("ET".to_string()));
     }
 
     #[test]
