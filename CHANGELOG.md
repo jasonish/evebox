@@ -25,7 +25,14 @@
 
 - [agent] Add hostname of machine the alert was read from. This
   includes the server when instructed to input events. The hostname of
-  the machine generating the alert is added to "evebox" field.
+  the machine generating the alert is added to the "evebox" field.
+- [server] A data-directory isn't always required now, but can still
+  be specified. If no data-directory is provided and the server can
+  write to `/var/lib/evebox`, that directory will be used. Otherwise
+  `$HOME/.config/evebox` will be used. This was done to facilitate the
+  TLS and authentication by default, while still attempting to provide
+  a *just works* experience.
+- [server] Multiple input files can be specified on the command line.
 
 ## 0.17.2 - 2023-05-27
 
