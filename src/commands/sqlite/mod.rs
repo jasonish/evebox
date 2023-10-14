@@ -13,7 +13,6 @@ use std::{fs::File, time::Instant};
 use tracing::info;
 
 mod fts;
-mod scratch;
 
 #[derive(Parser, Debug)]
 #[command(name = "sqlite", about = "SQLite utilities")]
@@ -40,8 +39,6 @@ enum Commands {
         sql: String,
     },
     Info(InfoArgs),
-    #[command(hide(true))]
-    Scratch(ScratchArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -117,7 +114,6 @@ pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
         Commands::Fts(args) => fts::fts(args),
         Commands::Query { filename, sql } => query(filename, sql),
         Commands::Info(args) => info(args),
-        Commands::Scratch(args) => scratch::scratch(args),
     }
 }
 
