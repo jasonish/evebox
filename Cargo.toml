@@ -25,10 +25,9 @@ bytes = "0.5.4"
 clap = { version = "4.3.21", features = ["env", "derive", "color"] }
 
 # These 3 somewhat depend on each other.
-#deadpool-sqlite = { version = "0.5", features = ["rt_tokio_1"] }
-deadpool-sqlite = { git = "https://github.com/jasonish/deadpool", branch = "rusqlite-0-29-0" }
+deadpool-sqlite = { version = "0.6", features = ["rt_tokio_1"] }
 rusqlite = { version = "= 0.29", default-features = false, features = ["bundled", "serde_json"] }
-refinery = { version = "0.8.10", features = ["rusqlite"] }
+refinery = { version = "0.8.11", features = ["rusqlite"] }
 
 filetime = "0.2.12"
 glob = "0.3.0"
@@ -66,8 +65,3 @@ libc = { version = "0.2.140", default_features = false }
 rcgen = "0.11.1"
 directories = "5.0.1"
 gethostname = "0.4.3"
-
-# [patch.crates-io]
-# # Patch Rusqlite for now. 0.28.0 uses SQLite 3.39, but 3.40 is much
-# # faster for some group by queries used by EveBox.
-# rusqlite = { git = "https://github.com/rusqlite/rusqlite" }
