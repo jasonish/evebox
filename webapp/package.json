@@ -20,14 +20,14 @@
   "dependencies": {
     "@solidjs/router": "^0.8.3",
     "axios": "^1.2.1",
-    "bootstrap": "^5.3.1",
+    "bootstrap": "^5.3.2",
     "chart.js": "^4.2.0",
     "chartjs-adapter-dayjs-4": "^1.0.4",
     "dayjs": "^1.11.7",
     "events": "^3.3.0",
     "pretty-print-json": "^1.4.0",
     "queue": "^6.0.2",
-    "solid-bootstrap": "^1.0.13",
+    "solid-bootstrap": "^1.0.19",
     "solid-js": "^1.7.0",
     "solid-transition-group": "^0.0.12",
     "tinykeys": "^1.4.0"
