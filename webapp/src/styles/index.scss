@@ -1,3 +1,76 @@
+$enable-smooth-scroll: false;
+
+@import "bootstrap/scss/bootstrap";
+@import "pretty-print-json/dist/css/pretty-print-json.css";
+@import "transitions";
+
+// App specific style to force the width of an element to 1em.
+.app-w-1 {
+  width: 1em !important;
+  max-width: 1em !important;
+}
+
+.event-table {
+  td {
+    // Decrease cell padding to make the table more compact.
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+  }
+
+  .col-timestamp {
+    white-space: nowrap;
+    width: 1%;
+  }
+
+  .col-address {
+    white-space: nowrap;
+  }
+
+  .col-event-type {
+    width: 1%;
+  }
+
+  .col-count {
+    width: 1%;
+  }
+
+  tbody {
+    tr {
+      cursor: pointer;
+    }
+  }
+}
+
+.card-body {
+  .detail-table {
+    td:first-child {
+      padding-left: 1em;
+    }
+
+    td:last-child {
+      padding-right: 1em;
+    }
+
+    tbody {
+      th:first-child {
+        padding-left: 1em;
+        padding-right: 1em;
+      }
+    }
+  }
+}
+
+.force-wrap {
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  overflow: hidden !important;
+  white-space: pre-wrap !important;
+}
+
+.event-detail-card a:link {
+  text-decoration: none;
+}
+
 .invisible {
   visibility: hidden;
 }
@@ -8,13 +81,155 @@
   margin-top: 0 !important;
 }
 
-// Helps align bootstrap icons with the text they are next to.
-.bi-inline {
-  vertical-align: -0.2em;
+.help-tab {
+  border-left: 1px solid $gray-200;
+  border-right: 1px solid $gray-200;
+  border-bottom: 1px solid $gray-200;
+  padding: 5px;
 }
 
-table.evebox-table-never-wrap {
-  td {
-    white-space: nowrap;
+// Pretty-json overrides
+[data-bs-theme="dark"] {
+  .json-container {
+    background-color: inherit !important;
+  }
+}
+
+[data-bs-theme="dark"] {
+  // Custom colors by Anne-Fleur.
+  $evebox-warning-color: #3d5f5f;
+  $evebox-info-color: #50656f;
+  $evebox-danger-color: #72383e;
+
+  th {
+    background-color: $body-tertiary-bg-dark;
+  }
+
+  .evebox-row-info {
+    @extend .table-info;
+
+    $_color: $evebox-info-color;
+    $_hover: tint-color($_color, 10%);
+
+    --bs-table-bg: #{$_color} !important;
+    --bs-table-border-color: #{$_color} !important;
+    --bs-table-color: white !important;
+    --bs-table-hover-bg: #{$_hover} !important;
+    --bs-table-hover-color: white !important;
+  }
+
+  .evebox-row-warning {
+    @extend .table-warning;
+
+    $_color: $evebox-warning-color;
+    $_hover: tint-color($_color, 10%);
+
+    --bs-table-bg: #{$_color} !important;
+    --bs-table-border-color: #{$_color} !important;
+    --bs-table-color: white !important;
+    --bs-table-hover-bg: #{$_hover} !important;
+    --bs-table-hover-color: white !important;
+  }
+
+  .evebox-row-danger {
+    @extend .table-danger;
+
+    $_color: $evebox-danger-color;
+    $_hover: tint-color($_color, 10%);
+
+    --bs-table-bg: #{$_color} !important;
+    --bs-table-border-color: #{$_color} !important;
+    --bs-table-color: white !important;
+    --bs-table-hover-bg: #{$_hover} !important;
+    --bs-table-hover-color: white !important;
+  }
+
+  .evebox-row-success {
+    @extend .table-success;
+
+    $_color: #2f4741;
+    $_hover: tint-color($_color, 10%);
+
+    --bs-table-bg: #{$_color} !important;
+    --bs-table-border-color: #{$_color} !important;
+    --bs-table-color: white !important;
+    --bs-table-hover-bg: #{$_hover} !important;
+    --bs-table-hover-color: white !important;
+  }
+
+  .rule {
+    .rule-header-action {
+      font-weight: bold;
+    }
+
+    .rule-header-proto {
+      font-weight: bold;
+      font-style: italic;
+    }
+
+    .rule-header-addr {
+    }
+
+    .rule-header-port {
+    }
+
+    .rule-keyword {
+      color: dodgerblue;
+      font-weight: bold;
+    }
+
+    .rule-keyword-value {
+      color: lawngreen;
+    }
+  }
+}
+
+[data-bs-theme="light"] {
+  .evebox-row-info {
+    @extend .table-info;
+  }
+
+  .evebox-row-warning {
+    @extend .table-warning;
+  }
+
+  .evebox-row-danger {
+    @extend .table-danger;
+  }
+
+  .evebox-row-success {
+    @extend .table-success;
+  }
+
+  .rule {
+    .rule-header-action {
+      font-weight: bold;
+    }
+
+    .rule-header-proto {
+      font-weight: bold;
+      font-style: italic;
+    }
+
+    .rule-header-addr {
+      color: dimgrey;
+    }
+
+    .rule-header-port {
+      color: slategrey;
+    }
+
+    .rule-header-direction {
+      font-weight: bold;
+    }
+
+    .rule-keyword {
+      color: blue;
+      font-weight: bold;
+    }
+
+    .rule-keyword-value {
+      color: green;
+    }
   }
 }

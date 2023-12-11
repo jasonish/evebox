@@ -397,7 +397,7 @@ export function Events() {
                   <table class={"table table-sm table-hover event-table"}>
                     <thead>
                       <tr>
-                        <th class={"col-cursor"}></th>
+                        <th class={"app-w-1"}></th>
                         <th class={"col-timestamp"}>Timestamp</th>
                         <th class={"col-event-type"}>Type</th>
                         <th class={"col-address"}>Src/Dst</th>
@@ -421,7 +421,7 @@ export function Events() {
                                 }}
                               >
                                 <td
-                                  class={"col-cursor"}
+                                  class={"app-w-1"}
                                   style={"min-width: 1.5em !important;"}
                                 >
                                   <Show when={cursor() === i()}>

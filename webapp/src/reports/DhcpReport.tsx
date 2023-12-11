@@ -131,12 +131,7 @@ export function DhcpReport() {
             <Card>
               <Card.Header>DHCP Leases</Card.Header>
               <Card.Body class={"p-0"}>
-                <Table
-                  size={"sm"}
-                  hover={true}
-                  striped={true}
-                  class={"evebox-table-never-wrap mb-0"}
-                >
+                <Table size={"sm"} hover={true} striped={true} class="mb-0">
                   <thead>
                     <tr>
                       <th class={"ps-2"}>Timestamp</th>

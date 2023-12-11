@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: MIT
 
-import dark from "./styles/dark.scss";
-import light from "./styles/light.scss";
 import { createSignal } from "solid-js";
 import { TIME_RANGE } from "./Top";
 import { parse_timerange } from "./datetime";
@@ -26,16 +24,14 @@ export function setTheme(name: string) {
   e.id = "theme";
   switch (name) {
     case "dark":
-      e.innerHTML = dark;
-      name = "dark";
+      document.querySelector("html")?.setAttribute("data-bs-theme", "dark");
       Chart.defaults.color = "#fff";
-      document.getElementsByTagName("body")[0].className = "dark";
+      name = "dark";
       break;
     default:
-      e.innerHTML = light;
       name = "light";
       Chart.defaults.color = "#666";
-      document.getElementsByTagName("body")[0].className = "light";
+      document.querySelector("html")?.setAttribute("data-bs-theme", "light");
       break;
   }
   document.body.appendChild(e);

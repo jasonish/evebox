@@ -21,7 +21,7 @@ import { Top } from "./Top";
 import { Login } from "./Login";
 import { Settings } from "./Settings";
 
-import "./transitions.scss";
+import "./styles/transitions.scss";
 import { EventView } from "./EventView";
 import { Notifications } from "./Notifications";
 import { Events } from "./Events";

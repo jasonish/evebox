@@ -129,7 +129,7 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
   return (
     <>
       <HelpModal />
-      <Navbar collapseOnSelect expand="lg">
+      <Navbar collapseOnSelect expand="lg" class="bg-body-tertiary">
         <Container fluid>
           <Navbar.Brand href="/">{brand}</Navbar.Brand>
           <Navbar.Toggle />

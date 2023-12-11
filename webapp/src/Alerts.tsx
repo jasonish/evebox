@@ -792,8 +792,8 @@ export function Alerts() {
               >
                 <thead>
                   <tr>
-                    <th class={"col-cursor"}></th>
-                    <th class={"col-check"}>
+                    <th class={"app-w-1"}></th>
+                    <th class={"app-w-1"}>
                       <input
                         ref={toggleSelectAllRef!}
                         type={"checkbox"}
@@ -804,7 +804,7 @@ export function Alerts() {
                         }}
                       />
                     </th>
-                    <th class={"col-star"}></th>
+                    <th class={"app-w-1"}></th>
                     <SortHeader
                       title={"#"}
                       key={"count"}
