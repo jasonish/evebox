@@ -33,6 +33,8 @@
   TLS and authentication by default, while still attempting to provide
   a *just works* experience.
 - [server] Multiple input files can be specified on the command line.
+- [webapp] Update to Bootstrap 5.3.2; use Bootstrap's own dark mode
+  with minor color changes.
 
 ### Fixes
 
