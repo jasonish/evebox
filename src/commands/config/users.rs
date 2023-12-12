@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use std::io::{stdin, stdout, Write};
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use clap::CommandFactory;

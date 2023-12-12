@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2022 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 use crate::commands::elastic::info;
 use clap::{ArgAction, Command};
@@ -8,6 +8,7 @@ use clap::{ArgAction, Command};
 pub fn main_options() -> Command {
     let info = Command::new("info");
     Command::new("elastic")
+        .about("Elasticsearch utilities")
         .arg(
             clap::Arg::new("elasticsearch")
                 .short('e')

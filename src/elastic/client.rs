@@ -297,6 +297,7 @@ pub struct InfoResponse {
     pub cluster_name: String,
     pub cluster_uuid: String,
     pub version: InfoResponseVersion,
+    pub tagline: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

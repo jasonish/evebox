@@ -10,7 +10,13 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let client = Client::new(url);
     let server_info = client.get_info().await?;
     let ignore_dot = true;
-    println!("Elasticsearch version: {}", server_info.version.number);
+    if let Some(distribution) = &server_info.version.distribution {
+        println!("Distribution: {distribution}");
+    }
+    println!("Version: {}", server_info.version.number);
+    if let Some(tagline) = &server_info.tagline {
+        println!("Tagline: {tagline}");
+    }
 
     let indices = client.get_indices().await?;
     for index in indices.keys() {

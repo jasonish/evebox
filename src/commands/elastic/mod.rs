@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: (C) 2022 Jason Ish <jason@codemonkey.net>
 //
-// Copyright (C) 2022 Jason Ish
+// SPDX-License-Identifier: MIT
 
 pub(crate) mod info;
 pub mod main;
