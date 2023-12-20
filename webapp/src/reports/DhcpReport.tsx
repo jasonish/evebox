@@ -1,14 +1,10 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import {
-  Alert,
-  Button,
   Card,
   Col,
   Container,
-  Form,
   Row,
   Table,
 } from "solid-bootstrap";
@@ -17,7 +13,7 @@ import { API } from "../api";
 import { createEffect, createSignal, For, Setter, Show } from "solid-js";
 import { EventSource } from "../types";
 import { parse_timestamp } from "../datetime";
-import { A, useSearchParams } from "@solidjs/router";
+import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { RefreshButton } from "../common/RefreshButton";
 import { trackLoading } from "../util";
@@ -26,7 +22,6 @@ import { RawSearchLink, SearchLink } from "../common/SearchLink";
 export function DhcpReport() {
   const [acks, setAcks] = createSignal<EventSource[]>([]);
   const [dhcpServers, setDhcpServers] = createSignal<string[]>([]);
-  const [dhcpClients, setDhcpClients] = createSignal<string[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = createSignal(0);
 
@@ -65,19 +60,6 @@ export function DhcpReport() {
     if (searchParams.sensor) {
       sensor = ` host:${searchParams.sensor}`;
     }
-
-    trackLoading(setLoading, () => {
-      return API.groupBy({
-        field: "dhcp.client_mac",
-        size: 100,
-        time_range: TIME_RANGE(),
-        order: "desc",
-        q: `event_type:dhcp dhcp.dhcp_type:request${sensor}`,
-      }).then((response) => {
-        let clients = response.rows.map((e) => e.key);
-        setDhcpClients(clients);
-      });
-    });
 
     trackLoading(setLoading, () => {
       return API.groupBy({
@@ -220,42 +202,6 @@ export function DhcpReport() {
                     </Table>
                   </Card.Body>
                 </Card>
-              </Col>
-              <Col class={"pt-2"} sm={6} md={12}>
-                <Show
-                  when={dhcpClients().length > 0}
-                  fallback={
-                    <>
-                      <Alert>No DHCP clients</Alert>
-                    </>
-                  }
-                >
-                  <Card>
-                    <Card.Header>DHCP Clients</Card.Header>
-                    <Card.Body class={"p-0"}>
-                      <Table
-                        size={"sm"}
-                        class={"mb-0"}
-                        hover={true}
-                        striped={true}
-                      >
-                        <tbody class={""}>
-                          <For each={dhcpClients()}>
-                            {(addr) => (
-                              <>
-                                <tr>
-                                  <td class={"ps-2"}>
-                                    <SearchLink value={addr}>{addr}</SearchLink>
-                                  </td>
-                                </tr>
-                              </>
-                            )}
-                          </For>
-                        </tbody>
-                      </Table>
-                    </Card.Body>
-                  </Card>
-                </Show>
               </Col>
             </Row>
           </Col>
