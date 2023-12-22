@@ -1,5 +1,4 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import { createSignal, For, Show, Suspense } from "solid-js";
@@ -24,12 +23,12 @@ export function HelpModal() {
           >
             <Keyboard />
           </Tab>
-          <Tab eventKey="about" title="About" class={"help-tab"}>
+          <Tab eventKey="about" title="About" class="app-help-tab">
             <About />
           </Tab>
         </Tabs>
       </Modal.Body>
-      <Modal.Footer class={"help-footer"}>
+      <Modal.Footer class="app-help-footer">
         <Button variant="secondary" onClick={closeHelp}>
           Close
         </Button>

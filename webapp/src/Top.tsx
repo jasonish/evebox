@@ -1,9 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import { Container, Dropdown, Nav, Navbar, NavDropdown } from "solid-bootstrap";
-import { A, useLocation, useNavigate, useSearchParams } from "@solidjs/router";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 
 import tinykeys from "tinykeys";
@@ -11,7 +10,7 @@ import { BiGear } from "./icons";
 import { HelpModal } from "./Help";
 import { QUEUE_SIZE, SERVER_REVISION } from "./api";
 import { GIT_REV } from "./gitrev";
-import { serverConfig, serverConfigSet } from "./config";
+import { serverConfig } from "./config";
 
 export const [showHelp, setShowHelp] = createSignal(false);
 export const openHelp = () => setShowHelp(true);

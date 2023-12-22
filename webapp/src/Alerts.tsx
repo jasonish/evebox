@@ -1,5 +1,4 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import {
@@ -27,7 +26,6 @@ import {
   createSignal,
   For,
   Match,
-  on,
   onCleanup,
   onMount,
   Show,
@@ -787,7 +785,7 @@ export function Alerts() {
           {visibleEvents().length > 0 && (
             <div>
               <table
-                class={"table table-hover mt-2 event-table"}
+                class={"table table-hover mt-2 app-event-table"}
                 style={"margin-bottom: 0;"}
               >
                 <thead>
@@ -855,9 +853,10 @@ export function Alerts() {
                         <>
                           <tr
                             classList={{
-                              "evebox-row-info": severity > 2,
-                              "evebox-row-warning": severity === 2,
-                              "evebox-row-danger": severity === 1,
+                              "evebox-row-info table-info": severity > 2,
+                              "evebox-row-warning table-warning":
+                                severity === 2,
+                              "table-danger": severity === 1,
                               "event-row": true,
                             }}
                             onclick={() => {

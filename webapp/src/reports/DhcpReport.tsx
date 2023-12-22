@@ -1,13 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import {
-  Card,
-  Col,
-  Container,
-  Row,
-  Table,
-} from "solid-bootstrap";
+import { Card, Col, Container, Row, Table } from "solid-bootstrap";
 import { TIME_RANGE, Top } from "../Top";
 import { API } from "../api";
 import { createEffect, createSignal, For, Setter, Show } from "solid-js";

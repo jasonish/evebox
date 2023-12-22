@@ -1,4 +1,16 @@
+// Disable smooth scroll, it gets messy with keyboard shortcuts for
+// scrolling.
 $enable-smooth-scroll: false;
+
+// Tighten of the default table spacing in Bootstrap, by default its a
+// little large.
+$table-cell-padding-y: 0.25rem;
+$table-cell-padding-x: 0.25rem;
+
+// Custom dark colors by Anne-Fleur.
+$evebox-warning-color-dark: #3d5f5f;
+$evebox-info-color-dark: #50656f;
+$evebox-danger-color-dark: #72383e;
 
 @import "bootstrap/scss/bootstrap";
 @import "pretty-print-json/dist/css/pretty-print-json.css";
@@ -10,13 +22,7 @@ $enable-smooth-scroll: false;
   max-width: 1em !important;
 }
 
-.event-table {
-  td {
-    // Decrease cell padding to make the table more compact.
-    padding-top: 1px !important;
-    padding-bottom: 1px !important;
-  }
-
+.app-event-table {
   .col-timestamp {
     white-space: nowrap;
     width: 1%;
@@ -24,13 +30,16 @@ $enable-smooth-scroll: false;
 
   .col-address {
     white-space: nowrap;
+    width: 1%;
   }
 
   .col-event-type {
+    white-space: nowrap;
     width: 1%;
   }
 
   .col-count {
+    white-space: nowrap;
     width: 1%;
   }
 
@@ -41,54 +50,7 @@ $enable-smooth-scroll: false;
   }
 }
 
-.card-body {
-  .detail-table {
-    td:first-child {
-      padding-left: 1em;
-    }
-
-    td:last-child {
-      padding-right: 1em;
-    }
-
-    tbody {
-      th:first-child {
-        padding-left: 1em;
-        padding-right: 1em;
-      }
-    }
-  }
-}
-
-.force-wrap {
-  word-break: break-word !important;
-  word-wrap: break-word !important;
-  overflow: hidden !important;
-  white-space: pre-wrap !important;
-}
-
-.event-detail-card a:link {
-  text-decoration: none;
-}
-
-.invisible {
-  visibility: hidden;
-}
-
-.help-footer {
-  border-top: 0 !important;
-  padding-top: 0 !important;
-  margin-top: 0 !important;
-}
-
-.help-tab {
-  border-left: 1px solid $gray-200;
-  border-right: 1px solid $gray-200;
-  border-bottom: 1px solid $gray-200;
-  padding: 5px;
-}
-
-// Pretty-json overrides
+// Pretty-json overrides for dark theme. Not needed for light theme.
 [data-bs-theme="dark"] {
   .json-container {
     background-color: inherit !important;
@@ -96,67 +58,60 @@ $enable-smooth-scroll: false;
 }
 
 [data-bs-theme="dark"] {
-  // Custom colors by Anne-Fleur.
-  $evebox-warning-color: #3d5f5f;
-  $evebox-info-color: #50656f;
-  $evebox-danger-color: #72383e;
-
-  th {
-    background-color: $body-tertiary-bg-dark;
+  // Override the background color in table headers, as its a little
+  // too dark in the default dark theme.
+  .table {
+    th {
+      background-color: $body-tertiary-bg-dark;
+    }
   }
 
-  .evebox-row-info {
-    @extend .table-info;
+  // Color overrides for event tables.
+  .app-event-table {
+    tr {
+      --bs-table-border-color: black;
+    }
 
-    $_color: $evebox-info-color;
-    $_hover: tint-color($_color, 10%);
+    .table-info {
+      $_color: $evebox-info-color-dark;
+      $_hover: tint-color($_color, 10%);
+      --bs-table-bg: #{$_color} !important;
+      --bs-table-color: white !important;
+      --bs-table-hover-bg: #{$_hover} !important;
+      --bs-table-hover-color: white !important;
+    }
 
-    --bs-table-bg: #{$_color} !important;
-    --bs-table-border-color: #{$_color} !important;
-    --bs-table-color: white !important;
-    --bs-table-hover-bg: #{$_hover} !important;
-    --bs-table-hover-color: white !important;
+    .table-warning {
+      $_color: $evebox-warning-color-dark;
+      $_hover: tint-color($_color, 10%);
+      --bs-table-bg: #{$_color} !important;
+      --bs-table-color: white !important;
+      --bs-table-hover-bg: #{$_hover} !important;
+      --bs-table-hover-color: white !important;
+    }
+
+    .table-success {
+      $_color: #2f4741;
+      $_hover: tint-color($_color, 10%);
+      --bs-table-bg: #{$_color} !important;
+      --bs-table-color: white !important;
+      --bs-table-hover-bg: #{$_hover} !important;
+      --bs-table-hover-color: white !important;
+    }
+
+    .table-danger {
+      $_color: $evebox-danger-color-dark;
+      $_hover: tint-color($_color, 10%);
+      --bs-table-bg: #{$_color} !important;
+      --bs-table-color: white !important;
+      --bs-table-hover-bg: #{$_hover} !important;
+      --bs-table-hover-color: white !important;
+    }
   }
+}
 
-  .evebox-row-warning {
-    @extend .table-warning;
-
-    $_color: $evebox-warning-color;
-    $_hover: tint-color($_color, 10%);
-
-    --bs-table-bg: #{$_color} !important;
-    --bs-table-border-color: #{$_color} !important;
-    --bs-table-color: white !important;
-    --bs-table-hover-bg: #{$_hover} !important;
-    --bs-table-hover-color: white !important;
-  }
-
-  .evebox-row-danger {
-    @extend .table-danger;
-
-    $_color: $evebox-danger-color;
-    $_hover: tint-color($_color, 10%);
-
-    --bs-table-bg: #{$_color} !important;
-    --bs-table-border-color: #{$_color} !important;
-    --bs-table-color: white !important;
-    --bs-table-hover-bg: #{$_hover} !important;
-    --bs-table-hover-color: white !important;
-  }
-
-  .evebox-row-success {
-    @extend .table-success;
-
-    $_color: #2f4741;
-    $_hover: tint-color($_color, 10%);
-
-    --bs-table-bg: #{$_color} !important;
-    --bs-table-border-color: #{$_color} !important;
-    --bs-table-color: white !important;
-    --bs-table-hover-bg: #{$_hover} !important;
-    --bs-table-hover-color: white !important;
-  }
-
+// Rule styling for dark mode.
+[data-bs-theme="dark"] {
   .rule {
     .rule-header-action {
       font-weight: bold;
@@ -184,23 +139,8 @@ $enable-smooth-scroll: false;
   }
 }
 
+// Rule styling for light mode.
 [data-bs-theme="light"] {
-  .evebox-row-info {
-    @extend .table-info;
-  }
-
-  .evebox-row-warning {
-    @extend .table-warning;
-  }
-
-  .evebox-row-danger {
-    @extend .table-danger;
-  }
-
-  .evebox-row-success {
-    @extend .table-success;
-  }
-
   .rule {
     .rule-header-action {
       font-weight: bold;
@@ -231,5 +171,70 @@ $enable-smooth-scroll: false;
     .rule-keyword-value {
       color: green;
     }
+  }
+}
+
+[data-bs-theme="dark"] {
+  .alert-info {
+    --bs-alert-bg: #{$evebox-info-color-dark};
+    --bs-alert-color: white;
+  }
+
+  .alert-warning {
+    --bs-alert-bg: #{$evebox-warning-color-dark};
+    --bs-alert-color: white;
+  }
+
+  .alert-danger {
+    --bs-alert-bg: #{$evebox-danger-color-dark};
+    --bs-alert-color: white;
+  }
+}
+
+// Make an element invisible. Useful when loading then transitioning
+// to visible.
+.invisible {
+  visibility: hidden;
+}
+
+// Force wrapping of text no matter what.
+.force-wrap {
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  overflow: hidden !important;
+  white-space: pre-wrap !important;
+}
+
+.app-help-footer {
+  border-top: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+.app-help-tab {
+  border-left: 1px solid $gray-200;
+  border-right: 1px solid $gray-200;
+  border-bottom: 1px solid $gray-200;
+  padding: 5px;
+}
+
+.app-detail-table {
+  td:first-child {
+    padding-left: 1em;
+  }
+
+  td:last-child {
+    padding-right: 1em;
+  }
+
+  tbody {
+    th:first-child {
+      padding-left: 1em;
+      padding-right: 1em;
+    }
+  }
+
+  a:link {
+    text-decoration: none;
   }
 }

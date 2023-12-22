@@ -1,5 +1,4 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import { A, useLocation, useNavigate, useParams } from "@solidjs/router";
@@ -580,7 +579,7 @@ export function EventView() {
                 <Card.Body class={"p-0"}>
                   <table
                     class={
-                      "table table-sm table-borderless table-striped table-hover detail-table"
+                      "table table-sm table-borderless table-striped table-hover app-detail-table"
                     }
                   >
                     <tbody>
@@ -607,7 +606,7 @@ export function EventView() {
                   <Card.Body class={"p-0"}>
                     <table
                       class={
-                        "table table-sm detail-table table-borderless table-striped table-hover"
+                        "table table-sm app-detail-table table-borderless table-striped table-hover"
                       }
                     >
                       <tbody>
@@ -660,7 +659,7 @@ export function EventView() {
                   <Card.Body class={"p-0"}>
                     <table
                       class={
-                        "mb-0 table table-sm table-striped table-bordered detail-table"
+                        "mb-0 table table-sm table-striped table-bordered app-detail-table"
                       }
                     >
                       <tbody>
@@ -709,7 +708,7 @@ export function EventView() {
                                         <Card.Body class={"p-0"}>
                                           <table
                                             class={
-                                              "mb-0 table table-sm table-striped table-bordered detail-table"
+                                              "mb-0 table table-sm table-striped table-bordered app-detail-table"
                                             }
                                           >
                                             <tbody>
@@ -782,7 +781,7 @@ export function EventView() {
                             <Tab eventKey={t.key} title={t.title}>
                               <table
                                 class={
-                                  "mb-0 table table-sm table-striped table-bordered detail-table"
+                                  "mb-0 table table-sm table-striped table-bordered app-detail-table"
                                 }
                               >
                                 <tbody>
@@ -883,7 +882,7 @@ export function EventView() {
                 <Card.Body class="p-0">
                   <table
                     class={
-                      "mb-0 table table-sm table-striped table-bordered detail-table"
+                      "mb-0 table table-sm table-striped table-bordered app-detail-table"
                     }
                   >
                     <tbody>
@@ -1010,11 +1009,11 @@ function formatTitle(event: Event): string {
 function bgClassForSeverity(event: Event) {
   switch (event._source.alert?.severity) {
     case 1:
-      return "bg-danger";
+      return "alert-danger";
     case 2:
-      return "bg-warning";
+      return "alert-warning";
     default:
-      return "bg-info";
+      return "alert-info";
   }
 }
 

@@ -1,5 +1,4 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import { TIME_RANGE, Top } from "./Top";
@@ -394,14 +393,14 @@ export function Events() {
             <Transition name={"fade"}>
               {events().length > 0 && (
                 <div>
-                  <table class={"table table-sm table-hover event-table"}>
+                  <table class={"table table-sm table-hover app-event-table"}>
                     <thead>
                       <tr>
                         <th class={"app-w-1"}></th>
                         <th class={"col-timestamp"}>Timestamp</th>
                         <th class={"col-event-type"}>Type</th>
                         <th class={"col-address"}>Src/Dst</th>
-                        <td>Description</td>
+                        <th>Description</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -413,11 +412,10 @@ export function Events() {
                               <tr
                                 onclick={() => openEventById(event._id)}
                                 classList={{
-                                  "evebox-row-info": severity! > 2,
-                                  "evebox-row-warning": severity === 2,
-                                  "evebox-row-danger": severity === 1,
-                                  "evebox-row-success": severity === undefined,
-                                  "event-row": true,
+                                  "table-info": severity! > 2,
+                                  "table-warning": severity === 2,
+                                  "table-danger": severity === 1,
+                                  "table-success": severity === undefined,
                                 }}
                               >
                                 <td
