@@ -730,6 +730,14 @@ export function EventView() {
                                                         >
                                                           <Match
                                                             when={
+                                                              e.val === true ||
+                                                              e.val === false
+                                                            }
+                                                          >
+                                                            {`${e.val}`}
+                                                          </Match>
+                                                          <Match
+                                                            when={
                                                               o.key ==
                                                                 "alert" &&
                                                               e.key == "rule"
