@@ -15,13 +15,21 @@ lto = true
 opt-level = 3
 
 [dependencies]
-anyhow = "1.0.31"
+anyhow = "1.0.79"
+thiserror = "1.0.56"
+
 axum = { version = "0.6.20", features = ["headers"] }
 axum-server = { version = "0.5.1", features = ["tls-rustls"] }
 axum-extra = { version = "0.7.7", default-features = false, features = ["cookie"] }
+hyper = "0.14.26"
+tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
+tower-http = { version = "0.3.4", features = ["set-header", "trace", "limit"] }
+futures = "0.3.21"
+
+# Needs update.
 base64 = "0.12.1"
-bcrypt = "0.9.0"
-bytes = "0.5.4"
+bcrypt = "0.15.0"
+bytes = "1.5.0"
 clap = { version = "4.3.21", features = ["env", "derive", "color"] }
 
 # These 3 somewhat depend on each other.
@@ -29,39 +37,41 @@ deadpool-sqlite = { version = "0.6", features = ["rt_tokio_1"] }
 rusqlite = { version = "= 0.29", default-features = false, features = ["bundled", "serde_json"] }
 refinery = { version = "0.8.11", features = ["rusqlite"] }
 
-filetime = "0.2.12"
-glob = "0.3.0"
-humantime = "2.0.0"
-hyper = "0.14.26"
+filetime = "0.2.23"
+glob = "0.3.1"
+humantime = "2.1.0"
 lazy_static = "1.4.0"
+# Needs update.
 maxminddb = "0.13.0"
 md5 = "0.7.0"
-mime_guess = "2.0.3"
-nom = "7.1.0"
-percent-encoding = "2.1.0"
+mime_guess = "2.0.4"
+nom = "7.1.3"
+percent-encoding = "2.3.1"
 rand = "0.8.5"
-reqwest = { version = "0.11.18", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots"] }
+reqwest = { version = "0.11.23", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots"] }
+# Needs update.
 rpassword = "4.0.5"
-rust-embed = { version = "6.3.0", features = ["compression", "debug-embed"] }
-serde = { version = "1.0.110", features = ["derive"] }
-serde_json = "1.0.53"
-serde_yaml = "0.8.13"
+rust-embed = { version = "8.2.0", features = ["compression", "debug-embed"] }
+
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.112"
+serde_yaml = "0.9.30"
+
+# Could be removed.
 stdlog = { package = "log", version = "0.4.8" }
+
 suricatax-rule-parser = { git = "https://github.com/jasonish/rust-suricatax-rule-parser" }
-time = { version = "0.3.17", features = ["formatting", "local-offset", "macros", "parsing"] }
-tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
-tower-http = { version = "0.3.4", features = ["set-header", "trace", "limit"] }
-tracing = "0.1.25"
-tracing-subscriber = { version = "0.3.16", features = ["std", "fmt", "env-filter", "time"] }
-tracing-log = "0.1.2"
-thiserror = "1.0.19"
-ulid = "1.0.0"
-uuid = { version = "0.8.1", features = ["v4"] }
-webbrowser = "0.8.7"
+time = { version = "0.3.31", features = ["formatting", "local-offset", "macros", "parsing"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["std", "fmt", "env-filter", "time"] }
+tracing-log = "0.2.0"
+ulid = "1.1.0"
+uuid = { version = "1.7.0", features = ["v4"] }
+webbrowser = "0.8.12"
+# Could be replaced with serde-yaml.
 yaml-rust = "0.4.5"
-futures = "0.3.21"
-regex = "1.5.5"
-libc = { version = "0.2.140", default_features = false }
-rcgen = "0.11.1"
+regex = "1.10.3"
+libc = { version = "0.2.152", default_features = false }
+rcgen = "0.12.1"
 directories = "5.0.1"
 gethostname = "0.4.3"
