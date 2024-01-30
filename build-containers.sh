@@ -64,32 +64,6 @@ if [[ "${tag}" = "" ]]; then
     exit 1
 fi
 
-cross_run() {
-    target="$1"
-    shift
-    if [ "${target}" = "" ]; then
-        echo "error: target must be set for cross_run"
-        exit 1
-    fi
-    DOCKERFILE="./docker/builder/Dockerfile.cross"
-    TAG=${BUILDER_TAG:-"evebox/builder:cross"}
-    ${ECHO} docker build \
-        --build-arg REAL_UID="$(id -u)" \
-        --build-arg REAL_GID="$(id -g)" \
-        --cache-from ${TAG} \
-	-t ${TAG} \
-	-f ${DOCKERFILE} .
-    ${ECHO} docker run --rm ${it} --privileged \
-        -v "$(pwd):/src:z" \
-        -v /var/run/docker.sock:/var/run/docker.sock:z \
-        -w /src \
-        -e BUILD_REV="${BUILD_REV}" \
-        -e TARGET="${target}" \
-        -u builder \
-        --group-add $(getent group docker | cut -f3 -d:) \
-        ${TAG} $@
-}
-
 bins=(
     ./dist/evebox-${version}-linux-x64/evebox
     ./dist/evebox-${version}-linux-arm64/evebox

@@ -6,19 +6,14 @@ set -x
 REGISTRY=${REGISTRY:-docker.io}
 BUILD_REV=$(git rev-parse --short HEAD)
 
-skip_macos="no"
 skip_windows="no"
 
 for a in $@; do
     case "$a" in
-        --skip-macos)
-            skip_macos="yes"
-            ;;
         --skip-windows)
             skip_windows="yes"
             ;;
         --linux)
-            skip_macos="yes"
             skip_windows="yes"
             ;;
         *)
@@ -54,27 +49,6 @@ cross_run() {
         ${tag} $@
 }
 
-build_macos() {
-    tag=${BUILDER_TAG:-"evebox/builder:macos"}
-    dockerfile="./docker/builder/Dockerfile.macos"
-    TARGET="x86_64-apple-darwin"
-    docker build \
-        --build-arg REAL_UID="$(id -u)" \
-        --build-arg REAL_GID="$(id -g)" \
-        --cache-from ${tag} \
-	-t ${tag} \
-	-f ${dockerfile} .
-    docker run ${IT} --rm \
-        -v "$(pwd):/src:z" \
-        -w /src \
-        -e CC=o64-clang \
-        -e TARGET=${TARGET} \
-        -e BUILD_REV="${BUILD_REV}" \
-        -u builder \
-        --group-add $(getent group docker | cut -f3 -d:) \
-        ${tag} make dist
-}
-
 cross_run x86_64-unknown-linux-musl make dist
 cross_run aarch64-unknown-linux-musl make dist
 cross_run arm-unknown-linux-musleabihf make dist
@@ -88,8 +62,3 @@ cross_run arm-unknown-linux-musleabihf ./packaging/build-deb.sh arm
 if [[ "${skip_windows}" != "yes" ]]; then
     cross_run x86_64-pc-windows-gnu make dist
 fi
-
-if [[ "${skip_macos}" != "yes" ]]; then
-    build_macos
-fi
-
