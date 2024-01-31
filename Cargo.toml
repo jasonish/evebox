@@ -57,9 +57,6 @@ serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.112"
 serde_yaml = "0.9.30"
 
-# Could be removed.
-stdlog = { package = "log", version = "0.4.8" }
-
 suricatax-rule-parser = { git = "https://github.com/jasonish/rust-suricatax-rule-parser" }
 time = { version = "0.3.31", features = ["formatting", "local-offset", "macros", "parsing"] }
 tracing = "0.1.40"

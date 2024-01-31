@@ -10,6 +10,7 @@ pub use tracing::info;
 pub use tracing::trace;
 pub use tracing::warn;
 use tracing::Level;
+use tracing_log::log::LevelFilter;
 use tracing_subscriber::fmt::time::OffsetTime;
 
 static mut OFFSET: Option<UtcOffset> = None;
@@ -57,7 +58,7 @@ pub fn init_logger(level: Level) -> Result<()> {
 
 pub fn init_stdlog() {
     tracing_log::LogTracer::builder()
-        .with_max_level(stdlog::LevelFilter::Info)
+        .with_max_level(LevelFilter::Info)
         .init()
         .unwrap();
 }

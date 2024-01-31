@@ -568,7 +568,6 @@ dependencies = [
  "hyper",
  "lazy_static",
  "libc",
- "log",
  "maxminddb",
  "md5",
  "mime_guess",
