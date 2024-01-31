@@ -5,7 +5,6 @@ use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use clap::CommandFactory;
 use clap::FromArgMatches;
 use clap::Parser;
 use clap::Subcommand;
@@ -53,10 +52,6 @@ struct AddArgs {
 
     #[arg(from_global, id = "data-directory")]
     data_directory: Option<String>,
-}
-
-pub(crate) fn command() -> clap::Command {
-    UsersCommand::command()
 }
 
 pub(crate) fn main(args: &clap::ArgMatches) -> Result<()> {

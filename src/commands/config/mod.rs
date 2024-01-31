@@ -1,10 +1,26 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use clap::{Parser, CommandFactory, Subcommand};
+
+use self::users::UsersCommand;
+
 pub mod users;
 
+#[derive(Parser, Debug)]
+#[command(name = "config", about = "Configuration commands")]
+pub struct Args {
+    #[command(subcommand)]
+    command: ConfigCommands,
+}
+
+#[derive(Debug, Subcommand)]
+enum ConfigCommands {
+    Users(UsersCommand),
+}
+
 pub fn config_subcommand() -> clap::Command {
-    clap::Command::new("config").subcommand(users::command())
+    Args::command()
 }
 
 pub fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
