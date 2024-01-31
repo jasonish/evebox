@@ -1,5 +1,4 @@
 // SPDX-FileCopyrightText: (C) 2021 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 use anyhow::Result;

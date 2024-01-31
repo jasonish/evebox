@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use clap::{Parser, CommandFactory, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 
 use self::users::UsersCommand;
 

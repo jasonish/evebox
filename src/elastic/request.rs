@@ -1,5 +1,4 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 use time::macros::format_description;

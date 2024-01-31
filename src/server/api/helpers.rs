@@ -1,6 +1,5 @@
+// SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
-//
-// Copyright (C) 2020-2022 Jason Ish
 
 use super::ApiError;
 use crate::prelude::*;

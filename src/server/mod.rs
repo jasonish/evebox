@@ -1,5 +1,4 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 use crate::eventrepo::EventRepo;
@@ -13,9 +12,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 pub mod api;
-mod asset;
 pub(crate) mod main;
-mod rejection;
 mod response;
 pub mod session;
 
