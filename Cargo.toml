@@ -70,3 +70,4 @@ libc = { version = "0.2.152", default_features = false }
 rcgen = "0.12.1"
 directories = "5.0.1"
 gethostname = "0.4.3"
+tempfile = "3.9.0"

@@ -101,21 +101,15 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             && server_config.tls_key_filename.is_none()
             && server_config.tls_cert_filename.is_none());
 
-    // If no data-directory has been provided by the user, attempt to
-    // find one. For EveBox at this time, the config and data
-    // directory are the same.
     if data_directory_required && server_config.data_directory.is_none() {
-        if let Some(dir) = directories::ProjectDirs::from("org", "evebox", "evebox")
-            .map(|dirs| dirs.config_local_dir().to_owned())
-        {
-            warn!("No data-directory provided, will use {}", dir.display());
-            server_config.data_directory = Some(dir.display().to_string());
-        } else {
-            error!("A data-directory is required");
-            std::process::exit(1);
-        }
-    } else if let Some(directory) = &server_config.data_directory {
-        debug!("Using data-directory {}", directory);
+        let dd = get_data_directory();
+        info!("Using (discovered) data-directory {}", dd.display());
+        server_config.data_directory = Some(dd.display().to_string());
+    } else {
+        info!(
+            "Using data directory {}",
+            server_config.data_directory.as_ref().unwrap()
+        );
     }
 
     tokio::spawn(async move {
@@ -738,4 +732,39 @@ fn test_writable<T: AsRef<Path>>(filename: T) -> anyhow::Result<()> {
         .append(true)
         .open(filename)?;
     Ok(())
+}
+
+fn test_directory_is_writable<P: AsRef<Path>>(directory: P) -> bool {
+    tempfile::tempfile_in(directory).is_ok()
+}
+
+fn get_data_directory() -> PathBuf {
+    let dd = Path::new("/var/lib/evebox");
+    if dd.exists() {
+        debug!("{} exists, is it writable?", dd.display());
+        if test_directory_is_writable(dd) {
+            debug!("{} is writable, will use", dd.display());
+            return dd.to_owned();
+        } else {
+            debug!("{} is NOT writable, will not use", dd.display());
+        }
+    } else {
+        debug!("{} does not exists", dd.display());
+    }
+
+    let dd = directories::ProjectDirs::from("org", "evebox", "evebox")
+        .map(|dirs| dirs.config_local_dir().to_owned())
+        .unwrap();
+    if !dd.exists() {
+        info!("{} does not exist, attempting to create it", dd.display());
+        match std::fs::create_dir_all(&dd) {
+            Ok(_) => {
+                info!("{} created", dd.display());
+            }
+            Err(err) => {
+                error!("Failed to create {}: {}", dd.display(), err);
+            }
+        }
+    }
+    dd
 }
