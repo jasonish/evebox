@@ -114,6 +114,8 @@ function Wrapper() {
       .then((user) => {
         console.log(`Hello ${user.username}`);
         API.getConfig().then((config) => {
+          console.log("Got server config:");
+          console.log(config);
           serverConfigSet(config);
           setLoading(false);
         });

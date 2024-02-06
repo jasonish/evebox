@@ -41,9 +41,11 @@ function isValidTimeRange(range: string): boolean {
 
 function getInitialTimeRange(): string {
   const localTimeRange = localStorage.getItem("TIME_RANGE");
-  console.log(`Time-range from localStorage: ${localTimeRange}`);
+  console.log(`Time-range from localStorage:`);
+  console.log(localTimeRange);
 
   if (localTimeRange === "") {
+    console.log("localTimeRange is an empty string, returning \"\"");
     return "";
   }
 
@@ -53,9 +55,15 @@ function getInitialTimeRange(): string {
   }
 
   const serverTimeRange = serverConfig?.defaults?.time_range;
+  console.log("serverTimeRange:");
+  console.log(serverTimeRange);
   if (serverTimeRange && isValidTimeRange(serverTimeRange)) {
     console.log(`Using server side default time range of ${serverTimeRange}`);
     return serverTimeRange;
+  } else if (serverTimeRange && serverTimeRange === "all") {
+    // The server time range might be "all" which is invalid in the front-end,
+    // but it does imply that the time-range should be all. Needs to be cleaned up.
+    return "";
   }
 
   console.log(`Using default time range of ${DEFAULT_TIME_RANGE}`);
@@ -67,6 +75,7 @@ export const [TIME_RANGE, _SET_TIME_RANGE] =
   createSignal<string>(DEFAULT_TIME_RANGE);
 
 export function SET_TIME_RANGE(range: string) {
+  console.log(`Setting localStorage TIME_RANGE to ${range}`);
   _SET_TIME_RANGE(range);
   localStorage.setItem("TIME_RANGE", range);
 }
