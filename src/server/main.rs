@@ -105,7 +105,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         let dd = get_data_directory();
         info!("Using (discovered) data-directory {}", dd.display());
         server_config.data_directory = Some(dd.display().to_string());
-    } else {
+    } else if data_directory_required {
         info!(
             "Using data directory {}",
             server_config.data_directory.as_ref().unwrap()
