@@ -51,13 +51,11 @@ cross_run() {
 
 cross_run x86_64-unknown-linux-musl make dist
 cross_run aarch64-unknown-linux-musl make dist
-cross_run arm-unknown-linux-musleabihf make dist
 
 cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
 
 cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
 cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
-cross_run arm-unknown-linux-musleabihf ./packaging/build-deb.sh arm
 
 if [[ "${skip_windows}" != "yes" ]]; then
     cross_run x86_64-pc-windows-gnu make dist
