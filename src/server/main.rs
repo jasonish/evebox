@@ -501,8 +501,10 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 }
             } else {
                 info!(
-                    "Found Elasticsearch version {}",
-                    &server_info.version.number
+                    "Found Elasticsearch version {}; Index={}; ECS={}",
+                    &server_info.version.number,
+                    server_config.elastic_index,
+                    server_config.elastic_ecs,
                 );
                 if let Ok(version) = Version::parse(&server_info.version.number) {
                     if version.major < 7 || (version.major < 8 && version.minor < 10) {
