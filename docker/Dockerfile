@@ -1,8 +1,6 @@
 ARG BASE
 FROM $BASE
 
-RUN apk update && apk add tzdata
-
 ARG SRC="SRC_--build-arg_must_be_set"
 COPY $SRC /bin/evebox
 

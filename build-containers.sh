@@ -67,7 +67,6 @@ fi
 bins=(
     ./dist/evebox-${version}-linux-x64/evebox
     ./dist/evebox-${version}-linux-arm64/evebox
-    ./dist/evebox-${version}-linux-arm/evebox
 )
 
 for bin in ${bins}; do
@@ -78,38 +77,29 @@ for bin in ${bins}; do
 done
 
 ${ECHO} docker build \
-       --build-arg "BASE=amd64/alpine" \
+       --build-arg "BASE=amd64/almalinux:9-minimal" \
        --build-arg "SRC=./dist/evebox-${version}-linux-x64/evebox" \
        -t ${DOCKER_NAME}:${tag}-amd64 \
        -f docker/Dockerfile .
 
 ${ECHO} docker build \
-       --build-arg "BASE=arm32v6/alpine" \
-       --build-arg "SRC=./dist/evebox-${version}-linux-arm/evebox" \
-       -t ${DOCKER_NAME}:${tag}-arm32v6 \
-       -f docker/Dockerfile .
-
-${ECHO} docker build \
-       --build-arg "BASE=arm64v8/alpine" \
+       --build-arg "BASE=arm64v8/almalinux:9-minimal" \
        --build-arg "SRC=./dist/evebox-${version}-linux-arm64/evebox" \
        -t ${DOCKER_NAME}:${tag}-arm64v8 \
        -f docker/Dockerfile .
 
 if [[ "${push}" = "yes" ]]; then
     ${ECHO} docker push ${DOCKER_NAME}:${tag}-amd64
-    ${ECHO} docker push ${DOCKER_NAME}:${tag}-arm32v6
     ${ECHO} docker push ${DOCKER_NAME}:${tag}-arm64v8
 
     ${ECHO} docker manifest create -a ${DOCKER_NAME}:${tag} \
         ${DOCKER_NAME}:${tag}-amd64 \
-        ${DOCKER_NAME}:${tag}-arm32v6 \
         ${DOCKER_NAME}:${tag}-arm64v8
     ${ECHO} docker manifest push --purge ${DOCKER_NAME}:${tag}
 
     for alias in ${aliases}; do
         ${ECHO} docker manifest create -a ${DOCKER_NAME}:${alias} \
             ${DOCKER_NAME}:${tag}-amd64 \
-            ${DOCKER_NAME}:${tag}-arm32v6 \
             ${DOCKER_NAME}:${tag}-arm64v8
         ${ECHO} docker manifest push --purge ${DOCKER_NAME}:${alias}
     done
