@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
@@ -95,21 +94,15 @@ fn list(dir: Option<String>) -> Result<()> {
     Ok(())
 }
 
-fn get_input(prompt: &str) -> Result<String> {
-    print!("{prompt}");
-    stdout().flush()?;
-    let mut input = String::new();
-    stdin().read_line(&mut input)?;
-    Ok(input.trim().to_string())
-}
-
 fn add(args: AddArgs) -> Result<()> {
     let repo = open_config_repo(args.data_directory.as_deref())?;
 
     let username = if let Some(username) = args.username {
         username.to_string()
     } else {
-        get_input("Username: ")?
+        inquire::Text::new("Username:")
+            .with_validator(inquire::required!())
+            .prompt()?
     };
     if username.is_empty() {
         return Err(anyhow!("empty username not allowed"));
@@ -118,13 +111,10 @@ fn add(args: AddArgs) -> Result<()> {
     let password = if let Some(password) = args.password {
         password.to_string()
     } else {
-        // Yes, we're allowing empty passwords.
-        let password = rpassword::read_password_from_tty(Some("Password: "))?;
-        let confirm = rpassword::read_password_from_tty(Some("Confirm password: "))?;
-        if password != confirm {
-            return Err(anyhow!("passwords to not match"));
-        }
-        password
+        inquire::Password::new("Password:")
+            .with_display_toggle_enabled()
+            .with_display_mode(inquire::PasswordDisplayMode::Masked)
+            .prompt()?
     };
 
     repo.add_user(&username, &password)?;
@@ -145,14 +135,11 @@ fn remove(username: String, dir: Option<String>) -> Result<()> {
 fn password(username: String, data_directory: Option<String>) -> Result<()> {
     let repo = open_config_repo(data_directory)?;
     let user = repo.get_user_by_name(&username)?;
-    let password = rpassword::read_password_from_tty(Some("Password: "))?;
-    if password.is_empty() {
-        return Err(anyhow!("empty password not allowed"));
-    }
-    let confirm = rpassword::read_password_from_tty(Some("Confirm password: "))?;
-    if password != confirm {
-        return Err(anyhow!("passwords to not match"));
-    }
+    let password = inquire::Password::new("Password:")
+        .with_display_toggle_enabled()
+        .with_display_mode(inquire::PasswordDisplayMode::Masked)
+        .with_validator(inquire::required!())
+        .prompt()?;
     if repo.update_password_by_id(&user.uuid, &password)? {
         println!("Password has been updated.");
         Ok(())
