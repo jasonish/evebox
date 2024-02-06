@@ -116,29 +116,29 @@ impl GeoIP {
         updated
     }
 
-    pub fn lookup_city_from_str(
-        &self,
+    fn lookup_city_from_str<'a>(
+        reader: &'a Reader<Vec<u8>>,
         addr: &str,
-    ) -> Result<geoip2::City, Box<dyn std::error::Error>> {
+    ) -> Result<geoip2::City<'a>, Box<dyn std::error::Error>> {
+        let ip: std::net::IpAddr = std::str::FromStr::from_str(addr)?;
+        Ok(reader.lookup(ip)?)
+    }
+
+    pub fn add_geoip_to_eve(&self, eve: &mut serde_json::Value) {
         let mut inner = self.inner.lock().unwrap();
         if self.check_for_update(&mut inner) {
             let build_time =
                 time::OffsetDateTime::from_unix_timestamp(inner.reader.metadata.build_epoch as i64);
             info!("GeoIP database has been updated to {:?}", build_time);
         }
-        let ip: std::net::IpAddr = std::str::FromStr::from_str(addr)?;
-        let city = inner.reader.lookup(ip)?;
-        Ok(city)
-    }
 
-    pub fn add_geoip_to_eve(&self, eve: &mut serde_json::Value) {
         if let serde_json::Value::String(addr) = &eve["dest_ip"] {
-            if let Ok(city) = self.lookup_city_from_str(addr) {
+            if let Ok(city) = Self::lookup_city_from_str(&inner.reader, addr) {
                 eve["geoip_destination"] = self.as_json(city);
             }
         }
         if let serde_json::Value::String(addr) = &eve["src_ip"] {
-            if let Ok(city) = self.lookup_city_from_str(addr) {
+            if let Ok(city) = Self::lookup_city_from_str(&inner.reader, addr) {
                 eve["geoip_source"] = self.as_json(city);
             }
         }
@@ -227,7 +227,9 @@ mod test {
     #[test]
     fn lookup_example() {
         if let Ok(db) = super::GeoIP::open(None) {
-            let _city = db.lookup_city_from_str("128.101.101.101").unwrap();
+            let inner = db.inner.lock().unwrap();
+            let _city =
+                super::GeoIP::lookup_city_from_str(&inner.reader, "128.101.101.101").unwrap();
         }
     }
 }
