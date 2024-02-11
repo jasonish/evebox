@@ -844,7 +844,7 @@ export function EventView() {
                   buffer={event()!._source.payload}
                   addOn={
                     <Button
-                      onclick={() => eventToPcap("packet")}
+                      onclick={() => eventToPcap("payload")}
                       style={PCAP_BUTTON_STYLE}
                     >
                       PCAP
@@ -864,7 +864,7 @@ export function EventView() {
                   buffer={event()!._source.packet}
                   addOn={
                     <Button
-                      onclick={() => eventToPcap("payload")}
+                      onclick={() => eventToPcap("packet")}
                       style={PCAP_BUTTON_STYLE}
                     >
                       PCAP

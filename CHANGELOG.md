@@ -42,6 +42,8 @@
   match all requests that contain "dns" (case insensitive), but
   exclude all those contain the subscript "et info":
   https://github.com/jasonish/evebox/issues/275
+- [webapp] Selecting the PCAP for payload was returning the packet,
+  and vice-versa. Now fixed.
 
 ## 0.17.2 - 2023-05-27
 
