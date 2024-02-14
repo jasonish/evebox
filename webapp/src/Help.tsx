@@ -15,20 +15,15 @@ export function HelpModal() {
     <Modal show={showHelp()} onHide={closeHelp} size={"lg"}>
       <Modal.Body>
         <Tabs activeKey={tab()} onSelect={setTab}>
-          <Tab
-            eventKey="keyboard"
-            title="Keyboard Shortcuts"
-            class="help-tab"
-            style={"padding: 0px !important; margin: 0px !important;"}
-          >
+          <Tab eventKey="keyboard" title="Keyboard Shortcuts">
             <Keyboard />
           </Tab>
-          <Tab eventKey="about" title="About" class="app-help-tab">
+          <Tab eventKey="about" title="About">
             <About />
           </Tab>
         </Tabs>
       </Modal.Body>
-      <Modal.Footer class="app-help-footer">
+      <Modal.Footer>
         <Button variant="secondary" onClick={closeHelp}>
           Close
         </Button>
@@ -38,48 +33,59 @@ export function HelpModal() {
 }
 
 function Keyboard() {
+  let key = (k: string) => {
+    return <span class="font-monospace">{k}</span>;
+  };
+
+  let then = (a: string, b: string) => {
+    return (
+      <>
+        {key(a)} <span class="fw-lighter">then</span> {key(b)}
+      </>
+    );
+  };
+
+  let plus = (a: string, b: string) => {
+    return (
+      <>
+        {key(a)} <span class="fw-lighter">+</span> {key(b)}
+      </>
+    );
+  };
+
   const shortcuts = [
-    { s: "?", h: "Show help" },
-    { s: "g i", h: "Goto inbox" },
-    { s: "g s", h: "Goto escalated" },
-    { s: "g a", h: "Goto alerts" },
-    {
-      s: "e",
-      h: "Archive selected events, or event at cursor if none selected",
-    },
-    { s: "F8", h: "Archive event at cursor" },
-    { s: "F9, Shift+s", h: "Escalate and archive event at cursor" },
-    { s: "x", h: "Select event at cursor" },
-    {
-      s: "s",
-      h: "Escalated selected events, or event at cursor if none selected",
-    },
-    { s: "j", h: "Move cursor to next event" },
-    { s: "k", h: "Move cursor to previous event" },
-    { s: ".", h: "Show action menu for event at cursor" },
-    { s: "Control+\\", h: "Clear all filters and search" },
-    { s: "Shift+h", h: "Goto first row" },
-    { s: "Shift+g", h: "Goto last row" },
-    { s: "* a", h: "Select all alerts in view" },
-    { s: "* n", h: "Deselect all alerts" },
-    { s: "* 1", h: "Select all alerts with current SID" },
+    [key("?"), "Show help"],
+    [then("g", "i"), "Goto inbox"],
+    [then("g", "s"), "Goto escalated"],
+    [then("g", "a"), "Goto alerts"],
+    [key("e"), "Archive selected events, or event at cursor if none selected"],
+    [key("F8"), "Archive event at cursor"],
+    [plus("Shift", "s"), "Escalate and archive event at cursor"],
+    [key("F9"), "Escalate and archive event at cursor"],
+    [key("x"), "Select event at cursor"],
+    [key("s"), "Escalate selected events, or event at cursor if none selected"],
+    [key("j"), "Move cursor to next event"],
+    [key("k"), "Move cursor to previous event"],
+    [key("."), "Show action menu for event at cursor"],
+    [plus("Control", "\\"), "Clear all filters and search"],
+    [plus("Shift", "h"), "Goto first row"],
+    [plus("Shift", "g"), "Goto last row"],
+    [then("*", "a"), "Select all alerts in view"],
+    [then("*", "n"), "Deselect all alerts"],
+    [then("*", "1"), "Select all alerts with current SID"],
   ];
 
   return (
     <>
-      <table class={"table table-bordered table-sm mb-0"}>
-        <tbody>
+      <p></p>
+      <table class={"table table-bordered table-sm p-5"}>
+        <tbody class="p-5">
           <For each={shortcuts}>
             {(e, i) => (
               <>
                 <tr>
-                  <td
-                    class={"shortcut"}
-                    style={"white-space: nowrap !important;"}
-                  >
-                    {e.s}
-                  </td>
-                  <td>{e.h}</td>
+                  <td style={"white-space: nowrap !important;"}>{e[0]}</td>
+                  <td>{e[1]}</td>
                 </tr>
               </>
             )}
@@ -112,11 +118,12 @@ function About() {
         </Show>
 
         <p>
-          Homepage: <a href="https://evebox.org">https://evebox.org</a>
+          Homepage and Documentation:{" "}
+          <a href="https://evebox.org">https://evebox.org</a>
         </p>
 
         <p>
-          GitHub:
+          GitHub:{" "}
           <a href="http://github.com/jasonish/evebox">
             http://github.com/jasonish/evebox
           </a>
