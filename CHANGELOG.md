@@ -1,6 +1,6 @@
 # Change Log
 
-## unreleased
+## 0.18.0 - 2024-02-14
 
 ### Upgrade Notes (**Breaking Changes**)
 
