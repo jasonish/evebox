@@ -45,7 +45,7 @@ function getInitialTimeRange(): string {
   console.log(localTimeRange);
 
   if (localTimeRange === "") {
-    console.log("localTimeRange is an empty string, returning \"\"");
+    console.log('localTimeRange is an empty string, returning ""');
     return "";
   }
 

@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { render } from "solid-js/web";
-import { hashIntegration, Router } from "@solidjs/router";
 
 import { loadInitialTheme } from "./settings";
-import { App } from "./App";
+import { AppRouter } from "./App";
 
 import "./styles/index.scss";
 
@@ -18,11 +17,5 @@ Chart.register(Colors);
 
 loadInitialTheme();
 
-render(
-  () => (
-    <Router source={hashIntegration()}>
-      <App />
-    </Router>
-  ),
-  document.getElementById("root") as HTMLElement
-);
+const root = document.getElementById("root");
+render(() => <AppRouter />, root!);

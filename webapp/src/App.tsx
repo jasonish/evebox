@@ -1,23 +1,19 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import {
   Navigate,
-  Outlet,
   Route,
-  Routes,
+  HashRouter,
   useLocation,
   useNavigate,
 } from "@solidjs/router";
-import type { Component } from "solid-js";
 import { createEffect, createSignal, onMount } from "solid-js";
 import { Transition } from "solid-transition-group";
 
 import * as API from "./api";
 import { Alerts, AlertState } from "./Alerts";
 import { Loader } from "./Loader";
-import { Top } from "./Top";
 import { Login } from "./Login";
 import { Settings } from "./Settings";
 
@@ -25,38 +21,19 @@ import "./styles/transitions.scss";
 import { EventView } from "./EventView";
 import { Notifications } from "./Notifications";
 import { Events } from "./Events";
-import { Alert, Col, Container, Row } from "solid-bootstrap";
 import { Stats } from "./Stats";
 import { serverConfigSet } from "./config";
 import { AddressReport } from "./reports/AddressReport";
 import { AlertsReport } from "./reports/AlertsReport";
 import { OverviewReport } from "./reports/OverviewReport";
 import { DhcpReport } from "./reports/DhcpReport";
-import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
+import { IS_AUTHENTICATED } from "./global";
 
-const Report: Component = () => {
+export function AppRouter() {
   return (
-    <div>
-      <Top />
-      <Container>
-        <Row>
-          <Col class={"mt-2"}>
-            <Alert>
-              Sorry, the web part of EveBox is being rewritten and reports will
-              be getting an overhaul, but reports are not yet ready.
-            </Alert>
-          </Col>
-        </Row>
-      </Container>
-    </div>
-  );
-};
-
-export function App() {
-  return (
-    <Routes>
-      <Route path={"/"} component={Wrapper}>
-        <Route path={"/"} element={<Navigate href={"/inbox"} />} />
+    <HashRouter root={App}>
+      <Route path={"/"} component={AuthenticationRequired}>
+        <Route path={"/"} component={RedirectToIndex} />
 
         <Route path={"inbox"} component={AlertState}>
           <Route path={"/"} component={Alerts} />
@@ -76,20 +53,27 @@ export function App() {
         <Route path={"events"} component={Events} />
         <Route path={"event/:id"} component={EventView} />
         <Route path={"settings"} component={Settings} />
-        <Route path={"reports"} component={Report} />
         <Route path={"reports/overview"} component={OverviewReport} />
         <Route path={"reports/alerts"} component={AlertsReport} />
         <Route path={"reports/dhcp"} component={DhcpReport} />
         <Route path={"reports/address/:address"} component={AddressReport} />
         <Route path={"stats"} component={Stats} />
-        <Route path={"*"} element={<Navigate href={"/inbox"} />} />
+        <Route path="*" component={RedirectToIndex} />
       </Route>
       <Route path={"/login"} component={Login} />
-    </Routes>
+    </HashRouter>
   );
 }
 
-function Wrapper() {
+function App(props: any) {
+  return <>{props.children}</>;
+}
+
+function RedirectToIndex() {
+  return <Navigate href="/inbox" />;
+}
+
+function AuthenticationRequired(props: any) {
   const [loading, setLoading] = createSignal(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -138,7 +122,7 @@ function Wrapper() {
         {!loading() && (
           <div>
             <Notifications />
-            <Outlet />
+            {props.children}
           </div>
         )}
       </Transition>

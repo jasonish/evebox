@@ -1,12 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import {
-  Outlet,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from "@solidjs/router";
+import { useLocation, useNavigate, useSearchParams } from "@solidjs/router";
 import { _SET_TIME_RANGE, SET_TIME_RANGE, TIME_RANGE, Top } from "./Top";
 import {
   Badge,
@@ -70,18 +65,14 @@ enum View {
   Alerts,
 }
 
-export function AlertState() {
+export function AlertState(props: any) {
   console.log("***** AlertState *****");
 
   onMount(() => {
     eventStore.reset();
   });
 
-  return (
-    <>
-      <Outlet />
-    </>
-  );
+  return <>{props.children}</>;
 }
 
 export function Alerts() {
