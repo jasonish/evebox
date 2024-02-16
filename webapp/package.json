@@ -14,8 +14,8 @@
     "prettier": "2.8.3",
     "sass": "^1.57.1",
     "typescript": "^4.8.2",
-    "vite": "^3.0.9",
-    "vite-plugin-solid": "^2.3.0"
+    "vite": "^5.0.11",
+    "vite-plugin-solid": "^2.8.2"
   },
   "dependencies": {
     "@solidjs/router": "^0.8.3",
@@ -28,7 +28,7 @@
     "pretty-print-json": "^1.4.0",
     "queue": "^6.0.2",
     "solid-bootstrap": "^1.0.19",
-    "solid-js": "^1.7.0",
+    "solid-js": "^1.8.11",
     "solid-transition-group": "^0.0.12",
     "tinykeys": "^1.4.0"
   }

@@ -13,7 +13,7 @@ $evebox-info-color-dark: #50656f;
 $evebox-danger-color-dark: #72383e;
 
 @import "bootstrap/scss/bootstrap";
-@import "pretty-print-json/dist/css/pretty-print-json.css";
+@import "../../node_modules/pretty-print-json/dist/css/pretty-print-json.css";
 @import "transitions";
 
 // App specific style to force the width of an element to 1em.
