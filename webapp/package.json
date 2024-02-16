@@ -29,7 +29,7 @@
     "queue": "^6.0.2",
     "solid-bootstrap": "^1.0.19",
     "solid-js": "^1.8.11",
-    "solid-transition-group": "^0.0.12",
+    "solid-transition-group": "^0.2.3",
     "tinykeys": "^1.4.0"
   }
 }
