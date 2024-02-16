@@ -1,5 +1,4 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import { Alert, Button, Col, Container, Form, Row } from "solid-bootstrap";

@@ -1,12 +1,11 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
-//
 // SPDX-License-Identifier: MIT
 
 import { createEffect, createSignal, For, JSX, onCleanup } from "solid-js";
 import { Top } from "./Top";
-import { Button, Col, Container, Row } from "solid-bootstrap";
+import { Col, Container, Row } from "solid-bootstrap";
 import { timeRangeAsSeconds } from "./settings";
-import { getSensors, statsAgg } from "./api";
+import { statsAgg } from "./api";
 import { Chart } from "chart.js";
 import { parse_timestamp } from "./datetime";
 import { useSearchParams } from "@solidjs/router";

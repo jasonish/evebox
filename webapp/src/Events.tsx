@@ -16,7 +16,6 @@ import {
 import { EventWrapper } from "./types";
 import { Button, Col, Container, Form, Row } from "solid-bootstrap";
 import { AddressCell, TimestampCell } from "./TimestampCell";
-import { parse_timerange } from "./datetime";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { formatEventDescription } from "./formatters";
 import { BiCaretRightFill } from "./icons";
