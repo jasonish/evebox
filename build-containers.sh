@@ -64,6 +64,16 @@ if [[ "${tag}" = "" ]]; then
     exit 1
 fi
 
+if [[ "${tag}" = "master" ]]; then
+    echo "===> Will also push as 'main'"
+    aliases+=("main")
+fi
+
+if [[ "${tag}" = "main" ]]; then
+    echo "===> Will also push as 'master'"
+    aliases+=("master")
+fi
+
 bins=(
     ./dist/evebox-${version}-linux-x64/evebox
     ./dist/evebox-${version}-linux-arm64/evebox
