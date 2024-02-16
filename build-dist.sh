@@ -1,10 +1,14 @@
 #! /bin/bash
 
 set -e
-set -x
 
-REGISTRY=${REGISTRY:-docker.io}
 BUILD_REV=$(git rev-parse --short HEAD)
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+GIT_TAG=$(git describe --tags --abbrev=0 --exact-match 2> /dev/null || echo "")
+
+echo "===> Git revision: ${BUILD_REV}"
+echo "===> Git branch: ${GIT_BRANCH}"
+echo "===> Git tag: ${GIT_TAG}"
 
 skip_windows="no"
 
