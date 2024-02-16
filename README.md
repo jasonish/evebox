@@ -105,7 +105,7 @@ More documentation can be found at http://evebox.readthedocs.io/en/latest/.
 EveBox consists of a JavaScript frontend, and a backend written in Rust. To
 build Evebox the following requirements must first be satisfied:
 
-* Node.js v16.13.1 or newer installed.
+* Node.js v18 or newer installed.
 * Latest Rust stable.
 
 First checkout EveBox:
