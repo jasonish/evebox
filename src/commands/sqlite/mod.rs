@@ -37,6 +37,7 @@ enum Commands {
         filename: String,
         sql: String,
     },
+    /// Information about an EveBox SQLite database
     Info(InfoArgs),
 }
 
