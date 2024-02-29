@@ -41,7 +41,7 @@ impl From<reqwest::Error> for DatastoreError {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct AlertQueryOptions {
     pub timestamp_gte: Option<OffsetDateTime>,
     pub query_string: Option<String>,

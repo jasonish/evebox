@@ -1,14 +1,24 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::sqlite::{
-    connection::{get_auto_vacuum, get_journal_mode, get_pragma, get_synchronous},
-    init_event_db, ConnectionBuilder, SqliteExt,
+use crate::{
+    elastic::AlertQueryOptions,
+    sqlite::{
+        connection::{get_auto_vacuum, get_journal_mode, get_pragma, get_synchronous},
+        eventrepo::SqliteEventRepo,
+        init_event_db,
+        pool::open_pool,
+        ConnectionBuilder, SqliteExt,
+    },
 };
 use anyhow::Result;
 use clap::CommandFactory;
 use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
-use std::{fs::File, time::Instant};
+use std::{
+    fs::File,
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 use tracing::info;
 
 mod fts;
@@ -39,6 +49,10 @@ enum Commands {
     },
     /// Information about an EveBox SQLite database
     Info(InfoArgs),
+    /// Optimize an EveBox SQLite database
+    Optimize(OptimizeArgs),
+    /// Analyze an EveBox SQLite database
+    Analyze { filename: String },
 }
 
 #[derive(Parser, Debug)]
@@ -53,6 +67,11 @@ struct InfoArgs {
     #[arg(from_global, id = "data-directory")]
     data_directory: Option<String>,
     filename: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+struct OptimizeArgs {
+    filename: String,
 }
 
 #[derive(Parser, Debug)]
@@ -114,6 +133,8 @@ pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
         Commands::Fts(args) => fts::fts(args),
         Commands::Query { filename, sql } => query(filename, sql),
         Commands::Info(args) => info(args),
+        Commands::Optimize(args) => optimize(args).await,
+        Commands::Analyze { filename } => analyze(filename),
     }
 }
 
@@ -252,5 +273,50 @@ fn query(filename: &str, sql: &str) -> Result<()> {
         count += 1;
     }
     println!("Query returned {count} rows in {:?}", timer.elapsed());
+    Ok(())
+}
+
+async fn optimize(args: &OptimizeArgs) -> Result<()> {
+    let conn = ConnectionBuilder::filename(Some(&args.filename)).open(false)?;
+    let conn = Arc::new(Mutex::new(conn));
+    let pool = open_pool(&args.filename).await?;
+    pool.resize(1);
+    let repo = SqliteEventRepo::new(conn, pool.clone(), false);
+
+    info!("Running inbox style query");
+    let gte = time::OffsetDateTime::now_utc() - time::Duration::days(1);
+    repo.alerts(AlertQueryOptions {
+        timestamp_gte: Some(gte),
+        query_string: None,
+        tags: vec![],
+    })
+    .await
+    .map_err(|err| anyhow::anyhow!(format!("{}", err)))?;
+
+    info!("Optimizing");
+    let conn = pool.get().await?;
+    conn.interact(|conn| -> Result<(), rusqlite::Error> {
+        conn.pragma_update(None, "analysis_limit", 400)?;
+        conn.execute("PRAGMA optimize", [])?;
+        Ok(())
+    })
+    .await
+    .unwrap()?;
+    info!("Done. If EveBox is running, it is recommended to restart it.");
+    Ok(())
+}
+
+fn analyze(filename: &str) -> Result<()> {
+    match inquire::Confirm::new("This could take a while, do you want to continue?")
+        .with_default(true)
+        .prompt()
+    {
+        Err(_) | Ok(false) => return Ok(()),
+        Ok(true) => {}
+    }
+
+    let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
+    conn.execute("analyze", [])?;
+    info!("Done");
     Ok(())
 }
