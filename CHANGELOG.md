@@ -1,5 +1,10 @@
 # Change Log
 
+## unreleased
+
+- [sqlite] Add CLI commands to "optimize" and "analyze" the sqlite
+  database. This can help use better indexes.
+
 ## 0.18.0 - 2024-02-14
 
 ### Upgrade Notes (**Breaking Changes**)
