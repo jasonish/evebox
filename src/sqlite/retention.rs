@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 use crate::config::Config;
-use crate::prelude::*;
 use anyhow::Result;
 use core::ops::Sub;
 use rusqlite::{params, Connection};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use tracing::{debug, error, info, trace, warn};
 
 use super::connection::get_auto_vacuum;
 

@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use crate::rules::RuleMap;
 use serde_json::json;
 use std::sync::Arc;
+use tracing::{trace, warn};
 
 #[derive(Clone)]
 pub enum EveFilter {

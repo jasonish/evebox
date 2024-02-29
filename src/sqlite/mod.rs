@@ -10,7 +10,6 @@ pub mod pool;
 pub mod retention;
 pub mod util;
 
-use crate::prelude::*;
 pub use connection::init_event_db;
 pub use connection::ConnectionBuilder;
 use rusqlite::params;

@@ -4,8 +4,8 @@
 use super::client::BulkResponse;
 use crate::eve::filters::AutoArchiveFilter;
 use crate::eve::Eve;
-use crate::prelude::*;
 use time::macros::format_description;
+use tracing::{error, trace};
 
 #[derive(Clone, Debug)]
 pub struct ElasticEventSink {

@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use anyhow::Result;
 use rcgen::{Certificate, CertificateParams, DistinguishedName, DnType};
 use std::fs;
 use std::path::{Path, PathBuf};
+use tracing::info;
 
 static ORG_NAME: &str = "EveBox Server";
 static CN_NAME: &str = "EveBox Server";

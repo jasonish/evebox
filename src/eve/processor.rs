@@ -6,11 +6,12 @@
 //! - importer: to send those events somewhere
 //! - bookmarker: to remember the last location reader
 
+use tracing::{debug, error, info, warn};
+
 use crate::bookmark;
 use crate::eve::filters::EveFilter;
 use crate::eve::reader::EveReader;
 use crate::importer::EventSink;
-use crate::prelude::*;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;

@@ -18,7 +18,6 @@ pub mod importer;
 pub mod packet;
 mod path;
 pub mod pcap;
-pub mod prelude;
 pub mod querystring;
 pub mod resource;
 mod rules;

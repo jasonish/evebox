@@ -3,7 +3,6 @@
 
 use crate::eve::Eve;
 use crate::pcap;
-use crate::prelude::*;
 use crate::server::api::ApiError;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
@@ -11,6 +10,7 @@ use axum::extract::{Extension, Form};
 use axum::response::IntoResponse;
 use serde::Deserialize;
 use std::sync::Arc;
+use tracing::warn;
 
 #[derive(Deserialize, Debug)]
 pub struct PcapForm {

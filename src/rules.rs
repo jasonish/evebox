@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: (C) 2022 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use std::collections::HashMap;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
+
+use tracing::{debug, error, info};
 
 struct Inner {
     map: HashMap<u64, String>,

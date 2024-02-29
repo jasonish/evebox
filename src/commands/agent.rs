@@ -7,7 +7,6 @@ use crate::bookmark;
 use crate::config::Config;
 use crate::eve::filters::{AddRuleFilter, EveFilter};
 use crate::importer::EventSink;
-use crate::prelude::*;
 use clap::{CommandFactory, Parser};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -15,6 +14,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
+use tracing::{debug, info, warn};
 
 #[derive(Parser, Debug)]
 #[command(name = "agent", about = "EveBox Agent")]

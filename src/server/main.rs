@@ -9,7 +9,6 @@ use crate::elastic::Version;
 use crate::eve::filters::{AddFieldFilter, AddRuleFilter};
 use crate::eve::watcher::EvePatternWatcher;
 use crate::eventrepo::EventRepo;
-use crate::prelude::*;
 use crate::server::api;
 use crate::server::session::Session;
 use crate::sqlite::configrepo::ConfigRepo;
@@ -32,7 +31,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tower_http::trace::TraceLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
-use tracing::Level;
+use tracing::{debug, error, info, warn, Level};
 
 fn load_event_services(filename: &str) -> Result<serde_json::Value> {
     let finput = std::fs::File::open(filename)?;

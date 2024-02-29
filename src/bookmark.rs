@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 use crate::eve;
-use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::path::PathBuf;
+use tracing::trace;
+use tracing::warn;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Bookmark {

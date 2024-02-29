@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
+use tracing::info;
 
 pub const VERSION: &str = std::env!("CARGO_PKG_VERSION");
 pub const TARGET: Option<&str> = std::option_env!("TARGET");

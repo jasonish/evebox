@@ -6,8 +6,8 @@
 use clap::{value_parser, ArgAction};
 use clap::{Arg, Command};
 use evebox::logger;
-use evebox::prelude::*;
 use evebox::version;
+use tracing::error;
 
 fn main() {
     logger::init_offset();

@@ -3,12 +3,12 @@
 
 use super::builder::SqliteValue;
 use crate::eve::{self, Eve};
-use crate::prelude::*;
 use rusqlite::TransactionBehavior;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use time::macros::format_description;
+use tracing::{debug, error};
 
 #[derive(thiserror::Error, Debug)]
 pub enum IndexError {

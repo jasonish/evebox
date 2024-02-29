@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use time::macros::format_description;
 use time::UtcOffset;
 pub use tracing::debug;
@@ -20,7 +19,7 @@ pub fn init_offset() {
     unsafe { OFFSET = Some(offset) };
 }
 
-pub fn init_logger(level: Level) -> Result<()> {
+pub fn init_logger(level: Level) -> anyhow::Result<()> {
     let level = match level {
         Level::TRACE => "trace",
         Level::DEBUG => "debug",

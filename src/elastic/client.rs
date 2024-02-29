@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::time::Duration;
+use tracing::warn;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {

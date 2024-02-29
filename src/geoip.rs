@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use maxminddb::{geoip2, Reader};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, UNIX_EPOCH};
+use tracing::{debug, error, info, warn};
 
 const DAYS_28: i64 = 86400 * 28;
 const UPDATE_CHECK_TIMEOUT: u64 = 60;

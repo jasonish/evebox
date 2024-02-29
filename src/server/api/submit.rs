@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use crate::server::ServerContext;
 use axum::body::Bytes;
 use axum::extract::Extension;
@@ -11,6 +10,7 @@ use axum::Json;
 use serde_json::json;
 use std::io::BufRead;
 use std::sync::Arc;
+use tracing::error;
 
 pub(crate) async fn handler(
     Extension(context): Extension<Arc<ServerContext>>,

@@ -15,7 +15,6 @@ use crate::elastic::{
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::eventrepo::{self, DatastoreError};
-use crate::prelude::*;
 use crate::querystring::parse_timestamp;
 use crate::querystring::{self, Element, QueryString};
 use crate::server::api;
@@ -25,6 +24,10 @@ use crate::LOG_QUERIES;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+use tracing::warn;
 
 mod dhcp;
 mod stats;

@@ -7,8 +7,9 @@ use std::sync::Mutex;
 
 use rusqlite::params;
 use time::format_description::well_known::Rfc3339;
+use tracing::debug;
+use tracing::error;
 
-use crate::prelude::*;
 use crate::sqlite::ConnectionBuilder;
 
 #[derive(thiserror::Error, Debug)]

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 use super::SqliteEventRepo;
-use crate::prelude::*;
 use crate::sqlite::builder::NamedParams;
 use crate::{
     eventrepo::{DatastoreError, StatsAggQueryParams},
@@ -12,6 +11,7 @@ use crate::{
 };
 use rusqlite::{Connection, OptionalExtension};
 use std::time::Instant;
+use tracing::{debug, info};
 
 impl SqliteEventRepo {
     pub(crate) async fn histogram_time(
@@ -121,7 +121,7 @@ impl SqliteEventRepo {
         .optional()
     }
 
-    async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(u64, u64)>> {
+    async fn get_stats(&self, qp: &StatsAggQueryParams) -> anyhow::Result<Vec<(u64, u64)>> {
         let qp = qp.clone();
         let conn = self.pool.get().await?;
         let field = format!("$.{}", &qp.field);
@@ -181,7 +181,10 @@ impl SqliteEventRepo {
         Ok(result)
     }
 
-    pub async fn stats_agg(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
+    pub async fn stats_agg(
+        &self,
+        params: &StatsAggQueryParams,
+    ) -> anyhow::Result<serde_json::Value> {
         let rows = self.get_stats(params).await?;
         let response_data: Vec<serde_json::Value> = rows
             .iter()
@@ -197,7 +200,10 @@ impl SqliteEventRepo {
         }))
     }
 
-    pub async fn stats_agg_diff(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
+    pub async fn stats_agg_diff(
+        &self,
+        params: &StatsAggQueryParams,
+    ) -> anyhow::Result<serde_json::Value> {
         let rows = self.get_stats(params).await?;
         let mut response_data = vec![];
         for (i, e) in rows.iter().enumerate() {

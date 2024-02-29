@@ -4,11 +4,14 @@
 use crate::config::Config;
 use crate::eve;
 use crate::geoip;
-use crate::prelude::*;
 use crate::sqlite;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::sync;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+use tracing::warn;
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let config_loader = Config::new(args.clone(), None)?;

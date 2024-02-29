@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 use crate::eventrepo::DatastoreError;
-use crate::prelude::*;
 use crate::server::api::AlertGroupSpec;
 use crate::{eve, LOG_QUERIES};
 use rusqlite::{params, Connection, ToSql};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use tracing::{debug, info};
 
 mod alerts;
 mod dhcp;

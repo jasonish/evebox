@@ -1,13 +1,11 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::{
-    prelude::*,
-    sqlite::{util::fts_create, SqliteExt},
-};
+use crate::sqlite::{util::fts_create, SqliteExt};
 use rusqlite::{params, types::FromSql, Connection, DatabaseName, OpenFlags};
 use std::path::PathBuf;
 use time::format_description::well_known::Rfc3339;
+use tracing::{debug, error, info, warn};
 
 pub struct ConnectionBuilder {
     pub filename: Option<PathBuf>,

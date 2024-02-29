@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::SqliteEventRepo;
-use crate::{eventrepo::DatastoreError, prelude::*, sqlite::builder::SqliteValue};
+use crate::{eventrepo::DatastoreError, sqlite::builder::SqliteValue};
 use rusqlite::params_from_iter;
 use time::OffsetDateTime;
 

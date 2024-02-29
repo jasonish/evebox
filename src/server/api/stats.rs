@@ -3,7 +3,6 @@
 
 use crate::eventrepo;
 use crate::eventrepo::EventRepo;
-use crate::prelude::*;
 use crate::server::api::ApiError;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
@@ -14,6 +13,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use serde::Deserialize;
 use std::sync::Arc;
+use tracing::error;
 
 pub(crate) fn router() -> Router<Arc<ServerContext>> {
     Router::new()

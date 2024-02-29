@@ -5,7 +5,6 @@ use super::ElasticEventRepo;
 use crate::{
     elastic::request::{term_filter, timestamp_gte_filter},
     eventrepo::DatastoreError,
-    prelude::*,
 };
 use time::OffsetDateTime;
 

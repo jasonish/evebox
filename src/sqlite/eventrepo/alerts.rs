@@ -1,14 +1,16 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use tracing::{debug, error, info};
+
 use super::{QueryParam, SqliteEventRepo};
+use crate::LOG_QUERIES;
 use crate::{
     elastic::AlertQueryOptions,
     eventrepo::DatastoreError,
     querystring::{self, Element},
     sqlite::format_sqlite_timestamp,
 };
-use crate::{prelude::*, LOG_QUERIES};
 use std::time::Instant;
 
 impl SqliteEventRepo {

@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -10,6 +9,11 @@ use std::io::SeekFrom;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
+
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+use tracing::trace;
 
 #[derive(thiserror::Error, Debug)]
 pub enum EveReaderError {

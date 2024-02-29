@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use tracing::{info, warn};
+
 use super::{filters::EveFilter, EveReader, Processor};
-use crate::prelude::*;
 use crate::{eve::filters::EveBoxMetadataFilter, importer::EventSink};
 use std::time::Duration;
 use std::{collections::HashSet, path::PathBuf, sync::Arc};
