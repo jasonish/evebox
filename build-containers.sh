@@ -42,7 +42,7 @@ done
 if [[ "${GIT_TAG}" ]]; then
     echo "Building container for version ${GIT_TAG}"
     version="${GIT_TAG}"
-elif [[ "${GIT_BRANCH}" = "main" ]]; then
+elif [[ "${GIT_BRANCH}" = "main" || "${GIT_BRANCH}" = "devel" ]]; then
     echo "Building devel version from branch main"
     version="devel"
     tag="main"
