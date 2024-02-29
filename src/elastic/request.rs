@@ -6,7 +6,6 @@ use time::macros::format_description;
 pub trait Request {
     fn push_filter(&mut self, filter: serde_json::Value);
     fn size(&mut self, size: u64);
-    fn set_filters(&mut self, filters: Vec<serde_json::Value>);
 }
 
 impl Request for serde_json::Value {
@@ -18,10 +17,6 @@ impl Request for serde_json::Value {
 
     fn size(&mut self, size: u64) {
         self["size"] = size.into();
-    }
-
-    fn set_filters(&mut self, filters: Vec<serde_json::Value>) {
-        self["query"]["bool"]["filter"] = filters.into();
     }
 }
 

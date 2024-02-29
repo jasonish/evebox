@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 use serde::Deserialize;
-use serde_yaml;
 use serde_yaml::Value as YamlValue;
 use std::collections::HashMap;
 use tracing::error;

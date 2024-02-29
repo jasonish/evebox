@@ -568,9 +568,6 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
 }
 
 #[derive(Debug)]
-pub enum GenericError {}
-
-#[derive(Debug)]
 pub(crate) struct SessionExtractor(pub(crate) Arc<Session>);
 
 #[async_trait]

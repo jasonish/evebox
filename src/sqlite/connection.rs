@@ -55,10 +55,8 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
     if let Err(err) = db.pragma_update(None, "synchronous", "NORMAL") {
         error!("Failed to set pragma synchronous = NORMAL: {:?}", err);
     }
-    match db.pragma_query_value(None, "synchronous", |row| {
-        let val: i32 = row.get(0)?;
-        Ok(val)
-    }) {
+
+    match get_synchronous(db) {
         Ok(mode) => {
             if mode != 1 {
                 warn!("Database not in synchronous mode normal, instead: {}", mode);
