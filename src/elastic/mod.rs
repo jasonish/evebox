@@ -46,6 +46,7 @@ pub struct AlertQueryOptions {
     pub timestamp_gte: Option<OffsetDateTime>,
     pub query_string: Option<String>,
     pub tags: Vec<String>,
+    pub sensor: Option<String>,
 }
 
 #[derive(Serialize)]

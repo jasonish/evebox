@@ -77,6 +77,11 @@ impl SqliteEventRepo {
                         }
                     }
 
+                    if let Some(sensor) = options.sensor {
+                        filters.push("json_extract(events.source, '$.host') = ?".into());
+                        params.push(Box::new(sensor));
+                    }
+
                     if let Some(ts) = options.timestamp_gte {
                         filters.push("timestamp >= ?".into());
                         params.push(Box::new(ts.unix_timestamp_nanos() as i64));

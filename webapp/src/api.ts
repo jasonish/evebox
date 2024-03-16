@@ -129,6 +129,7 @@ export async function alerts(options?: {
   tags?: string[];
   // Tags that must not be present.
   not_tags?: string[];
+  sensor: string | undefined;
 }): Promise<{ events: EventWrapper[]; ecs: boolean }> {
   let params: any = {
     query_string: options?.query_string,
@@ -138,6 +139,9 @@ export async function alerts(options?: {
   }
   if (options?.tags) {
     params.tags = options.tags.join(",");
+  }
+  if (options?.sensor) {
+    params.sensor = options.sensor;
   }
   return get("api/1/alerts", params).then((response) => response.data);
 }

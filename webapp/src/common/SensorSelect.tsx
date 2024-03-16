@@ -32,7 +32,7 @@ export function SensorSelect(props: {
 
   return (
     <div class="input-group">
-      <label class="input-group-text">Sensors</label>
+      <label class="input-group-text">Sensor</label>
       <Show
         when={!loading()}
         fallback={

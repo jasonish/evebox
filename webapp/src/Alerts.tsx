@@ -55,6 +55,7 @@ import { IdleTimer } from "./idletimer";
 import { eventStore } from "./eventstore";
 import { AppProtoBadge } from "./Events";
 import { Logger } from "./util";
+import { SensorSelect } from "./common/SensorSelect";
 
 const DEFAULT_SORTBY = "timestamp";
 const DEFAULT_SORTORDER = "desc";
@@ -84,6 +85,7 @@ export function Alerts() {
     offset: string;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
+    sensor?: undefined | string;
   }>();
   const [cursor, setCursor] = createSignal(0);
   const [isLoading, setIsLoading] = createSignal(false);
@@ -319,6 +321,7 @@ export function Alerts() {
       // sortOrder: searchParams.sortOrder,
       q: searchParams.q,
       timeRange: TIME_RANGE(),
+      sensor: searchParams.sensor,
     };
     if (prev === undefined) {
       logger.log("Initial check of sortBy and sortOrder, not refreshing");
@@ -356,6 +359,10 @@ export function Alerts() {
         query_string: searchParams.q,
         time_range: parse_timerange(TIME_RANGE()) || undefined,
       };
+
+      if (searchParams.sensor) {
+        params.sensor = searchParams.sensor;
+      }
 
       switch (view) {
         case View.Inbox:
@@ -664,7 +671,7 @@ export function Alerts() {
         </div>
 
         <Row>
-          <Col>
+          <Col class="d-flex">
             <Show when={!isLoading()}>
               <button
                 class={"btn btn-secondary me-2"}
@@ -717,6 +724,14 @@ export function Alerts() {
                 Escalate
               </button>
             </Show>
+            <div class="d-inline-flex">
+              <SensorSelect
+                selected={"asdf"}
+                onchange={(sensor) => {
+                  setSearchParams({ sensor: sensor });
+                }}
+              />
+            </div>
           </Col>
           <Col>
             <Form

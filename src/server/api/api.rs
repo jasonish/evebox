@@ -219,6 +219,7 @@ pub(crate) async fn alerts(
 ) -> impl IntoResponse {
     let mut options = elastic::AlertQueryOptions {
         query_string: query.query_string,
+        sensor: query.sensor,
         ..elastic::AlertQueryOptions::default()
     };
 

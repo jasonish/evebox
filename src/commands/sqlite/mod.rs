@@ -289,6 +289,7 @@ async fn optimize(args: &OptimizeArgs) -> Result<()> {
         timestamp_gte: Some(gte),
         query_string: None,
         tags: vec![],
+        sensor: None,
     })
     .await
     .map_err(|err| anyhow::anyhow!(format!("{}", err)))?;

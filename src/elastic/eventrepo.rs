@@ -460,6 +460,10 @@ impl ElasticEventRepo {
         filters.push(json!({"exists": {"field": self.map_field("event_type")}}));
         filters.push(json!({"term": {self.map_field("event_type"): "alert"}}));
 
+        if let Some(sensor) = &options.sensor {
+            filters.push(json!({"term": {self.map_field("host"): sensor}}));
+        }
+
         if !has_min_timestamp {
             if let Some(ts) = options.timestamp_gte {
                 filters.push(json!({"range": {"@timestamp": {"gte": format_timestamp(ts)}}}));

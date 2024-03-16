@@ -302,6 +302,7 @@ impl SqliteEventRepo {
                     SELECT DISTINCT json_extract(events.source, '$.host')
                     FROM events
                     WHERE timestamp >= ?
+                      AND json_extract(events.source, '$.host') IS NOT NULL
                 "#;
                 let mut st = conn.prepare(sql).unwrap();
                 let rows = st.query_map([&start_time], |row| row.get(0))?;
