@@ -64,19 +64,9 @@ database:
     #size: "20 GB"
 
 authentication:
-
   # Default: false
   # env: EVEBOX_AUTHENTICATION_REQUIRED
   required: false
-
-  # Type of login required:
-  # - username         -- just a username...
-  # - usernamepassword -- username and password
-  # env: EVEBOX_AUTHENTICATION_TYPE
-  type: usernamepassword
-
-  # A little message that is displayed in the login dialog.
-  #login-message: Some message here...
 
 # The server can process a log file, eliminating the need for a
 # separate agent process if on the same machine.
