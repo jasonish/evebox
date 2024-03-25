@@ -33,6 +33,11 @@ http:
   # env: EVEBOX_HTTP_REQUEST_LOGGING
   #request-logging: true
 
+authentication:
+  # Default: false
+  # env: EVEBOX_AUTHENTICATION_REQUIRED
+  required: false
+
 # Database configuration.
 database:
 
@@ -62,11 +67,6 @@ database:
     # - SQLite only
     # - No default
     #size: "20 GB"
-
-authentication:
-  # Default: false
-  # env: EVEBOX_AUTHENTICATION_REQUIRED
-  required: false
 
 # The server can process a log file, eliminating the need for a
 # separate agent process if on the same machine.
