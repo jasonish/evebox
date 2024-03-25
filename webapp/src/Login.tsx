@@ -49,8 +49,6 @@ export const Login = () => {
 
   const isValid = () => {
     switch (loginOptions()?.authentication.type) {
-      case "username":
-        return loginForm.username.length > 0;
       case "usernamepassword":
         return loginForm.username.length > 0 && loginForm.password.length > 0;
       default:
@@ -59,7 +57,11 @@ export const Login = () => {
   };
 
   createEffect(() => {
-    if (loginOptions()?.authentication.type === "anonymous") {
+    const options = loginOptions();
+    if (
+      !options?.authentication.required ||
+      options?.authentication.type === "anonymous"
+    ) {
       navigate(searchParams.redirectTo || "/inbox");
     }
   });
