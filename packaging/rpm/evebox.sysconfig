@@ -1,0 +1,9 @@
+# Environment file.
+
+# Override the Elasticsearch URL here. This will take precedence over
+# the configuration file.
+#ELASTICSEARCH_URL="-e http://localhost:9200"
+
+# Add additional EveBox command line arguments using the EVEBOX_OPTS
+# variable.
+#EVEBOX_OPTS="-v"

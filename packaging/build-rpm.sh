@@ -41,10 +41,13 @@ fpm --verbose -t rpm -n evebox -s dir --epoch 1 \
     --before-install=./packaging/rpm/before-install.sh \
     --after-upgrade=./packaging/rpm/after-upgrade.sh \
     --config-files /etc/evebox/evebox.yaml \
+    --config-files /etc/sysconfig/evebox \
     --rpm-attr 0644,root,root:/lib/systemd/system/evebox.service \
     --rpm-attr 0644,root,root:/lib/systemd/system/evebox-agent.service \
     --rpm-attr 0755,root,root:/usr/bin/evebox \
     ${BIN}=/usr/bin/evebox \
     ./packaging/rpm/evebox.service=/lib/systemd/system/evebox.service \
     ./packaging/rpm/evebox-agent.service=/lib/systemd/system/evebox-agent.service \
-    ./packaging/evebox.yaml=/etc/evebox/evebox.yaml
+    ./packaging/evebox.yaml=/etc/evebox/evebox.yaml \
+    ./packaging/rpm/evebox.sysconfig=/etc/sysconfig/evebox
+
