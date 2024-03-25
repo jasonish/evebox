@@ -12,6 +12,9 @@ echo "===> Git tag: ${GIT_TAG}"
 
 skip_windows="no"
 
+# Custom command.
+command=""
+
 for a in $@; do
     case "$a" in
         --skip-windows)
@@ -20,11 +23,16 @@ for a in $@; do
         --linux)
             skip_windows="yes"
             ;;
+	--*)
+	    echo "error: bad argument: $a"
+	    exit 1
+	    ;;
         *)
-            echo "error: bad argument: $a"
-            exit 1
+	    command="$@"
+	    break
             ;;
     esac
+    shift
 done
 
 cross_run() {
@@ -53,14 +61,18 @@ cross_run() {
         ${tag} $@
 }
 
-cross_run x86_64-unknown-linux-musl make dist
-cross_run aarch64-unknown-linux-musl make dist
+if [[ "${command}" ]]; then
+    $command
+else
+    cross_run x86_64-unknown-linux-musl make dist
+    cross_run aarch64-unknown-linux-musl make dist
 
-cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
+    cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
 
-cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
-cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
+    cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
+    cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
 
-if [[ "${skip_windows}" != "yes" ]]; then
-    cross_run x86_64-pc-windows-gnu make dist
+    if [[ "${skip_windows}" != "yes" ]]; then
+	cross_run x86_64-pc-windows-gnu make dist
+    fi
 fi
