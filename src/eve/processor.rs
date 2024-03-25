@@ -107,7 +107,11 @@ impl Processor {
             }
             match self.reader.next_record() {
                 Err(err) => {
-                    error!("Failed to read event: {}", err);
+                    error!(
+                        "Failed to read event from {}: {}",
+                        self.reader.filename.display(),
+                        err
+                    );
                     self.sleep_for(1000).await;
                 }
                 Ok(None) => {
