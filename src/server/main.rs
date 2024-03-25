@@ -242,6 +242,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         debug!("TLS cert filename: {:?}", server_config.tls_cert_filename);
         if let Err(err) = run_axum_server_with_tls(&server_config, context).await {
             error!("Failed to start TLS HTTP service: {:?}", err);
+            std::process::exit(1);
         }
     } else if let Err(err) = run_axum_server(&server_config, context).await {
         error!("Failed to start HTTP service: {:?}", err);
