@@ -5,6 +5,15 @@ http:
   ## it up.
   #host: "0.0.0.0"
 
+  tls:
+    # By default a TLS is enabled and a self signed certificate will
+    # be created. Uncomment and set this to false to disable TLS.
+    enabled: false
+
+# By default authentication is enabled, uncomment this line to disable
+# authentication.
+authentication: false
+
 database:
   type: elasticsearch
 
