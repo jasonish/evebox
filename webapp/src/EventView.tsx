@@ -71,10 +71,16 @@ export function EventView() {
 
   onMount(() => {
     keybindings = tinykeys(window, {
-      u: () => {
+      u: (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
         window.history.back();
       },
-      e: () => {
+      e: (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
         archiveAlert();
       },
       f8: () => {
@@ -709,6 +715,10 @@ export function EventView() {
             </Row>
           </Show>
 
+          <Show when={event() && event()!._source.stats}>
+            <StatsCard stats={event()!._source.stats!} />
+          </Show>
+
           {/* Tabbed? */}
           <Row>
             <Col class={"mb-2"}>
@@ -1295,4 +1305,79 @@ function geoIpInfoString(geo: any) {
     parts.push(geo.city_name);
   }
   return parts.join(" / ");
+}
+
+function StatsCard(props: { stats: { [key: string]: any } }) {
+  const [hideZeros, setHideZeros] = createSignal(false);
+  const [stats, setStats] = createSignal<{ key: string; val: any }[]>([]);
+  const [filter, setFilter] = createSignal("");
+
+  function toggleHide(e: any) {
+    setHideZeros(e.target.checked);
+  }
+
+  createEffect(() => {
+    const flattened = flattenJson(props.stats);
+    const filtered = flattened.filter((e) => {
+      if (hideZeros()) {
+        if (e.val === 0) {
+          return false;
+        }
+      }
+      if (filter()) {
+        if (e.key.indexOf(filter()) < 0) {
+          return false;
+        }
+      }
+      return true;
+    });
+    setStats(filtered);
+  });
+
+  return (
+    <>
+      <div class="card">
+        <div class="card-header">
+          Stats
+          <div class="form-check float-end">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              onChange={toggleHide}
+            />
+            <label class="form-check-label">Hide zeros</label>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Filter..."
+            oninput={(e) => {
+              setFilter(e.target.value);
+            }}
+          />
+          <table
+            class="table table-striped table-hover table-bordered"
+            style="width: 100%"
+          >
+            <tbody>
+              <For each={stats()}>
+                {(stat) => (
+                  <>
+                    <tr>
+                      <td style="white-space: nowrap; width: 5%;">
+                        {stat.key}
+                      </td>
+                      <td>{stat.val}</td>
+                    </tr>
+                  </>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
 }

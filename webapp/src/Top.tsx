@@ -95,27 +95,47 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
 
   onMount(() => {
     tinykeys(window, {
-      "Shift+?": () => {
+      "Shift+?": (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
         openHelp();
       },
-      "g i": () => {
+      "g i": (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
         navigate("/inbox");
       },
-      "g a": () => {
+      "g a": (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
         navigate("/alerts");
       },
-      "g s": () => {
+      "g s": (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
         navigate("/escalated");
       },
-      "g e": () => {
+      "g e": (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
         navigate("/events");
       },
-      "Control+\\": () => {
+      "Control+\\": (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
         setSearchParams({ q: undefined });
       },
-      "\\": () => {
+      "\\": (event: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) {
+          return;
+        }
         const e = document.getElementById("time-range-dropdown");
-        console.log(e);
         if (e) {
           e.focus();
           e.click();
