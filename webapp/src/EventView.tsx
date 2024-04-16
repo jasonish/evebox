@@ -268,6 +268,28 @@ export function EventView() {
         ["Revision", alert.rev],
       ];
       setEventDetails(eventDetails);
+    } else if (event()?._source.event_type === "stats") {
+      const stats = event()!._source.stats!;
+      let eventDetails = [];
+      if (stats.uptime) {
+        eventDetails.push(["Uptime", stats.uptime]);
+      }
+      if (stats.capture.kernel_packets) {
+        eventDetails.push(["Kernel packets", stats.capture.kernel_packets]);
+      }
+      if (stats.capture.kernel_drops) {
+        eventDetails.push(["Kernel drops", stats.capture.kernel_drops]);
+      }
+      if (stats.decoder.pkts) {
+        eventDetails.push(["Decoder packets", stats.decoder.pkts]);
+      }
+      if (stats.decoder.bytes) {
+        eventDetails.push(["Decoder bytes", stats.decoder.bytes]);
+      }
+      if (stats.detect.alert) {
+        eventDetails.push(["Alerts", stats.detect.alert]);
+      }
+      setEventDetails(eventDetails);
     } else {
       setEventDetails(undefined);
     }

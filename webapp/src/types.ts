@@ -199,6 +199,9 @@ export interface EveStats {
     bytes: number;
     pkts: number;
   };
+  detect: {
+    alert: number;
+  };
 }
 
 export interface EveSmb {
