@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tracing::warn;
 
+use super::ElasticResponseError;
+
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
     #[error("request: {0}")]
@@ -99,7 +101,13 @@ impl Client {
     }
 
     pub async fn get_info(&self) -> Result<InfoResponse, ClientError> {
-        Ok(self.get("/")?.send().await?.json().await?)
+        let response = self.get("/")?.send().await?;
+        let json: serde_json::Value = response.json().await?;
+        if json["error"].is_object() {
+            let error: ElasticResponseError = serde_json::from_value(json["error"].clone())?;
+            return Err(ClientError::String(error.first_reason()));
+        }
+        Ok(serde_json::from_value(json)?)
     }
 
     pub async fn wait_for_info(&self) -> InfoResponse {
@@ -110,7 +118,7 @@ impl Client {
                 }
                 Err(err) => {
                     warn!(
-                        "Failed to get Elasticsearch version from {}, will try again: {:?}",
+                        "Failed to get Elasticsearch version from {}, will try again: {}",
                         self.url, err
                     );
                     tokio::time::sleep(Duration::from_secs(3)).await;

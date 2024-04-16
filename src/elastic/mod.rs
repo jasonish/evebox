@@ -109,8 +109,24 @@ pub mod response {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ElasticResponseError {
+pub(crate) struct ElasticResponseError {
+    pub root_cause: Vec<RootCause>,
+}
+
+impl ElasticResponseError {
+    pub(crate) fn first_reason(&self) -> String {
+        self.root_cause
+            .first()
+            .map(|rc| rc.reason.clone())
+            .unwrap_or_else(|| "unknown".to_string())
+    }
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub(crate) struct RootCause {
+    #[serde(rename = "type")]
+    pub cause_type: String,
     pub reason: String,
-    #[serde(flatten)]
-    pub other: std::collections::HashMap<String, serde_json::Value>,
+    pub header: serde_json::Value,
 }

@@ -371,7 +371,7 @@ impl ElasticEventRepo {
         });
         let response: ElasticResponse = self.search(&query).await?.json().await?;
         if let Some(error) = response.error {
-            return Err(ElasticError::ErrorResponse(error.reason).into());
+            return Err(ElasticError::ErrorResponse(error.first_reason()).into());
         } else if let Some(hits) = &response.hits {
             if let serde_json::Value::Array(hits) = &hits["hits"] {
                 if !hits.is_empty() {
@@ -535,7 +535,7 @@ impl ElasticEventRepo {
         let body = self.search(&query).await?.text().await?;
         let response: ElasticResponse = serde_json::from_str(&body)?;
         if let Some(error) = response.error {
-            return Err(DatastoreError::ElasticSearchError(error.reason));
+            return Err(DatastoreError::ElasticSearchError(error.first_reason()));
         }
 
         let mut alerts = Vec::new();
