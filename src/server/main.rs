@@ -253,14 +253,14 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
 fn is_authentication_required(config: &Config) -> bool {
     // Allows `authentication: false` to disable authentication.
-    if let Ok(false) = config.get_bool("authentication") {
-        info!("Authentication disabled by configuration");
+    if let Ok(Some(false)) = config.get::<bool>("authentication") {
+        info!("Authentication disabled by configuration: authentication");
         return false;
     }
 
     // First check if authentication has been explicitly disabled.
     if !config.get_bool_with_default("authentication.required", true) {
-        info!("Authentication disabled by configuration");
+        info!("Authentication disabled by configuration: authentication.required");
         return false;
     }
 

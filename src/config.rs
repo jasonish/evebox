@@ -8,7 +8,7 @@ use serde_yaml::Value;
 use std::fmt::Display;
 use std::str::FromStr;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub args: ArgMatches,
     root: Value,
