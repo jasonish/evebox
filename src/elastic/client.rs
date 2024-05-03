@@ -102,12 +102,20 @@ impl Client {
 
     pub async fn get_info(&self) -> Result<InfoResponse, ClientError> {
         let response = self.get("/")?.send().await?;
-        let json: serde_json::Value = response.json().await?;
-        if json["error"].is_object() {
-            let error: ElasticResponseError = serde_json::from_value(json["error"].clone())?;
-            return Err(ClientError::String(error.first_reason()));
+        let code = response.status();
+        let text = response.text().await?;
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+            if json["error"].is_object() {
+                let error: ElasticResponseError = serde_json::from_value(json["error"].clone())?;
+                Err(ClientError::String(error.first_reason()))
+            } else {
+                Ok(serde_json::from_value(json)?)
+            }
+        } else {
+            // OpenSearch does not return a JSON error for at least authentication errors.
+            let err = format!("{}", code);
+            Err(ClientError::String(err))
         }
-        Ok(serde_json::from_value(json)?)
     }
 
     pub async fn wait_for_info(&self) -> InfoResponse {
