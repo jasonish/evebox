@@ -26,7 +26,7 @@ pub enum ClientError {
 #[derive(Debug, Default)]
 pub struct Client {
     pub url: String,
-    disable_certificate_validation: bool,
+    pub disable_certificate_validation: bool,
     username: Option<String>,
     password: Option<String>,
 }
@@ -46,6 +46,8 @@ impl Client {
     pub fn new(url: &str) -> Self {
         Self {
             url: url.to_string(),
+            username: std::env::var("EVEBOX_ELASTICSEARCH_USERNAME").ok(),
+            password: std::env::var("EVEBOX_ELASTICSEARCH_PASSWORD").ok(),
             ..Default::default()
         }
     }

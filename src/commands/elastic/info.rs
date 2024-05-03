@@ -1,13 +1,16 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use anyhow::Result;
+
+use crate::elastic::client::InfoResponse;
 use crate::elastic::request::Request;
 use crate::elastic::{self, Client};
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let url = args.get_one::<String>("elasticsearch").unwrap();
-    let client = Client::new(url);
-    let server_info = client.get_info().await?;
+    let mut client = Client::new(url);
+    let server_info = get_info(&mut client).await?;
     let ignore_dot = true;
     if let Some(distribution) = &server_info.version.distribution {
         println!("Distribution: {distribution}");
@@ -36,6 +39,22 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+async fn get_info(client: &mut Client) -> Result<InfoResponse> {
+    match client.get_info().await {
+        Ok(info) => return Ok(info),
+        Err(err) => {
+            if client.url.starts_with("https") {
+                println!("Failed to get server info, will disable certificate validation and try again: error = {err}");
+                client.disable_certificate_validation = true;
+            } else {
+                anyhow::bail!(err);
+            }
+        }
+    }
+
+    Ok(client.get_info().await?)
 }
 
 async fn check_logstash(client: &Client) -> anyhow::Result<()> {
