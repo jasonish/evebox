@@ -48,21 +48,19 @@ export const Login = () => {
   };
 
   const isValid = () => {
-    switch (loginOptions()?.authentication.type) {
-      case "usernamepassword":
-        return loginForm.username.length > 0 && loginForm.password.length > 0;
-      default:
-        return true;
-    }
+    return loginForm.username.length > 0 && loginForm.password.length > 0;
   };
 
-  createEffect(() => {
-    const options = loginOptions();
-    if (
-      !options?.authentication.required ||
-      options?.authentication.type === "anonymous"
-    ) {
-      navigate(searchParams.redirectTo || "/inbox");
+  createEffect(async () => {
+    let options = loginOptions();
+    if (options) {
+      let redirectTo = searchParams.redirectTo || "/inbox";
+      if (!options.authentication.required) {
+        console.log(
+          `No authentication required, navigating back to ${redirectTo}`
+        );
+        navigate(redirectTo);
+      }
     }
   });
 
@@ -95,19 +93,16 @@ export const Login = () => {
                       />
                     </Form.Group>
 
-                    {loginOptions()?.authentication.type ===
-                      "usernamepassword" && (
-                      <Form.Group class={"mt-3"}>
-                        <Form.Label>Password:</Form.Label>
-                        <Form.Control
-                          oninput={(e) =>
-                            setLoginForm("password", e.currentTarget.value)
-                          }
-                          type={"password"}
-                          placeholder={"Password..."}
-                        />
-                      </Form.Group>
-                    )}
+                    <Form.Group class={"mt-3"}>
+                      <Form.Label>Password:</Form.Label>
+                      <Form.Control
+                        oninput={(e) =>
+                          setLoginForm("password", e.currentTarget.value)
+                        }
+                        type={"password"}
+                        placeholder={"Password..."}
+                      />
+                    </Form.Group>
 
                     <div class={"d-grid mt-3"}>
                       <Button

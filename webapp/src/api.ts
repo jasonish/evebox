@@ -249,7 +249,6 @@ export async function getVersion(): Promise<{
 export interface LoginOptions {
   authentication: {
     required: boolean;
-    type: string;
   };
 }
 

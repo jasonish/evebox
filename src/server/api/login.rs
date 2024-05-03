@@ -26,7 +26,6 @@ pub(crate) async fn options(
     let response = json!({
         "authentication": {
             "required": context.config.authentication_required,
-            "type": "usernamepassword",
         }
     });
     Json(response)
