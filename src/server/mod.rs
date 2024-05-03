@@ -13,7 +13,6 @@ use std::sync::Arc;
 
 pub mod api;
 pub(crate) mod main;
-mod response;
 pub mod session;
 
 #[derive(Serialize, Default, Debug)]
