@@ -171,12 +171,12 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     let importer = if config.get_bool("elasticsearch.enabled")? {
         let url = config.get_string("elasticsearch.url").unwrap();
         let mut client = crate::elastic::ClientBuilder::new(&url);
-        client.disable_certificate_validation(disable_certificate_check);
+        client = client.disable_certificate_validation(disable_certificate_check);
         if let Some(username) = config.get_string("elasticsearch.username") {
-            client.with_username(&username);
+            client = client.with_username(&username);
         }
         if let Some(password) = config.get_string("elasticsearch.password") {
-            client.with_password(&password);
+            client = client.with_password(&password);
         }
         let nodate = config.get_bool("elasticsearch.nodate")?;
         let index = config.get_string("elasticsearch.index").unwrap();

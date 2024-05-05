@@ -27,8 +27,8 @@ pub enum ClientError {
 pub struct Client {
     pub url: String,
     pub disable_certificate_validation: bool,
-    username: Option<String>,
-    password: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
 }
 
 impl Clone for Client {
@@ -40,6 +40,14 @@ impl Clone for Client {
             password: self.password.clone(),
         }
     }
+}
+
+fn default_username() -> Option<String> {
+    std::env::var("EVEBOX_ELASTICSEARCH_USERNAME").ok()
+}
+
+fn default_password() -> Option<String> {
+    std::env::var("EVEBOX_ELASTICSEARCH_PASSWORD").ok()
 }
 
 impl Client {
@@ -94,6 +102,26 @@ impl Client {
             .get_http_client()?
             .put(url)
             .header("Content-Type", "application/json");
+        let request = if let Some(username) = &self.username {
+            request.basic_auth(username, self.password.clone())
+        } else {
+            request
+        };
+        Ok(request)
+    }
+
+    /// Put request with a body that can be serialized into JSON.
+    pub fn put_json<T: Serialize>(
+        &self,
+        path: &str,
+        body: T,
+    ) -> Result<reqwest::RequestBuilder, reqwest::Error> {
+        let url = format!("{}/{}", self.url, path);
+        let request = self
+            .get_http_client()?
+            .put(url)
+            .header("Content-Type", "application/json")
+            .json(&body);
         let request = if let Some(username) = &self.username {
             request.basic_auth(username, self.password.clone())
         } else {
@@ -167,6 +195,24 @@ impl Client {
         let response = response.json().await?;
         Ok(response)
     }
+
+    pub(crate) async fn get_indices_pattern(
+        &self,
+        pattern: &str,
+    ) -> anyhow::Result<Vec<IndicesPatternResponse>> {
+        let response = self
+            .get(&format!("_cat/indices/{}?format=json", pattern))?
+            .send()
+            .await?;
+        let text = response.text().await?;
+        let response = serde_json::from_str(&text)?;
+        Ok(response)
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct IndicesPatternResponse {
+    pub index: String,
 }
 
 #[derive(Debug, Clone, Eq)]
@@ -241,31 +287,33 @@ impl ClientBuilder {
     pub fn new(url: &str) -> ClientBuilder {
         ClientBuilder {
             url: url.to_string(),
+            username: default_username(),
+            password: default_password(),
             ..ClientBuilder::default()
         }
     }
 
-    pub fn disable_certificate_validation(&mut self, yes: bool) -> &Self {
+    pub fn disable_certificate_validation(mut self, yes: bool) -> Self {
         self.disable_certificate_validation = yes;
         self
     }
 
-    pub fn with_username(&mut self, username: &str) -> &Self {
+    pub fn with_username(mut self, username: &str) -> Self {
         self.username = Some(username.to_string());
         self
     }
 
-    pub fn with_password(&mut self, password: &str) -> &Self {
+    pub fn with_password(mut self, password: &str) -> Self {
         self.password = Some(password.to_string());
         self
     }
 
-    pub fn build(&self) -> Client {
+    pub fn build(self) -> Client {
         Client {
             url: self.url.clone(),
             disable_certificate_validation: self.disable_certificate_validation,
-            username: self.username.clone(),
-            password: self.password.clone(),
+            username: self.username,
+            password: self.password,
         }
     }
 }

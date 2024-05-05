@@ -483,12 +483,12 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
         "elasticsearch" => {
             let mut client = elastic::ClientBuilder::new(&server_config.elastic_url);
             if let Some(username) = &server_config.elastic_username {
-                client.with_username(username);
+                client = client.with_username(username);
             }
             if let Some(password) = &server_config.elastic_password {
-                client.with_password(password);
+                client = client.with_password(password);
             }
-            client.disable_certificate_validation(server_config.no_check_certificate);
+            client = client.disable_certificate_validation(server_config.no_check_certificate);
 
             let client = client.build();
 

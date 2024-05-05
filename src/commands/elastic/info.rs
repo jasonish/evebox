@@ -7,9 +7,17 @@ use crate::elastic::client::InfoResponse;
 use crate::elastic::request::Request;
 use crate::elastic::{self, Client};
 
-pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
-    let url = args.get_one::<String>("elasticsearch").unwrap();
-    let mut client = Client::new(url);
+pub async fn main(args: super::main::ElasticOptions) -> anyhow::Result<()> {
+    let mut client = Client::new(&args.elasticsearch);
+
+    if args.username.is_some() {
+        client.username.clone_from(&args.username);
+    }
+
+    if args.password.is_some() {
+        client.password.clone_from(&args.password);
+    }
+
     let server_info = get_info(&mut client).await?;
     let ignore_dot = true;
     if let Some(distribution) = &server_info.version.distribution {
