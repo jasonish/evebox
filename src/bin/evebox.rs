@@ -9,6 +9,15 @@ use evebox::logger;
 use evebox::version;
 use tracing::error;
 
+/// Something like the latest Cargo styling.
+fn get_clap_style() -> clap::builder::Styles {
+    clap::builder::Styles::styled()
+        .header(clap::builder::styling::AnsiColor::Green.on_default())
+        .usage(clap::builder::styling::AnsiColor::Green.on_default())
+        .literal(clap::builder::styling::AnsiColor::Cyan.on_default())
+        .placeholder(clap::builder::styling::AnsiColor::Cyan.on_default())
+}
+
 fn main() {
     logger::init_offset();
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -32,6 +41,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
     let parser = clap::Command::new("EveBox")
         .version(std::env!("CARGO_PKG_VERSION"))
         .color(clap::ColorChoice::Always)
+        .styles(get_clap_style())
         .arg(
             Arg::new("verbose")
                 .action(clap::ArgAction::Count)
