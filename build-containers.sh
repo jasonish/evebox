@@ -113,4 +113,9 @@ if [[ "${push}" = "yes" ]]; then
             ${DOCKER_NAME}:${tag}-arm64v8
         ${ECHO} docker manifest push --purge ${DOCKER_NAME}:${alias}
     done
+else
+    echo ""
+    echo "Re-run with --push to push."
+    echo ""
 fi
+
