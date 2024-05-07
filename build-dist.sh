@@ -35,6 +35,10 @@ for a in $@; do
     shift
 done
 
+if test -t; then
+    it="-it"
+fi
+
 cross_run() {
     target="$1"
     shift
