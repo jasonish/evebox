@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     container: rust:latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: cargo test --all
 
   build-dist:
     name: Build Distributions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - run: ./build-dist.sh
+      - uses: actions/checkout@v4
+      - run: bash -x ./build-dist.sh
