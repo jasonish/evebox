@@ -98,21 +98,49 @@ ${ECHO} docker build \
        -t ${DOCKER_NAME}:${tag}-arm64v8 \
        -f docker/Dockerfile .
 
+tags_pushed=()
+manifests_pushed=()
+
+function push() {
+    source=$1
+    echo "Pushing ${source}"
+    ${ECHO} docker push ${source}
+    tags_pushed+=(${source})
+}
+
+function push_manifest() {
+    manifest=$1
+    echo "Pushing ${manifest}"
+    ${ECHO} docker manifest push --purge ${manifest}
+    manifests_pushed+=(${manifest})
+}
+
 if [[ "${push}" = "yes" ]]; then
-    ${ECHO} docker push ${DOCKER_NAME}:${tag}-amd64
-    ${ECHO} docker push ${DOCKER_NAME}:${tag}-arm64v8
+    push ${DOCKER_NAME}:${tag}-amd64
+    push ${DOCKER_NAME}:${tag}-arm64v8
 
     ${ECHO} docker manifest create -a ${DOCKER_NAME}:${tag} \
         ${DOCKER_NAME}:${tag}-amd64 \
         ${DOCKER_NAME}:${tag}-arm64v8
-    ${ECHO} docker manifest push --purge ${DOCKER_NAME}:${tag}
+    push_manifest ${DOCKER_NAME}:${tag}
 
     for alias in ${aliases}; do
         ${ECHO} docker manifest create -a ${DOCKER_NAME}:${alias} \
             ${DOCKER_NAME}:${tag}-amd64 \
             ${DOCKER_NAME}:${tag}-arm64v8
-        ${ECHO} docker manifest push --purge ${DOCKER_NAME}:${alias}
+        push_manifest ${DOCKER_NAME}:${alias}
     done
+
+    echo "Tags pushed:"
+    for tag in ${tags_pushed[@]}; do
+        echo "  ${tag}"
+    done
+
+    echo "Manifests pushed:"
+    for manifest in ${manifests_pushed[@]}; do
+        echo "  ${manifest}"
+    done
+
 else
     echo ""
     echo "Re-run with --push to push."
