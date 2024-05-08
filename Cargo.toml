@@ -1,7 +1,7 @@
 [package]
 name = "evebox"
 # Suffix with -dev when not a release.
-version = "0.18.1-dev"
+version = "0.18.1"
 authors = ["Jason Ish <ish@unx.ca>"]
 edition = "2021"
 description = "A web based Suricata event manager"
@@ -10,6 +10,7 @@ homepage = "https://evebox.org"
 repository = "https://github.com/jasonish/evebox"
 documentation = "https://evebox.org"
 
+# This is not a guarantee, just helps notify me when the MSRV changes.
 rust-version = "1.75.0"
 
 [profile.release]

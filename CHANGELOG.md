@@ -1,9 +1,15 @@
 # Change Log
 
-## unreleased
+## 0.18.1 - 2024-05-08
 
 - [sqlite] Add CLI commands to "optimize" and "analyze" the sqlite
   database. This can help use better indexes.
+- [webapp] Add sensor filter inbox and alerts pages. Still might
+  require some work.
+- [webapp] Fix weird infinite loop in login when authentication is
+  disable/enabled.
+- [elastic] New utility command to set the field limit
+- Many misc fixups
 
 ## 0.18.0 - 2024-02-14
 
