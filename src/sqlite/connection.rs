@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::sqlite::{util::fts_create, SqliteExt};
-use rusqlite::{params, types::FromSql, Connection, DatabaseName, OpenFlags};
+use crate::sqlite::{info::Info, util::fts_create, SqliteExt};
+use rusqlite::{params, Connection, DatabaseName, OpenFlags};
 use std::path::PathBuf;
 use time::format_description::well_known::Rfc3339;
 use tracing::{debug, error, info, warn};
@@ -33,7 +33,7 @@ impl ConnectionBuilder {
 }
 
 pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
-    let auto_vacuum = get_auto_vacuum(db)?;
+    let auto_vacuum = Info::new(db).get_auto_vacuum()?;
     if auto_vacuum == 2 {
         info!("Change auto-vacuum from incremental to full");
         enable_auto_vacuum(db)?;
@@ -41,7 +41,7 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
         info!("Attempting to enable auto-vacuum");
         enable_auto_vacuum(db)?;
     }
-    let auto_vacuum = get_auto_vacuum(db)?;
+    let auto_vacuum = Info::new(db).get_auto_vacuum()?;
     info!("Auto-vacuum: {auto_vacuum}");
 
     // Set WAL mode.
@@ -56,7 +56,7 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
         error!("Failed to set pragma synchronous = NORMAL: {:?}", err);
     }
 
-    match get_synchronous(db) {
+    match Info::new(db).get_synchronous() {
         Ok(mode) => {
             if mode != 1 {
                 warn!("Database not in synchronous mode normal, instead: {}", mode);
@@ -142,31 +142,8 @@ pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
     Ok(())
 }
 
-pub(crate) fn get_auto_vacuum(db: &Connection) -> Result<u8, rusqlite::Error> {
-    db.query_row_and_then("SELECT auto_vacuum FROM pragma_auto_vacuum", [], |row| {
-        row.get(0)
-    })
-}
-
 fn enable_auto_vacuum(db: &Connection) -> Result<(), rusqlite::Error> {
     db.pragma_update(Some(DatabaseName::Main), "auto_vacuum", 1)
-}
-
-pub(crate) fn get_journal_mode(db: &Connection) -> Result<String, rusqlite::Error> {
-    db.query_row_and_then("SELECT journal_mode FROM pragma_journal_mode", [], |row| {
-        row.get(0)
-    })
-}
-
-pub(crate) fn get_synchronous(db: &Connection) -> Result<u8, rusqlite::Error> {
-    db.query_row_and_then("SELECT synchronous FROM pragma_synchronous", [], |row| {
-        row.get(0)
-    })
-}
-
-pub(crate) fn get_pragma<T: FromSql>(db: &Connection, name: &str) -> Result<T, rusqlite::Error> {
-    let sql = format!("SELECT {name} FROM pragma_{name}");
-    db.query_row_and_then(&sql, [], |row| row.get(0))
 }
 
 mod embedded {

@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tracing::{debug, error, info, trace, warn};
 
-use super::connection::get_auto_vacuum;
+use super::info::Info;
 
 const DEFAULT_RANGE: usize = 7;
 
@@ -77,7 +77,7 @@ pub fn start_retention_task(config: Config, conn: Arc<Mutex<Connection>>) -> any
 
 fn size_enabled(conn: &Arc<Mutex<Connection>>) -> bool {
     let conn = conn.lock().unwrap();
-    match get_auto_vacuum(&conn) {
+    match Info::new(&conn).get_auto_vacuum() {
         Ok(mode) => {
             if mode == 0 {
                 warn!("Auto-vacuum not available, size based retention not available");
