@@ -42,7 +42,10 @@ done
 if [[ "${GIT_TAG}" ]]; then
     echo "Building container for version ${GIT_TAG}"
     version="${GIT_TAG}"
-elif [[ "${GIT_BRANCH}" = "main" || "${GIT_BRANCH}" = "devel" ]]; then
+elif [[ "${GIT_BRANCH}" = "devel" ]]; then
+    version="devel"
+    tag="devel"
+elif [[ "${GIT_BRANCH}" = "main" ]]; then
     echo "Building devel version from branch main"
     version="devel"
     tag="main"
@@ -86,20 +89,25 @@ for bin in ${bins}; do
     fi
 done
 
+tags_built=()
+tags_pushed=()
+manifests_pushed=()
+
+name="${DOCKER_NAME}:${tag}-amd64"
 ${ECHO} docker build \
        --build-arg "BASE=amd64/almalinux:9-minimal" \
        --build-arg "SRC=./dist/evebox-${version}-linux-x64/evebox" \
-       -t ${DOCKER_NAME}:${tag}-amd64 \
+       -t ${name} \
        -f docker/Dockerfile .
+tags_built+=(${name})
 
+name="${DOCKER_NAME}:${tag}-arm64v8"
 ${ECHO} docker build \
        --build-arg "BASE=arm64v8/almalinux:9-minimal" \
        --build-arg "SRC=./dist/evebox-${version}-linux-arm64/evebox" \
-       -t ${DOCKER_NAME}:${tag}-arm64v8 \
+       -t ${name} \
        -f docker/Dockerfile .
-
-tags_pushed=()
-manifests_pushed=()
+tags_built+=(${name})
 
 function push() {
     source=$1
