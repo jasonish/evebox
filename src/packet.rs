@@ -9,10 +9,9 @@ use bytes::{Buf, BufMut, BytesMut};
 use std::net::Ipv4Addr;
 
 #[derive(Debug, Clone)]
-pub enum Protocol {
+pub(crate) enum Protocol {
     Tcp,
     Udp,
-    Other(u8),
 }
 
 impl Protocol {
@@ -31,12 +30,11 @@ impl From<Protocol> for u8 {
         match p {
             Protocol::Tcp => 6,
             Protocol::Udp => 17,
-            Protocol::Other(n) => n,
         }
     }
 }
 
-pub struct UdpBuilder {
+pub(crate) struct UdpBuilder {
     source_port: u16,
     destination_port: u16,
     payload: Option<Vec<u8>>,
@@ -69,7 +67,7 @@ impl UdpBuilder {
     }
 }
 
-pub struct TcpBuilder {
+pub(crate) struct TcpBuilder {
     source_port: u16,
     destination_port: u16,
     payload: Vec<u8>,
@@ -112,7 +110,7 @@ impl TcpBuilder {
     }
 }
 
-pub struct Ip4Builder {
+pub(crate) struct Ip4Builder {
     source_addr: Ipv4Addr,
     dest_addr: Ipv4Addr,
     protocol: Protocol,
@@ -144,11 +142,6 @@ impl Ip4Builder {
 
     pub fn destination(mut self, addr: Ipv4Addr) -> Self {
         self.dest_addr = addr;
-        self
-    }
-
-    pub fn ttl(mut self, ttl: u8) -> Self {
-        self.ttl = ttl;
         self
     }
 

@@ -12,7 +12,7 @@ pub mod retention;
 pub mod util;
 
 pub use connection::init_event_db;
-pub use connection::ConnectionBuilder;
+pub(crate) use connection::ConnectionBuilder;
 use rusqlite::params;
 use rusqlite::OptionalExtension;
 use time::macros::format_description;

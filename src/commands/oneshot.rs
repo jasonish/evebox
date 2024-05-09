@@ -54,7 +54,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let (port_tx, mut port_rx) = sync::mpsc::unbounded_channel::<u16>();
 
     let server = {
-        let db_filename = db_filename.clone();
         let host = host.clone();
         tokio::spawn(async move {
             let mut port = 5636;
@@ -70,7 +69,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                     elastic_index: "".to_string(),
                     no_check_certificate: false,
                     datastore: "sqlite".to_string(),
-                    sqlite_filename: Some(db_filename.clone()),
                     ..crate::server::ServerConfig::default()
                 };
                 let context = match crate::server::build_context(config.clone(), ds).await {

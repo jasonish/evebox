@@ -12,7 +12,7 @@ use tracing::trace;
 use tracing::warn;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Bookmark {
+pub(crate) struct Bookmark {
     pub path: String,
     pub offset: u64,
     pub size: u64,
@@ -20,7 +20,7 @@ pub struct Bookmark {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct BookmarkSys {
+pub(crate) struct BookmarkSys {
     pub inode: Option<u64>,
 }
 
@@ -77,7 +77,7 @@ impl Bookmark {
     }
 }
 
-pub fn bookmark_filename<P: AsRef<Path>>(input_filename: P, bookmark_dir: &str) -> PathBuf {
+pub(crate) fn bookmark_filename<P: AsRef<Path>>(input_filename: P, bookmark_dir: &str) -> PathBuf {
     let directory = match std::fs::canonicalize(bookmark_dir) {
         Ok(directory) => directory,
         Err(err) => {

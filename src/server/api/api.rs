@@ -24,7 +24,7 @@ use std::sync::Arc;
 use tracing::{debug, error, info};
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct AlertGroupSpec {
+pub(crate) struct AlertGroupSpec {
     pub signature_id: u64,
     pub src_ip: String,
     pub dest_ip: String,
@@ -66,7 +66,7 @@ pub(crate) async fn get_version() -> impl IntoResponse {
 }
 
 #[derive(Deserialize, Debug, Default)]
-pub struct DhcpAckQuery {
+pub(crate) struct DhcpAckQuery {
     pub time_range: Option<TimeRange>,
     pub sensor: Option<String>,
 }
@@ -368,12 +368,12 @@ pub(crate) async fn events(
 }
 
 #[derive(Deserialize)]
-pub struct EventCommentRequestBody {
+pub(crate) struct EventCommentRequestBody {
     pub comment: String,
 }
 
 #[derive(Deserialize)]
-pub struct AlertGroupCommentRequest {
+pub(crate) struct AlertGroupCommentRequest {
     pub alert_group: AlertGroupSpec,
     pub comment: String,
 }
@@ -413,17 +413,13 @@ fn parse_then_from_duration(
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum ApiError {
+pub(crate) enum ApiError {
     #[error("failed to parse time range: {0}")]
     TimeRangeParseError(String),
     #[error("bad request: {0}")]
     BadRequest(String),
-    #[error("failed to decode query string")]
-    QueryStringParseError,
     #[error("internal server error")]
     InternalServerError,
-    #[error("unimplemented")]
-    Unimplemented,
     #[error("internal server error")]
     AnyhowHandler(#[from] anyhow::Error),
     #[error("internal server error")]
@@ -452,17 +448,12 @@ impl IntoResponse for ApiError {
         let (status, message) = match self {
             ApiError::TimeRangeParseError(msg) => (StatusCode::BAD_REQUEST, msg),
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            ApiError::QueryStringParseError => (
-                StatusCode::BAD_REQUEST,
-                "query string parse error".to_string(),
-            ),
             ApiError::InternalServerError
             | ApiError::AnyhowHandler(_)
             | ApiError::DatastoreError(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal server error".to_string(),
             ),
-            ApiError::Unimplemented => (StatusCode::NOT_IMPLEMENTED, err),
             ApiError::SqlitePoolError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
             ApiError::SqliteInteractError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
             ApiError::RusqliteError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),

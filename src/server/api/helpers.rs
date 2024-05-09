@@ -1,15 +1,12 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use tracing::warn;
-
 use super::ApiError;
 
-use std::collections::HashMap;
 use std::ops::Sub;
 use std::str::FromStr;
 
-pub fn mints_from_time_range(
+pub(crate) fn mints_from_time_range(
     ts: Option<String>,
     now: Option<&time::OffsetDateTime>,
 ) -> Result<Option<time::OffsetDateTime>, ApiError> {
@@ -21,11 +18,5 @@ pub fn mints_from_time_range(
         Ok(Some(mints))
     } else {
         Ok(None)
-    }
-}
-
-pub fn log_unknown_parameters(handler: &str, map: &HashMap<String, String>) {
-    for (key, val) in map {
-        warn!("{}: unknown query string key/val: {}={}", handler, key, val);
     }
 }

@@ -9,7 +9,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 #[derive(Clone, Debug)]
-pub struct Config {
+pub(crate) struct Config {
     pub args: ArgMatches,
     root: Value,
 }
@@ -108,27 +108,6 @@ impl Config {
     /// value is not found.
     pub fn get_bool_with_default(&self, name: &str, default: bool) -> bool {
         self.get(name).unwrap_or(Some(default)).unwrap_or(default)
-    }
-
-    pub fn get_arg_strings(&self, name: &str) -> Option<Vec<String>> {
-        if let Ok(Some(values)) = self.args.try_get_many::<String>(name) {
-            let values: Vec<String> = values.map(|s| s.to_string()).collect();
-            return Some(values);
-        }
-        None
-    }
-
-    /// NOTE: Only checks configuration file, not command line args.
-    pub fn get_strings(&self, name: &str) -> anyhow::Result<Option<Vec<String>>> {
-        self.get_config_value(name)
-    }
-
-    pub fn get_arg(&self, name: &str) -> Option<&str> {
-        if let Ok(value) = self.args.try_get_one::<String>(name) {
-            value.map(|s| &**s)
-        } else {
-            None
-        }
     }
 
     pub fn get_value<T: DeserializeOwned>(&self, name: &str) -> anyhow::Result<Option<T>> {

@@ -22,7 +22,7 @@ mod fts;
 
 #[derive(Parser, Debug)]
 #[command(name = "sqlite", about = "SQLite utilities")]
-pub struct Args {
+pub(crate) struct Args {
     #[clap(subcommand)]
     command: Commands,
 }

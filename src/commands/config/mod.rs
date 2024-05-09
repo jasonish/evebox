@@ -9,7 +9,7 @@ pub mod users;
 
 #[derive(Parser, Debug)]
 #[command(name = "config", about = "Configuration commands")]
-pub struct Args {
+pub(crate) struct Args {
     #[command(subcommand)]
     command: ConfigCommands,
 }

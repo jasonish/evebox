@@ -7,13 +7,12 @@ use std::sync::Arc;
 use tracing::{trace, warn};
 
 #[derive(Clone)]
-pub enum EveFilter {
+pub(crate) enum EveFilter {
     GeoIP(crate::geoip::GeoIP),
     EveBoxMetadataFilter(EveBoxMetadataFilter),
     CustomFieldFilter(CustomFieldFilter),
     AddRuleFilter(AddRuleFilter),
     AutoArchiveFilter(AutoArchiveFilter),
-    Filters(Arc<Vec<EveFilter>>),
     AddFieldFilter(AddFieldFilter),
 }
 
@@ -35,11 +34,6 @@ impl EveFilter {
             EveFilter::AddRuleFilter(filter) => {
                 filter.run(event);
             }
-            EveFilter::Filters(filters) => {
-                for filter in filters.iter() {
-                    filter.run(event);
-                }
-            }
             EveFilter::AutoArchiveFilter(filter) => {
                 filter.run(event);
             }
@@ -48,7 +42,7 @@ impl EveFilter {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct EveBoxMetadataFilter {
+pub(crate) struct EveBoxMetadataFilter {
     pub filename: Option<String>,
 }
 
@@ -85,7 +79,7 @@ impl From<EveBoxMetadataFilter> for EveFilter {
 }
 
 #[derive(Clone)]
-pub struct AddFieldFilter {
+pub(crate) struct AddFieldFilter {
     pub field: String,
     pub value: serde_json::Value,
 }
@@ -104,19 +98,12 @@ impl AddFieldFilter {
 }
 
 #[derive(Clone)]
-pub struct CustomFieldFilter {
+pub(crate) struct CustomFieldFilter {
     pub field: String,
     pub value: String,
 }
 
 impl CustomFieldFilter {
-    pub fn new(field: &str, value: &str) -> Self {
-        Self {
-            field: field.to_string(),
-            value: value.to_string(),
-        }
-    }
-
     pub fn run(&self, event: &mut serde_json::Value) {
         event[&self.field] = self.value.clone().into();
     }
@@ -129,7 +116,7 @@ impl From<CustomFieldFilter> for EveFilter {
 }
 
 #[derive(Clone)]
-pub struct AddRuleFilter {
+pub(crate) struct AddRuleFilter {
     pub map: Arc<RuleMap>,
 }
 
@@ -149,7 +136,7 @@ impl AddRuleFilter {
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct AutoArchiveFilter {}
+pub(crate) struct AutoArchiveFilter {}
 
 impl AutoArchiveFilter {
     pub fn run(&self, event: &mut serde_json::Value) {

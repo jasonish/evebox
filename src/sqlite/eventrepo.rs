@@ -18,7 +18,7 @@ mod groupby;
 mod stats;
 
 /// SQLite implementation of the event datastore.
-pub struct SqliteEventRepo {
+pub(crate) struct SqliteEventRepo {
     pub connection: Arc<Mutex<Connection>>,
     pub importer: super::importer::SqliteEventSink,
     pub pool: deadpool_sqlite::Pool,

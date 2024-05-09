@@ -12,8 +12,7 @@ use thiserror::Error;
 mod stats;
 
 #[derive(Default, Debug)]
-pub struct EventQueryParams {
-    pub query_string: Option<String>,
+pub(crate) struct EventQueryParams {
     pub order: Option<String>,
     pub min_timestamp: Option<time::OffsetDateTime>,
     pub max_timestamp: Option<time::OffsetDateTime>,
@@ -36,14 +35,10 @@ pub enum DatastoreError {
     EventNotFound,
     #[error("sqlite error: {0}")]
     SQLiteError(#[from] rusqlite::Error),
-    #[error("generic datastore error")]
-    GenericError(Box<dyn std::error::Error + Sync + Send>),
     #[error("elasticsearch: {0}")]
     ElasticSearchError(String),
     #[error("elasticsearch: {0}")]
     ElasticError(#[from] elastic::ElasticError),
-    #[error("failed to parse histogram interval: {0}")]
-    HistogramIntervalParseError(String),
     #[error("serde: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
     #[error("database pool error: {0}")]
@@ -63,9 +58,8 @@ pub enum DatastoreError {
 }
 
 #[derive(Clone, Debug)]
-pub struct StatsAggQueryParams {
+pub(crate) struct StatsAggQueryParams {
     pub field: String,
-    pub duration: time::Duration,
     pub sensor_name: Option<String>,
     pub start_time: time::OffsetDateTime,
 }
@@ -209,27 +203,4 @@ impl EventRepo {
             EventRepo::SQLite(ds) => ds.group_by(field, size, order, q).await,
         }
     }
-}
-
-#[derive(Default, Debug)]
-pub struct HistogramParameters {
-    pub min_timestamp: Option<time::OffsetDateTime>,
-    pub max_timestamp: Option<time::OffsetDateTime>,
-    pub event_type: Option<String>,
-    pub dns_type: Option<String>,
-    pub address_filter: Option<String>,
-    pub query_string: Option<String>,
-    pub sensor_name: Option<String>,
-    pub interval: Option<String>,
-}
-
-#[derive(Default, Debug)]
-pub struct AggParameters {
-    pub event_type: Option<String>,
-    pub dns_type: Option<String>,
-    pub query_string: Option<String>,
-    pub address_filter: Option<String>,
-    pub min_timestamp: Option<time::OffsetDateTime>,
-    pub agg: String,
-    pub size: u64,
 }

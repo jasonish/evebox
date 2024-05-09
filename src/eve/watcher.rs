@@ -10,7 +10,7 @@ use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 /// Watches a collection of filename patterns and starts a new EVE
 /// pipeline when a new file is found.
-pub struct EvePatternWatcher {
+pub(crate) struct EvePatternWatcher {
     patterns: Vec<String>,
     filenames: HashSet<PathBuf>,
     sink: EventSink,

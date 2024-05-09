@@ -3,23 +3,23 @@
 
 use tracing::info;
 
-pub const VERSION: &str = std::env!("CARGO_PKG_VERSION");
-pub const TARGET: Option<&str> = std::option_env!("TARGET");
-pub const BUILD_REV: Option<&str> = std::option_env!("BUILD_REV");
+const VERSION: &str = std::env!("CARGO_PKG_VERSION");
+const TARGET: Option<&str> = std::option_env!("TARGET");
+const BUILD_REV: Option<&str> = std::option_env!("BUILD_REV");
 
-pub fn version() -> &'static str {
+pub(crate) fn version() -> &'static str {
     VERSION
 }
 
-pub fn target() -> &'static str {
+pub(crate) fn target() -> &'static str {
     TARGET.unwrap_or("unknown")
 }
 
-pub fn build_rev() -> &'static str {
+pub(crate) fn build_rev() -> &'static str {
     BUILD_REV.unwrap_or("unknown")
 }
 
-pub fn log_version() {
+pub(crate) fn log_version() {
     info!(
         "This is EveBox version {} (rev: {}); {}",
         version(),

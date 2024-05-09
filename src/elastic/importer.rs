@@ -8,7 +8,7 @@ use time::macros::format_description;
 use tracing::{error, trace};
 
 #[derive(Clone, Debug)]
-pub struct ElasticEventSink {
+pub(crate) struct ElasticEventSink {
     index: String,
     queue: Vec<String>,
     client: crate::elastic::Client,

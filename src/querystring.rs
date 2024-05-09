@@ -10,7 +10,7 @@ use nom::sequence::{delimited, preceded};
 use nom::IResult;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Element {
+pub(crate) enum Element {
     /// Bare string.
     String(String),
     /// A "NOT" string, like -"ET INFO" in Elasticsearch.
@@ -63,7 +63,7 @@ impl QueryString for Vec<Element> {
     }
 }
 
-pub fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
+pub(crate) fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
     let mut elements = vec![];
     let (_, tokens) = tokenize(qs).map_err(|err| {
         anyhow!(
@@ -98,7 +98,7 @@ pub fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
 
 /// First pass of parsing, this tokenizes the query string into the
 /// basic elements of plain strings, or key value pairs.
-pub fn tokenize(mut input: &str) -> IResult<&str, Vec<Element>> {
+pub(crate) fn tokenize(mut input: &str) -> IResult<&str, Vec<Element>> {
     let mut tokens = vec![];
     loop {
         if input.is_empty() {
@@ -146,7 +146,7 @@ fn parse_string(input: &str) -> IResult<&str, &str> {
     parse_escaped(input)
 }
 
-pub fn parse_timestamp(timestamp: &str, offset: Option<&str>) -> Result<time::OffsetDateTime> {
+pub(crate) fn parse_timestamp(timestamp: &str, offset: Option<&str>) -> Result<time::OffsetDateTime> {
     let timestamp = timestamp_preprocess(timestamp, offset)?;
     Ok(crate::eve::parse_eve_timestamp(&timestamp)?)
 }

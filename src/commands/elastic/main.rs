@@ -8,7 +8,7 @@ use super::set_field_limit;
 
 #[derive(Parser, Debug)]
 #[command(name = "elastic", about = "Elasticsearch utilities")]
-pub struct Args {
+pub(crate) struct Args {
     #[clap(flatten)]
     pub(crate) options: ElasticOptions,
 

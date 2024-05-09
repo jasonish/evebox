@@ -13,7 +13,7 @@ use std::sync::Arc;
 use tracing::warn;
 
 #[derive(Deserialize, Debug)]
-pub struct PcapForm {
+pub(crate) struct PcapForm {
     pub what: String,
     pub event: String,
 }

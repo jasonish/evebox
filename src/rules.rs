@@ -13,7 +13,7 @@ struct Inner {
     files: HashMap<PathBuf, i64>,
 }
 
-pub fn read_next_rule(input: &mut dyn BufRead) -> Result<Option<String>, std::io::Error> {
+pub(crate) fn read_next_rule(input: &mut dyn BufRead) -> Result<Option<String>, std::io::Error> {
     let mut line = String::new();
     loop {
         let mut tmp = String::new();
@@ -47,7 +47,7 @@ impl Inner {
     }
 }
 
-pub struct RuleMap {
+pub(crate) struct RuleMap {
     paths: Vec<String>,
     inner: RwLock<Inner>,
 }
@@ -145,7 +145,7 @@ fn parse_line(line: &str) -> Option<(u64, String)> {
     None
 }
 
-pub fn load_rules(filenames: &[String]) -> RuleMap {
+pub(crate) fn load_rules(filenames: &[String]) -> RuleMap {
     let mut map = RuleMap::new();
 
     for path in filenames {
@@ -160,7 +160,7 @@ pub fn load_rules(filenames: &[String]) -> RuleMap {
 
 /// Watch the known rule files for changes.  This is a polling loop as the
 /// notify crate, at least as of the pre-5.0 releases could use some work.
-pub fn watch_rules(rulemap: Arc<RuleMap>) {
+pub(crate) fn watch_rules(rulemap: Arc<RuleMap>) {
     tokio::task::spawn_blocking(move || {
         let mut last_modified = std::time::SystemTime::now();
         loop {

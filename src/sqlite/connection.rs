@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use time::format_description::well_known::Rfc3339;
 use tracing::{debug, error, info, warn};
 
-pub struct ConnectionBuilder {
+pub(crate) struct ConnectionBuilder {
     pub filename: Option<PathBuf>,
 }
 

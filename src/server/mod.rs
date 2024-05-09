@@ -4,7 +4,7 @@
 use crate::eventrepo::EventRepo;
 use crate::sqlite::configrepo::ConfigRepo;
 pub(crate) use main::build_axum_server;
-pub use main::build_context;
+pub(crate) use main::build_context;
 pub use main::main;
 use serde::Serialize;
 use session::SessionStore;
@@ -16,17 +16,17 @@ pub(crate) mod main;
 pub mod session;
 
 #[derive(Serialize, Default, Debug)]
-pub struct Features {
+pub(crate) struct Features {
     pub comments: bool,
     pub reporting: bool,
 }
 
 #[derive(Serialize, Default, Debug)]
-pub struct Defaults {
+pub(crate) struct Defaults {
     pub time_range: Option<String>,
 }
 
-pub struct ServerContext {
+pub(crate) struct ServerContext {
     pub config: ServerConfig,
     pub datastore: EventRepo,
     pub features: Features,
@@ -37,7 +37,7 @@ pub struct ServerContext {
 }
 
 impl ServerContext {
-    pub fn new(config: ServerConfig, config_repo: Arc<ConfigRepo>, datastore: EventRepo) -> Self {
+    pub(crate) fn new(config: ServerConfig, config_repo: Arc<ConfigRepo>, datastore: EventRepo) -> Self {
         Self {
             config,
             datastore,
@@ -51,12 +51,11 @@ impl ServerContext {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct ServerConfig {
+pub(crate) struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub no_check_certificate: bool,
     pub datastore: String,
-    pub sqlite_filename: Option<String>,
     pub tls_enabled: bool,
     pub tls_cert_filename: Option<PathBuf>,
     pub tls_key_filename: Option<PathBuf>,

@@ -6,7 +6,7 @@ use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub struct SessionStore {
+pub(crate) struct SessionStore {
     cache: Mutex<HashMap<String, Arc<Session>>>,
 }
 
@@ -45,7 +45,7 @@ impl SessionStore {
 }
 
 #[derive(Debug, Default)]
-pub struct Session {
+pub(crate) struct Session {
     pub session_id: Option<String>,
     pub username: Option<String>,
 }
@@ -84,7 +84,7 @@ impl Session {
     }
 }
 
-pub fn generate_session_id() -> String {
+pub(crate) fn generate_session_id() -> String {
     let mut rng = rand::thread_rng();
     let mut buf = vec![0; 256];
     rng.fill_bytes(&mut buf);

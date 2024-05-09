@@ -3,7 +3,7 @@
 
 // EveBox agent client (to EveBox server)
 #[derive(Clone, Debug)]
-pub struct Client {
+pub(crate) struct Client {
     url: String,
     disable_certificate_validation: bool,
     username: Option<String>,

@@ -29,7 +29,7 @@ impl From<std::io::Error> for EveReaderError {
     }
 }
 
-pub struct EveReader {
+pub(crate) struct EveReader {
     pub filename: PathBuf,
     line: String,
     reader: Option<BufReader<std::fs::File>>,
@@ -65,10 +65,6 @@ impl EveReader {
             return Err(err);
         }
         Ok(())
-    }
-
-    pub fn is_open(&self) -> bool {
-        self.reader.is_some()
     }
 
     pub fn goto_lineno(&mut self, lineno: u64) -> Result<u64, EveReaderError> {
@@ -258,7 +254,7 @@ impl EveReader {
 }
 
 #[derive(Debug)]
-pub struct Metadata {
+pub(crate) struct Metadata {
     pub filename: String,
     pub lineno: u64,
     pub size: u64,

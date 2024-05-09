@@ -7,7 +7,7 @@ use crate::sqlite::importer::SqliteEventSink;
 
 /// The importer interface, an enum wrapper around various implementations of an importer for Eve events.
 #[derive(Clone)]
-pub enum EventSink {
+pub(crate) enum EventSink {
     EveBox(EveBoxEventSink),
     Elastic(ElasticEventSink),
     SQLite(SqliteEventSink),

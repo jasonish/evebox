@@ -24,7 +24,7 @@ pub enum ClientError {
 }
 
 #[derive(Debug, Default)]
-pub struct Client {
+pub(crate) struct Client {
     pub url: String,
     pub disable_certificate_validation: bool,
     pub username: Option<String>,
@@ -165,31 +165,6 @@ impl Client {
         }
     }
 
-    pub async fn put_template(&self, name: &str, template: String) -> Result<(), ClientError> {
-        let path = format!("_template/{name}");
-        let response = self.put(&path)?.body(template).send().await?;
-        if response.status().as_u16() == 200 {
-            return Ok(());
-        }
-        let body = response.text().await?;
-        Err(ClientError::String(body))
-    }
-
-    pub async fn get_template(
-        &self,
-        name: &str,
-    ) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error>> {
-        let path = format!("_template/{name}");
-        let response = self.get(&path)?.send().await?;
-        if response.status() == reqwest::StatusCode::OK {
-            let template: serde_json::Value = response.json().await?;
-            return Ok(Some(template));
-        } else if response.status() == reqwest::StatusCode::NOT_FOUND {
-            return Ok(None);
-        }
-        Err(format!("Failed to get template: {}", response.status()).into())
-    }
-
     pub async fn get_indices(&self) -> anyhow::Result<HashMap<String, Value>> {
         let response = self.get("_all")?.send().await?;
         let response = response.json().await?;
@@ -216,8 +191,7 @@ pub(crate) struct IndicesPatternResponse {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct Version {
-    pub version: String,
+pub(crate) struct Version {
     pub major: u64,
     pub minor: u64,
     pub patch: u64,
@@ -244,7 +218,6 @@ impl Version {
             }
         }
         let version = Version {
-            version: s.to_string(),
             major,
             minor,
             patch,
@@ -276,7 +249,7 @@ impl PartialEq for Version {
 }
 
 #[derive(Default, Debug)]
-pub struct ClientBuilder {
+pub(crate) struct ClientBuilder {
     url: String,
     disable_certificate_validation: bool,
     username: Option<String>,
@@ -319,7 +292,7 @@ impl ClientBuilder {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct BulkResponse {
+pub(crate) struct BulkResponse {
     pub errors: Option<bool>,
     pub items: Option<Vec<serde_json::Value>>,
     pub error: Option<serde_json::Value>,
@@ -357,20 +330,15 @@ impl BulkResponse {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct InfoResponse {
-    pub name: String,
-    pub cluster_name: String,
-    pub cluster_uuid: String,
+pub(crate) struct InfoResponse {
     pub version: InfoResponseVersion,
     pub tagline: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct InfoResponseVersion {
+pub(crate) struct InfoResponseVersion {
     pub distribution: Option<String>,
     pub number: String,
-    pub minimum_wire_compatibility_version: String,
-    pub minimum_index_compatibility_version: String,
 }
 
 #[cfg(test)]

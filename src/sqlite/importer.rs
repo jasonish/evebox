@@ -25,7 +25,7 @@ pub(crate) struct QueuedStatement {
     pub(crate) params: Vec<SqliteValue>,
 }
 
-pub struct SqliteEventSink {
+pub(crate) struct SqliteEventSink {
     conn: Arc<Mutex<rusqlite::Connection>>,
     queue: Vec<QueuedStatement>,
     fts: bool,

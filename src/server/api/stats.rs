@@ -29,22 +29,6 @@ pub(crate) struct StatsAggQuery {
 }
 
 impl StatsAggQuery {
-    /// Return the time range as a time::Duration as specified in the query.
-    ///
-    /// 0 means all time available
-    /// None will default to 24 hours.
-    fn duration(&self) -> time::Duration {
-        self.time_range
-            .map(|range| {
-                if range == 0 {
-                    time::Duration::MAX
-                } else {
-                    time::Duration::seconds(range)
-                }
-            })
-            .unwrap_or_else(|| time::Duration::hours(24))
-    }
-
     fn start_time(&self) -> anyhow::Result<time::OffsetDateTime> {
         let start_time = if let Some(time_range) = self.time_range {
             if time_range == 0 {
@@ -68,12 +52,10 @@ async fn agg(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let duration = form.duration();
     let start_time = form.start_time().unwrap();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
-        duration,
         start_time,
     };
 
@@ -94,12 +76,10 @@ async fn agg_differential(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let duration = form.duration();
     let start_time = form.start_time().unwrap();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
-        duration,
         start_time,
     };
 

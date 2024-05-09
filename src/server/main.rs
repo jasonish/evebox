@@ -456,7 +456,7 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-pub async fn build_context(config: ServerConfig, datastore: EventRepo) -> Result<ServerContext> {
+pub(crate) async fn build_context(config: ServerConfig, datastore: EventRepo) -> Result<ServerContext> {
     let config_repo = if let Some(directory) = &config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
         info!("Configuration database filename: {:?}", filename);
@@ -536,7 +536,6 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 index_pattern,
                 client,
                 ecs: server_config.elastic_ecs,
-                no_index_suffix: server_config.elastic_no_index_suffix,
             };
             debug!("Elasticsearch base index: {}", &eventstore.base_index);
             debug!(

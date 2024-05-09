@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 use crate::eventrepo::DatastoreError;
-pub use client::Version;
-pub use client::{Client, ClientBuilder};
-pub use eventrepo::ElasticEventRepo;
-pub use importer::ElasticEventSink;
+pub(crate) use client::Version;
+pub(crate) use client::{Client, ClientBuilder};
+pub(crate) use eventrepo::ElasticEventRepo;
+pub(crate) use importer::ElasticEventSink;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
@@ -42,7 +42,7 @@ impl From<reqwest::Error> for DatastoreError {
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct AlertQueryOptions {
+pub(crate) struct AlertQueryOptions {
     pub timestamp_gte: Option<OffsetDateTime>,
     pub query_string: Option<String>,
     pub tags: Vec<String>,
@@ -50,7 +50,7 @@ pub struct AlertQueryOptions {
 }
 
 #[derive(Serialize)]
-pub struct HistoryEntry {
+pub(crate) struct HistoryEntry {
     pub username: String,
     pub timestamp: String,
     pub action: String,
@@ -86,26 +86,21 @@ pub fn query_string_query(query_string: &str) -> serde_json::Value {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ElasticResponse {
+pub(crate) struct ElasticResponse {
     pub hits: Option<serde_json::Value>,
     pub error: Option<ElasticResponseError>,
-    pub status: Option<u64>,
-    pub failures: Option<Vec<serde_json::Value>>,
-    pub total: Option<u64>,
     pub updated: Option<u64>,
     pub aggregations: Option<serde_json::Value>,
-    pub version: Option<response::Version>,
 
+    #[allow(dead_code)]
     #[serde(flatten)]
     pub other: std::collections::HashMap<String, serde_json::Value>,
 }
 
-pub mod response {
+pub(crate) mod response {
     use super::Deserialize;
     #[derive(Deserialize, Debug)]
-    pub struct Version {
-        pub number: String,
-    }
+    pub(crate) struct Version {}
 }
 
 #[derive(Deserialize, Debug)]

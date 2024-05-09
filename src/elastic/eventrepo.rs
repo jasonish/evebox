@@ -36,12 +36,11 @@ const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";
 
 /// Elasticsearch eventstore - for searching events.
 #[derive(Debug, Clone)]
-pub struct ElasticEventRepo {
+pub(crate) struct ElasticEventRepo {
     pub base_index: String,
     pub index_pattern: String,
     pub client: Client,
     pub ecs: bool,
-    pub no_index_suffix: bool,
 }
 
 impl ElasticEventRepo {

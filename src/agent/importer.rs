@@ -11,7 +11,7 @@ use tracing::trace;
 const LIMIT: usize = 1024 * 1024 * 16;
 
 #[derive(Debug, Clone)]
-pub struct EveBoxEventSink {
+pub(crate) struct EveBoxEventSink {
     pub client: Client,
     pub queue: Vec<String>,
     pub size: usize,
@@ -39,10 +39,6 @@ impl EveBoxEventSink {
 
     pub fn pending(&self) -> usize {
         self.queue.len()
-    }
-
-    pub fn size(&self) -> usize {
-        self.size
     }
 
     pub fn truncate(&mut self) {

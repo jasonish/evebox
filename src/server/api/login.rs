@@ -15,7 +15,7 @@ use crate::server::ServerContext;
 use crate::sqlite::configrepo::ConfigRepoError;
 
 #[derive(Debug, Deserialize)]
-pub struct LoginForm {
+pub(crate) struct LoginForm {
     pub username: Option<String>,
     pub password: Option<String>,
 }

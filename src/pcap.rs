@@ -13,15 +13,13 @@ const FILE_HEADER_LEN: usize = 30;
 const PACKET_HEADER_LEN: usize = 4;
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("unsupported: {0}")]
-    Unsupported(String),
+pub(crate) enum Error {
     #[error("missing field: {0}")]
     MissingField(String),
     #[error("invalid protocol: {0}")]
     InvalidProto(String),
     #[error("failed to decode payload: {0}")]
-    PayloadDecodeError(base64::DecodeError),
+    PayloadDecode(base64::DecodeError),
     #[error("bad address: {0}")]
     BadAddr(std::net::AddrParseError),
     #[error("mismatched ip address versions")]
@@ -32,31 +30,17 @@ pub enum Error {
     InvalidDestinationPort,
     #[error("IPv6 not supported")]
     Ipv6NotSupported,
-    #[error("protocol not supported: {0}")]
-    ProtocolNotSupported(String),
 }
 
 #[repr(C)]
-pub enum LinkType {
-    Null = 0,
+pub(crate) enum LinkType {
     Ethernet = 1,
     Raw = 101,
 }
 
-impl LinkType {
-    pub fn from(val: u8) -> Option<LinkType> {
-        match val {
-            0 => Some(Self::Null),
-            1 => Some(Self::Ethernet),
-            101 => Some(Self::Raw),
-            _ => None,
-        }
-    }
-}
-
-pub fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, Error> {
+pub(crate) fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, Error> {
     let payload = if let Some(payload) = &event["payload"].as_str() {
-        base64::decode(payload).map_err(Error::PayloadDecodeError)?
+        base64::decode(payload).map_err(Error::PayloadDecode)?
     } else {
         return Err(Error::MissingField("payload".to_string()));
     };
@@ -126,11 +110,10 @@ pub fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, Error> 
                 _ => Err(Error::MissMatchedIpAddrVersions),
             }
         }
-        _ => Err(Error::ProtocolNotSupported(format!("{proto:?}"))),
     }
 }
 
-pub fn create(linktype: u32, ts: time::OffsetDateTime, packet: &[u8]) -> Vec<u8> {
+pub(crate) fn create(linktype: u32, ts: time::OffsetDateTime, packet: &[u8]) -> Vec<u8> {
     let mut buf = BytesMut::with_capacity(FILE_HEADER_LEN + PACKET_HEADER_LEN + packet.len());
 
     // Write out the file header.

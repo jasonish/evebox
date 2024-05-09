@@ -3,7 +3,7 @@
 
 /// Given a time range in seconds, return a suitable date histogram
 /// interval.
-pub fn histogram_interval(range: i64) -> u64 {
+pub(crate) fn histogram_interval(range: i64) -> u64 {
     if range <= 60 {
         1
     } else if range <= 3600 {

@@ -16,7 +16,7 @@ struct Inner {
 }
 
 #[derive(Clone)]
-pub struct GeoIP {
+pub(crate) struct GeoIP {
     filename: String,
     inner: Arc<Mutex<Inner>>,
 }

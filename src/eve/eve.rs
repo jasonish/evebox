@@ -1,12 +1,10 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-pub use super::EveReader;
 use time::macros::format_description;
 
 pub trait Eve {
     fn timestamp(&self) -> Option<time::OffsetDateTime>;
-    fn add_tag(&mut self, tag: &str);
 }
 
 impl Eve for serde_json::Value {
@@ -17,15 +15,6 @@ impl Eve for serde_json::Value {
             }
         }
         None
-    }
-
-    fn add_tag(&mut self, tag: &str) {
-        if let serde_json::Value::Null = self["tags"] {
-            self["tags"] = serde_json::Value::Array(vec![]);
-        }
-        if let serde_json::Value::Array(ref mut tags) = &mut self["tags"] {
-            tags.push(tag.into());
-        }
     }
 }
 

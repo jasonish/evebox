@@ -13,4 +13,4 @@ pub mod stats;
 pub mod submit;
 pub mod util;
 
-pub use api::*;
+pub(crate) use api::*;

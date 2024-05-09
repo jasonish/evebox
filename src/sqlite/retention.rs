@@ -24,7 +24,7 @@ const REPEAT_INTERVAL: u64 = 1;
 const LIMIT: usize = 1000;
 
 #[derive(Debug)]
-pub struct RetentionConfig {
+pub(crate) struct RetentionConfig {
     pub range: Option<usize>,
     pub size: usize,
 }
@@ -59,7 +59,7 @@ fn get_days(config: &Config) -> Result<Option<usize>> {
     }
 }
 
-pub fn start_retention_task(config: Config, conn: Arc<Mutex<Connection>>) -> anyhow::Result<()> {
+pub(crate) fn start_retention_task(config: Config, conn: Arc<Mutex<Connection>>) -> anyhow::Result<()> {
     let size = get_size(&config)
         .map_err(|err| anyhow::anyhow!("Bad database.retention.size: {:?}", err))?;
     let range = get_days(&config)?;

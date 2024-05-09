@@ -18,7 +18,7 @@ use std::time::Duration;
 
 const DEFAULT_BATCH_SIZE: usize = 100;
 
-pub struct Processor {
+pub(crate) struct Processor {
     pub reader: EveReader,
     pub importer: EventSink,
     pub filters: Arc<Vec<EveFilter>>,
@@ -31,8 +31,6 @@ pub struct Processor {
 
     /// If in oneshot mode, will exit on EOF.
     pub oneshot: bool,
-
-    pub batch_size: usize,
 }
 
 impl Processor {
@@ -45,7 +43,6 @@ impl Processor {
             report_interval: Duration::from_secs(0),
             end: false,
             oneshot: false,
-            batch_size: DEFAULT_BATCH_SIZE,
         }
     }
 

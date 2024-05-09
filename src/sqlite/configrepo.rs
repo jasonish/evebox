@@ -29,12 +29,12 @@ pub enum ConfigRepoError {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct User {
+pub(crate) struct User {
     pub uuid: String,
     pub username: String,
 }
 
-pub struct ConfigRepo {
+pub(crate) struct ConfigRepo {
     pub db: Arc<Mutex<rusqlite::Connection>>,
 }
 
