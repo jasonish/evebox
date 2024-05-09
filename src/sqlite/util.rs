@@ -3,7 +3,7 @@
 
 use rusqlite::Transaction;
 
-pub fn fts_create(tx: &Transaction) -> Result<(), rusqlite::Error> {
+pub(crate) fn fts_create(tx: &Transaction) -> Result<(), rusqlite::Error> {
     tx.execute(
         "create virtual table fts
             using fts5(timestamp unindexed, source_values, content=events, content_rowid=rowid)",
@@ -18,5 +18,11 @@ pub fn fts_create(tx: &Transaction) -> Result<(), rusqlite::Error> {
         [],
     )?;
 
+    Ok(())
+}
+
+pub(crate) fn fts_check(conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
+    let mut stmt = conn.prepare("insert into fts(fts, rank) values ('integrity-check', 1)")?;
+    let _ = stmt.execute([])?;
     Ok(())
 }

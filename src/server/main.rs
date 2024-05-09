@@ -348,6 +348,7 @@ pub(crate) fn build_axum_service(
         .route("/api/1/sensors", get(api::stats::get_sensor_names))
         .route("/api/1/groupby", get(api::groupby::group_by))
         .route("/api/1/sqlite/info", get(api::sqlite::info))
+        .route("/api/1/sqlite/fts/check", get(api::sqlite::fts_check))
         .nest("/api/1/stats", api::stats::router())
         .layer(DefaultBodyLimit::max(1024 * 1024 * 32))
         .layer(Extension(context.clone()))

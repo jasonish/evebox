@@ -3,7 +3,7 @@
 
 use super::{FtsArgs, FtsCommand};
 use crate::sqlite::{
-    importer::extract_values, init_event_db, util::fts_create, ConnectionBuilder, SqliteExt,
+    importer::extract_values, init_event_db, util::{self, fts_create}, ConnectionBuilder, SqliteExt,
 };
 use anyhow::Result;
 use rusqlite::{params, Transaction};
@@ -70,16 +70,16 @@ fn fts_check(filename: &str) -> Result<()> {
         return Ok(());
     }
     info!("FTS is enabled, checking integrity");
-    if conn
-        .execute(
-            "insert into fts(fts, rank) values ('integrity-check', 1)",
-            [],
-        )
-        .is_err()
-    {
-        bail!("FTS data corrupt");
+
+    match util::fts_check(&conn) {
+        Ok(_) => {
+            info!("FTS data OK");
+        }
+        Err(err) => {
+            bail!("FTS data is NOT OK: {:?}", err);
+        }
     }
-    info!("FTS data OK");
+
     Ok(())
 }
 
