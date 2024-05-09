@@ -129,11 +129,12 @@ fn parse_line(line: &str) -> Option<(u64, String)> {
     }
 
     let original = &line[offset..];
-    match suricatax_rule_parser::parse_elements(original) {
-        Ok((_, elements)) => {
-            for element in &elements {
-                if let suricatax_rule_parser::Element::Sid(sid) = element {
-                    return Some((*sid, original.to_string()));
+
+    match suricatax_rule_parser::parse_rule(original) {
+        Ok(rule) => {
+            for option in &rule.options {
+                if let suricatax_rule_parser::Parsed::Sid(sid) = option.parsed {
+                    return Some((sid, original.to_string()));
                 }
             }
         }

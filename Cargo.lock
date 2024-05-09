@@ -2118,12 +2118,14 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "suricatax-rule-parser"
-version = "0.1.0"
-source = "git+https://github.com/jasonish/rust-suricatax-rule-parser#67166893e79144622e9a9a0881b45e9d05a7eee0"
+version = "0.2.0-alpha.1"
+source = "git+https://github.com/jasonish/suricatax-rule-parser-rs#f5e3fa7000302b74c253dcc1d0931fcd7cd34a0c"
 dependencies = [
+ "lazy_static",
  "nom",
  "num-traits",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
