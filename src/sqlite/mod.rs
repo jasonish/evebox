@@ -6,6 +6,7 @@ pub mod configrepo;
 pub mod connection;
 pub mod eventrepo;
 pub mod importer;
+pub(crate) mod info;
 pub mod pool;
 pub mod retention;
 pub mod util;

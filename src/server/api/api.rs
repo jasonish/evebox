@@ -45,7 +45,7 @@ pub(crate) async fn config(
         "event-services": context.event_services,
         "features": &context.features,
         "defaults": &context.defaults,
-    "datastore": datastore,
+        "datastore": datastore,
     });
     Json(config)
 }
@@ -428,6 +428,16 @@ pub enum ApiError {
     AnyhowHandler(#[from] anyhow::Error),
     #[error("internal server error")]
     DatastoreError(#[from] DatastoreError),
+
+    /// SQLite pool errors from deadpool.
+    #[error("internal server error")]
+    SqlitePoolError(#[from] deadpool_sqlite::PoolError),
+
+    #[error("internal database error")]
+    SqliteInteractError(#[from] deadpool_sqlite::InteractError),
+
+    #[error("internal database error")]
+    RusqliteError(#[from] rusqlite::Error),
 }
 
 impl ApiError {
@@ -453,6 +463,9 @@ impl IntoResponse for ApiError {
                 "internal server error".to_string(),
             ),
             ApiError::Unimplemented => (StatusCode::NOT_IMPLEMENTED, err),
+            ApiError::SqlitePoolError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
+            ApiError::SqliteInteractError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
+            ApiError::RusqliteError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
         };
         let body = Json(serde_json::json!({
             "error": message,

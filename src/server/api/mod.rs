@@ -8,6 +8,7 @@ pub mod genericquery;
 pub mod groupby;
 pub mod helpers;
 pub mod login;
+pub(crate) mod sqlite;
 pub mod stats;
 pub mod submit;
 pub mod util;

@@ -8,6 +8,7 @@ use rusqlite::{params, Connection, ToSql};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use time::OffsetDateTime;
 use tracing::{debug, info};
 
 mod alerts;
@@ -40,6 +41,74 @@ impl SqliteEventRepo {
 
     pub fn get_importer(&self) -> super::importer::SqliteEventSink {
         self.importer.clone()
+    }
+
+    pub async fn min_row_id(&self) -> Result<u64, DatastoreError> {
+        Ok(self
+            .pool
+            .get()
+            .await?
+            .interact(|conn| {
+                conn.query_row_and_then("select min(rowid) from events", [], |row| row.get(0))
+                    .unwrap_or(0)
+            })
+            .await?)
+    }
+
+    pub async fn max_row_id(&self) -> Result<u64, DatastoreError> {
+        Ok(self
+            .pool
+            .get()
+            .await?
+            .interact(|conn| {
+                conn.query_row_and_then("select max(rowid) from events", [], |row| row.get(0))
+                    .unwrap_or(0)
+            })
+            .await?)
+    }
+
+    pub async fn min_timestamp(&self) -> Result<Option<OffsetDateTime>, DatastoreError> {
+        let timestamp = self
+            .pool
+            .get()
+            .await?
+            .interact(|conn| {
+                conn.query_row_and_then(
+                    "select min(timestamp) from events",
+                    [],
+                    |row| -> anyhow::Result<time::OffsetDateTime> {
+                        let timestamp: i64 = row.get(0)?;
+                        Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
+                            timestamp as i128,
+                        )?)
+                    },
+                )
+            })
+            .await?
+            .ok();
+        Ok(timestamp)
+    }
+
+    pub async fn max_timestamp(&self) -> Result<Option<OffsetDateTime>, DatastoreError> {
+        let timestamp = self
+            .pool
+            .get()
+            .await?
+            .interact(|conn| {
+                conn.query_row_and_then(
+                    "select max(timestamp) from events",
+                    [],
+                    |row| -> anyhow::Result<time::OffsetDateTime> {
+                        let timestamp: i64 = row.get(0)?;
+                        Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
+                            timestamp as i128,
+                        )?)
+                    },
+                )
+            })
+            .await?
+            .ok();
+        Ok(timestamp)
     }
 
     pub async fn get_event_by_id(

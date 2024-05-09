@@ -4,11 +4,8 @@
 use crate::{
     elastic::AlertQueryOptions,
     sqlite::{
-        connection::{get_auto_vacuum, get_journal_mode, get_pragma, get_synchronous},
-        eventrepo::SqliteEventRepo,
-        init_event_db,
-        pool::open_pool,
-        ConnectionBuilder, SqliteExt,
+        eventrepo::SqliteEventRepo, info::Info, init_event_db, pool::open_pool, ConnectionBuilder,
+        SqliteExt,
     },
 };
 use anyhow::Result;
@@ -148,15 +145,18 @@ fn info(args: &InfoArgs) -> Result<()> {
     };
 
     let conn = ConnectionBuilder::filename(Some(&filename)).open(false)?;
-    println!("Filename: {filename}");
-    println!("Auto vacuum: {}", get_auto_vacuum(&conn)?);
-    println!("Journal mode: {}", get_journal_mode(&conn)?);
-    println!("Synchronous: {}", get_synchronous(&conn)?);
-    println!("FTS enabled: {}", conn.has_table("fts")?);
 
-    let page_size: i64 = get_pragma::<i64>(&conn, "page_size")?;
-    let page_count: i64 = get_pragma::<i64>(&conn, "page_count")?;
-    let freelist_count: i64 = get_pragma::<i64>(&conn, "freelist_count")?;
+    let info = Info::new(&conn);
+
+    println!("Filename: {filename}");
+    println!("Auto vacuum: {}", info.get_auto_vacuum()?);
+    println!("Journal mode: {}", info.get_journal_mode()?);
+    println!("Synchronous: {}", info.get_synchronous()?);
+    println!("FTS enabled: {}", info.has_table("fts")?);
+
+    let page_size: i64 = info.get_pragma::<i64>("page_size")?;
+    let page_count: i64 = info.get_pragma::<i64>("page_count")?;
+    let freelist_count: i64 = info.get_pragma::<i64>("freelist_count")?;
 
     println!("Page size: {page_size}");
     println!("Page count: {page_count}");
@@ -184,11 +184,7 @@ fn info(args: &InfoArgs) -> Result<()> {
         println!("Number of events (estimate): {}", max_rowid - min_rowid);
     }
 
-    let schema_version: i64 = conn.query_row_and_then(
-        "select max(version) from refinery_schema_history",
-        [],
-        |row| row.get(0),
-    )?;
+    let schema_version = info.schema_version()?;
     println!("Schema version: {schema_version}");
 
     let min_timestamp = conn
