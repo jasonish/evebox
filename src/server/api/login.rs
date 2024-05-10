@@ -77,6 +77,21 @@ pub(crate) async fn post(
         session.username = Some(user.username);
         let session = Arc::new(session);
         context.session_store.put(session.clone()).unwrap();
+
+        // Create expiry data one week in the future.
+        let expiry = chrono::Utc::now() + chrono::Duration::weeks(1);
+        if let Err(err) = context
+            .config_repo
+            .save_session(
+                session.session_id.as_ref().unwrap(),
+                &user.uuid,
+                expiry.timestamp(),
+            )
+            .await
+        {
+            error!("Failed to save session: {:?}", err);
+        }
+
         (
             StatusCode::OK,
             Json(serde_json::json!({
@@ -87,7 +102,7 @@ pub(crate) async fn post(
     }
 }
 
-pub(crate) async fn logout_new(
+pub(crate) async fn logout(
     context: Extension<Arc<ServerContext>>,
     SessionExtractor(session): SessionExtractor,
 ) -> impl IntoResponse {

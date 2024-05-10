@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 use crate::sqlite::{info::Info, util::fts_create, SqliteExt};
+use deadpool_sqlite::CreatePoolError;
 use rusqlite::{params, Connection, DatabaseName, OpenFlags};
+use sqlx::SqliteConnection;
 use std::path::PathBuf;
 use time::format_description::well_known::Rfc3339;
 use tracing::{debug, error, info, warn};
@@ -27,12 +29,76 @@ impl ConnectionBuilder {
             debug!("Opening database {}", filename.display());
             rusqlite::Connection::open_with_flags(filename, flags)
         } else {
-            rusqlite::Connection::open_in_memory()
+            rusqlite::Connection::open("file::memory:?cache=shared")
         }
+    }
+
+    pub async fn open_sqlx_connection(
+        &self,
+        create: bool,
+    ) -> Result<SqliteConnection, sqlx::Error> {
+        open_sqlx_connection(self.filename.clone(), create).await
     }
 }
 
-pub fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
+pub(crate) async fn open_sqlx_connection(
+    path: Option<impl Into<PathBuf>>,
+    create: bool,
+) -> Result<SqliteConnection, sqlx::Error> {
+    use sqlx::sqlite::SqliteConnectOptions;
+    use sqlx::sqlite::SqliteConnection;
+    use sqlx::Connection;
+
+    let path = path
+        .map(|p| p.into())
+        .unwrap_or_else(|| "file::memory:?cache=shared".into());
+
+    let options = SqliteConnectOptions::new()
+        .filename(path)
+        .shared_cache(true)
+        .create_if_missing(create);
+    SqliteConnection::connect_with(&options).await
+}
+
+pub(crate) async fn open_sqlx_pool(
+    path: Option<impl Into<PathBuf>>,
+    create: bool,
+) -> Result<sqlx::Pool<sqlx::Sqlite>, sqlx::Error> {
+    use sqlx::sqlite::SqliteConnectOptions;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    let path = path
+        .map(|p| p.into())
+        .unwrap_or_else(|| "file::memory:?cache=shared".into());
+
+    let pool = SqlitePoolOptions::new()
+        .min_connections(4)
+        .max_connections(12);
+
+    let options = SqliteConnectOptions::new()
+        .filename(path)
+        .shared_cache(true)
+        .create_if_missing(create);
+    pool.connect_with(options).await
+}
+
+/// Open an SQLite connection pool with deadpool.
+///
+/// Fortunately SQLites default connection options are good enough as
+/// deadpool does not provide a way to customize them. See
+/// https://github.com/bikeshedder/deadpool/issues/214.
+pub(crate) fn open_deadpool<P: Into<PathBuf>>(
+    path: Option<P>,
+) -> Result<deadpool_sqlite::Pool, CreatePoolError> {
+    let path = path
+        .map(|p| p.into())
+        .unwrap_or_else(|| "file::memory:?cache=shared".into());
+    let config = deadpool_sqlite::Config::new(path);
+    let pool = config.create_pool(deadpool_sqlite::Runtime::Tokio1)?;
+    Ok(pool)
+}
+
+pub(crate) fn init_event_db(db: &mut Connection) -> Result<(), rusqlite::Error> {
     let auto_vacuum = Info::new(db).get_auto_vacuum()?;
     if auto_vacuum == 2 {
         info!("Change auto-vacuum from incremental to full");

@@ -53,23 +53,23 @@ struct AddArgs {
     data_directory: Option<String>,
 }
 
-pub(crate) fn main(args: &clap::ArgMatches) -> Result<()> {
+pub(crate) async fn main(args: &clap::ArgMatches) -> Result<()> {
     let args = UsersCommands::from_arg_matches(args)?;
     match args {
-        UsersCommands::Add(args) => add(args),
-        UsersCommands::List { data_directory } => list(data_directory),
+        UsersCommands::Add(args) => add(args).await,
+        UsersCommands::List { data_directory } => list(data_directory).await,
         UsersCommands::Rm {
             username,
             data_directory,
-        } => remove(username, data_directory),
+        } => remove(username, data_directory).await,
         UsersCommands::Passwd {
             username,
             data_directory,
-        } => password(username, data_directory),
+        } => password(username, data_directory).await,
     }
 }
 
-fn open_config_repo<P: AsRef<Path>>(data_directory: Option<P>) -> Result<ConfigRepo> {
+async fn open_config_repo<P: AsRef<Path>>(data_directory: Option<P>) -> Result<ConfigRepo> {
     let data_directory = data_directory
         .map(|p| PathBuf::from(p.as_ref()))
         .or_else(crate::path::data_directory);
@@ -81,21 +81,21 @@ fn open_config_repo<P: AsRef<Path>>(data_directory: Option<P>) -> Result<ConfigR
     };
     info!("Using data directory {}", data_directory.display());
     let filename = data_directory.join("config.sqlite");
-    let repo = ConfigRepo::new(Some(&filename))?;
+    let repo = ConfigRepo::new(Some(&filename)).await?;
     Ok(repo)
 }
 
-fn list(dir: Option<String>) -> Result<()> {
-    let repo = open_config_repo(dir.as_deref())?;
-    let users = repo.get_users()?;
+async fn list(dir: Option<String>) -> Result<()> {
+    let repo = open_config_repo(dir.as_deref()).await?;
+    let users = repo.get_users().await?;
     for user in users {
         println!("{}", serde_json::to_string(&user).unwrap());
     }
     Ok(())
 }
 
-fn add(args: AddArgs) -> Result<()> {
-    let repo = open_config_repo(args.data_directory.as_deref())?;
+async fn add(args: AddArgs) -> Result<()> {
+    let repo = open_config_repo(args.data_directory.as_deref()).await?;
 
     let username = if let Some(username) = args.username {
         username.to_string()
@@ -117,30 +117,30 @@ fn add(args: AddArgs) -> Result<()> {
             .prompt()?
     };
 
-    repo.add_user(&username, &password)?;
+    repo.add_user(&username, &password).await?;
     println!("User added: username=\"{username}\"");
 
     Ok(())
 }
 
-fn remove(username: String, dir: Option<String>) -> Result<()> {
-    let repo = open_config_repo(dir.as_deref())?;
-    if repo.remove_user(&username)? == 0 {
+async fn remove(username: String, dir: Option<String>) -> Result<()> {
+    let repo = open_config_repo(dir.as_deref()).await?;
+    if repo.remove_user(&username).await? == 0 {
         return Err(anyhow!("user does not exist"));
     }
     println!("User removed: username=\"{username}\"");
     Ok(())
 }
 
-fn password(username: String, data_directory: Option<String>) -> Result<()> {
-    let repo = open_config_repo(data_directory)?;
-    let user = repo.get_user_by_name(&username)?;
+async fn password(username: String, data_directory: Option<String>) -> Result<()> {
+    let repo = open_config_repo(data_directory).await?;
+    let user = repo.get_user_by_name(&username).await?;
     let password = inquire::Password::new("Password:")
         .with_display_toggle_enabled()
         .with_display_mode(inquire::PasswordDisplayMode::Masked)
         .with_validator(inquire::required!())
         .prompt()?;
-    if repo.update_password_by_id(&user.uuid, &password)? {
+    if repo.update_password_by_id(&user.uuid, &password).await? {
         println!("Password has been updated.");
         Ok(())
     } else {

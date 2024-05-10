@@ -21,6 +21,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let db_filename: String = config_loader.get("database-filename")?.unwrap();
     let host: String = config_loader.get("http.host")?.unwrap();
     let input = args.get_one::<String>("INPUT").unwrap().to_string();
+    let fts: bool = config_loader.get_bool("fts")?;
 
     info!("Using database filename {}", &db_filename);
 
@@ -29,13 +30,13 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     )));
     let mut db =
         sqlite::ConnectionBuilder::filename(Some(&PathBuf::from(&db_filename))).open(true)?;
-    let fts = false;
     sqlite::init_event_db(&mut db)?;
-    let db = Arc::new(Mutex::new(db));
-    let pool = sqlite::pool::open_pool(&db_filename).await?;
+    let pool = sqlite::connection::open_deadpool(Some(&db_filename))?;
+    let xpool = sqlite::connection::open_sqlx_pool(Some(&db_filename), false).await?;
+    let db = crate::sqlite::connection::open_sqlx_connection(Some(&db_filename), true).await?;
+    let db = Arc::new(tokio::sync::Mutex::new(db));
 
     let import_task = {
-        let db = db.clone();
         tokio::spawn(async move {
             if let Err(err) = run_import(db, limit, &input, fts).await {
                 error!("Import failure: {}", err);
@@ -59,8 +60,19 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
             let mut port = 5636;
             loop {
                 let connection = Arc::new(Mutex::new(db_connection_builder.open(false).unwrap()));
-                let sqlite_datastore =
-                    sqlite::eventrepo::SqliteEventRepo::new(connection, pool.clone(), fts);
+                let xconnection = Arc::new(tokio::sync::Mutex::new(
+                    db_connection_builder
+                        .open_sqlx_connection(false)
+                        .await
+                        .unwrap(),
+                ));
+                let sqlite_datastore = sqlite::eventrepo::SqliteEventRepo::new(
+                    xconnection,
+                    connection,
+                    xpool.clone(),
+                    pool.clone(),
+                    fts,
+                );
                 let ds = crate::eventrepo::EventRepo::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port,
@@ -139,7 +151,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 }
 
 async fn run_import(
-    db: Arc<Mutex<rusqlite::Connection>>,
+    sqlx: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     limit: u64,
     input: &str,
     fts: bool,
@@ -148,11 +160,12 @@ async fn run_import(
         Ok(geoipdb) => Some(geoipdb),
         Err(_) => None,
     };
-    let mut indexer = sqlite::importer::SqliteEventSink::new(db, fts);
+    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, fts);
     let mut reader = eve::reader::EveReader::new(input.into());
     info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;
     let mut count = 0;
+    let start = std::time::Instant::now();
     loop {
         match reader.next_record() {
             Ok(None) | Err(_) => {
@@ -181,6 +194,7 @@ async fn run_import(
         }
     }
     indexer.commit().await?;
-    info!("Read {} events", count);
+    let elapsed = start.elapsed();
+    info!("Read {} events in {}s", count, elapsed.as_secs_f64());
     Ok(())
 }

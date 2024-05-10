@@ -4,8 +4,8 @@
 use crate::{
     elastic::AlertQueryOptions,
     sqlite::{
-        eventrepo::SqliteEventRepo, info::Info, init_event_db, pool::open_pool, ConnectionBuilder,
-        SqliteExt,
+        connection::open_deadpool, eventrepo::SqliteEventRepo, info::Info, init_event_db,
+        ConnectionBuilder, SqliteExt,
     },
 };
 use anyhow::Result;
@@ -275,9 +275,17 @@ fn query(filename: &str, sql: &str) -> Result<()> {
 async fn optimize(args: &OptimizeArgs) -> Result<()> {
     let conn = ConnectionBuilder::filename(Some(&args.filename)).open(false)?;
     let conn = Arc::new(Mutex::new(conn));
-    let pool = open_pool(&args.filename).await?;
+
+    let xconn = ConnectionBuilder::filename(Some(&args.filename))
+        .open_sqlx_connection(false)
+        .await?;
+    let xconn = Arc::new(tokio::sync::Mutex::new(xconn));
+
+    let pool = open_deadpool(Some(&args.filename))?;
     pool.resize(1);
-    let repo = SqliteEventRepo::new(conn, pool.clone(), false);
+    let xpool = crate::sqlite::connection::open_sqlx_pool(Some(&args.filename), false).await?;
+    // TODO: Set size to 1.
+    let repo = SqliteEventRepo::new(xconn, conn, xpool.clone(), pool.clone(), false);
 
     info!("Running inbox style query");
     let gte = time::OffsetDateTime::now_utc() - time::Duration::days(1);

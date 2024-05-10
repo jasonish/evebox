@@ -44,7 +44,7 @@ impl SessionStore {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub(crate) struct Session {
     pub session_id: Option<String>,
     pub username: Option<String>,

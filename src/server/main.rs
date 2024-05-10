@@ -121,9 +121,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     let datastore = configure_datastore(config.clone(), &server_config).await?;
     let mut context = build_context(server_config.clone(), datastore).await?;
 
-    if server_config.authentication_required && !context.config_repo.has_users()? {
+    if server_config.authentication_required && !context.config_repo.has_users().await? {
         warn!("Username/password authentication is required, but no users exist, creating a user");
-        let (username, password) = create_admin_user(&context)?;
+        let (username, password) = create_admin_user(&context).await?;
         warn!(
             "Created administrator username and password: username={}, password={}",
             username, password
@@ -268,7 +268,7 @@ fn is_authentication_required(config: &Config) -> bool {
     true
 }
 
-fn create_admin_user(context: &ServerContext) -> Result<(String, String)> {
+async fn create_admin_user(context: &ServerContext) -> Result<(String, String)> {
     use rand::Rng;
     let rng = rand::thread_rng();
     let username = "admin";
@@ -277,7 +277,7 @@ fn create_admin_user(context: &ServerContext) -> Result<(String, String)> {
         .take(12)
         .map(char::from)
         .collect();
-    context.config_repo.add_user(username, &password)?;
+    context.config_repo.add_user(username, &password).await?;
     Ok((username.to_string(), password))
 }
 
@@ -322,7 +322,7 @@ pub(crate) fn build_axum_service(
             "/api/1/login",
             post(api::login::post).get(api::login::options),
         )
-        .route("/api/1/logout", post(api::login::logout_new))
+        .route("/api/1/logout", post(api::login::logout))
         .route("/api/1/config", get(api::config))
         .route("/api/1/version", get(api::get_version))
         .route("/api/1/user", get(api::get_user))
@@ -463,10 +463,10 @@ pub(crate) async fn build_context(
     let config_repo = if let Some(directory) = &config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
         info!("Configuration database filename: {:?}", filename);
-        ConfigRepo::new(Some(&filename))?
+        ConfigRepo::new(Some(&filename)).await?
     } else {
         info!("Using temporary in-memory configuration database");
-        ConfigRepo::new(None)?
+        ConfigRepo::new(None).await?
     };
 
     let mut context = ServerContext::new(config, Arc::new(config_repo), datastore);
@@ -561,13 +561,21 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
 
             let mut connection = connection_builder.open(true).unwrap();
             sqlite::init_event_db(&mut connection)?;
+            let xconn = connection_builder.open_sqlx_connection(true).await.unwrap();
+            let xconn = Arc::new(tokio::sync::Mutex::new(xconn));
             let has_fts = connection.has_table("fts")?;
             info!("FTS enabled: {has_fts}");
             let connection = Arc::new(Mutex::new(connection));
-            let pool = sqlite::pool::open_pool(&db_filename).await?;
+            let pool = sqlite::connection::open_deadpool(Some(&db_filename))?;
+            let xpool = sqlite::connection::open_sqlx_pool(Some(&db_filename), false).await?;
 
-            let eventstore =
-                sqlite::eventrepo::SqliteEventRepo::new(connection.clone(), pool, has_fts);
+            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(
+                xconn.clone(),
+                connection.clone(),
+                xpool,
+                pool,
+                has_fts,
+            );
 
             // Start retention task.
             sqlite::retention::start_retention_task(config.clone(), connection.clone())?;
@@ -636,6 +644,25 @@ where
             let session = context.session_store.get(&session_id);
             if let Some(session) = session {
                 return Ok(SessionExtractor(session));
+            }
+
+            debug!("Session not found in cache, checking database");
+
+            match context.config_repo.get_user_by_session(&session_id).await {
+                Ok(Some(user)) => {
+                    info!("Found session for user {}", &user.username);
+                    let session = Session {
+                        session_id: Some(session_id.to_string()),
+                        username: Some(user.username),
+                    };
+                    let session = Arc::new(session);
+                    let _ = context.session_store.put(session.clone());
+                    return Ok(SessionExtractor(session));
+                }
+                Ok(None) => {}
+                Err(err) => {
+                    error!("Failed to get user by session from database: {:?}", err);
+                }
             }
         }
 

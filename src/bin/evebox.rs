@@ -264,6 +264,12 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Don't open browser"),
         )
         .arg(
+            Arg::new("fts")
+                .long("fts")
+                .action(ArgAction::SetTrue)
+                .help("Enable full text search"),
+        )
+        .arg(
             Arg::new("no-wait")
                 .long("no-wait")
                 .action(ArgAction::SetTrue)
@@ -324,7 +330,7 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(("oneshot", args)) => evebox::commands::oneshot::main(args).await,
         Some(("agent", args)) => evebox::commands::agent::main(args).await,
-        Some(("config", args)) => evebox::commands::config::main(args),
+        Some(("config", args)) => evebox::commands::config::main(args).await,
         Some(("print", args)) => evebox::commands::print::main(args),
         Some(("elastic", args)) => evebox::commands::elastic::main::main(args).await,
         Some(("sqlite", args)) => evebox::commands::sqlite::main(args).await,

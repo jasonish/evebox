@@ -2,18 +2,19 @@
 // SPDX-License-Identifier: MIT
 
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::Mutex;
 
 use rusqlite::params;
+use serde::Serialize;
+use sqlx::Row;
 use time::format_description::well_known::Rfc3339;
 use tracing::debug;
 use tracing::error;
+use tracing::info;
 
 use crate::sqlite::ConnectionBuilder;
 
 #[derive(thiserror::Error, Debug)]
-pub enum ConfigRepoError {
+pub(crate) enum ConfigRepoError {
     #[error("username not found: {0}")]
     UsernameNotFound(String),
     #[error("bad password for user: {0}")]
@@ -26,24 +27,26 @@ pub enum ConfigRepoError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("user does not exist: {0}")]
     NoUser(String),
+    #[error("sql error: {0}")]
+    SqlxError(#[from] sqlx::Error),
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub(crate) struct User {
     pub uuid: String,
     pub username: String,
 }
 
 pub(crate) struct ConfigRepo {
-    pub db: Arc<Mutex<rusqlite::Connection>>,
+    pool: sqlx::Pool<sqlx::Sqlite>,
 }
 
 impl ConfigRepo {
-    pub fn new(filename: Option<&PathBuf>) -> Result<Self, ConfigRepoError> {
+    pub async fn new(filename: Option<&PathBuf>) -> Result<Self, ConfigRepoError> {
         let mut conn = ConnectionBuilder::filename(filename).open(true)?;
         init_db(&mut conn)?;
         Ok(Self {
-            db: Arc::new(Mutex::new(conn)),
+            pool: crate::sqlite::connection::open_sqlx_pool(filename, false).await?,
         })
     }
 
@@ -52,105 +55,159 @@ impl ConfigRepo {
         username: &str,
         password_in: &str,
     ) -> Result<User, ConfigRepoError> {
-        let username = username.to_string();
-        let password_in = password_in.to_string();
-        let db = self.db.clone();
-        tokio::task::spawn_blocking(move || {
-            let conn = db.lock().unwrap();
-            let mut stmt =
-                conn.prepare("SELECT uuid, username, password FROM users WHERE username = ?1")?;
-            let mut rows = stmt.query(params![username])?;
-            if let Some(row) = rows.next()? {
-                let uuid: String = row.get(0)?;
-                let username: String = row.get(1)?;
-                let password_hash: String = row.get(2)?;
-                if bcrypt::verify(password_in, &password_hash)? {
-                    Ok(User { uuid, username })
-                } else {
-                    Err(ConfigRepoError::BadPassword(username))
-                }
+        let query = sqlx::query::<sqlx::Sqlite>(
+            "SELECT uuid, username, password FROM users WHERE username = ?",
+        )
+        .bind(username);
+        if let Some(row) = query.fetch_optional(&self.pool).await? {
+            let uuid: String = row.try_get(0)?;
+            let username: String = row.try_get(1)?;
+            let password_hash: String = row.try_get(2)?;
+            if bcrypt::verify(password_in, &password_hash)? {
+                return Ok(User { uuid, username });
             } else {
-                Err(ConfigRepoError::UsernameNotFound(username))
+                return Err(ConfigRepoError::BadPassword(username));
             }
-        })
-        .await?
+        }
+
+        Err(ConfigRepoError::UsernameNotFound(username.to_string()))
     }
 
-    pub fn get_user_by_name(&self, username: &str) -> Result<User, ConfigRepoError> {
-        let conn = self.db.lock().unwrap();
-        let user = conn
-            .query_row(
-                "SELECT uuid, username FROM users WHERE username = ?",
-                params![username],
-                |row| {
-                    Ok(User {
-                        uuid: row.get(0)?,
-                        username: row.get(1)?,
-                    })
-                },
-            )
-            .map_err(|err| match err {
-                rusqlite::Error::QueryReturnedNoRows => {
-                    ConfigRepoError::NoUser(username.to_string())
-                }
-                _ => err.into(),
-            })?;
-        Ok(user)
+    pub async fn get_user_by_name(&self, username: &str) -> Result<User, ConfigRepoError> {
+        let row = sqlx::query("SELECT uuid, username FROM users WHERE username = ?")
+            .bind(username)
+            .fetch_optional(&self.pool)
+            .await?;
+        if let Some(row) = row {
+            Ok(User {
+                uuid: row.try_get("uuid")?,
+                username: row.try_get("username")?,
+            })
+        } else {
+            Err(ConfigRepoError::NoUser(username.to_string()))
+        }
     }
 
-    pub fn has_users(&self) -> Result<bool, ConfigRepoError> {
-        let conn = self.db.lock().unwrap();
-        let count: u64 = conn.query_row("SELECT count(*) FROM users", [], |row| row.get(0))?;
+    pub async fn has_users(&self) -> Result<bool, ConfigRepoError> {
+        let (count,): (u64,) = sqlx::query_as("SELECT count(*) FROM users")
+            .fetch_one(&self.pool)
+            .await?;
         Ok(count > 0)
     }
 
-    pub fn get_users(&self) -> Result<Vec<User>, ConfigRepoError> {
-        let conn = self.db.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT uuid, username FROM users")?;
-        let rows = stmt.query_map(params![], |row| {
-            Ok(User {
-                uuid: row.get(0)?,
-                username: row.get(1)?,
+    pub async fn get_users(&self) -> Result<Vec<User>, ConfigRepoError> {
+        let rows: Vec<(String, String)> = sqlx::query_as("SELECT uuid, username FROM users")
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(|row| User {
+                uuid: row.0,
+                username: row.1,
             })
-        })?;
-        let mut users = Vec::new();
-        for row in rows {
-            users.push(row?);
-        }
-        Ok(users)
+            .collect())
     }
 
-    pub fn add_user(&self, username: &str, password: &str) -> Result<String, ConfigRepoError> {
+    pub async fn add_user(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<String, ConfigRepoError> {
         let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)?;
         let user_id = uuid::Uuid::new_v4().to_string();
-        let mut conn = self.db.lock().unwrap();
-        let tx = conn.transaction()?;
-        tx.execute(
-            "INSERT INTO users (uuid, username, password) VALUES (?, ?, ?)",
-            params![user_id, username, password_hash],
-        )?;
-        tx.commit()?;
+        sqlx::query("INSERT INTO users (uuid, username, password) VALUES (?, ?, ?)")
+            .bind(&user_id)
+            .bind(username)
+            .bind(password_hash)
+            .execute(&self.pool)
+            .await?;
         Ok(user_id)
     }
 
-    pub fn remove_user(&self, username: &str) -> Result<usize, ConfigRepoError> {
-        let mut conn = self.db.lock().unwrap();
-        let tx = conn.transaction()?;
-        let n = tx.execute("DELETE FROM users WHERE username = ?", params![username])?;
-        tx.commit()?;
-        Ok(n)
+    pub async fn remove_user(&self, username: &str) -> Result<u64, ConfigRepoError> {
+        Ok(sqlx::query("DELETE FROM users WHERE username = ?")
+            .bind(username)
+            .execute(&self.pool)
+            .await?
+            .rows_affected())
     }
 
-    pub fn update_password_by_id(&self, id: &str, password: &str) -> Result<bool, ConfigRepoError> {
+    pub async fn update_password_by_id(
+        &self,
+        id: &str,
+        password: &str,
+    ) -> Result<bool, ConfigRepoError> {
         let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)?;
-        let mut conn = self.db.lock().unwrap();
-        let tx = conn.transaction()?;
-        let n = tx.execute(
-            "UPDATE users SET password = ? where uuid = ?",
-            params![password_hash, id],
-        )?;
-        tx.commit()?;
-        Ok(n > 0)
+        let result = sqlx::query("UPDATE users SET password = ? WHERE uuid = ?")
+            .bind(&password_hash)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    pub async fn save_session(
+        &self,
+        token: &str,
+        uuid: &str,
+        expires: i64,
+    ) -> Result<(), ConfigRepoError> {
+        let sql = "INSERT INTO sessions (token, uuid, expires_at) VALUES (?, ?, ?)";
+        sqlx::query(sql)
+            .bind(token)
+            .bind(uuid)
+            .bind(expires)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn expire_sessions(&self) -> Result<u64, ConfigRepoError> {
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let result = sqlx::query("DELETE FROM sessions WHERE expires AT < ?")
+            .bind(now)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected())
+    }
+
+    pub async fn get_user_by_session(&self, token: &str) -> Result<Option<User>, ConfigRepoError> {
+        let sql = r#"
+            SELECT users.uuid, users.username, sessions.expires_at
+            FROM users 
+            JOIN sessions ON 
+            users.uuid = sessions.uuid
+            WHERE sessions.token = ?"#;
+
+        // TODO: Remove transaction, not needed here but used as an example.
+        let mut tx = self.pool.begin().await?;
+        if let Some(row) = sqlx::query(sql)
+            .bind(token)
+            .fetch_optional(&mut *tx)
+            .await?
+        {
+            let uuid: String = row.try_get("uuid")?;
+            let username: String = row.try_get("username")?;
+            let expires_at: i64 = row.try_get("expires_at")?;
+
+            let now = time::OffsetDateTime::now_utc().unix_timestamp();
+            if now > expires_at {
+                match self.expire_sessions().await {
+                    Ok(n) => {
+                        if n > 0 {
+                            info!("Expired {} sessions", n);
+                        }
+                    }
+                    Err(err) => {
+                        error!("Failed to expire sessions: {:?}", err);
+                    }
+                }
+                return Ok(None);
+            }
+            tx.commit().await?;
+            return Ok(Some(User { uuid, username }));
+        }
+        Ok(None)
     }
 }
 

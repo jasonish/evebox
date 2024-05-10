@@ -52,6 +52,9 @@ pub enum DatastoreError {
     #[error("sql: {0}")]
     FromSql(#[from] rusqlite::types::FromSqlError),
 
+    #[error("sqlx: {0}")]
+    SqlxError(#[from] sqlx::Error),
+
     // Fallback...
     #[error("error: {0}")]
     AnyhowError(#[from] anyhow::Error),

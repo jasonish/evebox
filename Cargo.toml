@@ -35,6 +35,9 @@ bcrypt = "0.15.0"
 bytes = "1.5.0"
 clap = { version = "4.5.4", features = ["env", "derive", "color"] }
 
+# Trying SQLx, it wrap up all 3 of the other SQLite crates into one.
+sqlx = { git = "https://github.com/launchbadge/sqlx", default-features = true, features = ["runtime-tokio", "sqlite", "postgres", "tls-rustls"] }
+
 # These 3 somewhat depend on each other.
 deadpool-sqlite = { version = "= 0.8.0", features = ["rt_tokio_1"] }
 rusqlite = { version = "= 0.31", default-features = false, features = ["bundled", "serde_json"] }
@@ -72,3 +75,4 @@ directories = "5.0.1"
 gethostname = "0.4.3"
 tempfile = "3.9.0"
 inquire = "0.6.2"
+chrono = { version = "0.4.38", default-features = false, features = ["std", "now"] }

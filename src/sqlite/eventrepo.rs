@@ -22,6 +22,7 @@ pub(crate) struct SqliteEventRepo {
     pub connection: Arc<Mutex<Connection>>,
     pub importer: super::importer::SqliteEventSink,
     pub pool: deadpool_sqlite::Pool,
+    pub xpool: sqlx::Pool<sqlx::Sqlite>,
     pub fts: bool,
 }
 
@@ -29,11 +30,18 @@ pub(crate) struct SqliteEventRepo {
 type QueryParam = dyn ToSql + Send + Sync + 'static;
 
 impl SqliteEventRepo {
-    pub fn new(connection: Arc<Mutex<Connection>>, pool: deadpool_sqlite::Pool, fts: bool) -> Self {
+    pub fn new(
+        xdb: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
+        connection: Arc<Mutex<Connection>>,
+        xpool: sqlx::Pool<sqlx::Sqlite>,
+        pool: deadpool_sqlite::Pool,
+        fts: bool,
+    ) -> Self {
         debug!("SQLite event store created: fts={fts}");
         Self {
             connection: connection.clone(),
-            importer: super::importer::SqliteEventSink::new(connection, fts),
+            importer: super::importer::SqliteEventSink::new(xdb, fts),
+            xpool,
             pool,
             fts,
         }
@@ -44,71 +52,45 @@ impl SqliteEventRepo {
     }
 
     pub async fn min_row_id(&self) -> Result<u64, DatastoreError> {
-        Ok(self
-            .pool
-            .get()
+        let (id,): (u64,) = sqlx::query_as("SELECT MIN(rowid) FROM events")
+            .fetch_optional(&self.xpool)
             .await?
-            .interact(|conn| {
-                conn.query_row_and_then("select min(rowid) from events", [], |row| row.get(0))
-                    .unwrap_or(0)
-            })
-            .await?)
+            .unwrap_or((0,));
+        Ok(id)
     }
 
     pub async fn max_row_id(&self) -> Result<u64, DatastoreError> {
-        Ok(self
-            .pool
-            .get()
+        let (id,): (u64,) = sqlx::query_as("SELECT MAX(rowid) FROM events")
+            .fetch_optional(&self.xpool)
             .await?
-            .interact(|conn| {
-                conn.query_row_and_then("select max(rowid) from events", [], |row| row.get(0))
-                    .unwrap_or(0)
-            })
-            .await?)
+            .unwrap_or((0,));
+        Ok(id)
     }
 
     pub async fn min_timestamp(&self) -> Result<Option<OffsetDateTime>, DatastoreError> {
-        let timestamp = self
-            .pool
-            .get()
-            .await?
-            .interact(|conn| {
-                conn.query_row_and_then(
-                    "select min(timestamp) from events",
-                    [],
-                    |row| -> anyhow::Result<time::OffsetDateTime> {
-                        let timestamp: i64 = row.get(0)?;
-                        Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
-                            timestamp as i128,
-                        )?)
-                    },
-                )
-            })
-            .await?
-            .ok();
-        Ok(timestamp)
+        let result: Option<(i64,)> = sqlx::query_as("SELECT MIN(timestamp) FROM events")
+            .fetch_optional(&self.xpool)
+            .await?;
+        if let Some((ts,)) = result {
+            Ok(Some(time::OffsetDateTime::from_unix_timestamp_nanos(
+                ts as i128,
+            )?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub async fn max_timestamp(&self) -> Result<Option<OffsetDateTime>, DatastoreError> {
-        let timestamp = self
-            .pool
-            .get()
-            .await?
-            .interact(|conn| {
-                conn.query_row_and_then(
-                    "select max(timestamp) from events",
-                    [],
-                    |row| -> anyhow::Result<time::OffsetDateTime> {
-                        let timestamp: i64 = row.get(0)?;
-                        Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
-                            timestamp as i128,
-                        )?)
-                    },
-                )
-            })
-            .await?
-            .ok();
-        Ok(timestamp)
+        let result: Option<(i64,)> = sqlx::query_as("SELECT MAX(timestamp) FROM events")
+            .fetch_optional(&self.xpool)
+            .await?;
+        if let Some((ts,)) = result {
+            Ok(Some(time::OffsetDateTime::from_unix_timestamp_nanos(
+                ts as i128,
+            )?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub async fn get_event_by_id(

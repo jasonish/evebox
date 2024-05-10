@@ -23,9 +23,9 @@ pub fn config_subcommand() -> clap::Command {
     Args::command()
 }
 
-pub fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
+pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     match args.subcommand() {
-        Some(("users", args)) => users::main(args),
+        Some(("users", args)) => users::main(args).await,
         _ => Err(anyhow!("no subcommand provided")),
     }
 }

@@ -7,11 +7,10 @@ pub mod connection;
 pub mod eventrepo;
 pub mod importer;
 pub(crate) mod info;
-pub mod pool;
 pub mod retention;
 pub mod util;
 
-pub use connection::init_event_db;
+pub(crate) use connection::init_event_db;
 pub(crate) use connection::ConnectionBuilder;
 use rusqlite::params;
 use rusqlite::OptionalExtension;
