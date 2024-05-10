@@ -456,7 +456,10 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-pub(crate) async fn build_context(config: ServerConfig, datastore: EventRepo) -> Result<ServerContext> {
+pub(crate) async fn build_context(
+    config: ServerConfig,
+    datastore: EventRepo,
+) -> Result<ServerContext> {
     let config_repo = if let Some(directory) = &config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
         info!("Configuration database filename: {:?}", filename);

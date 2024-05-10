@@ -59,7 +59,10 @@ fn get_days(config: &Config) -> Result<Option<usize>> {
     }
 }
 
-pub(crate) fn start_retention_task(config: Config, conn: Arc<Mutex<Connection>>) -> anyhow::Result<()> {
+pub(crate) fn start_retention_task(
+    config: Config,
+    conn: Arc<Mutex<Connection>>,
+) -> anyhow::Result<()> {
     let size = get_size(&config)
         .map_err(|err| anyhow::anyhow!("Bad database.retention.size: {:?}", err))?;
     let range = get_days(&config)?;

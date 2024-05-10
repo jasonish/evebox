@@ -146,7 +146,10 @@ fn parse_string(input: &str) -> IResult<&str, &str> {
     parse_escaped(input)
 }
 
-pub(crate) fn parse_timestamp(timestamp: &str, offset: Option<&str>) -> Result<time::OffsetDateTime> {
+pub(crate) fn parse_timestamp(
+    timestamp: &str,
+    offset: Option<&str>,
+) -> Result<time::OffsetDateTime> {
     let timestamp = timestamp_preprocess(timestamp, offset)?;
     Ok(crate::eve::parse_eve_timestamp(&timestamp)?)
 }

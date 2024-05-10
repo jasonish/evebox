@@ -37,7 +37,11 @@ pub(crate) struct ServerContext {
 }
 
 impl ServerContext {
-    pub(crate) fn new(config: ServerConfig, config_repo: Arc<ConfigRepo>, datastore: EventRepo) -> Self {
+    pub(crate) fn new(
+        config: ServerConfig,
+        config_repo: Arc<ConfigRepo>,
+        datastore: EventRepo,
+    ) -> Self {
         Self {
             config,
             datastore,

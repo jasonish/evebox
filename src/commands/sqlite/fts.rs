@@ -3,7 +3,10 @@
 
 use super::{FtsArgs, FtsCommand};
 use crate::sqlite::{
-    importer::extract_values, init_event_db, util::{self, fts_create}, ConnectionBuilder, SqliteExt,
+    importer::extract_values,
+    init_event_db,
+    util::{self, fts_create},
+    ConnectionBuilder, SqliteExt,
 };
 use anyhow::Result;
 use rusqlite::{params, Transaction};
