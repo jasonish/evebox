@@ -3,7 +3,80 @@
 
 use crate::querystring::{self, Element};
 use rusqlite::{types::ToSqlOutput, ToSql};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+
+pub(crate) enum Types<'a> {
+    Str(&'a str),
+    String(String),
+    I64(i64),
+}
+
+impl<'a> From<&'a str> for Types<'a> {
+    fn from(value: &'a str) -> Self {
+        Self::Str(value)
+    }
+}
+
+impl<'a> From<String> for Types<'a> {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl<'a> From<&'a String> for Types<'a> {
+    fn from(value: &'a String) -> Self {
+        Self::Str(value.as_ref())
+    }
+}
+
+impl<'a> From<i32> for Types<'a> {
+    fn from(value: i32) -> Self {
+        Self::I64(value as i64)
+    }
+}
+
+impl<'a> From<i64> for Types<'a> {
+    fn from(value: i64) -> Self {
+        Self::I64(value)
+    }
+}
+
+impl<'a> From<u64> for Types<'a> {
+    fn from(value: u64) -> Self {
+        Self::I64(value as i64)
+    }
+}
+
+pub(crate) struct Parameters<'a> {
+    params: VecDeque<Types<'a>>,
+}
+
+impl<'a> Parameters<'a> {
+    pub fn new() -> Self {
+        Self {
+            params: VecDeque::new(),
+        }
+    }
+
+    pub fn push<T: Into<Types<'a>>>(&mut self, val: T) {
+        self.params.push_back(val.into());
+    }
+
+    pub fn query(
+        mut self,
+        sql: &'a str,
+    ) -> sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>> {
+        let mut query = sqlx::query::<sqlx::Sqlite>(sql);
+        while let Some(p) = self.params.pop_front() {
+            match p {
+                Types::Str(v) => query = query.bind(v),
+                Types::String(v) => query = query.bind(v),
+                Types::I64(v) => query = query.bind(v),
+            }
+        }
+        query
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) enum SqliteValue {

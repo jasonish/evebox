@@ -571,7 +571,6 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
 
             let eventstore = sqlite::eventrepo::SqliteEventRepo::new(
                 xconn.clone(),
-                connection.clone(),
                 xpool,
                 pool,
                 has_fts,

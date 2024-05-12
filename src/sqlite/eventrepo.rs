@@ -3,11 +3,12 @@
 
 use crate::eventrepo::DatastoreError;
 use crate::server::api::AlertGroupSpec;
+use crate::sqlite::builder;
 use crate::{eve, LOG_QUERIES};
-use rusqlite::{params, Connection, ToSql};
+use rusqlite::ToSql;
 use serde_json::json;
 use sqlx::Row;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::time::Instant;
 use time::OffsetDateTime;
 use tracing::{debug, info};
@@ -20,7 +21,6 @@ mod stats;
 
 /// SQLite implementation of the event datastore.
 pub(crate) struct SqliteEventRepo {
-    pub connection: Arc<Mutex<Connection>>,
     pub importer: super::importer::SqliteEventSink,
     pub pool: deadpool_sqlite::Pool,
     pub xpool: sqlx::Pool<sqlx::Sqlite>,
@@ -32,16 +32,14 @@ type QueryParam = dyn ToSql + Send + Sync + 'static;
 
 impl SqliteEventRepo {
     pub fn new(
-        xdb: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
-        connection: Arc<Mutex<Connection>>,
+        conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
         xpool: sqlx::Pool<sqlx::Sqlite>,
         pool: deadpool_sqlite::Pool,
         fts: bool,
     ) -> Self {
         debug!("SQLite event store created: fts={fts}");
         Self {
-            connection: connection.clone(),
-            importer: super::importer::SqliteEventSink::new(xdb, fts),
+            importer: super::importer::SqliteEventSink::new(conn, fts),
             xpool,
             pool,
             fts,
@@ -148,31 +146,30 @@ impl SqliteEventRepo {
             WHERE %WHERE%
         ";
 
+        let mut bindings = builder::Parameters::new();
         let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<QueryParam>> = Vec::new();
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
-
         filters.push("archived = 0".to_string());
 
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        params.push(Box::new(alert_group.signature_id as i64));
+        bindings.push(alert_group.signature_id);
 
         filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        params.push(Box::new(alert_group.src_ip));
+        bindings.push(alert_group.src_ip);
 
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        params.push(Box::new(alert_group.dest_ip));
+        bindings.push(&alert_group.dest_ip);
 
         let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
         let mints_nanos = mints.unix_timestamp_nanos();
         filters.push("timestamp >= ?".to_string());
-        params.push(Box::new(mints_nanos as i64));
+        bindings.push(mints_nanos as i64);
 
         let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
         let maxts_nanos = maxts.unix_timestamp_nanos();
         filters.push("timestamp <= ?".to_string());
-        params.push(Box::new(maxts_nanos as i64));
+        bindings.push(maxts_nanos as i64);
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
@@ -180,82 +177,63 @@ impl SqliteEventRepo {
             info!("sql={}", &sql);
         }
 
-        let conn = self.connection.clone();
-        let n = tokio::task::spawn_blocking(move || {
-            let mut conn = conn.lock().unwrap();
-            Self::retry_execute_loop(&mut conn, &sql, &params)
-        })
-        .await
-        .unwrap()?;
+        let x = bindings.query(&sql).execute(&self.xpool).await?;
+        let n = x.rows_affected();
         debug!("Archived {n} alerts in {} ms", now.elapsed().as_millis());
 
         Ok(())
     }
 
-    fn retry_execute_loop(
-        conn: &mut Connection,
-        sql: &str,
-        params: &[Box<QueryParam>],
-    ) -> Result<usize, rusqlite::Error> {
-        let start_time = std::time::Instant::now();
-        loop {
-            match conn.execute(sql, rusqlite::params_from_iter(params)) {
-                Ok(n) => return Ok(n),
-                Err(err) => {
-                    if start_time.elapsed().as_millis() > 1000 {
-                        return Err(err);
-                    }
-                }
-            }
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
+    pub async fn set_escalation_by_alert_group(
+        &self,
+        alert_group: AlertGroupSpec,
+        escalate: bool,
+    ) -> Result<u64, DatastoreError> {
+        let mut filters: Vec<String> = Vec::new();
+        let mut bindings = builder::Parameters::new();
+
+        let sql = "
+            UPDATE events
+            SET escalated = ?
+            WHERE %WHERE%
+        ";
+        bindings.push(if escalate { 1 } else { 0 });
+
+        filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
+        filters.push("escalated = ?".to_string());
+        bindings.push(if escalate { 0 } else { 1 });
+
+        filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
+        bindings.push(alert_group.signature_id);
+
+        filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
+        bindings.push(alert_group.src_ip);
+
+        filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
+        bindings.push(alert_group.dest_ip);
+
+        let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
+        filters.push("timestamp >= ?".to_string());
+        bindings.push(mints.unix_timestamp_nanos() as i64);
+
+        let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
+        filters.push("timestamp <= ?".to_string());
+        bindings.push(maxts.unix_timestamp_nanos() as i64);
+
+        let sql = sql.replace("%WHERE%", &filters.join(" AND "));
+        let r = bindings.query(&sql).execute(&self.xpool).await?;
+        let n = r.rows_affected();
+        Ok(n)
     }
 
     pub async fn escalate_by_alert_group(
         &self,
         alert_group: AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
-        let sql = "
-            UPDATE events
-            SET escalated = 1
-            WHERE %WHERE%
-        ";
-
-        let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<QueryParam>> = Vec::new();
-
-        filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
-
-        filters.push("escalated = 0".to_string());
-
-        filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        params.push(Box::new(alert_group.signature_id as i64));
-
-        filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        params.push(Box::new(alert_group.src_ip));
-
-        filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        params.push(Box::new(alert_group.dest_ip));
-
-        let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
-        filters.push("timestamp >= ?".to_string());
-        params.push(Box::new(mints.unix_timestamp_nanos() as i64));
-
-        let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
-        filters.push("timestamp <= ?".to_string());
-        params.push(Box::new(maxts.unix_timestamp_nanos() as i64));
-
-        let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-
-        let connection = self.connection.clone();
-        let n = tokio::task::spawn_blocking(move || {
-            let conn = connection.lock().unwrap();
-            conn.execute(&sql, rusqlite::params_from_iter(params))
-        })
-        .await
-        .unwrap()?;
-        debug!("Escalated {n} alerts in alert group");
-
+        let n = self
+            .set_escalation_by_alert_group(alert_group, true)
+            .await?;
+        debug!("Escalated {n} alerts in group");
         Ok(())
     }
 
@@ -263,54 +241,37 @@ impl SqliteEventRepo {
         &self,
         alert_group: AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
-        let sql = "
-            UPDATE events
-            SET escalated = 0
-            WHERE %WHERE%
-        ";
-
-        let mut filters: Vec<String> = Vec::new();
-        let mut params: Vec<Box<QueryParam>> = Vec::new();
-
-        filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
-
-        filters.push("escalated = 1".to_string());
-
-        filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        params.push(Box::new(alert_group.signature_id as i64));
-
-        filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        params.push(Box::new(alert_group.src_ip));
-
-        filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        params.push(Box::new(alert_group.dest_ip));
-
-        let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
-        filters.push("timestamp >= ?".to_string());
-        params.push(Box::new(mints.unix_timestamp_nanos() as i64));
-
-        let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
-        filters.push("timestamp <= ?".to_string());
-        params.push(Box::new(maxts.unix_timestamp_nanos() as i64));
-
-        let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-
-        let connection = self.connection.clone();
-        let n = tokio::task::spawn_blocking(move || {
-            let conn = connection.lock().unwrap();
-            conn.execute(&sql, rusqlite::params_from_iter(params))
-        })
-        .await
-        .unwrap()?;
-        debug!("De-escalated {n} alerts in alert group");
+        let n = self
+            .set_escalation_by_alert_group(alert_group, false)
+            .await?;
+        debug!("De-escalated {n} alerts in group");
         Ok(())
     }
 
     pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
-        let conn = self.connection.lock().unwrap();
-        let query = "UPDATE events SET archived = 1 WHERE rowid = ?";
-        let params = params![event_id];
-        let n = conn.execute(query, params)?;
+        let n = sqlx::query("UPDATE events SET archived = 1 WHERE rowid = ?")
+            .bind(event_id)
+            .execute(&self.xpool)
+            .await?
+            .rows_affected();
+        if n == 0 {
+            Err(DatastoreError::EventNotFound)
+        } else {
+            Ok(())
+        }
+    }
+
+    async fn set_escalation_for_id(
+        &self,
+        event_id: &str,
+        escalate: bool,
+    ) -> Result<(), DatastoreError> {
+        let n = sqlx::query("UPDATE events SET escalated = ? WHERE rowid = ?")
+            .bind(if escalate { 1 } else { 0 })
+            .bind(event_id)
+            .execute(&self.xpool)
+            .await?
+            .rows_affected();
         if n == 0 {
             Err(DatastoreError::EventNotFound)
         } else {
@@ -319,54 +280,29 @@ impl SqliteEventRepo {
     }
 
     pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
-        let conn = self.connection.lock().unwrap();
-        let query = "UPDATE events SET escalated = 1 WHERE rowid = ?";
-        let params = params![event_id];
-        let n = conn.execute(query, params)?;
-        if n == 0 {
-            Err(DatastoreError::EventNotFound)
-        } else {
-            Ok(())
-        }
+        self.set_escalation_for_id(event_id, true).await
     }
 
     pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
-        let conn = self.connection.lock().unwrap();
-        let query = "UPDATE events SET escalated = 0 WHERE rowid = ?";
-        let params = params![event_id];
-        let n = conn.execute(query, params)?;
-        if n == 0 {
-            Err(DatastoreError::EventNotFound)
-        } else {
-            Ok(())
-        }
+        self.set_escalation_for_id(event_id, false).await
     }
 
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
         let start_time = time::OffsetDateTime::now_utc() - time::Duration::hours(24);
         let start_time = start_time.unix_timestamp_nanos() as i64;
-        let result = self
-            .pool
-            .get()
-            .await?
-            .interact(move |conn| -> Result<Vec<String>, rusqlite::Error> {
-                let sql = r#"
-                    SELECT DISTINCT json_extract(events.source, '$.host')
-                    FROM events
-                    WHERE timestamp >= ?
-                      AND json_extract(events.source, '$.host') IS NOT NULL
-                "#;
-                let mut st = conn.prepare(sql).unwrap();
-                let rows = st.query_map([&start_time], |row| row.get(0))?;
-                let mut values = vec![];
-                for row in rows {
-                    values.push(row?);
-                }
-                Ok(values)
-            })
-            .await
-            .map_err(|err| anyhow::anyhow!("sqlite interact error:: {:?}", err))??;
-        Ok(result)
+
+        let sql = r#"
+            SELECT DISTINCT json_extract(events.source, '$.host')
+            FROM events
+            WHERE timestamp >= ?
+              AND json_extract(events.source, '$.host') IS NOT NULL
+            "#;
+
+        let rows: Vec<String> = sqlx::query_scalar(sql)
+            .bind(start_time)
+            .fetch_all(&self.xpool)
+            .await?;
+        Ok(rows)
     }
 }
 

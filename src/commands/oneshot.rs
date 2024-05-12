@@ -6,7 +6,7 @@ use crate::eve;
 use crate::geoip;
 use crate::sqlite;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync;
 use tracing::debug;
 use tracing::error;
@@ -59,7 +59,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         tokio::spawn(async move {
             let mut port = 5636;
             loop {
-                let connection = Arc::new(Mutex::new(db_connection_builder.open(false).unwrap()));
                 let xconnection = Arc::new(tokio::sync::Mutex::new(
                     db_connection_builder
                         .open_sqlx_connection(false)
@@ -68,7 +67,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 ));
                 let sqlite_datastore = sqlite::eventrepo::SqliteEventRepo::new(
                     xconnection,
-                    connection,
                     xpool.clone(),
                     pool.clone(),
                     fts,
