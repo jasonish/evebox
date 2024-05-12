@@ -6,6 +6,7 @@ use crate::server::api::AlertGroupSpec;
 use crate::{eve, LOG_QUERIES};
 use rusqlite::{params, Connection, ToSql};
 use serde_json::json;
+use sqlx::Row;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use time::OffsetDateTime;
@@ -97,16 +98,16 @@ impl SqliteEventRepo {
         &self,
         event_id: String,
     ) -> Result<Option<serde_json::Value>, DatastoreError> {
-        let conn = self.connection.lock().unwrap();
-        let query = "SELECT rowid, archived, escalated, source FROM events WHERE rowid = ?";
-        let params = params![event_id];
-        let mut stmt = conn.prepare(query)?;
-        let mut rows = stmt.query(params)?;
-        if let Some(row) = rows.next()? {
-            let rowid: i64 = row.get(0)?;
-            let archived: i8 = row.get(1)?;
-            let escalated: i8 = row.get(2)?;
-            let mut parsed: serde_json::Value = row.get(3)?;
+        let sql = "SELECT rowid, archived, escalated, source FROM events WHERE rowid = ?";
+        if let Some(row) = sqlx::query(sql)
+            .bind(event_id)
+            .fetch_optional(&self.xpool)
+            .await?
+        {
+            let rowid: i64 = row.try_get(0)?;
+            let archived: i8 = row.try_get(1)?;
+            let escalated: i8 = row.try_get(2)?;
+            let mut parsed: serde_json::Value = row.try_get(3)?;
 
             if let serde_json::Value::Null = &parsed["tags"] {
                 let tags: Vec<String> = Vec::new();
