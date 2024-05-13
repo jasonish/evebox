@@ -4,7 +4,9 @@
 use crate::{
     elastic::AlertQueryOptions,
     sqlite::{
-        connection::open_deadpool, eventrepo::SqliteEventRepo, info::{Info, Infox}, init_event_db,
+        connection::{init_event_db2, open_deadpool},
+        eventrepo::SqliteEventRepo,
+        info::{Info, Infox},
         ConnectionBuilder, SqliteExt,
     },
 };
@@ -121,13 +123,13 @@ pub fn command() -> Command {
 pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
     let args = Args::from_arg_matches(args)?;
     match &args.command {
-        Commands::Dump { filename } => dump(filename),
-        Commands::Load(args) => load(args),
-        Commands::Fts(args) => fts::fts(args),
-        Commands::Query { filename, sql } => query(filename, sql),
+        Commands::Dump { filename } => dump(filename).await,
+        Commands::Load(args) => load(args).await,
+        Commands::Fts(args) => fts::fts(args).await,
+        Commands::Query { filename, sql } => query(filename, sql).await,
         Commands::Info(args) => info(args).await,
         Commands::Optimize(args) => optimize(args).await,
-        Commands::Analyze { filename } => analyze(filename),
+        Commands::Analyze { filename } => analyze(filename).await,
     }
 }
 
@@ -219,7 +221,7 @@ async fn info(args: &InfoArgs) -> Result<()> {
     Ok(())
 }
 
-fn dump(filename: &str) -> Result<()> {
+async fn dump(filename: &str) -> Result<()> {
     let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
     let mut st = conn.prepare("select source from events order by timestamp")?;
     let mut rows = st.query([])?;
@@ -230,12 +232,15 @@ fn dump(filename: &str) -> Result<()> {
     Ok(())
 }
 
-fn load(args: &LoadArgs) -> Result<()> {
+async fn load(args: &LoadArgs) -> Result<()> {
     use std::io::{BufRead, BufReader};
     let input = File::open(&args.input)?;
     let reader = BufReader::new(input).lines();
+    let mut conn = ConnectionBuilder::filename(Some(&args.filename))
+        .open_sqlx_connection(true)
+        .await?;
+    init_event_db2(&mut conn).await?;
     let mut conn = ConnectionBuilder::filename(Some(&args.filename)).open(true)?;
-    init_event_db(&mut conn)?;
     let fts = conn.has_table("fts")?;
     info!("Loading events");
     let mut count = 0;
@@ -259,7 +264,7 @@ fn load(args: &LoadArgs) -> Result<()> {
     Ok(())
 }
 
-fn query(filename: &str, sql: &str) -> Result<()> {
+async fn query(filename: &str, sql: &str) -> Result<()> {
     let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
     let timer = Instant::now();
     let mut st = conn.prepare(sql)?;
@@ -308,7 +313,7 @@ async fn optimize(args: &OptimizeArgs) -> Result<()> {
     Ok(())
 }
 
-fn analyze(filename: &str) -> Result<()> {
+async fn analyze(filename: &str) -> Result<()> {
     match inquire::Confirm::new("This could take a while, do you want to continue?")
         .with_default(true)
         .prompt()

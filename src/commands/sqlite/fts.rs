@@ -3,78 +3,87 @@
 
 use super::{FtsArgs, FtsCommand};
 use crate::sqlite::{
+    connection::init_event_db2,
+    has_table,
     importer::extract_values,
-    init_event_db,
     util::{self, fts_create},
-    ConnectionBuilder, SqliteExt,
+    ConnectionBuilder,
 };
 use anyhow::Result;
-use rusqlite::{params, Transaction};
 use serde_json::Value;
+use sqlx::SqliteConnection;
+use sqlx::{Connection, FromRow};
 use tracing::{debug, info, warn};
 
-pub(super) fn fts(args: &FtsArgs) -> Result<()> {
+pub(super) async fn fts(args: &FtsArgs) -> Result<()> {
     match &args.command {
-        FtsCommand::Enable { force, filename } => fts_enable(force, filename),
-        FtsCommand::Disable { force, filename } => fts_disable(force, filename),
-        FtsCommand::Check { filename } => fts_check(filename),
-        FtsCommand::Optimize { filename } => fts_optimize(filename),
+        FtsCommand::Enable { force, filename } => fts_enable(force, filename).await,
+        FtsCommand::Disable { force, filename } => fts_disable(force, filename).await,
+        FtsCommand::Check { filename } => fts_check(filename).await,
+        FtsCommand::Optimize { filename } => fts_optimize(filename).await,
     }
 }
 
-fn fts_disable(force: &bool, filename: &str) -> Result<()> {
-    let mut conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
-    if !conn.has_table("fts")? {
+async fn fts_disable(force: &bool, filename: &str) -> Result<()> {
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_sqlx_connection(false)
+        .await?;
+    if !has_table(&mut conn, "fts").await? {
         warn!("FTS not enabled");
     } else {
         if !force {
             bail!("Please make sure EveBox is NOT running then re-run with --force");
         }
         info!("Disabling FTS, this could take a while");
-        let tx = conn.transaction()?;
-        tx.execute("drop table fts", [])?;
-        tx.execute("drop trigger events_ad_trigger", [])?;
-        tx.commit()?;
+        let mut tx = conn.begin().await?;
+        sqlx::query("DROP TABLE fts").execute(&mut *tx).await?;
+        sqlx::query("DROP TRIGGER events_ad_trigger")
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
         info!("FTS has been disabled");
     }
     Ok(())
 }
 
-fn fts_enable(force: &bool, filename: &str) -> Result<()> {
-    let mut conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
-
-    if conn.has_table("fts")? {
-        bail!("FTS already enabled");
+async fn fts_enable(force: &bool, filename: &str) -> Result<()> {
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_sqlx_connection(false)
+        .await?;
+    if has_table(&mut conn, "fts").await? {
+        bail!("FTS is already enabled");
     }
 
     if !force {
         bail!("Please make sure EveBox is NOT running then re-run with --force");
     }
 
-    init_event_db(&mut conn)?;
-    let tx = conn.transaction()?;
-    fts_create(&tx)?;
+    init_event_db2(&mut conn).await?;
+    let mut tx = conn.begin().await?;
+    fts_create(&mut tx).await?;
 
     info!("Building FTS index, this could take a while");
 
-    let count = reindex_fts(&tx)?;
+    let count = reindex_fts(&mut tx).await?;
 
-    tx.commit()?;
+    tx.commit().await?;
 
     info!("Indexed {count} events");
 
     Ok(())
 }
 
-fn fts_check(filename: &str) -> Result<()> {
-    let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
-    if !conn.has_table("fts")? {
+async fn fts_check(filename: &str) -> Result<()> {
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_sqlx_connection(false)
+        .await?;
+    if !has_table(&mut conn, "fts").await? {
         warn!("FTS is not enabled");
         return Ok(());
     }
     info!("FTS is enabled, checking integrity");
 
-    match util::fts_check(&conn) {
+    match util::fts_check(&mut conn).await {
         Ok(_) => {
             info!("FTS data OK");
         }
@@ -86,30 +95,36 @@ fn fts_check(filename: &str) -> Result<()> {
     Ok(())
 }
 
-fn fts_optimize(filename: &str) -> Result<()> {
-    let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
+async fn get_total_changes(conn: &mut SqliteConnection) -> Result<i64> {
+    let count: i64 = sqlx::query_scalar("SELECT total_changes()")
+        .fetch_one(&mut *conn)
+        .await?;
+    Ok(count)
+}
 
-    if !conn.has_table("fts")? {
+async fn fts_optimize(filename: &str) -> Result<()> {
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_sqlx_connection(false)
+        .await?;
+
+    if !has_table(&mut conn, "fts").await? {
         warn!("FTS is not enabled");
         return Ok(());
     }
 
-    let get_total_changes = || -> Result<i64> {
-        let rows = conn.query_row("select total_changes()", [], |row| {
-            let count: i64 = row.get(0)?;
-            Ok(count)
-        })?;
-        Ok(rows)
-    };
+    info!("Running SQLite FTS optimization");
 
-    let mut last_total_changes = get_total_changes()?;
+    let mut last_total_changes = get_total_changes(&mut conn).await?;
 
-    let mut st = conn.prepare("insert into fts(fts, rank) values ('merge', -500)")?;
-    st.execute([])?;
+    sqlx::query("INSERT INTO fts(fts, rank) VALUES ('merge', -500)")
+        .execute(&mut conn)
+        .await?;
 
     loop {
-        conn.execute("insert into fts(fts, rank) values ('merge', 500)", [])?;
-        let total_changes = get_total_changes()?;
+        sqlx::query("INSERT INTO fts(fts, rank) VALUES ('merge', 500)")
+            .execute(&mut conn)
+            .await?;
+        let total_changes = get_total_changes(&mut conn).await?;
         let changes = total_changes - last_total_changes;
         debug!("Modified rows: {changes}");
         if changes < 2 {
@@ -121,27 +136,48 @@ fn fts_optimize(filename: &str) -> Result<()> {
     Ok(())
 }
 
-fn reindex_fts(tx: &Transaction) -> Result<usize> {
-    let mut st = tx.prepare("select rowid, timestamp, source from events order by rowid")?;
-    let mut rows = st.query([])?;
+async fn reindex_fts(conn: &mut SqliteConnection) -> Result<usize> {
+    let mut next_id = 0;
     let mut count = 0;
-    while let Some(row) = rows.next()? {
-        let rowid: u64 = row.get(0)?;
-        let timestamp: u64 = row.get(1)?;
-        let source: String = row.get(2)?;
-        let source: Value = serde_json::from_str(&source)?;
-        let flat = extract_values(&source);
 
-        tx.execute(
-            "update events set source_values = ? where rowid = ?",
-            params![&flat, rowid],
-        )?;
-        tx.execute(
-            "insert into fts (rowid, timestamp, source_values) values (?, ?, ?)",
-            params![rowid, timestamp, &flat],
-        )?;
-
-        count += 1;
+    #[derive(FromRow)]
+    struct EventRow {
+        rowid: i64,
+        timestamp: i64,
+        source: String,
     }
+
+    loop {
+        let rows: Vec<EventRow> = sqlx::query_as(
+            "SELECT rowid, timestamp, source FROM events WHERE rowid >= ? ORDER BY rowid ASC LIMIT 10000",
+        )
+            .bind(next_id)
+            .fetch_all(&mut *conn)
+            .await?;
+        if rows.is_empty() {
+            break;
+        }
+
+        for row in rows {
+            let source: Value = serde_json::from_str(&row.source)?;
+            let flat = extract_values(&source);
+            sqlx::query("UPDATE events SET source_values = ? WHERE rowid = ?")
+                .bind(&flat)
+                .bind(row.rowid)
+                .execute(&mut *conn)
+                .await?;
+            sqlx::query("INSERT INTO fts (rowid, timestamp, source_values) VALUES (?, ?, ?)")
+                .bind(row.rowid)
+                .bind(row.timestamp)
+                .bind(&flat)
+                .execute(&mut *conn)
+                .await?;
+            next_id = row.rowid + 1;
+            count += 1;
+        }
+
+        info!("{}", count);
+    }
+
     Ok(count)
 }

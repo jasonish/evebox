@@ -10,10 +10,10 @@ pub(crate) mod info;
 pub mod retention;
 pub mod util;
 
-pub(crate) use connection::init_event_db;
 pub(crate) use connection::ConnectionBuilder;
 use rusqlite::params;
 use rusqlite::OptionalExtension;
+use sqlx::SqliteConnection;
 use time::macros::format_description;
 
 pub fn format_sqlite_timestamp(dt: &time::OffsetDateTime) -> String {
@@ -37,4 +37,16 @@ impl SqliteExt for rusqlite::Connection {
             .optional()?;
         Ok(row.is_some())
     }
+}
+
+pub(crate) async fn has_table(
+    conn: &mut SqliteConnection,
+    name: &str,
+) -> Result<bool, sqlx::Error> {
+    let count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?")
+            .bind(name)
+            .fetch_one(&mut *conn)
+            .await?;
+    Ok(count > 0)
 }

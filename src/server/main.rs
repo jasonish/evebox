@@ -559,8 +559,9 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 db_filename.clone(),
             )));
 
-            let mut connection = connection_builder.open(true).unwrap();
-            sqlite::init_event_db(&mut connection)?;
+            let mut conn = connection_builder.open_sqlx_connection(true).await.unwrap();
+            let connection = connection_builder.open(true).unwrap();
+            sqlite::connection::init_event_db2(&mut conn).await?;
             let xconn = connection_builder.open_sqlx_connection(true).await.unwrap();
             let xconn = Arc::new(tokio::sync::Mutex::new(xconn));
             let has_fts = connection.has_table("fts")?;
@@ -569,12 +570,8 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             let pool = sqlite::connection::open_deadpool(Some(&db_filename))?;
             let xpool = sqlite::connection::open_sqlx_pool(Some(&db_filename), false).await?;
 
-            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(
-                xconn.clone(),
-                xpool,
-                pool,
-                has_fts,
-            );
+            let eventstore =
+                sqlite::eventrepo::SqliteEventRepo::new(xconn.clone(), xpool, pool, has_fts);
 
             // Start retention task.
             sqlite::retention::start_retention_task(config.clone(), connection.clone())?;

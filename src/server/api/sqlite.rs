@@ -4,10 +4,7 @@
 use crate::{
     eventrepo::EventRepo,
     server::{main::SessionExtractor, ServerContext},
-    sqlite::{
-        self,
-        info::{Info, Infox},
-    },
+    sqlite::{self, info::Infox},
 };
 use axum::{response::IntoResponse, Extension, Json};
 use serde::Serialize;
@@ -34,7 +31,7 @@ pub(crate) async fn info(
             max_event_id: u64,
             event_count_estimate: u64,
             data_size: u64,
-            schema_version: u64,
+            schema_version: i64,
             min_timestamp: Option<String>,
             max_timestamp: Option<String>,
         }
@@ -49,6 +46,9 @@ pub(crate) async fn info(
         let mut response = Response {
             min_timestamp: min_timestamp.map(|ts| ts.to_string()),
             max_timestamp: max_timestamp.map(|ts| ts.to_string()),
+            min_event_id: min_row_id,
+            max_event_id: max_row_id,
+            event_count_estimate,
             ..Default::default()
         };
 
@@ -57,25 +57,13 @@ pub(crate) async fn info(
         response.auto_vacuum = info.get_auto_vacuum().await?;
         response.journal_mode = info.get_journal_mode().await?;
         response.synchronous = info.get_synchronous().await?;
+        response.fts_enabled = info.has_table("fts").await?;
+        response.page_size = info.pragma_i64("page_size").await?;
+        response.page_count = info.pragma_i64("page_count").await?;
+        response.freelist_count = info.pragma_i64("freelist_count").await?;
+        response.data_size = (response.page_size * response.page_count) as u64;
+        response.schema_version = info.schema_version().await?;
 
-        let response = sqlite
-            .pool
-            .get()
-            .await?
-            .interact(move |conn| -> Result<Response, rusqlite::Error> {
-                let info = Info::new(conn);
-                response.fts_enabled = info.has_table("fts")?;
-                response.page_size = info.get_pragma::<i64>("page_size")?;
-                response.page_count = info.get_pragma::<i64>("page_count")?;
-                response.freelist_count = info.get_pragma::<i64>("freelist_count")?;
-                response.min_event_id = min_row_id;
-                response.max_event_id = max_row_id;
-                response.data_size = (response.page_size * response.page_count) as u64;
-                response.schema_version = info.schema_version()?;
-                response.event_count_estimate = event_count_estimate;
-                Ok(response)
-            })
-            .await??;
         return Ok(Json(response).into_response());
     }
 
@@ -101,7 +89,7 @@ pub(crate) async fn fts_check(
             .get()
             .await?
             .interact(move |conn| -> Result<Response, rusqlite::Error> {
-                let response = match sqlite::util::fts_check(conn) {
+                let response = match sqlite::util::fts_check_rusqlite(conn) {
                     Ok(_) => Response {
                         ok: true,
                         error: None,

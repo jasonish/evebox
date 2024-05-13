@@ -8,7 +8,7 @@ use crate::{eve, LOG_QUERIES};
 use rusqlite::ToSql;
 use serde_json::json;
 use sqlx::Row;
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::time::Instant;
 use time::OffsetDateTime;
 use tracing::{debug, info};

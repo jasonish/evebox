@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2024 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use rusqlite::{params, types::FromSql, OptionalExtension};
+use rusqlite::types::FromSql;
 
 /// Sqlite database information wrapper.
 ///
@@ -42,6 +42,17 @@ impl<'a> Infox<'a> {
         .await?;
         Ok(count > 0)
     }
+
+    pub async fn pragma_i64(&mut self, name: &str) -> Result<i64, sqlx::Error> {
+        let sql = format!("SELECT {name} FROM pragma_{name}");
+        sqlx::query_scalar(&sql).fetch_one(&mut *self.db).await
+    }
+
+    pub async fn schema_version(&mut self) -> Result<i64, sqlx::Error> {
+        sqlx::query_scalar("SELECT MAX(version) FROM _sqlx_migrations")
+            .fetch_one(&mut *self.db)
+            .await
+    }
 }
 
 pub(crate) struct Info<'a> {
@@ -58,25 +69,6 @@ impl<'a> Info<'a> {
             .query_row_and_then("SELECT auto_vacuum FROM pragma_auto_vacuum", [], |row| {
                 row.get(0)
             })
-    }
-
-    pub fn get_synchronous(&self) -> Result<u8, rusqlite::Error> {
-        self.conn
-            .query_row_and_then("SELECT synchronous FROM pragma_synchronous", [], |row| {
-                row.get(0)
-            })
-    }
-
-    pub fn has_table(&self, name: &str) -> Result<bool, rusqlite::Error> {
-        let row = self
-            .conn
-            .query_row(
-                "select name from sqlite_master where type = 'table' and name = ?",
-                params![name],
-                |_| Ok(()),
-            )
-            .optional()?;
-        Ok(row.is_some())
     }
 
     pub fn get_pragma<T: FromSql>(&self, name: &str) -> Result<T, rusqlite::Error> {

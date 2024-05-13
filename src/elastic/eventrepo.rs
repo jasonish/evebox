@@ -181,11 +181,7 @@ impl ElasticEventRepo {
 
         let path = "_update_by_query?refresh=true&conflicts=proceed";
         let response: ElasticResponse = self.post(path, &body).await?.json().await?;
-        let updated = if let Some(updated) = response.updated {
-            updated
-        } else {
-            0
-        };
+        let updated = response.updated.unwrap_or_default();
         if updated == 0 {
             warn!(
                 ?response,
