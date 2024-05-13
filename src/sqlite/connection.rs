@@ -33,6 +33,10 @@ impl ConnectionBuilder {
         }
     }
 
+    pub async fn _open_sqlx_pool(&self, create: bool) -> Result<sqlx::SqlitePool, sqlx::Error> {
+        open_sqlx_pool(self.filename.clone(), create).await
+    }
+
     pub async fn open_sqlx_connection(
         &self,
         create: bool,

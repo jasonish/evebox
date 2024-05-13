@@ -434,6 +434,9 @@ pub(crate) enum ApiError {
 
     #[error("internal database error")]
     RusqliteError(#[from] rusqlite::Error),
+
+    #[error("internal database error")]
+    Sqlx(#[from] sqlx::Error),
 }
 
 impl ApiError {
@@ -457,6 +460,7 @@ impl IntoResponse for ApiError {
             ApiError::SqlitePoolError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
             ApiError::SqliteInteractError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
             ApiError::RusqliteError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
+            ApiError::Sqlx(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
         };
         let body = Json(serde_json::json!({
             "error": message,

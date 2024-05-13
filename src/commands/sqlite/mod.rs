@@ -4,7 +4,7 @@
 use crate::{
     elastic::AlertQueryOptions,
     sqlite::{
-        connection::open_deadpool, eventrepo::SqliteEventRepo, info::Info, init_event_db,
+        connection::open_deadpool, eventrepo::SqliteEventRepo, info::{Info, Infox}, init_event_db,
         ConnectionBuilder, SqliteExt,
     },
 };
@@ -125,13 +125,13 @@ pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
         Commands::Load(args) => load(args),
         Commands::Fts(args) => fts::fts(args),
         Commands::Query { filename, sql } => query(filename, sql),
-        Commands::Info(args) => info(args),
+        Commands::Info(args) => info(args).await,
         Commands::Optimize(args) => optimize(args).await,
         Commands::Analyze { filename } => analyze(filename),
     }
 }
 
-fn info(args: &InfoArgs) -> Result<()> {
+async fn info(args: &InfoArgs) -> Result<()> {
     let filename = if let Some(filename) = &args.filename {
         filename.to_string()
     } else if let Some(dir) = &args.data_directory {
@@ -141,14 +141,18 @@ fn info(args: &InfoArgs) -> Result<()> {
     };
 
     let conn = ConnectionBuilder::filename(Some(&filename)).open(false)?;
+    let mut sqlx_conn = ConnectionBuilder::filename(Some(&filename))
+        .open_sqlx_connection(false)
+        .await?;
 
     let info = Info::new(&conn);
+    let mut infox = Infox::new(&mut sqlx_conn);
 
     println!("Filename: {filename}");
-    println!("Auto vacuum: {}", info.get_auto_vacuum()?);
-    println!("Journal mode: {}", info.get_journal_mode()?);
-    println!("Synchronous: {}", info.get_synchronous()?);
-    println!("FTS enabled: {}", info.has_table("fts")?);
+    println!("Auto vacuum: {}", infox.get_auto_vacuum().await?);
+    println!("Journal mode: {}", infox.get_journal_mode().await?);
+    println!("Synchronous: {}", infox.get_synchronous().await?);
+    println!("FTS enabled: {}", infox.has_table("fts").await?);
 
     let page_size: i64 = info.get_pragma::<i64>("page_size")?;
     let page_count: i64 = info.get_pragma::<i64>("page_count")?;

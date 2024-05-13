@@ -4,7 +4,10 @@
 use crate::{
     eventrepo::EventRepo,
     server::{main::SessionExtractor, ServerContext},
-    sqlite::{self, info::Info},
+    sqlite::{
+        self,
+        info::{Info, Infox},
+    },
 };
 use axum::{response::IntoResponse, Extension, Json};
 use serde::Serialize;
@@ -43,21 +46,24 @@ pub(crate) async fn info(
         let min_timestamp = sqlite.min_timestamp().await?;
         let max_timestamp = sqlite.max_timestamp().await?;
 
+        let mut response = Response {
+            min_timestamp: min_timestamp.map(|ts| ts.to_string()),
+            max_timestamp: max_timestamp.map(|ts| ts.to_string()),
+            ..Default::default()
+        };
+
+        let mut tx = sqlite.xpool.begin().await?;
+        let mut info = Infox::new(&mut tx);
+        response.auto_vacuum = info.get_auto_vacuum().await?;
+        response.journal_mode = info.get_journal_mode().await?;
+        response.synchronous = info.get_synchronous().await?;
+
         let response = sqlite
             .pool
             .get()
             .await?
             .interact(move |conn| -> Result<Response, rusqlite::Error> {
-                let mut response = Response {
-                    min_timestamp: min_timestamp.map(|ts| ts.to_string()),
-                    max_timestamp: max_timestamp.map(|ts| ts.to_string()),
-                    ..Default::default()
-                };
-
                 let info = Info::new(conn);
-                response.auto_vacuum = info.get_auto_vacuum()?;
-                response.journal_mode = info.get_journal_mode()?;
-                response.synchronous = info.get_synchronous()?;
                 response.fts_enabled = info.has_table("fts")?;
                 response.page_size = info.get_pragma::<i64>("page_size")?;
                 response.page_count = info.get_pragma::<i64>("page_count")?;

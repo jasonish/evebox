@@ -3,6 +3,47 @@
 
 use rusqlite::{params, types::FromSql, OptionalExtension};
 
+/// Sqlite database information wrapper.
+///
+/// Can take a transaction or connection.
+pub(crate) struct Infox<'a> {
+    db: &'a mut sqlx::SqliteConnection,
+}
+
+impl<'a> Infox<'a> {
+    pub fn new(db: &'a mut sqlx::SqliteConnection) -> Self {
+        Self { db }
+    }
+
+    pub async fn get_auto_vacuum(&mut self) -> Result<u8, sqlx::Error> {
+        sqlx::query_scalar("SELECT auto_vacuum FROM pragma_auto_vacuum")
+            .fetch_one(&mut *self.db)
+            .await
+    }
+
+    pub async fn get_journal_mode(&mut self) -> Result<String, sqlx::Error> {
+        sqlx::query_scalar("SELECT journal_mode FROM pragma_journal_mode")
+            .fetch_one(&mut *self.db)
+            .await
+    }
+
+    pub async fn get_synchronous(&mut self) -> Result<u8, sqlx::Error> {
+        sqlx::query_scalar("SELECT synchronous FROM pragma_synchronous")
+            .fetch_one(&mut *self.db)
+            .await
+    }
+
+    pub async fn has_table(&mut self, name: &str) -> Result<bool, sqlx::Error> {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
+        )
+        .bind(name)
+        .fetch_one(&mut *self.db)
+        .await?;
+        Ok(count > 0)
+    }
+}
+
 pub(crate) struct Info<'a> {
     conn: &'a rusqlite::Connection,
 }
@@ -15,13 +56,6 @@ impl<'a> Info<'a> {
     pub fn get_auto_vacuum(&self) -> Result<u8, rusqlite::Error> {
         self.conn
             .query_row_and_then("SELECT auto_vacuum FROM pragma_auto_vacuum", [], |row| {
-                row.get(0)
-            })
-    }
-
-    pub fn get_journal_mode(&self) -> Result<String, rusqlite::Error> {
-        self.conn
-            .query_row_and_then("SELECT journal_mode FROM pragma_journal_mode", [], |row| {
                 row.get(0)
             })
     }
