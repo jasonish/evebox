@@ -9,6 +9,7 @@ use clap::Parser;
 use clap::Subcommand;
 use tracing::info;
 
+use crate::sqlite::configrepo;
 use crate::sqlite::configrepo::ConfigRepo;
 
 #[derive(Parser, Debug)]
@@ -81,8 +82,8 @@ async fn open_config_repo<P: AsRef<Path>>(data_directory: Option<P>) -> Result<C
     };
     info!("Using data directory {}", data_directory.display());
     let filename = data_directory.join("config.sqlite");
-    let repo = ConfigRepo::new(Some(&filename)).await?;
-    Ok(repo)
+    let config_repo = configrepo::open(Some(&filename)).await?;
+    Ok(config_repo)
 }
 
 async fn list(dir: Option<String>) -> Result<()> {

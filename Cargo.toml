@@ -38,10 +38,10 @@ clap = { version = "4.5.4", features = ["env", "derive", "color"] }
 # Trying SQLx, it wrap up all 3 of the other SQLite crates into one.
 sqlx = { git = "https://github.com/launchbadge/sqlx", default-features = true, features = ["runtime-tokio", "sqlite", "tls-rustls"] }
 
-# These 3 somewhat depend on each other.
+# Moving these to SQLx, however, versions need to work with sqlx as
+# they all depend on libsqlite-sys.
 deadpool-sqlite = { version = "= 0.8.0", features = ["rt_tokio_1"] }
 rusqlite = { version = "= 0.31", default-features = false, features = ["bundled", "serde_json"] }
-refinery = { version = "= 0.8.14", features = ["rusqlite"] }
 
 filetime = "0.2.23"
 glob = "0.3.1"

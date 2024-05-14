@@ -11,7 +11,7 @@ use crate::eve::watcher::EvePatternWatcher;
 use crate::eventrepo::EventRepo;
 use crate::server::api;
 use crate::server::session::Session;
-use crate::sqlite::configrepo::ConfigRepo;
+use crate::sqlite::configrepo::{self, ConfigRepo};
 use crate::sqlite::{self, SqliteExt};
 use anyhow::Result;
 use axum::body::Full;
@@ -119,7 +119,17 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     });
 
     let datastore = configure_datastore(config.clone(), &server_config).await?;
-    let mut context = build_context(server_config.clone(), datastore).await?;
+
+    let config_repo = if let Some(directory) = &server_config.data_directory {
+        let filename = PathBuf::from(directory).join("config.sqlite");
+        info!("Configuration database filename: {:?}", filename);
+        configrepo::open(Some(&filename)).await?
+    } else {
+        info!("Using temporary in-memory configuration database");
+        configrepo::open(None).await?
+    };
+
+    let mut context = build_context(server_config.clone(), datastore, config_repo).await?;
 
     if server_config.authentication_required && !context.config_repo.has_users().await? {
         warn!("Username/password authentication is required, but no users exist, creating a user");
@@ -459,15 +469,16 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
 pub(crate) async fn build_context(
     config: ServerConfig,
     datastore: EventRepo,
+    config_repo: ConfigRepo,
 ) -> Result<ServerContext> {
-    let config_repo = if let Some(directory) = &config.data_directory {
-        let filename = PathBuf::from(directory).join("config.sqlite");
-        info!("Configuration database filename: {:?}", filename);
-        ConfigRepo::new(Some(&filename)).await?
-    } else {
-        info!("Using temporary in-memory configuration database");
-        ConfigRepo::new(None).await?
-    };
+    // let config_repo = if let Some(directory) = &config.data_directory {
+    //     let filename = PathBuf::from(directory).join("config.sqlite");
+    //     info!("Configuration database filename: {:?}", filename);
+    //     ConfigRepo::new(Some(&filename)).await?
+    // } else {
+    //     info!("Using temporary in-memory configuration database");
+    //     ConfigRepo::new(None).await?
+    // };
 
     let mut context = ServerContext::new(config, Arc::new(config_repo), datastore);
 

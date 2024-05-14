@@ -5,6 +5,7 @@ use crate::config::Config;
 use crate::eve;
 use crate::geoip;
 use crate::sqlite;
+use crate::sqlite::configrepo;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync;
@@ -53,6 +54,9 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     }
     let (port_tx, mut port_rx) = sync::mpsc::unbounded_channel::<u16>();
 
+    // Initialize config repo.
+    let config_repo = configrepo::open(None).await?;
+
     let server = {
         let host = host.clone();
         tokio::spawn(async move {
@@ -80,16 +84,18 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                     datastore: "sqlite".to_string(),
                     ..crate::server::ServerConfig::default()
                 };
-                let context = match crate::server::build_context(config.clone(), ds).await {
-                    Ok(mut context) => {
-                        context.defaults.time_range = Some("all".to_string());
-                        Arc::new(context)
-                    }
-                    Err(err) => {
-                        error!("Failed to build server context: {}", err);
-                        std::process::exit(1);
-                    }
-                };
+
+                let context =
+                    match crate::server::build_context(config.clone(), ds, config_repo.clone()).await {
+                        Ok(mut context) => {
+                            context.defaults.time_range = Some("all".to_string());
+                            Arc::new(context)
+                        }
+                        Err(err) => {
+                            error!("Failed to build server context: {}", err);
+                            std::process::exit(1);
+                        }
+                    };
                 debug!("Successfully build server context");
                 match crate::server::build_axum_server(&config, context).await {
                     Ok(server) => {

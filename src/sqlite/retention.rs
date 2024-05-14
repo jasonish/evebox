@@ -120,7 +120,7 @@ async fn retention_task(config: RetentionConfig, pool: SqlitePool, filename: Pat
     let mut count: u64 = 0;
 
     loop {
-        info!("Running retention task");
+        trace!("Running retention task");
         let mut delay = default_delay;
 
         if size_enabled && config.size > 0 {

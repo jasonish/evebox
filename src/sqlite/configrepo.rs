@@ -1,17 +1,16 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use std::path::PathBuf;
+use std::path::Path;
 
-use rusqlite::params;
 use serde::Serialize;
 use sqlx::Row;
-use time::format_description::well_known::Rfc3339;
+use sqlx::SqlitePool;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
 
-use crate::sqlite::ConnectionBuilder;
+use super::has_table;
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum ConfigRepoError {
@@ -19,8 +18,6 @@ pub(crate) enum ConfigRepoError {
     UsernameNotFound(String),
     #[error("bad password for user: {0}")]
     BadPassword(String),
-    #[error("sqlite error: {0}")]
-    SqliteError(#[from] rusqlite::Error),
     #[error("bcrypt error: {0}")]
     BcryptError(#[from] bcrypt::BcryptError),
     #[error("join error: {0}")]
@@ -37,17 +34,14 @@ pub(crate) struct User {
     pub username: String,
 }
 
+#[derive(Clone)]
 pub(crate) struct ConfigRepo {
-    pool: sqlx::Pool<sqlx::Sqlite>,
+    pool: SqlitePool,
 }
 
 impl ConfigRepo {
-    pub async fn new(filename: Option<&PathBuf>) -> Result<Self, ConfigRepoError> {
-        let mut conn = ConnectionBuilder::filename(filename).open(true)?;
-        init_db(&mut conn)?;
-        Ok(Self {
-            pool: crate::sqlite::connection::open_sqlx_pool(filename, false).await?,
-        })
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
     }
 
     pub async fn get_user_by_username_password(
@@ -211,42 +205,81 @@ impl ConfigRepo {
     }
 }
 
-pub fn init_db(db: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
-    let version = db
-        .query_row("select max(version) from schema", params![], |row| {
-            let version: i64 = row.get(0).unwrap();
-            Ok(version)
-        })
-        .unwrap_or(-1);
-    if version == 1 {
-        // We may have to provide the refinery table, unless it was already created.
-        debug!("SQLite configuration DB at v1, checking if setup required for Refinery migrations");
-        let fake_refinery_setup = "CREATE TABLE refinery_schema_history(
-            version INT4 PRIMARY KEY,
-            name VARCHAR(255),
-            applied_on VARCHAR(255),
-            checksum VARCHAR(255))";
-        if db.execute(fake_refinery_setup, params![]).is_ok() {
-            let now = time::OffsetDateTime::now_utc();
-            let formatted_now = now.format(&Rfc3339).unwrap();
-            if let Err(err) = db.execute(
-                "INSERT INTO refinery_schema_history VALUES (?, ?, ?, ?)",
-                params![1, "Initial", formatted_now, "866978575299187291"],
-            ) {
-                error!("Failed to initialize schema history table: {:?}", err);
-            } else {
-                debug!("SQLite configuration DB now setup for refinery migrations");
-            }
-        } else {
-            debug!("Refinery migrations already exist for SQLite configuration DB");
+async fn get_legacy_version(db: SqlitePool) -> Option<u8> {
+    let version = sqlx::query_scalar("SELECT MAX(version) FROM refinery_schema_history")
+        .fetch_one(&db)
+        .await
+        .ok();
+    if version.is_some() {
+        return version;
+    }
+
+    sqlx::query_scalar("SELECT MAX(version) FROM schema")
+        .fetch_one(&db)
+        .await
+        .ok()
+}
+
+/// Initialize the configuration/administrative database, apply
+/// migrations as needed.
+async fn init_db(db: SqlitePool) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+    if has_table(&mut tx, "_sqlx_migrations").await? {
+        // Nothing to do.
+        return Ok(());
+    }
+    let legacy_version = get_legacy_version(db.clone()).await;
+
+    if let Some(version) = legacy_version {
+        sqlx::query(
+            r#"
+            CREATE TABLE _sqlx_migrations (
+                version BIGINT PRIMARY KEY,
+                description TEXT NOT NULL,
+                installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                success BOOLEAN NOT NULL,
+                checksum BLOB NOT NULL,
+                execution_time BIGINT NOT NULL
+            );"#,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        let rows = &[
+            "INSERT INTO _sqlx_migrations VALUES(1,'Initial','2024-05-14 22:07:37',1,X'3178dae65749760972807044cd00fc973daf8e325e0bbdd2491faad1f0357ba1e7943db275d7283fc791e9f9495e769c',2046643)",
+            "INSERT INTO _sqlx_migrations VALUES(2,'Sessions','2024-05-14 22:07:37',1,X'83b06692857c8f61cfc2d26ab18ed1207ca699213b06126b0aeb404219ff8c73b32439f15aebf44d30a5d972eca8546d',1180689)",
+        ];
+
+        if version >= 1 {
+            debug!("Inserting fake configuration database migration for version 1");
+            sqlx::query(rows[0]).execute(&mut *tx).await?;
+        }
+        if version >= 2 {
+            debug!("Inserting fake configuration database migration for version 2");
+            sqlx::query(rows[1]).execute(&mut *tx).await?;
         }
     }
 
-    embedded::migrations::runner().run(db).unwrap();
+    debug!("Applying configuration/admin database migrations");
+    sqlx::migrate!("resources/configdb/migrations")
+        .run(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
     Ok(())
 }
 
-mod embedded {
-    use refinery::embed_migrations;
-    embed_migrations!("./resources/configdb/migrations");
+/// Open and initialize the configuration database, returning a
+/// ConfigRepo.
+pub(crate) async fn open(filename: Option<&Path>) -> Result<ConfigRepo, sqlx::Error> {
+    info!(
+        "Opening configuration database {}",
+        filename
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| ":memory:".to_string())
+    );
+    let pool = crate::sqlite::connection::open_sqlx_pool(filename, true).await?;
+    init_db(pool.clone()).await?;
+    Ok(ConfigRepo::new(pool))
 }
