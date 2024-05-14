@@ -1,15 +1,15 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::config::Config;
 use anyhow::Result;
 use core::ops::Sub;
-use rusqlite::{params, Connection};
-use std::sync::{Arc, Mutex};
+use sqlx::SqlitePool;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tracing::{debug, error, info, trace, warn};
 
-use super::info::Info;
+use super::info::Infox;
+use crate::config::Config;
 
 const DEFAULT_RANGE: usize = 7;
 
@@ -59,9 +59,10 @@ fn get_days(config: &Config) -> Result<Option<usize>> {
     }
 }
 
-pub(crate) fn start_retention_task(
+pub(crate) async fn start_retention_task(
     config: Config,
-    conn: Arc<Mutex<Connection>>,
+    pool: SqlitePool,
+    filename: PathBuf,
 ) -> anyhow::Result<()> {
     let size = get_size(&config)
         .map_err(|err| anyhow::anyhow!("Bad database.retention.size: {:?}", err))?;
@@ -72,15 +73,16 @@ pub(crate) fn start_retention_task(
         size
     );
     let config = RetentionConfig { range, size };
-    tokio::task::spawn_blocking(|| {
-        retention_task(config, conn);
+    tokio::spawn(async move {
+        retention_task(config, pool, filename).await;
     });
+
     Ok(())
 }
 
-fn size_enabled(conn: &Arc<Mutex<Connection>>) -> bool {
-    let conn = conn.lock().unwrap();
-    match Info::new(&conn).get_auto_vacuum() {
+async fn size_enabled(conn: &SqlitePool) -> bool {
+    let mut tx = conn.begin().await.unwrap();
+    match Infox::new(&mut tx).get_auto_vacuum().await {
         Ok(mode) => {
             if mode == 0 {
                 warn!("Auto-vacuum not available, size based retention not available");
@@ -106,26 +108,23 @@ fn size_enabled(conn: &Arc<Mutex<Connection>>) -> bool {
     }
 }
 
-fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connection>>) {
-    let size_enabled = size_enabled(&conn);
+async fn retention_task(config: RetentionConfig, pool: SqlitePool, filename: PathBuf) {
+    let size_enabled = size_enabled(&pool).await;
     let default_delay = Duration::from_secs(INTERVAL);
     let report_interval = Duration::from_secs(60);
-    let filename = conn
-        .lock()
-        .map(|conn| conn.path().map(|p| p.to_string()))
-        .unwrap();
 
     // Delay on startup.
-    std::thread::sleep(default_delay);
+    tokio::time::sleep(default_delay).await;
 
     let mut last_report = Instant::now();
-    let mut count: usize = 0;
+    let mut count: u64 = 0;
 
     loop {
+        info!("Running retention task");
         let mut delay = default_delay;
 
-        if filename.is_some() && size_enabled && config.size > 0 {
-            match delete_to_size(&conn, filename.as_ref().unwrap(), config.size) {
+        if size_enabled && config.size > 0 {
+            match delete_to_size(&pool, &filename, config.size).await {
                 Err(err) => {
                     error!("Failed to delete database to max size: {:?}", err);
                 }
@@ -144,10 +143,10 @@ fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connection>
         // Range (day) based retention.
         if let Some(range) = config.range {
             if range > 0 {
-                match delete_by_range(&conn, range, LIMIT) {
+                match delete_by_range(&pool, range as u64, LIMIT as u64).await {
                     Ok(n) => {
                         count += n;
-                        if n == LIMIT {
+                        if n == LIMIT as u64 {
                             delay = Duration::from_secs(REPEAT_INTERVAL);
                         }
                     }
@@ -167,7 +166,7 @@ fn retention_task(config: RetentionConfig, conn: Arc<Mutex<rusqlite::Connection>
     }
 }
 
-fn delete_to_size(conn: &Arc<Mutex<Connection>>, filename: &str, bytes: usize) -> Result<usize> {
+async fn delete_to_size(conn: &SqlitePool, filename: &Path, bytes: usize) -> Result<u64> {
     let file_size = crate::file::file_size(filename)? as usize;
     if file_size < bytes {
         trace!("Database less than max size of {} bytes", bytes);
@@ -183,27 +182,30 @@ fn delete_to_size(conn: &Arc<Mutex<Connection>>, filename: &str, bytes: usize) -
 
         trace!("Database file size of {} bytes is greater than max allowed size of {} bytes, deleting events",
 	       file_size, bytes);
-        deleted += delete_events(conn, 1000)?;
+        deleted += delete_events(conn, 1000).await?;
         std::thread::sleep(Duration::from_millis(100));
     }
 }
 
-fn delete_by_range(conn: &Arc<Mutex<Connection>>, range: usize, limit: usize) -> Result<usize> {
+async fn delete_by_range(conn: &SqlitePool, range: u64, limit: u64) -> Result<u64> {
     let now = time::OffsetDateTime::now_utc();
-    let period = std::time::Duration::from_secs(range as u64 * 86400);
+    let period = std::time::Duration::from_secs(range * 86400);
     let older_than = now.sub(period);
-    let mut conn = conn.lock().unwrap();
     let timer = Instant::now();
     trace!("Deleting events older than {range} days");
-    let tx = conn.transaction()?;
     let sql = r#"DELETE FROM events
-                WHERE rowid IN
-                    (SELECT rowid FROM events WHERE timestamp < ? and escalated = 0 ORDER BY timestamp ASC LIMIT ?)"#;
-    let n = tx.execute(
-        sql,
-        params![older_than.unix_timestamp_nanos() as i64, limit as i64],
-    )?;
-    tx.commit()?;
+        WHERE rowid IN
+            (SELECT rowid FROM
+             events WHERE timestamp < ? 
+               AND escalated = 0 
+             ORDER BY timestamp ASC
+             LIMIT ?)"#;
+    let n = sqlx::query(sql)
+        .bind(older_than.unix_timestamp_nanos() as i64)
+        .bind(limit as i64)
+        .execute(conn)
+        .await?
+        .rows_affected();
     if n > 0 {
         debug!(
             "Deleted {n} events older than {} ({range} days) in {} ms",
@@ -214,12 +216,20 @@ fn delete_by_range(conn: &Arc<Mutex<Connection>>, range: usize, limit: usize) ->
     Ok(n)
 }
 
-fn delete_events(conn: &Arc<Mutex<rusqlite::Connection>>, limit: usize) -> Result<usize> {
-    let sql = "delete from events where rowid in (select rowid from events where escalated = 0 order by timestamp asc limit ?)";
-    let conn = conn.lock().unwrap();
+async fn delete_events(conn: &SqlitePool, limit: usize) -> Result<u64> {
     let timer = Instant::now();
-    let mut st = conn.prepare(sql)?;
-    let n = st.execute(params![limit])?;
+    let sql = r#"DELETE FROM events
+        WHERE rowid IN
+            (SELECT rowid 
+             FROM events
+             WHERE escalated = 0
+             ORDER BY timestamp ASC
+             LIMIT ?)"#;
+    let n = sqlx::query(sql)
+        .bind(limit as i64)
+        .execute(conn)
+        .await?
+        .rows_affected();
     trace!("Deleted {n} events in {} ms", timer.elapsed().as_millis());
     Ok(n)
 }

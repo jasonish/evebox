@@ -64,13 +64,6 @@ impl<'a> Info<'a> {
         Self { conn }
     }
 
-    pub fn get_auto_vacuum(&self) -> Result<u8, rusqlite::Error> {
-        self.conn
-            .query_row_and_then("SELECT auto_vacuum FROM pragma_auto_vacuum", [], |row| {
-                row.get(0)
-            })
-    }
-
     pub fn get_pragma<T: FromSql>(&self, name: &str) -> Result<T, rusqlite::Error> {
         let sql = format!("SELECT {name} FROM pragma_{name}");
         self.conn.query_row_and_then(&sql, [], |row| row.get(0))

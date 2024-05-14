@@ -133,6 +133,11 @@ pub(crate) async fn init_event_db2(conn: &mut SqliteConnection) -> anyhow::Resul
     }
 
     async fn get_legacy_schema_version(conn: &mut sqlx::SqliteConnection) -> Option<i64> {
+        if let Ok(true) = has_table(&mut *conn, "_sqlx_migrations").await {
+            // Already migrated, return None.
+            return None
+        }
+
         // Check for a version from refinery.
         let version: Option<i64> =
             sqlx::query_scalar("SELECT MAX(version) FROM refinery_schema_history")

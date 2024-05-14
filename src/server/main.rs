@@ -28,7 +28,7 @@ use hyper::server::conn::AddrIncoming;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 use tracing::{debug, error, info, warn, Level};
@@ -566,15 +566,17 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             let xconn = Arc::new(tokio::sync::Mutex::new(xconn));
             let has_fts = connection.has_table("fts")?;
             info!("FTS enabled: {has_fts}");
-            let connection = Arc::new(Mutex::new(connection));
             let pool = sqlite::connection::open_deadpool(Some(&db_filename))?;
             let xpool = sqlite::connection::open_sqlx_pool(Some(&db_filename), false).await?;
+            let writer_pool = sqlite::connection::open_sqlx_pool(Some(&db_filename), false).await?;
 
             let eventstore =
                 sqlite::eventrepo::SqliteEventRepo::new(xconn.clone(), xpool, pool, has_fts);
 
             // Start retention task.
-            sqlite::retention::start_retention_task(config.clone(), connection.clone())?;
+            sqlite::retention::start_retention_task(config.clone(), writer_pool, db_filename)
+                .await?;
+            info!("Retention task started");
 
             Ok(EventRepo::SQLite(eventstore))
         }
