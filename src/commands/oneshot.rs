@@ -86,7 +86,9 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 };
 
                 let context =
-                    match crate::server::build_context(config.clone(), ds, config_repo.clone()).await {
+                    match crate::server::build_context(config.clone(), ds, config_repo.clone())
+                        .await
+                    {
                         Ok(mut context) => {
                             context.defaults.time_range = Some("all".to_string());
                             Arc::new(context)

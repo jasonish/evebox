@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::sqlite::has_table;
-use crate::sqlite::info::Infox;
+use crate::sqlite::info::Info;
 use crate::sqlite::util::fts_create;
 use deadpool_sqlite::CreatePoolError;
 use rusqlite::{Connection, OpenFlags};
@@ -112,7 +112,7 @@ pub(crate) async fn init_event_db2(conn: &mut SqliteConnection) -> anyhow::Resul
     }
 
     let mut tx = conn.begin().await?;
-    let mut info = Infox::new(&mut tx);
+    let mut info = Info::new(&mut tx);
 
     let auto_vacuum = info.get_auto_vacuum().await?;
     debug!("Auto-vacuum: {auto_vacuum}");
@@ -135,7 +135,7 @@ pub(crate) async fn init_event_db2(conn: &mut SqliteConnection) -> anyhow::Resul
     async fn get_legacy_schema_version(conn: &mut sqlx::SqliteConnection) -> Option<i64> {
         if let Ok(true) = has_table(&mut *conn, "_sqlx_migrations").await {
             // Already migrated, return None.
-            return None
+            return None;
         }
 
         // Check for a version from refinery.

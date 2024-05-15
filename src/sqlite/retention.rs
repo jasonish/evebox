@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tracing::{debug, error, info, trace, warn};
 
-use super::info::Infox;
+use super::info::Info;
 use crate::config::Config;
 
 const DEFAULT_RANGE: usize = 7;
@@ -82,7 +82,7 @@ pub(crate) async fn start_retention_task(
 
 async fn size_enabled(conn: &SqlitePool) -> bool {
     let mut tx = conn.begin().await.unwrap();
-    match Infox::new(&mut tx).get_auto_vacuum().await {
+    match Info::new(&mut tx).get_auto_vacuum().await {
         Ok(mode) => {
             if mode == 0 {
                 warn!("Auto-vacuum not available, size based retention not available");

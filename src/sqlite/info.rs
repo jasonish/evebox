@@ -1,16 +1,14 @@
 // SPDX-FileCopyrightText: (C) 2024 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use rusqlite::types::FromSql;
-
 /// Sqlite database information wrapper.
 ///
 /// Can take a transaction or connection.
-pub(crate) struct Infox<'a> {
+pub(crate) struct Info<'a> {
     db: &'a mut sqlx::SqliteConnection,
 }
 
-impl<'a> Infox<'a> {
+impl<'a> Info<'a> {
     pub fn new(db: &'a mut sqlx::SqliteConnection) -> Self {
         Self { db }
     }
@@ -52,29 +50,5 @@ impl<'a> Infox<'a> {
         sqlx::query_scalar("SELECT MAX(version) FROM _sqlx_migrations")
             .fetch_one(&mut *self.db)
             .await
-    }
-}
-
-pub(crate) struct Info<'a> {
-    conn: &'a rusqlite::Connection,
-}
-
-impl<'a> Info<'a> {
-    pub fn new(conn: &'a rusqlite::Connection) -> Self {
-        Self { conn }
-    }
-
-    pub fn get_pragma<T: FromSql>(&self, name: &str) -> Result<T, rusqlite::Error> {
-        let sql = format!("SELECT {name} FROM pragma_{name}");
-        self.conn.query_row_and_then(&sql, [], |row| row.get(0))
-    }
-
-    pub fn schema_version(&self) -> Result<u64, rusqlite::Error> {
-        let schema_version: u64 = self.conn.query_row_and_then(
-            "select max(version) from refinery_schema_history",
-            [],
-            |row| row.get(0),
-        )?;
-        Ok(schema_version)
     }
 }

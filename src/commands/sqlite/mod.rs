@@ -6,7 +6,7 @@ use crate::{
     sqlite::{
         connection::{init_event_db2, open_deadpool},
         eventrepo::SqliteEventRepo,
-        info::{Info, Infox},
+        info::Info,
         ConnectionBuilder, SqliteExt,
     },
 };
@@ -147,18 +147,17 @@ async fn info(args: &InfoArgs) -> Result<()> {
         .open_sqlx_connection(false)
         .await?;
 
-    let info = Info::new(&conn);
-    let mut infox = Infox::new(&mut sqlx_conn);
+    let mut info = Info::new(&mut sqlx_conn);
 
     println!("Filename: {filename}");
-    println!("Auto vacuum: {}", infox.get_auto_vacuum().await?);
-    println!("Journal mode: {}", infox.get_journal_mode().await?);
-    println!("Synchronous: {}", infox.get_synchronous().await?);
-    println!("FTS enabled: {}", infox.has_table("fts").await?);
+    println!("Auto vacuum: {}", info.get_auto_vacuum().await?);
+    println!("Journal mode: {}", info.get_journal_mode().await?);
+    println!("Synchronous: {}", info.get_synchronous().await?);
+    println!("FTS enabled: {}", info.has_table("fts").await?);
 
-    let page_size: i64 = info.get_pragma::<i64>("page_size")?;
-    let page_count: i64 = info.get_pragma::<i64>("page_count")?;
-    let freelist_count: i64 = info.get_pragma::<i64>("freelist_count")?;
+    let page_size = info.pragma_i64("page_size").await?;
+    let page_count = info.pragma_i64("page_count").await?;
+    let freelist_count = info.pragma_i64("freelist_count").await?;
 
     println!("Page size: {page_size}");
     println!("Page count: {page_count}");
@@ -186,7 +185,7 @@ async fn info(args: &InfoArgs) -> Result<()> {
         println!("Number of events (estimate): {}", max_rowid - min_rowid);
     }
 
-    let schema_version = info.schema_version()?;
+    let schema_version = info.schema_version().await?;
     println!("Schema version: {schema_version}");
 
     let min_timestamp = conn

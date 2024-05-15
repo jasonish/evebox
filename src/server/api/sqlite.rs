@@ -4,7 +4,7 @@
 use crate::{
     eventrepo::EventRepo,
     server::{main::SessionExtractor, ServerContext},
-    sqlite::{self, info::Infox},
+    sqlite::{self, info::Info},
 };
 use axum::{response::IntoResponse, Extension, Json};
 use serde::Serialize;
@@ -53,7 +53,7 @@ pub(crate) async fn info(
         };
 
         let mut tx = sqlite.xpool.begin().await?;
-        let mut info = Infox::new(&mut tx);
+        let mut info = Info::new(&mut tx);
         response.auto_vacuum = info.get_auto_vacuum().await?;
         response.journal_mode = info.get_journal_mode().await?;
         response.synchronous = info.get_synchronous().await?;
