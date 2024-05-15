@@ -92,7 +92,7 @@ export function AlertsReport() {
 
     let queryString = [];
     if (searchParams.q) {
-      queryString.push(searchParams);
+      queryString.push(searchParams.q);
     }
     if (searchParams.sensor) {
       queryString.push(`host:${searchParams.sensor}`);
