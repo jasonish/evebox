@@ -3,7 +3,7 @@
 
 use super::{FtsArgs, FtsCommand};
 use crate::sqlite::{
-    connection::init_event_db2,
+    connection::init_event_db,
     has_table,
     importer::extract_values,
     util::{self, fts_create},
@@ -26,7 +26,7 @@ pub(super) async fn fts(args: &FtsArgs) -> Result<()> {
 
 async fn fts_disable(force: &bool, filename: &str) -> Result<()> {
     let mut conn = ConnectionBuilder::filename(Some(filename))
-        .open_sqlx_connection(false)
+        .open_connection(false)
         .await?;
     if !has_table(&mut conn, "fts").await? {
         warn!("FTS not enabled");
@@ -48,7 +48,7 @@ async fn fts_disable(force: &bool, filename: &str) -> Result<()> {
 
 async fn fts_enable(force: &bool, filename: &str) -> Result<()> {
     let mut conn = ConnectionBuilder::filename(Some(filename))
-        .open_sqlx_connection(false)
+        .open_connection(false)
         .await?;
     if has_table(&mut conn, "fts").await? {
         bail!("FTS is already enabled");
@@ -58,7 +58,7 @@ async fn fts_enable(force: &bool, filename: &str) -> Result<()> {
         bail!("Please make sure EveBox is NOT running then re-run with --force");
     }
 
-    init_event_db2(&mut conn).await?;
+    init_event_db(&mut conn).await?;
     let mut tx = conn.begin().await?;
     fts_create(&mut tx).await?;
 
@@ -75,7 +75,7 @@ async fn fts_enable(force: &bool, filename: &str) -> Result<()> {
 
 async fn fts_check(filename: &str) -> Result<()> {
     let mut conn = ConnectionBuilder::filename(Some(filename))
-        .open_sqlx_connection(false)
+        .open_connection(false)
         .await?;
     if !has_table(&mut conn, "fts").await? {
         warn!("FTS is not enabled");
@@ -104,7 +104,7 @@ async fn get_total_changes(conn: &mut SqliteConnection) -> Result<i64> {
 
 async fn fts_optimize(filename: &str) -> Result<()> {
     let mut conn = ConnectionBuilder::filename(Some(filename))
-        .open_sqlx_connection(false)
+        .open_connection(false)
         .await?;
 
     if !has_table(&mut conn, "fts").await? {

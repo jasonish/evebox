@@ -12,7 +12,8 @@ use crate::eventrepo::EventRepo;
 use crate::server::api;
 use crate::server::session::Session;
 use crate::sqlite::configrepo::{self, ConfigRepo};
-use crate::sqlite::{self, SqliteExt};
+use crate::sqlite::connection::init_event_db;
+use crate::sqlite::{self, has_table};
 use anyhow::Result;
 use axum::body::Full;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
@@ -570,19 +571,15 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 db_filename.clone(),
             )));
 
-            let mut conn = connection_builder.open_sqlx_connection(true).await.unwrap();
-            let connection = connection_builder.open(true).unwrap();
-            sqlite::connection::init_event_db2(&mut conn).await?;
-            let xconn = connection_builder.open_sqlx_connection(true).await.unwrap();
-            let xconn = Arc::new(tokio::sync::Mutex::new(xconn));
-            let has_fts = connection.has_table("fts")?;
+            let mut conn = connection_builder.open_connection(true).await.unwrap();
+            init_event_db(&mut conn).await?;
+            let has_fts = has_table(&mut conn, "fts").await?;
             info!("FTS enabled: {has_fts}");
-            let pool = sqlite::connection::open_deadpool(Some(&db_filename))?;
-            let xpool = sqlite::connection::open_sqlx_pool(Some(&db_filename), false).await?;
-            let writer_pool = sqlite::connection::open_sqlx_pool(Some(&db_filename), false).await?;
+            let xconn = Arc::new(tokio::sync::Mutex::new(conn));
+            let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
+            let writer_pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
 
-            let eventstore =
-                sqlite::eventrepo::SqliteEventRepo::new(xconn.clone(), xpool, pool, has_fts);
+            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(xconn.clone(), pool, has_fts);
 
             // Start retention task.
             sqlite::retention::start_retention_task(config.clone(), writer_pool, db_filename)

@@ -4,15 +4,16 @@
 use crate::{
     elastic::AlertQueryOptions,
     sqlite::{
-        connection::{init_event_db2, open_deadpool},
-        eventrepo::SqliteEventRepo,
-        info::Info,
-        ConnectionBuilder, SqliteExt,
+        connection::init_event_db, eventrepo::SqliteEventRepo, has_table, info::Info,
+        ConnectionBuilder,
     },
 };
 use anyhow::Result;
 use clap::CommandFactory;
 use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
+use futures::TryStreamExt;
+use sqlx::sqlite::SqliteRow;
+use sqlx::Row;
 use std::{fs::File, sync::Arc, time::Instant};
 use tracing::info;
 
@@ -142,12 +143,20 @@ async fn info(args: &InfoArgs) -> Result<()> {
         bail!("a filename or data directory must be specified");
     };
 
-    let conn = ConnectionBuilder::filename(Some(&filename)).open(false)?;
-    let mut sqlx_conn = ConnectionBuilder::filename(Some(&filename))
-        .open_sqlx_connection(false)
-        .await?;
+    let connection_builder = ConnectionBuilder::filename(Some(&filename));
+    let mut conn = connection_builder.open_connection(false).await?;
+    let pool = connection_builder.open_pool(false).await?;
 
-    let mut info = Info::new(&mut sqlx_conn);
+    let min_rowid: i64 = sqlx::query_scalar("SELECT MIN(rowid) FROM events")
+        .fetch_optional(&mut conn)
+        .await?
+        .unwrap_or(0);
+    let max_rowid: i64 = sqlx::query_scalar("SELECT MAX(rowid) FROM events")
+        .fetch_optional(&mut conn)
+        .await?
+        .unwrap_or(0);
+
+    let mut info = Info::new(&mut conn);
 
     println!("Filename: {filename}");
     println!("Auto vacuum: {}", info.get_auto_vacuum().await?);
@@ -167,19 +176,13 @@ async fn info(args: &InfoArgs) -> Result<()> {
         page_size * page_count
     );
 
-    let min_rowid: i64 = conn
-        .query_row_and_then("select min(rowid) from events", [], |row| row.get(0))
-        .unwrap_or(0);
-    let max_rowid: i64 = conn
-        .query_row_and_then("select max(rowid) from events", [], |row| row.get(0))
-        .unwrap_or(0);
-
     println!("Minimum rowid: {min_rowid}");
     println!("Maximum rowid: {max_rowid}");
 
     if args.count {
-        let event_count: i64 =
-            conn.query_row_and_then("select count(*) from events", [], |row| row.get(0))?;
+        let event_count: i64 = sqlx::query_scalar("SELECT count(*) FROM events")
+            .fetch_one(&pool)
+            .await?;
         println!("Number of events: {event_count}");
     } else {
         println!("Number of events (estimate): {}", max_rowid - min_rowid);
@@ -188,31 +191,27 @@ async fn info(args: &InfoArgs) -> Result<()> {
     let schema_version = info.schema_version().await?;
     println!("Schema version: {schema_version}");
 
-    let min_timestamp = conn
-        .query_row_and_then(
-            "select min(timestamp) from events",
-            [],
-            |row| -> anyhow::Result<time::OffsetDateTime> {
-                let timestamp: i64 = row.get(0)?;
-                Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
-                    timestamp as i128,
-                )?)
-            },
-        )
-        .ok();
+    let min_timestamp = sqlx::query("SELECT MIN(timestamp) FROM events")
+        .try_map(|row: SqliteRow| {
+            let timestamp: i64 = row.try_get(0)?;
+            Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
+                timestamp as i128,
+            ))
+        })
+        .fetch_optional(&pool)
+        .await?
+        .transpose()?;
 
-    let max_timestamp = conn
-        .query_row_and_then(
-            "select max(timestamp) from events",
-            [],
-            |row| -> anyhow::Result<time::OffsetDateTime> {
-                let timestamp: i64 = row.get(0)?;
-                Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
-                    timestamp as i128,
-                )?)
-            },
-        )
-        .ok();
+    let max_timestamp = sqlx::query("SELECT MAX(timestamp) FROM events")
+        .try_map(|row: SqliteRow| {
+            let timestamp: i64 = row.try_get(0)?;
+            Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
+                timestamp as i128,
+            ))
+        })
+        .fetch_optional(&pool)
+        .await?
+        .transpose()?;
 
     println!("Oldest event: {min_timestamp:?}");
     println!("Latest event: {max_timestamp:?}");
@@ -221,11 +220,12 @@ async fn info(args: &InfoArgs) -> Result<()> {
 }
 
 async fn dump(filename: &str) -> Result<()> {
-    let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
-    let mut st = conn.prepare("select source from events order by timestamp")?;
-    let mut rows = st.query([])?;
-    while let Some(row) = rows.next()? {
-        let source: String = row.get(0)?;
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_connection(false)
+        .await?;
+    let mut rows = sqlx::query("SELECT source FROM events ORDER BY timestamp").fetch(&mut conn);
+    while let Some(row) = rows.try_next().await? {
+        let source: String = row.try_get(0)?;
         println!("{source}");
     }
     Ok(())
@@ -235,41 +235,45 @@ async fn load(args: &LoadArgs) -> Result<()> {
     use std::io::{BufRead, BufReader};
     let input = File::open(&args.input)?;
     let reader = BufReader::new(input).lines();
-    let mut conn = ConnectionBuilder::filename(Some(&args.filename))
-        .open_sqlx_connection(true)
-        .await?;
-    init_event_db2(&mut conn).await?;
-    let mut conn = ConnectionBuilder::filename(Some(&args.filename)).open(true)?;
-    let fts = conn.has_table("fts")?;
+    let connection_builder = ConnectionBuilder::filename(Some(&args.filename));
+    let mut conn = connection_builder.open_connection(true).await?;
+    init_event_db(&mut conn).await?;
+    let fts = has_table(&mut conn, "fts").await?;
     info!("Loading events");
     let mut count = 0;
-    let tx = conn.transaction()?;
+
+    let conn = Arc::new(tokio::sync::Mutex::new(conn));
+    let mut importer = crate::sqlite::importer::SqliteEventSink::new(conn, fts);
+
+    // This could be improved if the importer exposed some more inner
+    // details so the caller could control the transaction.
     for line in reader {
         let line = line?;
-        let mut eve: serde_json::Value = serde_json::from_str(&line)?;
-        for statement in crate::sqlite::importer::prepare_sql(&mut eve, fts)? {
-            let mut st = tx.prepare_cached(&statement.statement)?;
-            st.execute(rusqlite::params_from_iter(&statement.params))?;
-        }
+        let eve: serde_json::Value = serde_json::from_str(&line)?;
+        importer.submit(eve).await?;
         count += 1;
         if let Some(limit) = args.count {
             if count >= limit {
                 break;
             }
         }
+        if count > 0 && count % 1000 == 0 {
+            importer.commit().await?;
+        }
     }
     info!("Committing {count} events");
-    tx.commit()?;
+    importer.commit().await?;
     Ok(())
 }
 
 async fn query(filename: &str, sql: &str) -> Result<()> {
-    let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
-    let timer = Instant::now();
-    let mut st = conn.prepare(sql)?;
-    let mut rows = st.query([])?;
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_connection(false)
+        .await?;
     let mut count = 0;
-    while let Some(_row) = rows.next()? {
+    let timer = Instant::now();
+    let mut rows = sqlx::query(sql).fetch(&mut conn);
+    while let Some(_row) = rows.try_next().await? {
         count += 1;
     }
     println!("Query returned {count} rows in {:?}", timer.elapsed());
@@ -278,15 +282,11 @@ async fn query(filename: &str, sql: &str) -> Result<()> {
 
 async fn optimize(args: &OptimizeArgs) -> Result<()> {
     let conn = ConnectionBuilder::filename(Some(&args.filename))
-        .open_sqlx_connection(false)
+        .open_connection(false)
         .await?;
     let conn = Arc::new(tokio::sync::Mutex::new(conn));
-
-    let pool = open_deadpool(Some(&args.filename))?;
-    pool.resize(1);
-    let xpool = crate::sqlite::connection::open_sqlx_pool(Some(&args.filename), false).await?;
-    // TODO: Set size to 1.
-    let repo = SqliteEventRepo::new(conn, xpool.clone(), pool.clone(), false);
+    let pool = crate::sqlite::connection::open_pool(Some(&args.filename), false).await?;
+    let repo = SqliteEventRepo::new(conn, pool.clone(), false);
 
     info!("Running inbox style query");
     let gte = time::OffsetDateTime::now_utc() - time::Duration::days(1);
@@ -300,14 +300,11 @@ async fn optimize(args: &OptimizeArgs) -> Result<()> {
     .map_err(|err| anyhow::anyhow!(format!("{}", err)))?;
 
     info!("Optimizing");
-    let conn = pool.get().await?;
-    conn.interact(|conn| -> Result<(), rusqlite::Error> {
-        conn.pragma_update(None, "analysis_limit", 400)?;
-        conn.execute("PRAGMA optimize", [])?;
-        Ok(())
-    })
-    .await
-    .unwrap()?;
+    let mut conn = crate::sqlite::connection::open_connection(Some(&args.filename), false).await?;
+    sqlx::query("PRAGMA analysis_limit = 400")
+        .execute(&mut conn)
+        .await?;
+    sqlx::query("PRAGMA optmize").execute(&mut conn).await?;
     info!("Done. If EveBox is running, it is recommended to restart it.");
     Ok(())
 }
@@ -321,8 +318,10 @@ async fn analyze(filename: &str) -> Result<()> {
         Ok(true) => {}
     }
 
-    let conn = ConnectionBuilder::filename(Some(filename)).open(false)?;
-    conn.execute("analyze", [])?;
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_connection(false)
+        .await?;
+    sqlx::query("analyze").execute(&mut conn).await?;
     info!("Done");
     Ok(())
 }

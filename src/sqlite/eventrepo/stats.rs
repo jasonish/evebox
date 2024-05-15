@@ -2,14 +2,18 @@
 // SPDX-License-Identifier: MIT
 
 use super::SqliteEventRepo;
-use crate::sqlite::builder::NamedParams;
 use crate::{
     eventrepo::{DatastoreError, StatsAggQueryParams},
     querystring::{self, QueryString},
     sqlite::{builder::EventQueryBuilder, eventrepo::nanos_to_rfc3339, format_sqlite_timestamp},
     util, LOG_QUERIES,
 };
-use rusqlite::{Connection, OptionalExtension};
+use futures::TryStreamExt;
+use serde::Serialize;
+use sqlx::sqlite::SqliteArguments;
+use sqlx::Arguments;
+use sqlx::Row;
+use sqlx::SqliteConnection;
 use std::time::Instant;
 use tracing::{debug, info};
 
@@ -19,166 +23,174 @@ impl SqliteEventRepo {
         interval: Option<u64>,
         q: &[querystring::Element],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        // The timestamp (in seconds) of the latest event to
+        // consider. This is to determine the bucket interval as well
+        // as fill wholes at the end of the dataset.
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+
+        let mut conn = self.pool.acquire().await?;
+
+        // Get the earliest timestamp, either from the query or the database.
+        let earliest = if let Some(earliest) = q.get_earliest() {
+            earliest
+        } else if let Some(earliest) = Self::get_earliest_timestamp(&mut conn).await? {
+            let earliest = time::OffsetDateTime::from_unix_timestamp_nanos(earliest as i128)?;
+            debug!(
+                "No time-range provided by client, using earliest from database of {}",
+                &earliest
+            );
+            earliest
+        } else {
+            return Ok(vec![]);
+        };
+
+        let interval = if let Some(interval) = interval {
+            interval
+        } else {
+            let interval = util::histogram_interval(now - earliest.unix_timestamp());
+            debug!("No interval provided by client, using {interval}s");
+            interval
+        };
+
+        let last_time = now / (interval as i64) * (interval as i64);
+        let mut next_time = ((earliest.unix_timestamp() as u64) / interval * interval) as i64;
+
+        let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
+
         let mut builder = EventQueryBuilder::new(self.fts);
+
         let q = q.to_vec();
-        self.pool
-            .get()
-            .await?
-            .interact(move |conn| -> Result<_, _> {
-                // The timestamp (in seconds) of the latest event to
-                // consider. This is to determine the bucket interval
-                // as well as fill wholes at the end of the dataset.
-                let now = time::OffsetDateTime::now_utc().unix_timestamp();
 
-                // Get the earliest timestamp, either from the query or the database.
-                let earliest = if let Some(earliest) = q.get_earliest() {
-                    earliest
-                } else if let Some(earliest) = Self::get_earliest_timestamp(conn)? {
-                    let earliest =
-                        time::OffsetDateTime::from_unix_timestamp_nanos(earliest as i128)?;
-                    debug!(
-                        "No time-range provided by client, using earliest from database of {}",
-                        &earliest
-                    );
-                    earliest
-                } else {
-                    return Ok(vec![]);
-                };
+        builder.select(&timestamp);
+        builder.select(format!("count({timestamp})"));
+        builder.from("events");
+        builder.group_by(timestamp.to_string());
+        builder.order_by("timestamp", "asc");
 
-                let interval = if let Some(interval) = interval {
-                    interval
-                } else {
-                    let interval = util::histogram_interval(now - earliest.unix_timestamp());
-                    debug!("No interval provided by client, using {interval}s");
-                    interval
-                };
+        builder.apply_query_string(&q);
 
-                let last_time = now / (interval as i64) * (interval as i64);
-                let mut next_time =
-                    ((earliest.unix_timestamp() as u64) / interval * interval) as i64;
+        let (sql, params) = builder.build();
 
-                let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
-                builder.select(&timestamp);
-                builder.select(format!("count({timestamp})"));
-                builder.from("events");
-                builder.group_by(timestamp.to_string());
-                builder.order_by("timestamp", "asc");
+        if *LOG_QUERIES {
+            info!("sql={sql}, params={:?}", &params);
+        }
 
-                builder.apply_query_string(&q);
+        let timer = Instant::now();
 
-                let (sql, params) = builder.build();
+        #[derive(Debug, Serialize)]
+        struct Element {
+            time: i64,
+            count: u64,
+            debug: String,
+        }
 
-                if *LOG_QUERIES {
-                    info!("sql={sql}, params={:?}", &params);
-                }
+        let mut results = vec![];
+        let mut stream = sqlx::query_with(&sql, params).fetch(&mut *conn);
+        while let Some(row) = stream.try_next().await? {
+            let time: i64 = row.try_get(0)?;
+            let count: i64 = row.try_get(1)?;
+            let debug = time::OffsetDateTime::from_unix_timestamp(time).unwrap();
 
-                let timer = Instant::now();
-                let mut st = conn.prepare(&sql)?;
-                let mut rows = st.query(rusqlite::params_from_iter(params.clone()))?;
-                let mut results = vec![];
-                while let Some(row) = rows.next()? {
-                    let time: i64 = row.get(0)?;
-                    let count: i64 = row.get(1)?;
-                    let debug = time::OffsetDateTime::from_unix_timestamp(time).unwrap();
-                    while next_time < time {
-                        let dt = time::OffsetDateTime::from_unix_timestamp(next_time).unwrap();
-                        results.push(json!({"time": next_time * 1000,
-					    "count": 0,
-					    "debug": format_sqlite_timestamp(&dt)}));
-                        next_time += interval as i64;
-                    }
-                    results.push(json!({"time": time * 1000,
-			       "count": count,
-			       "debug": format_sqlite_timestamp(&debug)}));
-                    next_time += interval as i64;
-                }
-                while next_time <= last_time {
-                    let dt = time::OffsetDateTime::from_unix_timestamp(next_time).unwrap();
-                    results.push(json!({"time": next_time * 1000,
-					"count": 0,
-					"debug": format_sqlite_timestamp(&dt)}));
-                    next_time += interval as i64;
-                }
+            while next_time < time {
+                let dt = time::OffsetDateTime::from_unix_timestamp(next_time).unwrap();
+                results.push(Element {
+                    time: next_time * 1000,
+                    count: 0,
+                    debug: format_sqlite_timestamp(&dt),
+                });
+                next_time += interval as i64;
+            }
+            results.push(Element {
+                time: time * 1000,
+                count: count as u64,
+                debug: format_sqlite_timestamp(&debug),
+            });
+            next_time += interval as i64;
+        }
 
-                if *LOG_QUERIES {
-                    info!(
-                        "Query time: {} ms, params={:?}",
-                        timer.elapsed().as_millis(),
-                        params
-                    );
-                }
+        while next_time <= last_time {
+            let dt = time::OffsetDateTime::from_unix_timestamp(next_time).unwrap();
+            results.push(Element {
+                time: next_time * 1000,
+                count: 0,
+                debug: format_sqlite_timestamp(&dt),
+            });
+            next_time += interval as i64;
+        }
 
-                Ok(results)
-            })
-            .await?
+        if *LOG_QUERIES {
+            info!(
+                "Query time: {} ms: rows={}",
+                timer.elapsed().as_millis(),
+                results.len()
+            );
+        }
+
+        let response: Vec<serde_json::Value> = results
+            .iter()
+            .filter_map(|e| serde_json::to_value(e).ok())
+            .collect();
+        Ok(response)
     }
 
-    fn get_earliest_timestamp(conn: &Connection) -> Result<Option<i64>, rusqlite::Error> {
-        conn.query_row("select min(timestamp) from events", [], |row| {
-            let timestamp: i64 = row.get(0)?;
-            Ok(timestamp)
-        })
-        .optional()
+    async fn get_earliest_timestamp(
+        conn: &mut SqliteConnection,
+    ) -> Result<Option<i64>, sqlx::Error> {
+        sqlx::query_scalar("SELECT MIN(timestamp) FROM events")
+            .fetch_optional(&mut *conn)
+            .await
     }
 
     async fn get_stats(&self, qp: &StatsAggQueryParams) -> anyhow::Result<Vec<(u64, u64)>> {
         let qp = qp.clone();
-        let conn = self.pool.get().await?;
         let field = format!("$.{}", &qp.field);
         let start_time = qp.start_time.unix_timestamp_nanos() as i64;
         let range = (time::OffsetDateTime::now_utc() - qp.start_time).whole_seconds();
         let interval = crate::util::histogram_interval(range);
-        let result = conn
-            .interact(move |conn| -> Result<Vec<(u64, u64)>, rusqlite::Error> {
-                let mut named_params = NamedParams::new();
-                let sql = format!(
-                    "
-                        SELECT
-                            (timestamp / 1000000000 / {interval}) * {interval} AS a,
-                            MAX(json_extract(events.source, :field))
-                        FROM events
-                        WHERE %WHERE%
-                        GROUP BY a
-                        ORDER BY a
-                    "
-                );
 
-                let mut filters = vec![
-                    "json_extract(events.source, '$.event_type') = 'stats'",
-                    "timestamp >= :start_time",
-                ];
+        let mut args = SqliteArguments::default();
 
-                named_params.set(":field", field.to_string());
-                named_params.set(":start_time", start_time);
+        let sql = format!(
+            "
+            SELECT
+              (timestamp / 1000000000 / {interval}) * {interval} AS a,
+              MAX(json_extract(events.source, ?))
+              FROM events
+              WHERE %WHERE%
+              GROUP BY a
+              ORDER BY a
+            "
+        );
+        args.add(&field);
 
-                if let Some(sensor_name) = qp.sensor_name.as_ref() {
-                    filters.push("json_extract(events.source, '$.host') = :sensor_name");
-                    named_params.set(":sensor_name", sensor_name.as_ref());
-                }
-                let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-                if *LOG_QUERIES {
-                    info!("sql={}, params={:?}", &sql, named_params);
-                }
+        let mut filters = vec![
+            "json_extract(events.source, '$.event_type') = 'stats'",
+            "timestamp >= ?",
+        ];
+        args.add(start_time);
 
-                let timer = Instant::now();
-                let mut stmt = conn.prepare(&sql)?;
-                let rows = stmt.query_map(named_params.build().as_slice(), |row| {
-                    Ok((row.get(0)?, row.get(1)?))
-                })?;
-                let mut entries = vec![];
-                for row in rows {
-                    entries.push(row?);
-                }
-                debug!(
-                    "Returning {} stats records for {field} in {} ms",
-                    entries.len(),
-                    timer.elapsed().as_millis()
-                );
-                Ok(entries)
-            })
-            .await
-            .map_err(|err| anyhow!("sqlite interact error:: {:?}", err))??;
-        Ok(result)
+        if let Some(sensor_name) = qp.sensor_name.as_ref() {
+            filters.push("json_extract(events.source, '$.host') = ?");
+            args.add(sensor_name);
+        }
+
+        let sql = sql.replace("%WHERE%", &filters.join(" AND "));
+        if *LOG_QUERIES {
+            info!("sql={}, params={:?}", &sql, &args);
+        }
+
+        let timer = Instant::now();
+
+        let rows: Vec<(u64, u64)> = sqlx::query_as_with(&sql, args)
+            .fetch_all(&self.pool)
+            .await?;
+
+        debug!(
+            "Returning {} stats records for {field} in {} ms",
+            rows.len(),
+            timer.elapsed().as_millis()
+        );
+        Ok(rows)
     }
 
     pub async fn stats_agg(

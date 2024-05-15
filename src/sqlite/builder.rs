@@ -2,143 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 use crate::querystring::{self, Element};
-use rusqlite::{types::ToSqlOutput, ToSql};
-use std::collections::{HashMap, VecDeque};
-
-pub(crate) enum Types<'a> {
-    Str(&'a str),
-    String(String),
-    I64(i64),
-}
-
-impl<'a> From<&'a str> for Types<'a> {
-    fn from(value: &'a str) -> Self {
-        Self::Str(value)
-    }
-}
-
-impl<'a> From<String> for Types<'a> {
-    fn from(value: String) -> Self {
-        Self::String(value)
-    }
-}
-
-impl<'a> From<&'a String> for Types<'a> {
-    fn from(value: &'a String) -> Self {
-        Self::Str(value.as_ref())
-    }
-}
-
-impl<'a> From<i32> for Types<'a> {
-    fn from(value: i32) -> Self {
-        Self::I64(value as i64)
-    }
-}
-
-impl<'a> From<i64> for Types<'a> {
-    fn from(value: i64) -> Self {
-        Self::I64(value)
-    }
-}
-
-impl<'a> From<u64> for Types<'a> {
-    fn from(value: u64) -> Self {
-        Self::I64(value as i64)
-    }
-}
-
-pub(crate) struct Parameters<'a> {
-    params: VecDeque<Types<'a>>,
-}
-
-impl<'a> Parameters<'a> {
-    pub fn new() -> Self {
-        Self {
-            params: VecDeque::new(),
-        }
-    }
-
-    pub fn push<T: Into<Types<'a>>>(&mut self, val: T) {
-        self.params.push_back(val.into());
-    }
-
-    pub fn query(
-        mut self,
-        sql: &'a str,
-    ) -> sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>> {
-        let mut query = sqlx::query::<sqlx::Sqlite>(sql);
-        while let Some(p) = self.params.pop_front() {
-            match p {
-                Types::Str(v) => query = query.bind(v),
-                Types::String(v) => query = query.bind(v),
-                Types::I64(v) => query = query.bind(v),
-            }
-        }
-        query
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum SqliteValue {
-    String(String),
-    I64(i64),
-}
-
-impl ToSql for SqliteValue {
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        match self {
-            Self::I64(v) => Ok(ToSqlOutput::Owned((*v).into())),
-            Self::String(v) => Ok(ToSqlOutput::Owned(v.to_string().into())),
-        }
-    }
-}
-
-impl From<i64> for SqliteValue {
-    fn from(value: i64) -> Self {
-        Self::I64(value)
-    }
-}
-
-impl From<String> for SqliteValue {
-    fn from(value: String) -> Self {
-        Self::String(value)
-    }
-}
-
-impl From<&str> for SqliteValue {
-    fn from(value: &str) -> Self {
-        Self::String(value.to_string())
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct NamedParams {
-    params: HashMap<String, SqliteValue>,
-}
-
-impl NamedParams {
-    pub fn new() -> Self {
-        Self {
-            params: HashMap::default(),
-        }
-    }
-
-    pub fn set<K: Into<String>, V: Into<SqliteValue>>(&mut self, key: K, val: V) {
-        self.params.insert(key.into(), val.into());
-    }
-
-    pub fn build(&self) -> Vec<(&str, &dyn ToSql)> {
-        let mut params = vec![];
-        for (k, v) in &self.params {
-            let v: &dyn ToSql = v;
-            params.push((&**k, v));
-        }
-        params
-    }
-}
+use sqlx::sqlite::SqliteArguments;
+use sqlx::Arguments;
 
 #[derive(Default)]
-pub(crate) struct EventQueryBuilder {
+pub(crate) struct EventQueryBuilder<'a> {
     /// Is FTS available?
     fts: bool,
 
@@ -148,11 +16,12 @@ pub(crate) struct EventQueryBuilder {
     group_by: Vec<String>,
     order_by: Option<(String, String)>,
     limit: i64,
-    params: Vec<SqliteValue>,
     fts_phrases: Vec<String>,
+
+    args: SqliteArguments<'a>,
 }
 
-impl EventQueryBuilder {
+impl<'a> EventQueryBuilder<'a> {
     pub fn new(fts: bool) -> Self {
         Self {
             fts,
@@ -197,9 +66,11 @@ impl EventQueryBuilder {
         self
     }
 
-    pub fn push_param<V: Into<SqliteValue>>(&mut self, val: V) -> &mut Self {
-        self.params.push(val.into());
-        self
+    pub fn push_arg<T>(&mut self, value: T)
+    where
+        T: sqlx::Encode<'a, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + 'a,
+    {
+        self.args.add(value)
     }
 
     pub fn limit(&mut self, limit: i64) -> &mut Self {
@@ -215,20 +86,20 @@ impl EventQueryBuilder {
                         self.push_fts(s);
                     } else {
                         self.push_where("events.source LIKE ?")
-                            .push_param(format!("%{s}%"));
+                            .push_arg(format!("%{s}%"));
                     }
                 }
                 Element::NotString(s) => {
                     self.push_where("events.source NOT LIKE ?")
-                        .push_param(format!("%{s}%"));
+                        .push_arg(format!("%{s}%"));
                 }
                 Element::KeyVal(k, v) => {
                     if let Ok(i) = v.parse::<i64>() {
                         self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
-                            .push_param(i);
+                            .push_arg(i);
                     } else {
                         self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
-                            .push_param(v.to_string());
+                            .push_arg(v.to_string());
 
                         // If FTS is enabled, some key/val searches
                         // can really benefit from it.
@@ -266,7 +137,7 @@ impl EventQueryBuilder {
                     let mut ors = vec![];
                     for field in fields {
                         ors.push(format!("json_extract(events.source, '$.{}') = ?", field));
-                        self.push_param(ip.to_string());
+                        self.push_arg(ip.to_string());
                     }
                     self.push_where(format!("({})", ors.join(" OR ")));
                     if self.fts {
@@ -279,17 +150,17 @@ impl EventQueryBuilder {
 
     pub fn earliest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
         self.push_where("timestamp >= ?")
-            .push_param(ts.unix_timestamp_nanos() as i64);
+            .push_arg(ts.unix_timestamp_nanos() as i64);
         self
     }
 
     pub fn latest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
         self.push_where("timestamp <= ?")
-            .push_param(ts.unix_timestamp_nanos() as i64);
+            .push_arg(ts.unix_timestamp_nanos() as i64);
         self
     }
 
-    pub fn build(mut self) -> (String, Vec<SqliteValue>) {
+    pub fn build(&mut self) -> (String, SqliteArguments<'a>) {
         let mut sql = String::new();
 
         sql.push_str("select ");
@@ -301,7 +172,7 @@ impl EventQueryBuilder {
         if !self.fts_phrases.is_empty() {
             let query = self.fts_phrases.join(" AND ");
             self.push_where("events.rowid in (select rowid from fts where fts match ?)");
-            self.push_param(query);
+            self.push_arg(query);
         }
 
         if !self.wheres.is_empty() {
@@ -322,6 +193,6 @@ impl EventQueryBuilder {
             sql.push_str(&format!(" limit {}", self.limit));
         }
 
-        (sql, self.params)
+        (sql, self.args.clone())
     }
 }

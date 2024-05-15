@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 use super::SqliteEventRepo;
-use crate::{eventrepo::DatastoreError, sqlite::builder::SqliteValue};
-use rusqlite::params_from_iter;
+use crate::eventrepo::DatastoreError;
+use futures::TryStreamExt;
+use sqlx::sqlite::SqliteArguments;
+use sqlx::Arguments;
+use sqlx::Row;
 use time::OffsetDateTime;
 
 impl SqliteEventRepo {
@@ -17,16 +20,16 @@ impl SqliteEventRepo {
             "json_extract(events.source, '$.event_type') = 'dhcp'".to_string(),
             format!("json_extract(events.source, '$.dhcp.dhcp_type') = '{dhcp_type}'"),
         ];
-        let mut params = vec![];
+        let mut params = SqliteArguments::default();
 
         if let Some(earliest) = earliest {
-            params.push(SqliteValue::I64(earliest.unix_timestamp_nanos() as i64));
+            params.add(earliest.unix_timestamp_nanos() as i64);
             wheres.push("timestamp >= ?".to_string())
         }
 
         if let Some(sensor) = &sensor {
             wheres.push("json_extract(events.source, '$.host') = ?".to_string());
-            params.push(SqliteValue::String(sensor.to_string()));
+            params.add(sensor.to_string());
         }
 
         let sql = r#"
@@ -45,25 +48,14 @@ impl SqliteEventRepo {
             where json_extract(t1.source, '$.event_type') = 'dhcp'
         "#;
 
-        let events = self
-            .pool
-            .get()
-            .await?
-            .interact(
-                move |conn| -> Result<Vec<serde_json::Value>, DatastoreError> {
-                    let sql = sql.replace("%where%", &wheres.join(" and "));
-                    let mut st = conn.prepare(&sql)?;
-                    let mut rows = st.query(params_from_iter(params))?;
-                    let mut events = vec![];
-                    while let Some(row) = rows.next()? {
-                        let event: String = row.get(0)?;
-                        let event: serde_json::Value = serde_json::from_str(&event)?;
-                        events.push(event);
-                    }
-                    Ok(events)
-                },
-            )
-            .await??;
+        let sql = sql.replace("%where%", &wheres.join(" and "));
+        let mut rows = sqlx::query_with(&sql, params).fetch(&self.pool);
+        let mut events = vec![];
+        while let Some(row) = rows.try_next().await? {
+            let event: String = row.try_get(0)?;
+            let event: serde_json::Value = serde_json::from_str(&event)?;
+            events.push(event);
+        }
 
         Ok(events)
     }

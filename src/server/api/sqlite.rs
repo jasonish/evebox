@@ -52,7 +52,7 @@ pub(crate) async fn info(
             ..Default::default()
         };
 
-        let mut tx = sqlite.xpool.begin().await?;
+        let mut tx = sqlite.pool.begin().await?;
         let mut info = Info::new(&mut tx);
         response.auto_vacuum = info.get_auto_vacuum().await?;
         response.journal_mode = info.get_journal_mode().await?;
@@ -84,25 +84,18 @@ pub(crate) async fn fts_check(
 
         info!("Running SQLite FTS integrity check from API");
 
-        let response = sqlite
-            .pool
-            .get()
-            .await?
-            .interact(move |conn| -> Result<Response, rusqlite::Error> {
-                let response = match sqlite::util::fts_check_rusqlite(conn) {
-                    Ok(_) => Response {
-                        ok: true,
-                        error: None,
-                    },
-                    Err(err) => Response {
-                        ok: false,
-                        error: Some(format!("{:?}", err)),
-                    },
-                };
+        let mut tx = sqlite.pool.begin().await?;
+        let response = match sqlite::util::fts_check(&mut tx).await {
+            Ok(_) => Response {
+                ok: true,
+                error: None,
+            },
+            Err(err) => Response {
+                ok: false,
+                error: Some(format!("{:?}", err)),
+            },
+        };
 
-                Ok(response)
-            })
-            .await??;
         return Ok(Json(response).into_response());
     }
 

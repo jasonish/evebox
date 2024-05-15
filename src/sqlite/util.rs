@@ -5,28 +5,22 @@ use sqlx::SqliteConnection;
 
 pub(crate) async fn fts_create(tx: &mut SqliteConnection) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "create virtual table fts
-            using fts5(timestamp unindexed, source_values, content=events, content_rowid=rowid)",
+        "CREATE VIRTUAL TABLE fts
+             USING fts5(timestamp unindexed, source_values, content=events, content_rowid=rowid)",
     )
     .execute(&mut *tx)
     .await?;
 
     sqlx::query(
         "
-        create trigger events_ad_trigger after delete on events begin
-          insert into fts(fts, rowid, timestamp, source_values)
-            values ('delete', old.rowid, old.timestamp, old.source_values);
-        end",
+        CREATE TRIGGER events_ad_trigger AFTER DELETE ON events BEGIN
+          INSERT INTO fts(fts, rowid, timestamp, source_values)
+            VALUES ('delete', old.rowid, old.timestamp, old.source_values);
+        END",
     )
     .execute(&mut *tx)
     .await?;
 
-    Ok(())
-}
-
-pub(crate) fn fts_check_rusqlite(conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
-    let mut stmt = conn.prepare("insert into fts(fts, rank) values ('integrity-check', 1)")?;
-    let _ = stmt.execute([])?;
     Ok(())
 }
 

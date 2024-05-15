@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use super::builder::SqliteValue;
 use crate::eve::{self, Eve};
 use sqlx::Connection;
 use std::sync::Arc;
@@ -23,88 +22,28 @@ struct PreparedEvent {
     event: String,
 }
 
-pub(crate) struct QueuedStatement {
-    pub(crate) statement: String,
-    pub(crate) params: Vec<SqliteValue>,
-}
-
 pub(crate) struct SqliteEventSink {
-    xconn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
-    xqueue: Vec<PreparedEvent>,
+    conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
+    queue: Vec<PreparedEvent>,
     fts: bool,
 }
 
 impl Clone for SqliteEventSink {
     fn clone(&self) -> Self {
         Self {
-            xconn: self.xconn.clone(),
+            conn: self.conn.clone(),
             fts: self.fts,
-            xqueue: Vec::new(),
+            queue: Vec::new(),
         }
     }
-}
-
-/// Prepare SQL statements for adding an event to the database.
-pub(crate) fn prepare_sql(
-    event: &mut serde_json::Value,
-    fts: bool,
-) -> Result<Vec<QueuedStatement>, IndexError> {
-    let ts = event.timestamp().ok_or(IndexError::TimestampMissing)?;
-    reformat_timestamps(event);
-    let source_values = extract_values(event);
-    let mut archived = 0;
-
-    if let Some(actions) = event["alert"]["metadata"]["evebox-action"].as_array() {
-        for action in actions {
-            if let serde_json::Value::String(action) = action {
-                if action == "archive" {
-                    archived = 1;
-                    break;
-                }
-            }
-        }
-    }
-
-    eve::eve::add_evebox_metadata(event, None);
-
-    let mut statements = vec![];
-
-    let statement =
-        "INSERT INTO events (timestamp, archived, source, source_values) VALUES (?, ?, ?, ?)";
-    let params = vec![
-        SqliteValue::I64(ts.unix_timestamp_nanos() as i64),
-        SqliteValue::I64(archived),
-        SqliteValue::String(event.to_string()),
-        SqliteValue::String(source_values.clone()),
-    ];
-
-    statements.push(QueuedStatement {
-        statement: statement.to_string(),
-        params,
-    });
-
-    if fts {
-        let statement =
-            "INSERT INTO fts (rowid, timestamp, source_values) VALUES (last_insert_rowid(), ?, ?)";
-        let params = vec![
-            SqliteValue::I64(ts.unix_timestamp_nanos() as i64),
-            SqliteValue::String(source_values),
-        ];
-        statements.push(QueuedStatement {
-            statement: statement.to_string(),
-            params,
-        });
-    }
-
-    Ok(statements)
 }
 
 impl SqliteEventSink {
-    pub fn new(xconn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>, fts: bool) -> Self {
+    pub fn new(conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>, fts: bool) -> Self {
         Self {
-            xconn,
+            conn,
             fts,
-            xqueue: Vec::new(),
+            queue: Vec::new(),
         }
     }
 
@@ -125,6 +64,8 @@ impl SqliteEventSink {
             }
         }
 
+        eve::eve::add_evebox_metadata(event, None);
+
         let prepared = PreparedEvent {
             ts: ts.unix_timestamp_nanos() as i64,
             source_values,
@@ -132,7 +73,7 @@ impl SqliteEventSink {
             archived,
         };
 
-        self.xqueue.push(prepared);
+        self.queue.push(prepared);
 
         Ok(())
     }
@@ -143,11 +84,11 @@ impl SqliteEventSink {
     }
 
     pub async fn commit(&mut self) -> anyhow::Result<usize> {
-        debug!("Committing {} events with sqlx", self.xqueue.len());
-        let mut xconn = self.xconn.lock().await;
-        let mut tx = xconn.begin().await.unwrap();
+        debug!("Committing {} events with sqlx", self.queue.len());
+        let mut conn = self.conn.lock().await;
+        let mut tx = conn.begin().await.unwrap();
 
-        for event in &self.xqueue {
+        for event in &self.queue {
             let _result = sqlx::query::<sqlx::Sqlite>(
                 r#"
                 INSERT INTO events (timestamp, archived, source, source_values)
@@ -159,8 +100,7 @@ impl SqliteEventSink {
             .bind(&event.event)
             .bind(&event.source_values)
             .execute(&mut *tx)
-            .await
-            .unwrap();
+            .await?;
 
             if self.fts {
                 let _result = sqlx::query::<sqlx::Sqlite>(
@@ -171,20 +111,19 @@ impl SqliteEventSink {
                 .bind(event.ts)
                 .bind(&event.source_values)
                 .execute(&mut *tx)
-                .await
-                .unwrap();
+                .await?;
             }
         }
 
-        tx.commit().await.unwrap();
+        tx.commit().await?;
 
-        let n = self.xqueue.len();
-        self.xqueue.truncate(0);
+        let n = self.queue.len();
+        self.queue.truncate(0);
         Ok(n)
     }
 
     pub fn pending(&self) -> usize {
-        self.xqueue.len()
+        self.queue.len()
     }
 }
 

@@ -424,17 +424,6 @@ pub(crate) enum ApiError {
     AnyhowHandler(#[from] anyhow::Error),
     #[error("internal server error")]
     DatastoreError(#[from] DatastoreError),
-
-    /// SQLite pool errors from deadpool.
-    #[error("internal server error")]
-    SqlitePoolError(#[from] deadpool_sqlite::PoolError),
-
-    #[error("internal database error")]
-    SqliteInteractError(#[from] deadpool_sqlite::InteractError),
-
-    #[error("internal database error")]
-    RusqliteError(#[from] rusqlite::Error),
-
     #[error("internal database error")]
     Sqlx(#[from] sqlx::Error),
 }
@@ -457,9 +446,6 @@ impl IntoResponse for ApiError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal server error".to_string(),
             ),
-            ApiError::SqlitePoolError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
-            ApiError::SqliteInteractError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
-            ApiError::RusqliteError(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
             ApiError::Sqlx(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
         };
         let body = Json(serde_json::json!({

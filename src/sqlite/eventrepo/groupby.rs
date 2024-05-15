@@ -5,10 +5,9 @@ use crate::{
     eventrepo::DatastoreError,
     querystring::{self},
     sqlite::builder::EventQueryBuilder,
-    LOG_QUERIES,
 };
-use rusqlite::types::{FromSqlError, ValueRef};
-use tracing::info;
+use futures::TryStreamExt;
+use sqlx::Row;
 
 use super::SqliteEventRepo;
 
@@ -41,42 +40,18 @@ impl SqliteEventRepo {
 
         builder.apply_query_string(&q);
 
-        let results = self
-            .pool
-            .get()
-            .await?
-            .interact(
-                move |conn| -> Result<Vec<serde_json::Value>, DatastoreError> {
-                    let tx = conn.transaction()?;
-                    let (sql, params) = builder.build();
-                    if *LOG_QUERIES {
-                        info!("sql={}, params={:?}", &sql, &params);
-                    }
-                    let mut st = tx.prepare(&sql)?;
-                    let mut rows = st.query(rusqlite::params_from_iter(params))?;
-                    let mut results = vec![];
-                    while let Some(row) = rows.next()? {
-                        let count: i64 = row.get(0)?;
-                        if count > 0 {
-                            let val = rusqlite_to_json(row.get_ref(1)?)?;
-                            results.push(json!({"count": count, "key": val}));
-                        }
-                    }
-                    Ok(results)
-                },
-            )
-            .await??;
-        Ok(results)
-    }
-}
+        let mut results = vec![];
+        let (sql, args) = builder.build();
+        let mut rows = sqlx::query_with(&sql, args).fetch(&self.pool);
+        while let Some(row) = rows.try_next().await? {
+            let count: i64 = row.try_get(0)?;
+            if count > 0 {
+                // Rely on everything being a string in SQLite.
+                let val: String = row.try_get(1)?;
+                results.push(json!({"count": count, "key": val}));
+            }
+        }
 
-fn rusqlite_to_json(val: ValueRef) -> Result<serde_json::Value, FromSqlError> {
-    match val {
-        ValueRef::Null => Ok(serde_json::Value::Null),
-        ValueRef::Integer(_) => Ok(val.as_i64()?.into()),
-        ValueRef::Real(_) => Ok(val.as_f64()?.into()),
-        ValueRef::Text(_) => Ok(val.as_str()?.into()),
-        // Not expected, at least not as of 2023-02-07.
-        ValueRef::Blob(_) => unimplemented!(),
+        Ok(results)
     }
 }

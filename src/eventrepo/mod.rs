@@ -33,24 +33,16 @@ pub enum DatastoreError {
     Unimplemented,
     #[error("event not found")]
     EventNotFound,
-    #[error("sqlite error: {0}")]
-    SQLiteError(#[from] rusqlite::Error),
     #[error("elasticsearch: {0}")]
     ElasticSearchError(String),
     #[error("elasticsearch: {0}")]
     ElasticError(#[from] elastic::ElasticError),
     #[error("serde: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
-    #[error("database pool error: {0}")]
-    DeadpoolError(#[from] deadpool_sqlite::PoolError),
-    #[error("database pool interation error: {0}")]
-    DeadpoolInteractionError(#[from] deadpool_sqlite::InteractError),
     #[error("time: {0}")]
     TimeParse(#[from] time::error::Parse),
     #[error("time: {0}")]
     TimeComponentRange(#[from] time::error::ComponentRange),
-    #[error("sql: {0}")]
-    FromSql(#[from] rusqlite::types::FromSqlError),
 
     #[error("sqlx: {0}")]
     SqlxError(#[from] sqlx::Error),

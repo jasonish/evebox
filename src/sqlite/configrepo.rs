@@ -279,7 +279,7 @@ pub(crate) async fn open(filename: Option<&Path>) -> Result<ConfigRepo, sqlx::Er
             .map(|p| p.display().to_string())
             .unwrap_or_else(|| ":memory:".to_string())
     );
-    let pool = crate::sqlite::connection::open_sqlx_pool(filename, true).await?;
+    let pool = crate::sqlite::connection::open_pool(filename, true).await?;
     init_db(pool.clone()).await?;
     Ok(ConfigRepo::new(pool))
 }

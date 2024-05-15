@@ -29,11 +29,10 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let db_connection_builder = Arc::new(sqlite::ConnectionBuilder::filename(Some(
         &PathBuf::from(&db_filename),
     )));
-    let mut conn = db_connection_builder.open_sqlx_connection(true).await?;
-    sqlite::connection::init_event_db2(&mut conn).await?;
-    let pool = sqlite::connection::open_deadpool(Some(&db_filename))?;
-    let xpool = sqlite::connection::open_sqlx_pool(Some(&db_filename), false).await?;
-    let db = crate::sqlite::connection::open_sqlx_connection(Some(&db_filename), true).await?;
+    let mut conn = db_connection_builder.open_connection(true).await?;
+    sqlite::connection::init_event_db(&mut conn).await?;
+    let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
+    let db = crate::sqlite::connection::open_connection(Some(&db_filename), true).await?;
     let db = Arc::new(tokio::sync::Mutex::new(db));
 
     let import_task = {
@@ -62,18 +61,11 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         tokio::spawn(async move {
             let mut port = 5636;
             loop {
-                let xconnection = Arc::new(tokio::sync::Mutex::new(
-                    db_connection_builder
-                        .open_sqlx_connection(false)
-                        .await
-                        .unwrap(),
+                let conn = Arc::new(tokio::sync::Mutex::new(
+                    db_connection_builder.open_connection(false).await.unwrap(),
                 ));
-                let sqlite_datastore = sqlite::eventrepo::SqliteEventRepo::new(
-                    xconnection,
-                    xpool.clone(),
-                    pool.clone(),
-                    fts,
-                );
+                let sqlite_datastore =
+                    sqlite::eventrepo::SqliteEventRepo::new(conn, pool.clone(), fts);
                 let ds = crate::eventrepo::EventRepo::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port,

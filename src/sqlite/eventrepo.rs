@@ -3,11 +3,11 @@
 
 use crate::eventrepo::DatastoreError;
 use crate::server::api::AlertGroupSpec;
-use crate::sqlite::builder;
 use crate::{eve, LOG_QUERIES};
-use rusqlite::ToSql;
 use serde_json::json;
-use sqlx::Row;
+use sqlx::sqlite::SqliteArguments;
+use sqlx::Arguments;
+use sqlx::{Row, SqliteConnection, SqlitePool};
 use std::sync::Arc;
 use std::time::Instant;
 use time::OffsetDateTime;
@@ -22,25 +22,19 @@ mod stats;
 /// SQLite implementation of the event datastore.
 pub(crate) struct SqliteEventRepo {
     pub importer: super::importer::SqliteEventSink,
-    pub pool: deadpool_sqlite::Pool,
-    pub xpool: sqlx::Pool<sqlx::Sqlite>,
+    pub pool: SqlitePool,
     pub fts: bool,
 }
 
-/// A type alias over ToSql allowing us to create vectors of parameters.
-type QueryParam = dyn ToSql + Send + Sync + 'static;
-
 impl SqliteEventRepo {
     pub fn new(
-        conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
-        xpool: sqlx::Pool<sqlx::Sqlite>,
-        pool: deadpool_sqlite::Pool,
+        conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
+        pool: SqlitePool,
         fts: bool,
     ) -> Self {
         debug!("SQLite event store created: fts={fts}");
         Self {
             importer: super::importer::SqliteEventSink::new(conn, fts),
-            xpool,
             pool,
             fts,
         }
@@ -51,26 +45,26 @@ impl SqliteEventRepo {
     }
 
     pub async fn min_row_id(&self) -> Result<u64, DatastoreError> {
-        let (id,): (u64,) = sqlx::query_as("SELECT MIN(rowid) FROM events")
-            .fetch_optional(&self.xpool)
+        let id = sqlx::query_scalar("SELECT MIN(rowid) FROM events")
+            .fetch_optional(&self.pool)
             .await?
-            .unwrap_or((0,));
+            .unwrap_or(0);
         Ok(id)
     }
 
     pub async fn max_row_id(&self) -> Result<u64, DatastoreError> {
-        let (id,): (u64,) = sqlx::query_as("SELECT MAX(rowid) FROM events")
-            .fetch_optional(&self.xpool)
+        let id = sqlx::query_scalar("SELECT MAX(rowid) FROM events")
+            .fetch_optional(&self.pool)
             .await?
-            .unwrap_or((0,));
+            .unwrap_or(0);
         Ok(id)
     }
 
     pub async fn min_timestamp(&self) -> Result<Option<OffsetDateTime>, DatastoreError> {
-        let result: Option<(i64,)> = sqlx::query_as("SELECT MIN(timestamp) FROM events")
-            .fetch_optional(&self.xpool)
+        let result: Option<i64> = sqlx::query_scalar("SELECT MIN(timestamp) FROM events")
+            .fetch_optional(&self.pool)
             .await?;
-        if let Some((ts,)) = result {
+        if let Some(ts) = result {
             Ok(Some(time::OffsetDateTime::from_unix_timestamp_nanos(
                 ts as i128,
             )?))
@@ -80,10 +74,10 @@ impl SqliteEventRepo {
     }
 
     pub async fn max_timestamp(&self) -> Result<Option<OffsetDateTime>, DatastoreError> {
-        let result: Option<(i64,)> = sqlx::query_as("SELECT MAX(timestamp) FROM events")
-            .fetch_optional(&self.xpool)
+        let result: Option<i64> = sqlx::query_scalar("SELECT MAX(timestamp) FROM events")
+            .fetch_optional(&self.pool)
             .await?;
-        if let Some((ts,)) = result {
+        if let Some(ts) = result {
             Ok(Some(time::OffsetDateTime::from_unix_timestamp_nanos(
                 ts as i128,
             )?))
@@ -99,7 +93,7 @@ impl SqliteEventRepo {
         let sql = "SELECT rowid, archived, escalated, source FROM events WHERE rowid = ?";
         if let Some(row) = sqlx::query(sql)
             .bind(event_id)
-            .fetch_optional(&self.xpool)
+            .fetch_optional(&self.pool)
             .await?
         {
             let rowid: i64 = row.try_get(0)?;
@@ -146,30 +140,30 @@ impl SqliteEventRepo {
             WHERE %WHERE%
         ";
 
-        let mut bindings = builder::Parameters::new();
+        let mut args = SqliteArguments::default();
         let mut filters: Vec<String> = Vec::new();
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
         filters.push("archived = 0".to_string());
 
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        bindings.push(alert_group.signature_id);
+        args.add(alert_group.signature_id as i64);
 
         filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        bindings.push(alert_group.src_ip);
+        args.add(alert_group.src_ip);
 
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        bindings.push(&alert_group.dest_ip);
+        args.add(&alert_group.dest_ip);
 
         let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
         let mints_nanos = mints.unix_timestamp_nanos();
         filters.push("timestamp >= ?".to_string());
-        bindings.push(mints_nanos as i64);
+        args.add(mints_nanos as i64);
 
         let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
         let maxts_nanos = maxts.unix_timestamp_nanos();
         filters.push("timestamp <= ?".to_string());
-        bindings.push(maxts_nanos as i64);
+        args.add(maxts_nanos as i64);
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
@@ -177,7 +171,7 @@ impl SqliteEventRepo {
             info!("sql={}", &sql);
         }
 
-        let x = bindings.query(&sql).execute(&self.xpool).await?;
+        let x = sqlx::query_with(&sql, args).execute(&self.pool).await?;
         let n = x.rows_affected();
         debug!("Archived {n} alerts in {} ms", now.elapsed().as_millis());
 
@@ -190,38 +184,38 @@ impl SqliteEventRepo {
         escalate: bool,
     ) -> Result<u64, DatastoreError> {
         let mut filters: Vec<String> = Vec::new();
-        let mut bindings = builder::Parameters::new();
+        let mut args = SqliteArguments::default();
 
         let sql = "
             UPDATE events
             SET escalated = ?
             WHERE %WHERE%
         ";
-        bindings.push(if escalate { 1 } else { 0 });
+        args.add(if escalate { 1 } else { 0 });
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
         filters.push("escalated = ?".to_string());
-        bindings.push(if escalate { 0 } else { 1 });
+        args.add(if escalate { 0 } else { 1 });
 
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        bindings.push(alert_group.signature_id);
+        args.add(alert_group.signature_id as i64);
 
         filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        bindings.push(alert_group.src_ip);
+        args.add(alert_group.src_ip);
 
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        bindings.push(alert_group.dest_ip);
+        args.add(alert_group.dest_ip);
 
         let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
         filters.push("timestamp >= ?".to_string());
-        bindings.push(mints.unix_timestamp_nanos() as i64);
+        args.add(mints.unix_timestamp_nanos() as i64);
 
         let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
         filters.push("timestamp <= ?".to_string());
-        bindings.push(maxts.unix_timestamp_nanos() as i64);
+        args.add(maxts.unix_timestamp_nanos() as i64);
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-        let r = bindings.query(&sql).execute(&self.xpool).await?;
+        let r = sqlx::query_with(&sql, args).execute(&self.pool).await?;
         let n = r.rows_affected();
         Ok(n)
     }
@@ -251,7 +245,7 @@ impl SqliteEventRepo {
     pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
         let n = sqlx::query("UPDATE events SET archived = 1 WHERE rowid = ?")
             .bind(event_id)
-            .execute(&self.xpool)
+            .execute(&self.pool)
             .await?
             .rows_affected();
         if n == 0 {
@@ -269,7 +263,7 @@ impl SqliteEventRepo {
         let n = sqlx::query("UPDATE events SET escalated = ? WHERE rowid = ?")
             .bind(if escalate { 1 } else { 0 })
             .bind(event_id)
-            .execute(&self.xpool)
+            .execute(&self.pool)
             .await?
             .rows_affected();
         if n == 0 {
@@ -300,7 +294,7 @@ impl SqliteEventRepo {
 
         let rows: Vec<String> = sqlx::query_scalar(sql)
             .bind(start_time)
-            .fetch_all(&self.xpool)
+            .fetch_all(&self.pool)
             .await?;
         Ok(rows)
     }

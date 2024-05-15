@@ -4,13 +4,11 @@
 use crate::sqlite::has_table;
 use crate::sqlite::info::Info;
 use crate::sqlite::util::fts_create;
-use deadpool_sqlite::CreatePoolError;
-use rusqlite::{Connection, OpenFlags};
 use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::sqlite::{SqliteAutoVacuum, SqliteConnectOptions, SqliteJournalMode};
 use sqlx::sqlite::{SqliteConnection, SqliteSynchronous};
-use sqlx::ConnectOptions;
 use sqlx::Connection as _;
+use sqlx::{ConnectOptions, SqlitePool};
 use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
 
@@ -25,28 +23,12 @@ impl ConnectionBuilder {
         }
     }
 
-    pub fn open(&self, create: bool) -> Result<Connection, rusqlite::Error> {
-        let mut flags = OpenFlags::SQLITE_OPEN_READ_WRITE;
-        if create {
-            flags |= OpenFlags::SQLITE_OPEN_CREATE;
-        }
-        if let Some(filename) = &self.filename {
-            debug!("Opening database {}", filename.display());
-            rusqlite::Connection::open_with_flags(filename, flags)
-        } else {
-            rusqlite::Connection::open("file::memory:?cache=shared")
-        }
+    pub async fn open_connection(&self, create: bool) -> Result<SqliteConnection, sqlx::Error> {
+        open_connection(self.filename.clone(), create).await
     }
 
-    pub async fn _open_sqlx_pool(&self, create: bool) -> Result<sqlx::SqlitePool, sqlx::Error> {
-        open_sqlx_pool(self.filename.clone(), create).await
-    }
-
-    pub async fn open_sqlx_connection(
-        &self,
-        create: bool,
-    ) -> Result<SqliteConnection, sqlx::Error> {
-        open_sqlx_connection(self.filename.clone(), create).await
+    pub async fn open_pool(&self, create: bool) -> Result<SqlitePool, sqlx::Error> {
+        open_pool(self.filename.clone(), create).await
     }
 }
 
@@ -58,7 +40,7 @@ fn sqlite_options() -> SqliteConnectOptions {
         .disable_statement_logging()
 }
 
-pub(crate) async fn open_sqlx_connection(
+pub(crate) async fn open_connection(
     path: Option<impl Into<PathBuf>>,
     create: bool,
 ) -> Result<SqliteConnection, sqlx::Error> {
@@ -71,10 +53,10 @@ pub(crate) async fn open_sqlx_connection(
     SqliteConnection::connect_with(&options).await
 }
 
-pub(crate) async fn open_sqlx_pool(
+pub(crate) async fn open_pool(
     path: Option<impl Into<PathBuf>>,
     create: bool,
-) -> Result<sqlx::Pool<sqlx::Sqlite>, sqlx::Error> {
+) -> Result<SqlitePool, sqlx::Error> {
     let path = path
         .map(|p| p.into())
         .unwrap_or_else(|| "file::memory:?cache=shared".into());
@@ -87,23 +69,7 @@ pub(crate) async fn open_sqlx_pool(
     pool.connect_with(options).await
 }
 
-/// Open an SQLite connection pool with deadpool.
-///
-/// Fortunately SQLites default connection options are good enough as
-/// deadpool does not provide a way to customize them. See
-/// https://github.com/bikeshedder/deadpool/issues/214.
-pub(crate) fn open_deadpool<P: Into<PathBuf>>(
-    path: Option<P>,
-) -> Result<deadpool_sqlite::Pool, CreatePoolError> {
-    let path = path
-        .map(|p| p.into())
-        .unwrap_or_else(|| "file::memory:?cache=shared".into());
-    let config = deadpool_sqlite::Config::new(path);
-    let pool = config.create_pool(deadpool_sqlite::Runtime::Tokio1)?;
-    Ok(pool)
-}
-
-pub(crate) async fn init_event_db2(conn: &mut SqliteConnection) -> anyhow::Result<()> {
+pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result<()> {
     let fresh_install = !has_table(conn, "events").await?;
 
     // Work-around as SQLx does not set the auto_vacuum pragma's in the correct order.

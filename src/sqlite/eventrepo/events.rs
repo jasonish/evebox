@@ -7,6 +7,8 @@ use crate::{
     sqlite::builder::EventQueryBuilder,
     LOG_QUERIES,
 };
+use futures::TryStreamExt;
+use sqlx::{sqlite::SqliteRow, Row};
 use std::time::Instant;
 use tracing::{debug, info};
 
@@ -16,78 +18,68 @@ impl SqliteEventRepo {
         options: EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut builder = EventQueryBuilder::new(self.fts);
-        let result = self
-            .pool
-            .get()
-            .await?
-            .interact(
-                move |conn| -> Result<Vec<serde_json::Value>, rusqlite::Error> {
-                    builder
-                        .select("events.rowid AS id")
-                        .select("events.archived AS archived")
-                        .select("events.escalated AS escalated")
-                        .select("events.source AS source");
-                    builder.from("events");
-                    builder.limit(500);
+        builder
+            .select("events.rowid AS id")
+            .select("events.archived AS archived")
+            .select("events.escalated AS escalated")
+            .select("events.source AS source");
+        builder.from("events");
+        builder.limit(500);
 
-                    if let Some(event_type) = options.event_type {
-                        builder
-                            .push_where("json_extract(events.source, '$.event_type') = ?")
-                            .push_param(event_type);
-                    }
+        if let Some(event_type) = options.event_type {
+            builder
+                .push_where("json_extract(events.source, '$.event_type') = ?")
+                .push_arg(event_type);
+        }
 
-                    if let Some(dt) = &options.max_timestamp {
-                        builder.latest_timestamp(dt);
-                    }
+        if let Some(dt) = &options.max_timestamp {
+            builder.latest_timestamp(dt);
+        }
 
-                    if let Some(dt) = &options.min_timestamp {
-                        builder.earliest_timestamp(dt);
-                    }
+        if let Some(dt) = &options.min_timestamp {
+            builder.earliest_timestamp(dt);
+        }
 
-                    builder.apply_query_string(&options.query_string_elements);
+        builder.apply_query_string(&options.query_string_elements);
 
-                    if let Some(order) = &options.order {
-                        builder.order_by("events.timestamp", order);
-                    } else {
-                        builder.order_by("events.timestamp", "DESC");
-                    }
+        if let Some(order) = &options.order {
+            builder.order_by("events.timestamp", order);
+        } else {
+            builder.order_by("events.timestamp", "DESC");
+        }
 
-                    let (sql, params) = builder.build();
+        let (sql, params) = builder.build();
 
-                    if *LOG_QUERIES {
-                        info!("query={} args={:?}", &sql, &params);
-                    }
+        if *LOG_QUERIES {
+            info!("query={} args={:?}", &sql, &params);
+        }
 
-                    let tx = conn.transaction()?;
-                    let mut st = tx.prepare(&sql)?;
-                    let now = Instant::now();
-                    let rows = st.query_and_then(rusqlite::params_from_iter(params), row_mapper)?;
-                    let mut events = vec![];
-                    for row in rows {
-                        events.push(row?);
-                    }
-                    debug!(
-                        "Rows={}, Elapsed={} ms",
-                        events.len(),
-                        now.elapsed().as_millis()
-                    );
-                    Ok(events)
-                },
-            )
-            .await??;
+        let now = Instant::now();
+        let mut rows = sqlx::query_with(&sql, params).fetch(&self.pool);
+        let mut events = vec![];
+        while let Some(row) = rows.try_next().await? {
+            events.push(row_mapper(row)?);
+        }
+
+        debug!(
+            "Rows={}, Elapsed={} ms",
+            events.len(),
+            now.elapsed().as_millis()
+        );
+
         let response = json!({
             "ecs": false,
-            "events": result,
+            "events": events,
         });
         Ok(response)
     }
 }
 
-fn row_mapper(row: &rusqlite::Row) -> Result<serde_json::Value, rusqlite::Error> {
-    let id: i64 = row.get(0)?;
-    let archived: i8 = row.get(1)?;
-    let escalated: i8 = row.get(2)?;
-    let mut parsed: serde_json::Value = row.get(3)?;
+fn row_mapper(row: SqliteRow) -> Result<serde_json::Value, sqlx::Error> {
+    let id: i64 = row.try_get(0)?;
+    let archived: i8 = row.try_get(1)?;
+    let escalated: i8 = row.try_get(2)?;
+    let mut parsed: serde_json::Value = row.try_get(3)?;
 
     if let Some(timestamp) = parsed.get("timestamp") {
         parsed["@timestamp"] = timestamp.clone();
