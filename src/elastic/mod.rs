@@ -76,6 +76,18 @@ pub fn query_string_query(query_string: &str) -> serde_json::Value {
         .replace(']', "\\]")
         .replace('<', "\\<")
         .replace('>', "\\>");
+
+    // This is needed for Opensearch without running into max
+    // clauses. But in the past I've allowed for Elasticsearch query
+    // strings to pass through. Need to think about this.
+    // json!({
+    //     "multi_match": {
+    //         "type": "phrase",
+    //         "query": escaped,
+    //         "lenient": true,
+    //     },
+    // })
+
     json!({
         "query_string": {
             "default_operator": "AND",
