@@ -694,6 +694,19 @@ impl ElasticEventRepo {
         }
 
         let response: serde_json::Value = self.search(&body).await?.json().await?;
+
+        if let Some(error) = response["error"].as_object() {
+            // Find the first reason, may be deeply nested.
+            if let serde_json::Value::String(reason) = &error["caused_by"]["reason"] {
+                error!(
+                    "Failed to execute event query: error={}; query={}",
+                    reason,
+                    serde_json::to_string(&body).unwrap()
+                );
+                return Err(anyhow::anyhow!("{}", reason))?;
+            }
+        }
+
         let hits = &response["hits"]["hits"];
 
         let mut events = vec![];
