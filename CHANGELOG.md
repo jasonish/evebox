@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.18.2 - 2024-05-15
+- [reports] Fix query string filtering on alerts report:
+  https://github.com/jasonish/evebox/issues/310
+- [sqlite] Expose SQLite info and fts information over the REST API.
+
 ## 0.18.1 - 2024-05-08
 
 - [sqlite] Add CLI commands to "optimize" and "analyze" the sqlite
