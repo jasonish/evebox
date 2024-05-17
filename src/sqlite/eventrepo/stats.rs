@@ -4,7 +4,7 @@
 use super::SqliteEventRepo;
 use crate::{
     eventrepo::{DatastoreError, StatsAggQueryParams},
-    querystring::{self, QueryString},
+    queryparser::{QueryElement, QueryValue},
     sqlite::{builder::EventQueryBuilder, eventrepo::nanos_to_rfc3339, format_sqlite_timestamp},
     util, LOG_QUERIES,
 };
@@ -21,7 +21,7 @@ impl SqliteEventRepo {
     pub(crate) async fn histogram_time(
         &self,
         interval: Option<u64>,
-        q: &[querystring::Element],
+        query: &[QueryElement],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         // The timestamp (in seconds) of the latest event to
         // consider. This is to determine the bucket interval as well
@@ -30,16 +30,17 @@ impl SqliteEventRepo {
 
         let mut conn = self.pool.acquire().await?;
 
-        // Get the earliest timestamp, either from the query or the database.
-        let earliest = if let Some(earliest) = q.get_earliest() {
-            earliest
+        let from = query
+            .iter()
+            .find(|e| matches!(e.value, QueryValue::From(_)))
+            .map(|e| match e.value {
+                QueryValue::From(ref v) => v,
+                _ => unreachable!(),
+            });
+        let earliest = if let Some(from) = from {
+            *from
         } else if let Some(earliest) = Self::get_earliest_timestamp(&mut conn).await? {
-            let earliest = time::OffsetDateTime::from_unix_timestamp_nanos(earliest as i128)?;
-            debug!(
-                "No time-range provided by client, using earliest from database of {}",
-                &earliest
-            );
-            earliest
+            chrono::DateTime::from_timestamp_nanos(earliest)
         } else {
             return Ok(vec![]);
         };
@@ -47,19 +48,17 @@ impl SqliteEventRepo {
         let interval = if let Some(interval) = interval {
             interval
         } else {
-            let interval = util::histogram_interval(now - earliest.unix_timestamp());
+            let interval = util::histogram_interval(now - earliest.timestamp());
             debug!("No interval provided by client, using {interval}s");
             interval
         };
 
         let last_time = now / (interval as i64) * (interval as i64);
-        let mut next_time = ((earliest.unix_timestamp() as u64) / interval * interval) as i64;
+        let mut next_time = ((earliest.timestamp() as u64) / interval * interval) as i64;
 
         let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
 
         let mut builder = EventQueryBuilder::new(self.fts);
-
-        let q = q.to_vec();
 
         builder.select(&timestamp);
         builder.select(format!("count({timestamp})"));
@@ -67,7 +66,7 @@ impl SqliteEventRepo {
         builder.group_by(timestamp.to_string());
         builder.order_by("timestamp", "asc");
 
-        builder.apply_query_string(&q);
+        builder.apply_new_query_string(query);
 
         let (sql, params) = builder.build();
 

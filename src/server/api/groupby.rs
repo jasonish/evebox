@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use super::{util::parse_duration, ApiError};
-use crate::querystring;
-use crate::querystring::{Element, QueryString};
+use crate::queryparser;
+use crate::queryparser::{QueryElement, QueryValue};
 use crate::server::{main::SessionExtractor, ServerContext};
 use axum::{extract::State, response::IntoResponse, Form, Json};
 use serde::Deserialize;
@@ -37,6 +37,7 @@ pub(crate) struct GroupByParams {
     order: String,
     /// Optional query string.
     q: Option<String>,
+    tz_offset: Option<String>,
 }
 
 pub(crate) async fn group_by(
@@ -45,25 +46,25 @@ pub(crate) async fn group_by(
     Form(form): Form<GroupByParams>,
 ) -> Result<impl IntoResponse, ApiError> {
     // First parse the query string.
-    let mut q = form
+    let default_tz_offset = form.tz_offset.as_deref();
+    let mut query_string = form
         .q
-        .as_ref()
-        .map(|q| querystring::parse(q, None))
-        .unwrap_or_else(|| Ok(vec![]))
-        .map_err(|err| ApiError::bad_request(format!("q: {err}")))?;
+        .clone()
+        .map(|qs| queryparser::parse(&qs, default_tz_offset))
+        .transpose()?
+        .unwrap_or_default();
 
-    // Only apply the time range if the query string does not contain
-    // an low timestamp.
-    if !q.has_earliest() {
-        let min_timestamp = parse_duration(&form.time_range)
-            .map(|v| time::OffsetDateTime::now_utc().sub(v))
-            .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
-        q.push(Element::EarliestTimestamp(min_timestamp));
-    }
+    let min_timestamp = parse_duration(&form.time_range)
+        .map(|d| chrono::Utc::now().sub(d))
+        .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
+    query_string.push(QueryElement {
+        negated: false,
+        value: QueryValue::From(min_timestamp),
+    });
 
     let results = context
         .datastore
-        .group_by(&form.field, form.size, &form.order, q)
+        .group_by(&form.field, form.size, &form.order, query_string)
         .await
         .map_err(|err| {
             error!("Event repo group by failed: {err}");
@@ -71,7 +72,7 @@ pub(crate) async fn group_by(
         })?;
     #[rustfmt::skip]
     let response = json!({
-	"rows": results,
+	      "rows": results,
     });
     Ok(Json(response))
 }

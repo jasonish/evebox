@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::querystring::{self, Element};
+use crate::queryparser;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 
@@ -78,71 +78,71 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn apply_query_string(&mut self, q: &[querystring::Element]) {
+    pub fn where_source_json(&mut self, field: &str, op: &str, value: &str) -> &mut Self {
+        self.push_where(format!("json_extract(events.source, '$.{field}') {op} ?"));
+        if let Ok(i) = value.parse::<i64>() {
+            self.push_arg(i);
+        } else {
+            self.push_arg(value.to_string());
+        }
+        self
+    }
+
+    pub fn apply_new_query_string(&mut self, q: &[queryparser::QueryElement]) {
         for e in q {
-            match e {
-                Element::String(s) => {
-                    if self.fts {
+            match &e.value {
+                queryparser::QueryValue::String(s) => {
+                    if e.negated {
+                        self.push_where("events.source NOT LIKE ?")
+                            .push_arg(format!("%{s}%"));
+                    } else if self.fts {
                         self.push_fts(s);
                     } else {
                         self.push_where("events.source LIKE ?")
                             .push_arg(format!("%{s}%"));
                     }
                 }
-                Element::NotString(s) => {
-                    self.push_where("events.source NOT LIKE ?")
-                        .push_arg(format!("%{s}%"));
-                }
-                Element::KeyVal(k, v) => {
-                    if let Ok(i) = v.parse::<i64>() {
-                        self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
-                            .push_arg(i);
-                    } else {
-                        self.push_where(format!("json_extract(events.source, '$.{k}') = ?"))
-                            .push_arg(v.to_string());
-
-                        // If FTS is enabled, some key/val searches
-                        // can really benefit from it.
-                        if self.fts {
-                            match k.as_ref() {
-                                "community_id" | "timestamp" => {
-                                    self.push_fts(v);
-                                }
-                                _ => {
-                                    if k.starts_with("dhcp") {
-                                        self.push_fts(v);
+                queryparser::QueryValue::KeyValue(k, v) => {
+                    match k.as_ref() {
+                        "@ip" | "@mac" => {
+                            if e.negated {
+                                self.push_where("events.source NOT LIKE ?")
+                                    .push_arg(format!("%{v}%"));
+                            } else if self.fts {
+                                self.push_fts(v);
+                            } else {
+                                self.push_where("events.source LIKE ?")
+                                    .push_arg(format!("%{v}%"));
+                            }
+                        }
+                        _ => {
+                            if e.negated {
+                                self.where_source_json(k, "!=", v);
+                            } else {
+                                self.where_source_json(k, "=", v);
+                                // If FTS is enabled, some key/val searches
+                                // can really benefit from it.
+                                if self.fts {
+                                    match k.as_ref() {
+                                        "community_id" | "timestamp" => {
+                                            self.push_fts(v);
+                                        }
+                                        _ => {
+                                            if k.starts_with("dhcp") {
+                                                self.push_fts(v);
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-                Element::EarliestTimestamp(ts) => {
-                    self.earliest_timestamp(ts);
+                queryparser::QueryValue::From(ts) => {
+                    self.timestamp_gte(ts);
                 }
-                Element::LatestTimestamp(ts) => {
-                    self.latest_timestamp(ts);
-                }
-                Element::Ip(ip) => {
-                    let fields = [
-                        "src_ip",
-                        "dest_ip",
-                        "dhcp.assigned_ip",
-                        "dhcp.client_ip",
-                        "dhcp.next_server_ip",
-                        "dhcp.routers",
-                        "dhcp.relay_ip",
-                        "dhcp.subnet_mask",
-                    ];
-                    let mut ors = vec![];
-                    for field in fields {
-                        ors.push(format!("json_extract(events.source, '$.{}') = ?", field));
-                        self.push_arg(ip.to_string());
-                    }
-                    self.push_where(format!("({})", ors.join(" OR ")));
-                    if self.fts {
-                        self.push_fts(ip);
-                    }
+                queryparser::QueryValue::To(ts) => {
+                    self.timestamp_lte(ts);
                 }
             }
         }
@@ -151,6 +151,18 @@ impl<'a> EventQueryBuilder<'a> {
     pub fn earliest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
         self.push_where("timestamp >= ?")
             .push_arg(ts.unix_timestamp_nanos() as i64);
+        self
+    }
+
+    pub fn timestamp_gte(&mut self, ts: &chrono::DateTime<chrono::Utc>) -> &mut Self {
+        self.push_where("timestamp >= ?")
+            .push_arg(ts.timestamp_nanos_opt().unwrap());
+        self
+    }
+
+    pub fn timestamp_lte(&mut self, ts: &chrono::DateTime<chrono::Utc>) -> &mut Self {
+        self.push_where("timestamp <= ?")
+            .push_arg(ts.timestamp_nanos_opt().unwrap());
         self
     }
 

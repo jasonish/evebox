@@ -8,6 +8,7 @@ use super::HistoryEntry;
 use super::ACTION_ARCHIVED;
 use super::ACTION_COMMENT;
 use super::TAG_ESCALATED;
+use crate::elastic::format_timestamp2;
 use crate::elastic::importer::ElasticEventSink;
 use crate::elastic::request::exists_filter;
 use crate::elastic::{
@@ -15,12 +16,16 @@ use crate::elastic::{
     ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::eventrepo::{self, DatastoreError};
-use crate::querystring::parse_timestamp;
-use crate::querystring::{self, Element, QueryString};
+use crate::queryparser;
+use crate::queryparser::QueryElement;
+use crate::queryparser::QueryParser;
+use crate::queryparser::QueryValue;
 use crate::server::api;
 use crate::server::session::Session;
 use crate::util;
 use crate::LOG_QUERIES;
+use chrono::DateTime;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -391,37 +396,70 @@ impl ElasticEventRepo {
 
     fn apply_query_string(
         &self,
-        q: &[querystring::Element],
+        q: &[queryparser::QueryElement],
         filter: &mut Vec<serde_json::Value>,
         should: &mut Vec<serde_json::Value>,
         must_not: &mut Vec<serde_json::Value>,
     ) {
         for el in q {
-            match el {
-                Element::String(s) => {
-                    filter.push(query_string_query(s));
+            match &el.value {
+                queryparser::QueryValue::String(v) => {
+                    if el.negated {
+                        must_not.push(query_string_query(v));
+                    } else {
+                        filter.push(query_string_query(v));
+                    }
                 }
-                Element::NotString(s) => {
-                    must_not.push(query_string_query(s));
+                queryparser::QueryValue::KeyValue(k, v) => match k.as_ref() {
+                    "@mac" => {
+                        filter.push(json!({
+                            "multi_match": {
+                                "query": v,
+                                "type": "most_fields",
+                            }
+                        }));
+                    }
+                    "@ip" => {
+                        if el.negated {
+                            must_not.push(json!({"term": {self.map_field("src_ip"): v}}));
+                            must_not.push(json!({"term": {self.map_field("dest_ip"): v}}));
+                            must_not.push(json!({"term": {self.map_field("dhcp.assigned_ip"): v}}));
+                            must_not.push(json!({"term": {self.map_field("dhcp.client_ip"): v}}));
+                            must_not
+                                .push(json!({"term": {self.map_field("dhcp.next_server_ip"): v}}));
+                            must_not.push(json!({"term": {self.map_field("dhcp.routers"): v}}));
+                            must_not.push(json!({"term": {self.map_field("dhcp.relay_ip"): v}}));
+                            must_not.push(json!({"term": {self.map_field("dhcp.subnet_mask"): v}}));
+                        } else {
+                            should.push(json!({"term": {self.map_field("src_ip"): v}}));
+                            should.push(json!({"term": {self.map_field("dest_ip"): v}}));
+                            should.push(json!({"term": {self.map_field("dhcp.assigned_ip"): v}}));
+                            should.push(json!({"term": {self.map_field("dhcp.client_ip"): v}}));
+                            should
+                                .push(json!({"term": {self.map_field("dhcp.next_server_ip"): v}}));
+                            should.push(json!({"term": {self.map_field("dhcp.routers"): v}}));
+                            should.push(json!({"term": {self.map_field("dhcp.relay_ip"): v}}));
+                            should.push(json!({"term": {self.map_field("dhcp.subnet_mask"): v}}));
+                        }
+                    }
+                    _ => {
+                        if k.starts_with('@') {
+                            warn!("Unhandled @ parameter in query string: {k}");
+                        } else if k.starts_with(' ') {
+                            warn!("Query parameter starting with a space: {k}");
+                        }
+                        if el.negated {
+                            must_not.push(request::term_filter(&self.map_field(k), v))
+                        } else {
+                            filter.push(request::term_filter(&self.map_field(k), v))
+                        }
+                    }
+                },
+                queryparser::QueryValue::From(ts) => {
+                    filter.push(request::timestamp_gte_filter2(ts));
                 }
-                Element::KeyVal(key, val) => {
-                    filter.push(request::term_filter(&self.map_field(key), val))
-                }
-                Element::Ip(ip) => {
-                    should.push(json!({"term": {self.map_field("src_ip"): ip}}));
-                    should.push(json!({"term": {self.map_field("dest_ip"): ip}}));
-                    should.push(json!({"term": {self.map_field("dhcp.assigned_ip"): ip}}));
-                    should.push(json!({"term": {self.map_field("dhcp.client_ip"): ip}}));
-                    should.push(json!({"term": {self.map_field("dhcp.next_server_ip"): ip}}));
-                    should.push(json!({"term": {self.map_field("dhcp.routers"): ip}}));
-                    should.push(json!({"term": {self.map_field("dhcp.relay_ip"): ip}}));
-                    should.push(json!({"term": {self.map_field("dhcp.subnet_mask"): ip}}));
-                }
-                Element::EarliestTimestamp(ts) => {
-                    filter.push(request::timestamp_gte_filter(ts));
-                }
-                Element::LatestTimestamp(ts) => {
-                    filter.push(request::timestamp_lte_filter(ts));
+                queryparser::QueryValue::To(td) => {
+                    filter.push(request::timestamp_lte_filter2(td));
                 }
             }
         }
@@ -436,12 +474,13 @@ impl ElasticEventRepo {
         let mut has_min_timestamp = false;
 
         if let Some(q) = &options.query_string {
-            match crate::querystring::parse(q, None) {
-                Ok(q) => {
-                    self.apply_query_string(&q, &mut filters, &mut should, &mut must_not);
-                    has_min_timestamp = q
+            // TODO: Need client tz_offset here.
+            match queryparser::parse(q, None) {
+                Ok(elements) => {
+                    self.apply_query_string(&elements, &mut filters, &mut should, &mut must_not);
+                    has_min_timestamp = elements
                         .iter()
-                        .any(|e| matches!(&e, Element::EarliestTimestamp(_)));
+                        .any(|e| matches!(&e.value, QueryValue::From(_)));
                 }
                 Err(err) => {
                     error!(
@@ -655,18 +694,18 @@ impl ElasticEventRepo {
         }
 
         self.apply_query_string(
-            &params.query_string_elements,
+            &params.query_string,
             &mut filters,
             &mut should,
             &mut must_not,
         );
 
-        if let Some(timestamp) = params.min_timestamp {
-            filters.push(request::timestamp_gte_filter(&timestamp));
+        if let Some(ts) = params.min_timestamp {
+            warn!("Unexpected min_timestamp of {}", &ts);
         }
 
-        if let Some(timestamp) = params.max_timestamp {
-            filters.push(request::timestamp_lte_filter(&timestamp));
+        if let Some(ts) = params.max_timestamp {
+            warn!("Unexpected max_timestamp of {}", &ts);
         }
 
         let sort_by = params.sort_by.unwrap_or_else(|| "@timestamp".to_string());
@@ -693,7 +732,8 @@ impl ElasticEventRepo {
             info!("{}", &body);
         }
 
-        let response: serde_json::Value = self.search(&body).await?.json().await?;
+        let response = self.search(&body).await?;
+        let response: serde_json::Value = response.json().await?;
 
         if let Some(error) = response["error"].as_object() {
             // Find the first reason, may be deeply nested.
@@ -705,6 +745,18 @@ impl ElasticEventRepo {
                 );
                 return Err(anyhow::anyhow!("{}", reason))?;
             }
+        }
+
+        // Another way we can get errors from
+        // Elasticsearch/Opensearch, even with a 200 status code.
+        if let Some(failure) = response["_shards"]["failures"]
+            .as_array()
+            .and_then(|v| v.first())
+        {
+            warn!(
+                "Elasticsearch reported failures, the first being: {:?}",
+                failure
+            );
         }
 
         let hits = &response["hits"]["hits"];
@@ -743,28 +795,28 @@ impl ElasticEventRepo {
         self.add_tags_by_alert_group(alert_group, &[], &entry).await
     }
 
-    async fn get_earliest_timestamp(&self) -> Result<Option<time::OffsetDateTime>, DatastoreError> {
+    async fn get_earliest_timestamp(&self) -> Result<Option<DateTime<Utc>>, DatastoreError> {
         #[rustfmt::skip]
-	let request = json!({
-	    "query": {
-		"bool": {
-		    "filter": [
-			{
-			    "exists": {
-				"field": self.map_field("event_type"),
-			    },
-			},
-		    ],
-		},
-	    },
-	    "sort": [{"@timestamp": {"order": "asc"}}],
-	    "size": 1,
-	});
+	      let request = json!({
+	          "query": {
+		            "bool": {
+		                "filter": [
+			                  {
+			                      "exists": {
+				                        "field": self.map_field("event_type"),
+			                      },
+			                  },
+		                ],
+		            },
+	          },
+	          "sort": [{"@timestamp": {"order": "asc"}}],
+	          "size": 1,
+	      });
         let response: serde_json::Value = self.search(&request).await?.json().await?;
         if let Some(hits) = response["hits"]["hits"].as_array() {
             for hit in hits {
                 if let serde_json::Value::String(timestamp) = &hit["_source"]["@timestamp"] {
-                    return Ok(Some(parse_timestamp(timestamp, None)?));
+                    return Ok(crate::queryparser::parse_timestamp(timestamp, None));
                 }
             }
         }
@@ -774,23 +826,23 @@ impl ElasticEventRepo {
     pub(crate) async fn histogram_time(
         &self,
         interval: Option<u64>,
-        q: &[querystring::Element],
+        query: &[QueryElement],
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+        let qs = QueryParser::new(query.to_vec());
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
         let mut must_not = vec![];
-        self.apply_query_string(q, &mut filters, &mut should, &mut must_not);
+        self.apply_query_string(query, &mut filters, &mut should, &mut must_not);
 
-        let bound_max = time::OffsetDateTime::now_utc();
-        let bound_min = if let Some(timestamp) = q.get_earliest() {
-            timestamp
+        let bound_max = chrono::Utc::now();
+        let bound_min = if let Some(timestamp) = qs.first_from() {
+            *timestamp
         } else if let Some(timestamp) = self.get_earliest_timestamp().await? {
-            let earliest = timestamp;
             debug!(
                 "No time-range provided by client, using earliest from database of {}",
-                &earliest
+                &timestamp
             );
-            earliest
+            timestamp
         } else {
             warn!("Unable to determine earliest timestamp from Elasticsearch, assuming no events.");
             return Ok(vec![]);
@@ -799,7 +851,7 @@ impl ElasticEventRepo {
         let interval = if let Some(interval) = interval {
             interval
         } else {
-            let range = bound_max.unix_timestamp() - bound_min.unix_timestamp();
+            let range = bound_max.timestamp() - bound_min.timestamp();
             let interval = util::histogram_interval(range);
             debug!("No interval provided by client, using {interval}s");
             interval
@@ -808,26 +860,26 @@ impl ElasticEventRepo {
         #[rustfmt::skip]
         let request = json!({
             "query": {
-		"bool": {
+		            "bool": {
                     "filter": filters,
                     "must_not": must_not,
-		},
+		            },
             },
-	    "size": 0,
+	          "size": 0,
             "sort":[{"@timestamp":{"order":"desc"}}],
-	    "aggs": {
-		"histogram": {
-		    "date_histogram": {
-			"field": "@timestamp",
-			"fixed_interval": format!("{interval}s"),
-			"min_doc_count": 0,
-			"extended_bounds": {
-			    "max": format_timestamp(bound_max),
-			    "min": format_timestamp(bound_min),
-			},
-		    },
-		},
-	    },
+	          "aggs": {
+		            "histogram": {
+		                "date_histogram": {
+			                  "field": "@timestamp",
+			                  "fixed_interval": format!("{interval}s"),
+			                  "min_doc_count": 0,
+			                  "extended_bounds": {
+			                      "max": format_timestamp2(bound_max),
+			                      "min": format_timestamp2(bound_min),
+			                  },
+		                },
+		            },
+	          },
         });
 
         let response: serde_json::Value = self.search(&request).await?.json().await?;
@@ -850,34 +902,34 @@ impl ElasticEventRepo {
         field: &str,
         size: usize,
         order: &str,
-        q: Vec<querystring::Element>,
+        query: Vec<queryparser::QueryElement>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut filter = vec![];
         let mut should = vec![];
         let mut must_not = vec![];
 
-        self.apply_query_string(&q, &mut filter, &mut should, &mut must_not);
+        self.apply_query_string(&query, &mut filter, &mut should, &mut must_not);
 
         #[rustfmt::skip]
         let agg = if order == "asc" {
             // We're after a rare terms...
             json!({
-		"rare_terms": {
+		            "rare_terms": {
                     "field": self.map_field(field),
                     // Increase the max_doc_count, otherwise only
                     // terms that appear once will be returned, but
                     // we're after the least occurring, but those
                     // numbers could still be high.
                     "max_doc_count": 100,
-		}
+		            }
             })
         } else {
             // This is a normal "Top 10"...
             json!({
-		"terms": {
+		            "terms": {
                     "field": self.map_field(field),
                     "size": size,
-		},
+		            },
             })
         };
 
@@ -886,16 +938,16 @@ impl ElasticEventRepo {
         #[rustfmt::skip]
         let mut query = json!({
             "query": {
-		"bool": {
-		    "filter": filter,
+		            "bool": {
+		                "filter": filter,
                     "must_not": must_not,
-		},
+		            },
             },
             // Not interested in individual documents, just the
             // aggregations on the filtered data.
             "size": 0,
             "aggs": {
-		"agg": agg,
+		            "agg": agg,
             },
         });
 

@@ -10,7 +10,7 @@ use crate::{
 use futures::TryStreamExt;
 use sqlx::{sqlite::SqliteRow, Row};
 use std::time::Instant;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 impl SqliteEventRepo {
     pub async fn events(
@@ -33,14 +33,17 @@ impl SqliteEventRepo {
         }
 
         if let Some(dt) = &options.max_timestamp {
+            warn!("Found deprecated parameter 'max_timestamp' in SQLite events query");
             builder.latest_timestamp(dt);
         }
 
         if let Some(dt) = &options.min_timestamp {
+            warn!("Found deprecated parameter 'min_timestamp' in SQLite events query");
             builder.earliest_timestamp(dt);
         }
 
-        builder.apply_query_string(&options.query_string_elements);
+        //builder.apply_query_string(&options.query_string_elements);
+        builder.apply_new_query_string(&options.query_string);
 
         if let Some(order) = &options.order {
             builder.order_by("events.timestamp", order);

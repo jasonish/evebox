@@ -57,6 +57,10 @@ pub fn timestamp_gte_filter(dt: &time::OffsetDateTime) -> serde_json::Value {
     range_gte_filter("@timestamp", &format_datetime(dt))
 }
 
-pub fn timestamp_lte_filter(dt: &time::OffsetDateTime) -> serde_json::Value {
-    range_lte_filter("@timestamp", &format_datetime(dt))
+pub fn timestamp_gte_filter2(dt: &chrono::DateTime<chrono::Utc>) -> serde_json::Value {
+    range_gte_filter("@timestamp", &dt.to_rfc3339())
+}
+
+pub fn timestamp_lte_filter2(dt: &chrono::DateTime<chrono::Utc>) -> serde_json::Value {
+    range_lte_filter("@timestamp", &dt.to_rfc3339())
 }

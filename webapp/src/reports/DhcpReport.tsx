@@ -130,7 +130,10 @@ export function DhcpReport() {
                             </td>
                             <td>{ack.host}</td>
                             <td>
-                              <SearchLink value={ack.dhcp!.client_mac}>
+                              <SearchLink
+                                value={ack.dhcp!.client_mac}
+                                field="@mac"
+                              >
                                 {ack.dhcp!.client_mac}
                               </SearchLink>
                             </td>

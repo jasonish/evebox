@@ -6,7 +6,6 @@ mod api;
 pub mod eve2pcap;
 pub mod genericquery;
 pub mod groupby;
-pub mod helpers;
 pub mod login;
 pub(crate) mod sqlite;
 pub mod stats;

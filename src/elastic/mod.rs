@@ -64,6 +64,10 @@ pub fn format_timestamp(dt: time::OffsetDateTime) -> String {
     dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
 }
 
+pub fn format_timestamp2(dt: chrono::DateTime<chrono::Utc>) -> String {
+    dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
+}
+
 pub fn query_string_query(query_string: &str) -> serde_json::Value {
     let escaped = query_string
         .replace('\\', "\\\\")
@@ -76,17 +80,6 @@ pub fn query_string_query(query_string: &str) -> serde_json::Value {
         .replace(']', "\\]")
         .replace('<', "\\<")
         .replace('>', "\\>");
-
-    // This is needed for Opensearch without running into max
-    // clauses. But in the past I've allowed for Elasticsearch query
-    // strings to pass through. Need to think about this.
-    // json!({
-    //     "multi_match": {
-    //         "type": "phrase",
-    //         "query": escaped,
-    //         "lenient": true,
-    //     },
-    // })
 
     json!({
         "query_string": {

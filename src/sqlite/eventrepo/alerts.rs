@@ -5,16 +5,13 @@ use futures::TryStreamExt;
 use sqlx::sqlite::{SqliteArguments, SqliteRow};
 use sqlx::Arguments;
 use sqlx::Row;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use super::SqliteEventRepo;
-use crate::LOG_QUERIES;
 use crate::{
-    elastic::AlertQueryOptions,
-    eventrepo::DatastoreError,
-    querystring::{self, Element},
-    sqlite::format_sqlite_timestamp,
+    elastic::AlertQueryOptions, eventrepo::DatastoreError, sqlite::format_sqlite_timestamp,
 };
+use crate::{queryparser, LOG_QUERIES};
 use std::time::Instant;
 
 impl SqliteEventRepo {
@@ -87,7 +84,7 @@ impl SqliteEventRepo {
 
         // Query string.
         if let Some(query_string) = options.query_string {
-            match querystring::parse(&query_string, None) {
+            match queryparser::parse(&query_string, None) {
                 Err(err) => {
                     error!(
                         "Failed to parse query string: error={}, query string={}",
@@ -96,32 +93,35 @@ impl SqliteEventRepo {
                 }
                 Ok(elements) => {
                     for el in &elements {
-                        debug!("Parsed query string element: {:?}", el);
-                        match el {
-                            Element::String(val) => {
-                                filters.push("events.source LIKE ?".into());
-                                args.add(format!("%{val}%"));
-                            }
-                            Element::NotString(val) => {
-                                filters.push("events.source NOT LIKE ?".into());
-                                args.add(format!("%{val}%"));
-                            }
-                            Element::KeyVal(key, val) => {
-                                if let Ok(val) = val.parse::<i64>() {
-                                    filters.push(format!(
-                                        "json_extract(events.source, '$.{key}') = ?"
-                                    ));
-                                    args.add(val);
+                        match &el.value {
+                            queryparser::QueryValue::String(s) => {
+                                if el.negated {
+                                    filters.push("events.source NOT LIKE ?".into());
+                                    args.add(format!("%{s}%"));
                                 } else {
-                                    filters.push(format!(
-                                        "json_extract(events.source, '$.{key}') LIKE ?"
-                                    ));
-                                    args.add(format!("%{val}%"));
+                                    filters.push("events.source LIKE ?".into());
+                                    args.add(format!("%{s}%"));
                                 }
                             }
-                            Element::Ip(_) => todo!(),
-                            Element::EarliestTimestamp(_) => todo!(),
-                            Element::LatestTimestamp(_) => todo!(),
+                            queryparser::QueryValue::KeyValue(k, v) => {
+                                // TODO: Handle negation - maybe use query builder?
+                                if let Ok(v) = v.parse::<i64>() {
+                                    filters
+                                        .push(format!("json_extract(events.source, '$.{k}') = ?"));
+                                    args.add(v);
+                                } else {
+                                    filters.push(format!(
+                                        "json_extract(events.source, '$.{k}') LIKE ?"
+                                    ));
+                                    args.add(format!("%{v}%"));
+                                }
+                            }
+                            queryparser::QueryValue::From(_) => {
+                                warn!("QueryValue::From not supported here");
+                            }
+                            queryparser::QueryValue::To(_) => {
+                                warn!("QueryValue::From not supported here");
+                            }
                         }
                     }
                 }

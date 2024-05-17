@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    eventrepo::DatastoreError,
-    querystring::{self},
-    sqlite::builder::EventQueryBuilder,
+    eventrepo::DatastoreError, queryparser::QueryElement, sqlite::builder::EventQueryBuilder,
 };
 use futures::TryStreamExt;
 use sqlx::Row;
@@ -17,7 +15,7 @@ impl SqliteEventRepo {
         field: &str,
         size: usize,
         order: &str,
-        q: Vec<querystring::Element>,
+        query: Vec<QueryElement>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut builder = EventQueryBuilder::new(self.fts);
         builder
@@ -38,7 +36,8 @@ impl SqliteEventRepo {
             builder.push_where("json_extract(events.source, '$.event_type') = 'dns'");
         }
 
-        builder.apply_query_string(&q);
+        builder.apply_new_query_string(&query);
+        //builder.apply_query_string(&q);
 
         let mut results = vec![];
         let (sql, args) = builder.build();

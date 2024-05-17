@@ -3,14 +3,13 @@
 
 use super::genericquery::TimeRange;
 use super::util::parse_duration;
-use crate::elastic;
 use crate::eventrepo::EventQueryParams;
 use crate::eventrepo::{DatastoreError, EventRepo};
-use crate::querystring;
-use crate::querystring::{Element, QueryString};
+use crate::queryparser::{QueryElement, QueryStringParseError, QueryValue};
 use crate::server::api::genericquery::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
+use crate::{elastic, queryparser};
 use axum::extract::{Extension, Form, Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -21,7 +20,7 @@ use serde_json::json;
 use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::{debug, error, info};
+use tracing::{error, info, warn};
 
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AlertGroupSpec {
@@ -88,7 +87,7 @@ pub(crate) async fn dhcp_ack(
 
     #[rustfmt::skip]
     let response = json!({
-	"events": response,
+	      "events": response,
     });
 
     Ok(Json(response))
@@ -111,7 +110,7 @@ pub(crate) async fn dhcp_request(
 
     #[rustfmt::skip]
     let response = json!({
-	"events": response,
+	      "events": response,
     });
 
     Ok(Json(response))
@@ -171,31 +170,31 @@ pub(crate) async fn histogram_time(
         .transpose()
         .map_err(|err| ApiError::bad_request(format!("interval: {err}")))?;
 
+    let default_tz_offset = query.tz_offset.as_deref();
+
     let mut query_string = query
         .query_string
-        .as_ref()
-        .map(|v| querystring::parse(v, None))
-        .transpose()
-        .map_err(|err| ApiError::bad_request(format!("query_string: {err}")))?
-        .unwrap_or(vec![]);
+        .clone()
+        .map(|q| queryparser::parse(&q, default_tz_offset))
+        .transpose()?
+        .unwrap_or_default();
 
     if let Some(event_type) = &query.event_type {
-        query_string.push(Element::KeyVal(
-            "event_type".to_string(),
-            event_type.to_string(),
-        ));
+        query_string.push(QueryElement {
+            negated: false,
+            value: QueryValue::KeyValue("event_type".to_string(), event_type.to_string()),
+        })
     }
 
-    // Only parse the time range if a earliest time is not provided in
-    // the query string.
-    if !query_string.has_earliest() {
-        if let Some(time_range) = &query.time_range {
-            if !time_range.is_empty() {
-                let earliest = parse_duration(time_range)
-                    .map(|v| time::OffsetDateTime::now_utc().sub(v))
-                    .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
-                query_string.push(Element::EarliestTimestamp(earliest));
-            }
+    if let Some(time_range) = &query.time_range {
+        if !time_range.is_empty() {
+            let min_timestamp = parse_duration(time_range)
+                .map(|d| chrono::Utc::now().sub(d))
+                .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
+            query_string.push(QueryElement {
+                negated: false,
+                value: QueryValue::From(min_timestamp),
+            });
         }
     }
 
@@ -350,20 +349,38 @@ pub(crate) async fn events(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(query): Form<GenericQuery>,
-) -> impl IntoResponse {
-    let params = match generic_query_to_event_query(&query) {
-        Ok(params) => params,
-        Err(err) => {
-            return (StatusCode::BAD_REQUEST, format!("error: {err}")).into_response();
-        }
+) -> Result<impl IntoResponse, ApiError> {
+    let mut params = EventQueryParams {
+        size: query.size,
+        sort_by: query.sort_by,
+        event_type: query.event_type,
+        order: query.order,
+        ..Default::default()
     };
+
+    if let Some(ts) = &query.min_timestamp {
+        warn!("Deprecated field 'min_timestamp' in event query ({})", ts);
+    }
+
+    if let Some(ts) = &query.max_timestamp {
+        warn!("Deprecated field 'max_timestamp' in event query ({})", ts);
+    }
+
+    let default_tz_offset = query.tz_offset.as_deref();
+
+    let query_string = query
+        .query_string
+        .map(|qs| queryparser::parse(&qs, default_tz_offset))
+        .transpose()?
+        .unwrap_or_default();
+    params.query_string = query_string;
 
     match context.datastore.events(params).await {
         Err(err) => {
             error!("error: {:?}", err);
-            (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
         }
-        Ok(v) => Json(v).into_response(),
+        Ok(v) => Ok(Json(v).into_response()),
     }
 }
 
@@ -414,8 +431,6 @@ fn parse_then_from_duration(
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ApiError {
-    #[error("failed to parse time range: {0}")]
-    TimeRangeParseError(String),
     #[error("bad request: {0}")]
     BadRequest(String),
     #[error("internal server error")]
@@ -426,6 +441,8 @@ pub(crate) enum ApiError {
     DatastoreError(#[from] DatastoreError),
     #[error("internal database error")]
     Sqlx(#[from] sqlx::Error),
+    #[error("bad query string")]
+    QueryString(#[from] QueryStringParseError),
 }
 
 impl ApiError {
@@ -438,7 +455,6 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let err = self.to_string();
         let (status, message) = match self {
-            ApiError::TimeRangeParseError(msg) => (StatusCode::BAD_REQUEST, msg),
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             ApiError::InternalServerError
             | ApiError::AnyhowHandler(_)
@@ -447,102 +463,11 @@ impl IntoResponse for ApiError {
                 "internal server error".to_string(),
             ),
             ApiError::Sqlx(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
+            ApiError::QueryString(_) => (StatusCode::BAD_REQUEST, err),
         };
         let body = Json(serde_json::json!({
             "error": message,
         }));
         (status, body).into_response()
     }
-}
-
-fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQueryParams> {
-    let mut params = EventQueryParams {
-        size: query.size,
-        sort_by: query.sort_by.clone(),
-        event_type: query.event_type.clone(),
-        order: query.order.clone(),
-        ..Default::default()
-    };
-
-    let default_tz_offset: Option<&str> = query.tz_offset.as_ref().map(|s| s.as_ref());
-
-    if let Some(query_string) = &query.query_string {
-        let parts = crate::querystring::parse(query_string, default_tz_offset)?;
-        // Pull out the before and after timestamps from the elements.
-        for e in &parts {
-            match e {
-                Element::LatestTimestamp(ts) => {
-                    params.max_timestamp = Some(*ts);
-                }
-                Element::EarliestTimestamp(ts) => {
-                    params.min_timestamp = Some(*ts);
-                }
-                _ => {}
-            }
-        }
-        params.query_string_elements = parts;
-    }
-
-    if let Some(min_timestamp) = &query.min_timestamp {
-        if params.min_timestamp.is_some() {
-            debug!("Ignoring min_timestamp, @from provided in query string");
-        } else {
-            match crate::querystring::parse_timestamp(min_timestamp, default_tz_offset) {
-                Ok(ts) => params.min_timestamp = Some(ts),
-                Err(err) => {
-                    error!(
-                        "event_query: failed to parse max timestamp: \"{}\": error={}",
-                        &min_timestamp, err
-                    );
-                    bail!(
-                        "failed to parse min_timestamp: {}, error={:?}",
-                        &min_timestamp,
-                        err
-                    );
-                }
-            }
-        }
-    }
-
-    if let Some(max_timestamp) = &query.max_timestamp {
-        if params.max_timestamp.is_some() {
-            debug!("Ignoring max_timestamp, @to provided in query string");
-        } else {
-            match crate::querystring::parse_timestamp(max_timestamp, default_tz_offset) {
-                Ok(ts) => params.max_timestamp = Some(ts),
-                Err(err) => {
-                    error!(
-                        "event_query: failed to parse max timestamp: \"{}\": error={}",
-                        &max_timestamp, err
-                    );
-                    bail!(
-                        "failed to parse max_timestamp: {}, error={:?}",
-                        &max_timestamp,
-                        err
-                    );
-                }
-            }
-        }
-    }
-
-    if params.min_timestamp.is_none() && query.time_range.is_some() {
-        match super::helpers::mints_from_time_range(query.time_range.clone(), None) {
-            Ok(ts) => {
-                params.min_timestamp = ts;
-            }
-            Err(err) => {
-                error!(
-                    "Failed to parse time_range to timestamp: {:?}: {:?}",
-                    query.time_range, err
-                );
-                bail!(
-                    "failed to parse time_range: {:?}, error={:?}",
-                    query.time_range,
-                    err
-                );
-            }
-        }
-    }
-
-    Ok(params)
 }

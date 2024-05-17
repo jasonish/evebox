@@ -158,23 +158,11 @@ export interface EventsQueryParams {
 export async function getEvents(
   params?: EventsQueryParams
 ): Promise<{ events: EventWrapper[]; esc: boolean }> {
-  if (params?.tz_offset) {
+  if (!params) {
+    params = {};
+  }
+  if (!params?.tz_offset) {
     params.tz_offset = get_timezone_offset_str();
-  }
-  if (params?.event_type) {
-    params.event_type = params.event_type;
-  }
-  if (params?.query_string) {
-    params.query_string = params.query_string;
-  }
-  if (params?.order) {
-    params.order = params.order;
-  }
-  if (params?.min_timestamp) {
-    params.min_timestamp = params.min_timestamp;
-  }
-  if (params?.max_timestamp) {
-    params.max_timestamp = params.max_timestamp;
   }
   return get("api/1/events", params).then((response) => response.data);
 }

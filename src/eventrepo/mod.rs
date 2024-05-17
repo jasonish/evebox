@@ -5,7 +5,7 @@ use crate::importer::EventSink;
 use crate::server::api::{self};
 use crate::server::session::Session;
 use crate::sqlite::eventrepo::SqliteEventRepo;
-use crate::{elastic, querystring};
+use crate::{elastic, queryparser};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -19,7 +19,7 @@ pub(crate) struct EventQueryParams {
     pub event_type: Option<String>,
     pub size: Option<u64>,
     pub sort_by: Option<String>,
-    pub query_string_elements: Vec<querystring::Element>,
+    pub query_string: Vec<queryparser::QueryElement>,
 }
 
 pub enum EventRepo {
@@ -191,11 +191,11 @@ impl EventRepo {
         field: &str,
         size: usize,
         order: &str,
-        q: Vec<querystring::Element>,
+        query: Vec<queryparser::QueryElement>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         match self {
-            EventRepo::Elastic(ds) => ds.group_by(field, size, order, q).await,
-            EventRepo::SQLite(ds) => ds.group_by(field, size, order, q).await,
+            EventRepo::Elastic(ds) => ds.group_by(field, size, order, query).await,
+            EventRepo::SQLite(ds) => ds.group_by(field, size, order, query).await,
         }
     }
 }
