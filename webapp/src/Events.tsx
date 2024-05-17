@@ -24,7 +24,7 @@ import { scrollToClass } from "./scroll";
 import { Transition } from "solid-transition-group";
 import { eventIsArchived, eventSetArchived } from "./event";
 import { AlertDescription } from "./Alerts";
-import { GetEventsOptions } from "./api";
+import { EventsQueryParams } from "./api";
 
 // The list of event types that will be shown in dropdowns.
 export const EVENT_TYPES: { name: string; eventType: string }[] = [
@@ -143,32 +143,32 @@ export function Events() {
   }
 
   function loadEvents() {
-    let options: GetEventsOptions = {};
+    let params: EventsQueryParams = {};
 
     if (searchParams.event_type) {
-      options.event_type = searchParams.event_type;
-      setEventType(options.event_type);
+      params.event_type = searchParams.event_type;
+      setEventType(params.event_type);
     }
 
     if (searchParams.q) {
-      options.query_string = searchParams.q;
+      params.query_string = searchParams.q;
     }
 
     if (searchParams.order) {
-      options.order = searchParams.order;
+      params.order = searchParams.order;
     }
 
     if (searchParams.min_timestamp) {
-      options.min_timestamp = searchParams.min_timestamp;
+      params.min_timestamp = searchParams.min_timestamp;
     }
 
     if (searchParams.max_timestamp) {
-      options.max_timestamp = searchParams.max_timestamp;
+      params.max_timestamp = searchParams.max_timestamp;
     }
 
     setIsLoading(true);
 
-    API.getEvents(options)
+    API.getEvents(params)
       .then((response) => {
         if (response.events) {
           console.log(`Received ${response.events.length} events`);

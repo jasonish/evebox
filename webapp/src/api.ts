@@ -146,46 +146,35 @@ export async function alerts(options?: {
   return get("api/1/alerts", params).then((response) => response.data);
 }
 
-export interface GetEventsOptions {
-  query_string?: string;
+export interface EventsQueryParams {
   event_type?: string;
-  time_range?: number;
-  min_timestamp?: string;
   max_timestamp?: string;
+  min_timestamp?: string;
   order?: "asc" | "desc";
+  query_string?: string;
+  tz_offset?: string;
 }
 
 export async function getEvents(
-  options?: GetEventsOptions
+  params?: EventsQueryParams
 ): Promise<{ events: EventWrapper[]; esc: boolean }> {
-  let params: {
-    tz_offset?: string;
-    time_range?: string;
-    event_type?: string;
-    query_string?: string;
-    order?: string;
-    min_timestamp?: string;
-    max_timestamp?: string;
-  } = {
-    tz_offset: get_timezone_offset_str(),
-  };
-  if (options?.time_range) {
-    params.time_range = `${options.time_range}s`;
+  if (params?.tz_offset) {
+    params.tz_offset = get_timezone_offset_str();
   }
-  if (options?.event_type) {
-    params.event_type = options.event_type;
+  if (params?.event_type) {
+    params.event_type = params.event_type;
   }
-  if (options?.query_string) {
-    params.query_string = options.query_string;
+  if (params?.query_string) {
+    params.query_string = params.query_string;
   }
-  if (options?.order) {
-    params.order = options.order;
+  if (params?.order) {
+    params.order = params.order;
   }
-  if (options?.min_timestamp) {
-    params.min_timestamp = options.min_timestamp;
+  if (params?.min_timestamp) {
+    params.min_timestamp = params.min_timestamp;
   }
-  if (options?.max_timestamp) {
-    params.max_timestamp = options.max_timestamp;
+  if (params?.max_timestamp) {
+    params.max_timestamp = params.max_timestamp;
   }
   return get("api/1/events", params).then((response) => response.data);
 }
