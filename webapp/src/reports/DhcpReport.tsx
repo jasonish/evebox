@@ -124,17 +124,9 @@ export function DhcpReport() {
                         <>
                           <tr>
                             <td class={"ps-2"}>
-                              <RawSearchLink
-                                q={`event_type:dhcp dhcp.id:${
-                                  ack.dhcp?.id
-                                } @earliest:"${earliest(
-                                  ack.timestamp
-                                )}" @latest:"${latest(ack.timestamp)}"`}
-                              >
-                                {parse_timestamp(ack.timestamp).format(
-                                  "YYYY-MM-DD HH:mm:ss"
-                                )}
-                              </RawSearchLink>
+                              {parse_timestamp(ack.timestamp).format(
+                                "YYYY-MM-DD HH:mm:ss"
+                              )}
                             </td>
                             <td>{ack.host}</td>
                             <td>
