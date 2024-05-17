@@ -17,9 +17,9 @@ pub(crate) enum Element {
     NotString(String),
     /// A key value pair, (eg: alert.signature_id:222222)
     KeyVal(String, String),
-    /// A timestamp specified with @earliest.
+    /// A timestamp specified with @from.
     EarliestTimestamp(time::OffsetDateTime),
-    /// A timestamp specified with @latest.
+    /// A timestamp specified with @to.
     LatestTimestamp(time::OffsetDateTime),
     /// IP address specified with @ip which is used to match on the
     /// source or destination IP address.
@@ -74,7 +74,7 @@ pub(crate) fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
     })?;
 
     // Now post-process the simple elements into higher level elements
-    // like @ip, @earliest, @latest, etc.
+    // like @ip, @from, @to, etc.
     for token in tokens {
         match token {
             Element::String(_) | Element::NotString(_) => {
@@ -82,12 +82,10 @@ pub(crate) fn parse(qs: &str, tz_offset: Option<&str>) -> Result<Vec<Element>> {
             }
             Element::KeyVal(ref key, ref val) => match key.as_ref() {
                 "@ip" => elements.push(Element::Ip(val.to_string())),
-                "@earliest" => {
+                "@from" => {
                     elements.push(Element::EarliestTimestamp(parse_timestamp(val, tz_offset)?))
                 }
-                "@latest" => {
-                    elements.push(Element::LatestTimestamp(parse_timestamp(val, tz_offset)?))
-                }
+                "@to" => elements.push(Element::LatestTimestamp(parse_timestamp(val, tz_offset)?)),
                 _ => elements.push(token),
             },
             _ => bail!("Unexpected element in tokenized query string: {:?}", token),

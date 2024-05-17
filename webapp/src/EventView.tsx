@@ -420,8 +420,8 @@ export function EventView() {
         `alert.signature_id:${alert.signature_id}`,
         `src_ip:${event()?._source.src_ip}`,
         `dest_ip:${event()?._source.dest_ip}`,
-        `@latest:"${event()?._metadata?.max_timestamp}"`,
-        `@earliest:"${event()?._metadata?.min_timestamp}"`,
+        `@to:"${event()?._metadata?.max_timestamp}"`,
+        `@from:"${event()?._metadata?.min_timestamp}"`,
       ];
       const url = "/events?q=" + parts.map(encodeURIComponent).join("+");
       return <A href={url}>{props.children}</A>;

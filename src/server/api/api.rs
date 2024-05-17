@@ -485,7 +485,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
 
     if let Some(min_timestamp) = &query.min_timestamp {
         if params.min_timestamp.is_some() {
-            debug!("Ignoring min_timestamp, @earliest provided in query string");
+            debug!("Ignoring min_timestamp, @from provided in query string");
         } else {
             match crate::querystring::parse_timestamp(min_timestamp, default_tz_offset) {
                 Ok(ts) => params.min_timestamp = Some(ts),
@@ -506,7 +506,7 @@ fn generic_query_to_event_query(query: &GenericQuery) -> anyhow::Result<EventQue
 
     if let Some(max_timestamp) = &query.max_timestamp {
         if params.max_timestamp.is_some() {
-            debug!("Ignoring max_timestamp, @latest provided in query string");
+            debug!("Ignoring max_timestamp, @to provided in query string");
         } else {
             match crate::querystring::parse_timestamp(max_timestamp, default_tz_offset) {
                 Ok(ts) => params.max_timestamp = Some(ts),
