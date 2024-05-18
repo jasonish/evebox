@@ -3,6 +3,7 @@
 
 use super::genericquery::TimeRange;
 use super::util::parse_duration;
+use crate::datetime::DateTime;
 use crate::eventrepo::EventQueryParams;
 use crate::eventrepo::{DatastoreError, EventRepo};
 use crate::queryparser::{QueryElement, QueryStringParseError, QueryValue};
@@ -193,7 +194,7 @@ pub(crate) async fn histogram_time(
                 .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
             query_string.push(QueryElement {
                 negated: false,
-                value: QueryValue::From(min_timestamp),
+                value: QueryValue::From(min_timestamp.into()),
             });
         }
     }
@@ -231,7 +232,7 @@ pub(crate) async fn alerts(
 
     if let Some(time_range) = query.time_range {
         if !time_range.is_empty() {
-            let now = time::OffsetDateTime::now_utc();
+            let now = DateTime::now();
             match parse_then_from_duration(&now, &time_range) {
                 None => {
                     error!("Failed to parse time_range: {}", time_range);
@@ -414,9 +415,9 @@ pub(crate) async fn alert_group_comment(
 }
 
 fn parse_then_from_duration(
-    now: &time::OffsetDateTime,
+    now: &crate::datetime::DateTime,
     duration: &str,
-) -> Option<time::OffsetDateTime> {
+) -> Option<crate::datetime::DateTime> {
     // First parse to a somewhat standard duration.
     let duration = match humantime::Duration::from_str(duration) {
         Ok(duration) => duration,
@@ -425,8 +426,9 @@ fn parse_then_from_duration(
             return None;
         }
     };
-
-    Some(now.sub(*duration.as_ref()))
+    let d: std::time::Duration = duration.into();
+    let d = chrono::Duration::from_std(d).unwrap();
+    Some(now.sub(d))
 }
 
 #[derive(Debug, thiserror::Error)]

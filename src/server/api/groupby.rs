@@ -59,7 +59,7 @@ pub(crate) async fn group_by(
         .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
     query_string.push(QueryElement {
         negated: false,
-        value: QueryValue::From(min_timestamp),
+        value: QueryValue::From(min_timestamp.into()),
     });
 
     let results = context

@@ -2,20 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 use super::ElasticEventRepo;
-use crate::{eventrepo::StatsAggQueryParams, util};
+use crate::{datetime::DateTime, eventrepo::StatsAggQueryParams, util};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 impl ElasticEventRepo {
     pub async fn stats_agg(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
-        let range = time::OffsetDateTime::now_utc() - params.start_time;
-        let range = range.whole_seconds();
+        let range = DateTime::now().datetime - params.start_time.datetime;
+        let range = range.num_seconds();
         let interval = util::histogram_interval(range);
 
-        let start_time = params
-            .start_time
-            .format(&time::format_description::well_known::Rfc3339)
-            .unwrap();
+        let start_time = params.start_time.to_rfc3339_utc();
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
@@ -77,11 +74,8 @@ impl ElasticEventRepo {
     }
 
     pub async fn stats_agg_diff(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
-        let start_time = params
-            .start_time
-            .format(&time::format_description::well_known::Rfc3339)
-            .unwrap();
-        let range = (time::OffsetDateTime::now_utc() - params.start_time).whole_seconds();
+        let start_time = params.start_time.to_rfc3339_utc();
+        let range = (DateTime::now().datetime - params.start_time.datetime).num_seconds();
         let interval = crate::util::histogram_interval(range);
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));

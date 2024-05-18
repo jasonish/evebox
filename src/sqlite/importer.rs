@@ -4,7 +4,6 @@
 use crate::eve::{self, Eve};
 use sqlx::Connection;
 use std::sync::Arc;
-use time::macros::format_description;
 use tracing::{debug, error};
 
 #[derive(thiserror::Error, Debug)]
@@ -48,7 +47,7 @@ impl SqliteEventSink {
     }
 
     fn prep(&mut self, event: &mut serde_json::Value) -> Result<(), IndexError> {
-        let ts = event.timestamp().ok_or(IndexError::TimestampMissing)?;
+        let ts = event.datetime().ok_or(IndexError::TimestampMissing)?;
         reformat_timestamps(event);
         let source_values = extract_values(event);
         let mut archived = 0;
@@ -67,7 +66,7 @@ impl SqliteEventSink {
         eve::eve::add_evebox_metadata(event, None);
 
         let prepared = PreparedEvent {
-            ts: ts.unix_timestamp_nanos() as i64,
+            ts: ts.to_nanos(),
             source_values,
             event: event.to_string(),
             archived,
@@ -142,11 +141,8 @@ fn reformat_timestamps(eve: &mut serde_json::Value) {
 }
 
 fn reformat_timestamp(ts: &str) -> String {
-    let format = format_description!(
-        "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:6][offset_hour sign:mandatory][offset_minute]"
-    );
-    if let Ok(dt) = eve::parse_eve_timestamp(ts) {
-        dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
+    if let Ok(dt) = crate::datetime::parse(ts, None) {
+        dt.to_rfc3339_utc()
     } else {
         ts.to_string()
     }

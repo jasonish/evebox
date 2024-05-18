@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::datetime::DateTime;
 use crate::eventrepo::DatastoreError;
 use crate::server::api::AlertGroupSpec;
-use crate::{eve, LOG_QUERIES};
+use crate::LOG_QUERIES;
 use serde_json::json;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 use sqlx::{Row, SqliteConnection, SqlitePool};
 use std::sync::Arc;
 use std::time::Instant;
-use time::OffsetDateTime;
 use tracing::{debug, info};
 
 mod alerts;
@@ -60,27 +60,23 @@ impl SqliteEventRepo {
         Ok(id)
     }
 
-    pub async fn min_timestamp(&self) -> Result<Option<OffsetDateTime>, DatastoreError> {
+    pub async fn min_timestamp(&self) -> Result<Option<DateTime>, DatastoreError> {
         let result: Option<i64> = sqlx::query_scalar("SELECT MIN(timestamp) FROM events")
             .fetch_optional(&self.pool)
             .await?;
         if let Some(ts) = result {
-            Ok(Some(time::OffsetDateTime::from_unix_timestamp_nanos(
-                ts as i128,
-            )?))
+            Ok(Some(crate::datetime::DateTime::from_nanos(ts)))
         } else {
             Ok(None)
         }
     }
 
-    pub async fn max_timestamp(&self) -> Result<Option<OffsetDateTime>, DatastoreError> {
+    pub async fn max_timestamp(&self) -> Result<Option<DateTime>, DatastoreError> {
         let result: Option<i64> = sqlx::query_scalar("SELECT MAX(timestamp) FROM events")
             .fetch_optional(&self.pool)
             .await?;
         if let Some(ts) = result {
-            Ok(Some(time::OffsetDateTime::from_unix_timestamp_nanos(
-                ts as i128,
-            )?))
+            Ok(Some(crate::datetime::DateTime::from_nanos(ts)))
         } else {
             Ok(None)
         }
@@ -155,13 +151,11 @@ impl SqliteEventRepo {
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
         args.add(&alert_group.dest_ip);
 
-        let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
-        let mints_nanos = mints.unix_timestamp_nanos();
+        let mints_nanos = crate::datetime::parse(&alert_group.min_timestamp, None)?.to_nanos();
         filters.push("timestamp >= ?".to_string());
         args.add(mints_nanos as i64);
 
-        let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
-        let maxts_nanos = maxts.unix_timestamp_nanos();
+        let maxts_nanos = crate::datetime::parse(&alert_group.max_timestamp, None)?.to_nanos();
         filters.push("timestamp <= ?".to_string());
         args.add(maxts_nanos as i64);
 
@@ -206,13 +200,13 @@ impl SqliteEventRepo {
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
         args.add(alert_group.dest_ip);
 
-        let mints = eve::parse_eve_timestamp(&alert_group.min_timestamp)?;
+        let mints = crate::datetime::parse(&alert_group.min_timestamp, None)?;
         filters.push("timestamp >= ?".to_string());
-        args.add(mints.unix_timestamp_nanos() as i64);
+        args.add(mints.to_nanos() as i64);
 
-        let maxts = eve::parse_eve_timestamp(&alert_group.max_timestamp)?;
+        let maxts = crate::datetime::parse(&alert_group.max_timestamp, None)?;
         filters.push("timestamp <= ?".to_string());
-        args.add(maxts.unix_timestamp_nanos() as i64);
+        args.add(maxts.to_nanos() as i64);
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
         let r = sqlx::query_with(&sql, args).execute(&self.pool).await?;
@@ -282,9 +276,8 @@ impl SqliteEventRepo {
     }
 
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
-        let start_time = time::OffsetDateTime::now_utc() - time::Duration::hours(24);
-        let start_time = start_time.unix_timestamp_nanos() as i64;
-
+        let start_time = DateTime::now().datetime - chrono::Duration::hours(24);
+        let start_time = start_time.timestamp_nanos_opt().unwrap();
         let sql = r#"
             SELECT DISTINCT json_extract(events.source, '$.host')
             FROM events
@@ -300,8 +293,6 @@ impl SqliteEventRepo {
     }
 }
 
-fn nanos_to_rfc3339(nanos: i128) -> anyhow::Result<String> {
-    let ts = time::OffsetDateTime::from_unix_timestamp_nanos(nanos)?;
-    let rfc3339 = ts.format(&time::format_description::well_known::Rfc3339)?;
-    Ok(rfc3339)
+fn nanos_to_rfc3339(nanos: i64) -> String {
+    DateTime::from_nanos(nanos).to_rfc3339_utc()
 }

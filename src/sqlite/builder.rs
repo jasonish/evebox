@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::datetime::DateTime;
 use crate::queryparser;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
@@ -148,27 +149,23 @@ impl<'a> EventQueryBuilder<'a> {
         }
     }
 
-    pub fn earliest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
-        self.push_where("timestamp >= ?")
-            .push_arg(ts.unix_timestamp_nanos() as i64);
+    pub fn earliest_timestamp(&mut self, ts: &DateTime) -> &mut Self {
+        self.push_where("timestamp >= ?").push_arg(ts.to_nanos());
         self
     }
 
-    pub fn timestamp_gte(&mut self, ts: &chrono::DateTime<chrono::Utc>) -> &mut Self {
-        self.push_where("timestamp >= ?")
-            .push_arg(ts.timestamp_nanos_opt().unwrap());
+    pub fn timestamp_gte(&mut self, ts: &crate::datetime::DateTime) -> &mut Self {
+        self.push_where("timestamp >= ?").push_arg(ts.to_nanos());
         self
     }
 
-    pub fn timestamp_lte(&mut self, ts: &chrono::DateTime<chrono::Utc>) -> &mut Self {
-        self.push_where("timestamp <= ?")
-            .push_arg(ts.timestamp_nanos_opt().unwrap());
+    pub fn timestamp_lte(&mut self, ts: &crate::datetime::DateTime) -> &mut Self {
+        self.push_where("timestamp <= ?").push_arg(ts.to_nanos());
         self
     }
 
-    pub fn latest_timestamp(&mut self, ts: &time::OffsetDateTime) -> &mut Self {
-        self.push_where("timestamp <= ?")
-            .push_arg(ts.unix_timestamp_nanos() as i64);
+    pub fn latest_timestamp(&mut self, ts: &DateTime) -> &mut Self {
+        self.push_where("timestamp <= ?").push_arg(ts.to_nanos());
         self
     }
 

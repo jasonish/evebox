@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::datetime::DateTime;
+
 use super::{util::parse_duration, ApiError};
 use serde::Deserialize;
 
@@ -28,8 +30,9 @@ impl TimeRange {
         parse_duration(&self.0).map_err(|_err| ApiError::bad_request("time_range"))
     }
 
-    pub fn parse_time_range_as_min_timestamp(&self) -> Result<time::OffsetDateTime, ApiError> {
-        let range = self.parse_time_range()?;
-        Ok(time::OffsetDateTime::now_utc() - range)
+    pub fn parse_time_range_as_min_timestamp(&self) -> Result<DateTime, ApiError> {
+        let range: std::time::Duration = self.parse_time_range()?;
+        let range: chrono::Duration = chrono::Duration::from_std(range).unwrap();
+        Ok(DateTime::now().sub(range))
     }
 }

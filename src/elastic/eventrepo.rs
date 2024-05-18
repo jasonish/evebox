@@ -8,12 +8,13 @@ use super::HistoryEntry;
 use super::ACTION_ARCHIVED;
 use super::ACTION_COMMENT;
 use super::TAG_ESCALATED;
-use crate::elastic::format_timestamp2;
+use crate::datetime;
+use crate::datetime::DateTime;
 use crate::elastic::importer::ElasticEventSink;
 use crate::elastic::request::exists_filter;
 use crate::elastic::{
-    format_timestamp, request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED,
-    ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
+    request, AlertQueryOptions, ElasticResponse, ACTION_DEESCALATED, ACTION_ESCALATED,
+    TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED,
 };
 use crate::eventrepo::{self, DatastoreError};
 use crate::queryparser;
@@ -24,8 +25,6 @@ use crate::server::api;
 use crate::server::session::Session;
 use crate::util;
 use crate::LOG_QUERIES;
-use chrono::DateTime;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -292,7 +291,7 @@ impl ElasticEventRepo {
         });
         let action = HistoryEntry {
             username: "anonymous".to_string(),
-            timestamp: format_timestamp(time::OffsetDateTime::now_utc()),
+            timestamp: datetime::DateTime::now().to_elastic(),
             action: ACTION_ARCHIVED.to_string(),
             comment: None,
         };
@@ -309,7 +308,7 @@ impl ElasticEventRepo {
         });
         let action = HistoryEntry {
             username: "anonymous".to_string(),
-            timestamp: format_timestamp(time::OffsetDateTime::now_utc()),
+            timestamp: datetime::DateTime::now().to_elastic(),
             action: ACTION_ESCALATED.to_string(),
             comment: None,
         };
@@ -326,7 +325,7 @@ impl ElasticEventRepo {
         });
         let action = HistoryEntry {
             username: "anonymous".to_string(),
-            timestamp: format_timestamp(time::OffsetDateTime::now_utc()),
+            timestamp: datetime::DateTime::now().to_elastic(),
             action: ACTION_DEESCALATED.to_string(),
             comment: None,
         };
@@ -349,7 +348,7 @@ impl ElasticEventRepo {
         });
         let action = HistoryEntry {
             username: username.to_string(),
-            timestamp: format_timestamp(time::OffsetDateTime::now_utc()),
+            timestamp: datetime::DateTime::now().to_elastic(),
             action: ACTION_COMMENT.to_string(),
             comment: Some(comment),
         };
@@ -456,10 +455,10 @@ impl ElasticEventRepo {
                     }
                 },
                 queryparser::QueryValue::From(ts) => {
-                    filter.push(request::timestamp_gte_filter2(ts));
+                    filter.push(request::timestamp_gte_filter(ts));
                 }
                 queryparser::QueryValue::To(td) => {
-                    filter.push(request::timestamp_lte_filter2(td));
+                    filter.push(request::timestamp_lte_filter(td));
                 }
             }
         }
@@ -500,7 +499,7 @@ impl ElasticEventRepo {
 
         if !has_min_timestamp {
             if let Some(ts) = options.timestamp_gte {
-                filters.push(json!({"range": {"@timestamp": {"gte": format_timestamp(ts)}}}));
+                filters.push(json!({"range": {"@timestamp": {"gte": ts.to_elastic()}}}));
             }
         }
 
@@ -640,7 +639,7 @@ impl ElasticEventRepo {
     ) -> Result<(), DatastoreError> {
         let action = HistoryEntry {
             username: "anonymous".to_string(),
-            timestamp: format_timestamp(time::OffsetDateTime::now_utc()),
+            timestamp: DateTime::now().to_elastic(),
             action: ACTION_ARCHIVED.to_string(),
             comment: None,
         };
@@ -656,7 +655,7 @@ impl ElasticEventRepo {
         let action = HistoryEntry {
             username: session.username().to_string(),
             //username: "anonymous".to_string(),
-            timestamp: format_timestamp(time::OffsetDateTime::now_utc()),
+            timestamp: DateTime::now().to_elastic(),
             action: ACTION_ESCALATED.to_string(),
             comment: None,
         };
@@ -670,7 +669,7 @@ impl ElasticEventRepo {
     ) -> Result<(), DatastoreError> {
         let action = HistoryEntry {
             username: "anonymous".to_string(),
-            timestamp: format_timestamp(time::OffsetDateTime::now_utc()),
+            timestamp: DateTime::now().to_elastic(),
             action: ACTION_DEESCALATED.to_string(),
             comment: None,
         };
@@ -788,14 +787,16 @@ impl ElasticEventRepo {
     ) -> Result<(), DatastoreError> {
         let entry = HistoryEntry {
             username: username.to_string(),
-            timestamp: format_timestamp(time::OffsetDateTime::now_utc()),
+            timestamp: DateTime::now().to_elastic(),
             action: ACTION_COMMENT.to_string(),
             comment: Some(comment),
         };
         self.add_tags_by_alert_group(alert_group, &[], &entry).await
     }
 
-    async fn get_earliest_timestamp(&self) -> Result<Option<DateTime<Utc>>, DatastoreError> {
+    async fn get_earliest_timestamp(
+        &self,
+    ) -> Result<Option<crate::datetime::DateTime>, DatastoreError> {
         #[rustfmt::skip]
 	      let request = json!({
 	          "query": {
@@ -816,7 +817,8 @@ impl ElasticEventRepo {
         if let Some(hits) = response["hits"]["hits"].as_array() {
             for hit in hits {
                 if let serde_json::Value::String(timestamp) = &hit["_source"]["@timestamp"] {
-                    return Ok(crate::queryparser::parse_timestamp(timestamp, None));
+                    let dt = crate::datetime::parse(timestamp, None)?;
+                    return Ok(Some(dt));
                 }
             }
         }
@@ -834,9 +836,9 @@ impl ElasticEventRepo {
         let mut must_not = vec![];
         self.apply_query_string(query, &mut filters, &mut should, &mut must_not);
 
-        let bound_max = chrono::Utc::now();
+        let bound_max = datetime::DateTime::now();
         let bound_min = if let Some(timestamp) = qs.first_from() {
-            *timestamp
+            timestamp
         } else if let Some(timestamp) = self.get_earliest_timestamp().await? {
             debug!(
                 "No time-range provided by client, using earliest from database of {}",
@@ -851,7 +853,7 @@ impl ElasticEventRepo {
         let interval = if let Some(interval) = interval {
             interval
         } else {
-            let range = bound_max.timestamp() - bound_min.timestamp();
+            let range = bound_max.to_seconds() - bound_min.to_seconds();
             let interval = util::histogram_interval(range);
             debug!("No interval provided by client, using {interval}s");
             interval
@@ -874,8 +876,8 @@ impl ElasticEventRepo {
 			                  "fixed_interval": format!("{interval}s"),
 			                  "min_doc_count": 0,
 			                  "extended_bounds": {
-			                      "max": format_timestamp2(bound_max),
-			                      "min": format_timestamp2(bound_min),
+			                      "max": bound_max.to_elastic(),
+			                      "min": bound_min.to_elastic(),
 			                  },
 		                },
 		            },

@@ -6,6 +6,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, UNIX_EPOCH};
 use tracing::{debug, error, info, warn};
 
+use crate::datetime::DateTime;
+
 const DAYS_28: i64 = 86400 * 28;
 const UPDATE_CHECK_TIMEOUT: u64 = 60;
 
@@ -37,15 +39,10 @@ impl GeoIP {
         let build_epoch = reader.metadata.build_epoch as i64;
 
         // Warn if database older than 4 weeks.
-        let now = time::OffsetDateTime::now_utc();
-
-        let dt = time::OffsetDateTime::from_unix_timestamp(build_epoch);
-        if let Ok(dt) = dt {
-            if build_epoch < now.unix_timestamp() - DAYS_28 {
-                warn!("GeoIP database older than 4 weeks: {}", dt);
-            }
-        } else {
-            warn!("Failed to find timestamp of GeoIP database");
+        let now = DateTime::now();
+        let dt = DateTime::from_seconds(build_epoch);
+        if build_epoch < now.to_seconds() - DAYS_28 {
+            warn!("GeoIP database older than 4 weeks: {}", dt);
         }
 
         info!("Loaded GeoIP database: {}: {:?}", filename, dt);
@@ -127,8 +124,7 @@ impl GeoIP {
     pub fn add_geoip_to_eve(&self, eve: &mut serde_json::Value) {
         let mut inner = self.inner.lock().unwrap();
         if self.check_for_update(&mut inner) {
-            let build_time =
-                time::OffsetDateTime::from_unix_timestamp(inner.reader.metadata.build_epoch as i64);
+            let build_time = DateTime::from_seconds(inner.reader.metadata.build_epoch as i64);
             info!("GeoIP database has been updated to {:?}", build_time);
         }
 

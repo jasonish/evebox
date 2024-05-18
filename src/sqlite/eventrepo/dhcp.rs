@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 use super::SqliteEventRepo;
+use crate::datetime::DateTime;
 use crate::eventrepo::DatastoreError;
 use futures::TryStreamExt;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 use sqlx::Row;
-use time::OffsetDateTime;
 
 impl SqliteEventRepo {
     pub async fn dhcp(
         &self,
-        earliest: Option<OffsetDateTime>,
+        earliest: Option<DateTime>,
         dhcp_type: &str,
         sensor: Option<String>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
@@ -23,7 +23,7 @@ impl SqliteEventRepo {
         let mut params = SqliteArguments::default();
 
         if let Some(earliest) = earliest {
-            params.add(earliest.unix_timestamp_nanos() as i64);
+            params.add(earliest.to_nanos());
             wheres.push("timestamp >= ?".to_string())
         }
 
@@ -62,7 +62,7 @@ impl SqliteEventRepo {
 
     pub async fn dhcp_request(
         &self,
-        earliest: Option<OffsetDateTime>,
+        earliest: Option<DateTime>,
         sensor: Option<String>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         self.dhcp(earliest, "request", sensor).await
@@ -70,7 +70,7 @@ impl SqliteEventRepo {
 
     pub async fn dhcp_ack(
         &self,
-        earliest: Option<OffsetDateTime>,
+        earliest: Option<DateTime>,
         sensor: Option<String>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         self.dhcp(earliest, "ack", sensor).await

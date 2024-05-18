@@ -12,13 +12,6 @@ pub mod util;
 
 pub(crate) use connection::ConnectionBuilder;
 use sqlx::SqliteConnection;
-use time::macros::format_description;
-
-pub fn format_sqlite_timestamp(dt: &time::OffsetDateTime) -> String {
-    let format =
-        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:6][offset_hour sign:mandatory][offset_minute]");
-    dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
-}
 
 pub(crate) async fn has_table(
     conn: &mut SqliteConnection,

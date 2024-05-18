@@ -10,6 +10,8 @@ use tracing::debug;
 use tracing::error;
 use tracing::info;
 
+use crate::datetime::DateTime;
+
 use super::has_table;
 
 #[derive(thiserror::Error, Debug)]
@@ -157,7 +159,7 @@ impl ConfigRepo {
     }
 
     async fn expire_sessions(&self) -> Result<u64, ConfigRepoError> {
-        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let now = DateTime::now().to_seconds();
         let result = sqlx::query("DELETE FROM sessions WHERE expires AT < ?")
             .bind(now)
             .execute(&self.pool)
@@ -184,7 +186,7 @@ impl ConfigRepo {
             let username: String = row.try_get("username")?;
             let expires_at: i64 = row.try_get("expires_at")?;
 
-            let now = time::OffsetDateTime::now_utc().unix_timestamp();
+            let now = DateTime::now().to_seconds();
             if now > expires_at {
                 match self.expire_sessions().await {
                     Ok(n) => {

@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use time::macros::format_description;
-
 pub trait Request {
     fn push_filter(&mut self, filter: serde_json::Value);
     fn size(&mut self, size: u64);
@@ -30,13 +28,6 @@ pub fn new_request() -> serde_json::Value {
     })
 }
 
-/// Format: "%Y-%m-%dT%H:%M:%S.%3fZ";
-pub fn format_datetime(dt: &time::OffsetDateTime) -> String {
-    let format =
-        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z");
-    dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
-}
-
 pub fn term_filter(field: &str, value: &str) -> serde_json::Value {
     json!({"term": {field: value}})
 }
@@ -53,14 +44,10 @@ pub fn range_gte_filter(field: &str, value: &str) -> serde_json::Value {
     json!({"range": {field: {"gte": value}}})
 }
 
-pub fn timestamp_gte_filter(dt: &time::OffsetDateTime) -> serde_json::Value {
-    range_gte_filter("@timestamp", &format_datetime(dt))
+pub fn timestamp_gte_filter(dt: &crate::datetime::DateTime) -> serde_json::Value {
+    range_gte_filter("@timestamp", &dt.to_elastic())
 }
 
-pub fn timestamp_gte_filter2(dt: &chrono::DateTime<chrono::Utc>) -> serde_json::Value {
-    range_gte_filter("@timestamp", &dt.to_rfc3339())
-}
-
-pub fn timestamp_lte_filter2(dt: &chrono::DateTime<chrono::Utc>) -> serde_json::Value {
-    range_lte_filter("@timestamp", &dt.to_rfc3339())
+pub fn timestamp_lte_filter(dt: &crate::datetime::DateTime) -> serde_json::Value {
+    range_lte_filter("@timestamp", &dt.to_elastic())
 }

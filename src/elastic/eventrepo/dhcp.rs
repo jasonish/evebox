@@ -3,15 +3,15 @@
 
 use super::ElasticEventRepo;
 use crate::{
+    datetime::DateTime,
     elastic::request::{term_filter, timestamp_gte_filter},
     eventrepo::DatastoreError,
 };
-use time::OffsetDateTime;
 
 impl ElasticEventRepo {
     pub async fn dhcp(
         &self,
-        earliest: Option<OffsetDateTime>,
+        earliest: Option<DateTime>,
         dhcp_type: &str,
         sensor: Option<String>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
@@ -29,20 +29,20 @@ impl ElasticEventRepo {
         #[rustfmt::skip]
         let request = json!({
             "query": {
-		"bool": {
+		            "bool": {
                     "filter": filters,
-		}
+		            }
             },
             "collapse": {
-		"field": self.map_field("dhcp.client_mac"),
+		            "field": self.map_field("dhcp.client_mac"),
             },
-	    "sort": [
-		{
-		    "@timestamp": {
-			"order": "desc",
-		    },
-		}
-	    ],
+	          "sort": [
+		            {
+		                "@timestamp": {
+			                  "order": "desc",
+		                },
+		            }
+	          ],
             "size": 10000,
         });
 
@@ -65,7 +65,7 @@ impl ElasticEventRepo {
 
     pub async fn dhcp_request(
         &self,
-        earliest: Option<OffsetDateTime>,
+        earliest: Option<DateTime>,
         sensor: Option<String>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         self.dhcp(earliest, "request", sensor).await
@@ -73,7 +73,7 @@ impl ElasticEventRepo {
 
     pub async fn dhcp_ack(
         &self,
-        earliest: Option<OffsetDateTime>,
+        earliest: Option<DateTime>,
         sensor: Option<String>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         self.dhcp(earliest, "ack", sensor).await

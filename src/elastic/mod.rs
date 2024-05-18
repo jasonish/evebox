@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::datetime::DateTime;
 use crate::eventrepo::DatastoreError;
 pub(crate) use client::Version;
 pub(crate) use client::{Client, ClientBuilder};
@@ -9,8 +10,6 @@ pub(crate) use importer::ElasticEventSink;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
-use time::macros::format_description;
-use time::OffsetDateTime;
 
 pub mod client;
 pub mod eventrepo;
@@ -43,7 +42,7 @@ impl From<reqwest::Error> for DatastoreError {
 
 #[derive(Default, Debug, Clone)]
 pub(crate) struct AlertQueryOptions {
-    pub timestamp_gte: Option<OffsetDateTime>,
+    pub timestamp_gte: Option<DateTime>,
     pub query_string: Option<String>,
     pub tags: Vec<String>,
     pub sensor: Option<String>,
@@ -56,16 +55,6 @@ pub(crate) struct HistoryEntry {
     pub action: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
-}
-
-pub fn format_timestamp(dt: time::OffsetDateTime) -> String {
-    let format =
-        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z");
-    dt.to_offset(time::UtcOffset::UTC).format(&format).unwrap()
-}
-
-pub fn format_timestamp2(dt: chrono::DateTime<chrono::Utc>) -> String {
-    dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
 }
 
 pub fn query_string_query(query_string: &str) -> serde_json::Value {

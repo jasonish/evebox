@@ -96,9 +96,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.85"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27a4bd113ab6da4cd0f521068a6e2ee1065eab54107266a11835d02c8ec86a37"
+checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 
 [[package]]
 name = "arc-swap"
@@ -2312,7 +2312,7 @@ dependencies = [
 [[package]]
 name = "sqlx"
 version = "0.8.0-alpha.0"
-source = "git+https://github.com/launchbadge/sqlx#60d033eda2f1ed4b0b49f4acd75ac5a99fa9c9a1"
+source = "git+https://github.com/launchbadge/sqlx#0449ac5c1f5220571bf8aaf0ab560d40bf603fc8"
 dependencies = [
  "sqlx-core",
  "sqlx-macros",
@@ -2324,7 +2324,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core"
 version = "0.8.0-alpha.0"
-source = "git+https://github.com/launchbadge/sqlx#60d033eda2f1ed4b0b49f4acd75ac5a99fa9c9a1"
+source = "git+https://github.com/launchbadge/sqlx#0449ac5c1f5220571bf8aaf0ab560d40bf603fc8"
 dependencies = [
  "ahash",
  "atoi",
@@ -2365,7 +2365,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros"
 version = "0.8.0-alpha.0"
-source = "git+https://github.com/launchbadge/sqlx#60d033eda2f1ed4b0b49f4acd75ac5a99fa9c9a1"
+source = "git+https://github.com/launchbadge/sqlx#0449ac5c1f5220571bf8aaf0ab560d40bf603fc8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2377,7 +2377,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros-core"
 version = "0.8.0-alpha.0"
-source = "git+https://github.com/launchbadge/sqlx#60d033eda2f1ed4b0b49f4acd75ac5a99fa9c9a1"
+source = "git+https://github.com/launchbadge/sqlx#0449ac5c1f5220571bf8aaf0ab560d40bf603fc8"
 dependencies = [
  "dotenvy",
  "either",
@@ -2401,7 +2401,7 @@ dependencies = [
 [[package]]
 name = "sqlx-mysql"
 version = "0.8.0-alpha.0"
-source = "git+https://github.com/launchbadge/sqlx#60d033eda2f1ed4b0b49f4acd75ac5a99fa9c9a1"
+source = "git+https://github.com/launchbadge/sqlx#0449ac5c1f5220571bf8aaf0ab560d40bf603fc8"
 dependencies = [
  "atoi",
  "base64 0.22.1",
@@ -2442,7 +2442,7 @@ dependencies = [
 [[package]]
 name = "sqlx-postgres"
 version = "0.8.0-alpha.0"
-source = "git+https://github.com/launchbadge/sqlx#60d033eda2f1ed4b0b49f4acd75ac5a99fa9c9a1"
+source = "git+https://github.com/launchbadge/sqlx#0449ac5c1f5220571bf8aaf0ab560d40bf603fc8"
 dependencies = [
  "atoi",
  "base64 0.22.1",
@@ -2479,7 +2479,7 @@ dependencies = [
 [[package]]
 name = "sqlx-sqlite"
 version = "0.8.0-alpha.0"
-source = "git+https://github.com/launchbadge/sqlx#60d033eda2f1ed4b0b49f4acd75ac5a99fa9c9a1"
+source = "git+https://github.com/launchbadge/sqlx#0449ac5c1f5220571bf8aaf0ab560d40bf603fc8"
 dependencies = [
  "atoi",
  "flume",

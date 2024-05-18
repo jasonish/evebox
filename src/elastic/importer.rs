@@ -4,7 +4,6 @@
 use super::client::BulkResponse;
 use crate::eve::filters::AutoArchiveFilter;
 use crate::eve::Eve;
-use time::macros::format_description;
 use tracing::{error, trace};
 
 #[derive(Clone, Debug)]
@@ -35,23 +34,16 @@ impl ElasticEventSink {
         &mut self,
         mut event: serde_json::Value,
     ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-        let ts = event.timestamp().unwrap();
-        let st: std::time::SystemTime = ts.into();
+        let ts = event.datetime().unwrap();
+        let st: std::time::SystemTime = ts.to_systemtime();
 
         let index = if self.no_index_suffix {
             self.index.clone()
         } else {
-            let formatter = format_description!("[year].[month].[day]");
-            format!(
-                "{}-{}",
-                self.index,
-                ts.to_offset(time::UtcOffset::UTC)
-                    .format(&formatter)
-                    .unwrap()
-            )
+            format!("{}-{}", self.index, ts.yyyymmdd("."))
         };
         let event_id = ulid::Ulid::from_datetime(st).to_string();
-        let at_timestamp = crate::elastic::format_timestamp(ts);
+        let at_timestamp = ts.to_elastic();
         event["@timestamp"] = at_timestamp.into();
         self.auto_archive_filter.run(&mut event);
 

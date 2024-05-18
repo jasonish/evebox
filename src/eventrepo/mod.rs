@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::datetime::DateTime;
 use crate::importer::EventSink;
 use crate::server::api::{self};
 use crate::server::session::Session;
@@ -14,8 +15,8 @@ mod stats;
 #[derive(Default, Debug)]
 pub(crate) struct EventQueryParams {
     pub order: Option<String>,
-    pub min_timestamp: Option<time::OffsetDateTime>,
-    pub max_timestamp: Option<time::OffsetDateTime>,
+    pub min_timestamp: Option<DateTime>,
+    pub max_timestamp: Option<DateTime>,
     pub event_type: Option<String>,
     pub size: Option<u64>,
     pub sort_by: Option<String>,
@@ -39,10 +40,8 @@ pub enum DatastoreError {
     ElasticError(#[from] elastic::ElasticError),
     #[error("serde: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
-    #[error("time: {0}")]
-    TimeParse(#[from] time::error::Parse),
-    #[error("time: {0}")]
-    TimeComponentRange(#[from] time::error::ComponentRange),
+    #[error("time parser error: {0}")]
+    DateTimeParse(#[from] crate::datetime::ParseError),
 
     #[error("sqlx: {0}")]
     SqlxError(#[from] sqlx::Error),
@@ -56,7 +55,7 @@ pub enum DatastoreError {
 pub(crate) struct StatsAggQueryParams {
     pub field: String,
     pub sensor_name: Option<String>,
-    pub start_time: time::OffsetDateTime,
+    pub start_time: DateTime,
 }
 
 #[allow(unreachable_patterns)]

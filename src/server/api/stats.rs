@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::datetime::DateTime;
 use crate::eventrepo;
 use crate::eventrepo::EventRepo;
 use crate::server::api::ApiError;
@@ -29,21 +30,24 @@ pub(crate) struct StatsAggQuery {
 }
 
 impl StatsAggQuery {
-    fn start_time(&self) -> anyhow::Result<time::OffsetDateTime> {
+    fn start_datetime(&self) -> anyhow::Result<DateTime> {
         let start_time = if let Some(time_range) = self.time_range {
             if time_range == 0 {
-                time::OffsetDateTime::UNIX_EPOCH
+                let then = chrono::DateTime::UNIX_EPOCH;
+                then.fixed_offset()
             } else {
-                time::OffsetDateTime::now_utc()
-                    .checked_sub(time::Duration::seconds(time_range))
-                    .ok_or_else(|| anyhow::anyhow!("overflow"))?
+                let delta = chrono::Duration::seconds(time_range);
+                let now = DateTime::now();
+
+                now.datetime - delta
             }
         } else {
-            time::OffsetDateTime::now_utc()
-                .checked_sub(time::Duration::hours(24))
-                .ok_or_else(|| anyhow::anyhow!("overflow"))?
+            let delta = chrono::Duration::hours(24);
+            let now = DateTime::now();
+
+            now.datetime - delta
         };
-        Ok(start_time)
+        Ok(start_time.into())
     }
 }
 
@@ -52,7 +56,7 @@ async fn agg(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let start_time = form.start_time().unwrap();
+    let start_time = form.start_datetime().unwrap();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
@@ -76,7 +80,7 @@ async fn agg_differential(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let start_time = form.start_time().unwrap();
+    let start_time = form.start_datetime().unwrap();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),

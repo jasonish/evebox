@@ -242,7 +242,7 @@ impl Ip4Builder {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::pcap;
+    use crate::{datetime::DateTime, pcap};
 
     #[test]
     fn parse_ip_addr() {
@@ -260,7 +260,7 @@ mod test {
             .payload(tcp);
 
         let packet = builder.build();
-        let now = time::OffsetDateTime::now_utc();
+        let now = DateTime::now();
         let _pcap_buffer = pcap::create(pcap::LinkType::Raw as u32, now, &packet);
     }
 }

@@ -55,10 +55,13 @@ serde_json = "1.0.112"
 serde_yaml = "0.9.30"
 
 suricatax-rule-parser = { git = "https://github.com/jasonish/suricatax-rule-parser-rs" }
-time = { version = "0.3.31", features = ["formatting", "local-offset", "macros", "parsing"] }
+
+# Currently only used for tracing_subscriber based logging.
+time = { version = "0.3.36", features = ["local-offset"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["std", "fmt", "env-filter", "time"] }
 tracing-log = "0.2.0"
+
 ulid = "1.1.0"
 uuid = { version = "1.7.0", features = ["v4"] }
 webbrowser = "0.8.12"

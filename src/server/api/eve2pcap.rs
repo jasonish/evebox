@@ -46,14 +46,14 @@ pub(crate) async fn handler(
                 .map_err(|err| {
                     ApiError::BadRequest(format!("failed to base64 decode packet: {err}"))
                 })?;
-            let ts = event.timestamp().ok_or_else(|| {
+            let ts = event.datetime().ok_or_else(|| {
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
             })?;
             let pcap_buffer = pcap::create(linktype, ts, packet);
             Ok((headers, pcap_buffer))
         }
         "payload" => {
-            let ts = event.timestamp().ok_or_else(|| {
+            let ts = event.datetime().ok_or_else(|| {
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
             })?;
             let packet = pcap::packet_from_payload(&event).map_err(|err| {

@@ -28,20 +28,15 @@ pub fn init_logger(level: Level) -> anyhow::Result<()> {
         Level::ERROR => "error",
     };
 
-    let timer = unsafe {
+    let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
+    let offset = unsafe {
         if let Some(offset) = OFFSET {
-            OffsetTime::new(
-                offset,
-                format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
-            )
+            offset
         } else {
-            OffsetTime::new(
-                time::UtcOffset::UTC,
-                format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
-            )
+            time::UtcOffset::UTC
         }
     };
-
+    let timer = OffsetTime::new(offset, format);
     let builder = tracing_subscriber::FmtSubscriber::builder()
         .with_env_filter(format!(
             "{level},h2=off,hyper=off,tokio_util=off,tower_http=debug,refinery_core=warn"

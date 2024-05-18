@@ -10,6 +10,7 @@ use tracing::{debug, error, info, trace, warn};
 
 use super::info::Info;
 use crate::config::Config;
+use crate::datetime::DateTime;
 
 const DEFAULT_RANGE: usize = 7;
 
@@ -188,7 +189,7 @@ async fn delete_to_size(conn: &SqlitePool, filename: &Path, bytes: usize) -> Res
 }
 
 async fn delete_by_range(conn: &SqlitePool, range: u64, limit: u64) -> Result<u64> {
-    let now = time::OffsetDateTime::now_utc();
+    let now = DateTime::now();
     let period = std::time::Duration::from_secs(range * 86400);
     let older_than = now.sub(period);
     let timer = Instant::now();
@@ -201,7 +202,7 @@ async fn delete_by_range(conn: &SqlitePool, range: u64, limit: u64) -> Result<u6
              ORDER BY timestamp ASC
              LIMIT ?)"#;
     let n = sqlx::query(sql)
-        .bind(older_than.unix_timestamp_nanos() as i64)
+        .bind(older_than.to_nanos())
         .bind(limit as i64)
         .execute(conn)
         .await?

@@ -8,7 +8,6 @@ pub(crate) mod processor;
 pub(crate) mod reader;
 pub(crate) mod watcher;
 
-pub(crate) use eve::parse_eve_timestamp;
 pub(crate) use eve::Eve;
 pub(crate) use processor::Processor;
 pub(crate) use reader::EveReader;

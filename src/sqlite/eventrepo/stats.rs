@@ -3,9 +3,10 @@
 
 use super::SqliteEventRepo;
 use crate::{
+    datetime::DateTime,
     eventrepo::{DatastoreError, StatsAggQueryParams},
     queryparser::{QueryElement, QueryValue},
-    sqlite::{builder::EventQueryBuilder, eventrepo::nanos_to_rfc3339, format_sqlite_timestamp},
+    sqlite::{builder::EventQueryBuilder, eventrepo::nanos_to_rfc3339},
     util, LOG_QUERIES,
 };
 use futures::TryStreamExt;
@@ -26,7 +27,7 @@ impl SqliteEventRepo {
         // The timestamp (in seconds) of the latest event to
         // consider. This is to determine the bucket interval as well
         // as fill wholes at the end of the dataset.
-        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let now = DateTime::now().to_seconds();
 
         let mut conn = self.pool.acquire().await?;
 
@@ -38,9 +39,9 @@ impl SqliteEventRepo {
                 _ => unreachable!(),
             });
         let earliest = if let Some(from) = from {
-            *from
+            from.clone()
         } else if let Some(earliest) = Self::get_earliest_timestamp(&mut conn).await? {
-            chrono::DateTime::from_timestamp_nanos(earliest)
+            crate::datetime::DateTime::from_nanos(earliest)
         } else {
             return Ok(vec![]);
         };
@@ -48,13 +49,13 @@ impl SqliteEventRepo {
         let interval = if let Some(interval) = interval {
             interval
         } else {
-            let interval = util::histogram_interval(now - earliest.timestamp());
+            let interval = util::histogram_interval(now - earliest.to_seconds());
             debug!("No interval provided by client, using {interval}s");
             interval
         };
 
         let last_time = now / (interval as i64) * (interval as i64);
-        let mut next_time = ((earliest.timestamp() as u64) / interval * interval) as i64;
+        let mut next_time = ((earliest.to_seconds() as u64) / interval * interval) as i64;
 
         let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
 
@@ -88,31 +89,31 @@ impl SqliteEventRepo {
         while let Some(row) = stream.try_next().await? {
             let time: i64 = row.try_get(0)?;
             let count: i64 = row.try_get(1)?;
-            let debug = time::OffsetDateTime::from_unix_timestamp(time).unwrap();
+            let debug = DateTime::from_seconds(time);
 
             while next_time < time {
-                let dt = time::OffsetDateTime::from_unix_timestamp(next_time).unwrap();
+                let dt = DateTime::from_seconds(next_time);
                 results.push(Element {
                     time: next_time * 1000,
                     count: 0,
-                    debug: format_sqlite_timestamp(&dt),
+                    debug: dt.to_eve(),
                 });
                 next_time += interval as i64;
             }
             results.push(Element {
                 time: time * 1000,
                 count: count as u64,
-                debug: format_sqlite_timestamp(&debug),
+                debug: debug.to_eve(),
             });
             next_time += interval as i64;
         }
 
         while next_time <= last_time {
-            let dt = time::OffsetDateTime::from_unix_timestamp(next_time).unwrap();
+            let dt = DateTime::from_seconds(next_time);
             results.push(Element {
                 time: next_time * 1000,
                 count: 0,
-                debug: format_sqlite_timestamp(&dt),
+                debug: dt.to_eve(),
             });
             next_time += interval as i64;
         }
@@ -143,8 +144,8 @@ impl SqliteEventRepo {
     async fn get_stats(&self, qp: &StatsAggQueryParams) -> anyhow::Result<Vec<(u64, u64)>> {
         let qp = qp.clone();
         let field = format!("$.{}", &qp.field);
-        let start_time = qp.start_time.unix_timestamp_nanos() as i64;
-        let range = (time::OffsetDateTime::now_utc() - qp.start_time).whole_seconds();
+        let start_time = qp.start_time.to_nanos();
+        let range = (DateTime::now().datetime - qp.start_time.datetime).num_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut args = SqliteArguments::default();
@@ -202,7 +203,7 @@ impl SqliteEventRepo {
             .map(|(timestamp, value)| {
                 json!({
                     "value": value,
-                    "timestamp": nanos_to_rfc3339((timestamp * 1000000000) as i128).unwrap(),
+                    "timestamp": nanos_to_rfc3339((timestamp * 1000000000) as i64),
                 })
             })
             .collect();
@@ -225,7 +226,7 @@ impl SqliteEventRepo {
             let value = if previous <= e.1 { e.1 - previous } else { e.1 };
             response_data.push(json!({
                 "value": value,
-                "timestamp": nanos_to_rfc3339((e.0 * 1000000000) as i128)?,
+                "timestamp": nanos_to_rfc3339((e.0 * 1000000000) as i64),
             }));
         }
         Ok(json!({

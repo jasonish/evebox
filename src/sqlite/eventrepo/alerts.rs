@@ -8,9 +8,8 @@ use sqlx::Row;
 use tracing::{debug, error, info, warn};
 
 use super::SqliteEventRepo;
-use crate::{
-    elastic::AlertQueryOptions, eventrepo::DatastoreError, sqlite::format_sqlite_timestamp,
-};
+use crate::datetime::DateTime;
+use crate::{elastic::AlertQueryOptions, eventrepo::DatastoreError};
 use crate::{queryparser, LOG_QUERIES};
 use std::time::Instant;
 
@@ -79,7 +78,7 @@ impl SqliteEventRepo {
 
         if let Some(ts) = options.timestamp_gte {
             filters.push("timestamp >= ?".into());
-            args.add(ts.unix_timestamp_nanos() as i64);
+            args.add(ts.to_nanos());
         }
 
         // Query string.
@@ -175,8 +174,7 @@ fn alert_row_mapper(row: SqliteRow) -> Result<serde_json::Value, DatastoreError>
         }
     }
 
-    let min_ts = time::OffsetDateTime::from_unix_timestamp_nanos(min_ts_nanos as i128)?
-        .to_offset(time::UtcOffset::UTC);
+    let min_ts = DateTime::from_nanos(min_ts_nanos);
 
     let alert = json!({
         "_id": id,
@@ -184,7 +182,7 @@ fn alert_row_mapper(row: SqliteRow) -> Result<serde_json::Value, DatastoreError>
         "_metadata": json!({
             "count": count,
             "escalated_count": escalated_count,
-            "min_timestamp": format_sqlite_timestamp(&min_ts),
+            "min_timestamp": min_ts.to_eve(),
             "max_timestamp": &parsed["timestamp"],
             "aggregate": true,
         }),

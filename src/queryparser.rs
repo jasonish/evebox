@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2021 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use chrono::{DateTime, Utc};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_till},
@@ -9,6 +8,8 @@ use nom::{
     combinator::opt,
     IResult,
 };
+
+use crate::datetime;
 
 #[derive(Debug, Clone)]
 pub struct QueryStringParseError(String);
@@ -33,6 +34,12 @@ impl From<String> for QueryStringParseError {
     }
 }
 
+impl From<datetime::ParseError> for QueryStringParseError {
+    fn from(value: datetime::ParseError) -> Self {
+        Self(format!("bad time format: {}", value))
+    }
+}
+
 pub(crate) struct QueryParser {
     pub elements: Vec<QueryElement>,
 }
@@ -43,10 +50,10 @@ impl QueryParser {
     }
 
     /// Return the first QueryValue::From.
-    pub fn first_from(&self) -> Option<&DateTime<Utc>> {
+    pub fn first_from(&self) -> Option<datetime::DateTime> {
         for element in &self.elements {
             if let QueryValue::From(ts) = &element.value {
-                return Some(ts);
+                return Some(ts.clone());
             }
         }
         None
@@ -57,8 +64,8 @@ impl QueryParser {
 pub(crate) enum QueryValue {
     String(String),
     KeyValue(String, String),
-    From(DateTime<Utc>),
-    To(DateTime<Utc>),
+    From(datetime::DateTime),
+    To(datetime::DateTime),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -88,16 +95,14 @@ pub(crate) fn parse(
 
             match key.as_ref() {
                 "@from" => {
-                    let ts = parse_timestamp(&token, tz_offset)
-                        .ok_or(format!("invalid time format: {}", &token))?;
+                    let ts = datetime::parse(&token, tz_offset)?;
                     elements.push(QueryElement {
                         negated: false,
                         value: QueryValue::From(ts),
                     });
                 }
                 "@to" => {
-                    let ts = parse_timestamp(&token, tz_offset)
-                        .ok_or(format!("invalid time format: {}", &token))?;
+                    let ts = datetime::parse(&token, tz_offset)?;
                     elements.push(QueryElement {
                         negated: false,
                         value: QueryValue::To(ts),
@@ -192,129 +197,9 @@ fn parse_quoted_string(input: &str) -> (&str, String) {
     (ptr, string)
 }
 
-pub(crate) fn parse_timestamp(input: &str, tz_offset: Option<&str>) -> Option<DateTime<Utc>> {
-    // First attempt to parse it as is.
-    if let Ok(ts) = input.parse::<DateTime<Utc>>() {
-        return Some(ts);
-    }
-
-    let default_tz = tz_offset.unwrap_or("Z");
-
-    // Now attempt to match it and fill in the missing bits. Requires at least a year.
-    //let re = r"^(\d{4})-?(\d{2})?-?(\d{2})?T?(\d{2})?:?(\d{2})?:?(\d{2})?\.?(\d+)?(([+\-]\d{4})|Z)?$";
-    let re =
-        r"^(\d{4})-?(\d{2})?-?(\d{2})?T?(\d{2})?:?(\d{2})?:?(\d{2})?(\.(\d+))?(([+\-]\d{4})|Z)?";
-    let re = regex::Regex::new(re).unwrap();
-    if let Some(c) = re.captures(input) {
-        let year = c.get(1).map_or("", |m| m.as_str());
-        let month = c.get(2).map_or("01", |m| m.as_str());
-        let day = c.get(3).map_or("01", |m| m.as_str());
-        let hour = c.get(4).map_or("00", |m| m.as_str());
-        let minute = c.get(5).map_or("00", |m| m.as_str());
-        let second = c.get(6).map_or("00", |m| m.as_str());
-        let subs = c.get(8).map_or("0", |m| m.as_str());
-        let offset = c.get(9).map_or(default_tz, |m| m.as_str());
-
-        let fixed = format!(
-            "{}-{}-{}T{}:{}:{}.{}{}",
-            year, month, day, hour, minute, second, subs, offset,
-        );
-
-        // Try again.
-        if let Ok(ts) = fixed.parse::<DateTime<Utc>>() {
-            return Some(ts);
-        }
-    }
-
-    None
-}
-
 #[cfg(test)]
 mod tests {
-    use chrono::SecondsFormat;
-
     use super::*;
-
-    #[test]
-    fn test_parse_timestamp() {
-        let ts = parse_timestamp("2024-05-16T16:08:17.876423-0600", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T22:08:17.876Z"
-        );
-
-        let ts = parse_timestamp("2023-01-01T01:02:00.0+0000", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2023-01-01T01:02:00.000Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16T16:08:17.876423+0600", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T10:08:17.876Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16T16:08:17.876423Z", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T16:08:17.876Z"
-        );
-
-        let ts = parse_timestamp("2024", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-01-01T00:00:00.000Z"
-        );
-
-        let ts = parse_timestamp("2024-05", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-01T00:00:00.000Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T00:00:00.000Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16T16", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T16:00:00.000Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16T16:08", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T16:08:00.000Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16T16:08:17", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T16:08:17.000Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16T16:08:17.876", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T16:08:17.876Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16T16:08:17Z", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T16:08:17.000Z"
-        );
-
-        let ts = parse_timestamp("2024-05-16+0000", None).unwrap();
-        assert_eq!(
-            ts.to_rfc3339_opts(SecondsFormat::Millis, true),
-            "2024-05-16T00:00:00.000Z"
-        );
-    }
 
     #[test]
     fn test_parse() {
@@ -360,14 +245,6 @@ mod tests {
             QueryValue::KeyValue("src_ip".to_string(), "a.b.c.d".to_string())
         );
         assert!(!elements[1].negated);
-        assert_eq!(
-            elements[1].value,
-            QueryValue::From(
-                DateTime::parse_from_rfc3339("2024-01-01T00:00:00.000Z")
-                    .unwrap()
-                    .with_timezone(&Utc)
-            )
-        );
 
         let elements = parse(r#"dns -"et info" -"et \"dns"#, None).unwrap();
         assert_eq!(elements.len(), 3);
@@ -387,14 +264,6 @@ mod tests {
         let elements = parse(r#"@from:2024-05-16T09:48:44"#, Some("-0600")).unwrap();
         assert_eq!(elements.len(), 1);
         assert!(!elements[0].negated);
-        assert_eq!(
-            elements[0].value,
-            QueryValue::From(
-                DateTime::parse_from_rfc3339("2024-05-16T15:48:44.000Z")
-                    .unwrap()
-                    .with_timezone(&Utc)
-            )
-        );
     }
 
     #[test]

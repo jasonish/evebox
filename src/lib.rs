@@ -9,6 +9,7 @@ pub mod bookmark;
 pub(crate) mod cert;
 pub mod commands;
 pub mod config;
+pub(crate) mod datetime;
 mod elastic;
 pub mod eve;
 mod eventrepo;

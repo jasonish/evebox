@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
+    datetime,
     elastic::AlertQueryOptions,
     sqlite::{
         connection::init_event_db, eventrepo::SqliteEventRepo, has_table, info::Info,
@@ -9,12 +10,13 @@ use crate::{
     },
 };
 use anyhow::Result;
+use chrono::DateTime;
 use clap::CommandFactory;
 use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
 use futures::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
-use std::{fs::File, sync::Arc, time::Instant};
+use std::{fs::File, sync::Arc};
 use tracing::info;
 
 mod fts;
@@ -194,24 +196,18 @@ async fn info(args: &InfoArgs) -> Result<()> {
     let min_timestamp = sqlx::query("SELECT MIN(timestamp) FROM events")
         .try_map(|row: SqliteRow| {
             let timestamp: i64 = row.try_get(0)?;
-            Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
-                timestamp as i128,
-            ))
+            Ok(DateTime::from_timestamp_nanos(timestamp))
         })
         .fetch_optional(&pool)
-        .await?
-        .transpose()?;
+        .await?;
 
     let max_timestamp = sqlx::query("SELECT MAX(timestamp) FROM events")
         .try_map(|row: SqliteRow| {
             let timestamp: i64 = row.try_get(0)?;
-            Ok(time::OffsetDateTime::from_unix_timestamp_nanos(
-                timestamp as i128,
-            ))
+            Ok(DateTime::from_timestamp_nanos(timestamp))
         })
         .fetch_optional(&pool)
-        .await?
-        .transpose()?;
+        .await?;
 
     println!("Oldest event: {min_timestamp:?}");
     println!("Latest event: {max_timestamp:?}");
@@ -271,7 +267,7 @@ async fn query(filename: &str, sql: &str) -> Result<()> {
         .open_connection(false)
         .await?;
     let mut count = 0;
-    let timer = Instant::now();
+    let timer = std::time::Instant::now();
     let mut rows = sqlx::query(sql).fetch(&mut conn);
     while let Some(_row) = rows.try_next().await? {
         count += 1;
@@ -289,7 +285,7 @@ async fn optimize(args: &OptimizeArgs) -> Result<()> {
     let repo = SqliteEventRepo::new(conn, pool.clone(), false);
 
     info!("Running inbox style query");
-    let gte = time::OffsetDateTime::now_utc() - time::Duration::days(1);
+    let gte = datetime::DateTime::now().sub(chrono::Duration::days(1));
     repo.alerts(AlertQueryOptions {
         timestamp_gte: Some(gte),
         query_string: None,

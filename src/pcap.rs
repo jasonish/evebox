@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::packet;
+use crate::{datetime::DateTime, packet};
 use bytes::{BufMut, BytesMut};
 use std::net::IpAddr;
 
@@ -113,7 +113,7 @@ pub(crate) fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, 
     }
 }
 
-pub(crate) fn create(linktype: u32, ts: time::OffsetDateTime, packet: &[u8]) -> Vec<u8> {
+pub(crate) fn create(linktype: u32, ts: DateTime, packet: &[u8]) -> Vec<u8> {
     let mut buf = BytesMut::with_capacity(FILE_HEADER_LEN + PACKET_HEADER_LEN + packet.len());
 
     // Write out the file header.
@@ -126,8 +126,9 @@ pub(crate) fn create(linktype: u32, ts: time::OffsetDateTime, packet: &[u8]) -> 
     buf.put_u32_le(linktype); // Data link type
 
     // The record header.
-    buf.put_u32_le(ts.unix_timestamp_nanos() as u32);
-    buf.put_u32_le(ts.microsecond());
+    // FIXME: Should this really be nanos?
+    buf.put_u32_le(ts.to_nanos() as u32);
+    buf.put_u32_le(ts.micros_part() as u32);
     buf.put_u32_le(packet.len() as u32);
     buf.put_u32_le(packet.len() as u32);
     buf.put_slice(packet);
@@ -146,7 +147,7 @@ mod test {
         let eve_timestamp = "2020-05-01T08:50:23.297919-0600";
         let packet_base64 =
             "oDafTEwo2MuK7aFGCABFAAAobXBAAEAGMBcKEAELzE/F3qMmAbtL2EhIK8jWtFAQAenVIwAAAAAAAAAA";
-        let ts = crate::eve::parse_eve_timestamp(eve_timestamp).unwrap();
+        let ts = crate::datetime::parse(eve_timestamp, None).unwrap();
         let packet = base64::decode(packet_base64).unwrap();
         let _pcap_buffer = super::create(linktype as u32, ts, &packet);
     }
@@ -155,7 +156,7 @@ mod test {
     fn test_packet_from_payload() {
         let event: serde_json::Value = serde_json::from_str(TEST_EVE_RECORD).unwrap();
         let packet = super::packet_from_payload(&event).unwrap();
-        let ts = event.timestamp().unwrap();
+        let ts = event.datetime().unwrap();
         let _pcap_buffer = super::create(LinkType::Raw as u32, ts, &packet);
     }
 
