@@ -3,8 +3,9 @@
 
 use anyhow::Result;
 use core::ops::Sub;
-use sqlx::SqlitePool;
+use sqlx::SqliteConnection;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::{debug, error, info, trace, warn};
 
@@ -62,7 +63,7 @@ fn get_days(config: &Config) -> Result<Option<usize>> {
 
 pub(crate) async fn start_retention_task(
     config: Config,
-    pool: SqlitePool,
+    conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     filename: PathBuf,
 ) -> anyhow::Result<()> {
     let size = get_size(&config)
@@ -75,13 +76,15 @@ pub(crate) async fn start_retention_task(
     );
     let config = RetentionConfig { range, size };
     tokio::spawn(async move {
-        retention_task(config, pool, filename).await;
+        retention_task(config, conn, filename).await;
     });
 
     Ok(())
 }
 
-async fn size_enabled(conn: &SqlitePool) -> bool {
+async fn size_enabled(conn: Arc<tokio::sync::Mutex<SqliteConnection>>) -> bool {
+    use sqlx::Connection;
+    let mut conn = conn.lock().await;
     let mut tx = conn.begin().await.unwrap();
     match Info::new(&mut tx).get_auto_vacuum().await {
         Ok(mode) => {
@@ -109,8 +112,12 @@ async fn size_enabled(conn: &SqlitePool) -> bool {
     }
 }
 
-async fn retention_task(config: RetentionConfig, pool: SqlitePool, filename: PathBuf) {
-    let size_enabled = size_enabled(&pool).await;
+async fn retention_task(
+    config: RetentionConfig,
+    conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
+    filename: PathBuf,
+) {
+    let size_enabled = size_enabled(conn.clone()).await;
     let default_delay = Duration::from_secs(INTERVAL);
     let report_interval = Duration::from_secs(60);
 
@@ -125,7 +132,7 @@ async fn retention_task(config: RetentionConfig, pool: SqlitePool, filename: Pat
         let mut delay = default_delay;
 
         if size_enabled && config.size > 0 {
-            match delete_to_size(&pool, &filename, config.size).await {
+            match delete_to_size(conn.clone(), &filename, config.size).await {
                 Err(err) => {
                     error!("Failed to delete database to max size: {:?}", err);
                 }
@@ -144,7 +151,7 @@ async fn retention_task(config: RetentionConfig, pool: SqlitePool, filename: Pat
         // Range (day) based retention.
         if let Some(range) = config.range {
             if range > 0 {
-                match delete_by_range(&pool, range as u64, LIMIT as u64).await {
+                match delete_by_range(conn.clone(), range as u64, LIMIT as u64).await {
                     Ok(n) => {
                         count += n;
                         if n == LIMIT as u64 {
@@ -167,7 +174,11 @@ async fn retention_task(config: RetentionConfig, pool: SqlitePool, filename: Pat
     }
 }
 
-async fn delete_to_size(conn: &SqlitePool, filename: &Path, bytes: usize) -> Result<u64> {
+async fn delete_to_size(
+    conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
+    filename: &Path,
+    bytes: usize,
+) -> Result<u64> {
     let file_size = crate::file::file_size(filename)? as usize;
     if file_size < bytes {
         trace!("Database less than max size of {} bytes", bytes);
@@ -183,12 +194,17 @@ async fn delete_to_size(conn: &SqlitePool, filename: &Path, bytes: usize) -> Res
 
         trace!("Database file size of {} bytes is greater than max allowed size of {} bytes, deleting events",
 	       file_size, bytes);
-        deleted += delete_events(conn, 1000).await?;
+        deleted += delete_events(conn.clone(), 1000).await?;
         std::thread::sleep(Duration::from_millis(100));
     }
 }
 
-async fn delete_by_range(conn: &SqlitePool, range: u64, limit: u64) -> Result<u64> {
+async fn delete_by_range(
+    conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
+    range: u64,
+    limit: u64,
+) -> Result<u64> {
+    let mut conn = conn.lock().await;
     let now = DateTime::now();
     let period = std::time::Duration::from_secs(range * 86400);
     let older_than = now.sub(period);
@@ -204,7 +220,7 @@ async fn delete_by_range(conn: &SqlitePool, range: u64, limit: u64) -> Result<u6
     let n = sqlx::query(sql)
         .bind(older_than.to_nanos())
         .bind(limit as i64)
-        .execute(conn)
+        .execute(&mut *conn)
         .await?
         .rows_affected();
     if n > 0 {
@@ -217,7 +233,11 @@ async fn delete_by_range(conn: &SqlitePool, range: u64, limit: u64) -> Result<u6
     Ok(n)
 }
 
-async fn delete_events(conn: &SqlitePool, limit: usize) -> Result<u64> {
+async fn delete_events(
+    conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
+    limit: usize,
+) -> Result<u64> {
+    let mut conn = conn.lock().await;
     let timer = Instant::now();
     let sql = r#"DELETE FROM events
         WHERE rowid IN
@@ -228,7 +248,7 @@ async fn delete_events(conn: &SqlitePool, limit: usize) -> Result<u64> {
              LIMIT ?)"#;
     let n = sqlx::query(sql)
         .bind(limit as i64)
-        .execute(conn)
+        .execute(&mut *conn)
         .await?
         .rows_affected();
     trace!("Deleted {n} events in {} ms", timer.elapsed().as_millis());

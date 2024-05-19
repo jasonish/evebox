@@ -575,14 +575,12 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             init_event_db(&mut conn).await?;
             let has_fts = has_table(&mut conn, "fts").await?;
             info!("FTS enabled: {has_fts}");
-            let xconn = Arc::new(tokio::sync::Mutex::new(conn));
+            let writer = Arc::new(tokio::sync::Mutex::new(conn));
             let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
-            let writer_pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
-
-            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(xconn.clone(), pool, has_fts);
+            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(writer.clone(), pool, has_fts);
 
             // Start retention task.
-            sqlite::retention::start_retention_task(config.clone(), writer_pool, db_filename)
+            sqlite::retention::start_retention_task(config.clone(), writer.clone(), db_filename)
                 .await?;
             info!("Retention task started");
 
