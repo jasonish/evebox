@@ -261,6 +261,7 @@ export function AlertsReport() {
             <CountValueTable
               title={"Most Alerting Signatures"}
               label={"Signature"}
+              searchField="alert.signature"
               rows={mostAlerts()}
             />
           </Col>
@@ -269,6 +270,7 @@ export function AlertsReport() {
             <CountValueTable
               title={"Least Alerting Signatures"}
               label={"Signature"}
+              searchField="alert.signature"
               rows={leastAlerts()}
             />
           </Col>
