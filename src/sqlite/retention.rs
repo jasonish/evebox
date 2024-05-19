@@ -138,7 +138,7 @@ async fn retention_task(
                 }
                 Ok(n) => {
                     if n > 0 {
-                        info!(
+                        debug!(
                             "Deleted {n} events to reduce database size to {} bytes",
                             config.size
                         );
@@ -166,7 +166,7 @@ async fn retention_task(
         }
 
         if last_report.elapsed() > report_interval {
-            info!("Events purged in last {:?}: {}", report_interval, count);
+            debug!("Events purged in last {:?}: {}", report_interval, count);
             count = 0;
             last_report = Instant::now();
         }
