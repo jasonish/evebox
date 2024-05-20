@@ -276,19 +276,14 @@ impl SqliteEventRepo {
     }
 
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
-        let start_time = DateTime::now().datetime - chrono::Duration::hours(24);
-        let start_time = start_time.timestamp_nanos_opt().unwrap();
+        // Turns out not putting a timestamp limit on this is much
+        // faster.
         let sql = r#"
             SELECT DISTINCT json_extract(events.source, '$.host')
             FROM events
-            WHERE timestamp >= ?
-              AND json_extract(events.source, '$.host') IS NOT NULL
+            WHERE json_extract(events.source, '$.host') IS NOT NULL
             "#;
-
-        let rows: Vec<String> = sqlx::query_scalar(sql)
-            .bind(start_time)
-            .fetch_all(&self.pool)
-            .await?;
+        let rows: Vec<String> = sqlx::query_scalar(sql).fetch_all(&self.pool).await?;
         Ok(rows)
     }
 }

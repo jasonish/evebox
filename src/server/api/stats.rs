@@ -104,25 +104,23 @@ pub(crate) async fn get_sensor_names(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
 ) -> Result<impl IntoResponse, ApiError> {
-    if let EventRepo::Elastic(elastic) = &context.datastore {
-        let sensors = elastic.get_sensors().await.map_err(|err| {
+    let sensors = if let EventRepo::Elastic(elastic) = &context.datastore {
+        elastic.get_sensors().await.map_err(|err| {
             error!("Failed to get sensors: {:?}", err);
             ApiError::InternalServerError
-        })?;
-        let response = json!({
-            "data": sensors,
-        });
-        Ok(Json(response).into_response())
+        })?
     } else if let EventRepo::SQLite(sqlite) = &context.datastore {
-        let sensors = sqlite.get_sensors().await.map_err(|err| {
-            error!("Failed to get sensors from datastore: {:?}", err);
+        sqlite.get_sensors().await.map_err(|err| {
+            error!("Failed to get sensors: {:?}", err);
             ApiError::InternalServerError
-        })?;
-        let response = json!({
-            "data": sensors,
-        });
-        return Ok(Json(response).into_response());
+        })?
     } else {
         return Ok((StatusCode::NOT_IMPLEMENTED, "").into_response());
-    }
+    };
+
+    let response = json!({
+        "data": sensors,
+    });
+
+    Ok(Json(response).into_response())
 }
