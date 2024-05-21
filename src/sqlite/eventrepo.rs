@@ -287,7 +287,3 @@ impl SqliteEventRepo {
         Ok(rows)
     }
 }
-
-fn nanos_to_rfc3339(nanos: i64) -> String {
-    DateTime::from_nanos(nanos).to_rfc3339_utc()
-}

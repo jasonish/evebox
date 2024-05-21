@@ -6,7 +6,7 @@ use crate::{
     datetime::DateTime,
     eventrepo::{DatastoreError, StatsAggQueryParams},
     queryparser::{QueryElement, QueryValue},
-    sqlite::{builder::EventQueryBuilder, eventrepo::nanos_to_rfc3339},
+    sqlite::builder::EventQueryBuilder,
     util, LOG_QUERIES,
 };
 use futures::TryStreamExt;
@@ -141,7 +141,7 @@ impl SqliteEventRepo {
             .await
     }
 
-    async fn get_stats(&self, qp: &StatsAggQueryParams) -> anyhow::Result<Vec<(u64, u64)>> {
+    async fn get_stats(&self, qp: &StatsAggQueryParams) -> anyhow::Result<Vec<(i64, i64)>> {
         let qp = qp.clone();
         let field = format!("$.{}", &qp.field);
         let start_time = qp.start_time.to_nanos();
@@ -181,7 +181,7 @@ impl SqliteEventRepo {
 
         let timer = Instant::now();
 
-        let rows: Vec<(u64, u64)> = sqlx::query_as_with(&sql, args)
+        let rows: Vec<(i64, i64)> = sqlx::query_as_with(&sql, args)
             .fetch_all(&self.pool)
             .await?;
 
@@ -203,7 +203,7 @@ impl SqliteEventRepo {
             .map(|(timestamp, value)| {
                 json!({
                     "value": value,
-                    "timestamp": nanos_to_rfc3339((timestamp * 1000000000) as i64),
+                    "timestamp": DateTime::from_seconds(*timestamp).to_rfc3339_utc(),
                 })
             })
             .collect();
@@ -226,7 +226,7 @@ impl SqliteEventRepo {
             let value = if previous <= e.1 { e.1 - previous } else { e.1 };
             response_data.push(json!({
                 "value": value,
-                "timestamp": nanos_to_rfc3339((e.0 * 1000000000) as i64),
+                "timestamp": DateTime::from_seconds(e.0).to_rfc3339_utc(),
             }));
         }
         Ok(json!({
