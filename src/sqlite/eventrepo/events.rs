@@ -4,8 +4,8 @@
 use super::SqliteEventRepo;
 use crate::{
     eventrepo::{DatastoreError, EventQueryParams},
-    sqlite::builder::EventQueryBuilder,
-    LOG_QUERIES,
+    sqlite::{builder::EventQueryBuilder, log_query_plan},
+    LOG_QUERIES, LOG_QUERY_PLAN,
 };
 use futures::TryStreamExt;
 use sqlx::{sqlite::SqliteRow, Row};
@@ -53,8 +53,10 @@ impl SqliteEventRepo {
 
         let (sql, params) = builder.build();
 
-        if *LOG_QUERIES {
-            info!("query={} args={:?}", &sql, &params);
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, "events", &sql, params.clone()).await;
+        } else if *LOG_QUERIES {
+            info!("query={}; args={:?}", &sql.trim(), &params);
         }
 
         let now = Instant::now();

@@ -9,8 +9,9 @@ use tracing::{debug, error, info, warn};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
+use crate::sqlite::log_query_plan;
 use crate::{elastic::AlertQueryOptions, eventrepo::DatastoreError};
-use crate::{queryparser, LOG_QUERIES};
+use crate::{queryparser, LOG_QUERIES, LOG_QUERY_PLAN};
 use std::time::Instant;
 
 impl SqliteEventRepo {
@@ -130,8 +131,10 @@ impl SqliteEventRepo {
         let query = query.replace("%WHERE%", &filters.join(" AND "));
         let query = query.replace("%FROM%", &from.join(", "));
 
-        if *LOG_QUERIES {
-            info!("query={}", &query.trim());
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, "alerts", &query, args.clone()).await;
+        } else if *LOG_QUERIES {
+            info!("query={}; args={:?}", &query.trim(), &args);
         }
 
         let now = Instant::now();

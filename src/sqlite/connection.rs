@@ -8,7 +8,7 @@ use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::sqlite::{SqliteAutoVacuum, SqliteConnectOptions, SqliteJournalMode};
 use sqlx::sqlite::{SqliteConnection, SqliteSynchronous};
 use sqlx::Connection as _;
-use sqlx::{ConnectOptions, SqlitePool};
+use sqlx::SqlitePool;
 use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
 
@@ -37,7 +37,6 @@ fn sqlite_options() -> SqliteConnectOptions {
         .journal_mode(SqliteJournalMode::Wal)
         .auto_vacuum(SqliteAutoVacuum::Full)
         .synchronous(SqliteSynchronous::Normal)
-        .disable_statement_logging()
 }
 
 pub(crate) async fn open_connection(

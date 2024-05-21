@@ -4,7 +4,8 @@
 use crate::datetime::DateTime;
 use crate::eventrepo::DatastoreError;
 use crate::server::api::AlertGroupSpec;
-use crate::LOG_QUERIES;
+use crate::sqlite::log_query_plan;
+use crate::{LOG_QUERIES, LOG_QUERY_PLAN};
 use serde_json::json;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
@@ -283,6 +284,10 @@ impl SqliteEventRepo {
             FROM events
             WHERE json_extract(events.source, '$.host') IS NOT NULL
             "#;
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, "sensors", sql, SqliteArguments::default()).await;
+        }
+
         let rows: Vec<String> = sqlx::query_scalar(sql).fetch_all(&self.pool).await?;
         Ok(rows)
     }
