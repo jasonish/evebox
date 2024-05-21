@@ -65,7 +65,11 @@ pub(crate) async fn open_pool(
         .min_connections(4)
         .max_connections(12);
 
-    let options = sqlite_options().filename(path).create_if_missing(create);
+    let options = sqlite_options()
+        .filename(path)
+        .create_if_missing(create)
+        .optimize_on_close(true, Some(300));
+
     pool.connect_with(options).await
 }
 
