@@ -219,7 +219,7 @@ async fn dump(filename: &str) -> Result<()> {
     let mut conn = ConnectionBuilder::filename(Some(filename))
         .open_connection(false)
         .await?;
-    let mut rows = sqlx::query("SELECT source FROM events ORDER BY timestamp").fetch(&mut conn);
+    let mut rows = sqlx::query("SELECT source FROM events").fetch(&mut conn);
     while let Some(row) = rows.try_next().await? {
         let source: String = row.try_get(0)?;
         println!("{source}");
