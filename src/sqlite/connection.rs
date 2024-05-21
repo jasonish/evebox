@@ -33,10 +33,14 @@ impl ConnectionBuilder {
 }
 
 fn sqlite_options() -> SqliteConnectOptions {
-    SqliteConnectOptions::new()
+    let options = SqliteConnectOptions::new()
         .journal_mode(SqliteJournalMode::Wal)
         .auto_vacuum(SqliteAutoVacuum::Full)
-        .synchronous(SqliteSynchronous::Normal)
+        .synchronous(SqliteSynchronous::Normal);
+
+    // 5 seconds just isn't long enough when we expect possibly long
+    // lockout times.
+    options.busy_timeout(std::time::Duration::from_secs(86400))
 }
 
 pub(crate) async fn open_connection(
@@ -77,7 +81,7 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
 
     // Work-around as SQLx does not set the auto_vacuum pragma's in the correct order.
     if fresh_install {
-        enable_auto_vacuum(conn).await?;
+        crate::sqlite::util::enable_auto_vacuum(&mut *conn).await?;
     }
 
     let mut tx = conn.begin().await?;
@@ -190,12 +194,5 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
 
     let _ = tx.commit().await;
 
-    Ok(())
-}
-
-async fn enable_auto_vacuum(conn: &mut SqliteConnection) -> Result<(), sqlx::Error> {
-    sqlx::query("PRAGMA auto_vacuum = 1; VACUUM")
-        .execute(conn)
-        .await?;
     Ok(())
 }

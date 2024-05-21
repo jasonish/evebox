@@ -46,10 +46,10 @@ impl SqliteEventSink {
         }
     }
 
-    fn prep(&mut self, event: &mut serde_json::Value) -> Result<(), IndexError> {
+    fn prep(&mut self, mut event: serde_json::Value) -> Result<PreparedEvent, IndexError> {
         let ts = event.datetime().ok_or(IndexError::TimestampMissing)?;
-        reformat_timestamps(event);
-        let source_values = extract_values(event);
+        reformat_timestamps(&mut event);
+        let source_values = extract_values(&event);
         let mut archived = 0;
 
         if let Some(actions) = event["alert"]["metadata"]["evebox-action"].as_array() {
@@ -63,7 +63,7 @@ impl SqliteEventSink {
             }
         }
 
-        eve::eve::add_evebox_metadata(event, None);
+        eve::eve::add_evebox_metadata(&mut event, None);
 
         let prepared = PreparedEvent {
             ts: ts.to_nanos(),
@@ -72,13 +72,12 @@ impl SqliteEventSink {
             archived,
         };
 
-        self.queue.push(prepared);
-
-        Ok(())
+        Ok(prepared)
     }
 
-    pub async fn submit(&mut self, mut event: serde_json::Value) -> Result<bool, IndexError> {
-        self.prep(&mut event)?;
+    pub async fn submit(&mut self, event: serde_json::Value) -> Result<bool, IndexError> {
+        let prepared = self.prep(event)?;
+        self.queue.push(prepared);
         Ok(false)
     }
 
@@ -88,7 +87,7 @@ impl SqliteEventSink {
         let mut tx = conn.begin().await.unwrap();
 
         for event in &self.queue {
-            let _result = sqlx::query::<sqlx::Sqlite>(
+            sqlx::query::<sqlx::Sqlite>(
                 r#"
                 INSERT INTO events (timestamp, archived, source, source_values)
                 VALUES (?, ?, ?, ?)
@@ -102,7 +101,7 @@ impl SqliteEventSink {
             .await?;
 
             if self.fts {
-                let _result = sqlx::query::<sqlx::Sqlite>(
+                sqlx::query::<sqlx::Sqlite>(
                     r#"
                         INSERT INTO fts (rowid, timestamp, source_values)
                         VALUES (last_insert_rowid(), ?, ?)"#,

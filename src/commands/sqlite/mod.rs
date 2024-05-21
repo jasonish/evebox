@@ -51,6 +51,8 @@ enum Commands {
     Optimize(OptimizeArgs),
     /// Analyze an EveBox SQLite database
     Analyze { filename: String },
+    /// Enable auto-vacuum
+    EnableAutoVacuum { filename: String },
 }
 
 #[derive(Parser, Debug)]
@@ -133,6 +135,7 @@ pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
         Commands::Info(args) => info(args).await,
         Commands::Optimize(args) => optimize(args).await,
         Commands::Analyze { filename } => analyze(filename).await,
+        Commands::EnableAutoVacuum { filename } => enable_auto_vacuum(filename).await,
     }
 }
 
@@ -320,4 +323,34 @@ async fn analyze(filename: &str) -> Result<()> {
     sqlx::query("analyze").execute(&mut conn).await?;
     info!("Done");
     Ok(())
+}
+
+async fn enable_auto_vacuum(filename: &str) -> Result<()> {
+    println!("WARNING: Enable auto-vacuum could take a while.");
+    println!("- Database will be unavailable while this operation is in progress.");
+    if !confirm("Do you wish to continue") {
+        return Ok(());
+    }
+
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_connection(false)
+        .await?;
+
+    let auto_vacuum: i64 = sqlx::query_scalar("PRAGMA auto_vacuum")
+        .fetch_one(&mut conn)
+        .await?;
+    if auto_vacuum == 1 {
+        println!("Auto-vacuum already enabled");
+        return Ok(());
+    }
+    crate::sqlite::util::enable_auto_vacuum(&mut conn).await?;
+    let auto_vacuum: i64 = sqlx::query_scalar("PRAGMA auto_vacuum")
+        .fetch_one(&mut conn)
+        .await?;
+    println!("Auto vacuum is now {}", auto_vacuum);
+    Ok(())
+}
+
+fn confirm(msg: &str) -> bool {
+    inquire::Confirm::new(msg).prompt().unwrap_or(false)
 }

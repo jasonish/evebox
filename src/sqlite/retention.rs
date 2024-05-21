@@ -203,7 +203,7 @@ async fn delete_by_range(
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     range: u64,
     limit: u64,
-) -> Result<u64> {
+) -> Result<u64, sqlx::Error> {
     let mut conn = conn.lock().await;
     let now = DateTime::now();
     let period = std::time::Duration::from_secs(range * 86400);
