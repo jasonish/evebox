@@ -20,7 +20,7 @@ impl SqliteEventRepo {
         order: &str,
         query: Vec<QueryElement>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
-        let mut builder = EventQueryBuilder::new(*self.fts.read().unwrap());
+        let mut builder = EventQueryBuilder::new(self.fts().await);
         builder
             .select(format!(
                 "count(json_extract(events.source, '$.{field}')) as count"

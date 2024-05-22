@@ -85,7 +85,7 @@ pub(crate) async fn open_pool(
 }
 
 pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result<()> {
-    let fresh_install = !has_table(conn, "events").await?;
+    let fresh_install = !has_table(&mut *conn, "events").await?;
 
     // Work-around as SQLx does not set the auto_vacuum pragma's in the correct order.
     if fresh_install {
@@ -196,7 +196,7 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
     if fresh_install {
         info!("Enabling FTS");
         fts_create(&mut tx).await?;
-    } else if !has_table(&mut tx, "fts").await? {
+    } else if !has_table(&mut *tx, "fts").await? {
         info!("FTS not enabled, consider enabling for query performance improvements");
     }
 

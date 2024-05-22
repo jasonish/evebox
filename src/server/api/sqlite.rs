@@ -112,7 +112,6 @@ pub(crate) async fn fts_enable(
         let mut conn = sqlite.writer.lock().await;
         let mut tx = conn.begin().await?;
         crate::sqlite::util::fts_enable(&mut tx).await?;
-        sqlite.importer.set_fts(true);
         tx.commit().await?;
     }
 
@@ -128,7 +127,6 @@ pub(crate) async fn fts_disable(
         let mut conn = sqlite.writer.lock().await;
         let mut tx = conn.begin().await?;
         crate::sqlite::util::fts_disable(&mut tx).await?;
-        sqlite.importer.set_fts(false);
         tx.commit().await?;
     }
 

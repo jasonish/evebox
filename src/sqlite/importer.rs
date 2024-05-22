@@ -1,9 +1,12 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::eve::{self, Eve};
+use crate::{
+    eve::{self, Eve},
+    sqlite::has_table,
+};
 use sqlx::Connection;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tracing::{debug, error};
 
 #[derive(thiserror::Error, Debug)]
@@ -24,34 +27,23 @@ struct PreparedEvent {
 pub(crate) struct SqliteEventSink {
     conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     queue: Vec<PreparedEvent>,
-    fts: Arc<RwLock<bool>>,
 }
 
 impl Clone for SqliteEventSink {
     fn clone(&self) -> Self {
         Self {
             conn: self.conn.clone(),
-            fts: self.fts.clone(),
             queue: Vec::new(),
         }
     }
 }
 
 impl SqliteEventSink {
-    pub fn new(
-        conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
-        fts: Arc<RwLock<bool>>,
-    ) -> Self {
+    pub fn new(conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>) -> Self {
         Self {
             conn,
-            fts,
             queue: Vec::new(),
         }
-    }
-
-    pub fn set_fts(&self, enabled: bool) {
-        let mut fts = self.fts.write().unwrap();
-        *fts = enabled;
     }
 
     fn prep(&mut self, mut event: serde_json::Value) -> Result<PreparedEvent, IndexError> {
@@ -108,7 +100,7 @@ impl SqliteEventSink {
             .execute(&mut *tx)
             .await?;
 
-            if *self.fts.read().unwrap() {
+            if has_table(&mut *tx, "fts").await? {
                 sqlx::query::<sqlx::Sqlite>(
                     r#"
                         INSERT INTO fts (rowid, timestamp, source_values)

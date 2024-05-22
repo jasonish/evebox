@@ -5,8 +5,7 @@ use crate::{
     datetime,
     elastic::AlertQueryOptions,
     sqlite::{
-        connection::init_event_db, eventrepo::SqliteEventRepo, has_table, info::Info,
-        ConnectionBuilder,
+        connection::init_event_db, eventrepo::SqliteEventRepo, info::Info, ConnectionBuilder,
     },
 };
 use anyhow::Result;
@@ -16,10 +15,7 @@ use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
 use futures::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
-use std::{
-    fs::File,
-    sync::{Arc, RwLock},
-};
+use std::{fs::File, sync::Arc};
 use tracing::info;
 
 mod fts;
@@ -240,13 +236,11 @@ async fn load(args: &LoadArgs) -> Result<()> {
     let connection_builder = ConnectionBuilder::filename(Some(&args.filename));
     let mut conn = connection_builder.open_connection(true).await?;
     init_event_db(&mut conn).await?;
-    let fts = has_table(&mut conn, "fts").await?;
-    let fts = Arc::new(RwLock::new(fts));
     info!("Loading events");
     let mut count = 0;
 
     let conn = Arc::new(tokio::sync::Mutex::new(conn));
-    let mut importer = crate::sqlite::importer::SqliteEventSink::new(conn, fts);
+    let mut importer = crate::sqlite::importer::SqliteEventSink::new(conn);
 
     // This could be improved if the importer exposed some more inner
     // details so the caller could control the transaction.
@@ -289,7 +283,7 @@ async fn optimize(args: &OptimizeArgs) -> Result<()> {
         .await?;
     let conn = Arc::new(tokio::sync::Mutex::new(conn));
     let pool = crate::sqlite::connection::open_pool(Some(&args.filename), false).await?;
-    let repo = SqliteEventRepo::new(conn, pool.clone(), false);
+    let repo = SqliteEventRepo::new(conn, pool.clone());
 
     info!("Running inbox style query");
     let gte = datetime::DateTime::now().sub(chrono::Duration::days(1));

@@ -13,7 +13,7 @@ use crate::server::api;
 use crate::server::session::Session;
 use crate::sqlite::configrepo::{self, ConfigRepo};
 use crate::sqlite::connection::init_event_db;
-use crate::sqlite::{self, has_table};
+use crate::sqlite::{self};
 use anyhow::Result;
 use axum::body::Full;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
@@ -575,11 +575,9 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
 
             let mut conn = connection_builder.open_connection(true).await.unwrap();
             init_event_db(&mut conn).await?;
-            let has_fts = has_table(&mut conn, "fts").await?;
-            info!("FTS enabled: {has_fts}");
             let writer = Arc::new(tokio::sync::Mutex::new(conn));
             let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
-            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(writer.clone(), pool, has_fts);
+            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(writer.clone(), pool);
 
             // Start retention task.
             sqlite::retention::start_retention_task(config.clone(), writer.clone(), db_filename)

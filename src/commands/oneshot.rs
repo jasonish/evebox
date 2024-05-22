@@ -8,7 +8,6 @@ use crate::sqlite;
 use crate::sqlite::configrepo;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::RwLock;
 use tokio::sync;
 use tracing::debug;
 use tracing::error;
@@ -23,7 +22,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let db_filename: String = config_loader.get("database-filename")?.unwrap();
     let host: String = config_loader.get("http.host")?.unwrap();
     let input = args.get_one::<String>("INPUT").unwrap().to_string();
-    let fts: bool = config_loader.get_bool("fts")?;
 
     info!("Using database filename {}", &db_filename);
 
@@ -38,7 +36,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
     let import_task = {
         tokio::spawn(async move {
-            if let Err(err) = run_import(db, limit, &input, fts).await {
+            if let Err(err) = run_import(db, limit, &input).await {
                 error!("Import failure: {}", err);
             }
         })
@@ -65,8 +63,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 let conn = Arc::new(tokio::sync::Mutex::new(
                     db_connection_builder.open_connection(false).await.unwrap(),
                 ));
-                let sqlite_datastore =
-                    sqlite::eventrepo::SqliteEventRepo::new(conn, pool.clone(), fts);
+                let sqlite_datastore = sqlite::eventrepo::SqliteEventRepo::new(conn, pool.clone());
                 let ds = crate::eventrepo::EventRepo::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port,
@@ -152,14 +149,12 @@ async fn run_import(
     sqlx: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     limit: u64,
     input: &str,
-    fts: bool,
 ) -> anyhow::Result<()> {
     let geoipdb = match geoip::GeoIP::open(None) {
         Ok(geoipdb) => Some(geoipdb),
         Err(_) => None,
     };
-    let fts = Arc::new(RwLock::new(fts));
-    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, fts);
+    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx);
     let mut reader = eve::reader::EveReader::new(input.into());
     info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;

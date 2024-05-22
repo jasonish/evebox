@@ -2,13 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 use super::{FtsArgs, FtsCommand};
-use crate::sqlite::{
-    connection::init_event_db,
-    has_table,
-    util::{self},
-    ConnectionBuilder,
-};
+use crate::sqlite::{connection::init_event_db, has_table, util, ConnectionBuilder};
 use anyhow::Result;
+use owo_colors::OwoColorize;
 use sqlx::{Connection, SqliteConnection};
 use tracing::{debug, info, warn};
 
@@ -29,7 +25,19 @@ async fn fts_disable(force: &bool, filename: &str) -> Result<()> {
         warn!("FTS not enabled");
     } else {
         if !force {
-            bail!("Please make sure EveBox is NOT running then re-run with --force");
+            let ex = "!".cyan();
+            println!(
+                r#"{ex} Notice:
+{ex}
+{ex} While disabling FTS is rather quick, re-enabling FTS on a large database
+{ex} can take a long time, where the database is not available for writes."#
+            );
+            let ok = inquire::Confirm::new("Do you wish to continue?")
+                .prompt()
+                .unwrap_or(false);
+            if !ok {
+                return Ok(());
+            }
         }
         info!("Disabling FTS, this could take a while");
         let mut tx = conn.begin().await?;
@@ -52,7 +60,19 @@ async fn fts_enable(force: &bool, filename: &str) -> Result<()> {
     }
 
     if !force {
-        bail!("Please make sure EveBox is NOT running then re-run with --force");
+        let ex = "!".cyan();
+        println!(
+            r#"{ex} Notice:
+{ex}
+{ex} Enabling FTS on a large database can take a long time. The database will
+{ex} not be available for writes during this time."#
+        );
+        let ok = inquire::Confirm::new("Do you wish to continue?")
+            .prompt()
+            .unwrap_or(false);
+        if !ok {
+            return Ok(());
+        }
     }
 
     init_event_db(&mut conn).await?;

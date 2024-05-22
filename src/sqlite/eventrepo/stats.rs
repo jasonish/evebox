@@ -59,7 +59,7 @@ impl SqliteEventRepo {
 
         let timestamp = format!("timestamp / 1000000000 / {interval} * {interval}");
 
-        let mut builder = EventQueryBuilder::new(*self.fts.read().unwrap());
+        let mut builder = EventQueryBuilder::new(self.fts().await);
 
         builder.select(&timestamp);
         builder.select(format!("count({timestamp})"));

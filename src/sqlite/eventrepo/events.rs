@@ -17,7 +17,7 @@ impl SqliteEventRepo {
         &self,
         options: EventQueryParams,
     ) -> Result<serde_json::Value, DatastoreError> {
-        let mut builder = EventQueryBuilder::new(*self.fts.read().unwrap());
+        let mut builder = EventQueryBuilder::new(self.fts().await);
         builder
             .select("events.rowid AS id")
             .select("events.archived AS archived")

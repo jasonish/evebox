@@ -10,9 +10,11 @@ use serde_json::json;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 use sqlx::{Row, SqliteConnection, SqlitePool};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, info};
+
+use super::has_table;
 
 mod alerts;
 mod dhcp;
@@ -24,24 +26,20 @@ mod stats;
 pub(crate) struct SqliteEventRepo {
     pub importer: super::importer::SqliteEventSink,
     pub pool: SqlitePool,
-    pub fts: Arc<RwLock<bool>>,
     pub writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
 }
 
 impl SqliteEventRepo {
-    pub fn new(
-        writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
-        pool: SqlitePool,
-        fts: bool,
-    ) -> Self {
-        debug!("SQLite event store created: fts={fts}");
-        let fts = Arc::new(RwLock::new(fts));
+    pub fn new(writer: Arc<tokio::sync::Mutex<SqliteConnection>>, pool: SqlitePool) -> Self {
         Self {
-            importer: super::importer::SqliteEventSink::new(writer.clone(), fts.clone()),
+            importer: super::importer::SqliteEventSink::new(writer.clone()),
             pool,
-            fts,
             writer: writer.clone(),
         }
+    }
+
+    pub async fn fts(&self) -> bool {
+        has_table(&self.pool, "fts").await.unwrap_or(false)
     }
 
     pub fn get_importer(&self) -> super::importer::SqliteEventSink {

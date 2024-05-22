@@ -11,8 +11,7 @@ use tracing::error;
 use tracing::info;
 
 use crate::datetime::DateTime;
-
-use super::has_table;
+use crate::sqlite::has_table;
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum ConfigRepoError {
@@ -226,7 +225,7 @@ async fn get_legacy_version(db: SqlitePool) -> Option<u8> {
 /// migrations as needed.
 async fn init_db(db: SqlitePool) -> Result<(), sqlx::Error> {
     let mut tx = db.begin().await?;
-    if has_table(&mut tx, "_sqlx_migrations").await? {
+    if has_table(&mut *tx, "_sqlx_migrations").await? {
         // Nothing to do.
         return Ok(());
     }

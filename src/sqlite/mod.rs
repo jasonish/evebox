@@ -11,17 +11,17 @@ pub mod retention;
 pub mod util;
 
 pub(crate) use connection::ConnectionBuilder;
-use sqlx::{sqlite::SqliteArguments, SqliteConnection, SqlitePool};
+use sqlx::{sqlite::SqliteArguments, SqliteExecutor, SqlitePool};
 use tracing::error;
 
-pub(crate) async fn has_table(
-    conn: &mut SqliteConnection,
+pub(crate) async fn has_table<'a>(
+    conn: impl SqliteExecutor<'a>,
     name: &str,
 ) -> Result<bool, sqlx::Error> {
     let count: i64 =
         sqlx::query_scalar("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?")
             .bind(name)
-            .fetch_one(&mut *conn)
+            .fetch_one(conn)
             .await?;
     Ok(count > 0)
 }

@@ -264,12 +264,6 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Don't open browser"),
         )
         .arg(
-            Arg::new("fts")
-                .long("fts")
-                .action(ArgAction::SetTrue)
-                .help("Enable full text search"),
-        )
-        .arg(
             Arg::new("no-wait")
                 .long("no-wait")
                 .action(ArgAction::SetTrue)
