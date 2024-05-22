@@ -132,7 +132,7 @@ impl SqliteEventRepo {
         let query = query.replace("%FROM%", &from.join(", "));
 
         if *LOG_QUERY_PLAN {
-            log_query_plan(&self.pool, "alerts", &query, args.clone()).await;
+            log_query_plan(&self.pool, "alerts", &query, &args).await;
         } else if *LOG_QUERIES {
             info!("query={}; args={:?}", &query.trim(), &args);
         }

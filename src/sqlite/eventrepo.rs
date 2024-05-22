@@ -285,7 +285,7 @@ impl SqliteEventRepo {
             WHERE json_extract(events.source, '$.host') IS NOT NULL
             "#;
         if *LOG_QUERY_PLAN {
-            log_query_plan(&self.pool, "sensors", sql, SqliteArguments::default()).await;
+            log_query_plan(&self.pool, "sensors", sql, &SqliteArguments::default()).await;
         }
 
         let rows: Vec<String> = sqlx::query_scalar(sql).fetch_all(&self.pool).await?;

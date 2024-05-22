@@ -26,7 +26,7 @@ pub(crate) async fn has_table(
     Ok(count > 0)
 }
 
-async fn log_query_plan<'a>(pool: &SqlitePool, tag: &str, sql: &str, args: SqliteArguments<'a>) {
+async fn log_query_plan<'a>(pool: &SqlitePool, tag: &str, sql: &str, args: &SqliteArguments<'a>) {
     let rows: Result<Vec<(i64, i64, i64, String)>, sqlx::Error> =
         sqlx::query_as_with(&format!("explain query plan {}", &sql), args.clone())
             .fetch_all(pool)

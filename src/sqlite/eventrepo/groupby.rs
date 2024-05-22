@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    eventrepo::DatastoreError, queryparser::QueryElement, sqlite::builder::EventQueryBuilder,
+    eventrepo::DatastoreError,
+    queryparser::QueryElement,
+    sqlite::{builder::EventQueryBuilder, log_query_plan},
+    LOG_QUERY_PLAN,
 };
 use futures::TryStreamExt;
 use sqlx::Row;
@@ -37,10 +40,14 @@ impl SqliteEventRepo {
         }
 
         builder.apply_new_query_string(&query);
-        //builder.apply_query_string(&q);
 
         let mut results = vec![];
         let (sql, args) = builder.build();
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, "group-by", &sql, &args).await;
+        }
+
         let mut rows = sqlx::query_with(&sql, args).fetch(&self.pool);
         while let Some(row) = rows.try_next().await? {
             let count: i64 = row.try_get(0)?;

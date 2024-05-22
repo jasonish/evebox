@@ -54,7 +54,7 @@ impl SqliteEventRepo {
         let (sql, params) = builder.build();
 
         if *LOG_QUERY_PLAN {
-            log_query_plan(&self.pool, "events", &sql, params.clone()).await;
+            log_query_plan(&self.pool, "events", &sql, &params).await;
         } else if *LOG_QUERIES {
             info!("query={}; args={:?}", &sql.trim(), &params);
         }
