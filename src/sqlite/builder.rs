@@ -89,7 +89,7 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn apply_new_query_string(&mut self, q: &[queryparser::QueryElement]) {
+    pub fn apply_query_string(&mut self, q: &[queryparser::QueryElement]) {
         for e in q {
             match &e.value {
                 queryparser::QueryValue::String(s) => {

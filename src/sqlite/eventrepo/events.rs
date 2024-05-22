@@ -43,7 +43,7 @@ impl SqliteEventRepo {
         }
 
         //builder.apply_query_string(&options.query_string_elements);
-        builder.apply_new_query_string(&options.query_string);
+        builder.apply_query_string(&options.query_string);
 
         if let Some(order) = &options.order {
             builder.order_by("events.timestamp", order);

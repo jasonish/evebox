@@ -39,7 +39,7 @@ impl SqliteEventRepo {
             builder.push_where("json_extract(events.source, '$.event_type') = 'dns'");
         }
 
-        builder.apply_new_query_string(&query);
+        builder.apply_query_string(&query);
 
         let mut results = vec![];
         let (sql, args) = builder.build();

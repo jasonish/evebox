@@ -67,7 +67,7 @@ impl SqliteEventRepo {
         builder.group_by(timestamp.to_string());
         builder.order_by("timestamp", "asc");
 
-        builder.apply_new_query_string(query);
+        builder.apply_query_string(query);
 
         let (sql, params) = builder.build();
 
