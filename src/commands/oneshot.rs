@@ -8,6 +8,7 @@ use crate::sqlite;
 use crate::sqlite::configrepo;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::RwLock;
 use tokio::sync;
 use tracing::debug;
 use tracing::error;
@@ -157,6 +158,7 @@ async fn run_import(
         Ok(geoipdb) => Some(geoipdb),
         Err(_) => None,
     };
+    let fts = Arc::new(RwLock::new(fts));
     let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, fts);
     let mut reader = eve::reader::EveReader::new(input.into());
     info!("Reading {} ({} bytes)", input, reader.file_size());

@@ -16,7 +16,10 @@ use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
 use futures::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
-use std::{fs::File, sync::Arc};
+use std::{
+    fs::File,
+    sync::{Arc, RwLock},
+};
 use tracing::info;
 
 mod fts;
@@ -238,6 +241,7 @@ async fn load(args: &LoadArgs) -> Result<()> {
     let mut conn = connection_builder.open_connection(true).await?;
     init_event_db(&mut conn).await?;
     let fts = has_table(&mut conn, "fts").await?;
+    let fts = Arc::new(RwLock::new(fts));
     info!("Loading events");
     let mut count = 0;
 

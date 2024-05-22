@@ -5,14 +5,11 @@ use super::{FtsArgs, FtsCommand};
 use crate::sqlite::{
     connection::init_event_db,
     has_table,
-    importer::extract_values,
-    util::{self, fts_create},
+    util::{self},
     ConnectionBuilder,
 };
 use anyhow::Result;
-use serde_json::Value;
-use sqlx::SqliteConnection;
-use sqlx::{Connection, FromRow};
+use sqlx::{Connection, SqliteConnection};
 use tracing::{debug, info, warn};
 
 pub(super) async fn fts(args: &FtsArgs) -> Result<()> {
@@ -60,15 +57,10 @@ async fn fts_enable(force: &bool, filename: &str) -> Result<()> {
 
     init_event_db(&mut conn).await?;
     let mut tx = conn.begin().await?;
-    fts_create(&mut tx).await?;
-
-    info!("Building FTS index, this could take a while");
-
-    let count = reindex_fts(&mut tx).await?;
-
+    crate::sqlite::util::fts_enable(&mut tx).await?;
     tx.commit().await?;
 
-    info!("Indexed {count} events");
+    info!("FTS enabled");
 
     Ok(())
 }
@@ -134,50 +126,4 @@ async fn fts_optimize(filename: &str) -> Result<()> {
     }
 
     Ok(())
-}
-
-async fn reindex_fts(conn: &mut SqliteConnection) -> Result<usize> {
-    let mut next_id = 0;
-    let mut count = 0;
-
-    #[derive(FromRow)]
-    struct EventRow {
-        rowid: i64,
-        timestamp: i64,
-        source: String,
-    }
-
-    loop {
-        let rows: Vec<EventRow> = sqlx::query_as(
-            "SELECT rowid, timestamp, source FROM events WHERE rowid >= ? ORDER BY rowid ASC LIMIT 10000",
-        )
-            .bind(next_id)
-            .fetch_all(&mut *conn)
-            .await?;
-        if rows.is_empty() {
-            break;
-        }
-
-        for row in rows {
-            let source: Value = serde_json::from_str(&row.source)?;
-            let flat = extract_values(&source);
-            sqlx::query("UPDATE events SET source_values = ? WHERE rowid = ?")
-                .bind(&flat)
-                .bind(row.rowid)
-                .execute(&mut *conn)
-                .await?;
-            sqlx::query("INSERT INTO fts (rowid, timestamp, source_values) VALUES (?, ?, ?)")
-                .bind(row.rowid)
-                .bind(row.timestamp)
-                .bind(&flat)
-                .execute(&mut *conn)
-                .await?;
-            next_id = row.rowid + 1;
-            count += 1;
-        }
-
-        info!("{}", count);
-    }
-
-    Ok(count)
 }

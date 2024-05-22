@@ -8,6 +8,7 @@ use crate::{
 };
 use axum::{response::IntoResponse, Extension, Json};
 use serde::Serialize;
+use sqlx::Connection;
 use std::sync::Arc;
 use tracing::info;
 
@@ -97,6 +98,38 @@ pub(crate) async fn fts_check(
         };
 
         return Ok(Json(response).into_response());
+    }
+
+    Ok(().into_response())
+}
+
+pub(crate) async fn fts_enable(
+    context: Extension<Arc<ServerContext>>,
+    _session: SessionExtractor,
+) -> Result<impl IntoResponse, ApiError> {
+    if let EventRepo::SQLite(sqlite) = &context.datastore {
+        info!("Enabling SQLite FTS from API");
+        let mut conn = sqlite.writer.lock().await;
+        let mut tx = conn.begin().await?;
+        crate::sqlite::util::fts_enable(&mut tx).await?;
+        sqlite.importer.set_fts(true);
+        tx.commit().await?;
+    }
+
+    Ok(().into_response())
+}
+
+pub(crate) async fn fts_disable(
+    context: Extension<Arc<ServerContext>>,
+    _session: SessionExtractor,
+) -> Result<impl IntoResponse, ApiError> {
+    if let EventRepo::SQLite(sqlite) = &context.datastore {
+        info!("Disabling SQLite FTS from API");
+        let mut conn = sqlite.writer.lock().await;
+        let mut tx = conn.begin().await?;
+        crate::sqlite::util::fts_disable(&mut tx).await?;
+        sqlite.importer.set_fts(false);
+        tx.commit().await?;
     }
 
     Ok(().into_response())

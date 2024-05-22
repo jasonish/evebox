@@ -360,6 +360,8 @@ pub(crate) fn build_axum_service(
         .route("/api/1/groupby", get(api::groupby::group_by))
         .route("/api/1/sqlite/info", get(api::sqlite::info))
         .route("/api/1/sqlite/fts/check", get(api::sqlite::fts_check))
+        .route("/api/1/sqlite/fts/enable", post(api::sqlite::fts_enable))
+        .route("/api/1/sqlite/fts/disable", post(api::sqlite::fts_disable))
         .nest("/api/1/stats", api::stats::router())
         .layer(DefaultBodyLimit::max(1024 * 1024 * 32))
         .layer(Extension(context.clone()))

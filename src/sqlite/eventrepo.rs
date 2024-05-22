@@ -10,7 +10,7 @@ use serde_json::json;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 use sqlx::{Row, SqliteConnection, SqlitePool};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use tracing::{debug, info};
 
@@ -24,20 +24,23 @@ mod stats;
 pub(crate) struct SqliteEventRepo {
     pub importer: super::importer::SqliteEventSink,
     pub pool: SqlitePool,
-    pub fts: bool,
+    pub fts: Arc<RwLock<bool>>,
+    pub writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
 }
 
 impl SqliteEventRepo {
     pub fn new(
-        conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
+        writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
         pool: SqlitePool,
         fts: bool,
     ) -> Self {
         debug!("SQLite event store created: fts={fts}");
+        let fts = Arc::new(RwLock::new(fts));
         Self {
-            importer: super::importer::SqliteEventSink::new(conn, fts),
+            importer: super::importer::SqliteEventSink::new(writer.clone(), fts.clone()),
             pool,
             fts,
+            writer: writer.clone(),
         }
     }
 
