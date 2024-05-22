@@ -33,10 +33,18 @@ impl ConnectionBuilder {
 }
 
 fn sqlite_options() -> SqliteConnectOptions {
-    let options = SqliteConnectOptions::new()
+    use sqlx::ConnectOptions;
+
+    let mut options = SqliteConnectOptions::new()
         .journal_mode(SqliteJournalMode::Wal)
         .auto_vacuum(SqliteAutoVacuum::Full)
         .synchronous(SqliteSynchronous::Normal);
+
+    if std::env::var("EVEBOX_SQLX_STATEMENT_LOGGING").is_ok() {
+        options = options.log_statements(log::LevelFilter::Debug);
+    } else {
+        options = options.disable_statement_logging();
+    }
 
     // 5 seconds just isn't long enough when we expect possibly long
     // lockout times.

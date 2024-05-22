@@ -38,8 +38,8 @@ extern crate serde_json;
 
 lazy_static! {
     /// Environment variable to enable query logging.
-    pub static ref LOG_QUERIES: bool = std::env::var_os("EVEBOX_LOG_QUERIES").is_some();
+    pub static ref LOG_QUERIES: bool = std::env::var("EVEBOX_LOG_QUERIES").is_ok();
 
     /// Environment variable to enable logging of query plans.
-    pub static ref LOG_QUERY_PLAN: bool = std::env::var_os("EVEBOX_LOG_QUERY_PLAN").is_some();
+    pub static ref LOG_QUERY_PLAN: bool = std::env::var("EVEBOX_LOG_QUERY_PLAN").is_ok();
 }

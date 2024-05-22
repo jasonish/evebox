@@ -73,3 +73,4 @@ gethostname = "0.4.3"
 tempfile = "3.9.0"
 inquire = "0.6.2"
 chrono = { version = "0.4.38", default-features = false, features = ["std", "now"] }
+log = "0.4.21"
