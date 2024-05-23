@@ -12,7 +12,7 @@ pub mod util;
 
 pub(crate) use connection::ConnectionBuilder;
 use sqlx::{sqlite::SqliteArguments, SqliteExecutor, SqlitePool};
-use tracing::error;
+use tracing::{error, instrument};
 
 pub(crate) async fn has_table<'a>(
     conn: impl SqliteExecutor<'a>,
@@ -26,22 +26,20 @@ pub(crate) async fn has_table<'a>(
     Ok(count > 0)
 }
 
-async fn log_query_plan<'a>(pool: &SqlitePool, tag: &str, sql: &str, args: &SqliteArguments<'a>) {
+#[instrument(skip_all)]
+async fn log_query_plan<'a>(pool: &SqlitePool, sql: &str, args: &SqliteArguments<'a>) {
     let rows: Result<Vec<(i64, i64, i64, String)>, sqlx::Error> =
         sqlx::query_as_with(&format!("explain query plan {}", &sql), args.clone())
             .fetch_all(pool)
             .await;
     match rows {
         Err(err) => {
-            error!(
-                "query-plan:{tag}: Failed to explain query plan: {}: sql={}",
-                err, sql
-            );
+            error!("Failed to explain query plan: {}: sql={}", err, sql);
         }
         Ok(rows) => {
-            tracing::info!("query-plan:{tag} for sql={sql}");
+            tracing::info!(?args, "{sql}");
             for row in rows {
-                tracing::info!("query-plan:{tag}: {}", row.3);
+                tracing::info!("{}", row.3);
             }
         }
     }

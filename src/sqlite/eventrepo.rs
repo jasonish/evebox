@@ -12,7 +12,7 @@ use sqlx::Arguments;
 use sqlx::{Row, SqliteConnection, SqlitePool};
 use std::sync::Arc;
 use std::time::Instant;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 
 use super::has_table;
 
@@ -277,6 +277,7 @@ impl SqliteEventRepo {
         self.set_escalation_for_id(event_id, false).await
     }
 
+    #[instrument(skip_all)]
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
         // Turns out not putting a timestamp limit on this is much
         // faster.
@@ -286,7 +287,7 @@ impl SqliteEventRepo {
             WHERE json_extract(events.source, '$.host') IS NOT NULL
             "#;
         if *LOG_QUERY_PLAN {
-            log_query_plan(&self.pool, "sensors", sql, &SqliteArguments::default()).await;
+            log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
         let rows: Vec<String> = sqlx::query_scalar(sql).fetch_all(&self.pool).await?;

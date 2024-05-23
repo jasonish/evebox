@@ -10,9 +10,10 @@ use crate::{
 use futures::TryStreamExt;
 use sqlx::{sqlite::SqliteRow, Row};
 use std::time::Instant;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, instrument, warn};
 
 impl SqliteEventRepo {
+    #[instrument(skip_all)]
     pub async fn events(
         &self,
         options: EventQueryParams,
@@ -54,7 +55,7 @@ impl SqliteEventRepo {
         let (sql, params) = builder.build();
 
         if *LOG_QUERY_PLAN {
-            log_query_plan(&self.pool, "events", &sql, &params).await;
+            log_query_plan(&self.pool, &sql, &params).await;
         } else if *LOG_QUERIES {
             info!("query={}; args={:?}", &sql.trim(), &params);
         }

@@ -9,10 +9,12 @@ use crate::{
 };
 use futures::TryStreamExt;
 use sqlx::Row;
+use tracing::instrument;
 
 use super::SqliteEventRepo;
 
 impl SqliteEventRepo {
+    #[instrument(skip_all)]
     pub async fn group_by(
         &self,
         field: &str,
@@ -45,7 +47,7 @@ impl SqliteEventRepo {
         let (sql, args) = builder.build();
 
         if *LOG_QUERY_PLAN {
-            log_query_plan(&self.pool, "group-by", &sql, &args).await;
+            log_query_plan(&self.pool, &sql, &args).await;
         }
 
         let mut rows = sqlx::query_with(&sql, args).fetch(&self.pool);

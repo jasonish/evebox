@@ -5,7 +5,7 @@ use futures::TryStreamExt;
 use sqlx::sqlite::{SqliteArguments, SqliteRow};
 use sqlx::Arguments;
 use sqlx::Row;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, instrument, warn};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
@@ -15,6 +15,7 @@ use crate::{queryparser, LOG_QUERIES, LOG_QUERY_PLAN};
 use std::time::Instant;
 
 impl SqliteEventRepo {
+    #[instrument(skip_all)]
     pub async fn alerts(
         &self,
         options: AlertQueryOptions,
@@ -132,7 +133,7 @@ impl SqliteEventRepo {
         let query = query.replace("%FROM%", &from.join(", "));
 
         if *LOG_QUERY_PLAN {
-            log_query_plan(&self.pool, "alerts", &query, &args).await;
+            log_query_plan(&self.pool, &query, &args).await;
         } else if *LOG_QUERIES {
             info!("query={}; args={:?}", &query.trim(), &args);
         }
