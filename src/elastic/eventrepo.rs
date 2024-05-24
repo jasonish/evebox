@@ -505,17 +505,8 @@ impl ElasticEventRepo {
 
         for tag in options.tags {
             if let Some(tag) = tag.strip_prefix('-') {
-                if tag == "archived" {
-                    debug!("Rewriting tag {} to {}", tag, "evebox.archived");
-                    must_not.push(json!({"term": {"tags": "evebox.archived"}}));
-                } else {
-                    let j = json!({"term": {"tags": tag}});
-                    must_not.push(j);
-                }
-            } else if tag == "escalated" {
-                debug!("Rewriting tag {} to {}", tag, "evebox.escalated");
-                let j = json!({"term": {"tags": "evebox.escalated"}});
-                filters.push(j);
+                let j = json!({"term": {"tags": tag}});
+                must_not.push(j);
             } else {
                 let j = json!({"term": {"tags": tag}});
                 filters.push(j);

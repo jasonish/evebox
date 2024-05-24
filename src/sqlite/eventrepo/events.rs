@@ -98,11 +98,9 @@ fn row_mapper(row: SqliteRow) -> Result<serde_json::Value, sqlx::Error> {
 
     if let serde_json::Value::Array(ref mut tags) = &mut parsed["tags"] {
         if archived > 0 {
-            tags.push("archived".into());
             tags.push("evebox.archived".into());
         }
         if escalated > 0 {
-            tags.push("escalated".into());
             tags.push("evebox.escalated".into());
         }
     }
