@@ -225,3 +225,13 @@ $evebox-danger-color-dark: #72383e;
     text-decoration: none;
   }
 }
+
+.app-count-value-data-table {
+  tbody {
+    tr:last-child {
+      td {
+        border: none;
+      }
+    }
+  }
+}

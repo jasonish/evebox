@@ -6,7 +6,7 @@ import { useParams } from "@solidjs/router";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { Col, Container, Row } from "solid-bootstrap";
 import { API, GroupByQueryRequest, GroupByQueryResponseRow } from "../api";
-import { CountValueTable } from "./AlertsReport";
+import { CountValueDataTable } from "../components/CountValueDataTable";
 import { createStore } from "solid-js/store";
 import { RefreshButton } from "../common/RefreshButton";
 
@@ -465,7 +465,7 @@ export function AddressReport() {
             {(loader) => (
               <>
                 <Col class={"mt-2"} md={6}>
-                  <CountValueTable
+                  <CountValueDataTable
                     title={loader.title!}
                     label={loader.label!}
                     rows={loader.get()}

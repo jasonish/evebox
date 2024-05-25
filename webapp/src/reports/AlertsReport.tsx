@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 import { TIME_RANGE, Top } from "../Top";
-import { createEffect, createSignal, For, Show } from "solid-js";
-import { Card, Col, Container, Form, Row, Table } from "solid-bootstrap";
+import { createEffect, createSignal } from "solid-js";
+import { Col, Container, Form, Row } from "solid-bootstrap";
 import { API } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { trackLoading } from "../util";
-import { SearchLink } from "../common/SearchLink";
+import { CountValueDataTable } from "../components/CountValueDataTable";
 
 interface CountValueRow {
   count: number;
@@ -258,7 +258,7 @@ export function AlertsReport() {
 
         <Row class={"mt-2"}>
           <Col>
-            <CountValueTable
+            <CountValueDataTable
               title={"Most Alerting Signatures"}
               label={"Signature"}
               searchField="alert.signature"
@@ -267,7 +267,7 @@ export function AlertsReport() {
           </Col>
 
           <Col>
-            <CountValueTable
+            <CountValueDataTable
               title={"Least Alerting Signatures"}
               label={"Signature"}
               searchField="alert.signature"
@@ -278,7 +278,7 @@ export function AlertsReport() {
 
         <Row>
           <Col class={"mt-2"}>
-            <CountValueTable
+            <CountValueDataTable
               title={"Most Alerting Source Addresses"}
               label={"Address"}
               searchField={"@ip"}
@@ -286,7 +286,7 @@ export function AlertsReport() {
             />
           </Col>
           <Col class={"mt-2"}>
-            <CountValueTable
+            <CountValueDataTable
               title={"Most Alerting Destination Addresses"}
               label={"Address"}
               searchField={"@ip"}
@@ -297,7 +297,7 @@ export function AlertsReport() {
 
         <Row>
           <Col class={"mt-2"}>
-            <CountValueTable
+            <CountValueDataTable
               title={"Least Alerting Source Addresses"}
               label={"Address"}
               searchField={"@ip"}
@@ -305,7 +305,7 @@ export function AlertsReport() {
             />
           </Col>
           <Col class={"mt-2"}>
-            <CountValueTable
+            <CountValueDataTable
               title={"Least Alerting Destination Addresses"}
               label={"Address"}
               searchField={"@ip"}
@@ -315,62 +315,5 @@ export function AlertsReport() {
         </Row>
       </Container>
     </>
-  );
-}
-
-// Creates a table where the first column is a count, and the second column is value.
-export function CountValueTable(props: {
-  title: string;
-  label: string;
-  searchField?: string;
-  rows: { count: number; key: any }[];
-}) {
-  const showNoData = true;
-
-  function searchLink(value: any) {
-    if (props.searchField) {
-      return (
-        <SearchLink value={value} field={props.searchField}>
-          {value}
-        </SearchLink>
-      );
-    } else {
-      return <SearchLink value={value}>{value}</SearchLink>;
-    }
-  }
-
-  return (
-    <Show when={showNoData || props.rows.length > 0}>
-      <Card>
-        <Card.Header>
-          <b>{props.title}</b>
-        </Card.Header>
-        <Show when={props.rows.length === 0}>
-          <Card.Body>No results.</Card.Body>
-        </Show>
-        <Show when={props.rows.length > 0}>
-          <Card.Body style={"padding: 0;"}>
-            <Table size={"sm"} hover striped>
-              <thead>
-                <tr>
-                  <th style={"width: 6em;"}>#</th>
-                  <th>{props.label}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={props.rows}>
-                  {(row) => (
-                    <tr>
-                      <td style={"width: 6em;"}>{row.count}</td>
-                      <td>{searchLink(row.key)}</td>
-                    </tr>
-                  )}
-                </For>
-              </tbody>
-            </Table>
-          </Card.Body>
-        </Show>
-      </Card>
-    </Show>
   );
 }
