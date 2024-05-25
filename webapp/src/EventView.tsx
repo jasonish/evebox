@@ -49,6 +49,12 @@ import { SearchLink } from "./common/SearchLink";
 const PCAP_BUTTON_STYLE =
   "--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .7rem;";
 
+interface HistoryEntry {
+  action: string;
+  timestamp: string;
+  username?: string;
+}
+
 export function EventView() {
   console.log("***** EventView *****");
   const params = useParams<{ id: string }>();
@@ -57,6 +63,7 @@ export function EventView() {
   const [eventDetails, setEventDetails] = createSignal<any[][]>();
   const [commonDetails, setCommonDetails] = createSignal<any[][]>();
   const [showCopyToast, setShowCopyToast] = createSignal(false);
+  const [history, setHistory] = createSignal<HistoryEntry[]>([]);
   const [geoIp, setGeoIp] = createStore<{
     source: EcsGeo | undefined;
     destination: EcsGeo | undefined;
@@ -102,6 +109,16 @@ export function EventView() {
 
   createEffect(() => {
     setEventId(params.id);
+  });
+
+  // Update the history signal.
+  createEffect(() => {
+    const history = event()?._source?.evebox?.history;
+    if (history) {
+      setHistory(history);
+    } else {
+      setHistory([]);
+    }
   });
 
   // Update GeoIP information.
@@ -604,10 +621,10 @@ export function EventView() {
           <Row>
             <Col class={"mb-2"} lg={12} xl={6}>
               <Card>
-                <Card.Body class={"p-0"}>
+                <Card.Body class="p-0">
                   <table
                     class={
-                      "table table-sm table-borderless table-striped table-hover app-detail-table"
+                      "table table-sm table-borderless table-striped table-hover app-detail-table mb-0"
                     }
                   >
                     <tbody>
@@ -634,7 +651,7 @@ export function EventView() {
                   <Card.Body class={"p-0"}>
                     <table
                       class={
-                        "table table-sm app-detail-table table-borderless table-striped table-hover"
+                        "table table-sm app-detail-table table-borderless table-striped table-hover mb-0"
                       }
                     >
                       <tbody>
@@ -677,6 +694,8 @@ export function EventView() {
               </Col>
             </Row>
           </Show>
+
+          <History history={history()} />
 
           {/* GeoIP */}
           <Show when={geoIp.source || geoIp.destination}>
@@ -1379,5 +1398,42 @@ function StatsCard(props: { stats: { [key: string]: any } }) {
         </div>
       </div>
     </>
+  );
+}
+
+function History(props: any) {
+  return (
+    <Show when={props.history.length > 0}>
+      <div class="row mb-2">
+        <div class="col">
+          <div class="card">
+            <div class="card-header">History</div>
+            <div class="card-body">
+              <For each={props.history}>
+                {(entry) => (
+                  <>
+                    <div class="row">
+                      <div class="col">
+                        {formatTimestamp(entry.timestamp).slice(0, -4)}
+                        {" - "}
+                        <Switch fallback={entry.action}>
+                          <Match when={entry.action == "escalated"}>
+                            Escalated
+                          </Match>
+                          <Match when={entry.action == "de-escalated"}>
+                            De-escalated
+                          </Match>
+                        </Switch>{" "}
+                        by <i>{entry.username}</i>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </For>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Show>
   );
 }
