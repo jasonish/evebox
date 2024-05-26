@@ -5,12 +5,10 @@ import { createEffect, createSignal, untrack } from "solid-js";
 import { API } from "../api";
 import { TIME_RANGE, Top } from "../Top";
 import { Card, Col, Container, Row } from "solid-bootstrap";
-import { Chart, ChartConfiguration, Colors } from "chart.js";
+import { Chart, ChartConfiguration } from "chart.js";
 import { RefreshButton } from "../common/RefreshButton";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
-
-Chart.register(Colors);
 
 export function OverviewReport() {
   const [loading, setLoading] = createSignal(0);
@@ -113,6 +111,7 @@ export function OverviewReport() {
       options: {
         plugins: {
           colors: {
+            // Required to use color on dynamic charts.
             forceOverride: true,
           },
           title: {

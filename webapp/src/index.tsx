@@ -9,11 +9,10 @@ import { AppRouter } from "./App";
 import "./styles/index.scss";
 
 // Initialize Chartjs.
-import { Chart, registerables, Colors } from "chart.js";
+import { Chart, registerables } from "chart.js";
 import "chartjs-adapter-dayjs-4";
 
 Chart.register(...registerables);
-Chart.register(Colors);
 
 loadInitialTheme();
 
