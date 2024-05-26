@@ -35,7 +35,7 @@ export function CountValueDataTable(props: {
         </Show>
         <Show when={props.rows.length > 0}>
           <div class="card-body p-0">
-            <table class="table mb-0">
+            <table class="table" style="margin-bottom: 3px;">
               <thead>
                 <tr>
                   <th style={"width: 6em;"}>#</th>
