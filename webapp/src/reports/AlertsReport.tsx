@@ -11,6 +11,7 @@ import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { loadingTracker } from "../util";
 import { CountValueDataTable } from "../components/CountValueDataTable";
+import { Colors } from "../common/colors";
 
 interface CountValueRow {
   count: number;
@@ -56,6 +57,13 @@ export function AlertsReport() {
         datasets: [
           {
             data: dataValues,
+
+            backgroundColor: dataValues.map(
+              (_, index) => Colors[index % Colors.length]
+            ),
+            borderColor: dataValues.map(
+              (_, index) => Colors[index % Colors.length]
+            ),
           },
         ],
       },

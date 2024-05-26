@@ -9,6 +9,7 @@ import { Chart, ChartConfiguration } from "chart.js";
 import { RefreshButton } from "../common/RefreshButton";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
+import { Colors } from "../common/colors";
 
 export function OverviewReport() {
   const [loading, setLoading] = createSignal(0);
@@ -78,11 +79,14 @@ export function OverviewReport() {
               } else {
                 let values = response.data.map((e) => e.count);
                 let hidden = hiddenTypes[eventType];
+                let colorIdx = histogram.data.datasets.length;
                 histogram.data.datasets.push({
                   data: values,
                   label: e.key,
                   pointRadius: 0,
                   hidden: hidden,
+                  backgroundColor: Colors[colorIdx % Colors.length],
+                  borderColor: Colors[colorIdx % Colors.length],
                 });
                 histogram.update();
               }
@@ -110,10 +114,6 @@ export function OverviewReport() {
       },
       options: {
         plugins: {
-          colors: {
-            // Required to use color on dynamic charts.
-            forceOverride: true,
-          },
           title: {
             display: false,
             padding: 0,
