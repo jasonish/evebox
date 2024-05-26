@@ -6,6 +6,8 @@ import { SearchLink } from "../common/SearchLink";
 
 // Creates a table where the first column is a count, and the second
 // column is value.
+//
+// TODO: Loading prop so we can display loading instead of no data.
 export function CountValueDataTable(props: {
   title: string;
   label: string;
@@ -28,9 +30,11 @@ export function CountValueDataTable(props: {
     <>
       <div class="card app-count-value-data-table">
         <div class="card-header">{props.title}</div>
-        <div class="card-body p-0">
-          <Show when={props.rows.length == 0}></Show>
-          <Show when={props.rows.length > 0}>
+        <Show when={props.rows.length == 0}>
+          <div class="card-body">No data</div>
+        </Show>
+        <Show when={props.rows.length > 0}>
+          <div class="card-body p-0">
             <table class="table mb-0">
               <thead>
                 <tr>
@@ -49,8 +53,8 @@ export function CountValueDataTable(props: {
                 </For>
               </tbody>
             </table>
-          </Show>
-        </div>
+          </div>
+        </Show>
       </div>
     </>
   );
