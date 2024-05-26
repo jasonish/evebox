@@ -11,7 +11,7 @@ import { parse_timestamp } from "./datetime";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "./common/SensorSelect";
 import { RefreshButton } from "./common/RefreshButton";
-import { trackLoading } from "./util";
+import { loadingTracker } from "./util";
 
 interface ChartConfig {
   title: string;
@@ -84,7 +84,7 @@ export function Stats(): JSX.Element {
     console.log("Loading chart...");
 
     for (const chart of CHARTS) {
-      trackLoading(setLoadingCounter, () => {
+      loadingTracker(setLoadingCounter, () => {
         return statsAgg(
           chart.field,
           chart.differential,

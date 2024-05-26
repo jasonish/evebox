@@ -9,7 +9,7 @@ import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
-import { trackLoading } from "../util";
+import { loadingTracker } from "../util";
 import { CountValueDataTable } from "../components/CountValueDataTable";
 
 interface CountValueRow {
@@ -169,7 +169,7 @@ export function AlertsReport() {
 
       loader.setter([]);
 
-      trackLoading(setLoading, () => {
+      loadingTracker(setLoading, () => {
         return API.groupBy(request).then((response) => {
           loader.setter(response.rows);
         });

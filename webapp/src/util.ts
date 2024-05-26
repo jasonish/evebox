@@ -16,8 +16,8 @@ export class Logger {
 }
 
 // Utility function to wrap a promise with managing a loading counter.
-export function trackLoading(setter: Setter<number>, fn: () => Promise<any>) {
-  // Adding a delay is useful for debugging.
+export function loadingTracker(setter: Setter<number>, fn: () => Promise<any>) {
+  // Adding a small delay helps with the visual. Increasing the delay helps with debugging.
   let delay = 100;
   setter((c) => {
     if (delay > 0) {

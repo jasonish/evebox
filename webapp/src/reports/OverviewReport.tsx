@@ -20,7 +20,6 @@ export function OverviewReport() {
     stats: true,
     netflow: true,
   };
-  const [sensors, setSensors] = createSignal<string[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   createEffect(() => {
@@ -39,10 +38,6 @@ export function OverviewReport() {
       if (loading() > 0) {
         return;
       }
-    });
-
-    API.getSensors().then((response) => {
-      setSensors(response.data);
     });
 
     let q: string[] = [];

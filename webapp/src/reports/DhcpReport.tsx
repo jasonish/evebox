@@ -10,7 +10,7 @@ import { parse_timestamp } from "../datetime";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { RefreshButton } from "../common/RefreshButton";
-import { trackLoading } from "../util";
+import { loadingTracker } from "../util";
 import { RawSearchLink, SearchLink } from "../common/SearchLink";
 
 export function DhcpReport() {
@@ -24,7 +24,7 @@ export function DhcpReport() {
   });
 
   function refresh() {
-    trackLoading(setLoading, () => {
+    loadingTracker(setLoading, () => {
       const query = { time_range: TIME_RANGE(), sensor: searchParams.sensor };
 
       return API.dhcpRequest(query).then((response) => {
@@ -55,7 +55,7 @@ export function DhcpReport() {
       sensor = ` host:${searchParams.sensor}`;
     }
 
-    trackLoading(setLoading, () => {
+    loadingTracker(setLoading, () => {
       return API.groupBy({
         field: "src_ip",
         size: 100,
