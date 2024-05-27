@@ -264,7 +264,7 @@ export async function getSensors(): Promise<{ data: string[] }> {
   return get("api/1/sensors").then((response) => response.data);
 }
 
-export interface GroupByQueryRequest {
+export interface AggRequest {
   field: string;
   time_range?: string;
   size?: number;
@@ -272,20 +272,20 @@ export interface GroupByQueryRequest {
   q?: string;
 }
 
-export interface GroupByQueryResponse {
-  rows: GroupByQueryResponseRow[];
+export interface AggResponse {
+  rows: AggResponseRow[];
 }
 
-export interface GroupByQueryResponseRow {
+export interface AggResponseRow {
   count: number;
   key: any;
 }
 
-class Api {
-  async groupBy(request: GroupByQueryRequest): Promise<GroupByQueryResponse> {
-    return get("api/1/groupby", request).then((response) => response.data);
-  }
+export async function fetchAgg(request: AggRequest): Promise<AggResponse> {
+  return get("api/agg", request).then((response) => response.data);
+}
 
+class Api {
   async histogramTime(request: {
     time_range: string;
     interval?: string;

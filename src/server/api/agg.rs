@@ -10,18 +10,6 @@ use serde::Deserialize;
 use std::{ops::Sub, sync::Arc};
 use tracing::error;
 
-const fn default_size() -> usize {
-    10
-}
-
-fn default_time_range() -> String {
-    "24h".to_string()
-}
-
-fn default_order() -> String {
-    "desc".to_string()
-}
-
 #[derive(Debug, Deserialize)]
 pub(crate) struct GroupByParams {
     /// Field name to group and return the counts for.
@@ -40,7 +28,19 @@ pub(crate) struct GroupByParams {
     tz_offset: Option<String>,
 }
 
-pub(crate) async fn group_by(
+const fn default_size() -> usize {
+    10
+}
+
+fn default_time_range() -> String {
+    "24h".to_string()
+}
+
+fn default_order() -> String {
+    "desc".to_string()
+}
+
+pub(crate) async fn agg(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<GroupByParams>,
@@ -65,11 +65,7 @@ pub(crate) async fn group_by(
     let results = context
         .datastore
         .group_by(&form.field, form.size, &form.order, query_string)
-        .await
-        .map_err(|err| {
-            error!("Event repo group by failed: {err}");
-            ApiError::InternalServerError
-        })?;
+        .await?;
     #[rustfmt::skip]
     let response = json!({
 	      "rows": results,

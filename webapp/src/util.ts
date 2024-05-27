@@ -16,8 +16,10 @@ export class Logger {
 }
 
 // Utility function to wrap a promise with managing a loading counter.
-export function loadingTracker(setter: Setter<number>, fn: () => Promise<any>) {
-  // Adding a small delay helps with the visual. Increasing the delay helps with debugging.
+export async function loadingTracker(
+  setter: Setter<number>,
+  fn: () => Promise<any>
+) {
   let delay = 100;
   setter((c) => {
     if (delay > 0) {
@@ -25,7 +27,7 @@ export function loadingTracker(setter: Setter<number>, fn: () => Promise<any>) {
     }
     return c + 1;
   });
-  fn().finally(() => {
+  return fn().finally(() => {
     setTimeout(() => {
       setter((c) => c - 1);
     }, delay);

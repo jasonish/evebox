@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { For, Show } from "solid-js";
+import { Accessor, For, Show } from "solid-js";
 import { SearchLink } from "../common/SearchLink";
 
 // Creates a table where the first column is a count, and the second
@@ -12,6 +12,7 @@ export function CountValueDataTable(props: {
   title: string;
   label: string;
   searchField?: string;
+  loading?: boolean;
   rows: { count: number; key: any }[];
 }) {
   function searchLink(value: any) {
@@ -29,7 +30,26 @@ export function CountValueDataTable(props: {
   return (
     <>
       <div class="card app-count-value-data-table">
-        <div class="card-header">{props.title}</div>
+        <div class="card-header d-flex">
+          {props.title}
+          <Show when={props.loading !== undefined && props.loading}>
+            {/* Loader in a button for placement reason's. */}
+            <button
+              class="btn ms-auto"
+              type="button"
+              disabled
+              style="border: 0; padding: 0;"
+            >
+              <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+              ></span>
+              <span class="visually-hidden" role="status">
+                Loading...
+              </span>
+            </button>
+          </Show>
+        </div>
         <Show when={props.rows.length == 0}>
           <div class="card-body">No data</div>
         </Show>

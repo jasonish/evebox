@@ -890,7 +890,7 @@ impl ElasticEventRepo {
         Ok(data)
     }
 
-    pub async fn group_by(
+    pub async fn agg(
         &self,
         field: &str,
         size: usize,

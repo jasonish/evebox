@@ -193,8 +193,8 @@ impl EventRepo {
         query: Vec<queryparser::QueryElement>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         match self {
-            EventRepo::Elastic(ds) => ds.group_by(field, size, order, query).await,
-            EventRepo::SQLite(ds) => ds.group_by(field, size, order, query).await,
+            EventRepo::Elastic(ds) => ds.agg(field, size, order, query).await,
+            EventRepo::SQLite(ds) => ds.agg(field, size, order, query).await,
         }
     }
 }

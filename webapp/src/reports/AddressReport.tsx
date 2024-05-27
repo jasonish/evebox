@@ -5,48 +5,48 @@ import { TIME_RANGE, Top } from "../Top";
 import { useParams } from "@solidjs/router";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { Col, Container, Row } from "solid-bootstrap";
-import { API, GroupByQueryRequest, GroupByQueryResponseRow } from "../api";
+import { API, AggRequest, AggResponseRow, fetchAgg } from "../api";
 import { CountValueDataTable } from "../components/CountValueDataTable";
 import { createStore } from "solid-js/store";
 import { RefreshButton } from "../common/RefreshButton";
 
 export function AddressReport() {
   const params = useParams<{ address: string }>();
-  const [mostSignatures, setMostSignatures] = createSignal<
-    GroupByQueryResponseRow[]
-  >([]);
-  const [leastSignatures, setLeastSignatures] = createSignal<
-    GroupByQueryResponseRow[]
-  >([]);
+  const [mostSignatures, setMostSignatures] = createSignal<AggResponseRow[]>(
+    []
+  );
+  const [leastSignatures, setLeastSignatures] = createSignal<AggResponseRow[]>(
+    []
+  );
   const [loading, setLoading] = createSignal(0);
   const [isLoading, setIsLoading] = createSignal(false);
 
   const [results, setResults] = createStore<{
-    mostRequestedDns: GroupByQueryResponseRow[];
-    leastRequestedDns: GroupByQueryResponseRow[];
-    mostHttpUserAgents: GroupByQueryResponseRow[];
-    leastHttpUserAgents: GroupByQueryResponseRow[];
-    mostRequestedTlsSni: GroupByQueryResponseRow[];
-    leastRequestedTlsSni: GroupByQueryResponseRow[];
-    mostSshClientVersions: GroupByQueryResponseRow[];
-    leastSshClientVersions: GroupByQueryResponseRow[];
-    mostSshServerVersions: GroupByQueryResponseRow[];
-    leastSshServerVersions: GroupByQueryResponseRow[];
+    mostRequestedDns: AggResponseRow[];
+    leastRequestedDns: AggResponseRow[];
+    mostHttpUserAgents: AggResponseRow[];
+    leastHttpUserAgents: AggResponseRow[];
+    mostRequestedTlsSni: AggResponseRow[];
+    leastRequestedTlsSni: AggResponseRow[];
+    mostSshClientVersions: AggResponseRow[];
+    leastSshClientVersions: AggResponseRow[];
+    mostSshServerVersions: AggResponseRow[];
+    leastSshServerVersions: AggResponseRow[];
 
-    httpTopOutboundHostnames: GroupByQueryResponseRow[];
-    httpLeastOutboundHostnames: GroupByQueryResponseRow[];
+    httpTopOutboundHostnames: AggResponseRow[];
+    httpLeastOutboundHostnames: AggResponseRow[];
 
-    httpTopInboundHostnames: GroupByQueryResponseRow[];
-    httpLeastInboundHostnames: GroupByQueryResponseRow[];
+    httpTopInboundHostnames: AggResponseRow[];
+    httpLeastInboundHostnames: AggResponseRow[];
 
-    tlsSniInboundTop: GroupByQueryResponseRow[];
-    tlsSniInboundLeast: GroupByQueryResponseRow[];
+    tlsSniInboundTop: AggResponseRow[];
+    tlsSniInboundLeast: AggResponseRow[];
 
-    tlsMostRequestedSubjects: GroupByQueryResponseRow[];
-    tlsLeastRequestedSubjects: GroupByQueryResponseRow[];
+    tlsMostRequestedSubjects: AggResponseRow[];
+    tlsLeastRequestedSubjects: AggResponseRow[];
 
-    tlsMostRequestedIssueDn: GroupByQueryResponseRow[];
-    tlsLeastRequestedIssueDn: GroupByQueryResponseRow[];
+    tlsMostRequestedIssueDn: AggResponseRow[];
+    tlsLeastRequestedIssueDn: AggResponseRow[];
   }>({
     mostRequestedDns: [],
     leastRequestedDns: [],
@@ -91,11 +91,11 @@ export function AddressReport() {
   //   to reactive updates.  Thre refresh function will substitute {{address}} with the current
   //   address when it changes.
   const LOADERS: {
-    request: GroupByQueryRequest;
-    setter: (rows: GroupByQueryResponseRow[]) => void;
+    request: AggRequest;
+    setter: (rows: AggResponseRow[]) => void;
     title: string;
     label: string;
-    get: () => GroupByQueryResponseRow[];
+    get: () => AggResponseRow[];
   }[] = [
     // Most alerting rules.
     {
@@ -133,8 +133,7 @@ export function AddressReport() {
         q: `event_type:dns dns.type:query src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
-        setResults("mostRequestedDns", rows),
+      setter: (rows: AggResponseRow[]) => setResults("mostRequestedDns", rows),
       title: "Most Requested DNS Hostnames",
       label: "Hostname",
       get: () => results.mostRequestedDns,
@@ -148,8 +147,7 @@ export function AddressReport() {
         q: `event_type:dns dns.type:query src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
-        setResults("leastRequestedDns", rows),
+      setter: (rows: AggResponseRow[]) => setResults("leastRequestedDns", rows),
       title: "Least Requested DNS Hostnames",
       label: "Hostname",
       get: () => results.leastRequestedDns,
@@ -163,7 +161,7 @@ export function AddressReport() {
         q: `event_type:http src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("httpTopOutboundHostnames", rows),
       title: "Top Outbound HTTP Hostnames",
       label: "Hostname",
@@ -178,7 +176,7 @@ export function AddressReport() {
         q: `event_type:http src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("httpLeastOutboundHostnames", rows),
       title: "Least Outbound HTTP Hostnames",
       label: "Hostname",
@@ -193,7 +191,7 @@ export function AddressReport() {
         q: `event_type:http dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("httpTopInboundHostnames", rows),
       title: "Top Inbound HTTP Hostnames",
       label: "Hostname",
@@ -208,7 +206,7 @@ export function AddressReport() {
         q: `event_type:http dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("httpLeastInboundHostnames", rows),
       title: "Least Inbound HTTP Hostnames",
       label: "Hostname",
@@ -223,7 +221,7 @@ export function AddressReport() {
         q: `event_type:http src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("mostHttpUserAgents", rows),
       title: "Top Outbound HTTP User Agents",
       label: "User Agent",
@@ -238,7 +236,7 @@ export function AddressReport() {
         q: `event_type:http src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("leastHttpUserAgents", rows),
       title: "Least Outbound HTTP User Agents",
       label: "User Agent",
@@ -253,7 +251,7 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("mostRequestedTlsSni", rows),
       title: "Most Requested TLS SNI Names",
       label: "Name",
@@ -268,7 +266,7 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("leastRequestedTlsSni", rows),
       title: "Least Requested TLS SNI Names",
       label: "Name",
@@ -283,8 +281,7 @@ export function AddressReport() {
         q: `event_type:tls dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
-        setResults("tlsSniInboundTop", rows),
+      setter: (rows: AggResponseRow[]) => setResults("tlsSniInboundTop", rows),
       title: "Top Inbound TLS SNI Names",
       label: "Name",
       get: () => results.tlsSniInboundTop,
@@ -298,7 +295,7 @@ export function AddressReport() {
         q: `event_type:tls dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("tlsSniInboundLeast", rows),
       title: "Least Inbound TLS SNI Names",
       label: "Name",
@@ -313,7 +310,7 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("tlsMostRequestedSubjects", rows),
       title: "Most Requested TLS Subjects",
       label: "Name",
@@ -328,7 +325,7 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("tlsLeastRequestedSubjects", rows),
       title: "Least Requested TLS Subjects",
       label: "Name",
@@ -343,7 +340,7 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("tlsMostRequestedIssueDn", rows),
       title: "Most Requested TLS Issuer DN",
       label: "Name",
@@ -358,7 +355,7 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: GroupByQueryResponseRow[]) =>
+      setter: (rows: AggResponseRow[]) =>
         setResults("tlsLeastRequestedIssueDn", rows),
       title: "Least Requested TLS Issuer DN",
       label: "Name",
@@ -430,7 +427,7 @@ export function AddressReport() {
       }
       let request = { time_range: timeRange, ...loader.request };
       request.q = request.q?.replace("{{address}}", params.address);
-      API.groupBy(request)
+      fetchAgg(request)
         .then((response) => {
           loader.setter(response.rows);
         })

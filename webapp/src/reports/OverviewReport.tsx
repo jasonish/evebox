@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { createEffect, createSignal, untrack } from "solid-js";
-import { API } from "../api";
+import { createEffect, createSignal } from "solid-js";
+import { API, AggRequest, fetchAgg } from "../api";
 import { TIME_RANGE, Top } from "../Top";
 import { Card, Col, Container, Row } from "solid-bootstrap";
 import { Chart, ChartConfiguration } from "chart.js";
@@ -10,6 +10,16 @@ import { RefreshButton } from "../common/RefreshButton";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { Colors } from "../common/colors";
+import { loadingTracker } from "../util";
+import { createStore } from "solid-js/store";
+import { CountValueDataTable } from "../components/CountValueDataTable";
+
+const initialData = {
+  topAlertsLoading: false,
+  topAlerts: [],
+  topDnsRequestsLoading: false,
+  topDnsRequests: [],
+};
 
 export function OverviewReport() {
   const [loading, setLoading] = createSignal(0);
@@ -20,10 +30,7 @@ export function OverviewReport() {
     netflow: true,
   };
   const [searchParams, setSearchParams] = useSearchParams();
-
-  createEffect(() => {
-    refresh();
-  });
+  const [data, setData] = createStore(initialData);
 
   function initChart() {
     if (histogram) {
@@ -32,73 +39,100 @@ export function OverviewReport() {
     buildChart();
   }
 
-  function refresh() {
-    untrack(() => {
-      if (loading() > 0) {
-        return;
-      }
-    });
+  createEffect(() => {
+    refresh();
+  });
 
-    let q: string[] = [];
-
+  async function refresh() {
+    let q = "";
     if (searchParams.sensor) {
-      q.push(`host:${searchParams.sensor}`);
+      q += `host:${searchParams.sensor}`;
     }
 
-    setLoading((n) => n + 1);
-    initChart();
-    let timeRange = TIME_RANGE();
-    API.groupBy({
-      field: "event_type",
-      size: 100,
-      time_range: timeRange,
-      q: q.length > 0 ? q.join(" ") : undefined,
-    })
-      .then((response) => {
-        let eventTypes: string[] = [];
-        let labels: number[] = [];
-        for (const e of response.rows) {
-          let eventType = e.key;
-          eventTypes.push(eventType);
-          setLoading((n) => n + 1);
-          API.histogramTime({
-            time_range: TIME_RANGE(),
-            event_type: e.key,
-            query_string: q.length > 0 ? q.join(" ") : undefined,
-          })
-            .then((response) => {
-              if (labels.length === 0) {
-                response.data.forEach((e) => {
-                  labels.push(e.time);
-                });
-                histogram.data.labels = labels;
-              }
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "alert.signature",
+        size: 10,
+        order: "desc",
+        time_range: TIME_RANGE(),
+        q: q,
+      };
+      setData("topAlertsLoading", true);
+      let response = await loadingTracker(setLoading, () => fetchAgg(request));
+      setData("topAlerts", response.rows);
+      setData("topAlertsLoading", false);
+    });
 
-              if (response.data.length != labels.length) {
-                console.log("ERROR: Label and data mismatch");
-              } else {
-                let values = response.data.map((e) => e.count);
-                let hidden = hiddenTypes[eventType];
-                let colorIdx = histogram.data.datasets.length;
-                histogram.data.datasets.push({
-                  data: values,
-                  label: e.key,
-                  pointRadius: 0,
-                  hidden: hidden,
-                  backgroundColor: Colors[colorIdx % Colors.length],
-                  borderColor: Colors[colorIdx % Colors.length],
-                });
-                histogram.update();
-              }
-            })
-            .finally(() => {
-              setLoading((n) => n - 1);
-            });
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "dns.rrname",
+        size: 10,
+        order: "desc",
+        time_range: TIME_RANGE(),
+        q: q + " dns.type:query",
+      };
+      setData("topDnsRequestsLoading", true);
+      let response = await loadingTracker(setLoading, () => fetchAgg(request));
+      setData("topDnsRequests", response.rows);
+      setData("topDnsRequestsLoading", false);
+    });
+
+    fetchEventsHistogram(q);
+  }
+
+  async function fetchEventsHistogram(q: string) {
+    console.log("Fetching histogram");
+
+    initChart();
+
+    let eventTypeAggs = await loadingTracker(setLoading, () =>
+      fetchAgg({
+        field: "event_type",
+        size: 100,
+        time_range: TIME_RANGE(),
+        q: q,
+      }).then((response) => response.rows)
+    );
+
+    let eventTypes: string[] = [];
+    let labels: number[] = [];
+
+    for (const row of eventTypeAggs) {
+      const eventType = row.key;
+      eventTypes.push(eventType);
+      let request = {
+        time_range: TIME_RANGE(),
+        event_type: eventType,
+        query_string: q,
+      };
+
+      loadingTracker(setLoading, async () => {
+        let response = await API.histogramTime(request);
+        if (labels.length === 0) {
+          response.data.forEach((e) => {
+            labels.push(e.time);
+          });
+          histogram.data.labels = labels;
         }
-      })
-      .finally(() => {
-        setLoading((n) => n - 1);
+
+        if (response.data.length != labels.length) {
+          console.log("ERROR: Label and data mismatch");
+        } else {
+          let values = response.data.map((e) => e.count);
+          let hidden = hiddenTypes[eventType];
+          let colorIdx = histogram.data.datasets.length;
+          histogram.data.datasets.push({
+            data: values,
+            label: row.key,
+            pointRadius: 0,
+            hidden: hidden,
+            backgroundColor: Colors[colorIdx % Colors.length],
+            borderColor: Colors[colorIdx % Colors.length],
+          });
+          histogram.update();
+        }
       });
+    }
   }
 
   function buildChart() {
@@ -120,7 +154,7 @@ export function OverviewReport() {
           },
           legend: {
             display: true,
-            onClick: (e: any, legendItem: any, legend: any) => {
+            onClick: (_e: any, legendItem: any, legend: any) => {
               const eventType = legendItem.text;
               const index = legendItem.datasetIndex;
               const ci = legend.chart;
@@ -205,6 +239,27 @@ export function OverviewReport() {
             </Card>
           </Col>
         </Row>
+
+        <div class="row mt-2">
+          <div class="col">
+            <CountValueDataTable
+              title="Top Alerts"
+              label="Signature"
+              rows={data.topAlerts}
+              loading={data.topAlertsLoading}
+              searchField="alert.signature"
+            />
+          </div>
+          <div class="col">
+            <CountValueDataTable
+              title="Top DNS Requests"
+              label="Hostname"
+              rows={data.topDnsRequests}
+              loading={data.topDnsRequestsLoading}
+              searchField="dns.rrname"
+            />
+          </div>
+        </div>
       </Container>
     </>
   );

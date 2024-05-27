@@ -15,7 +15,7 @@ use super::SqliteEventRepo;
 
 impl SqliteEventRepo {
     #[instrument(skip_all)]
-    pub async fn group_by(
+    pub async fn agg(
         &self,
         field: &str,
         size: usize,

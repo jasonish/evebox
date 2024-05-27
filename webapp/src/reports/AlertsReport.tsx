@@ -4,7 +4,7 @@
 import { TIME_RANGE, Top } from "../Top";
 import { createEffect, createSignal } from "solid-js";
 import { Col, Container, Form, Row } from "solid-bootstrap";
-import { API } from "../api";
+import { API, fetchAgg } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";
@@ -178,7 +178,7 @@ export function AlertsReport() {
       loader.setter([]);
 
       loadingTracker(setLoading, () => {
-        return API.groupBy(request).then((response) => {
+        return fetchAgg(request).then((response) => {
           loader.setter(response.rows);
         });
       });

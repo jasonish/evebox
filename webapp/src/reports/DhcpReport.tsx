@@ -3,7 +3,7 @@
 
 import { Card, Col, Container, Row, Table } from "solid-bootstrap";
 import { TIME_RANGE, Top } from "../Top";
-import { API } from "../api";
+import { API, fetchAgg } from "../api";
 import { createEffect, createSignal, For, Setter, Show } from "solid-js";
 import { EventSource } from "../types";
 import { parse_timestamp } from "../datetime";
@@ -56,7 +56,7 @@ export function DhcpReport() {
     }
 
     loadingTracker(setLoading, () => {
-      return API.groupBy({
+      return fetchAgg({
         field: "src_ip",
         size: 100,
         time_range: TIME_RANGE(),
