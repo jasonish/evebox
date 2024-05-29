@@ -8,10 +8,9 @@ use crate::server::{main::SessionExtractor, ServerContext};
 use axum::{extract::State, response::IntoResponse, Form, Json};
 use serde::Deserialize;
 use std::{ops::Sub, sync::Arc};
-use tracing::error;
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct GroupByParams {
+pub(crate) struct AggParams {
     /// Field name to group and return the counts for.
     field: String,
     /// Humanized time range string.
@@ -43,7 +42,7 @@ fn default_order() -> String {
 pub(crate) async fn agg(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
-    Form(form): Form<GroupByParams>,
+    Form(form): Form<AggParams>,
 ) -> Result<impl IntoResponse, ApiError> {
     // First parse the query string.
     let default_tz_offset = form.tz_offset.as_deref();
@@ -64,7 +63,7 @@ pub(crate) async fn agg(
 
     let results = context
         .datastore
-        .group_by(&form.field, form.size, &form.order, query_string)
+        .agg(&form.field, form.size, &form.order, query_string)
         .await?;
     #[rustfmt::skip]
     let response = json!({
