@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, createUniqueId, Show } from "solid-js";
 import { API, AggRequest, fetchAgg } from "../api";
 import { TIME_RANGE, Top } from "../Top";
 import { Card, Col, Container, Row } from "solid-bootstrap";
@@ -19,6 +19,11 @@ const initialData = {
   topAlerts: [],
   topDnsRequestsLoading: false,
   topDnsRequests: [],
+
+  protocols: {
+    loading: false,
+    data: [],
+  },
 };
 
 export function OverviewReport() {
@@ -75,6 +80,24 @@ export function OverviewReport() {
       let response = await loadingTracker(setLoading, () => fetchAgg(request));
       setData("topDnsRequests", response.rows);
       setData("topDnsRequestsLoading", false);
+    });
+
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "proto",
+        size: 10,
+        time_range: TIME_RANGE(),
+        q: q,
+      };
+      setData("protocols", {
+        loading: true,
+      });
+      let response = await loadingTracker(setLoading, () => fetchAgg(request));
+      console.log(response.rows);
+      setData("protocols", {
+        loading: false,
+        data: response.rows,
+      });
     });
 
     fetchEventsHistogram(q);
@@ -147,6 +170,9 @@ export function OverviewReport() {
         datasets: [],
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
         plugins: {
           title: {
             display: false,
@@ -224,21 +250,56 @@ export function OverviewReport() {
             </form>
           </Col>
         </Row>
-        <Row>
-          <Col class={"mt-2"}>
+
+        <div class="row">
+          <div class="mt-2 col col-lg-10 col-md-8 col-sm-12">
             <Card>
               <Card.Header class={"text-center"}>
                 <b>Events by Type Over Time</b>
               </Card.Header>
               <Card.Body class={"p-0"}>
-                <canvas
-                  id={"histogram"}
-                  style="max-height: 250px; height: 300px"
-                ></canvas>
+                <div class="chart-container" style="position; relative;">
+                  <canvas
+                    id={"histogram"}
+                    style="max-height: 180px; height: 180px;"
+                  ></canvas>
+                </div>
               </Card.Body>
             </Card>
-          </Col>
-        </Row>
+          </div>
+          <div class="mt-2 col col-lg-2 col-md-4 col-sm-12">
+            <div class="card">
+              <div class="card-header d-flex">
+                Protocols
+                <Show
+                  when={
+                    data.protocols.loading !== undefined &&
+                    data.protocols.loading
+                  }
+                >
+                  {/* Loader in a button for placement reason's. */}
+                  <button
+                    class="btn ms-auto"
+                    type="button"
+                    disabled
+                    style="border: 0; padding: 0;"
+                  >
+                    <span
+                      class="spinner-border spinner-border-sm"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="visually-hidden" role="status">
+                      Loading...
+                    </span>
+                  </button>
+                </Show>
+              </div>
+              <div class="card-body p-0">
+                <PieChart data={data.protocols.data} />
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="row mt-2">
           <div class="col">
@@ -263,4 +324,73 @@ export function OverviewReport() {
       </Container>
     </>
   );
+}
+
+function PieChart(props: { data: any[] }) {
+  const chartId = createUniqueId();
+  let chart: any = null;
+
+  createEffect(() => {
+    const element = getChartElement(chartId);
+
+    if (chart != null) {
+      chart.destroy();
+    }
+
+    const values = props.data.map((e) => e.count);
+    console.log(values);
+
+    chart = new Chart(element, {
+      type: "pie",
+      data: {
+        labels: props.data.map((e) => e.key),
+        datasets: [
+          {
+            data: props.data.map((e) => e.count),
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            labels: {
+              font: {
+                size: 10,
+              },
+            },
+            onHover: (_evt, legendItem) => {
+              const activeElement = {
+                datasetIndex: 0,
+                index: legendItem.index,
+              };
+              chart.tooltip.setActiveElements([activeElement]);
+              chart.update();
+            },
+          },
+        },
+      },
+    });
+  });
+
+  return (
+    <>
+      <div>
+        <div class="chart-container" style="height: 180px; position; relative;">
+          <canvas
+            id={chartId}
+            style="max-height: 150px; height: 150px;"
+          ></canvas>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Move to utils.
+function getChartElement(id: String) {
+  let element = document.getElementById(id) as HTMLCanvasElement;
+  return element.getContext("2d") as CanvasRenderingContext2D;
 }
