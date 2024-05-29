@@ -24,6 +24,16 @@ const initialData = {
     loading: false,
     data: [],
   },
+
+  tlsSni: {
+    loading: false,
+    data: [],
+  },
+
+  quicSni: {
+    loading: false,
+    data: [],
+  },
 };
 
 export function OverviewReport() {
@@ -60,7 +70,7 @@ export function OverviewReport() {
         size: 10,
         order: "desc",
         time_range: TIME_RANGE(),
-        q: q,
+        q: q + " event_type:alert",
       };
       setData("topAlertsLoading", true);
       let response = await loadingTracker(setLoading, () => fetchAgg(request));
@@ -74,7 +84,7 @@ export function OverviewReport() {
         size: 10,
         order: "desc",
         time_range: TIME_RANGE(),
-        q: q + " dns.type:query",
+        q: q + " event_type:dns dns.type:query",
       };
       setData("topDnsRequestsLoading", true);
       let response = await loadingTracker(setLoading, () => fetchAgg(request));
@@ -87,7 +97,10 @@ export function OverviewReport() {
         field: "proto",
         size: 10,
         time_range: TIME_RANGE(),
-        q: q,
+
+        // Limit to flow types to get an accurate count, otherwise
+        // we'll get duplicate counts from different event types.
+        q: q + " event_type:flow",
       };
       setData("protocols", {
         loading: true,
@@ -95,6 +108,44 @@ export function OverviewReport() {
       let response = await loadingTracker(setLoading, () => fetchAgg(request));
       console.log(response.rows);
       setData("protocols", {
+        loading: false,
+        data: response.rows,
+      });
+    });
+
+    // TLS SNI.
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "tls.sni",
+        size: 10,
+        time_range: TIME_RANGE(),
+        q: q + " event_type:tls",
+      };
+      setData("tlsSni", {
+        loading: true,
+      });
+      let response = await loadingTracker(setLoading, () => fetchAgg(request));
+      console.log(response.rows);
+      setData("tlsSni", {
+        loading: false,
+        data: response.rows,
+      });
+    });
+
+    // Quic SNI.
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "quic.sni",
+        size: 10,
+        time_range: TIME_RANGE(),
+        q: q + " event_type:quic",
+      };
+      setData("quicSni", {
+        loading: true,
+      });
+      let response = await loadingTracker(setLoading, () => fetchAgg(request));
+      console.log(response.rows);
+      setData("quicSni", {
         loading: false,
         data: response.rows,
       });
@@ -321,6 +372,27 @@ export function OverviewReport() {
             />
           </div>
         </div>
+
+        <div class="row mt-2">
+          <div class="col">
+            <CountValueDataTable
+              title="Top TLS SNI"
+              label="Hostname"
+              rows={data.tlsSni.data}
+              loading={data.tlsSni.loading}
+              searchField="tls.sni"
+            />
+          </div>
+          <div class="col">
+            <CountValueDataTable
+              title="Top Quic SNI"
+              label="Hostname"
+              rows={data.quicSni.data}
+              loading={data.quicSni.loading}
+              searchField="quic.sni"
+            />
+          </div>
+        </div>
       </Container>
     </>
   );
@@ -390,7 +462,7 @@ function PieChart(props: { data: any[] }) {
 }
 
 // Move to utils.
-function getChartElement(id: String) {
+function getChartElement(id: string) {
   let element = document.getElementById(id) as HTMLCanvasElement;
   return element.getContext("2d") as CanvasRenderingContext2D;
 }

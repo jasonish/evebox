@@ -128,6 +128,7 @@ impl ElasticEventRepo {
                 "src_ip" => "src_ip.keyword",
                 "ssh.client.software_version" => "ssh.client.software_version.keyword",
                 "ssh.server.software_version" => "ssh.server.software_version.keyword",
+                "quic.sni" => "quic.sni.keyword",
                 "tls.issuerdn" => "tls.issuerdn.keyword",
                 "tls.sni" => "tls.sni.keyword",
                 "tls.subject" => "tls.subject.keyword",
