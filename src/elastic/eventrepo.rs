@@ -89,13 +89,14 @@ impl ElasticEventRepo {
             match name {
                 "dest_ip" => "destination.address".to_string(),
                 "dest_port" => "destination.port".to_string(),
+                "dns.rcode" => "dns.response_code".to_string(),
                 "dns.rrname" => "dns.question.name".to_string(),
                 "dns.rrtype" => "dns.question.type".to_string(),
-                "dns.rcode" => "dns.response_code".to_string(),
                 "dns.type" => name.to_string(),
+                "host" => "agent.name".to_string(),
+                "proto" => "network.transport".to_string(),
                 "src_ip" => "source.address".to_string(),
                 "src_port" => "source.port".to_string(),
-                "host" => "agent.name".to_string(),
                 "timestamp" => "@timestamp".to_string(),
                 _ => {
                     if name.starts_with("suricata") {
