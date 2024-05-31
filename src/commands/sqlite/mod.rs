@@ -49,9 +49,16 @@ enum Commands {
     /// Optimize an EveBox SQLite database
     Optimize(OptimizeArgs),
     /// Analyze an EveBox SQLite database
-    Analyze { filename: String },
+    Analyze {
+        filename: String,
+    },
     /// Enable auto-vacuum
-    EnableAutoVacuum { filename: String },
+    EnableAutoVacuum {
+        filename: String,
+    },
+    Reindex {
+        filename: String,
+    },
 }
 
 #[derive(Parser, Debug)]
@@ -135,6 +142,7 @@ pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
         Commands::Optimize(args) => optimize(args).await,
         Commands::Analyze { filename } => analyze(filename).await,
         Commands::EnableAutoVacuum { filename } => enable_auto_vacuum(filename).await,
+        Commands::Reindex { filename } => reindex(filename).await,
     }
 }
 
@@ -346,6 +354,37 @@ async fn enable_auto_vacuum(filename: &str) -> Result<()> {
         .fetch_one(&mut conn)
         .await?;
     println!("Auto vacuum is now {}", auto_vacuum);
+    Ok(())
+}
+
+async fn reindex(filename: &str) -> Result<()> {
+    println!("WARNING: Reindexing can take a while.");
+    println!("- Database availability will be limited.");
+    if !confirm("Do you wish to continue?") {
+        return Ok(());
+    }
+
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_connection(false)
+        .await?;
+
+    let rows: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type = 'index'")
+            .fetch_all(&mut conn)
+            .await?;
+    for index in &rows {
+        if index.starts_with("sqlite") {
+            continue;
+        }
+        info!("Dropping index {index}");
+        sqlx::query(&format!("DROP INDEX {}", index))
+            .execute(&mut conn)
+            .await?;
+    }
+
+    info!("Rebuilding indexes.");
+    init_event_db(&mut conn).await?;
+
     Ok(())
 }
 
