@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.19.0 - unreleased
+
+- [server] Don't forget session on server restart. Persists session
+  tokens in the config db.
+- Reduced data between client and server for inbox/alert views.
+- Move to sqlx for database.
+- Move to chrono for time.
+
 ## 0.18.1 - 2024-05-08
 
 - [sqlite] Add CLI commands to "optimize" and "analyze" the sqlite
