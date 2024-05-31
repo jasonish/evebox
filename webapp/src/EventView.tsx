@@ -1,7 +1,13 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { A, useLocation, useNavigate, useParams } from "@solidjs/router";
+import {
+  A,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "@solidjs/router";
 import { Top } from "./Top";
 import {
   createEffect,
@@ -165,21 +171,21 @@ export function EventView() {
       console.log(`-- Active event ID: ${eventStore.active?._id}`);
       console.log(`-- Events in store: ${eventStore.events.length}`);
 
-      if (eventStore.active && eventStore.active._id == params.id) {
-        console.log(
-          `EventView.createEffect: Requested event ID is active in EVENT_STORE`
-        );
-        setEvent(eventStore.active);
-      } else {
-        console.log("Event.createEffect: Fetching event by ID: " + params.id);
-        getEventById(params.id)
-          .then((event) => {
-            setEvent(event);
-          })
-          .catch(() => {
-            setEvent(undefined);
-          });
-      }
+      console.log("Event.createEffect: Fetching event by ID: " + params.id);
+      getEventById(params.id)
+        .then((event) => {
+          if (eventStore.active && eventStore.active._id == params.id) {
+            // Copy (by reference) the metadata and tags from the partial
+            // event in the store so the archive and escalation states are
+            // reflected when the user clicks back to the alerts view.
+            event._metadata = eventStore.active._metadata;
+            event._source.tags = eventStore.active._source.tags;
+          }
+          setEvent(event);
+        })
+        .catch(() => {
+          setEvent(undefined);
+        });
     });
   });
 

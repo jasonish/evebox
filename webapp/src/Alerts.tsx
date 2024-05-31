@@ -574,7 +574,9 @@ export function Alerts() {
       eventStore.viewOffset = getOffset();
       eventStore.cursor = cursor();
       console.log(`EVENT_STORE.active._id=${eventStore.active?._id}`);
-      navigate(`${location.pathname}/${event._id}`, {
+      console.log(JSON.stringify(event._metadata));
+      const _metadata = encodeURIComponent(JSON.stringify(event._metadata));
+      navigate(`${location.pathname}/${event._id}?_metadata=${_metadata}`, {
         state: {
           referer: location.pathname,
         },

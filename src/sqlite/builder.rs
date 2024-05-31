@@ -35,6 +35,14 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
+    pub fn selectjs<T: Into<String>>(&mut self, field: T) -> &mut Self {
+        let field: String = field.into();
+        self.select.push(format!(
+            "json_extract(events.source, '$.{field}') AS '{field}'"
+        ));
+        self
+    }
+
     pub fn from<T: Into<String>>(&mut self, col: T) -> &mut Self {
         self.from.push(col.into());
         self
@@ -56,6 +64,20 @@ impl<'a> EventQueryBuilder<'a> {
         S: Into<String>,
     {
         self.wheres.push(col.into());
+        self
+    }
+
+    pub fn wherejs<F, O, A>(&mut self, field: F, op: O, arg: A) -> &mut Self
+    where
+        F: Into<String>,
+        O: Into<String>,
+        A: sqlx::Encode<'a, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + 'a,
+    {
+        let field: String = field.into();
+        let op: String = op.into();
+        self.wheres
+            .push(format!("json_extract(events.source, '$.{field}') {op} ?"));
+        self.push_arg(arg);
         self
     }
 
