@@ -79,12 +79,20 @@ pub fn query_string_query(query_string: &str) -> serde_json::Value {
     })
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct ElasticResponse {
     pub hits: Option<serde_json::Value>,
     pub error: Option<ElasticResponseError>,
     pub updated: Option<u64>,
     pub aggregations: Option<serde_json::Value>,
+
+    #[allow(dead_code)]
+    #[serde(default)]
+    pub took: u64,
+
+    #[allow(dead_code)]
+    #[serde(default)]
+    pub timed_out: bool,
 
     #[allow(dead_code)]
     #[serde(flatten)]
@@ -97,7 +105,7 @@ pub(crate) mod response {
     pub(crate) struct Version {}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct ElasticResponseError {
     pub root_cause: Vec<RootCause>,
 }
@@ -111,7 +119,7 @@ impl ElasticResponseError {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]
 pub(crate) struct RootCause {
     #[serde(rename = "type")]

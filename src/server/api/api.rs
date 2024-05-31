@@ -16,7 +16,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Response;
 use axum::Json;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::ops::Sub;
 use std::str::FromStr;
@@ -211,12 +211,36 @@ pub(crate) async fn histogram_time(
     Ok(Json(json!({ "data": results })))
 }
 
+#[derive(Debug, Serialize)]
+pub(crate) struct ApiAlertResponse {
+    pub(crate) events: Vec<ApiAlertGroup>,
+    pub(crate) timed_out: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct ApiAlertGroup {
+    #[serde(rename = "_id")]
+    pub(crate) id: String,
+    #[serde(rename = "_source")]
+    pub(crate) source: serde_json::Value,
+    #[serde(rename = "_metadata")]
+    pub(crate) metadata: ApiAlertGroupMetadata,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct ApiAlertGroupMetadata {
+    pub(crate) count: u64,
+    pub(crate) escalated_count: u64,
+    pub(crate) min_timestamp: DateTime,
+    pub(crate) max_timestamp: DateTime,
+}
+
 pub(crate) async fn alerts(
     Extension(context): Extension<Arc<ServerContext>>,
     // Session required to get here.
     _session: SessionExtractor,
     Form(query): Form<GenericQuery>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let mut options = elastic::AlertQueryOptions {
         query_string: query.query_string,
         sensor: query.sensor,
@@ -252,13 +276,7 @@ pub(crate) async fn alerts(
         error!("alert_query: max_timeestamp query argument not implemented");
     }
 
-    match context.datastore.alerts(options).await {
-        Ok(v) => axum::Json(v).into_response(),
-        Err(err) => {
-            error!("alert query failed: {}", err);
-            (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-        }
-    }
+    Ok(context.datastore.alerts(options).await?)
 }
 
 pub(crate) async fn get_event_by_id(

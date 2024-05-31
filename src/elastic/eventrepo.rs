@@ -25,6 +25,8 @@ use crate::server::api;
 use crate::server::session::Session;
 use crate::util;
 use crate::LOG_QUERIES;
+use axum::response::IntoResponse;
+use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -532,11 +534,43 @@ impl ElasticEventRepo {
                             "terms": {"field": self.map_field("src_ip"), "size": 1000},
                             "aggs": {
                                 "destinations": {
-                                    "terms": {"field": self.map_field("dest_ip"), "size": 500},
+                                    "terms": {
+                                        "field": self.map_field("dest_ip"),
+                                        "size": 500
+                                    },
                                     "aggs": {
-                                        "escalated": {"filter": {"term": {"tags": "evebox.escalated"}}},
-                                        "newest": {"top_hits": {"size": 1, "sort": [{self.map_field("timestamp"): {"order": "desc"}}]}},
-                                        "oldest": {"top_hits": {"size": 1, "sort": [{self.map_field("timestamp"): {"order": "asc"}}]}}
+                                        "escalated": {
+                                            "filter": {
+                                                "term": {
+                                                    "tags": "evebox.escalated"}
+                                            }
+                                        },
+                                        "newest": {
+                                            "top_hits": {
+                                                "size": 1,
+                                                "sort": [
+                                                    {
+                                                        self.map_field("timestamp"): {"order": "desc"}
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "oldest": {
+                                            "top_hits": {
+                                                "size": 1,
+                                                "sort": [
+                                                    {
+                                                        self.map_field("timestamp"): {"order": "asc"}
+                                                    }
+                                                ],
+                                                // We only need the
+                                                // timestamp from the
+                                                // oldest event.
+                                                "_source": [
+                                                    "timestamp",
+                                                ]
+                                            }
+                                        }
                                     },
                                 },
                             },
@@ -557,13 +591,21 @@ impl ElasticEventRepo {
     pub async fn alerts(
         &self,
         options: AlertQueryOptions,
-    ) -> Result<serde_json::Value, DatastoreError> {
+    ) -> Result<impl IntoResponse, DatastoreError> {
         let query = self.build_inbox_query(options);
+        let start = std::time::Instant::now();
         let body = self.search(&query).await?.text().await?;
         let response: ElasticResponse = serde_json::from_str(&body)?;
         if let Some(error) = response.error {
             return Err(DatastoreError::ElasticSearchError(error.first_reason()));
         }
+
+        info!(
+            "Elasticsearch alert query took {:?}, es-time: {}, response-size: {}",
+            start.elapsed(),
+            response.took,
+            body.len()
+        );
 
         let mut alerts = Vec::new();
         if let Some(aggregrations) = response.aggregations {
@@ -608,7 +650,7 @@ impl ElasticEventRepo {
             "events": alerts,
         });
 
-        Ok(response)
+        Ok(Json(response))
     }
 
     fn transform_ecs(&self, event: &mut serde_json::Value) {

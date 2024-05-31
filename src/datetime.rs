@@ -4,6 +4,7 @@
 use std::time::SystemTime;
 
 use chrono::SecondsFormat;
+use serde::{Serialize, Serializer};
 
 type ChronoDateTime = chrono::DateTime<chrono::FixedOffset>;
 
@@ -25,6 +26,16 @@ pub(crate) struct DateTime {
 
 impl DateTime {}
 
+impl Serialize for DateTime {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = self.to_eve();
+        serializer.serialize_str(&s)
+    }
+}
+
 impl std::fmt::Display for DateTime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.datetime.to_rfc3339())
@@ -38,6 +49,12 @@ impl std::ops::Sub<std::time::Duration> for DateTime {
         let duration = chrono::Duration::from_std(rhs).unwrap();
         let new = self.datetime - duration;
         new.into()
+    }
+}
+
+impl std::cmp::PartialOrd for DateTime {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.datetime.partial_cmp(&other.datetime)
     }
 }
 

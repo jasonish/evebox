@@ -4,6 +4,8 @@
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
 use crate::eventrepo::DatastoreError;
+use crate::sqlite::log_query_plan;
+use crate::LOG_QUERY_PLAN;
 use futures::TryStreamExt;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
@@ -49,6 +51,11 @@ impl SqliteEventRepo {
         "#;
 
         let sql = sql.replace("%where%", &wheres.join(" and "));
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, &sql, &params).await;
+        }
+
         let mut rows = sqlx::query_with(&sql, params).fetch(&self.pool);
         let mut events = vec![];
         while let Some(row) = rows.try_next().await? {

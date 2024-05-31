@@ -6,8 +6,8 @@ use crate::{
     datetime::DateTime,
     eventrepo::{DatastoreError, StatsAggQueryParams},
     queryparser::{QueryElement, QueryValue},
-    sqlite::builder::EventQueryBuilder,
-    util, LOG_QUERIES,
+    sqlite::{builder::EventQueryBuilder, log_query_plan, log_query_plan2},
+    util, LOG_QUERIES, LOG_QUERY_PLAN,
 };
 use futures::TryStreamExt;
 use serde::Serialize;
@@ -70,6 +70,10 @@ impl SqliteEventRepo {
         builder.apply_query_string(query);
 
         let (sql, params) = builder.build();
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, &sql, &params).await;
+        }
 
         if *LOG_QUERIES {
             info!("sql={sql}, params={:?}", &params);
@@ -136,9 +140,11 @@ impl SqliteEventRepo {
     async fn get_earliest_timestamp(
         conn: &mut SqliteConnection,
     ) -> Result<Option<i64>, sqlx::Error> {
-        sqlx::query_scalar("SELECT MIN(timestamp) FROM events")
-            .fetch_optional(&mut *conn)
-            .await
+        let sql = "SELECT MIN(timestamp) FROM events";
+        if *LOG_QUERY_PLAN {
+            log_query_plan2(&mut *conn, sql, &SqliteArguments::default()).await;
+        }
+        sqlx::query_scalar(sql).fetch_optional(&mut *conn).await
     }
 
     async fn get_stats(&self, qp: &StatsAggQueryParams) -> anyhow::Result<Vec<(i64, i64)>> {
@@ -175,6 +181,10 @@ impl SqliteEventRepo {
         }
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, &sql, &args).await;
+        }
+
         if *LOG_QUERIES {
             info!("sql={}, params={:?}", &sql, &args);
         }

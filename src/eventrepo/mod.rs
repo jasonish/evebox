@@ -7,6 +7,8 @@ use crate::server::api::{self};
 use crate::server::session::Session;
 use crate::sqlite::eventrepo::SqliteEventRepo;
 use crate::{elastic, queryparser};
+use axum::response::IntoResponse;
+use axum::Json;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -105,10 +107,16 @@ impl EventRepo {
     pub async fn alerts(
         &self,
         options: elastic::AlertQueryOptions,
-    ) -> Result<serde_json::Value, DatastoreError> {
+    ) -> Result<impl IntoResponse, DatastoreError> {
         match self {
-            EventRepo::Elastic(ds) => ds.alerts(options).await,
-            EventRepo::SQLite(ds) => ds.alerts(options).await,
+            EventRepo::Elastic(ds) => Ok(ds.alerts(options).await?.into_response()),
+            EventRepo::SQLite(ds) => {
+                if std::env::var("ALERTS_WITH_TIMEOUT").is_ok() {
+                    Ok(Json(ds._alerts_with_timeout(options).await?).into_response())
+                } else {
+                    Ok(Json(ds.alerts(options).await?).into_response())
+                }
+            }
             _ => Err(DatastoreError::Unimplemented),
         }
     }

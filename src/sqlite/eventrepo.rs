@@ -16,10 +16,10 @@ use tracing::{debug, info, instrument};
 
 use super::has_table;
 
+mod agg;
 mod alerts;
 mod dhcp;
 mod events;
-mod groupby;
 mod stats;
 
 /// SQLite implementation of the event datastore.
@@ -47,7 +47,13 @@ impl SqliteEventRepo {
     }
 
     pub async fn min_row_id(&self) -> Result<u64, DatastoreError> {
-        let id = sqlx::query_scalar("SELECT MIN(rowid) FROM events")
+        let sql = "SELECT MIN(rowid) FROM events";
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
+        }
+
+        let id = sqlx::query_scalar(sql)
             .fetch_optional(&self.pool)
             .await?
             .unwrap_or(0);
@@ -55,7 +61,13 @@ impl SqliteEventRepo {
     }
 
     pub async fn max_row_id(&self) -> Result<u64, DatastoreError> {
-        let id = sqlx::query_scalar("SELECT MAX(rowid) FROM events")
+        let sql = "SELECT MAX(rowid) FROM events";
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
+        }
+
+        let id = sqlx::query_scalar(sql)
             .fetch_optional(&self.pool)
             .await?
             .unwrap_or(0);
@@ -63,9 +75,13 @@ impl SqliteEventRepo {
     }
 
     pub async fn min_timestamp(&self) -> Result<Option<DateTime>, DatastoreError> {
-        let result: Option<i64> = sqlx::query_scalar("SELECT MIN(timestamp) FROM events")
-            .fetch_optional(&self.pool)
-            .await?;
+        let sql = "SELECT MIN(timestamp) FROM events";
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
+        }
+
+        let result: Option<i64> = sqlx::query_scalar(sql).fetch_optional(&self.pool).await?;
         if let Some(ts) = result {
             Ok(Some(crate::datetime::DateTime::from_nanos(ts)))
         } else {
@@ -74,9 +90,13 @@ impl SqliteEventRepo {
     }
 
     pub async fn max_timestamp(&self) -> Result<Option<DateTime>, DatastoreError> {
-        let result: Option<i64> = sqlx::query_scalar("SELECT MAX(timestamp) FROM events")
-            .fetch_optional(&self.pool)
-            .await?;
+        let sql = "SELECT MAX(timestamp) FROM events";
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
+        }
+
+        let result: Option<i64> = sqlx::query_scalar(sql).fetch_optional(&self.pool).await?;
         if let Some(ts) = result {
             Ok(Some(crate::datetime::DateTime::from_nanos(ts)))
         } else {
@@ -89,6 +109,11 @@ impl SqliteEventRepo {
         event_id: String,
     ) -> Result<Option<serde_json::Value>, DatastoreError> {
         let sql = "SELECT rowid, archived, escalated, source FROM events WHERE rowid = ?";
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
+        }
+
         if let Some(row) = sqlx::query(sql)
             .bind(event_id)
             .fetch_optional(&self.pool)
@@ -161,6 +186,9 @@ impl SqliteEventRepo {
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, &sql, &args).await;
+        }
         if *LOG_QUERIES {
             info!("sql={}", &sql);
         }
@@ -209,6 +237,11 @@ impl SqliteEventRepo {
         args.add(maxts.to_nanos() as i64);
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, &sql, &args).await;
+        }
+
         let r = sqlx::query_with(&sql, args).execute(&self.pool).await?;
         let n = r.rows_affected();
         Ok(n)
@@ -237,7 +270,13 @@ impl SqliteEventRepo {
     }
 
     pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
-        let n = sqlx::query("UPDATE events SET archived = 1 WHERE rowid = ?")
+        let sql = "UPDATE events SET archived = 1 WHERE rowid = ?";
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
+        }
+
+        let n = sqlx::query(sql)
             .bind(event_id)
             .execute(&self.pool)
             .await?
@@ -254,7 +293,13 @@ impl SqliteEventRepo {
         event_id: &str,
         escalate: bool,
     ) -> Result<(), DatastoreError> {
-        let n = sqlx::query("UPDATE events SET escalated = ? WHERE rowid = ?")
+        let sql = "UPDATE events SET escalated = ? WHERE rowid = ?";
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
+        }
+
+        let n = sqlx::query(sql)
             .bind(if escalate { 1 } else { 0 })
             .bind(event_id)
             .execute(&self.pool)
@@ -279,16 +324,22 @@ impl SqliteEventRepo {
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
         // Turns out not putting a timestamp limit on this is much
         // faster.
+        let from = DateTime::now() - std::time::Duration::from_secs(86400);
         let sql = r#"
             SELECT DISTINCT json_extract(events.source, '$.host')
             FROM events
             WHERE json_extract(events.source, '$.host') IS NOT NULL
+              AND json_extract(events.source, '$.event_type') = 'stats'
+              AND timestamp > ?
             "#;
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
-        let rows: Vec<String> = sqlx::query_scalar(sql).fetch_all(&self.pool).await?;
+        let rows: Vec<String> = sqlx::query_scalar(sql)
+            .bind(from.to_nanos())
+            .fetch_all(&self.pool)
+            .await?;
         Ok(rows)
     }
 }

@@ -676,6 +676,7 @@ dependencies = [
  "glob",
  "humantime",
  "hyper",
+ "indexmap",
  "inquire",
  "lazy_static",
  "libc",

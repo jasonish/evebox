@@ -183,14 +183,17 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
         .await
         .unwrap();
 
-    if let Some(indexes) = crate::resource::get_string("sqlite/Indexes.sql") {
-        info!("Updating SQLite indexes");
+    // Skip if EVEBOX_SKIP_INBOX_UPDATE=yes.
+    if std::env::var("EVEBOX_SKIP_INDEX_UPDATE").is_err() {
+        if let Some(indexes) = crate::resource::get_string("sqlite/Indexes.sql") {
+            info!("Updating SQLite indexes");
 
-        if let Err(err) = sqlx::query(&indexes).execute(&mut *tx).await {
-            error!("Failed to update SQLite indexes: {err}");
+            if let Err(err) = sqlx::query(&indexes).execute(&mut *tx).await {
+                error!("Failed to update SQLite indexes: {err}");
+            }
+        } else {
+            error!("Failed to find sqlite/Indexes.sql");
         }
-    } else {
-        error!("Failed to find sqlite/Indexes.sql");
     }
 
     if fresh_install {
