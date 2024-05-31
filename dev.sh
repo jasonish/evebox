@@ -12,4 +12,4 @@ if ! test -d webapp/node_modules; then
 fi
 
 (cd webapp && npm start) &
-cargo watch -w src -i webapp -x "run server --no-tls --no-auth ${args}"
+cargo watch -w src -i webapp -x "run ${RELEASE} server --no-tls --no-auth ${args}"
