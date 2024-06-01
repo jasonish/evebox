@@ -41,6 +41,7 @@ impl SqliteEventRepo {
             .select("timestamp")
             .select("escalated")
             .select("archived")
+            .select("history")
             .selectjs("alert.signature_id")
             .selectjs("alert.signature")
             .selectjs("alert.severity")

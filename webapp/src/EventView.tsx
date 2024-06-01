@@ -1,26 +1,22 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import {
-  A,
-  useLocation,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "@solidjs/router";
+import { A, useLocation, useNavigate, useParams } from "@solidjs/router";
 import { Top } from "./Top";
 import {
   createEffect,
   createSignal,
+  createUniqueId,
   For,
   Match,
   onCleanup,
   onMount,
+  Setter,
   Show,
   Switch,
   untrack,
 } from "solid-js";
-import { API, getEventById } from "./api";
+import { API, archiveEvent, getEventById, postComment } from "./api";
 import { archiveAggregateAlert } from "./api";
 import {
   Button,
@@ -37,13 +33,7 @@ import { AggregateAlert, EcsGeo, EveDns, Event, EventWrapper } from "./types";
 import { parse_timestamp } from "./datetime";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import tinykeys from "tinykeys";
-import {
-  eventIsArchived,
-  eventIsEscalated,
-  eventSetArchived,
-  eventSetEscalated,
-  eventUnsetEscalated,
-} from "./event";
+import { eventIsArchived, eventIsEscalated, eventSetArchived } from "./event";
 import { eventStore } from "./eventstore";
 import { addNotification } from "./Notifications";
 import { eventNameFromType } from "./Events";
@@ -70,6 +60,7 @@ export function EventView() {
   const [commonDetails, setCommonDetails] = createSignal<any[][]>();
   const [showCopyToast, setShowCopyToast] = createSignal(false);
   const [history, setHistory] = createSignal<HistoryEntry[]>([]);
+  const [showCommentForm, setShowCommentForm] = createSignal(false);
   const [geoIp, setGeoIp] = createStore<{
     source: EcsGeo | undefined;
     destination: EcsGeo | undefined;
@@ -170,24 +161,26 @@ export function EventView() {
       console.log(`-- Requested event ID: ${params.id}`);
       console.log(`-- Active event ID: ${eventStore.active?._id}`);
       console.log(`-- Events in store: ${eventStore.events.length}`);
-
-      console.log("Event.createEffect: Fetching event by ID: " + params.id);
-      getEventById(params.id)
-        .then((event) => {
-          if (eventStore.active && eventStore.active._id == params.id) {
-            // Copy (by reference) the metadata and tags from the partial
-            // event in the store so the archive and escalation states are
-            // reflected when the user clicks back to the alerts view.
-            event._metadata = eventStore.active._metadata;
-            event._source.tags = eventStore.active._source.tags;
-          }
-          setEvent(event);
-        })
-        .catch(() => {
-          setEvent(undefined);
-        });
+      refreshEvent();
     });
   });
+
+  const refreshEvent = () => {
+    getEventById(params.id)
+      .then((event) => {
+        if (eventStore.active && eventStore.active._id == params.id) {
+          // Copy (by reference) the metadata and tags from the partial
+          // event in the store so the archive and escalation states are
+          // reflected when the user clicks back to the alerts view.
+          event._metadata = eventStore.active._metadata;
+          event._source.tags = eventStore.active._source.tags;
+        }
+        setEvent(event);
+      })
+      .catch(() => {
+        setEvent(undefined);
+      });
+  };
 
   createEffect(() => {
     let source = event()?._source;
@@ -387,36 +380,36 @@ export function EventView() {
       const alert = event() as AggregateAlert;
       archiveAggregateAlert(alert).then(() => {});
       eventSetArchived(alert);
+    } else if (event()) {
+      archiveEvent(event()!);
     }
 
     goBack();
   }
 
-  function escalate() {
+  async function escalate() {
     let ev = event();
     if (ev) {
       if (isAggregateAlert()) {
-        void API.escalateAggregateAlert(ev);
+        await API.escalateAggregateAlert(ev);
         ev._metadata!.escalated_count = ev._metadata!.count;
       } else {
-        void API.escalateEvent(ev);
+        await API.escalateEvent(ev);
       }
-      eventSetEscalated(ev);
-      setEvent({ ...ev });
+      refreshEvent();
     }
   }
 
-  function deEscalate() {
+  async function deEscalate() {
     let ev = event();
     if (ev) {
       if (isAggregateAlert()) {
-        void API.deEscalateAggregateAlert(ev);
+        await API.deEscalateAggregateAlert(ev);
         ev._metadata!.escalated_count = 0;
       } else {
-        void API.deEscalateEvent(ev);
+        await API.deEscalateEvent(ev);
       }
-      eventUnsetEscalated(ev);
-      setEvent({ ...ev });
+      refreshEvent();
     }
   }
 
@@ -701,7 +694,22 @@ export function EventView() {
             </Row>
           </Show>
 
-          <History history={history()} />
+          <History
+            history={history()}
+            eventId={eventId()!}
+            setShowCommentForm={setShowCommentForm}
+            showCommentForm={showCommentForm()}
+            onChange={refreshEvent}
+          />
+
+          {/* Never show if there is history, as it embeds a comment form. */}
+          <Show when={showCommentForm()}>
+            <CommentEntry
+              eventId={eventId()!}
+              onChange={refreshEvent}
+              close={() => setShowCommentForm(false)}
+            />
+          </Show>
 
           {/* GeoIP */}
           <Show when={geoIp.source || geoIp.destination}>
@@ -1407,19 +1415,37 @@ function StatsCard(props: { stats: { [key: string]: any } }) {
   );
 }
 
-function History(props: any) {
+function History(props: {
+  eventId: string | number;
+  history: any[];
+  onChange: () => void;
+  setShowCommentForm: Setter<boolean>;
+  showCommentForm: boolean;
+}) {
+  const inputId = createUniqueId();
+
+  const submitEvent = () => {
+    let comment = (document.getElementById(inputId) as HTMLInputElement).value;
+    postComment(props.eventId, comment).then(() => {
+      props.onChange();
+    });
+
+    // Clear the comment.
+    (document.getElementById(inputId) as HTMLInputElement).value = "";
+  };
+
   return (
-    <Show when={props.history.length > 0}>
+    <Show when={true}>
       <div class="row mb-2">
         <div class="col">
           <div class="card">
             <div class="card-header">History</div>
-            <div class="card-body">
-              <For each={props.history}>
-                {(entry) => (
-                  <>
-                    <div class="row">
-                      <div class="col">
+            <div class="card-body p-0">
+              <ul class="list-group">
+                <For each={props.history}>
+                  {(entry) => (
+                    <>
+                      <li class="list-group-item">
                         {formatTimestamp(entry.timestamp).slice(0, -4)}
                         {" - "}
                         <Switch fallback={entry.action}>
@@ -1429,17 +1455,89 @@ function History(props: any) {
                           <Match when={entry.action == "de-escalated"}>
                             De-escalated
                           </Match>
+                          <Match when={entry.action == "comment"}>
+                            Comment
+                          </Match>
                         </Switch>{" "}
-                        by <i>{entry.username}</i>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </For>
+                        by <i>{entry.username || "null"}</i>
+                        <Show when={entry.action == "comment"}>
+                          <p class="m-0">{entry.comment}</p>
+                        </Show>
+                      </li>
+                    </>
+                  )}
+                </For>
+              </ul>
             </div>
+            <Show when={!props.showCommentForm}>
+              <div class="card-footer">
+                <div class="text-end">
+                  <button
+                    class="btn btn-primary"
+                    onClick={() => props.setShowCommentForm(true)}
+                  >
+                    Add Comment
+                  </button>
+                </div>
+              </div>
+            </Show>
           </div>
         </div>
       </div>
     </Show>
+  );
+}
+
+function CommentEntry(props: {
+  eventId: string | number;
+  onChange: () => void;
+  close: () => void;
+}) {
+  const inputId = createUniqueId();
+
+  const submitEvent = () => {
+    let comment = (document.getElementById(inputId) as HTMLInputElement).value;
+    postComment(props.eventId, comment).then(() => {
+      props.onChange();
+    });
+
+    // Clear the comment.
+    (document.getElementById(inputId) as HTMLInputElement).value = "";
+
+    // Close the comment form.
+    props.close();
+  };
+
+  return (
+    <>
+      <div class="row mb-2">
+        <div class="col">
+          <form onSubmit={submitEvent}>
+            <div class="card">
+              <div class="card-header">Comment</div>
+              <div class="card-body p-0">
+                <textarea
+                  id={inputId}
+                  class="form-control"
+                  placeholder="Enter a comment..."
+                />
+              </div>
+              <div class="card-footer text-end">
+                <button
+                  type="submit"
+                  class="btn btn-secondary me-2"
+                  onClick={props.close}
+                >
+                  Close
+                </button>
+                <button type="submit" class="btn btn-primary">
+                  Submit
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
   );
 }

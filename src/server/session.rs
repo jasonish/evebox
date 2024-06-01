@@ -75,13 +75,13 @@ impl Session {
         }
     }
 
-    pub fn username(&self) -> &str {
-        if let Some(username) = &self.username {
-            username
-        } else {
-            "<anonymous>"
-        }
-    }
+    // pub fn username(&self) -> &str {
+    //     if let Some(username) = &self.username {
+    //         username
+    //     } else {
+    //         "<anonymous>"
+    //     }
+    // }
 }
 
 pub(crate) fn generate_session_id() -> String {

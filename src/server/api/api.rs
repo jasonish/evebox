@@ -52,7 +52,7 @@ pub(crate) async fn config(
 
 pub(crate) async fn get_user(SessionExtractor(session): SessionExtractor) -> impl IntoResponse {
     let user = json!({
-        "username": session.username(),
+        "username": session.username,
     });
     Json(user)
 }
@@ -133,13 +133,13 @@ pub(crate) async fn alert_group_star(
 
 pub(crate) async fn alert_group_unstar(
     Extension(context): Extension<Arc<ServerContext>>,
-    SessionExtractor(_session): SessionExtractor,
+    SessionExtractor(session): SessionExtractor,
     Json(request): Json<AlertGroupSpec>,
 ) -> impl IntoResponse {
     info!("De-escalating alert group: {:?}", request);
     context
         .datastore
-        .deescalate_by_alert_group(request)
+        .deescalate_by_alert_group(session, request)
         .await
         .unwrap();
     StatusCode::OK
@@ -350,7 +350,7 @@ pub(crate) async fn comment_by_event_id(
 ) -> impl IntoResponse {
     match context
         .datastore
-        .comment_event_by_id(&event_id, body.comment.to_string(), session.username())
+        .comment_event_by_id(&event_id, body.comment.to_string(), session)
         .await
     {
         Ok(()) => StatusCode::OK,
@@ -406,30 +406,6 @@ pub(crate) async fn events(
 #[derive(Deserialize)]
 pub(crate) struct EventCommentRequestBody {
     pub comment: String,
-}
-
-#[derive(Deserialize)]
-pub(crate) struct AlertGroupCommentRequest {
-    pub alert_group: AlertGroupSpec,
-    pub comment: String,
-}
-
-pub(crate) async fn alert_group_comment(
-    Extension(context): Extension<Arc<ServerContext>>,
-    SessionExtractor(session): SessionExtractor,
-    Json(request): Json<AlertGroupCommentRequest>,
-) -> impl IntoResponse {
-    match context
-        .datastore
-        .comment_by_alert_group(request.alert_group, request.comment, session.username())
-        .await
-    {
-        Ok(()) => StatusCode::OK,
-        Err(err) => {
-            info!("Failed to apply command to alert-group: {:?}", err);
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
-    }
 }
 
 fn parse_then_from_duration(

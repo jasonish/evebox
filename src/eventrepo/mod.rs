@@ -44,7 +44,8 @@ pub enum DatastoreError {
     SerdeJsonError(#[from] serde_json::Error),
     #[error("time parser error: {0}")]
     DateTimeParse(#[from] crate::datetime::ParseError),
-
+    #[error("failed to parse number: {0}")]
+    ParseIntError(#[from] std::num::ParseIntError),
     #[error("sqlx: {0}")]
     SqlxError(#[from] sqlx::Error),
 
@@ -139,33 +140,19 @@ impl EventRepo {
     ) -> Result<(), DatastoreError> {
         match self {
             EventRepo::Elastic(ds) => ds.escalate_by_alert_group(alert_group, session).await,
-            EventRepo::SQLite(ds) => ds.escalate_by_alert_group(alert_group).await,
+            EventRepo::SQLite(ds) => ds.escalate_by_alert_group(session, alert_group).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
 
     pub async fn deescalate_by_alert_group(
         &self,
+        session: Arc<Session>,
         alert_group: api::AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
         match self {
             EventRepo::Elastic(ds) => ds.deescalate_by_alert_group(alert_group).await,
-            EventRepo::SQLite(ds) => ds.deescalate_by_alert_group(alert_group).await,
-            _ => Err(DatastoreError::Unimplemented),
-        }
-    }
-
-    pub async fn comment_by_alert_group(
-        &self,
-        alert_group: api::AlertGroupSpec,
-        comment: String,
-        username: &str,
-    ) -> Result<(), DatastoreError> {
-        match self {
-            EventRepo::Elastic(ds) => {
-                ds.comment_by_alert_group(alert_group, comment, username)
-                    .await
-            }
+            EventRepo::SQLite(ds) => ds.deescalate_by_alert_group(session, alert_group).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
@@ -185,10 +172,11 @@ impl EventRepo {
         &self,
         event_id: &str,
         comment: String,
-        username: &str,
+        session: Arc<Session>,
     ) -> Result<(), DatastoreError> {
         match self {
-            EventRepo::Elastic(ds) => ds.comment_event_by_id(event_id, comment, username).await,
+            EventRepo::Elastic(ds) => ds.comment_event_by_id(event_id, comment, session).await,
+            EventRepo::SQLite(ds) => ds.comment_event_by_id(event_id, comment, session).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }

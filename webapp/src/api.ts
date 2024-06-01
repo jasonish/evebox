@@ -85,6 +85,25 @@ async function post(url: string, params: any = {}): Promise<any> {
   });
 }
 
+async function postJson(url: string, body: any = {}): Promise<any> {
+  let headers = {
+    "x-evebox-session-id": SESSION_ID,
+  };
+  return axios.post(url, body, {
+    headers: headers,
+  });
+}
+
+export async function postComment(
+  eventId: string | number,
+  comment: string
+): Promise<any> {
+  let body = {
+    comment: comment,
+  };
+  return postJson(`api/event/${eventId}/comment`, body);
+}
+
 export async function getUser(): Promise<UserResponse> {
   let response = await get("api/1/user");
   return response.data;

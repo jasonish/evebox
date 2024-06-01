@@ -110,7 +110,7 @@ pub(crate) async fn logout(
         if !context.session_store.delete(session_id) {
             warn!("Logout request for unknown session ID");
         } else {
-            info!("User logged out: {:}", session.username());
+            info!("User logged out: {:?}", session.username);
         }
     }
     StatusCode::OK

@@ -5,17 +5,12 @@ use super::query_string_query;
 use super::Client;
 use super::ElasticError;
 use super::HistoryEntry;
-use super::ACTION_ARCHIVED;
-use super::ACTION_COMMENT;
+use super::HistoryEntryBuilder;
 use super::TAG_ESCALATED;
 use crate::datetime;
-use crate::datetime::DateTime;
 use crate::elastic::importer::ElasticEventSink;
 use crate::elastic::request::exists_filter;
-use crate::elastic::{
-    request, ElasticResponse, ACTION_DEESCALATED, ACTION_ESCALATED, TAGS_ARCHIVED, TAGS_ESCALATED,
-    TAG_ARCHIVED,
-};
+use crate::elastic::{request, ElasticResponse, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED};
 use crate::eventrepo::{self, DatastoreError};
 use crate::queryparser;
 use crate::queryparser::QueryElement;
@@ -292,12 +287,7 @@ impl ElasticEventRepo {
                 }
             }
         });
-        let action = HistoryEntry {
-            username: "anonymous".to_string(),
-            timestamp: datetime::DateTime::now().to_elastic(),
-            action: ACTION_ARCHIVED.to_string(),
-            comment: None,
-        };
+        let action = HistoryEntryBuilder::new_archive().build();
         self.add_tag_by_query(query, TAG_ARCHIVED, &action).await
     }
 
@@ -309,12 +299,7 @@ impl ElasticEventRepo {
                 }
             }
         });
-        let action = HistoryEntry {
-            username: "anonymous".to_string(),
-            timestamp: datetime::DateTime::now().to_elastic(),
-            action: ACTION_ESCALATED.to_string(),
-            comment: None,
-        };
+        let action = HistoryEntryBuilder::new_escalate().build();
         self.add_tag_by_query(query, TAG_ESCALATED, &action).await
     }
 
@@ -326,12 +311,7 @@ impl ElasticEventRepo {
                 }
             }
         });
-        let action = HistoryEntry {
-            username: "anonymous".to_string(),
-            timestamp: datetime::DateTime::now().to_elastic(),
-            action: ACTION_DEESCALATED.to_string(),
-            comment: None,
-        };
+        let action = HistoryEntryBuilder::new_deescalate().build();
         self.remove_tag_by_query(query, TAG_ESCALATED, &action)
             .await
     }
@@ -340,7 +320,7 @@ impl ElasticEventRepo {
         &self,
         event_id: &str,
         comment: String,
-        username: &str,
+        session: Arc<Session>,
     ) -> Result<(), DatastoreError> {
         let query = json!({
             "bool": {
@@ -349,12 +329,10 @@ impl ElasticEventRepo {
                 }
             }
         });
-        let action = HistoryEntry {
-            username: username.to_string(),
-            timestamp: datetime::DateTime::now().to_elastic(),
-            action: ACTION_COMMENT.to_string(),
-            comment: Some(comment),
-        };
+        let action = HistoryEntryBuilder::new_comment()
+            .username(session.username.clone())
+            .comment(comment)
+            .build();
         self.add_tags_by_query(query, &[], &action).await
     }
 
@@ -487,12 +465,7 @@ impl ElasticEventRepo {
         &self,
         alert_group: api::AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
-        let action = HistoryEntry {
-            username: "anonymous".to_string(),
-            timestamp: DateTime::now().to_elastic(),
-            action: ACTION_ARCHIVED.to_string(),
-            comment: None,
-        };
+        let action = HistoryEntryBuilder::new_archive().build();
         self.add_tags_by_alert_group(alert_group, &TAGS_ARCHIVED, &action)
             .await
     }
@@ -502,13 +475,9 @@ impl ElasticEventRepo {
         alert_group: api::AlertGroupSpec,
         session: Arc<Session>,
     ) -> Result<(), DatastoreError> {
-        let action = HistoryEntry {
-            username: session.username().to_string(),
-            //username: "anonymous".to_string(),
-            timestamp: DateTime::now().to_elastic(),
-            action: ACTION_ESCALATED.to_string(),
-            comment: None,
-        };
+        let action = HistoryEntryBuilder::new_escalate()
+            .username(session.username.clone())
+            .build();
         self.add_tags_by_alert_group(alert_group, &TAGS_ESCALATED, &action)
             .await
     }
@@ -517,12 +486,7 @@ impl ElasticEventRepo {
         &self,
         alert_group: api::AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
-        let action = HistoryEntry {
-            username: "anonymous".to_string(),
-            timestamp: DateTime::now().to_elastic(),
-            action: ACTION_DEESCALATED.to_string(),
-            comment: None,
-        };
+        let action = HistoryEntryBuilder::new_deescalate().build();
         self.remove_tags_by_alert_group(alert_group, &TAGS_ESCALATED, &action)
             .await
     }
@@ -627,21 +591,6 @@ impl ElasticEventRepo {
         });
 
         Ok(response)
-    }
-
-    pub async fn comment_by_alert_group(
-        &self,
-        alert_group: api::AlertGroupSpec,
-        comment: String,
-        username: &str,
-    ) -> Result<(), DatastoreError> {
-        let entry = HistoryEntry {
-            username: username.to_string(),
-            timestamp: DateTime::now().to_elastic(),
-            action: ACTION_COMMENT.to_string(),
-            comment: Some(comment),
-        };
-        self.add_tags_by_alert_group(alert_group, &[], &entry).await
     }
 
     async fn get_earliest_timestamp(

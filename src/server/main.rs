@@ -343,10 +343,9 @@ pub(crate) fn build_axum_service(
         .route("/api/1/alert-group/star", post(api::alert_group_star))
         .route("/api/1/alert-group/unstar", post(api::alert_group_unstar))
         .route("/api/1/alert-group/archive", post(api::alert_group_archive))
-        .route("/api/1/alert-group/comment", post(api::alert_group_comment))
         .route("/api/1/event/:id/archive", post(api::archive_event_by_id))
         .route("/api/1/event/:id/escalate", post(api::escalate_event_by_id))
-        .route("/api/1/event/:id/comment", post(api::comment_by_event_id))
+        .route("/api/event/:id/comment", post(api::comment_by_event_id))
         .route(
             "/api/1/event/:id/de-escalate",
             post(api::deescalate_event_by_id),

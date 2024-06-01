@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 use crate::datetime::DateTime;
+use crate::elastic::HistoryEntryBuilder;
+use crate::eve::eve::ensure_has_history;
 use crate::eventrepo::DatastoreError;
 use crate::server::api::AlertGroupSpec;
+use crate::server::session::Session;
 use crate::sqlite::log_query_plan;
 use crate::{LOG_QUERIES, LOG_QUERY_PLAN};
 use serde_json::json;
@@ -12,12 +15,13 @@ use sqlx::Arguments;
 use sqlx::{Row, SqliteConnection, SqlitePool};
 use std::sync::Arc;
 use std::time::Instant;
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, instrument, warn};
 
 use super::has_table;
 
 mod agg;
 mod alerts;
+mod comments;
 mod dhcp;
 mod events;
 mod stats;
@@ -108,7 +112,11 @@ impl SqliteEventRepo {
         &self,
         event_id: String,
     ) -> Result<Option<serde_json::Value>, DatastoreError> {
-        let sql = "SELECT rowid, archived, escalated, source FROM events WHERE rowid = ?";
+        let sql = r#"
+            SELECT
+              rowid, archived, escalated, source, history
+            FROM events
+            WHERE rowid = ?"#;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
@@ -123,6 +131,7 @@ impl SqliteEventRepo {
             let archived: i8 = row.try_get(1)?;
             let escalated: i8 = row.try_get(2)?;
             let mut parsed: serde_json::Value = row.try_get(3)?;
+            let history: serde_json::Value = row.try_get("history")?;
 
             if let serde_json::Value::Null = &parsed["tags"] {
                 let tags: Vec<String> = Vec::new();
@@ -137,6 +146,9 @@ impl SqliteEventRepo {
                     tags.push("evebox.escalated".into());
                 }
             }
+
+            ensure_has_history(&mut parsed);
+            parsed["evebox"]["history"] = history;
 
             let response = json!({
                 "_id": rowid,
@@ -154,15 +166,20 @@ impl SqliteEventRepo {
         alert_group: AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
         debug!("Archiving alert group: {:?}", alert_group);
+
+        let action = HistoryEntryBuilder::new_archive().build();
         let now = Instant::now();
         let sql = "
             UPDATE events
-            SET archived = 1
+            SET archived = 1,
+              history = json_insert(history, '$[#]', json(?))
             WHERE %WHERE%
         ";
 
         let mut args = SqliteArguments::default();
         let mut filters: Vec<String> = Vec::new();
+
+        args.add(action.to_json());
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
         filters.push("archived = 0".to_string());
@@ -208,12 +225,21 @@ impl SqliteEventRepo {
         let mut filters: Vec<String> = Vec::new();
         let mut args = SqliteArguments::default();
 
+        let action = if escalate {
+            HistoryEntryBuilder::new_escalate()
+        } else {
+            HistoryEntryBuilder::new_deescalate()
+        }
+        .build();
+
         let sql = "
             UPDATE events
-            SET escalated = ?
+            SET escalated = ?,
+              history = json_insert(history, '$[#]', json(?))
             WHERE %WHERE%
         ";
         args.add(if escalate { 1 } else { 0 });
+        args.add(serde_json::to_string(&action).unwrap());
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
         filters.push("escalated = ?".to_string());
@@ -242,13 +268,21 @@ impl SqliteEventRepo {
             log_query_plan(&self.pool, &sql, &args).await;
         }
 
+        let start = Instant::now();
         let r = sqlx::query_with(&sql, args).execute(&self.pool).await?;
         let n = r.rows_affected();
+        info!(
+            "Set {} events to escalated = {} in {:?}",
+            n,
+            escalate,
+            start.elapsed()
+        );
         Ok(n)
     }
 
     pub async fn escalate_by_alert_group(
         &self,
+        _session: Arc<Session>,
         alert_group: AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
         let n = self
@@ -260,6 +294,7 @@ impl SqliteEventRepo {
 
     pub async fn deescalate_by_alert_group(
         &self,
+        _session: Arc<Session>,
         alert_group: AlertGroupSpec,
     ) -> Result<(), DatastoreError> {
         let n = self
@@ -270,18 +305,25 @@ impl SqliteEventRepo {
     }
 
     pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
-        let sql = "UPDATE events SET archived = 1 WHERE rowid = ?";
+        let action = HistoryEntryBuilder::new_archive().build();
+        let sql = r#"
+            UPDATE events
+            SET archived = 1,
+              history = json_insert(history, '$[#]', json(?))
+            WHERE rowid = ?"#;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
         let n = sqlx::query(sql)
+            .bind(action.to_json())
             .bind(event_id)
             .execute(&self.pool)
             .await?
             .rows_affected();
         if n == 0 {
+            warn!("Archive by event ID request did not update any events");
             Err(DatastoreError::EventNotFound)
         } else {
             Ok(())
@@ -293,7 +335,18 @@ impl SqliteEventRepo {
         event_id: &str,
         escalate: bool,
     ) -> Result<(), DatastoreError> {
-        let sql = "UPDATE events SET escalated = ? WHERE rowid = ?";
+        let action = if escalate {
+            HistoryEntryBuilder::new_escalate()
+        } else {
+            HistoryEntryBuilder::new_deescalate()
+        }
+        .build();
+
+        let sql = r#"
+            UPDATE events 
+            SET escalated = ?,
+              history = json_insert(history, '$[#]', json(?))
+            WHERE rowid = ?"#;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
@@ -301,6 +354,7 @@ impl SqliteEventRepo {
 
         let n = sqlx::query(sql)
             .bind(if escalate { 1 } else { 0 })
+            .bind(action.to_json())
             .bind(event_id)
             .execute(&self.pool)
             .await?

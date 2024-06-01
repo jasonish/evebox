@@ -18,7 +18,7 @@ impl Eve for serde_json::Value {
     }
 }
 
-pub fn add_evebox_metadata(event: &mut serde_json::Value, filename: Option<String>) {
+pub(crate) fn add_evebox_metadata(event: &mut serde_json::Value, filename: Option<String>) {
     if let serde_json::Value::Null = event["evebox"] {
         event["evebox"] = serde_json::json!({});
     }
@@ -30,4 +30,13 @@ pub fn add_evebox_metadata(event: &mut serde_json::Value, filename: Option<Strin
 
     // Add a tags object.
     event["tags"] = serde_json::json!([]);
+}
+
+pub(crate) fn ensure_has_history(event: &mut serde_json::Value) {
+    if let serde_json::Value::Null = &event["evebox"] {
+        event["evebox"] = json!({});
+    }
+    if let serde_json::Value::Null = &event["evebox"]["history"] {
+        event["evebox"]["history"] = json!([]);
+    }
 }

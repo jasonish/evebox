@@ -16,15 +16,28 @@ pub mod eventrepo;
 pub mod importer;
 pub mod request;
 
-pub const ACTION_ARCHIVED: &str = "archived";
-pub const ACTION_ESCALATED: &str = "escalated";
-pub const ACTION_DEESCALATED: &str = "de-escalated";
-pub const ACTION_COMMENT: &str = "comment";
+pub(crate) const TAG_ESCALATED: &str = "evebox.escalated";
+pub(crate) const TAGS_ESCALATED: [&str; 1] = [TAG_ESCALATED];
+pub(crate) const TAG_ARCHIVED: &str = "evebox.archived";
+pub(crate) const TAGS_ARCHIVED: [&str; 1] = [TAG_ARCHIVED];
 
-pub const TAG_ESCALATED: &str = "evebox.escalated";
-pub const TAGS_ESCALATED: [&str; 1] = [TAG_ESCALATED];
-pub const TAG_ARCHIVED: &str = "evebox.archived";
-pub const TAGS_ARCHIVED: [&str; 1] = [TAG_ARCHIVED];
+pub(crate) enum HistoryType {
+    Archived,
+    Escalated,
+    Deescalated,
+    Comment,
+}
+
+impl std::fmt::Display for HistoryType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            HistoryType::Archived => write!(f, "archived"),
+            HistoryType::Escalated => write!(f, "escalated"),
+            HistoryType::Deescalated => write!(f, "de-escalated"),
+            HistoryType::Comment => write!(f, "comment"),
+        }
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum ElasticError {
@@ -50,11 +63,71 @@ pub(crate) struct AlertQueryOptions {
 
 #[derive(Serialize)]
 pub(crate) struct HistoryEntry {
-    pub username: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
     pub timestamp: String,
     pub action: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+}
+
+impl HistoryEntry {
+    pub(crate) fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+
+pub(crate) struct HistoryEntryBuilder {
+    timestamp: DateTime,
+    action: String,
+    username: Option<String>,
+    comment: Option<String>,
+}
+
+impl HistoryEntryBuilder {
+    fn new(action: HistoryType) -> Self {
+        Self {
+            action: action.to_string(),
+            timestamp: DateTime::now(),
+            username: None,
+            comment: None,
+        }
+    }
+
+    pub fn new_archive() -> Self {
+        Self::new(HistoryType::Archived)
+    }
+
+    pub fn new_escalate() -> Self {
+        Self::new(HistoryType::Escalated)
+    }
+
+    pub fn new_deescalate() -> Self {
+        Self::new(HistoryType::Deescalated)
+    }
+
+    pub fn new_comment() -> Self {
+        Self::new(HistoryType::Comment)
+    }
+
+    pub fn username(mut self, username: Option<impl Into<String>>) -> Self {
+        self.username = username.map(|u| u.into());
+        self
+    }
+
+    pub fn comment(mut self, comment: impl Into<String>) -> Self {
+        self.comment = Some(comment.into());
+        self
+    }
+
+    pub fn build(self) -> HistoryEntry {
+        HistoryEntry {
+            username: self.username,
+            timestamp: self.timestamp.to_rfc3339_utc(),
+            action: self.action,
+            comment: self.comment,
+        }
+    }
 }
 
 pub fn query_string_query(query_string: &str) -> serde_json::Value {

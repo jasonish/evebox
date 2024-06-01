@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use axum::{response::IntoResponse, Json};
-use tracing::{error, info, warn};
+use tracing::{debug, error, warn};
 
 use crate::{
     elastic::{AlertQueryOptions, ElasticResponse},
@@ -163,7 +163,7 @@ impl ElasticEventRepo {
             return Err(DatastoreError::ElasticSearchError(error.first_reason()));
         }
 
-        info!(
+        debug!(
             "Elasticsearch alert query took {:?}, es-time: {}, response-size: {}",
             start.elapsed(),
             response.took,
