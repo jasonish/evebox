@@ -131,6 +131,9 @@ impl ElasticEventRepo {
                                                 // oldest event.
                                                 "_source": [
                                                     "timestamp",
+
+                                                    // ECS doesn't have timestamp.
+                                                    "@timestamp",
                                                 ]
                                             }
                                         }
@@ -181,19 +184,25 @@ impl ElasticEventRepo {
                             {
                                 for bucket in buckets {
                                     let mut newest = bucket["newest"]["hits"]["hits"][0].clone();
-                                    let mut oldest = bucket["oldest"]["hits"]["hits"][0].clone();
+                                    let oldest = bucket["oldest"]["hits"]["hits"][0].clone();
 
                                     if self.ecs {
                                         self.transform_ecs(&mut newest);
-                                        self.transform_ecs(&mut oldest);
                                     }
 
                                     let escalated = &bucket["escalated"]["doc_count"];
 
+                                    let min_timestamp =
+                                        if oldest["_source"]["timestamp"].is_string() {
+                                            &oldest["_source"]["timestamp"]
+                                        } else {
+                                            &oldest["_source"]["@timestamp"]
+                                        };
+
                                     newest["_metadata"] = json!({
                                         "count": bucket["doc_count"],
                                         "escalated_count": escalated,
-                                        "min_timestamp": &oldest["_source"]["timestamp"],
+                                        "min_timestamp": min_timestamp,
                                         "max_timestamp": &newest["_source"]["timestamp"],
                                         "aggregate": true,
                                     });
