@@ -7,6 +7,8 @@
 - Reduced data between client and server for inbox/alert views.
 - Move to sqlx for database.
 - Move to chrono for time.
+- Re-add commenting, this for for SQLite as well:
+  https://github.com/jasonish/evebox/issues/271
 
 ## 0.18.1 - 2024-05-08
 
