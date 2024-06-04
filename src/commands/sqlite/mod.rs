@@ -56,9 +56,15 @@ enum Commands {
     EnableAutoVacuum {
         filename: String,
     },
-    Reindex {
-        filename: String,
-    },
+    Reindex(ReindexArgs),
+}
+
+#[derive(Parser, Debug)]
+struct ReindexArgs {
+    /// Remove all existing indexes first
+    #[arg(long)]
+    remove: bool,
+    filename: String,
 }
 
 #[derive(Parser, Debug)]
@@ -142,7 +148,7 @@ pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
         Commands::Optimize(args) => optimize(args).await,
         Commands::Analyze { filename } => analyze(filename).await,
         Commands::EnableAutoVacuum { filename } => enable_auto_vacuum(filename).await,
-        Commands::Reindex { filename } => reindex(filename).await,
+        Commands::Reindex(args) => reindex(args).await,
     }
 }
 
@@ -357,29 +363,31 @@ async fn enable_auto_vacuum(filename: &str) -> Result<()> {
     Ok(())
 }
 
-async fn reindex(filename: &str) -> Result<()> {
+async fn reindex(args: &ReindexArgs) -> Result<()> {
     println!("WARNING: Reindexing can take a while.");
     println!("- Database availability will be limited.");
     if !confirm("Do you wish to continue?") {
         return Ok(());
     }
 
-    let mut conn = ConnectionBuilder::filename(Some(filename))
+    let mut conn = ConnectionBuilder::filename(Some(args.filename.to_string()))
         .open_connection(false)
         .await?;
 
-    let rows: Vec<String> =
-        sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type = 'index'")
-            .fetch_all(&mut conn)
-            .await?;
-    for index in &rows {
-        if index.starts_with("sqlite") {
-            continue;
+    if args.remove {
+        let rows: Vec<String> =
+            sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type = 'index'")
+                .fetch_all(&mut conn)
+                .await?;
+        for index in &rows {
+            if index.starts_with("sqlite") {
+                continue;
+            }
+            info!("Dropping index {index}");
+            sqlx::query(&format!("DROP INDEX {}", index))
+                .execute(&mut conn)
+                .await?;
         }
-        info!("Dropping index {index}");
-        sqlx::query(&format!("DROP INDEX {}", index))
-            .execute(&mut conn)
-            .await?;
     }
 
     info!("Rebuilding indexes.");
