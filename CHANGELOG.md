@@ -9,6 +9,8 @@
 - Move to chrono for time.
 - Re-add commenting, this for for SQLite as well:
   https://github.com/jasonish/evebox/issues/271
+- Send less data for alert views:
+  https://github.com/jasonish/evebox/issues/261
 
 ## 0.18.1 - 2024-05-08
 
