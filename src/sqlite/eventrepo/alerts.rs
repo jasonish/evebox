@@ -16,6 +16,7 @@ use crate::sqlite::builder::EventQueryBuilder;
 use crate::sqlite::log_query_plan;
 use crate::{elastic::AlertQueryOptions, eventrepo::DatastoreError};
 use crate::{queryparser, LOG_QUERIES, LOG_QUERY_PLAN};
+use std::collections::HashSet;
 use std::time::Instant;
 
 impl SqliteEventRepo {
@@ -49,7 +50,8 @@ impl SqliteEventRepo {
             .selectjs("app_proto")
             .selectjs("dest_ip")
             .selectjs("src_ip")
-            .selectjs("tags");
+            .selectjs("tags")
+            .selectjs("host");
         builder.from("events");
         builder.order_by("timestamp", "DESC");
 
@@ -134,6 +136,9 @@ impl SqliteEventRepo {
             );
         }
 
+        // Track sensors.
+        let mut sensors: HashSet<String> = HashSet::new();
+
         let mut events: IndexMap<String, ApiAlertGroup> = IndexMap::new();
         let mut rows = sqlx::query_with(&sql, args).fetch(&self.pool);
         let mut now = Instant::now();
@@ -152,6 +157,11 @@ impl SqliteEventRepo {
             let dest_ip: String = row.try_get("dest_ip")?;
             let src_ip: String = row.try_get("src_ip")?;
             let tags: serde_json::Value = row.try_get("tags").unwrap_or(serde_json::Value::Null);
+            let host: Option<String> = row.try_get("host").unwrap_or(None);
+
+            if let Some(host) = host {
+                sensors.insert(host);
+            }
 
             let mut source = json!({
                 "timestamp": DateTime::from_nanos(timestamp as i64).to_eve(),
@@ -212,6 +222,14 @@ impl SqliteEventRepo {
             if now.elapsed() > std::time::Duration::from_secs(3) {
                 timed_out = true;
                 break;
+            }
+        }
+
+        // Update the sensors cache if the size differs.
+        if self.sensors.read().unwrap().len() != sensors.len() {
+            let mut cache = self.sensors.write().unwrap();
+            for sensor in sensors {
+                cache.insert(sensor);
             }
         }
 
@@ -358,11 +376,24 @@ impl SqliteEventRepo {
             info!("query={}; args={:?}", &query.trim(), &args);
         }
 
+        let mut sensors = HashSet::new();
         let now = Instant::now();
         let mut rows = sqlx::query_with(&query, args).fetch(&self.pool);
         let mut results = vec![];
         while let Some(row) = rows.try_next().await? {
-            results.push(alert_row_mapper(row)?);
+            let row = alert_row_mapper(row)?;
+            if let serde_json::Value::String(host) = &row.source["host"] {
+                sensors.insert(host.to_string());
+            }
+            results.push(row);
+        }
+
+        // Update the sensors cache if the size differs.
+        if self.sensors.read().unwrap().len() != sensors.len() {
+            let mut cache = self.sensors.write().unwrap();
+            for sensor in sensors {
+                cache.insert(sensor);
+            }
         }
 
         debug!(
@@ -414,6 +445,7 @@ fn alert_row_mapper(row: SqliteRow) -> Result<ApiAlertGroup, DatastoreError> {
             "src_ip": parsed["src_ip"],
             "tags": parsed["tags"],
             "timestamp": parsed["timestamp"],
+            "host": parsed["host"],
         }),
         metadata: ApiAlertGroupMetadata {
             count: count as u64,

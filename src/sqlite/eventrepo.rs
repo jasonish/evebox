@@ -13,7 +13,8 @@ use serde_json::json;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 use sqlx::{Row, SqliteConnection, SqlitePool};
-use std::sync::Arc;
+use std::collections::HashSet;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use tracing::{debug, info, instrument, warn};
 
@@ -31,6 +32,8 @@ pub(crate) struct SqliteEventRepo {
     pub importer: super::importer::SqliteEventSink,
     pub pool: SqlitePool,
     pub writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
+    sensors: RwLock<HashSet<String>>,
+    sensors_initialized: tokio::sync::RwLock<bool>,
 }
 
 impl SqliteEventRepo {
@@ -39,6 +42,8 @@ impl SqliteEventRepo {
             importer: super::importer::SqliteEventSink::new(writer.clone()),
             pool,
             writer: writer.clone(),
+            sensors: RwLock::new(HashSet::new()),
+            sensors_initialized: tokio::sync::RwLock::new(false),
         }
     }
 
@@ -376,8 +381,16 @@ impl SqliteEventRepo {
 
     #[instrument(skip_all)]
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
-        // Turns out not putting a timestamp limit on this is much
-        // faster.
+        if *self.sensors_initialized.read().await {
+            info!("Returning cached sensors.");
+            let sensors = self.sensors.try_read().unwrap();
+            let sensors: Vec<String> = sensors.iter().cloned().collect();
+            return Ok(sensors);
+        }
+
+        let mut init = self.sensors_initialized.write().await;
+        info!("Initializing sensors cache");
+
         let from = DateTime::now() - std::time::Duration::from_secs(86400);
         let sql = r#"
             SELECT DISTINCT json_extract(events.source, '$.host')
@@ -390,10 +403,15 @@ impl SqliteEventRepo {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
-        let rows: Vec<String> = sqlx::query_scalar(sql)
+        let sensors: Vec<String> = sqlx::query_scalar(sql)
             .bind(from.to_nanos())
             .fetch_all(&self.pool)
             .await?;
-        Ok(rows)
+        let mut cache = self.sensors.write().unwrap();
+        for sensor in &sensors {
+            cache.insert(sensor.to_string());
+        }
+        *init = true;
+        Ok(sensors)
     }
 }
