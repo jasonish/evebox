@@ -139,6 +139,10 @@ impl AddRuleFilter {
 pub(crate) struct AutoArchiveFilter {}
 
 impl AutoArchiveFilter {
+    pub fn new() -> Self {
+        Self {}
+    }
+
     pub fn run(&self, event: &mut serde_json::Value) {
         // Look for alert.metadata.
         let action = event["alert"]["metadata"]["evebox-action"]

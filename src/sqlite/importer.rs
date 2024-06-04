@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    eve::{self, Eve},
+    eve::{self, filters::AutoArchiveFilter, Eve},
     sqlite::has_table,
 };
 use sqlx::Connection;
@@ -64,6 +64,7 @@ impl SqliteEventSink {
         }
 
         eve::eve::add_evebox_metadata(&mut event, None);
+        AutoArchiveFilter::new().run(&mut event);
 
         let prepared = PreparedEvent {
             ts: ts.to_nanos(),
