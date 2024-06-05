@@ -25,13 +25,13 @@ impl SqliteEventRepo {
         let mut params = SqliteArguments::default();
 
         if let Some(earliest) = earliest {
-            params.add(earliest.to_nanos());
+            params.add(earliest.to_nanos())?;
             wheres.push("timestamp >= ?".to_string())
         }
 
         if let Some(sensor) = &sensor {
             wheres.push("json_extract(events.source, '$.host') = ?".to_string());
-            params.add(sensor.to_string());
+            params.add(sensor.to_string())?;
         }
 
         let sql = r#"

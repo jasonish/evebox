@@ -30,20 +30,20 @@ impl SqliteEventRepo {
         if let Some(event_type) = options.event_type {
             builder
                 .push_where("json_extract(events.source, '$.event_type') = ?")
-                .push_arg(event_type);
+                .push_arg(event_type)?;
         }
 
         if let Some(dt) = &options.max_timestamp {
             warn!("Found deprecated parameter 'max_timestamp' in SQLite events query");
-            builder.latest_timestamp(dt);
+            builder.latest_timestamp(dt)?;
         }
 
         if let Some(dt) = &options.min_timestamp {
             warn!("Found deprecated parameter 'min_timestamp' in SQLite events query");
-            builder.earliest_timestamp(dt);
+            builder.earliest_timestamp(dt)?;
         }
 
-        builder.apply_query_string(&options.query_string);
+        builder.apply_query_string(&options.query_string)?;
 
         if let Some(order) = &options.order {
             builder.order_by("events.timestamp", order);
@@ -51,7 +51,7 @@ impl SqliteEventRepo {
             builder.order_by("events.timestamp", "DESC");
         }
 
-        let (sql, params) = builder.build();
+        let (sql, params) = builder.build()?;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, &sql, &params).await;

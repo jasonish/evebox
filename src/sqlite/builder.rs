@@ -6,6 +6,8 @@ use crate::queryparser;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 
+type Error = sqlx::error::BoxDynError;
+
 #[derive(Default)]
 pub(crate) struct EventQueryBuilder<'a> {
     /// Is FTS available?
@@ -67,7 +69,7 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn wherejs<F, O, A>(&mut self, field: F, op: O, arg: A) -> &mut Self
+    pub fn wherejs<F, O, A>(&mut self, field: F, op: O, arg: A) -> Result<&mut Self, Error>
     where
         F: Into<String>,
         O: Into<String>,
@@ -77,8 +79,8 @@ impl<'a> EventQueryBuilder<'a> {
         let op: String = op.into();
         self.wheres
             .push(format!("json_extract(events.source, '$.{field}') {op} ?"));
-        self.push_arg(arg);
-        self
+        self.push_arg(arg)?;
+        Ok(self)
     }
 
     pub fn push_fts<S>(&mut self, val: S) -> &mut Self
@@ -89,7 +91,7 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn push_arg<T>(&mut self, value: T)
+    pub fn push_arg<T>(&mut self, value: T) -> Result<(), sqlx::error::BoxDynError>
     where
         T: sqlx::Encode<'a, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + 'a,
     {
@@ -101,28 +103,36 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn where_source_json(&mut self, field: &str, op: &str, value: &str) -> &mut Self {
+    pub fn where_source_json(
+        &mut self,
+        field: &str,
+        op: &str,
+        value: &str,
+    ) -> Result<&mut Self, Error> {
         self.push_where(format!("json_extract(events.source, '$.{field}') {op} ?"));
         if let Ok(i) = value.parse::<i64>() {
-            self.push_arg(i);
+            self.push_arg(i)?;
         } else {
-            self.push_arg(value.to_string());
+            self.push_arg(value.to_string())?;
         }
-        self
+        Ok(self)
     }
 
-    pub fn apply_query_string(&mut self, q: &[queryparser::QueryElement]) {
+    pub fn apply_query_string(
+        &mut self,
+        q: &[queryparser::QueryElement],
+    ) -> Result<(), sqlx::error::BoxDynError> {
         for e in q {
             match &e.value {
                 queryparser::QueryValue::String(s) => {
                     if e.negated {
                         self.push_where("events.source NOT LIKE ?")
-                            .push_arg(format!("%{s}%"));
+                            .push_arg(format!("%{s}%"))?;
                     } else if self.fts {
                         self.push_fts(s);
                     } else {
                         self.push_where("events.source LIKE ?")
-                            .push_arg(format!("%{s}%"));
+                            .push_arg(format!("%{s}%"))?;
                     }
                 }
                 queryparser::QueryValue::KeyValue(k, v) => {
@@ -130,19 +140,19 @@ impl<'a> EventQueryBuilder<'a> {
                         "@ip" | "@mac" => {
                             if e.negated {
                                 self.push_where("events.source NOT LIKE ?")
-                                    .push_arg(format!("%{v}%"));
+                                    .push_arg(format!("%{v}%"))?;
                             } else if self.fts {
                                 self.push_fts(v);
                             } else {
                                 self.push_where("events.source LIKE ?")
-                                    .push_arg(format!("%{v}%"));
+                                    .push_arg(format!("%{v}%"))?;
                             }
                         }
                         _ => {
                             if e.negated {
-                                self.where_source_json(k, "!=", v);
+                                self.where_source_json(k, "!=", v)?;
                             } else {
-                                self.where_source_json(k, "=", v);
+                                self.where_source_json(k, "=", v)?;
                                 // If FTS is enabled, some key/val searches
                                 // can really benefit from it.
                                 if self.fts {
@@ -162,36 +172,37 @@ impl<'a> EventQueryBuilder<'a> {
                     }
                 }
                 queryparser::QueryValue::From(ts) => {
-                    self.timestamp_gte(ts);
+                    self.timestamp_gte(ts)?;
                 }
                 queryparser::QueryValue::To(ts) => {
-                    self.timestamp_lte(ts);
+                    self.timestamp_lte(ts)?;
                 }
             }
         }
+        Ok(())
     }
 
-    pub fn earliest_timestamp(&mut self, ts: &DateTime) -> &mut Self {
-        self.push_where("timestamp >= ?").push_arg(ts.to_nanos());
-        self
+    pub fn earliest_timestamp(&mut self, ts: &DateTime) -> Result<&mut Self, Error> {
+        self.push_where("timestamp >= ?").push_arg(ts.to_nanos())?;
+        Ok(self)
     }
 
-    pub fn timestamp_gte(&mut self, ts: &crate::datetime::DateTime) -> &mut Self {
-        self.push_where("timestamp >= ?").push_arg(ts.to_nanos());
-        self
+    pub fn timestamp_gte(&mut self, ts: &crate::datetime::DateTime) -> Result<&mut Self, Error> {
+        self.push_where("timestamp >= ?").push_arg(ts.to_nanos())?;
+        Ok(self)
     }
 
-    pub fn timestamp_lte(&mut self, ts: &crate::datetime::DateTime) -> &mut Self {
-        self.push_where("timestamp <= ?").push_arg(ts.to_nanos());
-        self
+    pub fn timestamp_lte(&mut self, ts: &crate::datetime::DateTime) -> Result<&mut Self, Error> {
+        self.push_where("timestamp <= ?").push_arg(ts.to_nanos())?;
+        Ok(self)
     }
 
-    pub fn latest_timestamp(&mut self, ts: &DateTime) -> &mut Self {
-        self.push_where("timestamp <= ?").push_arg(ts.to_nanos());
-        self
+    pub fn latest_timestamp(&mut self, ts: &DateTime) -> Result<&mut Self, Error> {
+        self.push_where("timestamp <= ?").push_arg(ts.to_nanos())?;
+        Ok(self)
     }
 
-    pub fn build(&mut self) -> (String, SqliteArguments<'a>) {
+    pub fn build(&mut self) -> Result<(String, SqliteArguments<'a>), Error> {
         let mut sql = String::new();
 
         sql.push_str("select ");
@@ -203,7 +214,7 @@ impl<'a> EventQueryBuilder<'a> {
         if !self.fts_phrases.is_empty() {
             let query = self.fts_phrases.join(" AND ");
             self.push_where("events.rowid in (select rowid from fts where fts match ?)");
-            self.push_arg(query);
+            self.push_arg(query)?;
         }
 
         if !self.wheres.is_empty() {
@@ -224,6 +235,6 @@ impl<'a> EventQueryBuilder<'a> {
             sql.push_str(&format!(" limit {}", self.limit));
         }
 
-        (sql, self.args.clone())
+        Ok((sql, self.args.clone()))
     }
 }

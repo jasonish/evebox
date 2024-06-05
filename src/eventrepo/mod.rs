@@ -48,6 +48,8 @@ pub enum DatastoreError {
     ParseIntError(#[from] std::num::ParseIntError),
     #[error("sqlx: {0}")]
     SqlxError(#[from] sqlx::Error),
+    #[error("sqlx: {0}")]
+    SqlxDynError(#[from] sqlx::error::BoxDynError),
 
     // Fallback...
     #[error("error: {0}")]

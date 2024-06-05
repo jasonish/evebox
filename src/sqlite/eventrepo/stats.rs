@@ -67,9 +67,9 @@ impl SqliteEventRepo {
         builder.group_by(timestamp.to_string());
         builder.order_by("timestamp", "asc");
 
-        builder.apply_query_string(query);
+        builder.apply_query_string(query)?;
 
-        let (sql, params) = builder.build();
+        let (sql, params) = builder.build()?;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, &sql, &params).await;
@@ -147,7 +147,7 @@ impl SqliteEventRepo {
         sqlx::query_scalar(sql).fetch_optional(&mut *conn).await
     }
 
-    async fn get_stats(&self, qp: &StatsAggQueryParams) -> anyhow::Result<Vec<(i64, i64)>> {
+    async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(i64, i64)>, DatastoreError> {
         let qp = qp.clone();
         let field = format!("$.{}", &qp.field);
         let start_time = qp.start_time.to_nanos();
@@ -167,17 +167,17 @@ impl SqliteEventRepo {
               ORDER BY a
             "
         );
-        args.add(&field);
+        args.add(&field)?;
 
         let mut filters = vec![
             "json_extract(events.source, '$.event_type') = 'stats'",
             "timestamp >= ?",
         ];
-        args.add(start_time);
+        args.add(start_time)?;
 
         if let Some(sensor_name) = qp.sensor_name.as_ref() {
             filters.push("json_extract(events.source, '$.host') = ?");
-            args.add(sensor_name);
+            args.add(sensor_name)?;
         }
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));

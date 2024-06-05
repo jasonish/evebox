@@ -184,27 +184,27 @@ impl SqliteEventRepo {
         let mut args = SqliteArguments::default();
         let mut filters: Vec<String> = Vec::new();
 
-        args.add(action.to_json());
+        args.add(action.to_json())?;
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
         filters.push("archived = 0".to_string());
 
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        args.add(alert_group.signature_id as i64);
+        args.add(alert_group.signature_id as i64)?;
 
         filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        args.add(alert_group.src_ip);
+        args.add(alert_group.src_ip)?;
 
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        args.add(&alert_group.dest_ip);
+        args.add(&alert_group.dest_ip)?;
 
         let mints_nanos = crate::datetime::parse(&alert_group.min_timestamp, None)?.to_nanos();
         filters.push("timestamp >= ?".to_string());
-        args.add(mints_nanos as i64);
+        args.add(mints_nanos as i64)?;
 
         let maxts_nanos = crate::datetime::parse(&alert_group.max_timestamp, None)?.to_nanos();
         filters.push("timestamp <= ?".to_string());
-        args.add(maxts_nanos as i64);
+        args.add(maxts_nanos as i64)?;
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
@@ -243,29 +243,29 @@ impl SqliteEventRepo {
               history = json_insert(history, '$[#]', json(?))
             WHERE %WHERE%
         ";
-        args.add(if escalate { 1 } else { 0 });
-        args.add(serde_json::to_string(&action).unwrap());
+        args.add(if escalate { 1 } else { 0 })?;
+        args.add(serde_json::to_string(&action).unwrap())?;
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
         filters.push("escalated = ?".to_string());
-        args.add(if escalate { 0 } else { 1 });
+        args.add(if escalate { 0 } else { 1 })?;
 
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        args.add(alert_group.signature_id as i64);
+        args.add(alert_group.signature_id as i64)?;
 
         filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        args.add(alert_group.src_ip);
+        args.add(alert_group.src_ip)?;
 
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        args.add(alert_group.dest_ip);
+        args.add(alert_group.dest_ip)?;
 
         let mints = crate::datetime::parse(&alert_group.min_timestamp, None)?;
         filters.push("timestamp >= ?".to_string());
-        args.add(mints.to_nanos() as i64);
+        args.add(mints.to_nanos() as i64)?;
 
         let maxts = crate::datetime::parse(&alert_group.max_timestamp, None)?;
         filters.push("timestamp <= ?".to_string());
-        args.add(maxts.to_nanos() as i64);
+        args.add(maxts.to_nanos() as i64)?;
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 

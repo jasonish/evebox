@@ -55,30 +55,32 @@ impl SqliteEventRepo {
         builder.from("events");
         builder.order_by("timestamp", "DESC");
 
-        builder.wherejs("event_type", "=", "alert");
+        builder.wherejs("event_type", "=", "alert")?;
 
         for tag in options.tags {
             match tag.as_ref() {
                 "evebox.archived" => {
-                    builder.push_where("archived = ?").push_arg(1);
+                    builder.push_where("archived = ?").push_arg(1)?;
                 }
                 "-evebox.archived" => {
-                    builder.push_where("archived = ?").push_arg(0);
+                    builder.push_where("archived = ?").push_arg(0)?;
                 }
                 "evebox.escalated" => {
-                    builder.push_where("escalated = ?").push_arg(1);
+                    builder.push_where("escalated = ?").push_arg(1)?;
                 }
                 _ => {}
             }
         }
 
         if let Some(sensor) = options.sensor {
-            builder.wherejs("host", "=", sensor);
+            builder.wherejs("host", "=", sensor)?;
         }
 
         // TODO: With a timeout, we can remove this.
         if let Some(ts) = options.timestamp_gte {
-            builder.push_where("timestamp >= ?").push_arg(ts.to_nanos());
+            builder
+                .push_where("timestamp >= ?")
+                .push_arg(ts.to_nanos())?;
         }
 
         // Query string.
@@ -97,19 +99,19 @@ impl SqliteEventRepo {
                                 if el.negated {
                                     builder
                                         .push_where("events.source NOT LIKE ?")
-                                        .push_arg(format!("%{}%", s));
+                                        .push_arg(format!("%{}%", s))?;
                                 } else {
                                     builder
                                         .push_where("events.source LIKE ?")
-                                        .push_arg(format!("%{}%", s));
+                                        .push_arg(format!("%{}%", s))?;
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
                                 // TODO: Handle negation - maybe use query builder?
                                 if let Ok(v) = v.parse::<i64>() {
-                                    builder.wherejs(k, "=", v);
+                                    builder.wherejs(k, "=", v)?;
                                 } else {
-                                    builder.wherejs(k, "LIKE", format!("%{}%", v));
+                                    builder.wherejs(k, "LIKE", format!("%{}%", v))?;
                                 }
                             }
                             queryparser::QueryValue::From(_) => {
@@ -124,7 +126,7 @@ impl SqliteEventRepo {
             }
         }
 
-        let (sql, args) = builder.build();
+        let (sql, args) = builder.build()?;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, &sql, &args).await;
@@ -296,15 +298,15 @@ impl SqliteEventRepo {
             match tag.as_ref() {
                 "evebox.archived" => {
                     filters.push("archived = ?".into());
-                    args.add(1);
+                    args.add(1)?;
                 }
                 "-evebox.archived" => {
                     filters.push("archived = ?".into());
-                    args.add(0);
+                    args.add(0)?;
                 }
                 "evebox.escalated" => {
                     filters.push("escalated = ?".into());
-                    args.add(1);
+                    args.add(1)?;
                 }
                 _ => {}
             }
@@ -312,12 +314,12 @@ impl SqliteEventRepo {
 
         if let Some(sensor) = options.sensor {
             filters.push("json_extract(events.source, '$.host') = ?".into());
-            args.add(sensor);
+            args.add(sensor)?;
         }
 
         if let Some(ts) = options.timestamp_gte {
             filters.push("timestamp >= ?".into());
-            args.add(ts.to_nanos());
+            args.add(ts.to_nanos())?;
         }
 
         // Query string.
@@ -335,10 +337,10 @@ impl SqliteEventRepo {
                             queryparser::QueryValue::String(s) => {
                                 if el.negated {
                                     filters.push("events.source NOT LIKE ?".into());
-                                    args.add(format!("%{s}%"));
+                                    args.add(format!("%{s}%"))?;
                                 } else {
                                     filters.push("events.source LIKE ?".into());
-                                    args.add(format!("%{s}%"));
+                                    args.add(format!("%{s}%"))?;
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
@@ -346,12 +348,12 @@ impl SqliteEventRepo {
                                 if let Ok(v) = v.parse::<i64>() {
                                     filters
                                         .push(format!("json_extract(events.source, '$.{k}') = ?"));
-                                    args.add(v);
+                                    args.add(v)?;
                                 } else {
                                     filters.push(format!(
                                         "json_extract(events.source, '$.{k}') LIKE ?"
                                     ));
-                                    args.add(format!("%{v}%"));
+                                    args.add(format!("%{v}%"))?;
                                 }
                             }
                             queryparser::QueryValue::From(_) => {
@@ -359,7 +361,7 @@ impl SqliteEventRepo {
                             }
                             queryparser::QueryValue::To(ts) => {
                                 filters.push("timestamp <= ?".into());
-                                args.add(ts.to_nanos());
+                                args.add(ts.to_nanos())?;
                             }
                         }
                     }

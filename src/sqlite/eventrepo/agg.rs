@@ -41,10 +41,10 @@ impl SqliteEventRepo {
             builder.push_where("json_extract(events.source, '$.event_type') = 'dns'");
         }
 
-        builder.apply_query_string(&query);
+        builder.apply_query_string(&query)?;
 
         let mut results = vec![];
-        let (sql, args) = builder.build();
+        let (sql, args) = builder.build()?;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, &sql, &args).await;
