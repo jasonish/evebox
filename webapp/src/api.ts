@@ -110,10 +110,6 @@ export async function getUser(): Promise<UserResponse> {
 }
 
 export interface ConfigResponse {
-  features: {
-    comments: boolean;
-    reporting: boolean;
-  };
   defaults: {
     time_range?: string;
   };

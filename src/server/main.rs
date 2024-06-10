@@ -440,17 +440,7 @@ pub(crate) async fn build_context(
     datastore: EventRepo,
     config_repo: ConfigRepo,
 ) -> Result<ServerContext> {
-    let mut context = ServerContext::new(config, Arc::new(config_repo), datastore);
-
-    #[allow(clippy::single_match)]
-    match context.datastore {
-        EventRepo::Elastic(_) => {
-            context.features.comments = true;
-            context.features.reporting = true;
-        }
-        _ => {}
-    }
-
+    let context = ServerContext::new(config, Arc::new(config_repo), datastore);
     Ok(context)
 }
 

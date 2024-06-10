@@ -85,7 +85,6 @@ pub(crate) async fn config(
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
         "event-services": context.event_services,
-        "features": &context.features,
         "defaults": &context.defaults,
         "datastore": datastore,
     });

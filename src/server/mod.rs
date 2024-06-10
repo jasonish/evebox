@@ -16,12 +16,6 @@ pub(crate) mod main;
 pub mod session;
 
 #[derive(Serialize, Default, Debug)]
-pub(crate) struct Features {
-    pub comments: bool,
-    pub reporting: bool,
-}
-
-#[derive(Serialize, Default, Debug)]
 pub(crate) struct Defaults {
     pub time_range: Option<String>,
 }
@@ -29,7 +23,6 @@ pub(crate) struct Defaults {
 pub(crate) struct ServerContext {
     pub config: ServerConfig,
     pub datastore: EventRepo,
-    pub features: Features,
     pub session_store: session::SessionStore,
     pub config_repo: Arc<ConfigRepo>,
     pub event_services: Option<serde_json::Value>,
@@ -45,7 +38,6 @@ impl ServerContext {
         Self {
             config,
             datastore,
-            features: Features::default(),
             session_store: SessionStore::new(),
             config_repo,
             event_services: None,
