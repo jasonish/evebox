@@ -21,7 +21,6 @@ use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts};
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
 use axum::{async_trait, TypedHeader};
 use axum::{Router, Server};
 use axum_extra::extract::CookieJar;
@@ -329,39 +328,7 @@ pub(crate) fn build_axum_service(
         .on_request(());
 
     let app = axum::Router::new()
-        .route(
-            "/api/1/login",
-            post(api::login::post).get(api::login::options),
-        )
-        .route("/api/1/logout", post(api::login::logout))
-        .route("/api/1/config", get(api::config))
-        .route("/api/1/version", get(api::get_version))
-        .route("/api/1/user", get(api::get_user))
-        .route("/api/1/alerts", get(api::alerts))
-        .route("/api/1/events", get(api::events))
-        .route("/api/1/event/:id", get(api::get_event_by_id))
-        .route("/api/1/alert-group/star", post(api::alert_group_star))
-        .route("/api/1/alert-group/unstar", post(api::alert_group_unstar))
-        .route("/api/1/alert-group/archive", post(api::alert_group_archive))
-        .route("/api/1/event/:id/archive", post(api::archive_event_by_id))
-        .route("/api/1/event/:id/escalate", post(api::escalate_event_by_id))
-        .route("/api/event/:id/comment", post(api::comment_by_event_id))
-        .route(
-            "/api/1/event/:id/de-escalate",
-            post(api::deescalate_event_by_id),
-        )
-        .route("/api/1/report/histogram/time", get(api::histogram_time))
-        .route("/api/1/dhcp/ack", get(api::dhcp_ack))
-        .route("/api/1/dhcp/request", get(api::dhcp_request))
-        .route("/api/1/eve2pcap", post(api::eve2pcap::handler))
-        .route("/api/1/submit", post(api::submit::handler))
-        .route("/api/1/sensors", get(api::stats::get_sensor_names))
-        .route("/api/agg", get(api::agg::agg))
-        .route("/api/1/sqlite/info", get(api::sqlite::info))
-        .route("/api/1/sqlite/fts/check", get(api::sqlite::fts_check))
-        .route("/api/1/sqlite/fts/enable", post(api::sqlite::fts_enable))
-        .route("/api/1/sqlite/fts/disable", post(api::sqlite::fts_disable))
-        .nest("/api/1/stats", api::stats::router())
+        .merge(api::router())
         .layer(DefaultBodyLimit::max(1024 * 1024 * 32))
         .layer(Extension(context.clone()))
         .layer(response_header_layer)
@@ -473,15 +440,6 @@ pub(crate) async fn build_context(
     datastore: EventRepo,
     config_repo: ConfigRepo,
 ) -> Result<ServerContext> {
-    // let config_repo = if let Some(directory) = &config.data_directory {
-    //     let filename = PathBuf::from(directory).join("config.sqlite");
-    //     info!("Configuration database filename: {:?}", filename);
-    //     ConfigRepo::new(Some(&filename)).await?
-    // } else {
-    //     info!("Using temporary in-memory configuration database");
-    //     ConfigRepo::new(None).await?
-    // };
-
     let mut context = ServerContext::new(config, Arc::new(config_repo), datastore);
 
     #[allow(clippy::single_match)]
