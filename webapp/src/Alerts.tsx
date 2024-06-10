@@ -252,7 +252,7 @@ export function Alerts() {
   });
 
   function getOffset(): number {
-    return +searchParams.offset || 0;
+    return +(searchParams.offset || 0);
   }
 
   function setOffset(offset: number) {
