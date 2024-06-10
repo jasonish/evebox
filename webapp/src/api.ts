@@ -135,6 +135,13 @@ export async function login(
   return [true, response.data];
 }
 
+export interface AlertsResponse {
+  events: EventWrapper[];
+  ecs: boolean;
+  took: number;
+  timed_out: boolean;
+}
+
 export async function alerts(options?: {
   // A query string to apply to the alert search.
   query_string?: string;
@@ -145,7 +152,7 @@ export async function alerts(options?: {
   // Tags that must not be present.
   not_tags?: string[];
   sensor: string | undefined;
-}): Promise<{ events: EventWrapper[]; ecs: boolean }> {
+}): Promise<AlertsResponse> {
   let params: any = {
     query_string: options?.query_string,
   };

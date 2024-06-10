@@ -21,7 +21,6 @@ export interface AggregateAlert extends EventWrapper {
 }
 
 export interface EventWrapperMetadata {
-  aggregate: boolean;
   count: number;
   escalated_count: number;
   min_timestamp: string;

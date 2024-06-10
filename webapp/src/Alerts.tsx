@@ -56,6 +56,7 @@ import { eventStore } from "./eventstore";
 import { AppProtoBadge } from "./Events";
 import { Logger } from "./util";
 import { SensorSelect } from "./common/SensorSelect";
+import * as bootstrap from "bootstrap";
 
 const DEFAULT_SORTBY = "timestamp";
 const DEFAULT_SORTORDER = "desc";
@@ -91,6 +92,7 @@ export function Alerts() {
   const [isLoading, setIsLoading] = createSignal(false);
   const idleTimer = new IdleTimer(60000);
   const [visibleEvents, setVisibleEvents] = createSignal<EventWrapper[]>([]);
+  const [timedOut, setTimedOut] = createSignal(false);
 
   let toggleSelectAllRef: HTMLInputElement | null = null;
   let bindings: any = null;
@@ -379,6 +381,7 @@ export function Alerts() {
 
       API.alerts(params)
         .then((response) => {
+          setTimedOut(response.timed_out);
           const events: EventWrapper[] = response.events;
           sortAlerts(events, getSortBy(), getSortOrder());
           events.forEach((event) => {
@@ -784,6 +787,7 @@ export function Alerts() {
             events={eventStore.events}
             offset={getOffset()}
             setOffset={setOffset}
+            timedOut={timedOut()}
           />
         </div>
 
@@ -1057,6 +1061,7 @@ function PagerRow(props: {
   events: EventWrapper[];
   offset: number;
   setOffset: any;
+  timedOut: boolean;
 }) {
   const [first, setFirst] = createSignal(props.offset + 1);
   const [last, setLast] = createSignal(props.offset + VIEW_SIZE());
@@ -1088,12 +1093,32 @@ function PagerRow(props: {
     </div>
   );
 
+  createEffect(() => {
+    const tooltipTriggerList = document.querySelectorAll(
+      '[data-bs-toggle="tooltip"]'
+    );
+    const tooltipList = [...tooltipTriggerList].map(
+      (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl)
+    );
+  });
+
   return (
     <>
       <Show when={props.events.length > 0} fallback={<NoEvents />}>
         <Row>
           <div class={"col-md-6 col-sm-12 mt-2"}>
             Alerts {first()}-{last()} of {props.events.length}
+            <Show when={props.timedOut}>
+              {" "}
+              <span
+                class="badge text-bg-warning align-middle"
+                data-bs-toggle="tooltip"
+                data-bs-title="Query timed out, not all events will be shown. Maybe select smaller time frame or try refreshing."
+                data-bs-placement="bottom"
+              >
+                Timed Out
+              </span>
+            </Show>
           </div>
           <div class={"col-md-6 col-sm-12"}>
             <div class="btn-group float-end" role="group">

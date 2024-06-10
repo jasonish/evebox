@@ -11,7 +11,7 @@ use tracing::{debug, error, info, instrument, warn};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
-use crate::server::api::{ApiAlertGroup, ApiAlertGroupMetadata, ApiAlertResponse};
+use crate::eventrepo::{AggAlert, AggAlertMetadata, AlertsResult};
 use crate::sqlite::builder::EventQueryBuilder;
 use crate::sqlite::log_query_plan;
 use crate::{elastic::AlertQueryOptions, eventrepo::DatastoreError};
@@ -21,10 +21,19 @@ use std::time::Instant;
 
 impl SqliteEventRepo {
     #[instrument(skip_all)]
-    pub async fn _alerts_with_timeout(
+    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult, DatastoreError> {
+        if std::env::var("ALERTS_WITH_TIMEOUT").is_ok() {
+            self.alerts_with_timeout(options).await
+        } else {
+            self.alerts_group_by(options).await
+        }
+    }
+
+    #[instrument(skip_all)]
+    pub async fn alerts_with_timeout(
         &self,
         options: AlertQueryOptions,
-    ) -> Result<ApiAlertResponse, DatastoreError> {
+    ) -> Result<AlertsResult, DatastoreError> {
         info!("_alerts_with_timeout");
         #[derive(Debug, Default, Serialize)]
         struct Element {
@@ -141,7 +150,7 @@ impl SqliteEventRepo {
         // Track sensors.
         let mut sensors: HashSet<String> = HashSet::new();
 
-        let mut events: IndexMap<String, ApiAlertGroup> = IndexMap::new();
+        let mut events: IndexMap<String, AggAlert> = IndexMap::new();
         let mut rows = sqlx::query_with(&sql, args).fetch(&self.pool);
         let mut now = Instant::now();
         let mut timed_out = false;
@@ -199,10 +208,10 @@ impl SqliteEventRepo {
                 }
                 entry.metadata.min_timestamp = DateTime::from_nanos(timestamp as i64);
             } else {
-                let alert = ApiAlertGroup {
+                let alert = AggAlert {
                     id: rowid.to_string(),
                     source: source.clone(),
-                    metadata: ApiAlertGroupMetadata {
+                    metadata: AggAlertMetadata {
                         count: 1,
                         escalated_count: if escalated { 1 } else { 0 },
                         min_timestamp: DateTime::from_nanos(timestamp as i64),
@@ -243,22 +252,24 @@ impl SqliteEventRepo {
             events.len()
         );
 
-        let mut results: Vec<ApiAlertGroup> = vec![];
+        let mut results: Vec<AggAlert> = vec![];
         for (_key, event) in events {
             results.push(event);
         }
 
-        Ok(ApiAlertResponse {
+        Ok(AlertsResult {
             events: results,
             timed_out,
+            took: 0,
+            ecs: false,
         })
     }
 
     #[instrument(skip_all)]
-    pub async fn alerts(
+    pub async fn alerts_group_by(
         &self,
         options: AlertQueryOptions,
-    ) -> Result<ApiAlertResponse, DatastoreError> {
+    ) -> Result<AlertsResult, DatastoreError> {
         let query = r#"
     		    SELECT b.count,
 			        a.rowid as id,
@@ -403,14 +414,16 @@ impl SqliteEventRepo {
             results.len(),
             now.elapsed().as_millis()
         );
-        Ok(ApiAlertResponse {
+        Ok(AlertsResult {
             events: results,
             timed_out: false,
+            took: 0,
+            ecs: false,
         })
     }
 }
 
-fn alert_row_mapper(row: SqliteRow) -> Result<ApiAlertGroup, DatastoreError> {
+fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert, DatastoreError> {
     let count: i64 = row.try_get(0)?;
     let id: i64 = row.try_get(1)?;
     let min_ts_nanos: i64 = row.try_get(2)?;
@@ -433,7 +446,7 @@ fn alert_row_mapper(row: SqliteRow) -> Result<ApiAlertGroup, DatastoreError> {
     let min_ts = DateTime::from_nanos(min_ts_nanos);
     let max_ts = crate::datetime::parse(parsed["timestamp"].as_str().unwrap(), None)?;
 
-    let alert = ApiAlertGroup {
+    let alert = AggAlert {
         id: id.to_string(),
         source: json!({
             "alert": {
@@ -449,7 +462,7 @@ fn alert_row_mapper(row: SqliteRow) -> Result<ApiAlertGroup, DatastoreError> {
             "timestamp": parsed["timestamp"],
             "host": parsed["host"],
         }),
-        metadata: ApiAlertGroupMetadata {
+        metadata: AggAlertMetadata {
             count: count as u64,
             escalated_count: escalated_count as u64,
             min_timestamp: min_ts,

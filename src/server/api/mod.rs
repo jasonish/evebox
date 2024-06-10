@@ -15,7 +15,7 @@ use axum::response::IntoResponse;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Json;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::ops::Sub;
 use std::str::FromStr;
@@ -252,30 +252,6 @@ pub(crate) async fn histogram_time(
     Ok(Json(json!({ "data": results })))
 }
 
-#[derive(Debug, Serialize)]
-pub(crate) struct ApiAlertResponse {
-    pub(crate) events: Vec<ApiAlertGroup>,
-    pub(crate) timed_out: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct ApiAlertGroup {
-    #[serde(rename = "_id")]
-    pub(crate) id: String,
-    #[serde(rename = "_source")]
-    pub(crate) source: serde_json::Value,
-    #[serde(rename = "_metadata")]
-    pub(crate) metadata: ApiAlertGroupMetadata,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct ApiAlertGroupMetadata {
-    pub(crate) count: u64,
-    pub(crate) escalated_count: u64,
-    pub(crate) min_timestamp: DateTime,
-    pub(crate) max_timestamp: DateTime,
-}
-
 pub(crate) async fn alerts(
     Extension(context): Extension<Arc<ServerContext>>,
     // Session required to get here.
@@ -317,7 +293,7 @@ pub(crate) async fn alerts(
         error!("alert_query: max_timeestamp query argument not implemented");
     }
 
-    Ok(context.datastore.alerts(options).await?)
+    Ok(Json(context.datastore.alerts(options).await?).into_response())
 }
 
 pub(crate) async fn get_event_by_id(
@@ -493,14 +469,20 @@ impl IntoResponse for ApiError {
         let err = self.to_string();
         let (status, message) = match self {
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            ApiError::InternalServerError
-            | ApiError::AnyhowHandler(_)
-            | ApiError::DatastoreError(_) => (
+            ApiError::InternalServerError | ApiError::AnyhowHandler(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal server error".to_string(),
             ),
             ApiError::Sqlx(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
             ApiError::QueryString(_) => (StatusCode::BAD_REQUEST, err),
+            ApiError::DatastoreError(err) => {
+                // Log datastore errors.
+                error!("Datastore error while servicing API request: {}", err);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_string(),
+                )
+            }
         };
         let body = Json(serde_json::json!({
             "error": message,

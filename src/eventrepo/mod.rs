@@ -3,12 +3,11 @@
 
 use crate::datetime::DateTime;
 use crate::importer::EventSink;
-use crate::server::api::{self};
+use crate::server::api;
 use crate::server::session::Session;
 use crate::sqlite::eventrepo::SqliteEventRepo;
 use crate::{elastic, queryparser};
-use axum::response::IntoResponse;
-use axum::Json;
+use serde::Serialize;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -63,6 +62,33 @@ pub(crate) struct StatsAggQueryParams {
     pub start_time: DateTime,
 }
 
+#[derive(Debug, Serialize)]
+pub(crate) struct AlertsResult {
+    pub(crate) ecs: bool,
+    pub(crate) events: Vec<AggAlert>,
+    pub(crate) took: u64,
+    pub(crate) timed_out: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct AggAlert {
+    #[serde(rename = "_id")]
+    pub(crate) id: String,
+    #[serde(rename = "_source")]
+    pub(crate) source: serde_json::Value,
+    #[serde(rename = "_metadata")]
+    pub(crate) metadata: AggAlertMetadata,
+}
+
+// Could be merged into AggAlert, but requires client side changes.
+#[derive(Debug, Serialize)]
+pub(crate) struct AggAlertMetadata {
+    pub(crate) count: u64,
+    pub(crate) escalated_count: u64,
+    pub(crate) min_timestamp: DateTime,
+    pub(crate) max_timestamp: DateTime,
+}
+
 #[allow(unreachable_patterns)]
 impl EventRepo {
     pub fn get_importer(&self) -> Option<EventSink> {
@@ -110,16 +136,10 @@ impl EventRepo {
     pub async fn alerts(
         &self,
         options: elastic::AlertQueryOptions,
-    ) -> Result<impl IntoResponse, DatastoreError> {
+    ) -> Result<AlertsResult, DatastoreError> {
         match self {
-            EventRepo::Elastic(ds) => Ok(ds.alerts(options).await?.into_response()),
-            EventRepo::SQLite(ds) => {
-                if std::env::var("ALERTS_WITH_TIMEOUT").is_ok() {
-                    Ok(Json(ds._alerts_with_timeout(options).await?).into_response())
-                } else {
-                    Ok(Json(ds.alerts(options).await?).into_response())
-                }
-            }
+            EventRepo::Elastic(ds) => ds.alerts(options).await,
+            EventRepo::SQLite(ds) => ds.alerts(options).await,
             _ => Err(DatastoreError::Unimplemented),
         }
     }
