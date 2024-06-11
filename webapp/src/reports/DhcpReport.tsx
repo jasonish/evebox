@@ -87,11 +87,7 @@ export function DhcpReport() {
       <Container fluid={true}>
         <Row>
           <Col class={"pt-2 col-auto"}>
-            <RefreshButton
-              loading={loading()}
-              refresh={refresh}
-              showProgress={true}
-            />
+            <RefreshButton loading={loading()} refresh={refresh} />
           </Col>
           <Col class={"pt-2 col-auto"}>
             <SensorSelect

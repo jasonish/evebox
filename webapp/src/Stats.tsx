@@ -117,11 +117,7 @@ export function Stats(): JSX.Element {
           <Col>
             <form class={"row row-cols-lg-auto align-items-center"}>
               <div class={"col-12"}>
-                <RefreshButton
-                  loading={loadingCounter()}
-                  refresh={refresh}
-                  showProgress={true}
-                />
+                <RefreshButton loading={loadingCounter()} refresh={refresh} />
               </div>
               <div class={"col-12"}>
                 <SensorSelect

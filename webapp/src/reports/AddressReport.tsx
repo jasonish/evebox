@@ -446,11 +446,7 @@ export function AddressReport() {
       <Container fluid>
         <Row class={"mt-2"}>
           <Col>
-            <RefreshButton
-              loading={loading()}
-              refresh={forceRefresh}
-              showProgress={true}
-            />
+            <RefreshButton loading={loading()} refresh={forceRefresh} />
             <h2 class={"d-inline align-middle ms-2"}>
               Report for {params.address}
             </h2>

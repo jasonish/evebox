@@ -194,11 +194,7 @@ export function AlertsReport() {
           <Col>
             <form class={"row row-cols-lg-auto align-items-center"}>
               <div class={"col-12"}>
-                <RefreshButton
-                  loading={loading()}
-                  refresh={refresh}
-                  showProgress={true}
-                />
+                <RefreshButton loading={loading()} refresh={refresh} />
               </div>
               <div class={"col-12"}>
                 <SensorSelect
