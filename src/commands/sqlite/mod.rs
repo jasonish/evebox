@@ -49,14 +49,13 @@ enum Commands {
     /// Optimize an EveBox SQLite database
     Optimize(OptimizeArgs),
     /// Analyze an EveBox SQLite database
-    Analyze {
-        filename: String,
-    },
+    Analyze { filename: String },
     /// Enable auto-vacuum
-    EnableAutoVacuum {
-        filename: String,
-    },
+    EnableAutoVacuum { filename: String },
+    /// Reindex the database (can take a long time)
     Reindex(ReindexArgs),
+    /// Vacuum the database
+    Vacuum { filename: String },
 }
 
 #[derive(Parser, Debug)]
@@ -149,6 +148,7 @@ pub async fn main(args: &ArgMatches) -> anyhow::Result<()> {
         Commands::Analyze { filename } => analyze(filename).await,
         Commands::EnableAutoVacuum { filename } => enable_auto_vacuum(filename).await,
         Commands::Reindex(args) => reindex(args).await,
+        Commands::Vacuum { filename } => vacuum(filename).await,
     }
 }
 
@@ -392,6 +392,22 @@ async fn reindex(args: &ReindexArgs) -> Result<()> {
 
     info!("Rebuilding indexes.");
     init_event_db(&mut conn).await?;
+
+    Ok(())
+}
+
+async fn vacuum(filename: &str) -> Result<()> {
+    println!("WARNING: Vacuuming can take a while");
+    println!("- Database availability will be limited.");
+    if !confirm("Do you wish to continue?") {
+        return Ok(());
+    }
+
+    let mut conn = ConnectionBuilder::filename(Some(filename))
+        .open_connection(false)
+        .await?;
+
+    sqlx::query("VACUUM").execute(&mut conn).await?;
 
     Ok(())
 }
