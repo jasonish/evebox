@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2022 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::commands::elastic::info;
+use crate::cli::elastic::info;
 use clap::{Command, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use super::set_field_limit;

@@ -292,11 +292,11 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
     let mut parser = parser
         .subcommand(server)
         .subcommand(oneshot)
-        .subcommand(evebox::commands::agent::command())
-        .subcommand(evebox::commands::config::config_subcommand())
-        .subcommand(evebox::commands::print::command())
-        .subcommand(evebox::commands::elastic::main::main_options())
-        .subcommand(evebox::commands::sqlite::command());
+        .subcommand(evebox::cli::agent::command())
+        .subcommand(evebox::cli::config::config_subcommand())
+        .subcommand(evebox::cli::print::command())
+        .subcommand(evebox::cli::elastic::main::main_options())
+        .subcommand(evebox::cli::sqlite::command());
     let matches = parser.clone().get_matches();
 
     // Initialize logging.
@@ -322,12 +322,12 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
             version::print_version();
             Ok(())
         }
-        Some(("oneshot", args)) => evebox::commands::oneshot::main(args).await,
-        Some(("agent", args)) => evebox::commands::agent::main(args).await,
-        Some(("config", args)) => evebox::commands::config::main(args).await,
-        Some(("print", args)) => evebox::commands::print::main(args),
-        Some(("elastic", args)) => evebox::commands::elastic::main::main(args).await,
-        Some(("sqlite", args)) => evebox::commands::sqlite::main(args).await,
+        Some(("oneshot", args)) => evebox::cli::oneshot::main(args).await,
+        Some(("agent", args)) => evebox::cli::agent::main(args).await,
+        Some(("config", args)) => evebox::cli::config::main(args).await,
+        Some(("print", args)) => evebox::cli::print::main(args),
+        Some(("elastic", args)) => evebox::cli::elastic::main::main(args).await,
+        Some(("sqlite", args)) => evebox::cli::sqlite::main(args).await,
         _ => {
             parser.print_help().ok();
             println!();
