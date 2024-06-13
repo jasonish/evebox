@@ -181,7 +181,7 @@ async fn delete_to_size(
 ) -> Result<u64> {
     let file_size = crate::file::file_size(filename)? as usize;
     if file_size < bytes {
-        trace!("Database less than max size of {} bytes", bytes);
+        debug!("Database less than max size of {} bytes", bytes);
         return Ok(0);
     }
 
@@ -192,7 +192,7 @@ async fn delete_to_size(
             return Ok(deleted);
         }
 
-        trace!("Database file size of {} bytes is greater than max allowed size of {} bytes, deleting events",
+        debug!("Database file size of {} bytes is greater than max allowed size of {} bytes, deleting events",
 	       file_size, bytes);
         deleted += delete_events(conn.clone(), 1000).await?;
         std::thread::sleep(Duration::from_millis(100));
