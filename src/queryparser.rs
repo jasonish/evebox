@@ -12,7 +12,7 @@ use nom::{
 use crate::datetime;
 
 #[derive(Debug, Clone)]
-pub struct QueryStringParseError(String);
+pub(crate) struct QueryStringParseError(String);
 
 impl std::error::Error for QueryStringParseError {}
 

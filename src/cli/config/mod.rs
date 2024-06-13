@@ -5,7 +5,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 
 use self::users::UsersCommand;
 
-pub mod users;
+pub(crate) mod users;
 
 #[derive(Parser, Debug)]
 #[command(name = "config", about = "Configuration commands")]

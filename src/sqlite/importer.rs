@@ -10,9 +10,7 @@ use std::sync::Arc;
 use tracing::{debug, error};
 
 #[derive(thiserror::Error, Debug)]
-pub enum IndexError {
-    #[error("timestamp parse error")]
-    TimestampParseError,
+pub(crate) enum IndexError {
     #[error("event has no timestamp field")]
     TimestampMissing,
 }
