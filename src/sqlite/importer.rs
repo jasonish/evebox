@@ -86,6 +86,8 @@ impl SqliteEventSink {
         let lock_elapsed = now.elapsed();
         let mut tx = conn.begin().await.unwrap();
 
+        let fts = has_table(&mut *tx, "fts").await?;
+
         for event in &self.queue {
             sqlx::query::<sqlx::Sqlite>(
                 r#"
@@ -100,7 +102,7 @@ impl SqliteEventSink {
             .execute(&mut *tx)
             .await?;
 
-            if has_table(&mut *tx, "fts").await? {
+            if fts {
                 sqlx::query::<sqlx::Sqlite>(
                     r#"
                         INSERT INTO fts (rowid, timestamp, source_values)
