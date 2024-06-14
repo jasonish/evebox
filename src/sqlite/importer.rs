@@ -81,8 +81,9 @@ impl SqliteEventSink {
     }
 
     pub async fn commit(&mut self) -> anyhow::Result<usize> {
-        debug!("Committing {} events with sqlx", self.queue.len());
+        let now = std::time::Instant::now();
         let mut conn = self.conn.lock().await;
+        let lock_elapsed = now.elapsed();
         let mut tx = conn.begin().await.unwrap();
 
         for event in &self.queue {
@@ -111,10 +112,17 @@ impl SqliteEventSink {
                 .await?;
             }
         }
+        let insert_elapsed = now.elapsed();
 
         tx.commit().await?;
+        let commit_elapsed = now.elapsed();
 
         let n = self.queue.len();
+        debug!(
+            "Committed {} events in {:?} (lock={:?}, insert={:?})",
+            n, commit_elapsed, lock_elapsed, insert_elapsed
+        );
+
         self.queue.truncate(0);
         Ok(n)
     }
