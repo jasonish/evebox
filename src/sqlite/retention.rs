@@ -120,6 +120,7 @@ async fn retention_task(
     let size_enabled = size_enabled(conn.clone()).await;
     let default_delay = Duration::from_secs(INTERVAL);
     let report_interval = Duration::from_secs(60);
+    let mut checkpoint_success = false;
 
     // Delay on startup.
     tokio::time::sleep(default_delay).await;
@@ -169,9 +170,34 @@ async fn retention_task(
             debug!("Events purged in last {:?}: {}", report_interval, count);
             count = 0;
             last_report = Instant::now();
+
+            if !checkpoint_success {
+                warn!(
+                    "No successful SQLite checkpoint in the last {:?}",
+                    report_interval
+                );
+            }
+            checkpoint_success = false;
         }
+
+        if checkpoint(conn.clone()).await.is_ok() {
+            checkpoint_success = true;
+        }
+
         std::thread::sleep(delay);
     }
+}
+
+async fn checkpoint(conn: Arc<tokio::sync::Mutex<SqliteConnection>>) -> Result<()> {
+    let mut conn = conn.lock().await;
+    if let Err(err) = sqlx::query("PRAGMA wal_checkpoint(FULL)")
+        .execute(&mut *conn)
+        .await
+    {
+        warn!("Failed to checkpoint database: {:?}", err);
+    }
+
+    Ok(())
 }
 
 async fn delete_to_size(
