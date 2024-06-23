@@ -103,13 +103,35 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn where_source_json(
+    /// Create a `where` expression using `json_extract`.
+    ///
+    /// This is the older way of extracting JSON from before the ->>
+    /// operator, but it needs to be used if json_extract was used in
+    /// the indexes.
+    fn where_source_json_extract(
         &mut self,
         field: &str,
         op: &str,
         value: &str,
     ) -> Result<&mut Self, Error> {
         self.push_where(format!("json_extract(events.source, '$.{field}') {op} ?"));
+        if let Ok(i) = value.parse::<i64>() {
+            self.push_arg(i)?;
+        } else {
+            self.push_arg(value.to_string())?;
+        }
+        Ok(self)
+    }
+
+    /// Create a `where` expression using `->>` where the value is
+    /// extracted as a JSON value (real, integer, etc).
+    fn where_source_json(
+        &mut self,
+        field: &str,
+        op: &str,
+        value: &str,
+    ) -> Result<&mut Self, Error> {
+        self.push_where(format!("events.source->>'{field}' {op} ?"));
         if let Ok(i) = value.parse::<i64>() {
             self.push_arg(i)?;
         } else {
@@ -148,11 +170,33 @@ impl<'a> EventQueryBuilder<'a> {
                                     .push_arg(format!("%{v}%"))?;
                             }
                         }
-                        _ => {
+                        // These fields use '->>' style JSON extraction.
+                        "src_port" | "dest_port" => {
                             if e.negated {
                                 self.where_source_json(k, "!=", v)?;
                             } else {
                                 self.where_source_json(k, "=", v)?;
+                                // If FTS is enabled, some key/val searches
+                                // can really benefit from it.
+                                if self.fts {
+                                    match k.as_ref() {
+                                        "community_id" | "timestamp" => {
+                                            self.push_fts(v);
+                                        }
+                                        _ => {
+                                            if k.starts_with("dhcp") {
+                                                self.push_fts(v);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            if e.negated {
+                                self.where_source_json_extract(k, "!=", v)?;
+                            } else {
+                                self.where_source_json_extract(k, "=", v)?;
                                 // If FTS is enabled, some key/val searches
                                 // can really benefit from it.
                                 if self.fts {
