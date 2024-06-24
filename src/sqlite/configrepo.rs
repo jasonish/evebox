@@ -159,7 +159,7 @@ impl ConfigRepo {
 
     async fn expire_sessions(&self) -> Result<u64, ConfigRepoError> {
         let now = DateTime::now().to_seconds();
-        let result = sqlx::query("DELETE FROM sessions WHERE expires AT < ?")
+        let result = sqlx::query("DELETE FROM sessions WHERE expires_at < ?")
             .bind(now)
             .execute(&self.pool)
             .await?;
