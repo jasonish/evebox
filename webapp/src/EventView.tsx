@@ -265,6 +265,21 @@ export function EventView() {
         <SearchLink field={"community_id"} value={source.community_id} />,
       ]);
     }
+
+    if (source.ether?.src_mac) {
+      commonDetails.push([
+        "Source MAC",
+        <SearchLink value={source.ether.src_mac} />,
+      ]);
+    }
+
+    if (source.ether?.dest_mac) {
+      commonDetails.push([
+        "Dest MAC",
+        <SearchLink value={source.ether.dest_mac} />,
+      ]);
+    }
+
     setCommonDetails(commonDetails);
 
     if (event()?._source.event_type === "alert") {
@@ -1296,7 +1311,7 @@ function DnsInfoCol(props: { dns: EveDns }) {
         {(card, i) => (
           <>
             <Card class={"mb-2"}>
-              <table class={"table table-striped table-hover"}>
+              <table class={"table table-striped table-hover mb-0"}>
                 <Show when={card.title}>
                   <thead>
                     <tr>
