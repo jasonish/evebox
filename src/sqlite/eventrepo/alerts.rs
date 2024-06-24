@@ -56,6 +56,8 @@ impl SqliteEventRepo {
             .selectjs("alert.signature")
             .selectjs("alert.severity")
             .selectjs("alert.action")
+            .selectjs2("dns")
+            .selectjs2("tls")
             .selectjs("app_proto")
             .selectjs("dest_ip")
             .selectjs("src_ip")
@@ -169,6 +171,8 @@ impl SqliteEventRepo {
             let src_ip: String = row.try_get("src_ip")?;
             let tags: serde_json::Value = row.try_get("tags").unwrap_or(serde_json::Value::Null);
             let host: Option<String> = row.try_get("host").unwrap_or(None);
+            let tls: serde_json::Value = row.try_get("tls").unwrap_or(serde_json::Value::Null);
+            let dns: serde_json::Value = row.try_get("dns").unwrap_or(serde_json::Value::Null);
 
             if let Some(host) = host {
                 sensors.insert(host);
@@ -186,6 +190,8 @@ impl SqliteEventRepo {
                     "severity": alert_severity,
                     "action": alert_action,
                 },
+                "tls": tls,
+                "dns": dns,
             });
 
             let key = format!("{alert_signature_id}{src_ip}{dest_ip}");
@@ -461,6 +467,8 @@ fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert, DatastoreError> {
             "tags": parsed["tags"],
             "timestamp": parsed["timestamp"],
             "host": parsed["host"],
+            "dns": parsed["dns"],
+            "tls": parsed["tls"],
         }),
         metadata: AggAlertMetadata {
             count: count as u64,
