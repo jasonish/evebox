@@ -11,6 +11,8 @@
   https://github.com/jasonish/evebox/issues/271
 - Send less data for alert views:
   https://github.com/jasonish/evebox/issues/261
+- [alerts] Display `sni` and/or `rrname` in alerts view. Useful for
+  alerts using `sni` or `rrname` as an IOC.
 
 ## 0.18.1 - 2024-05-08
 
