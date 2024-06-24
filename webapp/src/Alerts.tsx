@@ -1041,15 +1041,20 @@ export function AlertDescription(props: { event: EventWrapper }) {
       <Show when={alert.action !== "allowed"}>
         <Badge class={"bg-warning me-1"}>{alert.action.toUpperCase()}</Badge>
       </Show>
-      {alert.signature}
+      {alert.signature}{" "}
+      <Show when={props.event._source.app_proto != "failed"}>
+        <span class="badge text-bg-secondary me-2">
+          {props.event._source.app_proto}
+        </span>
+      </Show>
       <Show when={props.event._source.tls?.sni}>
-        <span class="badge text-bg-secondary">
-          sni:{props.event._source.tls!.sni}
+        <span class="badge text-bg-secondary me-2">
+          {props.event._source.tls!.sni}
         </span>
       </Show>
       <Show when={props.event._source.dns?.query}>
-        <span class="badge text-bg-secondary">
-          rrname:{props.event._source.dns?.query![0].rrname}
+        <span class="badge text-bg-secondary me-2">
+          {props.event._source.dns?.query![0].rrname}
         </span>
       </Show>
       <Show
@@ -1058,11 +1063,8 @@ export function AlertDescription(props: { event: EventWrapper }) {
           props.event._source.tags.indexOf("evebox.auto-archived") > -1
         }
       >
-        <Badge bg={"secondary"} class={"ms-2"}>
-          auto-archived
-        </Badge>
+        <span class="badge text-bg-secondary me-2">auto-archived</span>
       </Show>
-      <AppProtoBadge event={props.event} class={"ms-2"} />
     </>
   );
 }

@@ -520,7 +520,7 @@ export function AppProtoBadge(props: {
   }
   return (
     <span class={`badge bg-secondary ${props.class}`}>
-      app-proto:{props.event._source.app_proto}
+      {props.event._source.app_proto}
     </span>
   );
 }
