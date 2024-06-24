@@ -30,6 +30,7 @@ import { EventsQueryParams } from "./api";
 export const EVENT_TYPES: { name: string; eventType: string }[] = [
   { name: "All", eventType: "" },
   { name: "Alert", eventType: "alert" },
+  { name: "Arp", eventType: "arp" },
   { name: "Anomaly", eventType: "anomaly" },
   { name: "DCERPC", eventType: "dcerpc" },
   { name: "DHCP", eventType: "dhcp" },
