@@ -30,7 +30,7 @@ import { EventsQueryParams } from "./api";
 export const EVENT_TYPES: { name: string; eventType: string }[] = [
   { name: "All", eventType: "" },
   { name: "Alert", eventType: "alert" },
-  { name: "Arp", eventType: "arp" },
+  { name: "ARP", eventType: "arp" },
   { name: "Anomaly", eventType: "anomaly" },
   { name: "DCERPC", eventType: "dcerpc" },
   { name: "DHCP", eventType: "dhcp" },
@@ -435,22 +435,19 @@ export function Events() {
                                   {event._source.event_type.toUpperCase()}
                                 </td>
                                 <td class={"col-address"} style={"width: 0%;"}>
-                                  <Show
-                                    when={
-                                      event._source.src_ip &&
-                                      event._source.dest_ip
-                                    }
-                                  >
-                                    <AddressCell source={event._source} />
-                                  </Show>
-                                  <Show
-                                    when={
-                                      !event._source.src_ip &&
-                                      event._source.host
-                                    }
-                                  >
-                                    {event._source.host}
-                                  </Show>
+                                  <Switch fallback={<>{event._source.host}</>}>
+                                    <Match when={event._source.src_ip}>
+                                      <AddressCell source={event._source} />
+                                    </Match>
+                                    <Match
+                                      when={
+                                        event._source.arp &&
+                                        event._source.arp.src_ip
+                                      }
+                                    >
+                                      <AddressCell source={event._source.arp} />
+                                    </Match>
+                                  </Switch>
                                 </td>
                                 <td class={"force-wrap col-auto"}>
                                   <Switch

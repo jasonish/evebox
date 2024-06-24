@@ -25,6 +25,15 @@ export function formatEventDescription(event: Event): string {
       }
       return JSON.stringify(anom);
     }
+    case "arp": {
+      const arp = event._source.arp!;
+      if (arp.opcode == "request") {
+        return `Request who-has ${arp.dest_ip} tell ${arp.src_ip}`;
+      } else if (arp.opcode == "reply") {
+        return `Reply ${arp.src_ip} is at ${arp.src_mac}`;
+      }
+      return JSON.stringify(arp);
+    }
     case "dhcp": {
       const dhcp = event._source.dhcp!;
       let parts = [dhcp.type.toUpperCase()];
