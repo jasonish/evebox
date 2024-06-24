@@ -61,7 +61,11 @@ pub(crate) async fn open_connection(
 
     let options = sqlite_options().filename(path).create_if_missing(create);
 
-    SqliteConnection::connect_with(&options).await
+    let mut conn = SqliteConnection::connect_with(&options).await?;
+
+    after_connect(&mut conn).await?;
+
+    Ok(conn)
 }
 
 pub(crate) async fn open_pool(
@@ -74,7 +78,8 @@ pub(crate) async fn open_pool(
 
     let pool = SqlitePoolOptions::new()
         .min_connections(4)
-        .max_connections(12);
+        .max_connections(12)
+        .after_connect(|conn, _meta| Box::pin(async move { after_connect(conn).await }));
 
     let options = sqlite_options()
         .filename(path)
@@ -82,6 +87,14 @@ pub(crate) async fn open_pool(
         .optimize_on_close(true, Some(300));
 
     pool.connect_with(options).await
+}
+
+async fn after_connect(conn: &mut SqliteConnection) -> Result<(), sqlx::Error> {
+    let n: u64 = sqlx::query_scalar("PRAGMA journal_size_limit = 32000000")
+        .fetch_one(&mut *conn)
+        .await?;
+    debug!("PRAGMA journal_size_limit returned {}", n);
+    Ok(())
 }
 
 pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result<()> {
