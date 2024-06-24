@@ -1042,6 +1042,16 @@ export function AlertDescription(props: { event: EventWrapper }) {
         <Badge class={"bg-warning me-1"}>{alert.action.toUpperCase()}</Badge>
       </Show>
       {alert.signature}
+      <Show when={props.event._source.tls?.sni}>
+        <span class="badge text-bg-secondary">
+          sni:{props.event._source.tls!.sni}
+        </span>
+      </Show>
+      <Show when={props.event._source.dns?.query}>
+        <span class="badge text-bg-secondary">
+          rrname:{props.event._source.dns?.query![0].rrname}
+        </span>
+      </Show>
       <Show
         when={
           props.event._source.tags &&

@@ -159,6 +159,10 @@ export interface EveDns {
   type: string;
   rcode: string;
 
+  query?: {
+    rrname: string;
+  }[];
+
   answers?: {
     rdata: string;
     rrname: string;
