@@ -58,13 +58,12 @@ pub(crate) async fn open_connection(
     let path = path
         .map(|p| p.into())
         .unwrap_or_else(|| "file::memory:?cache=shared".into());
-
-    let options = sqlite_options().filename(path).create_if_missing(create);
-
+    let options = sqlite_options()
+        .filename(path)
+        .create_if_missing(create)
+        .optimize_on_close(true, 300);
     let mut conn = SqliteConnection::connect_with(&options).await?;
-
     after_connect(&mut conn).await?;
-
     Ok(conn)
 }
 
