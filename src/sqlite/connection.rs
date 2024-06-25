@@ -94,6 +94,12 @@ async fn after_connect(conn: &mut SqliteConnection) -> Result<(), sqlx::Error> {
         .fetch_one(&mut *conn)
         .await?;
     debug!("PRAGMA journal_size_limit returned {}", n);
+
+    // Disable as it can be very slow.
+    sqlx::query("PRAGMA secure_delete = off")
+        .execute(&mut *conn)
+        .await?;
+
     Ok(())
 }
 
