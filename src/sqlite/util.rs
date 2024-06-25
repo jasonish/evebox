@@ -87,17 +87,19 @@ async fn reindex_fts(conn: &mut SqliteConnection) -> anyhow::Result<usize> {
         for row in rows {
             let source: serde_json::Value = serde_json::from_str(&row.source)?;
             let flat = extract_values(&source);
-            sqlx::query("UPDATE events SET source_values = ? WHERE rowid = ?")
+
+            let sql = r#"
+                UPDATE events SET source_values = ? WHERE rowid = ?;
+                INSERT INTO fts (rowid, timestamp, source_values) VALUES (?, ?, ?)"#;
+            sqlx::query(sql)
                 .bind(&flat)
                 .bind(row.rowid)
-                .execute(&mut *conn)
-                .await?;
-            sqlx::query("INSERT INTO fts (rowid, timestamp, source_values) VALUES (?, ?, ?)")
                 .bind(row.rowid)
                 .bind(row.timestamp)
                 .bind(&flat)
                 .execute(&mut *conn)
                 .await?;
+
             next_id = row.rowid + 1;
             count += 1;
         }
