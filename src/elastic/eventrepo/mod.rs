@@ -699,14 +699,39 @@ impl ElasticEventRepo {
     }
 
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
+        #[rustfmt::skip]
         let request = json!({
             "size": 0,
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                self.map_field("timestamp"): {
+                                    "gte": "now-24h/h",
+                                    "lt": "now/h"
+                                }
+                            }
+                        },
+                        {
+                            "term": {
+                                self.map_field("event_type"): "stats"
+                            }
+                        },
+                        {
+                            "exists": {
+                                "field": self.map_field("host")
+                            }
+                        }
+                    ]
+                }
+            },
             "aggs": {
                 "sensors": {
                     "terms": {
                         "field": self.map_field("host"),
                     }
-                }
+                },
             }
         });
         let mut response: serde_json::Value = self.search(&request).await?.json().await?;
