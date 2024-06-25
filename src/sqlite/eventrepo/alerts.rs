@@ -58,6 +58,7 @@ impl SqliteEventRepo {
             .selectjs("alert.action")
             .selectjs2("dns")
             .selectjs2("tls")
+            .selectjs2("quic")
             .selectjs("app_proto")
             .selectjs("dest_ip")
             .selectjs("src_ip")
@@ -173,6 +174,7 @@ impl SqliteEventRepo {
             let host: Option<String> = row.try_get("host").unwrap_or(None);
             let tls: serde_json::Value = row.try_get("tls").unwrap_or(serde_json::Value::Null);
             let dns: serde_json::Value = row.try_get("dns").unwrap_or(serde_json::Value::Null);
+            let quic: serde_json::Value = row.try_get("quic").unwrap_or(serde_json::Value::Null);
 
             if let Some(host) = host {
                 sensors.insert(host);
@@ -192,6 +194,7 @@ impl SqliteEventRepo {
                 },
                 "tls": tls,
                 "dns": dns,
+                "quic": quic,
             });
 
             let key = format!("{alert_signature_id}{src_ip}{dest_ip}");

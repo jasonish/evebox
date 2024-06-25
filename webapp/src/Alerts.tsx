@@ -1052,6 +1052,11 @@ export function AlertDescription(props: { event: EventWrapper }) {
           {props.event._source.tls!.sni}
         </span>
       </Show>
+      <Show when={props.event._source.quic?.sni}>
+        <span class="badge text-bg-secondary me-2">
+          {props.event._source.quic!.sni}
+        </span>
+      </Show>
       <Show when={props.event._source.dns?.query}>
         <span class="badge text-bg-secondary me-2">
           {props.event._source.dns?.query![0].rrname}
