@@ -34,7 +34,6 @@ impl SqliteEventRepo {
         &self,
         options: AlertQueryOptions,
     ) -> Result<AlertsResult, DatastoreError> {
-        info!("_alerts_with_timeout");
         #[derive(Debug, Default, Serialize)]
         struct Element {
             rowid: String,
