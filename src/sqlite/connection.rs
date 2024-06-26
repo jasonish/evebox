@@ -76,8 +76,8 @@ pub(crate) async fn open_pool(
         .unwrap_or_else(|| "file::memory:?cache=shared".into());
 
     let pool = SqlitePoolOptions::new()
-        .min_connections(4)
-        .max_connections(12)
+        .min_connections(12)
+        .max_connections(30)
         .after_connect(|conn, _meta| Box::pin(async move { after_connect(conn).await }));
 
     let options = sqlite_options()
@@ -221,7 +221,7 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
         info!("FTS not enabled, consider enabling for query performance improvements");
     }
 
-    let _ = tx.commit().await;
+    tx.commit().await?;
 
     Ok(())
 }
