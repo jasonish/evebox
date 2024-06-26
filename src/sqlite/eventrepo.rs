@@ -215,7 +215,8 @@ impl SqliteEventRepo {
             info!("sql={}", &sql);
         }
 
-        let x = sqlx::query_with(&sql, args).execute(&self.pool).await?;
+        let mut conn = self.writer.lock().await;
+        let x = sqlx::query_with(&sql, args).execute(&mut *conn).await?;
         let n = x.rows_affected();
         debug!("Archived {n} alerts in {} ms", now.elapsed().as_millis());
 
@@ -273,8 +274,9 @@ impl SqliteEventRepo {
             log_query_plan(&self.pool, &sql, &args).await;
         }
 
+        let mut conn = self.writer.lock().await;
         let start = Instant::now();
-        let r = sqlx::query_with(&sql, args).execute(&self.pool).await?;
+        let r = sqlx::query_with(&sql, args).execute(&mut *conn).await?;
         let n = r.rows_affected();
         info!(
             "Set {} events to escalated = {} in {:?}",
@@ -321,10 +323,11 @@ impl SqliteEventRepo {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
+        let mut conn = self.writer.lock().await;
         let n = sqlx::query(sql)
             .bind(action.to_json())
             .bind(event_id)
-            .execute(&self.pool)
+            .execute(&mut *conn)
             .await?
             .rows_affected();
         if n == 0 {
@@ -357,11 +360,12 @@ impl SqliteEventRepo {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
+        let mut conn = self.writer.lock().await;
         let n = sqlx::query(sql)
             .bind(if escalate { 1 } else { 0 })
             .bind(action.to_json())
             .bind(event_id)
-            .execute(&self.pool)
+            .execute(&mut *conn)
             .await?
             .rows_affected();
         if n == 0 {
@@ -382,14 +386,12 @@ impl SqliteEventRepo {
     #[instrument(skip_all)]
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
         if *self.sensors_initialized.read().await {
-            info!("Returning cached sensors.");
             let sensors = self.sensors.try_read().unwrap();
             let sensors: Vec<String> = sensors.iter().cloned().collect();
             return Ok(sensors);
         }
 
         let mut init = self.sensors_initialized.write().await;
-        info!("Initializing sensors cache");
 
         let from = DateTime::now() - std::time::Duration::from_secs(86400);
         let sql = r#"

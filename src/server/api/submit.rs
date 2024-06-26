@@ -76,7 +76,7 @@ pub(crate) async fn handler(
             Json(response).into_response()
         }
         Err(err) => {
-            error!("Failed to commit events (received {}): {}", count, err);
+            error!("Failed to commit events (received {}): {:#}", count, err);
             (StatusCode::INTERNAL_SERVER_ERROR, "").into_response()
         }
     }

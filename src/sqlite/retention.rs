@@ -230,6 +230,8 @@ async fn delete_by_range(
             &older_than,
             timer.elapsed().as_millis()
         );
+    } else {
+        trace!("No events older than {range} days deleted");
     }
     Ok(n)
 }
@@ -252,6 +254,13 @@ async fn delete_events(
         .execute(&mut *conn)
         .await?
         .rows_affected();
-    trace!("Deleted {n} events in {} ms", timer.elapsed().as_millis());
+    let elapsed = timer.elapsed();
+    let msg = format!("Deleted {n} events in {:?}", elapsed);
+    if elapsed > std::time::Duration::from_secs(1) {
+        warn!("{}", msg);
+    } else {
+        trace!("{}", msg);
+    }
+
     Ok(n)
 }

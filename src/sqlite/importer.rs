@@ -5,9 +5,10 @@ use crate::{
     eve::{self, filters::AutoArchiveFilter, Eve},
     sqlite::has_table,
 };
+use anyhow::Context;
 use sqlx::Connection;
 use std::sync::Arc;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum IndexError {
@@ -81,15 +82,20 @@ impl SqliteEventSink {
     }
 
     pub async fn commit(&mut self) -> anyhow::Result<usize> {
-        let now = std::time::Instant::now();
+        let start = std::time::Instant::now();
+        let lock_start = std::time::Instant::now();
         let mut conn = self.conn.lock().await;
-        let lock_elapsed = now.elapsed();
-        let mut tx = conn.begin().await.unwrap();
+        let lock_elapsed = lock_start.elapsed();
 
+        let insert_start = std::time::Instant::now();
+        let mut tx = conn
+            .begin()
+            .await
+            .with_context(|| "Failed to begin transaction")?;
         let fts = has_table(&mut *tx, "fts").await?;
-
+        let mut count = 0;
         for event in &self.queue {
-            sqlx::query::<sqlx::Sqlite>(
+            sqlx::query(
                 r#"
                 INSERT INTO events (timestamp, archived, source, source_values)
                 VALUES (?, ?, ?, ?)
@@ -100,10 +106,11 @@ impl SqliteEventSink {
             .bind(&event.event)
             .bind(&event.source_values)
             .execute(&mut *tx)
-            .await?;
+            .await
+            .with_context(|| format!("Insert into events failed: event #{}", count))?;
 
             if fts {
-                sqlx::query::<sqlx::Sqlite>(
+                sqlx::query(
                     r#"
                         INSERT INTO fts (rowid, timestamp, source_values)
                         VALUES (last_insert_rowid(), ?, ?)"#,
@@ -111,19 +118,33 @@ impl SqliteEventSink {
                 .bind(event.ts)
                 .bind(&event.source_values)
                 .execute(&mut *tx)
-                .await?;
+                .await
+                .with_context(|| format!("Insert into fts failed: event #{}", count))?;
             }
-        }
-        let insert_elapsed = now.elapsed();
 
-        tx.commit().await?;
-        let commit_elapsed = now.elapsed();
+            count += 1;
+        }
+        let insert_elapsed = insert_start.elapsed();
+
+        let commit_start = std::time::Instant::now();
+        tx.commit()
+            .await
+            .with_context(|| "Transaction commit failed")?;
+        let commit_elapsed = commit_start.elapsed();
 
         let n = self.queue.len();
-        debug!(
-            "Committed {} events in {:?} (lock={:?}, insert={:?})",
-            n, commit_elapsed, lock_elapsed, insert_elapsed
+
+        let elapsed = start.elapsed();
+        let msg = format!(
+            "Commited {n} events in {:?}: lock={:?}, insert={:?}, commit={:?}",
+            elapsed, lock_elapsed, insert_elapsed, commit_elapsed
         );
+
+        if elapsed > std::time::Duration::from_secs(3) {
+            info!("Commit took longer than 1s: {}", msg);
+        } else {
+            debug!("{}", msg);
+        }
 
         self.queue.truncate(0);
         Ok(n)
