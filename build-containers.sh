@@ -95,7 +95,7 @@ manifests_pushed=()
 
 name="${DOCKER_NAME}:${tag}-amd64"
 ${ECHO} docker build \
-       --build-arg "BASE=amd64/almalinux:9-minimal" \
+       --platform linux/amd64 \
        --build-arg "SRC=./dist/evebox-${version}-linux-x64/evebox" \
        -t ${name} \
        -f docker/Dockerfile .
@@ -103,7 +103,7 @@ tags_built+=(${name})
 
 name="${DOCKER_NAME}:${tag}-arm64v8"
 ${ECHO} docker build \
-       --build-arg "BASE=arm64v8/almalinux:9-minimal" \
+       --platform linux/arm64 \
        --build-arg "SRC=./dist/evebox-${version}-linux-arm64/evebox" \
        -t ${name} \
        -f docker/Dockerfile .

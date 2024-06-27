@@ -1,5 +1,4 @@
-ARG BASE
-FROM $BASE
+FROM almalinux:9-minimal
 
 ARG SRC="SRC_--build-arg_must_be_set"
 COPY $SRC /bin/evebox
