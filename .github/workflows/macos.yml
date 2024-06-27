@@ -15,4 +15,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: brew install rust
       - run: brew install node
+      - run: cd webapp && npm ci
+      - run: cd webapp && npm run build
       - run: make
