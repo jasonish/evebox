@@ -1,0 +1,8 @@
+name: MacOS Build
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install rust
