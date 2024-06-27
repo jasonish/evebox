@@ -8,7 +8,7 @@ use crate::{
 use anyhow::Context;
 use sqlx::Connection;
 use std::sync::Arc;
-use tracing::{debug, error, info};
+use tracing::{debug, error, warn};
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum IndexError {
@@ -93,8 +93,7 @@ impl SqliteEventSink {
             .await
             .with_context(|| "Failed to begin transaction")?;
         let fts = has_table(&mut *tx, "fts").await?;
-        let mut count = 0;
-        for event in &self.queue {
+        for (count, event) in self.queue.iter().enumerate() {
             sqlx::query(
                 r#"
                 INSERT INTO events (timestamp, archived, source, source_values)
@@ -121,8 +120,6 @@ impl SqliteEventSink {
                 .await
                 .with_context(|| format!("Insert into fts failed: event #{}", count))?;
             }
-
-            count += 1;
         }
         let insert_elapsed = insert_start.elapsed();
 
@@ -135,13 +132,20 @@ impl SqliteEventSink {
         let n = self.queue.len();
 
         let elapsed = start.elapsed();
+        let in_lock = insert_start.elapsed();
         let msg = format!(
             "Commited {n} events in {:?}: lock={:?}, insert={:?}, commit={:?}",
             elapsed, lock_elapsed, insert_elapsed, commit_elapsed
         );
 
-        if elapsed > std::time::Duration::from_secs(3) {
-            info!("Commit took longer than 1s: {}", msg);
+        // For slow insert, that is the amount of time inside the
+        // lock, log a message.
+        //
+        // While we do care about total time, which means time waiting
+        // on the lock, I'm currently looking for slow activity in the
+        // lock.
+        if in_lock > std::time::Duration::from_secs(3) {
+            warn!("Commit took longer than 3s: {}", msg);
         } else {
             debug!("{}", msg);
         }
