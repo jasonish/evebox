@@ -3,15 +3,15 @@
 
 import { Card, Col, Container, Row, Table } from "solid-bootstrap";
 import { TIME_RANGE, Top } from "../Top";
-import { API, fetchAgg } from "../api";
-import { createEffect, createSignal, For, Setter, Show } from "solid-js";
+import * as api from "../api";
+import { createEffect, createSignal, For } from "solid-js";
 import { EventSource } from "../types";
 import { parse_timestamp } from "../datetime";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { RefreshButton } from "../common/RefreshButton";
 import { loadingTracker } from "../util";
-import { RawSearchLink, SearchLink } from "../common/SearchLink";
+import { SearchLink } from "../common/SearchLink";
 
 export function DhcpReport() {
   const [acks, setAcks] = createSignal<EventSource[]>([]);
@@ -24,30 +24,28 @@ export function DhcpReport() {
   });
 
   function refresh() {
-    loadingTracker(setLoading, () => {
+    loadingTracker(setLoading, async () => {
       const query = { time_range: TIME_RANGE(), sensor: searchParams.sensor };
 
-      return API.dhcpRequest(query).then((response) => {
-        let requestHostnames: { [key: number]: string } = {};
-        for (const event of response.events) {
-          if (event.dhcp?.hostname) {
-            requestHostnames[event.dhcp.id] = event.dhcp?.hostname;
+      const response = await api.dhcpRequest(query);
+      let requestHostnames: { [key: number]: string } = {};
+      for (const event of response.events) {
+        if (event.dhcp?.hostname) {
+          requestHostnames[event.dhcp.id] = event.dhcp?.hostname;
+        }
+      }
+      const response_1 = await api.dhcpAck(query);
+      response_1.events.forEach((event_1: EventSource) => {
+        const hostname = requestHostnames[event_1.dhcp!.id];
+        if (hostname) {
+          if (!event_1.dhcp!.hostname) {
+            event_1.dhcp!.hostname = hostname;
+          } else if (event_1.dhcp!.hostname != hostname) {
+            event_1.dhcp!.hostname = `${event_1.dhcp?.hostname} (${hostname})`;
           }
         }
-        return API.dhcpAck(query).then((response) => {
-          response.events.forEach((event: EventSource) => {
-            const hostname = requestHostnames[event.dhcp!.id];
-            if (hostname) {
-              if (!event.dhcp!.hostname) {
-                event.dhcp!.hostname = hostname;
-              } else if (event.dhcp!.hostname != hostname) {
-                event.dhcp!.hostname = `${event.dhcp?.hostname} (${hostname})`;
-              }
-            }
-          });
-          setAcks(response.events);
-        });
       });
+      setAcks(response_1.events);
     });
 
     let sensor = "";
@@ -55,30 +53,17 @@ export function DhcpReport() {
       sensor = ` host:${searchParams.sensor}`;
     }
 
-    loadingTracker(setLoading, () => {
-      return fetchAgg({
+    loadingTracker(setLoading, async () => {
+      const response = await api.fetchAgg({
         field: "src_ip",
         size: 100,
         time_range: TIME_RANGE(),
         order: "desc",
         q: `event_type:dhcp dhcp.dhcp_type:ack${sensor}`,
-      }).then((response) => {
-        let servers = response.rows.map((e) => e.key);
-        setDhcpServers(servers);
       });
+      let servers = response.rows.map((e) => e.key);
+      setDhcpServers(servers);
     });
-  }
-
-  function earliest(timestamp: string): string {
-    return parse_timestamp(timestamp)
-      .subtract(1, "minute")
-      .format("YYYY-MM-DDTHH:mm:ss.sssZZ");
-  }
-
-  function latest(timestamp: string): string {
-    return parse_timestamp(timestamp)
-      .add(1, "minute")
-      .format("YYYY-MM-DDTHH:mm:ss.sssZZ");
   }
 
   return (

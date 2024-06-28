@@ -312,6 +312,22 @@ export async function fetchAgg(request: AggRequest): Promise<AggResponse> {
   return get("api/agg", request).then((response) => response.data);
 }
 
+export async function dhcpAck(query: {
+  time_range?: string;
+  sensor?: string;
+}): Promise<any> {
+  const response = await get(`api/1/dhcp/ack`, query);
+  return response.data;
+}
+
+export async function dhcpRequest(query: {
+  time_range?: string;
+  sensor?: string;
+}): Promise<any> {
+  const response = await get(`api/1/dhcp/request`, query);
+  return response.data;
+}
+
 class Api {
   async histogramTime(request: {
     time_range: string;
@@ -360,14 +376,6 @@ class Api {
 
   deEscalateEvent(event: EventWrapper) {
     return post(`api/1/event/${event._id}/de-escalate`);
-  }
-
-  dhcpAck(query: { time_range?: string; sensor?: string }): Promise<any> {
-    return get(`api/1/dhcp/ack`, query).then((response) => response.data);
-  }
-
-  dhcpRequest(query: { time_range?: string; sensor?: string }): Promise<any> {
-    return get(`api/1/dhcp/request`, query).then((response) => response.data);
   }
 
   eventToPcap(event: EventWrapper, what: "packet" | "payload") {
