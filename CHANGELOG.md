@@ -13,6 +13,8 @@
   https://github.com/jasonish/evebox/issues/261
 - [alerts] Display `sni` and/or `rrname` in alerts view. Useful for
   alerts using `sni` or `rrname` as an IOC.
+- [webapp] Re-add logout button. Disappeared in the move to SolidJS:
+  https://github.com/jasonish/evebox/issues/315
 
 ## 0.18.1 - 2024-05-08
 
