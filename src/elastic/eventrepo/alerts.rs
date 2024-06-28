@@ -75,11 +75,12 @@ impl ElasticEventRepo {
                 "src_ip",
                 "tags",
                 "timestamp",
-                // So we can display the SNI in the alert list.
-                "tls.sni",
-                "quic.sni",
-                // So we can display the query name in the alert list.
+                // The following are included for "badges" of extra
+                // info in the alert list.
                 "dns.query",
+                "http.hostname",
+                "quic.sni",
+                "tls.sni",
             ])
         };
 

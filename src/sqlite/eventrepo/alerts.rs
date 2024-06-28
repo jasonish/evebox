@@ -22,7 +22,7 @@ use std::time::Instant;
 impl SqliteEventRepo {
     #[instrument(skip_all)]
     pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult, DatastoreError> {
-        if std::env::var("ALERTS_WITH_TIMEOUT").is_ok() {
+        if std::env::var("EVEBOX_ALERTS_WITH_TIMEOUT").is_ok() {
             self.alerts_with_timeout(options).await
         } else {
             self.alerts_group_by(options).await
@@ -62,6 +62,7 @@ impl SqliteEventRepo {
             .selectjs("dest_ip")
             .selectjs("src_ip")
             .selectjs("tags")
+            .select("events.source->>'http'->>'hostname' AS http_hostname")
             .selectjs("host");
         builder.from("events");
         builder.order_by("timestamp", "DESC");
@@ -174,6 +175,7 @@ impl SqliteEventRepo {
             let tls: serde_json::Value = row.try_get("tls").unwrap_or(serde_json::Value::Null);
             let dns: serde_json::Value = row.try_get("dns").unwrap_or(serde_json::Value::Null);
             let quic: serde_json::Value = row.try_get("quic").unwrap_or(serde_json::Value::Null);
+            let http_hostname: Option<String> = row.try_get("http_hostname")?;
 
             if let Some(host) = host {
                 sensors.insert(host);
@@ -195,6 +197,10 @@ impl SqliteEventRepo {
                 "dns": dns,
                 "quic": quic,
             });
+
+            if let Some(http_hostname) = http_hostname {
+                source["http"]["hostname"] = http_hostname.into();
+            }
 
             let key = format!("{alert_signature_id}{src_ip}{dest_ip}");
 
@@ -454,24 +460,32 @@ fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert, DatastoreError> {
     let min_ts = DateTime::from_nanos(min_ts_nanos);
     let max_ts = crate::datetime::parse(parsed["timestamp"].as_str().unwrap(), None)?;
 
+    let mut source = json!({
+        "alert": {
+            "action": parsed["alert"]["action"],
+            "severity": parsed["alert"]["severity"],
+            "signature": parsed["alert"]["signature"],
+            "signature_id": parsed["alert"]["signature_id"],
+        },
+        "app_proto": parsed["app_proto"],
+        "dest_ip": parsed["dest_ip"],
+        "src_ip": parsed["src_ip"],
+        "tags": parsed["tags"],
+        "timestamp": parsed["timestamp"],
+        "host": parsed["host"],
+        "dns": parsed["dns"],
+        "tls": parsed["tls"],
+    });
+
+    if parsed["http"]["hostname"].as_str().is_some() {
+        source["http"] = json!({
+            "hostname": parsed["http"]["hostname"],
+        });
+    }
+
     let alert = AggAlert {
         id: id.to_string(),
-        source: json!({
-            "alert": {
-                "action": parsed["alert"]["action"],
-                "severity": parsed["alert"]["severity"],
-                "signature": parsed["alert"]["signature"],
-                "signature_id": parsed["alert"]["signature_id"],
-            },
-            "app_proto": parsed["app_proto"],
-            "dest_ip": parsed["dest_ip"],
-            "src_ip": parsed["src_ip"],
-            "tags": parsed["tags"],
-            "timestamp": parsed["timestamp"],
-            "host": parsed["host"],
-            "dns": parsed["dns"],
-            "tls": parsed["tls"],
-        }),
+        source,
         metadata: AggAlertMetadata {
             count: count as u64,
             escalated_count: escalated_count as u64,
