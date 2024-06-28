@@ -74,14 +74,6 @@ impl Session {
             session_id: Some(session_id),
         }
     }
-
-    // pub fn username(&self) -> &str {
-    //     if let Some(username) = &self.username {
-    //         username
-    //     } else {
-    //         "<anonymous>"
-    //     }
-    // }
 }
 
 pub(crate) fn generate_session_id() -> String {

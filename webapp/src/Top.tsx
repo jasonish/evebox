@@ -9,8 +9,10 @@ import tinykeys from "tinykeys";
 import { BiGear } from "./icons";
 import { HelpModal } from "./Help";
 import { QUEUE_SIZE, SERVER_REVISION } from "./api";
+import * as api from "./api";
 import { GIT_REV } from "./gitrev";
 import { serverConfig } from "./config";
+import { IS_AUTHENTICATED } from "./global";
 
 export const [showHelp, setShowHelp] = createSignal(false);
 export const openHelp = () => setShowHelp(true);
@@ -154,6 +156,11 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
     }
   });
 
+  async function logout() {
+    await api.logout();
+    navigate("/");
+  }
+
   return (
     <>
       <HelpModal />
@@ -262,6 +269,11 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
                 <A href={"/settings"} class={"dropdown-item"}>
                   Settings
                 </A>
+                <Show when={IS_AUTHENTICATED()}>
+                  <a class="dropdown-item" onClick={logout}>
+                    Logout
+                  </a>
+                </Show>
               </NavDropdown>
               <Nav.Item>
                 <button

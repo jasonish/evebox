@@ -112,6 +112,7 @@ pub(crate) async fn logout(
         } else {
             info!("User logged out: {:?}", session.username);
         }
+        let _ = context.config_repo.delete_session(session_id).await;
     }
     StatusCode::OK
 }

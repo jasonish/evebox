@@ -135,6 +135,11 @@ export async function login(
   return [true, response.data];
 }
 
+export async function logout() {
+  let _response = await post("api/1/logout");
+  SET_IS_AUTHENTICATED(false);
+}
+
 export interface AlertsResponse {
   events: EventWrapper[];
   ecs: boolean;
