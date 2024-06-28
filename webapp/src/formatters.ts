@@ -188,15 +188,12 @@ export function formatEventDescription(event: Event): string {
     case "smb": {
       const smb = event._source.smb;
       return `${smb?.command} - ${smb?.status} (${smb?.dialect})`;
-      return "";
     }
     case "ssh": {
       const ssh = event._source.ssh;
-      return `${ssh?.client?.software_version || "Unknown"}/${
-        ssh?.client?.proto_version || "Unknown"
-      } => ${ssh?.server?.software_version || "Unknown"}/${
-        ssh?.server?.proto_version || "Unknown"
-      }`;
+      return `${ssh?.client?.software_version || "Unknown"}/${ssh?.client?.proto_version || "Unknown"
+        } => ${ssh?.server?.software_version || "Unknown"}/${ssh?.server?.proto_version || "Unknown"
+        }`;
     }
     case "stats": {
       const stats = event._source.stats!;
@@ -214,6 +211,17 @@ export function formatEventDescription(event: Event): string {
         parts.push(`Uptime: ${get_duration(stats.uptime).humanize()}`);
       }
       return parts.join(" ");
+    }
+    case "quic": {
+      let quic = event._source.quic;
+      let parts = [];
+      if (quic.version) {
+        parts.push(`Version ${quic.version}`);
+      }
+      if (quic.sni) {
+        parts.push(`SNI ${quic.sni}`);
+      }
+      return parts.join("; ");
     }
     default: {
       const event_type = event._source.event_type;
