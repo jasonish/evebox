@@ -225,6 +225,16 @@ export function formatEventDescription(event: Event): string {
       }
       return parts.join("; ");
     }
+    case "sip": {
+      let sip = event._source.sip;
+      if (sip.request_line) {
+        return `REQUEST: ${sip.request_line}`;
+      } else if (sip.response_line) {
+        return `RESPONSE: ${sip.response_line}`;
+      } else {
+        return `${JSON.stringify(sip)}`;
+      }
+    }
     default: {
       const event_type = event._source.event_type;
       if (event_type && event._source[event_type]) {
