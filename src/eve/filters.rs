@@ -153,12 +153,12 @@ impl AutoArchiveFilter {
                 match &mut event["tags"] {
                     serde_json::Value::Array(tags) => {
                         tags.push("evebox.archived".into());
-                        tags.push("evebox.auto-archived".into());
+                        tags.push("evebox.auto_archived".into());
                     }
                     serde_json::Value::Null => {
                         event["tags"] = serde_json::Value::Array(vec![
                             "evebox.archived".into(),
-                            "evebox.auto-archived".into(),
+                            "evebox.auto_archived".into(),
                         ]);
                     }
                     _ => {

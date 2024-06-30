@@ -1070,7 +1070,8 @@ export function AlertDescription(props: { event: EventWrapper }) {
       <Show
         when={
           props.event._source.tags &&
-          props.event._source.tags.indexOf("evebox.auto-archived") > -1
+          (props.event._source.tags.indexOf("evebox.auto-archived") > -1 ||
+            props.event._source.tags.indexOf("evebox.auto_archived") > -1)
         }
       >
         <span class="badge text-bg-secondary me-2">auto-archived</span>
