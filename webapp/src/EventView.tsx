@@ -835,6 +835,19 @@ export function EventView() {
                                                               {e.val}
                                                             </SearchLink>
                                                           </Match>
+                                                          <Match
+                                                            when={
+                                                              e.key == "ja4"
+                                                            }
+                                                          >
+                                                            <A
+                                                              href={
+                                                                "/ja4/" + e.val
+                                                              }
+                                                            >
+                                                              {e.val}
+                                                            </A>
+                                                          </Match>
                                                         </Switch>
                                                       </td>
                                                     </tr>
