@@ -4,7 +4,7 @@
 import { useParams } from "@solidjs/router";
 import { TIME_RANGE, Top } from "../Top";
 import * as api from "../api";
-import { createResource } from "solid-js";
+import { createEffect, createResource, createSignal, Show } from "solid-js";
 import { CountValueDataTable } from "../components/CountValueDataTable";
 import { SearchLink } from "../common/SearchLink";
 
@@ -23,6 +23,14 @@ export function Ja4Report() {
   const params = useParams<{ ja4: string }>();
   const prefix = getPrefix(params.ja4);
   const q = `${prefix}.ja4:${params.ja4}`;
+  const [parsed, setParsed] = createSignal<null | Ja4>(null);
+
+  createEffect(() => {
+    try {
+      const parsed = parseJa4(params.ja4);
+      setParsed(parsed);
+    } catch (e) {}
+  });
 
   const [topSnis] = createResource(TIME_RANGE, async () => {
     let snis = await api.fetchAgg({
@@ -90,12 +98,33 @@ export function Ja4Report() {
           <div class="col">
             <h2>
               JA4:
-              <SearchLink field={prefix + ".ja4"} value={params.ja4}>
+              <SearchLink
+                field={prefix + ".ja4"}
+                value={params.ja4}
+                class="text-decoration-none"
+              >
+                {" "}
                 {params.ja4}
               </SearchLink>
             </h2>
           </div>
         </div>
+
+        <Show when={parsed()}>
+          <div class="row">
+            <div class="col blockquote-footer">
+              Protocol: {parsed()!.proto}
+              {", "}
+              Version: {parsed()!.version}
+              {", "}
+              SNI: {parsed()!.sni}
+              {", "}
+              Ciphers: {parsed()!.ciphers}
+              {", "}
+              Extensions: {parsed()!.extensions}
+            </div>
+          </div>
+        </Show>
 
         <div class="row">
           <div class="col mb-2">
@@ -156,4 +185,56 @@ export function Ja4Report() {
       </div>
     </>
   );
+}
+
+interface Ja4 {
+  proto: string;
+  version: string;
+  sni: string;
+  ciphers: number;
+  extensions: number;
+  alpn: string;
+}
+
+function parseJa4(ja4: string): null | Ja4 {
+  const matches = ja4.match(/(.)(..)(.)(..)(..)(..)/);
+
+  if (matches) {
+    const proto = ((s) => {
+      switch (s) {
+        case "t":
+          return "tls";
+        case "q":
+          return "quic";
+        default:
+          return s;
+      }
+    })(matches[1]);
+
+    const version = ((s) => {
+      return `${s[0]}.${s[1]}`;
+    })(matches[2]);
+
+    const sni = ((s) => {
+      switch (s) {
+        case "d":
+          return "domain";
+        case "i":
+          return "ip";
+        default:
+          return s;
+      }
+    })(matches[3]);
+
+    let parsed = {
+      proto: proto,
+      version: version,
+      sni: sni,
+      ciphers: parseInt(matches[4]),
+      extensions: parseInt(matches[5]),
+      alpn: matches[6],
+    };
+    return parsed;
+  }
+  return null;
 }
