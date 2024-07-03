@@ -67,7 +67,7 @@ export function CountValueDataTable(props: {
                   {(row) => (
                     <tr>
                       <td style={"width: 6em;"}>{row.count}</td>
-                      <td>{searchLink(row.key)}</td>
+                      <td class="force-wrap">{searchLink(row.key)}</td>
                     </tr>
                   )}
                 </For>
