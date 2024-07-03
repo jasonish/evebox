@@ -7,6 +7,7 @@ export function SearchLink(props: {
   children?: any;
   field?: string;
   value: any;
+  class?: string;
 }) {
   if (props.value === undefined) {
     return <></>;
@@ -32,7 +33,11 @@ export function SearchLink(props: {
       );
       break;
   }
-  return <A href={`/events?q=${q}`}>{props.children || props.value}</A>;
+  return (
+    <A href={`/events?q=${q}`} class={props.class}>
+      {props.children || props.value}
+    </A>
+  );
 }
 
 export function RawSearchLink(props: { children: any; q: string }) {
