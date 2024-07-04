@@ -9,6 +9,7 @@ pub mod version;
 mod agent;
 mod bookmark;
 mod cert;
+mod commands;
 mod config;
 mod datetime;
 mod elastic;
@@ -25,7 +26,6 @@ mod resource;
 mod rules;
 mod sqlite;
 mod util;
-mod commands;
 
 #[macro_use]
 extern crate lazy_static;

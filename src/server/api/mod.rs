@@ -25,6 +25,7 @@ use tracing::{error, info, warn};
 use self::genericquery::TimeRange;
 use self::util::parse_duration;
 
+pub(crate) mod admin;
 pub(crate) mod agg;
 pub(crate) mod eve2pcap;
 pub(crate) mod genericquery;
@@ -63,6 +64,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/1/sqlite/fts/enable", post(sqlite::fts_enable))
         .route("/api/1/sqlite/fts/disable", post(sqlite::fts_disable))
         .route("/api/ja4db/:fingerprint", get(ja4db))
+        .route("/api/admin/update/ja4db", post(admin::update_ja4db))
         .nest("/api/1/stats", stats::router())
 }
 
@@ -434,7 +436,10 @@ async fn ja4db(
     if let Some(entry) = entry {
         Ok(Json(entry).into_response())
     } else {
-        Ok(StatusCode::NOT_FOUND.into_response())
+        let response = json!({
+            "message": "fingerprint not found",
+        });
+        Ok((StatusCode::NOT_FOUND, Json(response)).into_response())
     }
 }
 
