@@ -100,8 +100,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             && server_config.tls_key_filename.is_none()
             && server_config.tls_cert_filename.is_none());
 
-    if data_directory_required && server_config.data_directory.is_none() {
-        let dd = get_data_directory();
+    // TODO: A data directory should always be preferred, even if not
+    // required as we store stuff like the JA4db in the configuration
+    // database.
+    if server_config.data_directory.is_none() {
+        let dd = crate::config::get_data_directory(None);
         info!("Using (discovered) data-directory {}", dd.display());
         server_config.data_directory = Some(dd.display().to_string());
     } else if data_directory_required {
@@ -719,39 +722,4 @@ fn test_writable<T: AsRef<Path>>(filename: T) -> anyhow::Result<()> {
         .append(true)
         .open(filename)?;
     Ok(())
-}
-
-fn test_directory_is_writable<P: AsRef<Path>>(directory: P) -> bool {
-    tempfile::tempfile_in(directory).is_ok()
-}
-
-fn get_data_directory() -> PathBuf {
-    let dd = Path::new("/var/lib/evebox");
-    if dd.exists() {
-        debug!("{} exists, is it writable?", dd.display());
-        if test_directory_is_writable(dd) {
-            debug!("{} is writable, will use", dd.display());
-            return dd.to_owned();
-        } else {
-            debug!("{} is NOT writable, will not use", dd.display());
-        }
-    } else {
-        debug!("{} does not exists", dd.display());
-    }
-
-    let dd = directories::ProjectDirs::from("org", "evebox", "evebox")
-        .map(|dirs| dirs.config_local_dir().to_owned())
-        .unwrap();
-    if !dd.exists() {
-        info!("{} does not exist, attempting to create it", dd.display());
-        match std::fs::create_dir_all(&dd) {
-            Ok(_) => {
-                info!("{} created", dd.display());
-            }
-            Err(err) => {
-                error!("Failed to create {}: {}", dd.display(), err);
-            }
-        }
-    }
-    dd
 }

@@ -7,3 +7,6 @@ pub mod elastic;
 pub mod oneshot;
 pub mod print;
 pub mod sqlite;
+pub mod update;
+
+pub(crate) mod prelude;

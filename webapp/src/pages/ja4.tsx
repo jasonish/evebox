@@ -32,6 +32,11 @@ export function Ja4Report() {
     } catch (e) {}
   });
 
+  const [ja4db] = createResource(params.ja4, async () => {
+    const ja4db_entry = await api.get(`/api/ja4db/${params.ja4}`);
+    return ja4db_entry.data;
+  });
+
   const [topSnis] = createResource(TIME_RANGE, async () => {
     let snis = await api.fetchAgg({
       field: `${prefix}.sni`,
@@ -111,17 +116,24 @@ export function Ja4Report() {
         </div>
 
         <Show when={parsed()}>
-          <div class="row">
-            <div class="col blockquote-footer">
-              Protocol: {parsed()!.proto}
-              {", "}
-              Version: {parsed()!.version}
-              {", "}
-              SNI: {parsed()!.sni}
-              {", "}
-              Ciphers: {parsed()!.ciphers}
-              {", "}
-              Extensions: {parsed()!.extensions}
+          <div class="row mt-1">
+            <div class="col">
+              <div class="blockquote-footer">
+                Protocol: {parsed()!.proto}
+                {", "}
+                Version: {parsed()!.version}
+                {", "}
+                SNI: {parsed()!.sni}
+                {", "}
+                Ciphers: {parsed()!.ciphers}
+                {", "}
+                Extensions: {parsed()!.extensions}
+              </div>
+              <Show when={ja4db() && ja4db().user_agent_string}>
+                <div class="blockquote-footer">
+                  User-Agent: {ja4db().user_agent_string}
+                </div>
+              </Show>
             </div>
           </div>
         </Show>

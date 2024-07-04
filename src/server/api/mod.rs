@@ -62,6 +62,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/1/sqlite/fts/check", get(sqlite::fts_check))
         .route("/api/1/sqlite/fts/enable", post(sqlite::fts_enable))
         .route("/api/1/sqlite/fts/disable", post(sqlite::fts_disable))
+        .route("/api/ja4db/:fingerprint", get(ja4db))
         .nest("/api/1/stats", stats::router())
 }
 
@@ -417,6 +418,23 @@ pub(crate) async fn events(
             Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
         }
         Ok(v) => Ok(Json(v).into_response()),
+    }
+}
+
+async fn ja4db(
+    _session: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(fingerprint): axum::extract::Path<String>,
+) -> Result<impl IntoResponse, ApiError> {
+    let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
+    let entry: Option<serde_json::Value> = sqlx::query_scalar(sql)
+        .bind(fingerprint)
+        .fetch_optional(&context.config_repo.pool)
+        .await?;
+    if let Some(entry) = entry {
+        Ok(Json(entry).into_response())
+    } else {
+        Ok(StatusCode::NOT_FOUND.into_response())
     }
 }
 

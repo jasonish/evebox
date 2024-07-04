@@ -6,6 +6,7 @@ use std::path::Path;
 use serde::Serialize;
 use sqlx::Row;
 use sqlx::SqlitePool;
+use sqlx::{Connection, SqliteConnection};
 use tracing::debug;
 use tracing::error;
 use tracing::info;
@@ -37,7 +38,7 @@ pub(crate) struct User {
 
 #[derive(Clone)]
 pub(crate) struct ConfigRepo {
-    pool: SqlitePool,
+    pub(crate) pool: SqlitePool,
 }
 
 impl ConfigRepo {
@@ -212,9 +213,9 @@ impl ConfigRepo {
     }
 }
 
-async fn get_legacy_version(db: SqlitePool) -> Option<u8> {
+async fn get_legacy_version(conn: &mut SqliteConnection) -> Option<u8> {
     let version = sqlx::query_scalar("SELECT MAX(version) FROM refinery_schema_history")
-        .fetch_one(&db)
+        .fetch_one(&mut *conn)
         .await
         .ok();
     if version.is_some() {
@@ -222,48 +223,44 @@ async fn get_legacy_version(db: SqlitePool) -> Option<u8> {
     }
 
     sqlx::query_scalar("SELECT MAX(version) FROM schema")
-        .fetch_one(&db)
+        .fetch_one(&mut *conn)
         .await
         .ok()
 }
 
 /// Initialize the configuration/administrative database, apply
 /// migrations as needed.
-async fn init_db(db: SqlitePool) -> Result<(), sqlx::Error> {
+async fn init_db(db: &mut SqliteConnection) -> Result<(), sqlx::Error> {
     let mut tx = db.begin().await?;
-    if has_table(&mut *tx, "_sqlx_migrations").await? {
-        // Nothing to do.
-        return Ok(());
-    }
-    let legacy_version = get_legacy_version(db.clone()).await;
+    let has_slqx_migrations = has_table(&mut *tx, "_sqlx_migrations").await?;
+    let legacy_version = get_legacy_version(&mut tx).await;
 
-    if let Some(version) = legacy_version {
-        sqlx::query(
-            r#"
-            CREATE TABLE _sqlx_migrations (
-                version BIGINT PRIMARY KEY,
-                description TEXT NOT NULL,
-                installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                success BOOLEAN NOT NULL,
-                checksum BLOB NOT NULL,
-                execution_time BIGINT NOT NULL
-            );"#,
-        )
-        .execute(&mut *tx)
-        .await?;
+    if !has_slqx_migrations {
+        if let Some(version) = legacy_version {
+            let sql = r#"
+                        CREATE TABLE _sqlx_migrations (
+                            version BIGINT PRIMARY KEY,
+                            description TEXT NOT NULL,
+                            installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            success BOOLEAN NOT NULL,
+                            checksum BLOB NOT NULL,
+                            execution_time BIGINT NOT NULL
+                    );"#;
+            sqlx::query(sql).execute(&mut *tx).await?;
 
-        let rows = &[
-            "INSERT INTO _sqlx_migrations VALUES(1,'Initial','2024-05-14 22:07:37',1,X'3178dae65749760972807044cd00fc973daf8e325e0bbdd2491faad1f0357ba1e7943db275d7283fc791e9f9495e769c',2046643)",
-            "INSERT INTO _sqlx_migrations VALUES(2,'Sessions','2024-05-14 22:07:37',1,X'83b06692857c8f61cfc2d26ab18ed1207ca699213b06126b0aeb404219ff8c73b32439f15aebf44d30a5d972eca8546d',1180689)",
-        ];
+            let rows = &[
+                "INSERT INTO _sqlx_migrations VALUES(1,'Initial','2024-05-14 22:07:37',1,X'3178dae65749760972807044cd00fc973daf8e325e0bbdd2491faad1f0357ba1e7943db275d7283fc791e9f9495e769c',2046643)",
+                "INSERT INTO _sqlx_migrations VALUES(2,'Sessions','2024-05-14 22:07:37',1,X'83b06692857c8f61cfc2d26ab18ed1207ca699213b06126b0aeb404219ff8c73b32439f15aebf44d30a5d972eca8546d',1180689)",
+            ];
 
-        if version >= 1 {
-            debug!("Inserting fake configuration database migration for version 1");
-            sqlx::query(rows[0]).execute(&mut *tx).await?;
-        }
-        if version >= 2 {
-            debug!("Inserting fake configuration database migration for version 2");
-            sqlx::query(rows[1]).execute(&mut *tx).await?;
+            if version >= 1 {
+                debug!("Inserting fake configuration database migration for version 1");
+                sqlx::query(rows[0]).execute(&mut *tx).await?;
+            }
+            if version >= 2 {
+                debug!("Inserting fake configuration database migration for version 2");
+                sqlx::query(rows[1]).execute(&mut *tx).await?;
+            }
         }
     }
 
@@ -287,6 +284,17 @@ pub(crate) async fn open(filename: Option<&Path>) -> Result<ConfigRepo, sqlx::Er
             .unwrap_or_else(|| ":memory:".to_string())
     );
     let pool = crate::sqlite::connection::open_pool(filename, true).await?;
-    init_db(pool.clone()).await?;
+    let mut conn = pool.acquire().await?;
+    init_db(&mut conn).await?;
     Ok(ConfigRepo::new(pool))
+}
+
+pub(crate) async fn open_connection_in_directory(
+    directory: &Path,
+) -> Result<sqlx::SqliteConnection, sqlx::Error> {
+    let filename = directory.join("config.sqlite");
+    info!("Opening configuration database file {}", filename.display());
+    let mut conn = crate::sqlite::connection::open_connection(Some(&filename), true).await?;
+    init_db(&mut conn).await?;
+    Ok(conn)
 }

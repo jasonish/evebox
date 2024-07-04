@@ -57,7 +57,7 @@ async function update_revision(response: AxiosResponse<any, any>) {
   return response;
 }
 
-async function get(url: string, params: any = {}): Promise<any> {
+export async function get(url: string, params: any = {}): Promise<any> {
   let headers = {
     "x-evebox-session-id": SESSION_ID,
   };

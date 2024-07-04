@@ -6,7 +6,11 @@ use clap::{parser::ValueSource, ArgMatches};
 use serde::de::DeserializeOwned;
 use serde_yaml::Value;
 use std::fmt::Display;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use tracing::{debug, error, info};
+
+use crate::file;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Config {
@@ -161,4 +165,39 @@ impl Config {
             self.get_config_value(key)
         }
     }
+}
+
+pub(crate) fn get_data_directory(path: Option<&str>) -> PathBuf {
+    if let Some(path) = path {
+        return PathBuf::from(path);
+    }
+
+    let dd = Path::new("/var/lib/evebox");
+    if dd.exists() {
+        debug!("{} exists, is it writable?", dd.display());
+        if file::test_directory_is_writable(dd) {
+            debug!("{} is writable, will use", dd.display());
+            return dd.to_owned();
+        } else {
+            debug!("{} is NOT writable, will not use", dd.display());
+        }
+    } else {
+        debug!("{} does not exists", dd.display());
+    }
+
+    let dd = directories::ProjectDirs::from("org", "evebox", "evebox")
+        .map(|dirs| dirs.config_local_dir().to_owned())
+        .unwrap();
+    if !dd.exists() {
+        info!("{} does not exist, attempting to create it", dd.display());
+        match std::fs::create_dir_all(&dd) {
+            Ok(_) => {
+                info!("{} created", dd.display());
+            }
+            Err(err) => {
+                error!("Failed to create {}: {}", dd.display(), err);
+            }
+        }
+    }
+    dd
 }
