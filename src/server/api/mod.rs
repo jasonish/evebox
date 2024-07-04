@@ -26,13 +26,13 @@ use self::genericquery::TimeRange;
 use self::util::parse_duration;
 
 pub(crate) mod agg;
-pub mod eve2pcap;
-pub mod genericquery;
-pub mod login;
+pub(crate) mod eve2pcap;
+pub(crate) mod genericquery;
+pub(crate) mod login;
 pub(crate) mod sqlite;
-pub mod stats;
-pub mod submit;
-pub mod util;
+pub(crate) mod stats;
+pub(crate) mod submit;
+pub(crate) mod util;
 
 pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
     axum::Router::new()
