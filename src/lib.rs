@@ -25,6 +25,7 @@ mod resource;
 mod rules;
 mod sqlite;
 mod util;
+mod commands;
 
 #[macro_use]
 extern crate lazy_static;
