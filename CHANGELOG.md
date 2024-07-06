@@ -16,6 +16,7 @@
 - [webapp] Re-add logout button. Disappeared in the move to SolidJS:
   https://github.com/jasonish/evebox/issues/315
 - Start on a JA4 report, a bit crude but working.
+- Support JA4db with an update tool and an API endpoint to update it.
 
 ## 0.18.1 - 2024-05-08
 
