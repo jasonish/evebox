@@ -11,7 +11,7 @@ repository = "https://github.com/jasonish/evebox"
 documentation = "https://evebox.org"
 
 # This is not a guarantee, just helps notify me when the MSRV changes.
-rust-version = "1.75.0"
+rust-version = "1.78.0"
 
 [profile.release]
 lto = true
@@ -35,7 +35,7 @@ bcrypt = "0.15.0"
 bytes = "1.5.0"
 clap = { version = "4.5.4", features = ["env", "derive", "color"] }
 
-sqlx = { git = "https://github.com/launchbadge/sqlx", default-features = true, features = ["runtime-tokio", "sqlite", "tls-rustls", "json"], rev = "8b7f352be831786f2ef18c12b7a66f75ed978032" }
+sqlx = { git = "https://github.com/launchbadge/sqlx", default-features = false, features = ["runtime-tokio", "sqlite", "json", "macros", "migrate"], rev = "0eb2ee93650eaf10d9cadc107a88bfabfdf377a7" }
 
 filetime = "0.2.23"
 glob = "0.3.1"
