@@ -3,7 +3,6 @@
 
 use futures::TryStreamExt;
 use indexmap::IndexMap;
-use serde::Serialize;
 use sqlx::sqlite::{SqliteArguments, SqliteRow};
 use sqlx::Arguments;
 use sqlx::Row;
@@ -34,16 +33,6 @@ impl SqliteEventRepo {
         &self,
         options: AlertQueryOptions,
     ) -> Result<AlertsResult, DatastoreError> {
-        #[derive(Debug, Default, Serialize)]
-        struct Element {
-            rowid: String,
-            source: serde_json::Value,
-            count: u64,
-            escalated_count: u64,
-            min_timestamp: u64,
-            max_timestamp: u64,
-        }
-
         let mut builder = EventQueryBuilder::new(self.fts().await);
         builder
             .select("rowid")
