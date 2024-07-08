@@ -15,16 +15,15 @@ use crate::sqlite::configrepo::{self, ConfigRepo};
 use crate::sqlite::connection::init_event_db;
 use crate::sqlite::{self};
 use anyhow::Result;
-use axum::body::Full;
+use axum::async_trait;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts};
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
-use axum::{async_trait, TypedHeader};
-use axum::{Router, Server};
+use axum::Router;
 use axum_extra::extract::CookieJar;
-use hyper::server::conn::AddrIncoming;
+use axum_extra::TypedHeader;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -349,18 +348,6 @@ pub(crate) fn build_axum_service(
     service
 }
 
-pub(crate) async fn build_axum_server(
-    config: &ServerConfig,
-    context: Arc<ServerContext>,
-) -> Result<Server<AddrIncoming, IntoMakeServiceWithConnectInfo<Router, SocketAddr>>> {
-    let port: u16 = config.port;
-    let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
-    let service = build_axum_service(context);
-    info!("Starting Axum server on {}", &addr);
-    let server = axum::Server::try_bind(&addr)?.serve(service);
-    Ok(server)
-}
-
 pub(crate) async fn run_axum_server_with_tls(
     config: &ServerConfig,
     context: Arc<ServerContext>,
@@ -431,7 +418,7 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
             let mime = mime_guess::from_path(&path).first_or_octet_stream();
             Response::builder()
                 .header(axum::http::header::CONTENT_TYPE, mime.as_ref())
-                .body(Full::from(body.data))
+                .body(axum::body::Body::from(body.data))
                 .unwrap()
                 .into_response()
         }
@@ -620,8 +607,8 @@ where
             }
         }
 
-        use axum::headers::authorization::Basic;
-        use axum::headers::Authorization;
+        use axum_extra::headers::authorization::Basic;
+        use axum_extra::headers::Authorization;
 
         let authorization = if headers.contains_key("authorization") {
             let TypedHeader(Authorization(basic)) =

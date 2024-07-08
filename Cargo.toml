@@ -21,12 +21,12 @@ opt-level = 3
 anyhow = "1.0.79"
 thiserror = "1.0.56"
 
-axum = { version = "0.6.20", features = ["headers"] }
-axum-server = { version = "0.5.1", features = ["tls-rustls"] }
-axum-extra = { version = "0.7.7", default-features = false, features = ["cookie"] }
-hyper = "0.14.26"
+axum = { version = "0.7.5" }
+axum-server = { version = "0.6.0", features = ["tls-rustls"] }
+axum-extra = { version = "0.9.3", default-features = false, features = ["cookie", "typed-header"] }
+hyper = "1.0"
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
-tower-http = { version = "0.3.4", features = ["set-header", "trace", "limit"] }
+tower-http = { version = "0.5", features = ["set-header", "trace", "limit"] }
 futures = "0.3.21"
 
 # Needs update.

@@ -3,7 +3,6 @@
 
 use crate::eventrepo::EventRepo;
 use crate::sqlite::configrepo::ConfigRepo;
-pub(crate) use main::build_axum_server;
 pub(crate) use main::build_context;
 pub use main::main;
 use serde::Serialize;

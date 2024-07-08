@@ -4,6 +4,7 @@
 use crate::config::Config;
 use crate::eve;
 use crate::geoip;
+use crate::server::main::build_axum_service;
 use crate::sqlite;
 use crate::sqlite::configrepo;
 use std::path::PathBuf;
@@ -89,9 +90,11 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                         }
                     };
                 debug!("Successfully build server context");
-                match crate::server::build_axum_server(&config, context).await {
-                    Ok(server) => {
-                        debug!("Looks like a successful bind to port {}", port);
+
+                match tokio::net::TcpListener::bind(&format!("{}:{}", config.host, port)).await {
+                    Ok(listener) => {
+                        let service = build_axum_service(context);
+                        let server = axum::serve(listener, service);
                         port_tx.send(port).unwrap();
                         server.await.unwrap();
                         break;
