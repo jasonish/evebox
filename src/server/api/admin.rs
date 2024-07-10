@@ -3,24 +3,33 @@
 
 use std::sync::Arc;
 
+use anyhow::Result;
 use axum::{Extension, Json};
-use tracing::info;
+use tracing::error;
 
 use crate::server::{main::SessionExtractor, ServerContext};
 
 use super::ApiError;
 
 pub(super) async fn update_ja4db(
-    context: Extension<Arc<ServerContext>>,
+    Extension(context): Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    match do_update(context).await {
+        Ok(response) => Ok(response),
+        Err(err) => {
+            error!("Request to update JA4db failed: {err}");
+            Err(err.into())
+        }
+    }
+}
+
+async fn do_update(context: Arc<ServerContext>) -> Result<Json<serde_json::Value>> {
     let mut conn = context.config_repo.pool.begin().await?;
-    info!("Updating JA4db");
     let n = crate::commands::ja4db::updatedb(&mut conn).await?;
     conn.commit().await?;
     let response = json!({
         "entries": n,
     });
-    info!("JA4db successfully updated: entries={n}");
     Ok(Json(response))
 }
