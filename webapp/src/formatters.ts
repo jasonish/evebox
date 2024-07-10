@@ -51,12 +51,15 @@ export function formatEventDescription(event: Event): string {
     case "dns": {
       const dns = event._source.dns!;
       let parts = [dns.type.toUpperCase()];
-      if (dns.rrtype) {
-        parts.push(dns.rrtype.toUpperCase());
-      }
-      if (dns.rrname) {
+
+      if (dns.queries[0]) {
+        parts.push(dns.queries[0].rrtype);
+        parts.push(dns.queries[0].rrname);
+      } else if (dns.rrname) {
+        parts.push(dns.rrtype);
         parts.push(dns.rrname);
       }
+
       if (dns.rcode && dns.rcode !== "NOERROR") {
         parts.push(...["-", dns.rcode]);
       }

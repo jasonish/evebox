@@ -163,6 +163,11 @@ export interface EveDns {
     rrname: string;
   }[];
 
+  queries: {
+    rrname: string;
+    rrtype: string;
+  }[];
+
   answers?: {
     rdata: string;
     rrname: string;
