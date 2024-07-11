@@ -149,7 +149,7 @@ impl<'a> EventQueryBuilder<'a> {
 
     pub fn apply_query_string(
         &mut self,
-        q: &[queryparser::QueryElement],
+        q: &'a [queryparser::QueryElement],
     ) -> Result<(), sqlx::error::BoxDynError> {
         for e in q {
             match &e.value {
@@ -203,7 +203,17 @@ impl<'a> EventQueryBuilder<'a> {
                             if e.negated {
                                 self.where_source_json_extract(k, "!=", v)?;
                             } else {
-                                self.where_source_json_extract(k, "=", v)?;
+                                if k == "dns.type" && (v == "query" || v == "request") {
+                                    self.push_where("(events.source->>'dns'->>'type' = 'query' OR events.source->>'dns'->>'type' = 'request')");
+                                } else if k == "dns.type" && (v == "response" || v == "answer") {
+                                    self.push_where("(events.source->>'dns'->>'type' = 'answer' OR events.source->>'dns'->>'type' = 'response')");
+                                } else if k == "dns.rrname" {
+                                    self.from("json_each(events.source->>'dns'->>'queries') AS dns_queries");
+                                    self.push_where("dns_queries.value->>'rrname' = ?");
+                                    self.push_arg(v)?;
+                                } else {
+                                    self.where_source_json_extract(k, "=", v)?;
+                                }
                                 // If FTS is enabled, some key/val searches
                                 // can really benefit from it.
                                 if self.fts {

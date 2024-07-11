@@ -23,15 +23,22 @@ impl SqliteEventRepo {
         query: Vec<QueryElement>,
     ) -> Result<Vec<serde_json::Value>, DatastoreError> {
         let mut builder = EventQueryBuilder::new(self.fts().await);
-        builder
-            .select(format!(
+
+        if field == "dns.rrname" {
+            let coa =
+                "coalesce(source->>'dns'->>'queries'->>0->>'rrname', source->>'dns'->>'rrname')";
+            builder.select(format!("count({coa}) as count"));
+            builder.select(format!("{coa} as agg"));
+        } else {
+            builder.select(format!(
                 "count(json_extract(events.source, '$.{field}')) as count"
-            ))
-            .select(format!("json_extract(events.source, '$.{field}')"))
-            .from("events")
-            .group_by(format!("json_extract(events.source, '$.{field}')"))
-            .order_by("count", order)
-            .limit(size as i64);
+            ));
+            builder.select(format!("json_extract(events.source, '$.{field}') as agg"));
+        }
+        builder.from("events");
+        builder.group_by("agg");
+        builder.order_by("count", order);
+        builder.limit(size as i64);
 
         // Some internal optimizing, may be provided on the query
         // string already.
