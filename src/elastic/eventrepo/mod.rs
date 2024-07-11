@@ -110,9 +110,11 @@ impl ElasticEventRepo {
                 "dest_ip" => "dest_ip.keyword",
                 "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword",
                 "dhcp.client_mac" => "dhcp.client_mac.keyword",
+                "dns.type" => "dns_type.keyword",
                 "dns.rcode" => "dns.rcode.keyword",
                 "dns.rdata" => "dns.rdata.keyword",
-                "dns.rrname" => "dns.rrname.keyword",
+                "dns.rrname" => "dns_query_rrname.keyword",
+                "dns.queries.rrname" => "dns_query_rrname.keyword",
                 "dns.rrtype" => "dns.rrtype.keyword",
                 "event_type" => "event_type.keyword",
                 "host" => "host.keyword",
@@ -597,6 +599,45 @@ impl ElasticEventRepo {
         Ok(data)
     }
 
+    fn runtime_mappings(&self) -> serde_json::Value {
+        json!({
+            "dns_type.keyword": {
+                "type": "keyword",
+                "script": {
+                    "source": r#"
+                        if (doc.containsKey('dns.type')) {
+                            if (doc['dns.type.keyword'].value == "request") {
+                                emit("query");
+                            } else if (doc['dns.type.keyword'].value == "response") {
+                                emit("answer");
+                            } else {
+                                emit(doc['dns.type.keyword'].value);
+                            }
+                        }
+                    "#
+                }
+            },
+            "dns_query_rrname.keyword": {
+                "type": "keyword",
+                "script": {
+                    "source": r#"
+                        if (doc['dns.version'].size() != 0 && doc['dns.version'].value > 2) {
+                            if (doc.containsKey('dns.queries.rrname')) {
+                                emit(doc['dns.queries.rrname.keyword'].value);
+                            }
+                        } else {
+                            if (doc.containsKey('dns.rrname')) {
+                                if (doc['dns.rrname.keyword'].size() != 0) {
+                                    emit(doc['dns.rrname.keyword'].value);
+                                }
+                            }
+                        }
+                    "#,
+                }
+            }
+        })
+    }
+
     pub async fn agg(
         &self,
         field: &str,
@@ -610,12 +651,14 @@ impl ElasticEventRepo {
 
         self.apply_query_string(&query, &mut filter, &mut should, &mut must_not);
 
+        let field = self.map_field(field);
+
         #[rustfmt::skip]
         let agg = if order == "asc" {
             // We're after a rare terms...
             json!({
 		            "rare_terms": {
-                    "field": self.map_field(field),
+                    "field": field,
                     // Increase the max_doc_count, otherwise only
                     // terms that appear once will be returned, but
                     // we're after the least occurring, but those
@@ -627,7 +670,7 @@ impl ElasticEventRepo {
             // This is a normal "Top 10"...
             json!({
 		            "terms": {
-                    "field": self.map_field(field),
+                    "field": &field,
                     "size": size,
 		            },
             })
@@ -637,6 +680,7 @@ impl ElasticEventRepo {
 
         #[rustfmt::skip]
         let mut query = json!({
+            "runtime_mappings": self.runtime_mappings(),
             "query": {
 		            "bool": {
 		                "filter": filter,

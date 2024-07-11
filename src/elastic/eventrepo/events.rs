@@ -48,6 +48,7 @@ impl ElasticEventRepo {
         let size = params.size.unwrap_or(500);
 
         let mut body = json!({
+            "runtime_mappings": self.runtime_mappings(),
             "query": {
                 "bool": {
                     "filter": filters,
