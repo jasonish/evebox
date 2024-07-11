@@ -52,7 +52,7 @@ export function formatEventDescription(event: Event): string {
       const dns = event._source.dns!;
       let parts = [dns.type.toUpperCase()];
 
-      if (dns.queries[0]) {
+      if (dns.queries && dns.queries[0]) {
         parts.push(dns.queries[0].rrtype);
         parts.push(dns.queries[0].rrname);
       } else if (dns.rrname) {
