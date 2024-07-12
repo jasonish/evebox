@@ -20,11 +20,12 @@ impl SqliteEventRepo {
     ) -> Result<serde_json::Value, DatastoreError> {
         let mut builder = EventQueryBuilder::new(self.fts().await);
         builder
-            .select("events.rowid AS id")
+            .select("DISTINCT(events.rowid) AS id")
             .select("events.archived AS archived")
             .select("events.escalated AS escalated")
             .select("events.source AS source");
         builder.from("events");
+        builder.left_join_from_query_string(&options.query_string)?;
         builder.limit(500);
 
         if let Some(event_type) = options.event_type {

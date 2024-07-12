@@ -15,6 +15,7 @@ pub(crate) struct EventQueryBuilder<'a> {
 
     select: Vec<String>,
     from: Vec<String>,
+    left_join: Vec<String>,
     wheres: Vec<String>,
     group_by: Vec<String>,
     order_by: Option<(String, String)>,
@@ -147,6 +148,40 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(self)
     }
 
+    pub fn add_left_join(&mut self, sql: String) {
+        if !self.left_join.contains(&sql) {
+            self.left_join.push(sql);
+        }
+    }
+
+    pub fn left_join_from_query_string(
+        &mut self,
+        q: &'a [queryparser::QueryElement],
+    ) -> Result<(), sqlx::error::BoxDynError> {
+        for e in q {
+            match &e.value {
+                queryparser::QueryValue::KeyValue(k, _v) => {
+                    //if k == "dns.rrname" || k == "dns.queries.rrname" {
+                    if k == "dns.rrname" || k.starts_with("dns.queries") {
+                        self.add_left_join(
+                            "LEFT JOIN json_each(events.source, '$.dns.queries') AS _dns_queries"
+                                .to_string(),
+                        );
+                    } else if k.starts_with("dns.answers.") {
+                        self.add_left_join(
+                            "LEFT JOIN json_each(events.source, '$.dns.answers') AS _dns_answers"
+                                .to_string(),
+                        );
+                    }
+                }
+                queryparser::QueryValue::String(_) => {}
+                queryparser::QueryValue::From(_) => {}
+                queryparser::QueryValue::To(_) => {}
+            }
+        }
+        Ok(())
+    }
+
     pub fn apply_query_string(
         &mut self,
         q: &'a [queryparser::QueryElement],
@@ -207,10 +242,36 @@ impl<'a> EventQueryBuilder<'a> {
                                     self.push_where("(events.source->>'dns'->>'type' = 'query' OR events.source->>'dns'->>'type' = 'request')");
                                 } else if k == "dns.type" && (v == "response" || v == "answer") {
                                     self.push_where("(events.source->>'dns'->>'type' = 'answer' OR events.source->>'dns'->>'type' = 'response')");
-                                } else if k == "dns.rrname" {
-                                    self.from("json_each(events.source->>'dns'->>'queries') AS dns_queries");
-                                    self.push_where("dns_queries.value->>'rrname' = ?");
+                                } else if k == "dns.rrname" || k == "dns.queries.rrname" {
+                                    self.push_where("(events.source->>'dns'->>'rrname' = ? OR _dns_queries.value->>'rrname' = ?)");
                                     self.push_arg(v)?;
+                                    self.push_arg(v)?;
+                                } else if k.starts_with("dns.queries.") {
+                                    let path: String = k
+                                        .split('.')
+                                        .skip(2)
+                                        .map(|p| format!("'{}'", p))
+                                        .collect::<Vec<String>>()
+                                        .join("->>");
+                                    self.push_where(format!("_dns_queries.value->>{} = ?", path));
+                                    self.push_arg(v)?;
+                                } else if k.starts_with("dns.answers.") {
+                                    let path: String = k
+                                        .split('.')
+                                        .skip(2)
+                                        .map(|p| format!("'{}'", p))
+                                        .collect::<Vec<String>>()
+                                        .join("->>");
+                                    self.push_where(format!("_dns_answers.value->>{} = ?", path));
+                                    self.push_arg(v)?;
+                                } else if k.starts_with("dns.authorities") {
+                                    // Lazy helper - can't be done with Elastic though.
+                                    self.push_where("events.source->>'dns'->>'authorities' GLOB ?");
+                                    self.push_arg(format!("*{}*", v))?;
+                                } else if k.starts_with("dns.additionals") {
+                                    // Lazy helper - can't be done with Elastic though.
+                                    self.push_where("events.source->>'dns'->>'additionals' GLOB ?");
+                                    self.push_arg(format!("*{}*", v))?;
                                 } else {
                                     self.where_source_json_extract(k, "=", v)?;
                                 }
@@ -271,6 +332,10 @@ impl<'a> EventQueryBuilder<'a> {
 
         sql.push_str(" from ");
         sql.push_str(&self.from.join(", "));
+
+        for left_join in &self.left_join {
+            sql.push_str(&format!(" {}", left_join));
+        }
 
         if !self.fts_phrases.is_empty() {
             let query = self.fts_phrases.join(" AND ");
