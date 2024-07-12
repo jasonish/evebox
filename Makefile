@@ -76,3 +76,7 @@ dist:
 fmt:
 	cargo fmt
 	cd webapp && npm run fmt
+
+fixup:
+	$(MAKE) fmt
+	cargo clippy --fix --allow-dirty
