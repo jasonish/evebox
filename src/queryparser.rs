@@ -118,10 +118,13 @@ pub(crate) fn parse(
 
             negated = false;
         } else {
-            elements.push(QueryElement {
-                negated,
-                value: QueryValue::String(token),
-            });
+            let token = token.trim();
+            if !token.is_empty() {
+                elements.push(QueryElement {
+                    negated,
+                    value: QueryValue::String(token.to_string()),
+                });
+            }
             negated = false;
         }
     }
