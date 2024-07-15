@@ -7,6 +7,7 @@ use anyhow::Result;
 use axum::{Extension, Json};
 use tracing::error;
 
+use crate::prelude::*;
 use crate::server::{main::SessionExtractor, ServerContext};
 
 use super::ApiError;
@@ -15,8 +16,12 @@ pub(super) async fn update_ja4db(
     Extension(context): Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    info!("API request to update JA4 database");
     match do_update(context).await {
-        Ok(response) => Ok(response),
+        Ok(response) => {
+            info!("JA4db updated");
+            Ok(response)
+        }
         Err(err) => {
             error!("Request to update JA4db failed: {err}");
             Err(err.into())

@@ -76,7 +76,7 @@ export async function get(url: string, params: any = {}): Promise<any> {
     });
 }
 
-async function post(url: string, params: any = {}): Promise<any> {
+export async function post(url: string, params: any = {}): Promise<any> {
   let headers = {
     "x-evebox-session-id": SESSION_ID,
   };

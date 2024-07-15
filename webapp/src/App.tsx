@@ -29,6 +29,7 @@ import { OverviewReport } from "./reports/OverviewReport";
 import { DhcpReport } from "./reports/DhcpReport";
 import { IS_AUTHENTICATED } from "./global";
 import { Ja4Report } from "./pages/ja4";
+import { Admin } from "./pages/admin/Admin";
 
 export function AppRouter() {
   return (
@@ -60,6 +61,9 @@ export function AppRouter() {
         <Route path={"reports/address/:address"} component={AddressReport} />
         <Route path="ja4/:ja4" component={Ja4Report} />
         <Route path={"stats"} component={Stats} />
+
+        <Route path="admin" component={Admin} />
+
         <Route path="*" component={RedirectToIndex} />
       </Route>
       <Route path={"/login"} component={Login} />

@@ -21,6 +21,7 @@ mod importer;
 mod packet;
 mod path;
 mod pcap;
+mod prelude;
 mod queryparser;
 mod resource;
 mod rules;

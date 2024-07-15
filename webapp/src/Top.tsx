@@ -266,8 +266,11 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
                   setToolDropDownOpen(!toolDropDownOpen());
                 }}
               >
-                <A href={"/settings"} class={"dropdown-item"}>
+                <A href="/settings" class="dropdown-item">
                   Settings
+                </A>
+                <A href="/admin" class="dropdown-item">
+                  Admin
                 </A>
                 <Show when={IS_AUTHENTICATED()}>
                   <a class="dropdown-item" onClick={logout}>
