@@ -13,8 +13,7 @@ use serde_json::json;
 use sqlx::sqlite::SqliteArguments;
 use sqlx::Arguments;
 use sqlx::{Row, SqliteConnection, SqlitePool};
-use std::collections::HashSet;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, info, instrument, warn};
 
@@ -32,8 +31,6 @@ pub(crate) struct SqliteEventRepo {
     pub importer: super::importer::SqliteEventSink,
     pub pool: SqlitePool,
     pub writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
-    sensors: RwLock<HashSet<String>>,
-    sensors_initialized: tokio::sync::RwLock<bool>,
 }
 
 impl SqliteEventRepo {
@@ -42,8 +39,6 @@ impl SqliteEventRepo {
             importer: super::importer::SqliteEventSink::new(writer.clone()),
             pool,
             writer: writer.clone(),
-            sensors: RwLock::new(HashSet::new()),
-            sensors_initialized: tokio::sync::RwLock::new(false),
         }
     }
 
@@ -385,21 +380,11 @@ impl SqliteEventRepo {
 
     #[instrument(skip_all)]
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
-        if *self.sensors_initialized.read().await {
-            let sensors = self.sensors.try_read().unwrap();
-            let sensors: Vec<String> = sensors.iter().cloned().collect();
-            return Ok(sensors);
-        }
-
-        let mut init = self.sensors_initialized.write().await;
-
         let from = DateTime::now() - std::time::Duration::from_secs(86400);
         let sql = r#"
             SELECT DISTINCT json_extract(events.source, '$.host')
             FROM events
             WHERE json_extract(events.source, '$.host') IS NOT NULL
-              AND json_extract(events.source, '$.event_type') = 'stats'
-              AND timestamp > ?
             "#;
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
@@ -409,11 +394,6 @@ impl SqliteEventRepo {
             .bind(from.to_nanos())
             .fetch_all(&self.pool)
             .await?;
-        let mut cache = self.sensors.write().unwrap();
-        for sensor in &sensors {
-            cache.insert(sensor.to_string());
-        }
-        *init = true;
         Ok(sensors)
     }
 }

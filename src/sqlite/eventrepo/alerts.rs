@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use sqlx::sqlite::{SqliteArguments, SqliteRow};
 use sqlx::Arguments;
 use sqlx::Row;
-use tracing::{debug, error, info, instrument, warn};
+use tracing::{error, info, instrument, warn};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
@@ -239,14 +239,6 @@ impl SqliteEventRepo {
             }
         }
 
-        // Update the sensors cache if the size differs.
-        if self.sensors.read().unwrap().len() != sensors.len() {
-            let mut cache = self.sensors.write().unwrap();
-            for sensor in sensors {
-                cache.insert(sensor);
-            }
-        }
-
         info!(
             ?timed_out,
             "Alert query took {:?}, with {} events over {} groups",
@@ -404,15 +396,7 @@ impl SqliteEventRepo {
             results.push(row);
         }
 
-        // Update the sensors cache if the size differs.
-        if self.sensors.read().unwrap().len() != sensors.len() {
-            let mut cache = self.sensors.write().unwrap();
-            for sensor in sensors {
-                cache.insert(sensor);
-            }
-        }
-
-        debug!(
+        info!(
             "Rows={}, Elapsed={} ms",
             results.len(),
             now.elapsed().as_millis()
