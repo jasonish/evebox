@@ -39,3 +39,14 @@ FROM events
 WHERE json_extract(events.source, '$.event_type') = 'stats'
 GROUP BY d
 ;
+
+-- 
+select * from events
+where json_extract(source, '$.event_type') = 'alert' 
+  and archived = 0 
+order by timestamp desc;
+
+select * from events
+where json_extract(source, '$.event_type') = 'alert' 
+  and escalated = 1
+order by timestamp desc;
