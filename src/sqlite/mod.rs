@@ -37,7 +37,7 @@ async fn log_query_plan<'a>(pool: &SqlitePool, sql: &str, args: &SqliteArguments
             error!("Failed to explain query plan: {}: sql={}", err, sql);
         }
         Ok(rows) => {
-            tracing::info!(?args, "{sql}");
+            tracing::info!(?args, "{}", sql.replace("\n", ""));
             for row in rows {
                 tracing::info!("{}", row.3);
             }
