@@ -78,6 +78,7 @@ impl ElasticEventRepo {
                 // The following are included for "badges" of extra
                 // info in the alert list.
                 "dns.query",
+                "dns.queries",
                 "http.hostname",
                 "quic.sni",
                 "tls.sni",
