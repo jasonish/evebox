@@ -1062,6 +1062,11 @@ export function AlertDescription(props: { event: EventWrapper }) {
           {props.event._source.dns?.query![0].rrname}
         </span>
       </Show>
+      <Show when={props.event._source.dns?.queries}>
+        <span class="badge text-bg-secondary me-2">
+          {props.event._source.dns?.queries![0].rrname}
+        </span>
+      </Show>
       <Show when={props.event._source.http?.hostname}>
         <span class="badge text-bg-secondary me-2">
           {props.event._source.http?.hostname}
