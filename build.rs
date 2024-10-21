@@ -10,7 +10,7 @@ fn main() {
     match env::var_os("BUILD_REV") {
         None => match get_git_rev() {
             Err(err) => {
-                eprintln!("Failed to get git revision: {err}");
+                panic!("Failed to get git revision: {err}");
             }
             Ok(rev) => {
                 println!("cargo:rustc-env=BUILD_REV={rev}");
@@ -31,6 +31,11 @@ fn get_git_rev() -> Result<String, Box<dyn std::error::Error>> {
         .arg("--short")
         .arg("HEAD")
         .output()?;
+    if !output.status.success() {
+        let err = std::string::String::from_utf8_lossy(&output.stderr);
+        let err: Box<dyn std::error::Error> = err.into();
+        return Err(err);
+    }
     let rev = std::string::String::from_utf8_lossy(&output.stdout);
     Ok(rev.into_owned())
 }
