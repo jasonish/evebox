@@ -39,13 +39,15 @@ ENV CROSS_CONTAINER_IN_CONTAINER=true
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 RUN cargo install cross --git https://github.com/cross-rs/cross
+
+# Cross would install these itself, but do it now and save some time
+# at runtime.
 RUN rustup target add x86_64-pc-windows-gnu
 RUN rustup target add x86_64-unknown-linux-musl
 RUN rustup target add aarch64-unknown-linux-musl
-RUN rustup target add armv7-unknown-linux-musleabihf
 RUN rustup component add rust-src
-RUN rustup component add rust-std
+
 ENV CARGO=cross
 
-COPY /docker/builder/docker-entrypoint.sh /
-ENTRYPOINT ["/docker-entrypoint.sh"]
+#COPY /docker/builder/docker-entrypoint.sh /
+#ENTRYPOINT ["/docker-entrypoint.sh"]
