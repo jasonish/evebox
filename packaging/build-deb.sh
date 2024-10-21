@@ -16,20 +16,20 @@ fi
 
 case "${1}" in
     "x86_64"|"amd64")
-	ARCH="amd64"
-	BIN="./dist/evebox-${BIN_SRC_VER}-linux-x64/evebox"
-	;;
+	      ARCH="amd64"
+	      BIN="./dist/evebox-${BIN_SRC_VER}-linux-x64/evebox"
+	      ;;
     "arm64")
-	ARCH="arm64"
-	BIN="./dist/evebox-${BIN_SRC_VER}-linux-arm64/evebox"
-	;;
+	      ARCH="arm64"
+	      BIN="./dist/evebox-${BIN_SRC_VER}-linux-arm64/evebox"
+	      ;;
     "arm")
-	ARCH="armhf"
-	BIN="./dist/evebox-${BIN_SRC_VER}-linux-arm/evebox"
-	;;
+	      ARCH="armhf"
+	      BIN="./dist/evebox-${BIN_SRC_VER}-linux-arm/evebox"
+	      ;;
     *)
-	echo "error: invalid ARCH"
-	exit 1
+	      echo "error: invalid ARCH"
+	      exit 1
 esac
 
 if [ "${VERSION_SUFFIX}" ]; then

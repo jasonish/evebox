@@ -16,12 +16,12 @@ fi
 
 case "${1}" in
     "x86_64"|"amd64")
-	ARCH="x86_64"
-	BIN="./dist/evebox-${BIN_SRC_VER}-linux-x64/evebox"
-	;;
+	      ARCH="x86_64"
+	      BIN="./dist/evebox-${BIN_SRC_VER}-linux-x64/evebox"
+	      ;;
     *)
-	echo "error: invalid ARCH"
-	exit 1
+	      echo "error: invalid ARCH"
+	      exit 1
 esac
 
 if [ "${VERSION_SUFFIX}" ]; then
