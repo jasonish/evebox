@@ -18,6 +18,8 @@ jobs:
     container: rust:latest
     steps:
       - uses: actions/checkout@v4
+      # Needed to we can get the build revision, required by build.rs
+      - run: git config --global --add safe.directory /__w/evebox/evebox
       - run: cargo test --all
 
   build-dist:

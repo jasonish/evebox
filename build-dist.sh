@@ -44,7 +44,8 @@ cross_run() {
     fi
     dockerfile="./docker/builder/Dockerfile.cross"
     tag=${BUILDER_TAG:-"evebox/builder:cross"}
-    if test -t; then
+    env
+    if [ -z "${GITHUB_REPOSITORY}" && test -t ]; then
         it="-it"
     else
         it=""
