@@ -44,13 +44,18 @@ cross_run() {
     fi
     dockerfile="./docker/builder/Dockerfile.cross"
     tag=${BUILDER_TAG:-"evebox/builder:cross"}
+    if test -t; then
+        it="-it"
+    else
+        it=""
+    fi
     ${ECHO} docker build \
             --build-arg REAL_UID="$(id -u)" \
             --build-arg REAL_GID="$(id -g)" \
             --cache-from ${tag} \
 	          -t ${tag} \
 	          -f ${dockerfile} .
-    ${ECHO} docker run --rm --privileged \
+    ${ECHO} docker run --rm ${it} --privileged \
             -v "$(pwd):/src:z" \
             -v /var/run/docker.sock:/var/run/docker.sock:z \
             -w /src \
