@@ -17,11 +17,16 @@ export function TimestampCell(props: { timestamp: string }) {
 }
 
 export function AddressCell(props: { source: EventSource }) {
-  return (
-    <>
-      S: {formatAddress(props.source.src_ip)}
-      <br />
-      D: {formatAddress(props.source.dest_ip)}
-    </>
-  );
+  try {
+    return (
+      <>
+        S: {formatAddress(props.source.src_ip)}
+        <br />
+        D: {formatAddress(props.source.dest_ip)}
+      </>
+    );
+  } catch (e) {
+    console.log(e);
+    return <>`Failed to format address: ${e}`</>;
+  }
 }

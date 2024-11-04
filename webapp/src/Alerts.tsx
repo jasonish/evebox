@@ -1038,7 +1038,7 @@ export function AlertDescription(props: { event: EventWrapper }) {
   const alert = props.event._source.alert!;
   return (
     <>
-      <Show when={alert.action !== "allowed"}>
+      <Show when={alert.action && alert.action !== "allowed"}>
         <Badge class={"bg-warning me-1"}>{alert.action.toUpperCase()}</Badge>
       </Show>
       {alert.signature}{" "}

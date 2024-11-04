@@ -462,6 +462,71 @@ impl ElasticEventRepo {
             // Mainly for debugging ECS support, keep a copy of the ECS original record.
             event["ecs_original"] = original_ecs;
         }
+
+        // Copy ECS values into _source where EVE / EveBox expect
+        // them.
+        //
+        // Is there a way to make a table for this instead of each one
+        // individually?
+        if event["_source"]["event_type"].is_null() {
+            event["_source"]["event_type"] =
+                event["_source"]["suricata"]["eve"]["event_type"].clone();
+        }
+
+        if event["_source"]["alert"].is_null() {
+            event["_source"]["alert"] = event["_source"]["suricata"]["eve"]["alert"].clone();
+        }
+
+        if event["_source"]["timestamp"].is_null() {
+            event["_source"]["timestamp"] = event["_source"]["@timestamp"].clone();
+        }
+
+        if event["_source"]["src_ip"].is_null() {
+            event["_source"]["src_ip"] = event["_source"]["source"]["ip"].clone();
+        }
+
+        if event["_source"]["src_port"].is_null() {
+            event["_source"]["src_port"] = event["_source"]["source"]["port"].clone();
+        }
+
+        if event["_source"]["dest_ip"].is_null() {
+            event["_source"]["dest_ip"] = event["_source"]["destination"]["ip"].clone();
+        }
+
+        if event["_source"]["dest_port"].is_null() {
+            event["_source"]["dest_port"] = event["_source"]["destination"]["port"].clone();
+        }
+
+        let source = &mut event["_source"];
+
+        if source["flow"].is_null() {
+            source["flow"] = json!({
+                "age": source["suricata"]["eve"]["flow"]["age"],
+                "bytes_toclient": source["destination"]["bytes"],
+                "bytes_toserver": source["source"]["bytes"],
+                "pkts_toclient": source["destination"]["packets"],
+                "pkts_toserver": source["source"]["packets"],
+            });
+        }
+
+        // Simple hoisting of an object in suricata.eve.quic to
+        // directly under _source.
+        for obj in ["quic", "anomaly"] {
+            if !source["suricata"]["eve"][obj].is_null() {
+                source[obj] = source["suricata"]["eve"][obj].clone();
+            }
+        }
+
+        // Merge DNS suricata.eve.dns into top level dns.
+        if !source["dns"].is_null() && !source["suricata"]["eve"]["dns"].is_null() {
+            let mut dns = source["dns"].clone();
+            if let Some(inner) = source["suricata"]["eve"]["dns"].as_object() {
+                for (k, v) in inner {
+                    dns[k] = v.clone();
+                }
+            }
+            source["dns"] = dns;
+        }
     }
 
     pub async fn archive_by_alert_group(
@@ -605,14 +670,18 @@ impl ElasticEventRepo {
                 "type": "keyword",
                 "script": {
                     "source": r#"
-                        if (doc.containsKey('dns.type')) {
-                            if (doc['dns.type.keyword'].value == "request") {
-                                emit("query");
-                            } else if (doc['dns.type.keyword'].value == "response") {
-                                emit("answer");
-                            } else {
-                                emit(doc['dns.type.keyword'].value);
+                        try {
+                            if (doc.containsKey('dns.type')) {
+                                if (doc['dns.type.keyword'].value == "request") {
+                                    emit("query");
+                                } else if (doc['dns.type.keyword'].value == "response") {
+                                    emit("answer");
+                                } else {
+                                    emit(doc['dns.type.keyword'].value);
+                                }
                             }
+                        }
+                        catch (Exception e) {
                         }
                     "#
                 }
@@ -621,16 +690,20 @@ impl ElasticEventRepo {
                 "type": "keyword",
                 "script": {
                     "source": r#"
-                        if (doc['dns.version'].size() != 0 && doc['dns.version'].value > 2) {
-                            if (doc.containsKey('dns.queries.rrname')) {
-                                emit(doc['dns.queries.rrname.keyword'].value);
-                            }
-                        } else {
-                            if (doc.containsKey('dns.rrname')) {
-                                if (doc['dns.rrname.keyword'].size() != 0) {
-                                    emit(doc['dns.rrname.keyword'].value);
+                        try {
+                            if (doc['dns.version'].size() != 0 && doc['dns.version'].value > 2) {
+                                if (doc.containsKey('dns.queries.rrname')) {
+                                    emit(doc['dns.queries.rrname.keyword'].value);
+                                }
+                            } else {
+                                if (doc.containsKey('dns.rrname')) {
+                                    if (doc['dns.rrname.keyword'].size() != 0) {
+                                        emit(doc['dns.rrname.keyword'].value);
+                                    }
                                 }
                             }
+                        }
+                        catch (Exception e) {
                         }
                     "#,
                 }

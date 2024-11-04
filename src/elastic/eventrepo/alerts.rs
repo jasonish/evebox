@@ -166,7 +166,7 @@ impl ElasticEventRepo {
         let start = std::time::Instant::now();
         let body = self.search(&query).await?.text().await?;
         let response: ElasticResponse = serde_json::from_str(&body)?;
-        if let Some(error) = response.error {
+        if let Some(error) = &response.error {
             return Err(DatastoreError::ElasticSearchError(error.first_reason()));
         }
 
@@ -210,12 +210,22 @@ impl ElasticEventRepo {
                                     .ok_or_else(|| {
                                         anyhow!("No timestamp field on _source or not a string")
                                     })?;
+
                                     let min_timestamp =
                                         crate::datetime::parse(min_timestamp, None)?;
 
-                                    let max_timestamp = newest["_source"]["timestamp"]
-                                        .as_str()
-                                        .ok_or_else(|| anyhow!("No timestamp field on _source"))?;
+                                    let max_timestamp = if newest["_source"]["timestamp"]
+                                        .is_string()
+                                    {
+                                        &newest["_source"]["timestamp"]
+                                    } else {
+                                        &newest["_source"]["@timestamp"]
+                                    }
+                                    .as_str()
+                                    .ok_or_else(|| {
+                                        anyhow!("No timestamp field on _source or not a string")
+                                    })?;
+
                                     let max_timestamp =
                                         crate::datetime::parse(max_timestamp, None)?;
 

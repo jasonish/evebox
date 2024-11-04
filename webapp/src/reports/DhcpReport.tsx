@@ -36,12 +36,20 @@ export function DhcpReport() {
       }
       const response_1 = await api.dhcpAck(query);
       response_1.events.forEach((event_1: EventSource) => {
-        const hostname = requestHostnames[event_1.dhcp!.id];
-        if (hostname) {
-          if (!event_1.dhcp!.hostname) {
-            event_1.dhcp!.hostname = hostname;
-          } else if (event_1.dhcp!.hostname != hostname) {
-            event_1.dhcp!.hostname = `${event_1.dhcp?.hostname} (${hostname})`;
+        if (!event_1["dhcp"]) {
+          console.log(
+            `DHCP ACK entry does not contain DHCP object: ${JSON.stringify(
+              event_1
+            )}`
+          );
+        } else {
+          const hostname = requestHostnames[event_1.dhcp!.id];
+          if (hostname) {
+            if (!event_1.dhcp!.hostname) {
+              event_1.dhcp!.hostname = hostname;
+            } else if (event_1.dhcp!.hostname != hostname) {
+              event_1.dhcp!.hostname = `${event_1.dhcp?.hostname} (${hostname})`;
+            }
           }
         }
       });

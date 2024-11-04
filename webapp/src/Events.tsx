@@ -432,7 +432,8 @@ export function Events() {
                                   />
                                 </td>
                                 <td class={"col-event-type"}>
-                                  {event._source.event_type.toUpperCase()}
+                                  {event._source.event_type?.toUpperCase() ||
+                                    "???"}
                                 </td>
                                 <td class={"col-address"} style={"width: 0%;"}>
                                   <Switch fallback={<>{event._source.host}</>}>
