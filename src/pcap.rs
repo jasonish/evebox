@@ -1,9 +1,12 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::{datetime::DateTime, packet};
-use bytes::{BufMut, BytesMut};
 use std::net::IpAddr;
+
+use base64::prelude::*;
+use bytes::{BufMut, BytesMut};
+
+use crate::{datetime::DateTime, packet};
 
 const MAGIC: u32 = 0xa1b2_c3d4;
 const VERSION_MAJOR: u16 = 2;
@@ -40,7 +43,9 @@ pub(crate) enum LinkType {
 
 pub(crate) fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, Error> {
     let payload = if let Some(payload) = &event["payload"].as_str() {
-        base64::decode(payload).map_err(Error::PayloadDecode)?
+        BASE64_STANDARD
+            .decode(payload)
+            .map_err(Error::PayloadDecode)?
     } else {
         return Err(Error::MissingField("payload".to_string()));
     };
@@ -148,7 +153,7 @@ mod test {
         let packet_base64 =
             "oDafTEwo2MuK7aFGCABFAAAobXBAAEAGMBcKEAELzE/F3qMmAbtL2EhIK8jWtFAQAenVIwAAAAAAAAAA";
         let ts = crate::datetime::parse(eve_timestamp, None).unwrap();
-        let packet = base64::decode(packet_base64).unwrap();
+        let packet = BASE64_STANDARD.decode(packet_base64).unwrap();
         let _pcap_buffer = super::create(linktype as u32, ts, &packet);
     }
 

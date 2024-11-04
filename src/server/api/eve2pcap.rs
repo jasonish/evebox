@@ -6,10 +6,13 @@ use crate::pcap;
 use crate::server::api::ApiError;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
+
+use std::sync::Arc;
+
 use axum::extract::{Extension, Form};
 use axum::response::IntoResponse;
+use base64::prelude::*;
 use serde::Deserialize;
-use std::sync::Arc;
 use tracing::warn;
 
 #[derive(Deserialize, Debug)]
@@ -41,7 +44,7 @@ pub(crate) async fn handler(
 
             let packet = &event["packet"]
                 .as_str()
-                .map(base64::decode)
+                .map(|s| BASE64_STANDARD.decode(s))
                 .ok_or_else(|| ApiError::BadRequest("no packet in event".to_string()))?
                 .map_err(|err| {
                     ApiError::BadRequest(format!("failed to base64 decode packet: {err}"))

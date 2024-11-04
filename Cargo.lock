@@ -261,12 +261,6 @@ dependencies = [
 
 [[package]]
 name = "base64"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
-
-[[package]]
-name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
@@ -702,7 +696,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "axum-server",
- "base64 0.12.3",
+ "base64 0.22.1",
  "bcrypt",
  "bytes",
  "chrono",

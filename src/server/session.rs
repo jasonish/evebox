@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use anyhow::Result;
-use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+
+use anyhow::Result;
+use base64::prelude::*;
+use rand::RngCore;
 
 pub(crate) struct SessionStore {
     cache: Mutex<HashMap<String, Arc<Session>>>,
@@ -80,5 +82,5 @@ pub(crate) fn generate_session_id() -> String {
     let mut rng = rand::thread_rng();
     let mut buf = vec![0; 256];
     rng.fill_bytes(&mut buf);
-    base64::encode(&buf)
+    BASE64_STANDARD.encode(&buf)
 }
