@@ -168,7 +168,6 @@ impl SqliteEventRepo {
         debug!("Archiving alert group: {:?}", alert_group);
 
         let action = HistoryEntryBuilder::new_archive().build();
-        let now = Instant::now();
         let sql = "
             UPDATE events
             SET archived = 1,
@@ -210,10 +209,17 @@ impl SqliteEventRepo {
             info!("sql={}", &sql);
         }
 
+        let start = Instant::now();
         let mut conn = self.writer.lock().await;
+        let write_lock_elapsed = start.elapsed();
         let x = sqlx::query_with(&sql, args).execute(&mut *conn).await?;
+        let query_elapsed = start.elapsed();
         let n = x.rows_affected();
-        debug!("Archived {n} alerts in {} ms", now.elapsed().as_millis());
+        debug!(
+            "Archived {n} alerts in {} ms (write-lock wait: {})",
+            query_elapsed.as_millis(),
+            write_lock_elapsed.as_millis()
+        );
 
         Ok(())
     }
