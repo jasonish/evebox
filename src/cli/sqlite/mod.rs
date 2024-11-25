@@ -63,6 +63,11 @@ struct ReindexArgs {
     /// Remove all existing indexes first
     #[arg(long)]
     remove: bool,
+
+    /// Reindex without prompting.
+    #[arg(long, short)]
+    force: bool,
+
     filename: String,
 }
 
@@ -366,7 +371,7 @@ async fn enable_auto_vacuum(filename: &str) -> Result<()> {
 async fn reindex(args: &ReindexArgs) -> Result<()> {
     println!("WARNING: Reindexing can take a while.");
     println!("- Database availability will be limited.");
-    if !confirm("Do you wish to continue?") {
+    if !args.force && !confirm("Do you wish to continue?") {
         return Ok(());
     }
 

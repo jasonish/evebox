@@ -4,11 +4,13 @@
 use crate::sqlite::has_table;
 use crate::sqlite::info::Info;
 use crate::sqlite::util::fts_create;
+use regex::Regex;
 use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::sqlite::{SqliteAutoVacuum, SqliteConnectOptions, SqliteJournalMode};
 use sqlx::sqlite::{SqliteConnection, SqliteSynchronous};
 use sqlx::Connection as _;
 use sqlx::SqlitePool;
+use std::collections::HashSet;
 use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
 
@@ -212,6 +214,18 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
         info!("FTS not enabled, consider enabling for query performance improvements");
     }
 
+    match check_indexes(&mut tx).await {
+        Ok(false) => {
+            debug!("Event table indexes OK");
+        }
+        Ok(true) => {
+            warn!("Event table indexes out of table, please consider updating the indexes");
+        }
+        Err(err) => {
+            warn!("Failed to validate event table indexes: {:?}", err);
+        }
+    }
+
     tx.commit().await?;
 
     Ok(())
@@ -219,6 +233,21 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
 
 pub(crate) async fn update_indexes(conn: &mut SqliteConnection) -> anyhow::Result<()> {
     if let Some(indexes) = crate::resource::get_string("sqlite/Indexes.sql") {
+        // The indexes that exist in the database.
+        let current_indexes = get_current_indexes(conn).await?;
+
+        // The known indexes from Indexes.sql.
+        let known_indexes = parse_index_names(&indexes);
+
+        for index in &current_indexes {
+            if !known_indexes.contains(index) {
+                info!("Removing obsolete index {index}");
+                if let Err(err) = drop_index(conn, index).await {
+                    error!("Failed to drop index {}: {:?}", index, err);
+                }
+            }
+        }
+
         info!("Updating SQLite indexes");
         if let Err(err) = sqlx::query(&indexes).execute(&mut *conn).await {
             error!("Failed to update SQLite indexes: {err}");
@@ -228,4 +257,72 @@ pub(crate) async fn update_indexes(conn: &mut SqliteConnection) -> anyhow::Resul
     }
 
     Ok(())
+}
+
+async fn drop_index(conn: &mut SqliteConnection, index: &str) -> anyhow::Result<()> {
+    sqlx::query(&format!("DROP INDEX {}", index))
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+fn parse_index_names(sql: &str) -> HashSet<String> {
+    let mut indexes = HashSet::new();
+
+    for line in sql.lines() {
+        let re = Regex::new(r"CREATE INDEX IF NOT EXISTS (\w+)").unwrap();
+        if let Some(caps) = re.captures(line) {
+            if let Some(cap) = caps.get(1) {
+                indexes.insert(cap.as_str().to_string());
+            }
+        }
+    }
+
+    indexes
+}
+
+async fn get_current_indexes(conn: &mut SqliteConnection) -> anyhow::Result<Vec<String>> {
+    let mut indexes = vec![];
+
+    let rows: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type = 'index'")
+            .fetch_all(conn)
+            .await?;
+
+    for index in &rows {
+        if index.starts_with("sqlite") {
+            continue;
+        }
+        indexes.push(index.to_string());
+    }
+
+    Ok(indexes)
+}
+
+async fn check_indexes(conn: &mut SqliteConnection) -> anyhow::Result<bool> {
+    let current_indexes = get_current_indexes(conn)
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to get current indexes: {:?}", err))?;
+    let current_indexes: HashSet<String> = HashSet::from_iter(current_indexes.iter().cloned());
+    let indexes_sql = crate::resource::get_string("sqlite/Indexes.sql")
+        .ok_or_else(|| anyhow::anyhow!("Failed to find sqlite/Indexes.sql"))?;
+    let known_indexes = parse_index_names(&indexes_sql);
+
+    let mut dirty = false;
+
+    for index in &current_indexes {
+        if !known_indexes.contains(index) {
+            warn!("Events table contains obsolete or unknown index {index}");
+            dirty = true;
+        }
+    }
+
+    for index in &known_indexes {
+        if !current_indexes.contains(index) {
+            warn!("Events table is missing index {index}");
+            dirty = true;
+        }
+    }
+
+    Ok(dirty)
 }
