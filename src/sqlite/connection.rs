@@ -80,6 +80,7 @@ pub(crate) async fn open_pool(
     let pool = SqlitePoolOptions::new()
         .min_connections(12)
         .max_connections(30)
+        .max_lifetime(Some(std::time::Duration::from_secs(600)))
         .after_connect(|conn, _meta| Box::pin(async move { after_connect(conn).await }));
 
     let options = sqlite_options()
