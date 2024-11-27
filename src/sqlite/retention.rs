@@ -16,7 +16,7 @@ use crate::datetime::DateTime;
 const DEFAULT_RANGE: usize = 7;
 
 /// How often to run the retention job.  Currently 60 seconds.
-const INTERVAL: u64 = 3;
+const INTERVAL: u64 = 60;
 
 /// The time to sleep between retention runs if not all old events
 /// were deleted.
@@ -128,9 +128,9 @@ async fn retention_task(
     let mut count: u64 = 0;
 
     loop {
-        trace!("Running retention task");
         let mut delay = default_delay;
 
+        // First, delete to size.
         if size_enabled && config.size > 0 {
             match delete_to_size(conn.clone(), &filename, config.size).await {
                 Err(err) => {
@@ -151,7 +151,7 @@ async fn retention_task(
         // Range (day) based retention.
         if let Some(range) = config.range {
             if range > 0 {
-                match delete_by_range(conn.clone(), range as u64, LIMIT as u64).await {
+                match delete_older_than(conn.clone(), range as u64, LIMIT as u64).await {
                     Ok(n) => {
                         count += n;
                         if n == LIMIT as u64 {
@@ -171,7 +171,7 @@ async fn retention_task(
             last_report = Instant::now();
         }
 
-        std::thread::sleep(delay);
+        tokio::time::sleep(delay).await;
     }
 }
 
@@ -180,37 +180,36 @@ async fn delete_to_size(
     filename: &Path,
     bytes: usize,
 ) -> Result<u64> {
-    let file_size = crate::file::file_size(filename)? as usize;
-    if file_size < bytes {
-        debug!("Database less than max size of {} bytes", bytes);
-        return Ok(0);
-    }
-
     let mut deleted = 0;
     loop {
         let file_size = crate::file::file_size(filename)? as usize;
         if file_size < bytes {
-            return Ok(deleted);
+            break;
         }
 
-        debug!("Database file size of {} bytes is greater than max allowed size of {} bytes, deleting events",
-	       file_size, bytes);
-        deleted += delete_events(conn.clone(), 1000).await?;
-        std::thread::sleep(Duration::from_millis(100));
+        // Pause on subsequent rounds to let others get access to the
+        // write lock.
+        if deleted > 0 {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+
+        deleted += delete_oldest_events_n(conn.clone(), 1000).await?;
     }
+
+    Ok(deleted)
 }
 
-async fn delete_by_range(
+async fn delete_older_than(
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
-    range: u64,
+    days: u64,
     limit: u64,
 ) -> Result<u64, sqlx::Error> {
     let mut conn = conn.lock().await;
     let now = DateTime::now();
-    let period = std::time::Duration::from_secs(range * 86400);
+    let period = std::time::Duration::from_secs(days * 86400);
     let older_than = now.sub(period);
     let timer = Instant::now();
-    trace!("Deleting events older than {range} days");
+    trace!("Deleting events older than {days} days");
     let sql = r#"DELETE FROM events
         WHERE rowid IN
             (SELECT rowid FROM
@@ -226,22 +225,21 @@ async fn delete_by_range(
         .rows_affected();
     if n > 0 {
         debug!(
-            "Deleted {n} events older than {} ({range} days) in {} ms",
+            "Deleted {n} events older than {} ({days} days) in {} ms",
             &older_than,
             timer.elapsed().as_millis()
         );
     } else {
-        trace!("No events older than {range} days deleted");
+        trace!("No events older than {days} days deleted");
     }
     Ok(n)
 }
 
-async fn delete_events(
+/// Delete events by oldest.
+async fn delete_oldest_events_n(
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     limit: usize,
 ) -> Result<u64> {
-    let mut conn = conn.lock().await;
-    let timer = Instant::now();
     let sql = r#"DELETE FROM events
         WHERE rowid IN
             (SELECT rowid 
@@ -249,15 +247,21 @@ async fn delete_events(
              WHERE escalated = 0
              ORDER BY timestamp ASC
              LIMIT ?)"#;
+    let timer = Instant::now();
+    let mut conn = conn.lock().await;
+    let lock_elapsed = timer.elapsed();
     let n = sqlx::query(sql)
         .bind(limit as i64)
         .execute(&mut *conn)
         .await?
         .rows_affected();
     let elapsed = timer.elapsed();
-    let msg = format!("Deleted {n} events in {:?}", elapsed);
+    let msg = format!(
+        "Deleted {n} events in {:?} (lock-elapsed={:?})",
+        elapsed, lock_elapsed
+    );
     if elapsed > std::time::Duration::from_secs(1) {
-        warn!("{}", msg);
+        warn!("{}: Delete took longer than 1s", msg);
     } else {
         trace!("{}", msg);
     }
