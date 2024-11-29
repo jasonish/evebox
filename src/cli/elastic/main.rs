@@ -37,6 +37,10 @@ pub(crate) struct ElasticOptions {
     /// Elasticsearch password.
     #[clap(short, long, global = true)]
     pub(crate) password: Option<String>,
+
+    /// Elasticsearch template
+    #[clap(short, long, global = true, default_value = "logstash")]
+    pub(crate) template: String,
 }
 
 #[derive(Debug, Subcommand)]
@@ -76,6 +80,14 @@ async fn get_field_limit(args: &Args) -> Result<()> {
     }
     let client = client.build();
 
+    let template = client.get_template(&args.options.template).await?;
+    let template_field_limit =
+        &template[&args.options.template]["settings"]["index"]["mapping"]["total_fields"]["limit"];
+    info!(
+        "Template {}: {:?}",
+        &args.options.template, template_field_limit
+    );
+
     for index in client.get_indices_pattern("*").await? {
         // Only look at indices that match the name-YYYY.MM.DD
         // pattern.
@@ -90,17 +102,7 @@ async fn get_field_limit(args: &Args) -> Result<()> {
         if let Some(map) = settings.as_object() {
             for (index, settings) in map {
                 let limit = &settings["settings"]["index"]["mapping"]["total_fields"]["limit"];
-                match limit {
-                    serde_json::Value::Number(limit) => {
-                        info!("{}: {}", index, limit);
-                    }
-                    serde_json::Value::String(limit) => {
-                        info!("{}: {}", index, limit);
-                    }
-                    _ => {
-                        info!("{}: default (likely 1000)", index);
-                    }
-                }
+                info!("{}: {:?}", index, limit);
             }
         }
     }
