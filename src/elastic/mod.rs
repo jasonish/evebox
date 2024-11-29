@@ -1,20 +1,23 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::datetime::DateTime;
-use crate::eventrepo::DatastoreError;
-pub(crate) use client::Version;
-pub(crate) use client::{Client, ClientBuilder};
-pub(crate) use eventrepo::ElasticEventRepo;
-pub(crate) use importer::ElasticEventSink;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
 
-pub mod client;
-pub mod eventrepo;
-pub mod importer;
-pub mod request;
+use crate::datetime::DateTime;
+use crate::eventrepo::DatastoreError;
+
+pub(crate) use client::Version;
+pub(crate) use client::{Client, ClientBuilder};
+pub(crate) use eventrepo::ElasticEventRepo;
+pub(crate) use importer::ElasticEventSink;
+
+pub(crate) mod client;
+pub(crate) mod eventrepo;
+pub(crate) mod importer;
+pub(crate) mod request;
+pub(crate) mod util;
 
 pub(crate) const TAG_ESCALATED: &str = "evebox.escalated";
 pub(crate) const TAGS_ESCALATED: [&str; 1] = [TAG_ESCALATED];

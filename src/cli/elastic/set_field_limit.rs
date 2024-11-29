@@ -6,7 +6,7 @@ use clap::Parser;
 use serde_json::json;
 use tracing::info;
 
-use crate::elastic::Client;
+use crate::elastic::{util::update_template_field_limit, Client};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct Args {
@@ -42,7 +42,7 @@ pub(crate) async fn main(args: Args) -> Result<()> {
     }
 
     info!("Updating template for pattern {}*", args.index);
-    update_template(&client, &args.index, args.limit).await?;
+    update_template_field_limit(&client, &args.index, args.limit).await?;
 
     Ok(())
 }
@@ -60,34 +60,5 @@ async fn update_index(client: &Client, index: &str, limit: usize) -> Result<()> 
     let status = response.status();
     let body = response.text().await?;
     info!("Index {}: status: {}, body: {}", index, status, body);
-    Ok(())
-}
-
-async fn update_template(client: &crate::elastic::Client, index: &str, limit: usize) -> Result<()> {
-    #[rustfmt::skip]
-    let request = json!({
-	"index_patterns": [
-            format!("{}*", index),
-	],
-	"settings": {
-            "index": {
-		"mapping": {
-		    "total_fields": {
-			"limit": limit,
-		    }
-		}
-            }
-	}
-    });
-
-    let response = client
-        .put(&format!("_template/{index}"))?
-        .json(&request)
-        .send()
-        .await?;
-    let status = response.status();
-    let body = response.text().await?;
-    info!("Template {}: status: {}, body: {}", index, status, body);
-
     Ok(())
 }

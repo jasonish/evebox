@@ -488,7 +488,7 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             let eventstore = elastic::ElasticEventRepo {
                 base_index: server_config.elastic_index.clone(),
                 index_pattern,
-                client,
+                client: client.clone(),
                 ecs: server_config.elastic_ecs,
             };
             debug!("Elasticsearch base index: {}", &eventstore.base_index);
@@ -497,6 +497,9 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 &eventstore.index_pattern
             );
             debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
+
+            elastic::util::check_and_set_field_limit(&client, &eventstore.base_index).await;
+
             Ok(EventRepo::Elastic(eventstore))
         }
         "sqlite" => {

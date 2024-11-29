@@ -196,9 +196,10 @@ impl Client {
 
     pub(crate) async fn get_template(&self, name: &str) -> anyhow::Result<serde_json::Value> {
         let response = self.get(&format!("_template/{}", name))?.send().await?;
+        let response = response.error_for_status()?;
         let text = response.text().await?;
-        let response = serde_json::from_str(&text)?;
-        Ok(response)
+        let mut response: serde_json::Value = serde_json::from_str(&text)?;
+        Ok(response[name].take())
     }
 }
 

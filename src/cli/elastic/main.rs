@@ -3,7 +3,7 @@
 
 use anyhow::Result;
 use clap::{Command, CommandFactory, FromArgMatches, Parser, Subcommand};
-use tracing::info;
+use tracing::{info, warn};
 
 use super::set_field_limit;
 
@@ -79,14 +79,18 @@ async fn get_field_limit(args: &Args) -> Result<()> {
         client = client.with_password(password);
     }
     let client = client.build();
+    let template_name = &args.options.template;
 
-    let template = client.get_template(&args.options.template).await?;
-    let template_field_limit =
-        &template[&args.options.template]["settings"]["index"]["mapping"]["total_fields"]["limit"];
-    info!(
-        "Template {}: {:?}",
-        &args.options.template, template_field_limit
-    );
+    match client.get_template(template_name).await {
+        Ok(template) => {
+            let template_field_limit =
+                &template["settings"]["index"]["mapping"]["total_fields"]["limit"];
+            info!("Template: {}: {:?}", template_name, template_field_limit);
+        }
+        Err(err) => {
+            warn!("Failed to fetch template {}: {:?}", template_name, err);
+        }
+    }
 
     for index in client.get_indices_pattern("*").await? {
         // Only look at indices that match the name-YYYY.MM.DD
@@ -102,7 +106,7 @@ async fn get_field_limit(args: &Args) -> Result<()> {
         if let Some(map) = settings.as_object() {
             for (index, settings) in map {
                 let limit = &settings["settings"]["index"]["mapping"]["total_fields"]["limit"];
-                info!("{}: {:?}", index, limit);
+                info!("Index: {}: {:?}", index, limit);
             }
         }
     }
