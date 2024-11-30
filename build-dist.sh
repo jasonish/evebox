@@ -23,13 +23,13 @@ for a in $@; do
         --linux)
             skip_windows="yes"
             ;;
-	      --*)
-	          echo "error: bad argument: $a"
-	          exit 1
-	          ;;
+	--*)
+	    echo "error: bad argument: $a"
+	    exit 1
+	    ;;
         *)
-	          command="$@"
-	          break
+	    command="$@"
+	    break
             ;;
     esac
     shift
@@ -45,7 +45,7 @@ cross_run() {
     dockerfile="./docker/builder/Dockerfile.cross"
     tag=${BUILDER_TAG:-"evebox/builder:cross"}
     env
-    if [ -z "${GITHUB_REPOSITORY}" && test -t ]; then
+    if [ -z "${GITHUB_REPOSITORY}" -a -t ]; then
         it="-it"
     else
         it=""
@@ -54,8 +54,8 @@ cross_run() {
             --build-arg REAL_UID="$(id -u)" \
             --build-arg REAL_GID="$(id -g)" \
             --cache-from ${tag} \
-	          -t ${tag} \
-	          -f ${dockerfile} .
+	    -t ${tag} \
+	    -f ${dockerfile} .
     ${ECHO} docker run --rm ${it} --privileged \
             -v "$(pwd):/src:z" \
             -v /var/run/docker.sock:/var/run/docker.sock:z \
@@ -79,6 +79,6 @@ else
     cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
     
     if [[ "${skip_windows}" != "yes" ]]; then
-	      cross_run x86_64-pc-windows-gnu make dist
+	cross_run x86_64-pc-windows-gnu make dist
     fi
 fi
