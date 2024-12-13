@@ -564,21 +564,21 @@ impl ElasticEventRepo {
         &self,
     ) -> Result<Option<crate::datetime::DateTime>, DatastoreError> {
         #[rustfmt::skip]
-	      let request = json!({
-	          "query": {
-		            "bool": {
-		                "filter": [
-			                  {
-			                      "exists": {
-				                        "field": self.map_field("event_type"),
-			                      },
-			                  },
-		                ],
-		            },
-	          },
-	          "sort": [{"@timestamp": {"order": "asc"}}],
-	          "size": 1,
-	      });
+	let request = json!({
+	    "query": {
+		"bool": {
+		    "filter": [
+			{
+			    "exists": {
+				"field": self.map_field("event_type"),
+			    },
+			},
+		    ],
+		},
+	    },
+	    "sort": [{"@timestamp": {"order": "asc"}}],
+	    "size": 1,
+	});
         let response: serde_json::Value = self.search(&request).await?.json().await?;
         if let Some(hits) = response["hits"]["hits"].as_array() {
             for hit in hits {
@@ -628,26 +628,26 @@ impl ElasticEventRepo {
         #[rustfmt::skip]
         let request = json!({
             "query": {
-		            "bool": {
+		"bool": {
                     "filter": filters,
                     "must_not": must_not,
-		            },
+		},
             },
-	          "size": 0,
+	    "size": 0,
             "sort":[{"@timestamp":{"order":"desc"}}],
-	          "aggs": {
-		            "histogram": {
-		                "date_histogram": {
-			                  "field": "@timestamp",
-			                  "fixed_interval": format!("{interval}s"),
-			                  "min_doc_count": 0,
-			                  "extended_bounds": {
-			                      "max": bound_max.to_elastic(),
-			                      "min": bound_min.to_elastic(),
-			                  },
-		                },
-		            },
-	          },
+	    "aggs": {
+		"histogram": {
+		    "date_histogram": {
+			"field": "@timestamp",
+			"fixed_interval": format!("{interval}s"),
+			"min_doc_count": 0,
+			"extended_bounds": {
+			    "max": bound_max.to_elastic(),
+			    "min": bound_min.to_elastic(),
+			},
+		    },
+		},
+	    },
         });
 
         let response: serde_json::Value = self.search(&request).await?.json().await?;
@@ -731,27 +731,27 @@ impl ElasticEventRepo {
         let agg = if order == "asc" {
             // We're after a rare terms...
             json!({
-		            "rare_terms": {
+		"rare_terms": {
                     "field": field,
                     // Increase the max_doc_count, otherwise only
                     // terms that appear once will be returned, but
                     // we're after the least occurring, but those
                     // numbers could still be high.
                     "max_doc_count": 100,
-		            }
+		}
             })
         } else {
             // This is a normal "Top 10"...
             json!({
-		            "terms": {
+		"terms": {
                     "field": &field,
                     "size": size,
-		            },
+		},
             })
         };
-
+        
         filter.push(exists_filter(&self.map_field("event_type")));
-
+        
         #[rustfmt::skip]
         let mut query = json!({
             "query": {
