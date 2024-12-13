@@ -92,13 +92,11 @@ async fn get_field_limit(args: &Args) -> Result<()> {
         }
     }
 
+    // Only look at indices that match the name-YYYY.MM.DD pattern.
+    let re = regex::Regex::new(r"^\w+-\d{4}\.\d{2}\.\d{2}$")?;
+
     for index in client.get_indices_pattern("*").await? {
-        // Only look at indices that match the name-YYYY.MM.DD
-        // pattern.
-        if regex::Regex::new(r"^\w+-\d{4}\.\d{2}\.\d{2}$")?
-            .find(&index.index)
-            .is_none()
-        {
+        if re.find(&index.index).is_none() {
             continue;
         }
 
