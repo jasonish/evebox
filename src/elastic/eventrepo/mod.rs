@@ -111,10 +111,24 @@ impl ElasticEventRepo {
                 "dest_ip" => "dest_ip.keyword",
                 "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword",
                 "dhcp.client_mac" => "dhcp.client_mac.keyword",
-                "dns.type" => "dns_type.keyword",
+                "dns.type" => {
+                    if self.runtime_mappings_supported {
+                        "dns_type.keyword"
+                    } else {
+                        "dns.type.keyword"
+                    }
+                }
                 "dns.rcode" => "dns.rcode.keyword",
                 "dns.rdata" => "dns.rdata.keyword",
-                "dns.rrname" => "dns_query_rrname.keyword",
+                "dns.rrname" => {
+                    if self.runtime_mappings_supported {
+                        "dns_query_rrname.keyword"
+                    } else {
+                        // Assume Suricata 7 for these older
+                        // Opensearch versions.
+                        "dns.rrname.keyword"
+                    }
+                }
                 "dns.queries.rrname" => "dns_query_rrname.keyword",
                 "dns.rrtype" => "dns.rrtype.keyword",
                 "event_type" => "event_type.keyword",
@@ -749,9 +763,9 @@ impl ElasticEventRepo {
 		},
             })
         };
-        
+
         filter.push(exists_filter(&self.map_field("event_type")));
-        
+
         #[rustfmt::skip]
         let mut query = json!({
             "query": {
