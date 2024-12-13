@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.19.0 - unreleased
+## 0.19.0 - 2024-12-13
 
 - [server] Don't forget session on server restart. Persists session
   tokens in the config db.
