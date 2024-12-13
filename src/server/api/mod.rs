@@ -414,13 +414,8 @@ pub(crate) async fn events(
         .unwrap_or_default();
     params.query_string = query_string;
 
-    match context.datastore.events(params).await {
-        Err(err) => {
-            error!("error: {:?}", err);
-            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
-        }
-        Ok(v) => Ok(Json(v).into_response()),
-    }
+    let results = context.datastore.events(params).await?;
+    Ok(Json(results).into_response())
 }
 
 async fn ja4db(

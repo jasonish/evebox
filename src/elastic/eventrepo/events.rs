@@ -6,7 +6,6 @@ use crate::elastic::request;
 use crate::eventrepo::{self, DatastoreError};
 use crate::LOG_QUERIES;
 use serde_json::json;
-use tracing::error;
 use tracing::info;
 use tracing::warn;
 
@@ -71,16 +70,18 @@ impl ElasticEventRepo {
         let response = self.search(&body).await?;
         let response: serde_json::Value = response.json().await?;
 
-        if let Some(error) = response["error"].as_object() {
-            // Find the first reason, may be deeply nested.
-            if let serde_json::Value::String(reason) = &error["caused_by"]["reason"] {
-                error!(
-                    "Failed to execute event query: error={}; query={}",
-                    reason,
-                    serde_json::to_string(&body).unwrap()
-                );
-                return Err(anyhow::anyhow!("{}", reason))?;
-            }
+        if response["error"].is_object() {
+            // Attempt to convert the response back to JSON. We could
+            // just use the body, but its full of new line feeds, etc.
+            let error = match serde_json::to_string(&response) {
+                Ok(error) => error,
+                Err(_) => format!("{:?}", &response),
+            };
+
+            return Err(anyhow::anyhow!(
+                "Elasticsearch returned error on event query: error={}",
+                error
+            ))?;
         }
 
         // Another way we can get errors from
