@@ -11,7 +11,7 @@ repository = "https://github.com/jasonish/evebox"
 documentation = "https://evebox.org"
 
 # This is not a guarantee, just helps notify me when the MSRV changes.
-rust-version = "1.78.0"
+rust-version = "1.81.0"
 
 [profile.release]
 lto = true
