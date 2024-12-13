@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use sqlx::sqlite::{SqliteArguments, SqliteRow};
 use sqlx::Arguments;
 use sqlx::Row;
-use tracing::{error, info, instrument, warn};
+use tracing::{debug, error, info, instrument, warn};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
@@ -396,8 +396,8 @@ impl SqliteEventRepo {
             results.push(row);
         }
 
-        info!(
-            "Rows={}, Elapsed={} ms",
+        debug!(
+            "rows={}, elapsed={} ms",
             results.len(),
             now.elapsed().as_millis()
         );
