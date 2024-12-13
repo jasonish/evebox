@@ -39,6 +39,7 @@ pub(crate) struct ElasticEventRepo {
     pub index_pattern: String,
     pub client: Client,
     pub ecs: bool,
+    pub runtime_mappings_supported: bool,
 }
 
 impl ElasticEventRepo {
@@ -753,20 +754,23 @@ impl ElasticEventRepo {
 
         #[rustfmt::skip]
         let mut query = json!({
-            "runtime_mappings": self.runtime_mappings(),
             "query": {
-		            "bool": {
-		                "filter": filter,
+		"bool": {
+		    "filter": filter,
                     "must_not": must_not,
-		            },
+		},
             },
             // Not interested in individual documents, just the
             // aggregations on the filtered data.
             "size": 0,
             "aggs": {
-		            "agg": agg,
+		"agg": agg,
             },
         });
+
+        if self.runtime_mappings_supported {
+            query["runtime_mappings"] = self.runtime_mappings();
+        }
 
         if !should.is_empty() {
             query["query"]["bool"]["should"] = should.into();

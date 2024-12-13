@@ -47,7 +47,6 @@ impl ElasticEventRepo {
         let size = params.size.unwrap_or(500);
 
         let mut body = json!({
-            "runtime_mappings": self.runtime_mappings(),
             "query": {
                 "bool": {
                     "filter": filters,
@@ -57,6 +56,10 @@ impl ElasticEventRepo {
             "sort": [{sort_by: {"order": sort_order}}],
             "size": size,
         });
+
+        if self.runtime_mappings_supported {
+            body["runtime_mappings"] = self.runtime_mappings();
+        }
 
         if !should.is_empty() {
             body["query"]["bool"]["should"] = should.into();

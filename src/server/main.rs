@@ -448,6 +448,8 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
 
             let client = client.build();
 
+            let mut runtime_mappings_supported = true;
+
             let server_info = client.wait_for_info().await;
             if matches!(
                 server_info.version.distribution.as_deref(),
@@ -457,6 +459,9 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 if let Ok(version) = Version::parse(&server_info.version.number) {
                     if version.major < 2 || (version.major < 3 && version.minor < 6) {
                         error!("Opensearch versions less than 2.6.0 not supported. EveBox likely won't work properly.");
+                        // Runtime mappings don't work on OpenSearch
+                        // 1.3, as used by ClearNDR at this time.
+                        runtime_mappings_supported = false;
                     }
                 } else {
                     error!("Failed to parse Opensearch version, EveBox likely won't work properly");
@@ -490,6 +495,7 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 index_pattern,
                 client: client.clone(),
                 ecs: server_config.elastic_ecs,
+                runtime_mappings_supported,
             };
             debug!("Elasticsearch base index: {}", &eventstore.base_index);
             debug!(
