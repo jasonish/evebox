@@ -15,6 +15,8 @@ use base64::prelude::*;
 use serde::Deserialize;
 use tracing::warn;
 
+use hyper::header::{HeaderMap, CONTENT_TYPE, CONTENT_DISPOSITION};
+
 #[derive(Deserialize, Debug)]
 pub(crate) struct PcapForm {
     pub what: String,
@@ -26,15 +28,25 @@ pub(crate) async fn handler(
     _session: SessionExtractor,
     Form(form): Form<PcapForm>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let headers = [
-        ("content-type", "application/vnc.tcpdump.pcap"),
-        ("content-disposition", "attachment; filename=event.pcap"),
-    ];
+    let mut hmap = HeaderMap::new();
+    hmap.insert(CONTENT_TYPE, "application/vnc.tcpdump.pcap".parse().unwrap());
 
     let event: serde_json::Value = serde_json::from_str(&form.event)
         .map_err(|err| ApiError::BadRequest(format!("failed to decode event: {err}")))?;
     match form.what.as_ref() {
         "packet" => {
+            let filename = if event["event_type"] == "alert" {
+                if let Some(sid) = &event["alert"]["signature_id"].as_u64() {
+                    sid.to_string()
+                } else {
+                    "event".to_string()
+                }
+            } else {
+                "event".to_string()
+            };
+            let cs_hdr_value = format!("attachment; filename={}.pcap", filename);
+            hmap.insert(CONTENT_DISPOSITION, cs_hdr_value.parse().unwrap());
+
             let linktype = if let Some(linktype) = &event["xpacket_info"]["linktype"].as_u64() {
                 *linktype as u32
             } else {
@@ -53,9 +65,21 @@ pub(crate) async fn handler(
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
             })?;
             let pcap_buffer = pcap::create(linktype, ts, packet);
-            Ok((headers, pcap_buffer))
+            Ok((hmap, pcap_buffer))
         }
         "payload" => {
+            let filename = if event["event_type"] == "alert" {
+                if let Some(sid) = &event["alert"]["signature_id"].as_u64() {
+                    sid.to_string()
+                } else {
+                    "event".to_string()
+                }
+            } else {
+                "event".to_string()
+            };
+            let cs_hdr_value = format!("attachment; filename={}.pcap", filename);
+            hmap.insert(CONTENT_DISPOSITION, cs_hdr_value.parse().unwrap());
+
             let ts = event.datetime().ok_or_else(|| {
                 ApiError::BadRequest("bad or missing timestamp field".to_string())
             })?;
@@ -65,7 +89,7 @@ pub(crate) async fn handler(
                 ApiError::BadRequest(msg)
             })?;
             let pcap_buffer = pcap::create(pcap::LinkType::Raw as u32, ts, &packet);
-            Ok((headers, pcap_buffer))
+            Ok((hmap, pcap_buffer))
         }
         _ => Err(ApiError::BadRequest("invalid value for what".to_string())),
     }
