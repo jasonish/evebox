@@ -23,7 +23,7 @@ pub(crate) async fn check_and_set_field_limit(client: &Client, template_name: &s
         }
         Err(err) => {
             info!(
-                "Failed to find template for index {}: {:?}",
+                "Failed to find template for index {}: {}",
                 template_name, err
             );
         }
@@ -36,7 +36,7 @@ pub(crate) async fn check_and_set_field_limit(client: &Client, template_name: &s
         }
         Err(err) => {
             error!(
-                "Failed to update Elasticsearch template field limit: {:?}",
+                "Failed to update Elasticsearch template field limit: {}",
                 err
             );
         }
