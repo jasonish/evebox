@@ -448,8 +448,6 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
 
             let client = client.build();
 
-            let mut runtime_mappings_supported = true;
-
             let server_info = client.wait_for_info().await;
             if matches!(
                 server_info.version.distribution.as_deref(),
@@ -464,7 +462,6 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                     error!("Failed to parse Opensearch version, EveBox likely won't work properly");
                 }
                 warn!("Opensearch support is still a work in progress");
-                runtime_mappings_supported = false;
             } else {
                 info!(
                     "Found Elasticsearch version {}; Index={}; ECS={}",
@@ -494,7 +491,6 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 index_pattern,
                 client: client.clone(),
                 ecs: server_config.elastic_ecs,
-                runtime_mappings_supported,
             };
             debug!("Elasticsearch base index: {}", &eventstore.base_index);
             debug!(

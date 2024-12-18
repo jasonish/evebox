@@ -57,10 +57,6 @@ impl ElasticEventRepo {
             "size": size,
         });
 
-        if self.runtime_mappings_supported {
-            body["runtime_mappings"] = self.runtime_mappings();
-        }
-
         if !should.is_empty() {
             body["query"]["bool"]["should"] = should.into();
             body["query"]["bool"][MINIMUM_SHOULD_MATCH] = 1.into();

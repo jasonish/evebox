@@ -39,7 +39,6 @@ pub(crate) struct ElasticEventRepo {
     pub index_pattern: String,
     pub client: Client,
     pub ecs: bool,
-    pub runtime_mappings_supported: bool,
 }
 
 impl ElasticEventRepo {
@@ -111,25 +110,10 @@ impl ElasticEventRepo {
                 "dest_ip" => "dest_ip.keyword",
                 "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword",
                 "dhcp.client_mac" => "dhcp.client_mac.keyword",
-                "dns.type" => {
-                    if self.runtime_mappings_supported {
-                        "dns_type.keyword"
-                    } else {
-                        "dns.type.keyword"
-                    }
-                }
+                "dns.type" => "dns.type.keyword",
                 "dns.rcode" => "dns.rcode.keyword",
                 "dns.rdata" => "dns.rdata.keyword",
-                "dns.rrname" => {
-                    if self.runtime_mappings_supported {
-                        "dns_query_rrname.keyword"
-                    } else {
-                        // Assume Suricata 7 for these older
-                        // Opensearch versions.
-                        "dns.rrname.keyword"
-                    }
-                }
-                "dns.queries.rrname" => "dns_query_rrname.keyword",
+                "dns.rrname" | "dns.queries.rrname" => "dns.queries.rrname.keyword",
                 "dns.rrtype" => "dns.rrtype.keyword",
                 "event_type" => "event_type.keyword",
                 "host" => "host.keyword",
@@ -440,16 +424,72 @@ impl ElasticEventRepo {
                             should.push(json!({"term": {self.map_field("dhcp.subnet_mask"): v}}));
                         }
                     }
+                    "dns.type" => match v.as_ref() {
+                        "query" | "request" => {
+                            let bool_should = json!({
+                                "bool": {
+                                    "should": [
+                                        {"term": {self.map_field(k): "query"}},
+                                        {"term": {self.map_field(k): "request"}},
+                                    ]
+                                }
+                            });
+                            if el.negated {
+                                must_not.push(bool_should);
+                            } else {
+                                filter.push(bool_should);
+                            }
+                        }
+                        "answer" | "response" => {
+                            let bool_should = json!({
+                                "bool": {
+                                    "should": [
+                                        {"term": {self.map_field(k): "answer"}},
+                                        {"term": {self.map_field(k): "response"}},
+                                    ]
+                                }
+                            });
+                            if el.negated {
+                                must_not.push(bool_should);
+                            } else {
+                                filter.push(bool_should);
+                            }
+                        }
+                        _ => {
+                            if el.negated {
+                                must_not.push(json!({"term": {self.map_field(k): v}}));
+                            } else {
+                                filter.push(json!({"term": {self.map_field(k): v}}));
+                            }
+                        }
+                    },
                     _ => {
                         if k.starts_with('@') {
                             warn!("Unhandled @ parameter in query string: {k}");
                         } else if k.starts_with(' ') {
                             warn!("Query parameter starting with a space: {k}");
                         }
+
+                        let mapped_field = self.map_field(k);
+
+                        let expression = match mapped_field.as_ref() {
+                            "dns.queries.rrname.keyword" => {
+                                json!({
+                                    "bool": {
+                                        "should": [
+                                            {"term": {"dns.queries.rrname.keyword": v}},
+                                            {"term": {"dns.rrname.keyword": v}}
+                                        ]
+                                    }
+                                })
+                            }
+                            _ => request::term_filter(&mapped_field, v),
+                        };
+
                         if el.negated {
-                            must_not.push(request::term_filter(&self.map_field(k), v))
+                            must_not.push(expression);
                         } else {
-                            filter.push(request::term_filter(&self.map_field(k), v))
+                            filter.push(expression);
                         }
                     }
                 },
@@ -679,53 +719,6 @@ impl ElasticEventRepo {
         Ok(data)
     }
 
-    fn runtime_mappings(&self) -> serde_json::Value {
-        json!({
-            "dns_type.keyword": {
-                "type": "keyword",
-                "script": {
-                    "source": r#"
-                        try {
-                            if (doc.containsKey('dns.type')) {
-                                if (doc['dns.type.keyword'].value == "request") {
-                                    emit("query");
-                                } else if (doc['dns.type.keyword'].value == "response") {
-                                    emit("answer");
-                                } else {
-                                    emit(doc['dns.type.keyword'].value);
-                                }
-                            }
-                        }
-                        catch (Exception e) {
-                        }
-                    "#
-                }
-            },
-            "dns_query_rrname.keyword": {
-                "type": "keyword",
-                "script": {
-                    "source": r#"
-                        try {
-                            if (doc['dns.version'].size() != 0 && doc['dns.version'].value > 2) {
-                                if (doc.containsKey('dns.queries.rrname')) {
-                                    emit(doc['dns.queries.rrname.keyword'].value);
-                                }
-                            } else {
-                                if (doc.containsKey('dns.rrname')) {
-                                    if (doc['dns.rrname.keyword'].size() != 0) {
-                                        emit(doc['dns.rrname.keyword'].value);
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception e) {
-                        }
-                    "#,
-                }
-            }
-        })
-    }
-
     pub async fn agg(
         &self,
         field: &str,
@@ -741,26 +734,39 @@ impl ElasticEventRepo {
 
         let field = self.map_field(field);
 
-        #[rustfmt::skip]
+        let mut agg = json!({});
+
+        match field.as_ref() {
+            "dns.queries.rrname.keyword" => {
+                agg["script"] = json!({
+                    "source": r#"
+                        if (doc.containsKey('dns.queries.rrname.keyword') && doc['dns.queries.rrname.keyword'].size() != 0) {
+                            return doc['dns.queries.rrname.keyword'];
+                        }
+                        else if (doc.containsKey('dns.rrname.keyword') && doc['dns.rrname.keyword'].size() != 0) {
+                            return doc['dns.rrname.keyword'];
+                        }
+                        "#,
+                });
+            }
+            _ => {
+                agg["field"] = field.clone().into();
+            }
+        }
+
         let agg = if order == "asc" {
-            // We're after a rare terms...
+            // Increase the max_doc_count, otherwise only
+            // terms that appear once will be returned, but
+            // we're after the least occurring, but those
+            // numbers could still be high.
+            agg["max_doc_count"] = 100.into();
             json!({
-		"rare_terms": {
-                    "field": field,
-                    // Increase the max_doc_count, otherwise only
-                    // terms that appear once will be returned, but
-                    // we're after the least occurring, but those
-                    // numbers could still be high.
-                    "max_doc_count": 100,
-		}
+                "rare_terms": agg
             })
         } else {
-            // This is a normal "Top 10"...
+            agg["size"] = size.into();
             json!({
-		"terms": {
-                    "field": &field,
-                    "size": size,
-		},
+                "terms": agg
             })
         };
 
@@ -781,10 +787,6 @@ impl ElasticEventRepo {
 		"agg": agg,
             },
         });
-
-        if self.runtime_mappings_supported {
-            query["runtime_mappings"] = self.runtime_mappings();
-        }
 
         if !should.is_empty() {
             query["query"]["bool"]["should"] = should.into();
