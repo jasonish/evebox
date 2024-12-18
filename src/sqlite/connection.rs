@@ -269,7 +269,7 @@ async fn drop_index(conn: &mut SqliteConnection, index: &str) -> anyhow::Result<
 
 fn parse_index_names(sql: &str) -> HashSet<String> {
     let mut indexes = HashSet::new();
-    
+
     let re = Regex::new(r"CREATE INDEX IF NOT EXISTS (\w+)").unwrap();
     for line in sql.lines() {
         if let Some(caps) = re.captures(line) {

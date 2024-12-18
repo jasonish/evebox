@@ -15,7 +15,7 @@ use base64::prelude::*;
 use serde::Deserialize;
 use tracing::warn;
 
-use hyper::header::{HeaderMap, CONTENT_TYPE, CONTENT_DISPOSITION};
+use hyper::header::{HeaderMap, CONTENT_DISPOSITION, CONTENT_TYPE};
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct PcapForm {
@@ -29,7 +29,10 @@ pub(crate) async fn handler(
     Form(form): Form<PcapForm>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut hmap = HeaderMap::new();
-    hmap.insert(CONTENT_TYPE, "application/vnc.tcpdump.pcap".parse().unwrap());
+    hmap.insert(
+        CONTENT_TYPE,
+        "application/vnc.tcpdump.pcap".parse().unwrap(),
+    );
 
     let event: serde_json::Value = serde_json::from_str(&form.event)
         .map_err(|err| ApiError::BadRequest(format!("failed to decode event: {err}")))?;

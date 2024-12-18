@@ -124,7 +124,8 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     }
 
     let enable_geoip = args_matches
-        .get_one::<bool>("geoip.enabled").is_some_and(|v| *v);
+        .get_one::<bool>("geoip.enabled")
+        .is_some_and(|v| *v);
 
     // Get additional fields to add to events.
     let additional_fields = get_additional_fields(&config)?;

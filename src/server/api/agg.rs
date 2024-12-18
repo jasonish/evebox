@@ -67,7 +67,7 @@ pub(crate) async fn agg(
         .await?;
     #[rustfmt::skip]
     let response = json!({
-	      "rows": results,
+	"rows": results,
     });
     Ok(Json(response))
 }
