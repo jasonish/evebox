@@ -213,7 +213,7 @@ impl SqliteEventRepo {
             } else {
                 let alert = AggAlert {
                     id: rowid.to_string(),
-                    source: source.clone(),
+                    source,
                     metadata: AggAlertMetadata {
                         count: 1,
                         escalated_count: if escalated { 1 } else { 0 },
@@ -221,7 +221,7 @@ impl SqliteEventRepo {
                         max_timestamp: DateTime::from_nanos(timestamp as i64),
                     },
                 };
-                events.insert(key.clone(), alert);
+                events.insert(key, alert);
             }
 
             if count == 0 {
