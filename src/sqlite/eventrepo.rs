@@ -25,6 +25,7 @@ mod comments;
 mod dhcp;
 mod events;
 mod stats;
+mod dns;
 
 /// SQLite implementation of the event datastore.
 pub(crate) struct SqliteEventRepo {

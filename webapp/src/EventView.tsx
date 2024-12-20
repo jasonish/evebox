@@ -41,6 +41,7 @@ import { EventServiceConfig, serverConfig } from "./config";
 import { createStore } from "solid-js/store";
 import { BiInfoCircle } from "./icons";
 import { SearchLink } from "./common/SearchLink";
+import * as api from "./api";
 
 const PCAP_BUTTON_STYLE =
   "--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .7rem;";
@@ -70,6 +71,9 @@ export function EventView() {
   let keybindings: any = null;
   let referer: null | string = null;
   let rawJsonRef: any = null;
+
+  const [srcIpDns, setSrcIpDns] = createSignal<null | any>(null);
+  const [destIpDns, setDestIpDns] = createSignal<null | any>(null);
 
   console.log(`- EventView: EVENT_STORE.active_id=${eventStore.active?._id}`);
 
@@ -163,6 +167,46 @@ export function EventView() {
       console.log(`-- Events in store: ${eventStore.events.length}`);
       refreshEvent();
     });
+  });
+
+  // Find DNS.
+  createEffect(async () => {
+    let source = event()?._source;
+    if (!source) {
+      return;
+    }
+    const src_ip = source.src_ip;
+    const dest_ip = source.dest_ip;
+    const host = source.host;
+
+    // Use flow start if available, otherwise use the event timestamp.
+    const before = source.flow?.start || source.timestamp;
+
+    api
+      .get("/api/find-dns", {
+        src_ip: src_ip,
+        dest_ip: dest_ip,
+        before,
+        host,
+      })
+      .then((response) => {
+        if (response.data.rrnames?.length > 0) {
+          setSrcIpDns(response.data.rrnames);
+        }
+      });
+
+    api
+      .get("/api/find-dns", {
+        src_ip: dest_ip,
+        dest_ip: src_ip,
+        before,
+        host,
+      })
+      .then((response) => {
+        if (response.data.rrnames?.length > 0) {
+          setDestIpDns(response.data.rrnames);
+        }
+      });
   });
 
   const refreshEvent = () => {
@@ -685,6 +729,45 @@ export function EventView() {
                     </table>
                   </Card.Body>
                 </Card>
+
+                <Show when={srcIpDns() || destIpDns()}>
+                  <Card class="mt-2">
+                    <Card.Body class={"p-0"}>
+                      <table
+                        class={
+                          "table table-sm app-detail-table table-borderless table-striped table-hover mb-0"
+                        }
+                      >
+                        <tbody>
+                          <Show when={srcIpDns()}>
+                            <For each={srcIpDns()}>
+                              {(e) => (
+                                <tr>
+                                  <td>{event()?._source.src_ip}</td>
+                                  <td>
+                                    <SearchLink value={e}>{e}</SearchLink>
+                                  </td>
+                                </tr>
+                              )}
+                            </For>
+                          </Show>
+                          <Show when={destIpDns()}>
+                            <For each={destIpDns()}>
+                              {(e) => (
+                                <tr>
+                                  <td>{event()?._source.dest_ip}</td>
+                                  <td>
+                                    <SearchLink value={e}>{e}</SearchLink>
+                                  </td>
+                                </tr>
+                              )}
+                            </For>
+                          </Show>
+                        </tbody>
+                      </table>
+                    </Card.Body>
+                  </Card>
+                </Show>
               </Col>
             </Show>
 

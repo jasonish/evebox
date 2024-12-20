@@ -17,6 +17,7 @@ use axum::routing::{get, post};
 use axum::Json;
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
 use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -65,6 +66,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/1/sqlite/fts/disable", post(sqlite::fts_disable))
         .route("/api/ja4db/:fingerprint", get(ja4db))
         .route("/api/admin/update/ja4db", post(admin::update_ja4db))
+        .route("/api/find-dns", get(find_dns))
         .nest("/api/1/stats", stats::router())
 }
 
@@ -384,6 +386,45 @@ pub(crate) async fn comment_by_event_id(
     }
 }
 
+/// Find a DNS record.
+async fn find_dns(
+    _session: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+    Form(form): Form<HashMap<String, String>>,
+) -> Result<impl IntoResponse, ApiError> {
+    let src_ip = form
+        .get("src_ip")
+        .ok_or_else(|| ApiError::BadRequest("src_ip required".into()))?
+        .to_string();
+
+    let dest_ip = form
+        .get("dest_ip")
+        .ok_or_else(|| ApiError::BadRequest("dest_ip required".into()))?
+        .to_string();
+
+    let host = form.get("host").cloned();
+
+    let before = form
+        .get("before")
+        .map(|ts| {
+            crate::datetime::parse(ts, None).map_err(|_| anyhow::anyhow!("failed to parse before"))
+        })
+        .transpose()?;
+
+    match &context.datastore {
+        EventRepo::Elastic(e) => {
+            let response = e.dns_reverse_lookup(before, host, src_ip, dest_ip).await?;
+            Ok(Json(response))
+        }
+        EventRepo::SQLite(s) => {
+            let response = s
+                .dns_reverse_lookup(before.clone(), host, src_ip, dest_ip)
+                .await?;
+            Ok(Json(response))
+        }
+    }
+}
+
 pub(crate) async fn events(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
@@ -508,3 +549,4 @@ impl IntoResponse for ApiError {
         (status, body).into_response()
     }
 }
+

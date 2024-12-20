@@ -29,20 +29,20 @@ impl ElasticEventRepo {
         #[rustfmt::skip]
         let request = json!({
             "query": {
-		            "bool": {
+		"bool": {
                     "filter": filters,
-		            }
+		}
             },
             "collapse": {
-		            "field": self.map_field("dhcp.client_mac"),
+		"field": self.map_field("dhcp.client_mac"),
             },
-	          "sort": [
-		            {
-		                "@timestamp": {
-			                  "order": "desc",
-		                },
-		            }
-	          ],
+	    "sort": [
+		{
+		    "@timestamp": {
+			"order": "desc",
+		    },
+		}
+	    ],
             "size": 10000,
         });
 

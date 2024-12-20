@@ -81,7 +81,8 @@ pub(crate) async fn open_pool(
         .min_connections(12)
         .max_connections(30)
         .max_lifetime(Some(std::time::Duration::from_secs(600)))
-        .after_connect(|conn, _meta| Box::pin(async move { after_connect(conn).await }));
+        .after_release(|conn, _| Box::pin(async move { after_release(conn).await }))
+        .after_connect(|conn, _| Box::pin(async move { after_connect(conn).await }));
 
     let options = sqlite_options()
         .filename(path)
@@ -103,6 +104,12 @@ async fn after_connect(conn: &mut SqliteConnection) -> Result<(), sqlx::Error> {
         .await?;
 
     Ok(())
+}
+
+async fn after_release(conn: &mut SqliteConnection) -> Result<bool, sqlx::Error> {
+    // Remove any progress handlers.
+    conn.lock_handle().await?.remove_progress_handler();
+    Ok(true)
 }
 
 pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result<()> {

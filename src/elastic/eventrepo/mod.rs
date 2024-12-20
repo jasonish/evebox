@@ -27,6 +27,7 @@ use tracing::warn;
 
 mod alerts;
 mod dhcp;
+mod dns;
 mod events;
 mod stats;
 
