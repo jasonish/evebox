@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use super::{util::parse_duration, ApiError};
+use super::util::parse_duration;
+use crate::error::AppError;
 use crate::queryparser;
 use crate::queryparser::{QueryElement, QueryValue};
 use crate::server::{main::SessionExtractor, ServerContext};
@@ -43,7 +44,7 @@ pub(crate) async fn agg(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<AggParams>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     // First parse the query string.
     let default_tz_offset = form.tz_offset.as_deref();
     let mut query_string = form
@@ -55,7 +56,7 @@ pub(crate) async fn agg(
 
     let min_timestamp = parse_duration(&form.time_range)
         .map(|d| chrono::Utc::now().sub(d))
-        .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
+        .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))?;
     query_string.push(QueryElement {
         negated: false,
         value: QueryValue::From(min_timestamp.into()),

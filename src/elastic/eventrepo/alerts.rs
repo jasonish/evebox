@@ -5,11 +5,12 @@ use tracing::{debug, error, warn};
 
 use crate::{
     elastic::{AlertQueryOptions, ElasticResponse},
-    eventrepo::{AggAlert, AggAlertMetadata, AlertsResult, DatastoreError},
+    eventrepo::{AggAlert, AggAlertMetadata, AlertsResult},
     queryparser::{self, QueryValue},
 };
 
 use super::{ElasticEventRepo, MINIMUM_SHOULD_MATCH};
+use crate::error::AppError;
 
 impl ElasticEventRepo {
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
@@ -160,14 +161,14 @@ impl ElasticEventRepo {
         query
     }
 
-    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult, DatastoreError> {
+    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult, AppError> {
         let mut query = self.build_inbox_query(options);
         query["timeout"] = "3s".into();
         let start = std::time::Instant::now();
         let body = self.search(&query).await?.text().await?;
         let response: ElasticResponse = serde_json::from_str(&body)?;
         if let Some(error) = &response.error {
-            return Err(DatastoreError::ElasticSearchError(error.first_reason()));
+            return Err(AppError::ElasticSearchError(error.first_reason()));
         }
 
         debug!(

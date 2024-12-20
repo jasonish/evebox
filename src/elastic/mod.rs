@@ -3,10 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use thiserror::Error;
 
 use crate::datetime::DateTime;
-use crate::eventrepo::DatastoreError;
 
 pub(crate) use client::Version;
 pub(crate) use client::{Client, ClientBuilder};
@@ -39,20 +37,6 @@ impl std::fmt::Display for HistoryType {
             HistoryType::Deescalated => write!(f, "de-escalated"),
             HistoryType::Comment => write!(f, "comment"),
         }
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum ElasticError {
-    #[error("elasticsearch response error: {0}")]
-    ErrorResponse(String),
-    #[error("elasticsearch: reqwest error: {0}")]
-    ReqwestError(#[from] reqwest::Error),
-}
-
-impl From<reqwest::Error> for DatastoreError {
-    fn from(err: reqwest::Error) -> Self {
-        DatastoreError::ElasticSearchError(err.to_string())
     }
 }
 

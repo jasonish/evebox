@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 use crate::datetime::DateTime;
+use crate::error::AppError;
 use crate::eventrepo;
 use crate::eventrepo::EventRepo;
-use crate::server::api::ApiError;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
 use axum::extract::{Form, State};
@@ -55,7 +55,7 @@ async fn agg(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let start_time = form.start_datetime().unwrap();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
@@ -70,7 +70,7 @@ async fn agg(
                 "Stats agg differential query failed: params={:?}, error={:?}",
                 &params, err
             );
-            Err(ApiError::InternalServerError)
+            Err(AppError::InternalServerError)
         }
     }
 }
@@ -79,7 +79,7 @@ async fn agg_differential(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let start_time = form.start_datetime().unwrap();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
@@ -94,7 +94,7 @@ async fn agg_differential(
                 "Stats agg differential query failed: params={:?}, error={:?}",
                 &params, err
             );
-            Err(ApiError::InternalServerError)
+            Err(AppError::InternalServerError)
         }
     }
 }
@@ -103,16 +103,16 @@ async fn agg_differential(
 pub(crate) async fn get_sensor_names(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let sensors = if let EventRepo::Elastic(elastic) = &context.datastore {
         elastic.get_sensors().await.map_err(|err| {
             error!("Failed to get sensors: {:?}", err);
-            ApiError::InternalServerError
+            AppError::InternalServerError
         })?
     } else if let EventRepo::SQLite(sqlite) = &context.datastore {
         sqlite.get_sensors().await.map_err(|err| {
             error!("Failed to get sensors: {:?}", err);
-            ApiError::InternalServerError
+            AppError::InternalServerError
         })?
     } else {
         return Ok((StatusCode::NOT_IMPLEMENTED, "").into_response());

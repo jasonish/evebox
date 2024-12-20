@@ -10,17 +10,18 @@ use tracing::{debug, error, info, instrument, warn};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
+use crate::elastic::AlertQueryOptions;
+use crate::error::AppError;
 use crate::eventrepo::{AggAlert, AggAlertMetadata, AlertsResult};
 use crate::sqlite::builder::EventQueryBuilder;
 use crate::sqlite::log_query_plan;
-use crate::{elastic::AlertQueryOptions, eventrepo::DatastoreError};
 use crate::{queryparser, LOG_QUERIES, LOG_QUERY_PLAN};
 use std::collections::HashSet;
 use std::time::Instant;
 
 impl SqliteEventRepo {
     #[instrument(skip_all)]
-    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult, DatastoreError> {
+    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult, AppError> {
         if std::env::var("EVEBOX_ALERTS_WITH_TIMEOUT").is_ok() {
             self.alerts_with_timeout(options).await
         } else {
@@ -32,7 +33,7 @@ impl SqliteEventRepo {
     pub async fn alerts_with_timeout(
         &self,
         options: AlertQueryOptions,
-    ) -> Result<AlertsResult, DatastoreError> {
+    ) -> Result<AlertsResult, AppError> {
         let mut builder = EventQueryBuilder::new(self.fts().await);
         builder
             .select("rowid")
@@ -264,7 +265,7 @@ impl SqliteEventRepo {
     pub async fn alerts_group_by(
         &self,
         options: AlertQueryOptions,
-    ) -> Result<AlertsResult, DatastoreError> {
+    ) -> Result<AlertsResult, AppError> {
         let query = r#"
     		    SELECT b.count,
 			        a.rowid as id,
@@ -410,7 +411,7 @@ impl SqliteEventRepo {
     }
 }
 
-fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert, DatastoreError> {
+fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert, AppError> {
     let count: i64 = row.try_get(0)?;
     let id: i64 = row.try_get(1)?;
     let min_ts_nanos: i64 = row.try_get(2)?;

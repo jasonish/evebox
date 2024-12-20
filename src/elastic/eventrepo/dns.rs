@@ -5,7 +5,8 @@ use super::{
     request::{term_filter, timestamp_lte_filter},
     ElasticEventRepo,
 };
-use crate::{elastic::DateTime, eventrepo::DatastoreError};
+use crate::elastic::DateTime;
+use crate::error::AppError;
 
 impl ElasticEventRepo {
     pub(crate) async fn dns_reverse_lookup(
@@ -14,7 +15,7 @@ impl ElasticEventRepo {
         sensor: Option<String>,
         src_ip: String,
         dest_ip: String,
-    ) -> Result<serde_json::Value, DatastoreError> {
+    ) -> Result<serde_json::Value, AppError> {
         let mut filters = vec![];
 
         filters.push(term_filter(&self.map_field("event_type"), "dns"));

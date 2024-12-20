@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 use crate::datetime::DateTime;
+use crate::error::AppError;
 use crate::eventrepo::EventQueryParams;
-use crate::eventrepo::{DatastoreError, EventRepo};
-use crate::queryparser::{QueryElement, QueryStringParseError, QueryValue};
+use crate::eventrepo::EventRepo;
+use crate::queryparser::{QueryElement, QueryValue};
 use crate::server::api::genericquery::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
@@ -121,7 +122,7 @@ pub(crate) async fn dhcp_ack(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
     Form(query): Form<DhcpAckQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let earliest = query
         .time_range
         .map(|x| x.parse_time_range_as_min_timestamp())
@@ -144,7 +145,7 @@ pub(crate) async fn dhcp_request(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
     Form(query): Form<DhcpAckQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let earliest = query
         .time_range
         .map(|x| x.parse_time_range_as_min_timestamp())
@@ -157,7 +158,7 @@ pub(crate) async fn dhcp_request(
 
     #[rustfmt::skip]
     let response = json!({
-	      "events": response,
+	"events": response,
     });
 
     Ok(Json(response))
@@ -209,13 +210,13 @@ pub(crate) async fn histogram_time(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(query): Form<GenericQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let interval = query
         .interval
         .as_ref()
         .map(|v| parse_duration(v).map(|v| v.as_secs()))
         .transpose()
-        .map_err(|err| ApiError::bad_request(format!("interval: {err}")))?;
+        .map_err(|err| AppError::BadRequest(format!("interval: {err}")))?;
 
     let default_tz_offset = query.tz_offset.as_deref();
 
@@ -237,7 +238,7 @@ pub(crate) async fn histogram_time(
         if !time_range.is_empty() {
             let min_timestamp = parse_duration(time_range)
                 .map(|d| chrono::Utc::now().sub(d))
-                .map_err(|err| ApiError::bad_request(format!("time_range: {err}")))?;
+                .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))?;
             query_string.push(QueryElement {
                 negated: false,
                 value: QueryValue::From(min_timestamp.into()),
@@ -251,7 +252,7 @@ pub(crate) async fn histogram_time(
     }
     .map_err(|err| {
         error!("Histogram/time error: params={:?}, error={:?}", &query, err);
-        ApiError::InternalServerError
+        AppError::InternalServerError
     })?;
 
     Ok(Json(json!({ "data": results })))
@@ -262,7 +263,7 @@ pub(crate) async fn alerts(
     // Session required to get here.
     _session: SessionExtractor,
     Form(query): Form<GenericQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let mut options = elastic::AlertQueryOptions {
         query_string: query.query_string,
         sensor: query.sensor,
@@ -391,15 +392,15 @@ async fn find_dns(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(form): Form<HashMap<String, String>>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let src_ip = form
         .get("src_ip")
-        .ok_or_else(|| ApiError::BadRequest("src_ip required".into()))?
+        .ok_or_else(|| AppError::BadRequest("src_ip required".into()))?
         .to_string();
 
     let dest_ip = form
         .get("dest_ip")
-        .ok_or_else(|| ApiError::BadRequest("dest_ip required".into()))?
+        .ok_or_else(|| AppError::BadRequest("dest_ip required".into()))?
         .to_string();
 
     let host = form.get("host").cloned();
@@ -429,7 +430,7 @@ pub(crate) async fn events(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Form(query): Form<GenericQuery>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let mut params = EventQueryParams {
         size: query.size,
         sort_by: query.sort_by,
@@ -463,7 +464,7 @@ async fn ja4db(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Path(fingerprint): axum::extract::Path<String>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
     let entry: Option<serde_json::Value> = sqlx::query_scalar(sql)
         .bind(fingerprint)
@@ -501,52 +502,23 @@ fn parse_then_from_duration(
     Some(now.sub(d))
 }
 
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum ApiError {
-    #[error("bad request: {0}")]
-    BadRequest(String),
-    #[error("internal server error")]
-    InternalServerError,
-    #[error("internal server error")]
-    AnyhowHandler(#[from] anyhow::Error),
-    #[error("internal server error")]
-    DatastoreError(#[from] DatastoreError),
-    #[error("internal database error")]
-    Sqlx(#[from] sqlx::Error),
-    #[error("bad query string")]
-    QueryString(#[from] QueryStringParseError),
-}
-
-impl ApiError {
-    pub fn bad_request<S: Into<String>>(msg: S) -> Self {
-        Self::BadRequest(msg.into())
-    }
-}
-
-impl IntoResponse for ApiError {
+impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let err = self.to_string();
-        let (status, message) = match self {
-            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            ApiError::InternalServerError | ApiError::AnyhowHandler(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal server error".to_string(),
-            ),
-            ApiError::Sqlx(_) => (StatusCode::INTERNAL_SERVER_ERROR, err),
-            ApiError::QueryString(_) => (StatusCode::BAD_REQUEST, err),
-            ApiError::DatastoreError(err) => {
-                // Log datastore errors.
-                error!("Datastore error while servicing API request: {}", err);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal server error".to_string(),
-                )
+        warn!("API error: {:?}", self);
+        match self {
+            AppError::BadRequest(msg) => {
+                let body = Json(serde_json::json!({
+                    "error": msg,
+                }));
+                (StatusCode::BAD_REQUEST, body).into_response()
             }
-        };
-        let body = Json(serde_json::json!({
-            "error": message,
-        }));
-        (status, body).into_response()
+            _ => {
+                let body = Json(serde_json::json!({
+                    "error": err,
+                }));
+                (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
+            }
+        }
     }
 }
-

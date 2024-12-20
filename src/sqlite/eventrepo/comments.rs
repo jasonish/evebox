@@ -6,7 +6,7 @@ use std::sync::Arc;
 use sqlx::Connection;
 use tracing::warn;
 
-use crate::{elastic::HistoryEntryBuilder, eventrepo::DatastoreError, server::session::Session};
+use crate::{elastic::HistoryEntryBuilder, error::AppError, server::session::Session};
 
 use super::SqliteEventRepo;
 
@@ -16,7 +16,7 @@ impl SqliteEventRepo {
         event_id: &str,
         comment: String,
         session: Arc<Session>,
-    ) -> Result<(), DatastoreError> {
+    ) -> Result<(), AppError> {
         let event_id: i64 = event_id.parse()?;
         let action = HistoryEntryBuilder::new_comment()
             .username(session.username.clone())
@@ -41,7 +41,7 @@ impl SqliteEventRepo {
 
         if n == 0 {
             warn!("Archive by event ID request did not update any events");
-            Err(DatastoreError::EventNotFound)
+            Err(AppError::EventNotFound)
         } else {
             Ok(())
         }

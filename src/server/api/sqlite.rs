@@ -12,12 +12,12 @@ use sqlx::Connection;
 use std::sync::Arc;
 use tracing::info;
 
-use super::ApiError;
+use crate::error::AppError;
 
 pub(crate) async fn info(
     context: Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     if let EventRepo::SQLite(sqlite) = &context.datastore {
         #[derive(Default, Serialize)]
         struct Response {
@@ -74,7 +74,7 @@ pub(crate) async fn info(
 pub(crate) async fn fts_check(
     context: Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     if let EventRepo::SQLite(sqlite) = &context.datastore {
         #[derive(Debug, Serialize)]
         struct Response {
@@ -106,7 +106,7 @@ pub(crate) async fn fts_check(
 pub(crate) async fn fts_enable(
     context: Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     if let EventRepo::SQLite(sqlite) = &context.datastore {
         info!("Enabling SQLite FTS from API");
         let mut conn = sqlite.writer.lock().await;
@@ -121,7 +121,7 @@ pub(crate) async fn fts_enable(
 pub(crate) async fn fts_disable(
     context: Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, AppError> {
     if let EventRepo::SQLite(sqlite) = &context.datastore {
         info!("Disabling SQLite FTS from API");
         let mut conn = sqlite.writer.lock().await;

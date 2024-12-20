@@ -10,12 +10,12 @@ use tracing::error;
 use crate::prelude::*;
 use crate::server::{main::SessionExtractor, ServerContext};
 
-use super::ApiError;
+use crate::error::AppError;
 
 pub(super) async fn update_ja4db(
     Extension(context): Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
-) -> Result<Json<serde_json::Value>, ApiError> {
+) -> Result<Json<serde_json::Value>, AppError> {
     info!("API request to update JA4 database");
     match do_update(context).await {
         Ok(response) => {

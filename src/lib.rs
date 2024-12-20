@@ -13,6 +13,7 @@ mod commands;
 mod config;
 mod datetime;
 mod elastic;
+mod error;
 mod eve;
 mod eventrepo;
 mod file;

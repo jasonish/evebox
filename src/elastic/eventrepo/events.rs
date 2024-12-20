@@ -3,7 +3,8 @@
 
 use super::ElasticEventRepo;
 use crate::elastic::request;
-use crate::eventrepo::{self, DatastoreError};
+use crate::error::AppError;
+use crate::eventrepo::{self};
 use crate::LOG_QUERIES;
 use serde_json::json;
 use tracing::info;
@@ -15,7 +16,7 @@ impl ElasticEventRepo {
     pub async fn events(
         &self,
         params: eventrepo::EventQueryParams,
-    ) -> Result<serde_json::Value, DatastoreError> {
+    ) -> Result<serde_json::Value, AppError> {
         let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
         let mut must_not = vec![];

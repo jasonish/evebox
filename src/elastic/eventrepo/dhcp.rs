@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 use super::ElasticEventRepo;
+use crate::error::AppError;
 use crate::{
     datetime::DateTime,
     elastic::request::{term_filter, timestamp_gte_filter},
-    eventrepo::DatastoreError,
 };
 
 impl ElasticEventRepo {
@@ -14,7 +14,7 @@ impl ElasticEventRepo {
         earliest: Option<DateTime>,
         dhcp_type: &str,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, AppError> {
         let mut filters = vec![];
 
         if let Some(earliest) = &earliest {
@@ -67,7 +67,7 @@ impl ElasticEventRepo {
         &self,
         earliest: Option<DateTime>,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, AppError> {
         self.dhcp(earliest, "request", sensor).await
     }
 
@@ -75,7 +75,7 @@ impl ElasticEventRepo {
         &self,
         earliest: Option<DateTime>,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, AppError> {
         self.dhcp(earliest, "ack", sensor).await
     }
 }

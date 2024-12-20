@@ -4,9 +4,9 @@
 use futures::TryStreamExt;
 use sqlx::SqliteConnection;
 
-use crate::{eventrepo::DatastoreError, sqlite::eventrepo::SqliteEventRepo};
-
-use super::DateTime;
+use crate::datetime::DateTime;
+use crate::error::AppError;
+use crate::sqlite::eventrepo::SqliteEventRepo;
 
 impl SqliteEventRepo {
     pub(crate) async fn dns_reverse_lookup(
@@ -15,7 +15,7 @@ impl SqliteEventRepo {
         sensor: Option<String>,
         src_ip: String,
         dest_ip: String,
-    ) -> Result<serde_json::Value, DatastoreError> {
+    ) -> Result<serde_json::Value, AppError> {
         // If before is None, set to now.
         let before = before.unwrap_or_else(DateTime::now);
 

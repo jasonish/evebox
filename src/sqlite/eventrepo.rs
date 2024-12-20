@@ -3,8 +3,8 @@
 
 use crate::datetime::DateTime;
 use crate::elastic::HistoryEntryBuilder;
+use crate::error::AppError;
 use crate::eve::eve::ensure_has_history;
-use crate::eventrepo::DatastoreError;
 use crate::server::api::AlertGroupSpec;
 use crate::server::session::Session;
 use crate::sqlite::log_query_plan;
@@ -23,9 +23,9 @@ mod agg;
 mod alerts;
 mod comments;
 mod dhcp;
+mod dns;
 mod events;
 mod stats;
-mod dns;
 
 /// SQLite implementation of the event datastore.
 pub(crate) struct SqliteEventRepo {
@@ -51,7 +51,7 @@ impl SqliteEventRepo {
         self.importer.clone()
     }
 
-    pub async fn min_row_id(&self) -> Result<u64, DatastoreError> {
+    pub async fn min_row_id(&self) -> Result<u64, AppError> {
         let sql = "SELECT MIN(rowid) FROM events";
 
         if *LOG_QUERY_PLAN {
@@ -65,7 +65,7 @@ impl SqliteEventRepo {
         Ok(id)
     }
 
-    pub async fn max_row_id(&self) -> Result<u64, DatastoreError> {
+    pub async fn max_row_id(&self) -> Result<u64, AppError> {
         let sql = "SELECT MAX(rowid) FROM events";
 
         if *LOG_QUERY_PLAN {
@@ -79,7 +79,7 @@ impl SqliteEventRepo {
         Ok(id)
     }
 
-    pub async fn min_timestamp(&self) -> Result<Option<DateTime>, DatastoreError> {
+    pub async fn min_timestamp(&self) -> Result<Option<DateTime>, AppError> {
         let sql = "SELECT MIN(timestamp) FROM events";
 
         if *LOG_QUERY_PLAN {
@@ -94,7 +94,7 @@ impl SqliteEventRepo {
         }
     }
 
-    pub async fn max_timestamp(&self) -> Result<Option<DateTime>, DatastoreError> {
+    pub async fn max_timestamp(&self) -> Result<Option<DateTime>, AppError> {
         let sql = "SELECT MAX(timestamp) FROM events";
 
         if *LOG_QUERY_PLAN {
@@ -112,7 +112,7 @@ impl SqliteEventRepo {
     pub async fn get_event_by_id(
         &self,
         event_id: String,
-    ) -> Result<Option<serde_json::Value>, DatastoreError> {
+    ) -> Result<Option<serde_json::Value>, AppError> {
         let sql = r#"
             SELECT
               rowid, archived, escalated, source, history
@@ -165,7 +165,7 @@ impl SqliteEventRepo {
     pub async fn archive_by_alert_group(
         &self,
         alert_group: AlertGroupSpec,
-    ) -> Result<(), DatastoreError> {
+    ) -> Result<(), AppError> {
         debug!("Archiving alert group: {:?}", alert_group);
 
         let action = HistoryEntryBuilder::new_archive().build();
@@ -229,7 +229,7 @@ impl SqliteEventRepo {
         &self,
         alert_group: AlertGroupSpec,
         escalate: bool,
-    ) -> Result<u64, DatastoreError> {
+    ) -> Result<u64, AppError> {
         let mut filters: Vec<String> = Vec::new();
         let mut args = SqliteArguments::default();
 
@@ -293,7 +293,7 @@ impl SqliteEventRepo {
         &self,
         _session: Arc<Session>,
         alert_group: AlertGroupSpec,
-    ) -> Result<(), DatastoreError> {
+    ) -> Result<(), AppError> {
         let n = self
             .set_escalation_by_alert_group(alert_group, true)
             .await?;
@@ -305,7 +305,7 @@ impl SqliteEventRepo {
         &self,
         _session: Arc<Session>,
         alert_group: AlertGroupSpec,
-    ) -> Result<(), DatastoreError> {
+    ) -> Result<(), AppError> {
         let n = self
             .set_escalation_by_alert_group(alert_group, false)
             .await?;
@@ -313,7 +313,7 @@ impl SqliteEventRepo {
         Ok(())
     }
 
-    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
+    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
         let action = HistoryEntryBuilder::new_archive().build();
         let sql = r#"
             UPDATE events
@@ -334,17 +334,13 @@ impl SqliteEventRepo {
             .rows_affected();
         if n == 0 {
             warn!("Archive by event ID request did not update any events");
-            Err(DatastoreError::EventNotFound)
+            Err(AppError::EventNotFound)
         } else {
             Ok(())
         }
     }
 
-    async fn set_escalation_for_id(
-        &self,
-        event_id: &str,
-        escalate: bool,
-    ) -> Result<(), DatastoreError> {
+    async fn set_escalation_for_id(&self, event_id: &str, escalate: bool) -> Result<(), AppError> {
         let action = if escalate {
             HistoryEntryBuilder::new_escalate()
         } else {
@@ -371,17 +367,17 @@ impl SqliteEventRepo {
             .await?
             .rows_affected();
         if n == 0 {
-            Err(DatastoreError::EventNotFound)
+            Err(AppError::EventNotFound)
         } else {
             Ok(())
         }
     }
 
-    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
+    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
         self.set_escalation_for_id(event_id, true).await
     }
 
-    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), DatastoreError> {
+    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
         self.set_escalation_for_id(event_id, false).await
     }
 

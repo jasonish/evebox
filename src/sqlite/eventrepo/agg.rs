@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    eventrepo::DatastoreError,
+    error::AppError,
     queryparser::QueryElement,
     sqlite::{builder::EventQueryBuilder, log_query_plan},
     LOG_QUERY_PLAN,
@@ -21,7 +21,7 @@ impl SqliteEventRepo {
         size: usize,
         order: &str,
         query: Vec<QueryElement>,
-    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, AppError> {
         let mut builder = EventQueryBuilder::new(self.fts().await);
 
         if field == "dns.rrname" {

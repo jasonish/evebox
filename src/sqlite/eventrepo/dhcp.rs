@@ -3,7 +3,7 @@
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
-use crate::eventrepo::DatastoreError;
+use crate::error::AppError;
 use crate::sqlite::log_query_plan;
 use crate::LOG_QUERY_PLAN;
 use futures::TryStreamExt;
@@ -17,7 +17,7 @@ impl SqliteEventRepo {
         earliest: Option<DateTime>,
         dhcp_type: &str,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, AppError> {
         let mut wheres = vec![
             "json_extract(events.source, '$.event_type') = 'dhcp'".to_string(),
             format!("json_extract(events.source, '$.dhcp.dhcp_type') = '{dhcp_type}'"),
@@ -71,7 +71,7 @@ impl SqliteEventRepo {
         &self,
         earliest: Option<DateTime>,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, AppError> {
         self.dhcp(earliest, "request", sensor).await
     }
 
@@ -79,7 +79,7 @@ impl SqliteEventRepo {
         &self,
         earliest: Option<DateTime>,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, AppError> {
         self.dhcp(earliest, "ack", sensor).await
     }
 }

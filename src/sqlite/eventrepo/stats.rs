@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use super::SqliteEventRepo;
 use crate::{
     datetime::DateTime,
-    eventrepo::{DatastoreError, StatsAggQueryParams},
+    error::AppError,
+    eventrepo::StatsAggQueryParams,
     queryparser::{QueryElement, QueryValue},
     sqlite::{builder::EventQueryBuilder, log_query_plan, log_query_plan2},
     util, LOG_QUERIES, LOG_QUERY_PLAN,
@@ -18,12 +18,14 @@ use sqlx::SqliteConnection;
 use std::time::Instant;
 use tracing::{debug, info};
 
+use super::SqliteEventRepo;
+
 impl SqliteEventRepo {
     pub(crate) async fn histogram_time(
         &self,
         interval: Option<u64>,
         query: &[QueryElement],
-    ) -> Result<Vec<serde_json::Value>, DatastoreError> {
+    ) -> Result<Vec<serde_json::Value>, AppError> {
         // The timestamp (in seconds) of the latest event to
         // consider. This is to determine the bucket interval as well
         // as fill wholes at the end of the dataset.
@@ -147,7 +149,7 @@ impl SqliteEventRepo {
         sqlx::query_scalar(sql).fetch_optional(&mut *conn).await
     }
 
-    async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(i64, i64)>, DatastoreError> {
+    async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(i64, i64)>, AppError> {
         let qp = qp.clone();
         let field = format!("$.{}", &qp.field);
         let start_time = qp.start_time.to_nanos();
