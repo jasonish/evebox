@@ -11,6 +11,7 @@ pub mod retention;
 pub mod util;
 
 pub(crate) use connection::ConnectionBuilder;
+use sqlx::Arguments;
 use sqlx::{sqlite::SqliteArguments, SqliteConnection, SqliteExecutor, SqlitePool};
 use tracing::{error, instrument};
 
@@ -62,4 +63,32 @@ async fn log_query_plan2<'a>(pool: &mut SqliteConnection, sql: &str, args: &Sqli
             }
         }
     }
+}
+
+pub trait SqliteArgumentsExt<'a> {
+    fn push<T>(&mut self, value: T) -> Result<(), sqlx::error::Error>
+    where
+        T: sqlx::Encode<'a, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + 'a;
+}
+
+impl<'a> SqliteArgumentsExt<'a> for SqliteArguments<'a> {
+    fn push<T>(&mut self, value: T) -> Result<(), sqlx::error::Error>
+    where
+        T: sqlx::Encode<'a, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + 'a,
+    {
+        self.add(value).map_err(sqlx::error::Error::Encode)
+    }
+}
+
+#[allow(unused_imports)]
+pub(crate) mod prelude {
+    pub use sqlx::sqlite::SqliteArguments;
+    pub use sqlx::sqlite::SqliteRow;
+    pub use sqlx::Arguments;
+    pub use sqlx::Row;
+    pub use sqlx::SqliteConnection;
+
+    pub use futures::TryStreamExt;
+
+    pub use super::SqliteArgumentsExt;
 }

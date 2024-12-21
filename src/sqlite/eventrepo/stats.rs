@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+use crate::sqlite::prelude::*;
+
 use crate::{
     datetime::DateTime,
-    error::AppError,
     eventrepo::StatsAggQueryParams,
     queryparser::{QueryElement, QueryValue},
     sqlite::{builder::EventQueryBuilder, log_query_plan, log_query_plan2},
@@ -11,10 +13,6 @@ use crate::{
 };
 use futures::TryStreamExt;
 use serde::Serialize;
-use sqlx::sqlite::SqliteArguments;
-use sqlx::Arguments;
-use sqlx::Row;
-use sqlx::SqliteConnection;
 use std::time::Instant;
 use tracing::{debug, info};
 
@@ -25,7 +23,7 @@ impl SqliteEventRepo {
         &self,
         interval: Option<u64>,
         query: &[QueryElement],
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         // The timestamp (in seconds) of the latest event to
         // consider. This is to determine the bucket interval as well
         // as fill wholes at the end of the dataset.
@@ -149,7 +147,7 @@ impl SqliteEventRepo {
         sqlx::query_scalar(sql).fetch_optional(&mut *conn).await
     }
 
-    async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(i64, i64)>, AppError> {
+    async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(i64, i64)>> {
         let qp = qp.clone();
         let field = format!("$.{}", &qp.field);
         let start_time = qp.start_time.to_nanos();
@@ -169,17 +167,17 @@ impl SqliteEventRepo {
               ORDER BY a
             "
         );
-        args.add(&field)?;
+        args.push(&field)?;
 
         let mut filters = vec![
             "json_extract(events.source, '$.event_type') = 'stats'",
             "timestamp >= ?",
         ];
-        args.add(start_time)?;
+        args.push(start_time)?;
 
         if let Some(sensor_name) = qp.sensor_name.as_ref() {
             filters.push("json_extract(events.source, '$.host') = ?");
-            args.add(sensor_name)?;
+            args.push(sensor_name)?;
         }
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));

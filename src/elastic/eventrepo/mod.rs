@@ -10,7 +10,7 @@ use crate::datetime;
 use crate::elastic::importer::ElasticEventSink;
 use crate::elastic::request::exists_filter;
 use crate::elastic::{request, ElasticResponse, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED};
-use crate::error::AppError;
+use crate::prelude::*;
 use crate::queryparser;
 use crate::queryparser::QueryElement;
 use crate::queryparser::QueryParser;
@@ -20,9 +20,6 @@ use crate::util;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
-use tracing::debug;
-use tracing::error;
-use tracing::warn;
 
 mod alerts;
 mod dhcp;
@@ -142,7 +139,7 @@ impl ElasticEventRepo {
         query: serde_json::Value,
         tag: &str,
         action: &HistoryEntry,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         self.add_tags_by_query(query, &[tag], action).await
     }
 
@@ -151,7 +148,7 @@ impl ElasticEventRepo {
         query: serde_json::Value,
         tags: &[&str],
         action: &HistoryEntry,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let script = json!({
             "lang": "painless",
             "inline": "
@@ -202,7 +199,7 @@ impl ElasticEventRepo {
         query: serde_json::Value,
         tag: &str,
         action: &HistoryEntry,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         self.remove_tags_by_query(query, &[tag], action).await
     }
 
@@ -211,7 +208,7 @@ impl ElasticEventRepo {
         query: serde_json::Value,
         tags: &[&str],
         action: &HistoryEntry,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let script = json!({
             "lang": "painless",
             "inline": "
@@ -247,7 +244,7 @@ impl ElasticEventRepo {
         alert_group: api::AlertGroupSpec,
         tags: &[&str],
         action: &HistoryEntry,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let mut must_not = Vec::new();
         for tag in tags {
             must_not.push(json!({"term": {"tags": tag}}));
@@ -268,7 +265,7 @@ impl ElasticEventRepo {
         alert_group: api::AlertGroupSpec,
         tags: &[&str],
         action: &HistoryEntry,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let mut filters = self.build_alert_group_filter(&alert_group);
         for tag in tags {
             filters.push(json!({"term": {"tags": tag}}));
@@ -281,7 +278,7 @@ impl ElasticEventRepo {
         self.remove_tags_by_query(query, tags, action).await
     }
 
-    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<()> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -293,7 +290,7 @@ impl ElasticEventRepo {
         self.add_tag_by_query(query, TAG_ARCHIVED, &action).await
     }
 
-    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<()> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -305,7 +302,7 @@ impl ElasticEventRepo {
         self.add_tag_by_query(query, TAG_ESCALATED, &action).await
     }
 
-    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<()> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -323,7 +320,7 @@ impl ElasticEventRepo {
         event_id: &str,
         comment: String,
         session: Arc<Session>,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -338,10 +335,7 @@ impl ElasticEventRepo {
         self.add_tags_by_query(query, &[], &action).await
     }
 
-    pub async fn get_event_by_id(
-        &self,
-        event_id: String,
-    ) -> Result<Option<serde_json::Value>, AppError> {
+    pub async fn get_event_by_id(&self, event_id: String) -> Result<Option<serde_json::Value>> {
         let query = json!({
             "query": {
                 "bool": {
@@ -353,7 +347,7 @@ impl ElasticEventRepo {
         });
         let response: ElasticResponse = self.search(&query).await?.json().await?;
         if let Some(error) = response.error {
-            return Err(AppError::ElasticSearchError(error.first_reason()));
+            bail!("elasticsearch: {}", error.first_reason());
         } else if let Some(hits) = &response.hits {
             if let serde_json::Value::Array(hits) = &hits["hits"] {
                 if !hits.is_empty() {
@@ -584,10 +578,7 @@ impl ElasticEventRepo {
         }
     }
 
-    pub async fn archive_by_alert_group(
-        &self,
-        alert_group: api::AlertGroupSpec,
-    ) -> Result<(), AppError> {
+    pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<()> {
         let action = HistoryEntryBuilder::new_archive().build();
         self.add_tags_by_alert_group(alert_group, &TAGS_ARCHIVED, &action)
             .await
@@ -597,7 +588,7 @@ impl ElasticEventRepo {
         &self,
         alert_group: api::AlertGroupSpec,
         session: Arc<Session>,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let action = HistoryEntryBuilder::new_escalate()
             .username(session.username.clone())
             .build();
@@ -605,16 +596,13 @@ impl ElasticEventRepo {
             .await
     }
 
-    pub async fn deescalate_by_alert_group(
-        &self,
-        alert_group: api::AlertGroupSpec,
-    ) -> Result<(), AppError> {
+    pub async fn deescalate_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<()> {
         let action = HistoryEntryBuilder::new_deescalate().build();
         self.remove_tags_by_alert_group(alert_group, &TAGS_ESCALATED, &action)
             .await
     }
 
-    async fn get_earliest_timestamp(&self) -> Result<Option<crate::datetime::DateTime>, AppError> {
+    async fn get_earliest_timestamp(&self) -> Result<Option<crate::datetime::DateTime>> {
         #[rustfmt::skip]
 	let request = json!({
 	    "query": {
@@ -647,7 +635,7 @@ impl ElasticEventRepo {
         &self,
         interval: Option<u64>,
         query: &[QueryElement],
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         let qs = QueryParser::new(query.to_vec());
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
@@ -723,7 +711,7 @@ impl ElasticEventRepo {
         size: usize,
         order: &str,
         query: Vec<queryparser::QueryElement>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         let mut filter = vec![];
         let mut should = vec![];
         let mut must_not = vec![];
@@ -795,7 +783,7 @@ impl ElasticEventRepo {
 
         if let Some(error) = response["error"].as_object() {
             error!("Elasticsearch \"group_by\" query failed: {error:?}");
-            Err(AppError::ElasticSearchError(format!("{error:?}")))
+            bail!("elasticsearch: {:?}", error);
         } else {
             let mut data = vec![];
             if let serde_json::Value::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {

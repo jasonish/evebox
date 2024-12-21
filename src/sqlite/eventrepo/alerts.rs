@@ -1,27 +1,27 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use futures::TryStreamExt;
+use crate::prelude::*;
+use crate::sqlite::prelude::*;
+
+use std::collections::HashSet;
+use std::time::Instant;
+
 use indexmap::IndexMap;
 use sqlx::sqlite::{SqliteArguments, SqliteRow};
-use sqlx::Arguments;
 use sqlx::Row;
-use tracing::{debug, error, info, instrument, warn};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
 use crate::elastic::AlertQueryOptions;
-use crate::error::AppError;
 use crate::eventrepo::{AggAlert, AggAlertMetadata, AlertsResult};
 use crate::sqlite::builder::EventQueryBuilder;
 use crate::sqlite::log_query_plan;
 use crate::{queryparser, LOG_QUERIES, LOG_QUERY_PLAN};
-use std::collections::HashSet;
-use std::time::Instant;
 
 impl SqliteEventRepo {
     #[instrument(skip_all)]
-    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult, AppError> {
+    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
         if std::env::var("EVEBOX_ALERTS_WITH_TIMEOUT").is_ok() {
             self.alerts_with_timeout(options).await
         } else {
@@ -30,10 +30,7 @@ impl SqliteEventRepo {
     }
 
     #[instrument(skip_all)]
-    pub async fn alerts_with_timeout(
-        &self,
-        options: AlertQueryOptions,
-    ) -> Result<AlertsResult, AppError> {
+    pub async fn alerts_with_timeout(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
         let mut builder = EventQueryBuilder::new(self.fts().await);
         builder
             .select("rowid")
@@ -262,10 +259,7 @@ impl SqliteEventRepo {
     }
 
     #[instrument(skip_all)]
-    pub async fn alerts_group_by(
-        &self,
-        options: AlertQueryOptions,
-    ) -> Result<AlertsResult, AppError> {
+    pub async fn alerts_group_by(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
         let query = r#"
     		    SELECT b.count,
 			        a.rowid as id,
@@ -305,15 +299,15 @@ impl SqliteEventRepo {
             match tag.as_ref() {
                 "evebox.archived" => {
                     filters.push("archived = ?".into());
-                    args.add(1)?;
+                    args.push(1)?;
                 }
                 "-evebox.archived" => {
                     filters.push("archived = ?".into());
-                    args.add(0)?;
+                    args.push(0)?;
                 }
                 "evebox.escalated" => {
                     filters.push("escalated = ?".into());
-                    args.add(1)?;
+                    args.push(1)?;
                 }
                 _ => {}
             }
@@ -321,12 +315,12 @@ impl SqliteEventRepo {
 
         if let Some(sensor) = options.sensor {
             filters.push("json_extract(events.source, '$.host') = ?".into());
-            args.add(sensor)?;
+            args.push(sensor)?;
         }
 
         if let Some(ts) = options.timestamp_gte {
             filters.push("timestamp >= ?".into());
-            args.add(ts.to_nanos())?;
+            args.push(ts.to_nanos())?;
         }
 
         // Query string.
@@ -344,10 +338,10 @@ impl SqliteEventRepo {
                             queryparser::QueryValue::String(s) => {
                                 if el.negated {
                                     filters.push("events.source NOT LIKE ?".into());
-                                    args.add(format!("%{s}%"))?;
+                                    args.push(format!("%{s}%"))?;
                                 } else {
                                     filters.push("events.source LIKE ?".into());
-                                    args.add(format!("%{s}%"))?;
+                                    args.push(format!("%{s}%"))?;
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
@@ -355,12 +349,12 @@ impl SqliteEventRepo {
                                 if let Ok(v) = v.parse::<i64>() {
                                     filters
                                         .push(format!("json_extract(events.source, '$.{k}') = ?"));
-                                    args.add(v)?;
+                                    args.push(v)?;
                                 } else {
                                     filters.push(format!(
                                         "json_extract(events.source, '$.{k}') LIKE ?"
                                     ));
-                                    args.add(format!("%{v}%"))?;
+                                    args.push(format!("%{v}%"))?;
                                 }
                             }
                             queryparser::QueryValue::From(_) => {
@@ -368,7 +362,7 @@ impl SqliteEventRepo {
                             }
                             queryparser::QueryValue::To(ts) => {
                                 filters.push("timestamp <= ?".into());
-                                args.add(ts.to_nanos())?;
+                                args.push(ts.to_nanos())?;
                             }
                         }
                     }
@@ -411,7 +405,7 @@ impl SqliteEventRepo {
     }
 }
 
-fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert, AppError> {
+fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert> {
     let count: i64 = row.try_get(0)?;
     let id: i64 = row.try_get(1)?;
     let min_ts_nanos: i64 = row.try_get(2)?;

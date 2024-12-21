@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+use crate::sqlite::prelude::*;
+
 use crate::datetime::DateTime;
 use crate::elastic::HistoryEntryBuilder;
-use crate::error::AppError;
 use crate::eve::eve::ensure_has_history;
 use crate::server::api::AlertGroupSpec;
 use crate::server::session::Session;
@@ -11,7 +13,6 @@ use crate::sqlite::log_query_plan;
 use crate::{LOG_QUERIES, LOG_QUERY_PLAN};
 use serde_json::json;
 use sqlx::sqlite::SqliteArguments;
-use sqlx::Arguments;
 use sqlx::{Row, SqliteConnection, SqlitePool};
 use std::sync::Arc;
 use std::time::Instant;
@@ -51,7 +52,7 @@ impl SqliteEventRepo {
         self.importer.clone()
     }
 
-    pub async fn min_row_id(&self) -> Result<u64, AppError> {
+    pub async fn min_row_id(&self) -> Result<u64> {
         let sql = "SELECT MIN(rowid) FROM events";
 
         if *LOG_QUERY_PLAN {
@@ -65,7 +66,7 @@ impl SqliteEventRepo {
         Ok(id)
     }
 
-    pub async fn max_row_id(&self) -> Result<u64, AppError> {
+    pub async fn max_row_id(&self) -> Result<u64> {
         let sql = "SELECT MAX(rowid) FROM events";
 
         if *LOG_QUERY_PLAN {
@@ -79,7 +80,7 @@ impl SqliteEventRepo {
         Ok(id)
     }
 
-    pub async fn min_timestamp(&self) -> Result<Option<DateTime>, AppError> {
+    pub async fn min_timestamp(&self) -> Result<Option<DateTime>> {
         let sql = "SELECT MIN(timestamp) FROM events";
 
         if *LOG_QUERY_PLAN {
@@ -94,7 +95,7 @@ impl SqliteEventRepo {
         }
     }
 
-    pub async fn max_timestamp(&self) -> Result<Option<DateTime>, AppError> {
+    pub async fn max_timestamp(&self) -> Result<Option<DateTime>> {
         let sql = "SELECT MAX(timestamp) FROM events";
 
         if *LOG_QUERY_PLAN {
@@ -109,10 +110,7 @@ impl SqliteEventRepo {
         }
     }
 
-    pub async fn get_event_by_id(
-        &self,
-        event_id: String,
-    ) -> Result<Option<serde_json::Value>, AppError> {
+    pub async fn get_event_by_id(&self, event_id: String) -> Result<Option<serde_json::Value>> {
         let sql = r#"
             SELECT
               rowid, archived, escalated, source, history
@@ -162,10 +160,7 @@ impl SqliteEventRepo {
 
     // TODO: Unsure if the current query string needs to be considered. The Go code didn't
     //          consider it.
-    pub async fn archive_by_alert_group(
-        &self,
-        alert_group: AlertGroupSpec,
-    ) -> Result<(), AppError> {
+    pub async fn archive_by_alert_group(&self, alert_group: AlertGroupSpec) -> Result<()> {
         debug!("Archiving alert group: {:?}", alert_group);
 
         let action = HistoryEntryBuilder::new_archive().build();
@@ -179,27 +174,27 @@ impl SqliteEventRepo {
         let mut args = SqliteArguments::default();
         let mut filters: Vec<String> = Vec::new();
 
-        args.add(action.to_json())?;
+        args.push(action.to_json())?;
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
         filters.push("archived = 0".to_string());
 
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        args.add(alert_group.signature_id as i64)?;
+        args.push(alert_group.signature_id as i64)?;
 
         filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        args.add(alert_group.src_ip)?;
+        args.push(alert_group.src_ip)?;
 
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        args.add(&alert_group.dest_ip)?;
+        args.push(&alert_group.dest_ip)?;
 
         let mints_nanos = crate::datetime::parse(&alert_group.min_timestamp, None)?.to_nanos();
         filters.push("timestamp >= ?".to_string());
-        args.add(mints_nanos as i64)?;
+        args.push(mints_nanos as i64)?;
 
         let maxts_nanos = crate::datetime::parse(&alert_group.max_timestamp, None)?.to_nanos();
         filters.push("timestamp <= ?".to_string());
-        args.add(maxts_nanos as i64)?;
+        args.push(maxts_nanos as i64)?;
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
@@ -229,7 +224,7 @@ impl SqliteEventRepo {
         &self,
         alert_group: AlertGroupSpec,
         escalate: bool,
-    ) -> Result<u64, AppError> {
+    ) -> Result<u64> {
         let mut filters: Vec<String> = Vec::new();
         let mut args = SqliteArguments::default();
 
@@ -246,29 +241,29 @@ impl SqliteEventRepo {
               history = json_insert(history, '$[#]', json(?))
             WHERE %WHERE%
         ";
-        args.add(if escalate { 1 } else { 0 })?;
-        args.add(serde_json::to_string(&action).unwrap())?;
+        args.push(if escalate { 1 } else { 0 })?;
+        args.push(serde_json::to_string(&action).unwrap())?;
 
         filters.push("json_extract(events.source, '$.event_type') = 'alert'".to_string());
         filters.push("escalated = ?".to_string());
-        args.add(if escalate { 0 } else { 1 })?;
+        args.push(if escalate { 0 } else { 1 })?;
 
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
-        args.add(alert_group.signature_id as i64)?;
+        args.push(alert_group.signature_id as i64)?;
 
         filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
-        args.add(alert_group.src_ip)?;
+        args.push(alert_group.src_ip)?;
 
         filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
-        args.add(alert_group.dest_ip)?;
+        args.push(alert_group.dest_ip)?;
 
         let mints = crate::datetime::parse(&alert_group.min_timestamp, None)?;
         filters.push("timestamp >= ?".to_string());
-        args.add(mints.to_nanos() as i64)?;
+        args.push(mints.to_nanos() as i64)?;
 
         let maxts = crate::datetime::parse(&alert_group.max_timestamp, None)?;
         filters.push("timestamp <= ?".to_string());
-        args.add(maxts.to_nanos() as i64)?;
+        args.push(maxts.to_nanos() as i64)?;
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
@@ -293,7 +288,7 @@ impl SqliteEventRepo {
         &self,
         _session: Arc<Session>,
         alert_group: AlertGroupSpec,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let n = self
             .set_escalation_by_alert_group(alert_group, true)
             .await?;
@@ -305,7 +300,7 @@ impl SqliteEventRepo {
         &self,
         _session: Arc<Session>,
         alert_group: AlertGroupSpec,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let n = self
             .set_escalation_by_alert_group(alert_group, false)
             .await?;
@@ -313,7 +308,7 @@ impl SqliteEventRepo {
         Ok(())
     }
 
-    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<()> {
         let action = HistoryEntryBuilder::new_archive().build();
         let sql = r#"
             UPDATE events
@@ -334,13 +329,14 @@ impl SqliteEventRepo {
             .rows_affected();
         if n == 0 {
             warn!("Archive by event ID request did not update any events");
-            Err(AppError::EventNotFound)
+            // TODO: Return true/false depending on if there was an event...
+            bail!("sqlite: event not found");
         } else {
             Ok(())
         }
     }
 
-    async fn set_escalation_for_id(&self, event_id: &str, escalate: bool) -> Result<(), AppError> {
+    async fn set_escalation_for_id(&self, event_id: &str, escalate: bool) -> Result<()> {
         let action = if escalate {
             HistoryEntryBuilder::new_escalate()
         } else {
@@ -367,17 +363,17 @@ impl SqliteEventRepo {
             .await?
             .rows_affected();
         if n == 0 {
-            Err(AppError::EventNotFound)
+            bail!("sqlite: event not found");
         } else {
             Ok(())
         }
     }
 
-    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<()> {
         self.set_escalation_for_id(event_id, true).await
     }
 
-    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<()> {
         self.set_escalation_for_id(event_id, false).await
     }
 

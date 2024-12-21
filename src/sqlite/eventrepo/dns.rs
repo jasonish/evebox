@@ -1,11 +1,10 @@
 // SPDX-FileCopyrightText: (C) 2024 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use futures::TryStreamExt;
-use sqlx::SqliteConnection;
+use crate::prelude::*;
+use crate::sqlite::prelude::*;
 
 use crate::datetime::DateTime;
-use crate::error::AppError;
 use crate::sqlite::eventrepo::SqliteEventRepo;
 
 impl SqliteEventRepo {
@@ -15,7 +14,7 @@ impl SqliteEventRepo {
         sensor: Option<String>,
         src_ip: String,
         dest_ip: String,
-    ) -> Result<serde_json::Value, AppError> {
+    ) -> Result<serde_json::Value> {
         // If before is None, set to now.
         let before = before.unwrap_or_else(DateTime::now);
 

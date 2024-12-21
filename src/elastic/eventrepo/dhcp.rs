@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+
 use super::ElasticEventRepo;
-use crate::error::AppError;
 use crate::{
     datetime::DateTime,
     elastic::request::{term_filter, timestamp_gte_filter},
@@ -14,7 +15,7 @@ impl ElasticEventRepo {
         earliest: Option<DateTime>,
         dhcp_type: &str,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         let mut filters = vec![];
 
         if let Some(earliest) = &earliest {
@@ -67,7 +68,7 @@ impl ElasticEventRepo {
         &self,
         earliest: Option<DateTime>,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         self.dhcp(earliest, "request", sensor).await
     }
 
@@ -75,7 +76,7 @@ impl ElasticEventRepo {
         &self,
         earliest: Option<DateTime>,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         self.dhcp(earliest, "ack", sensor).await
     }
 }

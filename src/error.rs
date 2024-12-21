@@ -22,20 +22,11 @@ pub(crate) enum AppError {
     #[error("bad request: {0}")]
     BadRequest(String),
 
-    #[error("unimplemented")]
-    Unimplemented,
-
-    #[error("elasticsearch error: {0}")]
-    ElasticSearchError(String),
-
     #[error("{0}")]
     ReqwestError(#[from] reqwest::Error),
 
     #[error("serde: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
-
-    #[error("event not found")]
-    EventNotFound,
 
     #[error("failed to parse integer")]
     ParseIntError(#[from] ParseIntError),

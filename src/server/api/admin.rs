@@ -3,14 +3,10 @@
 
 use std::sync::Arc;
 
-use anyhow::Result;
 use axum::{Extension, Json};
-use tracing::error;
 
 use crate::prelude::*;
 use crate::server::{main::SessionExtractor, ServerContext};
-
-use crate::error::AppError;
 
 pub(super) async fn update_ja4db(
     Extension(context): Extension<Arc<ServerContext>>,

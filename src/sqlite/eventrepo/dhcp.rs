@@ -1,15 +1,13 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+use crate::sqlite::prelude::*;
+
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
-use crate::error::AppError;
 use crate::sqlite::log_query_plan;
 use crate::LOG_QUERY_PLAN;
-use futures::TryStreamExt;
-use sqlx::sqlite::SqliteArguments;
-use sqlx::Arguments;
-use sqlx::Row;
 
 impl SqliteEventRepo {
     pub async fn dhcp(
@@ -17,7 +15,7 @@ impl SqliteEventRepo {
         earliest: Option<DateTime>,
         dhcp_type: &str,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         let mut wheres = vec![
             "json_extract(events.source, '$.event_type') = 'dhcp'".to_string(),
             format!("json_extract(events.source, '$.dhcp.dhcp_type') = '{dhcp_type}'"),
@@ -25,13 +23,13 @@ impl SqliteEventRepo {
         let mut params = SqliteArguments::default();
 
         if let Some(earliest) = earliest {
-            params.add(earliest.to_nanos())?;
+            params.push(earliest.to_nanos())?;
             wheres.push("timestamp >= ?".to_string())
         }
 
         if let Some(sensor) = &sensor {
             wheres.push("json_extract(events.source, '$.host') = ?".to_string());
-            params.add(sensor.to_string())?;
+            params.push(sensor.to_string())?;
         }
 
         let sql = r#"
@@ -71,7 +69,7 @@ impl SqliteEventRepo {
         &self,
         earliest: Option<DateTime>,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         self.dhcp(earliest, "request", sensor).await
     }
 
@@ -79,7 +77,7 @@ impl SqliteEventRepo {
         &self,
         earliest: Option<DateTime>,
         sensor: Option<String>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         self.dhcp(earliest, "ack", sensor).await
     }
 }

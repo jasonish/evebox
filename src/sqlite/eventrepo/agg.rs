@@ -1,14 +1,13 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+use crate::sqlite::prelude::*;
 use crate::{
-    error::AppError,
     queryparser::QueryElement,
     sqlite::{builder::EventQueryBuilder, log_query_plan},
     LOG_QUERY_PLAN,
 };
-use futures::TryStreamExt;
-use sqlx::Row;
 use tracing::instrument;
 
 use super::SqliteEventRepo;
@@ -21,7 +20,7 @@ impl SqliteEventRepo {
         size: usize,
         order: &str,
         query: Vec<QueryElement>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         let mut builder = EventQueryBuilder::new(self.fts().await);
 
         if field == "dns.rrname" {

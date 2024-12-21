@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use tracing::{debug, error, warn};
+use crate::prelude::*;
 
 use crate::{
     elastic::{AlertQueryOptions, ElasticResponse},
@@ -10,7 +10,6 @@ use crate::{
 };
 
 use super::{ElasticEventRepo, MINIMUM_SHOULD_MATCH};
-use crate::error::AppError;
 
 impl ElasticEventRepo {
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
@@ -161,14 +160,14 @@ impl ElasticEventRepo {
         query
     }
 
-    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult, AppError> {
+    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
         let mut query = self.build_inbox_query(options);
         query["timeout"] = "3s".into();
         let start = std::time::Instant::now();
         let body = self.search(&query).await?.text().await?;
         let response: ElasticResponse = serde_json::from_str(&body)?;
         if let Some(error) = &response.error {
-            return Err(AppError::ElasticSearchError(error.first_reason()));
+            bail!("elasticsearch: {}", error.first_reason());
         }
 
         debug!(

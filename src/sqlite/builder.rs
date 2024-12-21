@@ -3,10 +3,7 @@
 
 use crate::datetime::DateTime;
 use crate::queryparser;
-use sqlx::sqlite::SqliteArguments;
-use sqlx::Arguments;
-
-type Error = sqlx::error::BoxDynError;
+use crate::sqlite::prelude::*;
 
 #[derive(Default)]
 pub(crate) struct EventQueryBuilder<'a> {
@@ -77,7 +74,7 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn wherejs<F, O, A>(&mut self, field: F, op: O, arg: A) -> Result<&mut Self, Error>
+    pub fn wherejs<F, O, A>(&mut self, field: F, op: O, arg: A) -> Result<&mut Self, sqlx::Error>
     where
         F: Into<String>,
         O: Into<String>,
@@ -99,11 +96,11 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn push_arg<T>(&mut self, value: T) -> Result<(), sqlx::error::BoxDynError>
+    pub fn push_arg<T>(&mut self, value: T) -> Result<(), sqlx::Error>
     where
         T: sqlx::Encode<'a, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + 'a,
     {
-        self.args.add(value)
+        self.args.push(value)
     }
 
     pub fn limit(&mut self, limit: i64) -> &mut Self {
@@ -121,7 +118,7 @@ impl<'a> EventQueryBuilder<'a> {
         field: &str,
         op: &str,
         value: &str,
-    ) -> Result<&mut Self, Error> {
+    ) -> Result<&mut Self, sqlx::Error> {
         self.push_where(format!("json_extract(events.source, '$.{field}') {op} ?"));
         if let Ok(i) = value.parse::<i64>() {
             self.push_arg(i)?;
@@ -138,7 +135,7 @@ impl<'a> EventQueryBuilder<'a> {
         field: &str,
         op: &str,
         value: &str,
-    ) -> Result<&mut Self, Error> {
+    ) -> Result<&mut Self, sqlx::Error> {
         self.push_where(format!("events.source->>'{field}' {op} ?"));
         if let Ok(i) = value.parse::<i64>() {
             self.push_arg(i)?;
@@ -157,7 +154,7 @@ impl<'a> EventQueryBuilder<'a> {
     pub fn left_join_from_query_string(
         &mut self,
         q: &'a [queryparser::QueryElement],
-    ) -> Result<(), sqlx::error::BoxDynError> {
+    ) -> Result<(), sqlx::Error> {
         for e in q {
             match &e.value {
                 queryparser::QueryValue::KeyValue(k, _v) => {
@@ -185,7 +182,7 @@ impl<'a> EventQueryBuilder<'a> {
     pub fn apply_query_string(
         &mut self,
         q: &'a [queryparser::QueryElement],
-    ) -> Result<(), sqlx::error::BoxDynError> {
+    ) -> Result<(), sqlx::Error> {
         for e in q {
             match &e.value {
                 queryparser::QueryValue::String(s) => {
@@ -304,27 +301,33 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(())
     }
 
-    pub fn earliest_timestamp(&mut self, ts: &DateTime) -> Result<&mut Self, Error> {
+    pub fn earliest_timestamp(&mut self, ts: &DateTime) -> Result<&mut Self, sqlx::Error> {
         self.push_where("timestamp >= ?").push_arg(ts.to_nanos())?;
         Ok(self)
     }
 
-    pub fn timestamp_gte(&mut self, ts: &crate::datetime::DateTime) -> Result<&mut Self, Error> {
+    pub fn timestamp_gte(
+        &mut self,
+        ts: &crate::datetime::DateTime,
+    ) -> Result<&mut Self, sqlx::Error> {
         self.push_where("timestamp >= ?").push_arg(ts.to_nanos())?;
         Ok(self)
     }
 
-    pub fn timestamp_lte(&mut self, ts: &crate::datetime::DateTime) -> Result<&mut Self, Error> {
+    pub fn timestamp_lte(
+        &mut self,
+        ts: &crate::datetime::DateTime,
+    ) -> Result<&mut Self, sqlx::Error> {
         self.push_where("timestamp <= ?").push_arg(ts.to_nanos())?;
         Ok(self)
     }
 
-    pub fn latest_timestamp(&mut self, ts: &DateTime) -> Result<&mut Self, Error> {
+    pub fn latest_timestamp(&mut self, ts: &DateTime) -> Result<&mut Self, sqlx::Error> {
         self.push_where("timestamp <= ?").push_arg(ts.to_nanos())?;
         Ok(self)
     }
 
-    pub fn build(&mut self) -> Result<(String, SqliteArguments<'a>), Error> {
+    pub fn build(&mut self) -> Result<(String, SqliteArguments<'a>), sqlx::Error> {
         let mut sql = String::new();
 
         sql.push_str("select ");

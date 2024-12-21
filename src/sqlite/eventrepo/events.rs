@@ -1,21 +1,20 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+use crate::sqlite::prelude::*;
+
 use super::SqliteEventRepo;
-use crate::error::AppError;
 use crate::{
     eventrepo::EventQueryParams,
     sqlite::{builder::EventQueryBuilder, log_query_plan},
     LOG_QUERIES, LOG_QUERY_PLAN,
 };
-use futures::TryStreamExt;
-use sqlx::{sqlite::SqliteRow, Row};
 use std::time::Instant;
-use tracing::{debug, info, instrument, warn};
 
 impl SqliteEventRepo {
     #[instrument(skip_all)]
-    pub async fn events(&self, options: EventQueryParams) -> Result<serde_json::Value, AppError> {
+    pub async fn events(&self, options: EventQueryParams) -> Result<serde_json::Value> {
         let mut builder = EventQueryBuilder::new(self.fts().await);
         builder
             .select("DISTINCT(events.rowid) AS id")

@@ -1,22 +1,18 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+
 use super::ElasticEventRepo;
 use crate::elastic::request;
-use crate::error::AppError;
 use crate::eventrepo::{self};
 use crate::LOG_QUERIES;
 use serde_json::json;
-use tracing::info;
-use tracing::warn;
 
 const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";
 
 impl ElasticEventRepo {
-    pub async fn events(
-        &self,
-        params: eventrepo::EventQueryParams,
-    ) -> Result<serde_json::Value, AppError> {
+    pub async fn events(&self, params: eventrepo::EventQueryParams) -> Result<serde_json::Value> {
         let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
         let mut must_not = vec![];

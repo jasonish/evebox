@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use crate::datetime::DateTime;
-use crate::error::AppError;
 use crate::importer::EventSink;
+use crate::prelude::*;
 use crate::server::api;
 use crate::server::session::Session;
 use crate::sqlite::eventrepo::SqliteEventRepo;
@@ -72,59 +72,45 @@ impl EventRepo {
         }
     }
 
-    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<()> {
         match self {
             EventRepo::Elastic(ds) => ds.archive_event_by_id(event_id).await,
             EventRepo::SQLite(ds) => ds.archive_event_by_id(event_id).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
-    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<()> {
         match self {
             EventRepo::Elastic(ds) => ds.escalate_event_by_id(event_id).await,
             EventRepo::SQLite(ds) => ds.escalate_event_by_id(event_id).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
-    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<(), AppError> {
+    pub async fn deescalate_event_by_id(&self, event_id: &str) -> Result<()> {
         match self {
             EventRepo::Elastic(ds) => ds.deescalate_event_by_id(event_id).await,
             EventRepo::SQLite(ds) => ds.deescalate_event_by_id(event_id).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
-    pub async fn get_event_by_id(
-        &self,
-        event_id: String,
-    ) -> Result<Option<serde_json::Value>, AppError> {
+    pub async fn get_event_by_id(&self, event_id: String) -> Result<Option<serde_json::Value>> {
         match self {
             EventRepo::Elastic(ds) => ds.get_event_by_id(event_id).await,
             EventRepo::SQLite(ds) => ds.get_event_by_id(event_id).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
-    pub async fn alerts(
-        &self,
-        options: elastic::AlertQueryOptions,
-    ) -> Result<AlertsResult, AppError> {
+    pub async fn alerts(&self, options: elastic::AlertQueryOptions) -> Result<AlertsResult> {
         match self {
             EventRepo::Elastic(ds) => ds.alerts(options).await,
             EventRepo::SQLite(ds) => ds.alerts(options).await,
         }
     }
 
-    pub async fn archive_by_alert_group(
-        &self,
-        alert_group: api::AlertGroupSpec,
-    ) -> Result<(), AppError> {
+    pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<()> {
         match self {
             EventRepo::Elastic(ds) => ds.archive_by_alert_group(alert_group).await,
             EventRepo::SQLite(ds) => ds.archive_by_alert_group(alert_group).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
@@ -132,11 +118,10 @@ impl EventRepo {
         &self,
         alert_group: api::AlertGroupSpec,
         session: Arc<Session>,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         match self {
             EventRepo::Elastic(ds) => ds.escalate_by_alert_group(alert_group, session).await,
             EventRepo::SQLite(ds) => ds.escalate_by_alert_group(session, alert_group).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
@@ -144,19 +129,17 @@ impl EventRepo {
         &self,
         session: Arc<Session>,
         alert_group: api::AlertGroupSpec,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         match self {
             EventRepo::Elastic(ds) => ds.deescalate_by_alert_group(alert_group).await,
             EventRepo::SQLite(ds) => ds.deescalate_by_alert_group(session, alert_group).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
-    pub async fn events(&self, params: EventQueryParams) -> Result<serde_json::Value, AppError> {
+    pub async fn events(&self, params: EventQueryParams) -> Result<serde_json::Value> {
         match self {
             EventRepo::Elastic(ds) => ds.events(params).await,
             EventRepo::SQLite(ds) => ds.events(params).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
@@ -165,11 +148,10 @@ impl EventRepo {
         event_id: &str,
         comment: String,
         session: Arc<Session>,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         match self {
             EventRepo::Elastic(ds) => ds.comment_event_by_id(event_id, comment, session).await,
             EventRepo::SQLite(ds) => ds.comment_event_by_id(event_id, comment, session).await,
-            _ => Err(AppError::Unimplemented),
         }
     }
 
@@ -179,10 +161,10 @@ impl EventRepo {
         size: usize,
         order: &str,
         query: Vec<queryparser::QueryElement>,
-    ) -> Result<Vec<serde_json::Value>, AppError> {
+    ) -> Result<Vec<serde_json::Value>> {
         match self {
-            EventRepo::Elastic(ds) => ds.agg(field, size, order, query).await,
-            EventRepo::SQLite(ds) => ds.agg(field, size, order, query).await,
+            EventRepo::Elastic(ds) => Ok(ds.agg(field, size, order, query).await?),
+            EventRepo::SQLite(ds) => Ok(ds.agg(field, size, order, query).await?),
         }
     }
 }
