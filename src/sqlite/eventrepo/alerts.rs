@@ -106,11 +106,12 @@ impl SqliteEventRepo {
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
-                                // TODO: Handle negation - maybe use query builder?
                                 if let Ok(v) = v.parse::<i64>() {
-                                    builder.wherejs(k, "=", v)?;
+                                    let op = if el.negated { "!=" } else { "=" };
+                                    builder.wherejs(k, op, v)?;
                                 } else {
-                                    builder.wherejs(k, "LIKE", format!("%{}%", v))?;
+                                    let op = if el.negated { "NOT LIKE" } else { "LIKE" };
+                                    builder.wherejs(k, op, format!("%{}%", v))?;
                                 }
                             }
                             queryparser::QueryValue::From(_) => {
@@ -345,14 +346,16 @@ impl SqliteEventRepo {
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
-                                // TODO: Handle negation - maybe use query builder?
                                 if let Ok(v) = v.parse::<i64>() {
-                                    filters
-                                        .push(format!("json_extract(events.source, '$.{k}') = ?"));
+                                    let op = if el.negated { "!=" } else { "=" };
+                                    filters.push(format!(
+                                        "json_extract(events.source, '$.{k}') {op} ?"
+                                    ));
                                     args.push(v)?;
                                 } else {
+                                    let op = if el.negated { "NOT LIKE" } else { "LIKE" };
                                     filters.push(format!(
-                                        "json_extract(events.source, '$.{k}') LIKE ?"
+                                        "json_extract(events.source, '$.{k}') {op} ?"
                                     ));
                                     args.push(format!("%{v}%"))?;
                                 }
