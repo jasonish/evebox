@@ -74,8 +74,8 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AlertGroupSpec {
     pub signature_id: u64,
-    pub src_ip: String,
-    pub dest_ip: String,
+    pub src_ip: Option<String>,
+    pub dest_ip: Option<String>,
     pub min_timestamp: String,
     pub max_timestamp: String,
 }
