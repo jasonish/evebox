@@ -269,5 +269,8 @@ export function formatAddressWithPort(
 }
 
 export function formatAddress(addr: string) {
+  if (!addr) {
+    return "";
+  }
   return addr.replace(/(0000\:)+/, ":");
 }
