@@ -252,7 +252,7 @@ impl ElasticEventRepo {
 
         let query = json!({
             "bool": {
-                "filter": self.build_alert_group_filter(&alert_group),
+                "filter": self.build_alert_group_filter(&alert_group, &mut must_not),
                 "must_not": must_not,
             }
         });
@@ -266,13 +266,15 @@ impl ElasticEventRepo {
         tags: &[&str],
         action: &HistoryEntry,
     ) -> Result<()> {
-        let mut filters = self.build_alert_group_filter(&alert_group);
+        let mut must_not = vec![];
+        let mut filters = self.build_alert_group_filter(&alert_group, &mut must_not);
         for tag in tags {
             filters.push(json!({"term": {"tags": tag}}));
         }
         let query = json!({
             "bool": {
                 "filter": filters,
+                "must_not": must_not,
             }
         });
         self.remove_tags_by_query(query, tags, action).await
@@ -805,7 +807,11 @@ impl ElasticEventRepo {
         }
     }
 
-    fn build_alert_group_filter(&self, request: &api::AlertGroupSpec) -> Vec<serde_json::Value> {
+    fn build_alert_group_filter(
+        &self,
+        request: &api::AlertGroupSpec,
+        must_not: &mut Vec<serde_json::Value>,
+    ) -> Vec<serde_json::Value> {
         let mut filter = Vec::new();
         filter.push(json!({"exists": {"field": self.map_field("event_type")}}));
         filter.push(json!({"term": {self.map_field("event_type"): "alert"}}));
@@ -817,8 +823,16 @@ impl ElasticEventRepo {
                 }
             }
         }));
-        filter.push(json!({"term": {self.map_field("src_ip"): request.src_ip}}));
-        filter.push(json!({"term": {self.map_field("dest_ip"): request.dest_ip}}));
+        if let Some(src_ip) = &request.src_ip {
+            filter.push(json!({"term": {self.map_field("src_ip"): src_ip}}));
+        } else {
+            must_not.push(json!({"exists": {"field": "src_ip"}}));
+        }
+        if let Some(dest_ip) = &request.dest_ip {
+            filter.push(json!({"term": {self.map_field("dest_ip"): dest_ip}}));
+        } else {
+            must_not.push(json!({"exists": {"field": "dest_ip"}}));
+        }
         filter.push(json!({"term": {self.map_field("alert.signature_id"): request.signature_id}}));
         filter
     }

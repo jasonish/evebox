@@ -98,12 +98,17 @@ impl ElasticEventRepo {
                     "terms": {"field": self.map_field("alert.signature_id"), "size": 2000},
                     "aggs": {
                         "sources": {
-                            "terms": {"field": self.map_field("src_ip"), "size": 1000},
+                            "terms": {
+                                "field": self.map_field("src_ip"),
+                                "size": 1000,
+                                "missing": "null",
+                            },
                             "aggs": {
                                 "destinations": {
                                     "terms": {
                                         "field": self.map_field("dest_ip"),
-                                        "size": 500
+                                        "size": 500,
+                                        "missing": "null",
                                     },
                                     "aggs": {
                                         "escalated": {
