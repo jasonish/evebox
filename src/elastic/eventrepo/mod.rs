@@ -76,6 +76,13 @@ impl ElasticEventRepo {
     /// For plain old Eve in Elasticsearch we still need to map some fields to their keyword
     /// variant.
     pub fn map_field(&self, name: &str) -> String {
+        // First resolve some quick shorthand.
+        let name = match name {
+            "@sid" => "alert.signature_id",
+            "@sig" => "alert.signature",
+            _ => name,
+        };
+
         if self.ecs {
             match name {
                 "dest_ip" => "destination.address".to_string(),
@@ -460,13 +467,15 @@ impl ElasticEventRepo {
                         }
                     },
                     _ => {
-                        if k.starts_with('@') {
-                            warn!("Unhandled @ parameter in query string: {k}");
-                        } else if k.starts_with(' ') {
+                        if k.starts_with(' ') {
                             warn!("Query parameter starting with a space: {k}");
                         }
 
                         let mapped_field = self.map_field(k);
+
+                        if mapped_field.starts_with('@') {
+                            warn!("Unhandled @ parameter in query string: {k}");
+                        }
 
                         let expression = match mapped_field.as_ref() {
                             "dns.queries.rrname.keyword" => {

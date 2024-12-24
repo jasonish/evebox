@@ -197,7 +197,14 @@ impl<'a> EventQueryBuilder<'a> {
                     }
                 }
                 queryparser::QueryValue::KeyValue(k, v) => {
-                    match k.as_ref() {
+                    // First resolve some short-hand fields.
+                    let k = match k.as_ref() {
+                        "@sid" => "alert.signature_id",
+                        "@sig" => "alert.signature",
+                        _ => k,
+                    };
+
+                    match k {
                         "@ip" | "@mac" => {
                             if e.negated {
                                 self.push_where("events.source NOT LIKE ?")
@@ -218,7 +225,7 @@ impl<'a> EventQueryBuilder<'a> {
                                 // If FTS is enabled, some key/val searches
                                 // can really benefit from it.
                                 if self.fts {
-                                    match k.as_ref() {
+                                    match k {
                                         "community_id" | "timestamp" => {
                                             self.push_fts(v);
                                         }
@@ -275,7 +282,7 @@ impl<'a> EventQueryBuilder<'a> {
                                 // If FTS is enabled, some key/val searches
                                 // can really benefit from it.
                                 if self.fts {
-                                    match k.as_ref() {
+                                    match k {
                                         "community_id" | "timestamp" => {
                                             self.push_fts(v);
                                         }
