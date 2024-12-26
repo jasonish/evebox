@@ -235,3 +235,14 @@ $evebox-danger-color-dark: #72383e;
     }
   }
 }
+
+// Used to hide "filter" buttons. We use opacity so the space is
+// reserved, preventing reflow on hover.
+.show-on-hover {
+  opacity: 0;
+}
+
+td:hover .show-on-hover {
+  opacity: 1;
+  display: inline;
+}

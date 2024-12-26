@@ -36,6 +36,8 @@ import {
   BiCaretDownFill,
   BiCaretRightFill,
   BiCaretUpFill,
+  BiDashCircle,
+  BiPlusCircle,
   BiStar,
   BiStarFill,
   BiStarHalf,
@@ -87,12 +89,16 @@ export function Alerts() {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     sensor?: undefined | string;
+    filters?: string;
   }>();
   const [cursor, setCursor] = createSignal(0);
   const [isLoading, setIsLoading] = createSignal(false);
   const idleTimer = new IdleTimer(60000);
   const [visibleEvents, setVisibleEvents] = createSignal<EventWrapper[]>([]);
   const [timedOut, setTimedOut] = createSignal(false);
+
+  // For display of the filters. Reactiveness comes from the searchParams.
+  const [filters, setFilters] = createSignal<string[]>([]);
 
   let toggleSelectAllRef: HTMLInputElement | null = null;
   let bindings: any = null;
@@ -324,6 +330,7 @@ export function Alerts() {
       q: searchParams.q,
       timeRange: TIME_RANGE(),
       sensor: searchParams.sensor,
+      filters: searchParams.filters,
     };
     if (prev === undefined) {
       logger.log("Initial check of sortBy and sortOrder, not refreshing");
@@ -357,8 +364,18 @@ export function Alerts() {
     // needed.
     untrack(() => {
       const logger = new Logger("Alerts.refreshEvents", true);
+      let q: undefined | string = filters().join(" ");
+
+      if (searchParams.q) {
+        q += ` ${searchParams.q}`;
+      }
+
+      if (q.length == 0) {
+        q = undefined;
+      }
+
       let params: any = {
-        query_string: searchParams.q,
+        query_string: q,
         time_range: parse_timerange(TIME_RANGE()) || undefined,
       };
 
@@ -608,15 +625,80 @@ export function Alerts() {
     }
   }
 
-  function filterBySignatureId(signatureId: number) {
-    let q = searchParams.q;
-    if (q) {
-      q = `alert.signature_id:${signatureId} ${q}`;
-    } else {
-      q = `alert.signature_id:${signatureId}`;
-    }
-    setSearchParams({ q: q });
+  function filterForSignatureId(signatureId: number) {
+    addFilter("@sid", "+", signatureId);
   }
+
+  function filterOutSignatureId(signatureId: number) {
+    addFilter("@sid", "-", signatureId);
+  }
+
+  function addFilter(what: string, op: string, value: any) {
+    if (op == "+") {
+      op = "";
+    }
+    let entry: string = "";
+    if (typeof value === "number") {
+      entry = `${op}${what}:${value}`;
+    } else {
+      entry = `${op}${what}:"${value}"`;
+    }
+
+    let newFilters = filters();
+
+    // If if entry already exists.
+    if (newFilters.indexOf(entry) > -1) {
+      return;
+    }
+
+    newFilters.push(entry);
+    setSearchParams({
+      filters: encodeURIComponent(JSON.stringify(newFilters)),
+    });
+  }
+
+  function removeFilter(filter: string) {
+    // TODO: There is a cleaner way with closure to do this.
+    let newFilters = filters();
+    newFilters = newFilters.filter((f: any) => f !== filter);
+
+    // But we have an effect to do this.. But it might not happen
+    // until after the refresh. Need to revisit effect/reactive
+    // dependency chains here.
+    setFilters(newFilters);
+
+    if (newFilters.length == 0) {
+      console.log("Setting filters to null");
+      setSearchParams({
+        filters: undefined,
+      });
+    } else {
+      setSearchParams({
+        filters: encodeURIComponent(JSON.stringify(newFilters)),
+      });
+    }
+  }
+
+  const clearFilters = () => {
+    setFilters([]);
+    setSearchParams({ filters: null });
+  };
+
+  createEffect(() => {
+    let filters = searchParams.filters;
+    if (!filters) {
+      console.log("Setting filters to []");
+      setFilters([]);
+    } else {
+      try {
+        const decodedFilters = JSON.parse(decodeURIComponent(filters));
+        setFilters(decodedFilters);
+      } catch {
+        console.log("error");
+        setFilters([]);
+      }
+    }
+  });
 
   function updateSort(key: string) {
     console.log("Sorting by " + key);
@@ -777,6 +859,46 @@ export function Alerts() {
           </Col>
         </Row>
 
+        {/* Filter strip */}
+        <Show when={filters().length > 0}>
+          <div class="row">
+            <div class="col">
+              <button
+                class="btn btn-sm btn-secondary mt-2 me-1"
+                onClick={clearFilters}
+              >
+                Clear
+              </button>
+              <For each={filters()}>
+                {(filter) => {
+                  return (
+                    <>
+                      <div
+                        class="btn-group btn-group-sm mt-2 me-1"
+                        role="group"
+                        aria-label="Button group with nested dropdown"
+                      >
+                        <button type="button" class="btn btn-outline-secondary">
+                          {filter}
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary"
+                          onClick={(e) => {
+                            removeFilter(filter);
+                          }}
+                        >
+                          X
+                        </button>
+                      </div>
+                    </>
+                  );
+                }}
+              </For>
+            </div>
+          </div>
+        </Show>
+
         <div
           class="mt-2"
           classList={{
@@ -929,81 +1051,139 @@ export function Alerts() {
                               />
                             </td>
                             <td class={"col-address col-1"}>
-                              <AddressCell source={event._source} />
+                              <AddressCell
+                                source={event._source}
+                                fn={addFilter}
+                              />
                             </td>
                             <td>
                               <AlertDescription event={event} />
+
+                              <span
+                                class="show-on-hover ms-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addFilter("@sid", "+", alert.signature_id);
+                                }}
+                                title="Filter for this SID"
+                              >
+                                <BiPlusCircle />
+                              </span>
+                              <span
+                                class="show-on-hover ms-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addFilter("@sid", "-", alert.signature_id);
+                                }}
+                                title="Filter out this SID"
+                              >
+                                <BiDashCircle />
+                              </span>
                             </td>
-                            <Show when={eventIsArchived(event)}>
-                              <td></td>
-                            </Show>
-                            <Show when={!eventIsArchived(event)}>
-                              <td onclick={(e) => e.stopPropagation()}>
-                                <Dropdown
-                                  as={ButtonGroup}
-                                  class="float-end"
-                                  style={"margin-top: 5px !important"}
-                                >
-                                  <Button
-                                    variant="secondary"
-                                    onclick={(e) => {
+                            <td
+                              onclick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              <div
+                                class="btn-group btn-group float-end"
+                                role="group"
+                                style={"margin-top: 5px !important"}
+                              >
+                                <Show when={!eventIsArchived(event)}>
+                                  <button
+                                    class="btn btn-secondary"
+                                    onclick={() => {
                                       archive(i());
                                     }}
                                   >
                                     Archive
-                                  </Button>
+                                  </button>
+                                </Show>
 
-                                  <OverlayTrigger
-                                    placement="left"
-                                    delay={{ show: 700, hide: 100 }}
-                                    overlay={
-                                      <Tooltip id="button-tooltip">
-                                        Escalate and Archive
-                                      </Tooltip>
-                                    }
+                                <Show when={!eventIsArchived(event)}>
+                                  <button
+                                    class="btn btn-secondary"
+                                    onclick={() => escalateArchive(i())}
                                   >
-                                    <Button
-                                      variant="secondary"
-                                      onclick={() => escalateArchive(i())}
-                                      style={"position: relative;"}
-                                    >
-                                      <BiArchive />
-                                      <BiStar
-                                        style={
-                                          "position: absolute; top: 7px; left: 18px;"
-                                        }
-                                      />
-                                    </Button>
-                                  </OverlayTrigger>
-                                  <Dropdown.Toggle
-                                    split
-                                    variant="secondary"
-                                    class={"action-toggle"}
-                                  />
-                                  <Dropdown.Menu>
-                                    <Dropdown.Item
-                                      onClick={() =>
-                                        selectBySignatureId(alert.signature_id)
+                                    <BiArchive />
+                                    <BiStar
+                                      style={
+                                        "position: absolute; top: 5px; left: 18px;"
                                       }
-                                    >
-                                      Select all with SID {alert.signature_id}
-                                    </Dropdown.Item>
-                                    <Dropdown.Item
-                                      onClick={() =>
-                                        filterBySignatureId(alert.signature_id)
-                                      }
-                                    >
-                                      Filter on SID {alert.signature_id}
-                                    </Dropdown.Item>
-                                    <Dropdown.Item
-                                      onClick={() => escalateArchive(i())}
+                                    />
+                                  </button>
+                                </Show>
+
+                                <button
+                                  type="button"
+                                  class="btn btn-secondary dropdown-toggle action-toggle"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                ></button>
+
+                                <ul class="dropdown-menu">
+                                  <li>
+                                    <a
+                                      href="#"
+                                      class="dropdown-item"
+                                      onclick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        escalateArchive(i());
+                                      }}
                                     >
                                       Escalate and Archive
-                                    </Dropdown.Item>
-                                  </Dropdown.Menu>
-                                </Dropdown>
-                              </td>
-                            </Show>
+                                    </a>
+                                  </li>
+
+                                  <li>
+                                    <a
+                                      href="#"
+                                      class="dropdown-item"
+                                      onclick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        selectBySignatureId(alert.signature_id);
+                                      }}
+                                    >
+                                      Select all with SID {alert.signature_id}
+                                    </a>
+                                  </li>
+
+                                  <li>
+                                    <a
+                                      class="dropdown-item"
+                                      href="#"
+                                      onclick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        filterForSignatureId(
+                                          alert.signature_id
+                                        );
+                                      }}
+                                    >
+                                      Filter for SID {alert.signature_id}
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a
+                                      class="dropdown-item"
+                                      href="#"
+                                      onclick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        filterOutSignatureId(
+                                          alert.signature_id
+                                        );
+                                      }}
+                                    >
+                                      Filter out SID {alert.signature_id}
+                                    </a>
+                                  </li>
+                                </ul>
+                              </div>
+                            </td>
                           </tr>
                         </>
                       );
