@@ -98,7 +98,9 @@ export function Alerts() {
   const [timedOut, setTimedOut] = createSignal(false);
 
   // For display of the filters. Reactiveness comes from the searchParams.
-  const [filters, setFilters] = createSignal<string[]>([]);
+  const [filters, setFilters] = createSignal<string[]>(
+    parseFilters(searchParams.filters)
+  );
 
   let toggleSelectAllRef: HTMLInputElement | null = null;
   let bindings: any = null;
@@ -364,7 +366,8 @@ export function Alerts() {
     // needed.
     untrack(() => {
       const logger = new Logger("Alerts.refreshEvents", true);
-      let q: undefined | string = filters().join(" ");
+      let qFilters = parseFilters(searchParams.filters);
+      let q: undefined | string = qFilters.join(" ");
 
       if (searchParams.q) {
         q += ` ${searchParams.q}`;
@@ -684,20 +687,17 @@ export function Alerts() {
     setSearchParams({ filters: null });
   };
 
-  createEffect(() => {
-    let filters = searchParams.filters;
-    if (!filters) {
-      console.log("Setting filters to []");
-      setFilters([]);
-    } else {
-      try {
-        const decodedFilters = JSON.parse(decodeURIComponent(filters));
-        setFilters(decodedFilters);
-      } catch {
-        console.log("error");
-        setFilters([]);
-      }
+  function parseFilters(filters: string | undefined): any[] {
+    if (!filters || filters.length == 0) {
+      return [];
     }
+    const decodedFilters = JSON.parse(decodeURIComponent(filters));
+    return decodedFilters;
+  }
+
+  // Effect to update the filter strip based on the filters in the query string.
+  createEffect(() => {
+    setFilters(parseFilters(searchParams.filters));
   });
 
   function updateSort(key: string) {
