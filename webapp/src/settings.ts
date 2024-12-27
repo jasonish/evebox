@@ -15,7 +15,11 @@ export const [currentThemeName, setCurrentThemeName] =
 const localViewSize =
   +(localStorage.getItem("VIEW_SIZE") || DEFAULT_VIEW_SIZE) ||
   DEFAULT_VIEW_SIZE;
-export const [VIEW_SIZE, SET_VIEW_SIZE] = createSignal(localViewSize);
+
+// TODO: Probably doesn't need to be a signal.
+export const [VIEW_SIZE, SET_VIEW_SIZE] = createSignal<number | string>(
+  localViewSize
+);
 
 export function setTheme(name: string) {
   document.getElementById("theme")?.remove();
@@ -50,9 +54,19 @@ export function loadInitialTheme() {
   }
 }
 
-export function setViewSize(size: number) {
+export function setViewSize(size: number | string) {
   localStorage.setItem("VIEW_SIZE", `${size}`);
   SET_VIEW_SIZE(size);
+}
+
+export function getViewSize(): number | string {
+  const localViewSize = localStorage.getItem("VIEW_SIZE") || "100";
+  switch (localViewSize) {
+    case "fit":
+      return "fit";
+    default:
+      return +localViewSize || 100;
+  }
 }
 
 export function timeRangeAsSeconds(): number | undefined {

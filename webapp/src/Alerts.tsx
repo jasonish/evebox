@@ -3,18 +3,7 @@
 
 import { useLocation, useNavigate, useSearchParams } from "@solidjs/router";
 import { _SET_TIME_RANGE, SET_TIME_RANGE, TIME_RANGE, Top } from "./Top";
-import {
-  Badge,
-  Button,
-  ButtonGroup,
-  Col,
-  Container,
-  Dropdown,
-  Form,
-  OverlayTrigger,
-  Row,
-  Tooltip,
-} from "solid-bootstrap";
+import { Badge, Col, Container, Form, Row } from "solid-bootstrap";
 import {
   batch,
   createEffect,
@@ -45,7 +34,7 @@ import {
 import tinykeys from "tinykeys";
 import { scrollToClass } from "./scroll";
 import { Transition } from "solid-transition-group";
-import { VIEW_SIZE } from "./settings";
+import { getViewSize } from "./settings";
 import {
   eventIsArchived,
   eventSetArchived,
@@ -55,7 +44,6 @@ import {
 import { AddressCell, TimestampCell } from "./TimestampCell";
 import { IdleTimer } from "./idletimer";
 import { eventStore } from "./eventstore";
-import { AppProtoBadge } from "./Events";
 import { Logger } from "./util";
 import { SensorSelect } from "./common/SensorSelect";
 import * as bootstrap from "bootstrap";
@@ -67,6 +55,23 @@ enum View {
   Inbox,
   Escalated,
   Alerts,
+}
+
+// Get the number of rows to display.
+function getRowCount(): number {
+  let rows = getViewSize();
+
+  switch (rows) {
+    case "fit":
+      const windowHeight =
+        window.innerHeight -
+        60 - // Nav bar
+        60 - // Refresh bar
+        60; // Pager
+      return Math.floor(windowHeight / 60);
+    default:
+      return +rows || 100;
+  }
 }
 
 export function AlertState(props: any) {
@@ -277,11 +282,11 @@ export function Alerts() {
     const logger = new Logger("Alerts.createEffect: visible events", true);
     batch(() => {
       setVisibleEvents(
-        eventStore.events.slice(getOffset(), getOffset() + VIEW_SIZE())
+        eventStore.events.slice(getOffset(), getOffset() + getRowCount())
       );
       if (visibleEvents().length === 0 && getOffset() > 0) {
         logger.log("No more visible events, moving to previous page");
-        setOffset(getOffset() - VIEW_SIZE());
+        setOffset(getOffset() - getRowCount());
       }
     });
   });
@@ -1272,27 +1277,27 @@ function PagerRow(props: {
   timedOut: boolean;
 }) {
   const [first, setFirst] = createSignal(props.offset + 1);
-  const [last, setLast] = createSignal(props.offset + VIEW_SIZE());
+  const [last, setLast] = createSignal(props.offset + getRowCount());
 
   createEffect(() => {
     setFirst(props.offset + 1);
-    if (props.offset + 1 + VIEW_SIZE() < props.events.length) {
-      setLast(props.offset + VIEW_SIZE());
+    if (props.offset + 1 + getRowCount() < props.events.length) {
+      setLast(props.offset + getRowCount());
     } else {
       setLast(props.events.length);
     }
   });
 
   function gotoOlder() {
-    const next = props.offset + VIEW_SIZE();
+    const next = props.offset + getRowCount();
     if (next < props.events.length) {
       props.setOffset(next);
     }
   }
 
   function gotoOldest() {
-    const pages = Math.floor(props.events.length / VIEW_SIZE());
-    props.setOffset(pages * VIEW_SIZE());
+    const pages = Math.floor(props.events.length / getRowCount());
+    props.setOffset(pages * getRowCount());
   }
 
   const NoEvents = () => (
@@ -1342,14 +1347,14 @@ function PagerRow(props: {
                 type="button"
                 class="btn btn-secondary"
                 disabled={first() === 1}
-                onclick={() => props.setOffset(props.offset - VIEW_SIZE())}
+                onclick={() => props.setOffset(props.offset - getRowCount())}
               >
                 Newer
               </button>
               <button
                 type="button"
                 class="btn btn-secondary"
-                disabled={props.offset + VIEW_SIZE() > props.events.length}
+                disabled={props.offset + getRowCount() > props.events.length}
                 onclick={gotoOlder}
               >
                 Older

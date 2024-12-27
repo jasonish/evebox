@@ -33,3 +33,19 @@ export async function loadingTracker(
     }, delay);
   });
 }
+
+export function getVisibleRowCount(offsetId: string) {
+  let elOffset = 0;
+  let el = document.getElementById(offsetId);
+  if (el) {
+    elOffset = el.offsetTop;
+  }
+  console.log(elOffset);
+
+  // Might actually be 57, but with a border, make it 60.
+  let rowHeight = 60;
+
+  let windowHeight = window.innerHeight - elOffset - 80;
+  let numRows = Math.floor(windowHeight / rowHeight);
+  return numRows;
+}

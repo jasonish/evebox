@@ -3,7 +3,13 @@
 
 import { Alert, Col, Container, Row } from "solid-bootstrap";
 import { Top } from "./Top";
-import { currentThemeName, setTheme, setViewSize, VIEW_SIZE } from "./settings";
+import {
+  currentThemeName,
+  getViewSize,
+  setTheme,
+  setViewSize,
+  VIEW_SIZE,
+} from "./settings";
 
 export function Settings() {
   return (
@@ -45,7 +51,7 @@ export function Settings() {
               <div class="col-md-8">
                 <select
                   class="form-select"
-                  onchange={(e) => setViewSize(+e.currentTarget.value)}
+                  onchange={(e) => setViewSize(e.currentTarget.value)}
                 >
                   <option value="100" selected={VIEW_SIZE() === 100}>
                     100
@@ -62,14 +68,8 @@ export function Settings() {
                   <option value="500" selected={VIEW_SIZE() === 500}>
                     500
                   </option>
-                  <option value="10" selected={VIEW_SIZE() === 10}>
-                    10
-                  </option>
-                  <option value="20" selected={VIEW_SIZE() === 20}>
-                    20
-                  </option>
-                  <option value="50" selected={VIEW_SIZE() === 50}>
-                    50
+                  <option value="fit" selected={getViewSize() === "fit"}>
+                    Fit to Height
                   </option>
                 </select>
               </div>
