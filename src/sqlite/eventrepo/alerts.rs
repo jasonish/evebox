@@ -42,14 +42,14 @@ impl SqliteEventRepo {
             .selectjs("alert.signature")
             .selectjs("alert.severity")
             .selectjs("alert.action")
-            .selectjs2("dns")
-            .selectjs2("tls")
-            .selectjs2("quic")
+            .selectjs("dns")
+            .selectjs("tls")
+            .selectjs("quic")
             .selectjs("app_proto")
             .selectjs("dest_ip")
             .selectjs("src_ip")
             .selectjs("tags")
-            .select("events.source->>'http'->>'hostname' AS http_hostname")
+            .selectjs("http.hostname")
             .selectjs("host");
         builder.from("events");
         builder.order_by("timestamp", "DESC");
@@ -169,7 +169,7 @@ impl SqliteEventRepo {
             let tls: serde_json::Value = row.try_get("tls").unwrap_or(serde_json::Value::Null);
             let dns: serde_json::Value = row.try_get("dns").unwrap_or(serde_json::Value::Null);
             let quic: serde_json::Value = row.try_get("quic").unwrap_or(serde_json::Value::Null);
-            let http_hostname: Option<String> = row.try_get("http_hostname")?;
+            let http_hostname: Option<String> = row.try_get("http.hostname")?;
 
             if let Some(host) = host {
                 sensors.insert(host);

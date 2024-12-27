@@ -43,13 +43,6 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn selectjs2<T: Into<String>>(&mut self, field: T) -> &mut Self {
-        let field: String = field.into();
-        self.select
-            .push(format!("events.source->>'{field}' AS '{field}'"));
-        self
-    }
-
     pub fn from<T: Into<String>>(&mut self, col: T) -> &mut Self {
         self.from.push(col.into());
         self
