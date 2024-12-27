@@ -175,8 +175,8 @@ export async function alerts(options?: {
 
 export interface EventsQueryParams {
   event_type?: string;
-  max_timestamp?: string;
-  min_timestamp?: string;
+  to?: string;
+  from?: string;
   order?: "asc" | "desc";
   query_string?: string;
   tz_offset?: string;

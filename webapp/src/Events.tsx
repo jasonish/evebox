@@ -85,8 +85,8 @@ export function Events() {
     q?: string;
     order?: "asc";
     event_type?: string;
-    min_timestamp?: string;
-    max_timestamp?: string;
+    from?: string;
+    to?: string;
   }>();
   const [cursor, setCursor] = createSignal(0);
   let keybindings: any = null;
@@ -159,12 +159,12 @@ export function Events() {
       params.order = searchParams.order;
     }
 
-    if (searchParams.min_timestamp) {
-      params.min_timestamp = searchParams.min_timestamp;
+    if (searchParams.from) {
+      params.from = searchParams.from;
     }
 
-    if (searchParams.max_timestamp) {
-      params.max_timestamp = searchParams.max_timestamp;
+    if (searchParams.to) {
+      params.to = searchParams.to;
     }
 
     setIsLoading(true);
@@ -199,8 +199,8 @@ export function Events() {
   function gotoOldest() {
     setSearchParams({
       order: "asc",
-      min_timestamp: undefined,
-      max_timestamp: undefined,
+      from: undefined,
+      to: undefined,
     });
   }
 
@@ -208,8 +208,8 @@ export function Events() {
     const timestamp = events()[0]._source["@timestamp"];
     setSearchParams({
       order: "asc",
-      min_timestamp: timestamp,
-      max_timestamp: undefined,
+      from: timestamp,
+      to: undefined,
     });
   }
 
@@ -217,16 +217,16 @@ export function Events() {
     const timestamp = events()[events().length - 1]._source["@timestamp"];
     setSearchParams({
       order: undefined,
-      min_timestamp: undefined,
-      max_timestamp: timestamp,
+      from: undefined,
+      to: timestamp,
     });
   }
 
   function gotoNewest() {
     setSearchParams({
       order: undefined,
-      max_timestamp: undefined,
-      min_timestamp: undefined,
+      to: undefined,
+      from: undefined,
     });
   }
 

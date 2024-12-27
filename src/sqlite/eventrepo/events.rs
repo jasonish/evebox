@@ -31,13 +31,11 @@ impl SqliteEventRepo {
                 .push_arg(event_type)?;
         }
 
-        if let Some(dt) = &options.max_timestamp {
-            warn!("Found deprecated parameter 'max_timestamp' in SQLite events query");
+        if let Some(dt) = &options.to {
             builder.latest_timestamp(dt)?;
         }
 
-        if let Some(dt) = &options.min_timestamp {
-            warn!("Found deprecated parameter 'min_timestamp' in SQLite events query");
+        if let Some(dt) = &options.from {
             builder.earliest_timestamp(dt)?;
         }
 

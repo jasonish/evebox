@@ -439,12 +439,18 @@ pub(crate) async fn events(
         ..Default::default()
     };
 
-    if let Some(ts) = &query.min_timestamp {
-        warn!("Deprecated field 'min_timestamp' in event query ({})", ts);
+    if let Some(ts) = &query.from {
+        params.from = Some(
+            crate::datetime::parse(ts, None)
+                .map_err(|_| AppError::BadRequest("min_timestamp badly formatted".to_string()))?,
+        );
     }
 
-    if let Some(ts) = &query.max_timestamp {
-        warn!("Deprecated field 'max_timestamp' in event query ({})", ts);
+    if let Some(ts) = &query.to {
+        params.to = Some(
+            crate::datetime::parse(ts, None)
+                .map_err(|_| AppError::BadRequest("max_timestamp badly formatted".to_string()))?,
+        );
     }
 
     let default_tz_offset = query.tz_offset.as_deref();

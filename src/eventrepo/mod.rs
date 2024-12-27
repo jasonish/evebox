@@ -16,8 +16,8 @@ mod stats;
 #[derive(Default, Debug)]
 pub(crate) struct EventQueryParams {
     pub order: Option<String>,
-    pub min_timestamp: Option<DateTime>,
-    pub max_timestamp: Option<DateTime>,
+    pub from: Option<DateTime>,
+    pub to: Option<DateTime>,
     pub event_type: Option<String>,
     pub size: Option<u64>,
     pub sort_by: Option<String>,

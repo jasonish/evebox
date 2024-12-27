@@ -31,11 +31,11 @@ impl ElasticEventRepo {
             &mut must_not,
         );
 
-        if let Some(ts) = params.min_timestamp {
+        if let Some(ts) = params.from {
             warn!("Unexpected min_timestamp of {}", &ts);
         }
 
-        if let Some(ts) = params.max_timestamp {
+        if let Some(ts) = params.to {
             warn!("Unexpected max_timestamp of {}", &ts);
         }
 

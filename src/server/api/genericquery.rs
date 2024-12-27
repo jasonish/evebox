@@ -24,6 +24,10 @@ pub(crate) struct GenericQuery {
     pub interval: Option<String>,
     pub tz_offset: Option<String>,
     pub sensor: Option<String>,
+
+    // Replaces min_timestamp and max_timestamp.
+    pub from: Option<String>,
+    pub to: Option<String>,
 }
 
 impl TimeRange {
