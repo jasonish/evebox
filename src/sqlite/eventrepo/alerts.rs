@@ -106,6 +106,12 @@ impl SqliteEventRepo {
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
+                                let k = match k.as_ref() {
+                                    "@sid" => "alert.signature_id",
+                                    "@sig" => "alert.signature",
+                                    _ => k,
+                                };
+
                                 if let Ok(v) = v.parse::<i64>() {
                                     let op = if el.negated { "!=" } else { "=" };
                                     builder.wherejs(k, op, v)?;
@@ -262,8 +268,8 @@ impl SqliteEventRepo {
     #[instrument(skip_all)]
     pub async fn alerts_group_by(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
         let query = r#"
-    		    SELECT b.count,
-			        a.rowid as id,
+           SELECT b.count,
+	      a.rowid as id,
               b.mints as mints,
               b.escalated_count,
               a.archived,
@@ -346,6 +352,12 @@ impl SqliteEventRepo {
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
+                                let k = match k.as_ref() {
+                                    "@sid" => "alert.signature_id",
+                                    "@sig" => "alert.signature",
+                                    _ => k,
+                                };
+
                                 if let Ok(v) = v.parse::<i64>() {
                                     let op = if el.negated { "!=" } else { "=" };
                                     filters.push(format!(
