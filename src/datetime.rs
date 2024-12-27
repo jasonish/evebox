@@ -225,7 +225,10 @@ mod test {
 
     #[test]
     fn test_parse() {
-        let _ts = parse("2024-05-16T16:08:17.876423-0600", None).unwrap();
+        let ts0 = parse("2024-05-16T16:08:17.876423-0600", None).unwrap();
+        let ts1 = parse("20240516T160817.876423-0600", None).unwrap();
+        assert_eq!(ts0, ts1);
+
         let _ts = parse("2023-01-01T01:02:00.0+0000", None).unwrap();
         let _ts = parse("2024-05-16T16:08:17.876423+0600", None).unwrap();
         let _ts = parse("2024-05-16T16:08:17.876423Z", None).unwrap();

@@ -32,11 +32,11 @@ impl ElasticEventRepo {
         );
 
         if let Some(ts) = params.from {
-            warn!("Unexpected min_timestamp of {}", &ts);
+            filters.push(request::timestamp_gte_filter(&ts));
         }
 
         if let Some(ts) = params.to {
-            warn!("Unexpected max_timestamp of {}", &ts);
+            filters.push(request::timestamp_lte_filter(&ts));
         }
 
         let sort_by = params.sort_by.unwrap_or_else(|| "@timestamp".to_string());

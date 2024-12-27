@@ -205,7 +205,10 @@ export function Events() {
   }
 
   function gotoNewer() {
-    const timestamp = events()[0]._source["@timestamp"];
+    // Removing "-" and ":" are for URL tidyness, but don't matter.
+    const timestamp = events()[0]
+      ._source["@timestamp"].replace(/(\d{4})-(\d{2})-(\d{2})/, "$1$2$3")
+      .replaceAll(":", "");
     setSearchParams({
       order: "asc",
       from: timestamp,
@@ -214,7 +217,13 @@ export function Events() {
   }
 
   function gotoOlder() {
-    const timestamp = events()[events().length - 1]._source["@timestamp"];
+    // Removing "-" and ":" are for URL tidyness, but don't matter.
+    const timestamp = events()
+      [events().length - 1]._source["@timestamp"].replace(
+        /(\d{4})-(\d{2})-(\d{2})/,
+        "$1$2$3"
+      )
+      .replaceAll(":", "");
     setSearchParams({
       order: undefined,
       from: undefined,
@@ -225,7 +234,7 @@ export function Events() {
   function gotoNewest() {
     setSearchParams({
       order: undefined,
-      to: undefined,
+      max_timestamp: undefined,
       from: undefined,
     });
   }
