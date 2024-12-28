@@ -8,7 +8,6 @@ import {
   getViewSize,
   setTheme,
   setViewSize,
-  VIEW_SIZE,
 } from "./settings";
 
 export function Settings() {
@@ -53,19 +52,19 @@ export function Settings() {
                   class="form-select"
                   onchange={(e) => setViewSize(e.currentTarget.value)}
                 >
-                  <option value="100" selected={VIEW_SIZE() === 100}>
+                  <option value="100" selected={getViewSize() === 100}>
                     100
                   </option>
-                  <option value="200" selected={VIEW_SIZE() === 200}>
+                  <option value="200" selected={getViewSize() === 200}>
                     200
                   </option>
-                  <option value="300" selected={VIEW_SIZE() === 300}>
+                  <option value="300" selected={getViewSize() === 300}>
                     300
                   </option>
-                  <option value="400" selected={VIEW_SIZE() === 400}>
+                  <option value="400" selected={getViewSize() === 400}>
                     400
                   </option>
-                  <option value="500" selected={VIEW_SIZE() === 500}>
+                  <option value="500" selected={getViewSize() === 500}>
                     500
                   </option>
                   <option value="fit" selected={getViewSize() === "fit"}>

@@ -7,19 +7,9 @@ import { parse_timerange } from "./datetime";
 import { Chart } from "chart.js";
 
 const DEFAULT_THEME = "light";
-const DEFAULT_VIEW_SIZE = 100;
 
 export const [currentThemeName, setCurrentThemeName] =
   createSignal(DEFAULT_THEME);
-
-const localViewSize =
-  +(localStorage.getItem("VIEW_SIZE") || DEFAULT_VIEW_SIZE) ||
-  DEFAULT_VIEW_SIZE;
-
-// TODO: Probably doesn't need to be a signal.
-export const [VIEW_SIZE, SET_VIEW_SIZE] = createSignal<number | string>(
-  localViewSize
-);
 
 export function setTheme(name: string) {
   document.getElementById("theme")?.remove();
@@ -56,7 +46,6 @@ export function loadInitialTheme() {
 
 export function setViewSize(size: number | string) {
   localStorage.setItem("VIEW_SIZE", `${size}`);
-  SET_VIEW_SIZE(size);
 }
 
 export function getViewSize(): number | string {
