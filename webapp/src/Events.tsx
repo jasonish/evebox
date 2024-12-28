@@ -234,7 +234,7 @@ export function Events() {
   function gotoNewest() {
     setSearchParams({
       order: undefined,
-      max_timestamp: undefined,
+      to: undefined,
       from: undefined,
     });
   }
