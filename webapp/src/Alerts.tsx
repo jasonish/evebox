@@ -7,6 +7,7 @@ import { Badge, Col, Container, Form, Row } from "solid-bootstrap";
 import {
   batch,
   createEffect,
+  createMemo,
   createSignal,
   For,
   Match,
@@ -94,7 +95,7 @@ export function Alerts() {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     sensor?: undefined | string;
-    filters?: string;
+    filters?: string[];
   }>();
   const [cursor, setCursor] = createSignal(0);
   const [isLoading, setIsLoading] = createSignal(false);
@@ -104,7 +105,7 @@ export function Alerts() {
 
   // For display of the filters. Reactiveness comes from the searchParams.
   const [filters, setFilters] = createSignal<string[]>(
-    parseFilters(searchParams.filters)
+    searchParams.filters || []
   );
 
   let toggleSelectAllRef: HTMLInputElement | null = null;
@@ -371,7 +372,8 @@ export function Alerts() {
     // needed.
     untrack(() => {
       const logger = new Logger("Alerts.refreshEvents", true);
-      let qFilters = parseFilters(searchParams.filters);
+      let qFilters = getFilters();
+      console.log(qFilters);
       let q: undefined | string = qFilters.join(" ");
 
       if (searchParams.q) {
@@ -648,8 +650,10 @@ export function Alerts() {
     let entry: string = "";
     if (typeof value === "number") {
       entry = `${op}${what}:${value}`;
-    } else {
+    } else if (value.includes(" ")) {
       entry = `${op}${what}:"${value}"`;
+    } else {
+      entry = `${op}${what}:${value}`;
     }
 
     let newFilters = filters();
@@ -661,7 +665,7 @@ export function Alerts() {
 
     newFilters.push(entry);
     setSearchParams({
-      filters: encodeURIComponent(JSON.stringify(newFilters)),
+      filters: newFilters,
     });
   }
 
@@ -682,7 +686,7 @@ export function Alerts() {
       });
     } else {
       setSearchParams({
-        filters: encodeURIComponent(JSON.stringify(newFilters)),
+        filters: newFilters,
       });
     }
   }
@@ -692,17 +696,20 @@ export function Alerts() {
     setSearchParams({ filters: null });
   };
 
-  function parseFilters(filters: string | undefined): any[] {
-    if (!filters || filters.length == 0) {
-      return [];
+  // Getter for searchParams.filters to convert to an array if there is only one "filters" parameter.
+  const getFilters = createMemo(() => {
+    let filters = searchParams.filters || [];
+
+    if (!Array.isArray(filters)) {
+      return [filters];
+    } else {
+      return filters;
     }
-    const decodedFilters = JSON.parse(decodeURIComponent(filters));
-    return decodedFilters;
-  }
+  });
 
   // Effect to update the filter strip based on the filters in the query string.
   createEffect(() => {
-    setFilters(parseFilters(searchParams.filters));
+    setFilters(getFilters());
   });
 
   function updateSort(key: string) {
