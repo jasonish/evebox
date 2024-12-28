@@ -260,7 +260,7 @@ impl SqliteEventRepo {
         Ok(AlertsResult {
             events: results,
             timed_out,
-            took: 0,
+            took: now.elapsed().as_millis() as u64,
             ecs: false,
         })
     }
