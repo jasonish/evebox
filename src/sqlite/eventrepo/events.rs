@@ -23,7 +23,7 @@ impl SqliteEventRepo {
             .select("events.source AS source");
         builder.from("events");
         builder.left_join_from_query_string(&options.query_string)?;
-        builder.limit(500);
+        builder.limit(options.size.unwrap_or(500) as i64);
 
         if let Some(event_type) = options.event_type {
             builder
