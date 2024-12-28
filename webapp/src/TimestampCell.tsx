@@ -10,11 +10,11 @@ import { Show } from "solid-js";
 export function TimestampCell(props: { timestamp: string }) {
   let timestamp = parse_timestamp(props.timestamp);
   return (
-    <>
+    <div title={props.timestamp}>
       {timestamp.format("YYYY-MM-DD HH:mm:ss")}
       <br />
       <span class={"small"}>{timestamp.fromNow()}</span>
-    </>
+    </div>
   );
 }
 
