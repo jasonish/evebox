@@ -15,7 +15,8 @@ export function Admin() {
     },
   });
 
-  const updateJa4Db = async () => {
+  const updateJa4Db = async (e: any) => {
+    e.preventDefault();
     try {
       setState("ja4", { updating: true });
       await api.post("/api/admin/update/ja4db");
