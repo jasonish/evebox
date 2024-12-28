@@ -182,18 +182,20 @@ impl SqliteEventRepo {
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
         args.push(alert_group.signature_id as i64)?;
 
-        if let Some(src_ip) = &alert_group.src_ip {
+        let src_ip = alert_group.src_ip.unwrap_or_default();
+        if src_ip.is_empty() {
+            filters.push("(json_extract(events.source, '$.src_ip') IS NULL OR json_extract(events.source, '$.src_ip') = '')".to_string());
+        } else {
             filters.push("json_extract(events.source, '$.src_ip') = ?".to_string());
             args.push(src_ip)?;
-        } else {
-            filters.push("json_extract(events.source, '$.src_ip') IS NULL".to_string());
         }
 
-        if let Some(dest_ip) = &alert_group.dest_ip {
+        let dest_ip = alert_group.dest_ip.unwrap_or_default();
+        if dest_ip.is_empty() {
+            filters.push("(json_extract(events.source, '$.dest_ip') IS NULL OR json_extract(events.source, '$.dest_ip') = '')".to_string());
+        } else {
             filters.push("json_extract(events.source, '$.dest_ip') = ?".to_string());
             args.push(dest_ip)?;
-        } else {
-            filters.push("json_extract(events.source, '$.dest_ip') IS NULL".to_string());
         }
 
         let mints_nanos = crate::datetime::parse(&alert_group.min_timestamp, None)?.to_nanos();
@@ -205,9 +207,6 @@ impl SqliteEventRepo {
         args.push(maxts_nanos as i64)?;
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
-
-        dbg!(&sql);
-        dbg!(&args);
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, &sql, &args).await;
