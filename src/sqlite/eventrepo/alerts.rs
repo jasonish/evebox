@@ -230,7 +230,7 @@ impl SqliteEventRepo {
             }
 
             if count == 0 {
-                info!("First row took {:?}", now.elapsed());
+                debug!("First row took {:?}", now.elapsed());
 
                 // This kicks in the timer after the first result.
                 now = Instant::now();
@@ -244,13 +244,17 @@ impl SqliteEventRepo {
             }
         }
 
-        info!(
-            ?timed_out,
-            "Alert query took {:?}, with {} events over {} groups",
-            now.elapsed(),
-            count,
-            events.len()
-        );
+        let took = now.elapsed();
+
+        if timed_out {
+            info!(
+                ?timed_out,
+                "Alert query took {:?}, with {} events over {} groups",
+                &took,
+                count,
+                events.len()
+            );
+        }
 
         let mut results: Vec<AggAlert> = vec![];
         for (_key, event) in events {
@@ -260,7 +264,7 @@ impl SqliteEventRepo {
         Ok(AlertsResult {
             events: results,
             timed_out,
-            took: now.elapsed().as_millis() as u64,
+            took: took.as_millis() as u64,
             ecs: false,
         })
     }
