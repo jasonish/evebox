@@ -552,7 +552,10 @@ export function Events() {
                                         event._source.arp.src_ip
                                       }
                                     >
-                                      <AddressCell source={event._source.arp} />
+                                      <AddressCell
+                                        source={event._source.arp}
+                                        fn={addFilter}
+                                      />
                                     </Match>
                                   </Switch>
                                 </td>
