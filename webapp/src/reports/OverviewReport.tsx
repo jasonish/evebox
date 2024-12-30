@@ -1,8 +1,14 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { createEffect, createSignal, createUniqueId, Show } from "solid-js";
-import { API, AggRequest, fetchAgg } from "../api";
+import {
+  createEffect,
+  createSignal,
+  createUniqueId,
+  onCleanup,
+  Show,
+} from "solid-js";
+import { API, AggRequest } from "../api";
 import { TIME_RANGE, Top } from "../Top";
 import { Card, Col, Container, Row } from "solid-bootstrap";
 import { Chart, ChartConfiguration } from "chart.js";
@@ -13,17 +19,15 @@ import { Colors } from "../common/colors";
 import { getChartCanvasElement, loadingTracker } from "../util";
 import { createStore } from "solid-js/store";
 import { CountValueDataTable } from "../components";
+import dayjs from "dayjs";
 
 const initialData = {
   topAlertsLoading: false,
   topAlerts: [],
+
   topDnsRequestsLoading: false,
   topDnsRequests: [],
-
-  protocols: {
-    loading: false,
-    data: [],
-  },
+  topDnsRequestsFrom: null,
 
   tlsSni: {
     loading: false,
@@ -37,6 +41,7 @@ const initialData = {
 };
 
 export function OverviewReport() {
+  const [version, setVersion] = createSignal(0);
   const [loading, setLoading] = createSignal(0);
   let histogram: any = undefined;
   let hiddenTypes: { [key: string]: boolean } = {
@@ -49,6 +54,14 @@ export function OverviewReport() {
   }>();
   const [data, setData] = createStore(initialData);
 
+  const [eventsOverTimeLoading, setEventsOverTimeLoading] = createSignal(0);
+
+  const [protocols, setProtocols] = createStore({
+    loading: false,
+    data: [],
+  });
+  let protocolsPieChartRef;
+
   function initChart() {
     if (histogram) {
       histogram.destroy();
@@ -56,11 +69,17 @@ export function OverviewReport() {
     buildChart();
   }
 
+  onCleanup(() => {
+    API.cancelAllSse();
+  });
+
   createEffect(() => {
     refresh();
   });
 
   async function refresh() {
+    setVersion((version) => version + 1);
+
     let q = "";
     if (searchParams.sensor) {
       q += `host:${searchParams.sensor}`;
@@ -74,10 +93,16 @@ export function OverviewReport() {
         time_range: TIME_RANGE(),
         q: q + " event_type:alert",
       };
+
       setData("topAlertsLoading", true);
-      let response = await loadingTracker(setLoading, () => fetchAgg(request));
-      setData("topAlerts", response.rows);
-      setData("topAlertsLoading", false);
+
+      API.getSseAgg(request, version, (data: any) => {
+        if (data === null) {
+          setData("topAlertsLoading", false);
+        } else {
+          setData("topAlerts", data.rows);
+        }
+      });
     });
 
     loadingTracker(setLoading, async () => {
@@ -88,10 +113,17 @@ export function OverviewReport() {
         time_range: TIME_RANGE(),
         q: q + " event_type:dns dns.type:query",
       };
+
       setData("topDnsRequestsLoading", true);
-      let response = await loadingTracker(setLoading, () => fetchAgg(request));
-      setData("topDnsRequests", response.rows);
-      setData("topDnsRequestsLoading", false);
+
+      return API.getSseAgg(request, version, (data: any) => {
+        if (data === null) {
+          setData("topDnsRequestsLoading", false);
+        } else {
+          setData("topDnsRequestsFrom", data.earliest_ts);
+          setData("topDnsRequests", data.rows);
+        }
+      });
     });
 
     loadingTracker(setLoading, async () => {
@@ -104,13 +136,25 @@ export function OverviewReport() {
         // we'll get duplicate counts from different event types.
         q: q + " event_type:flow",
       };
-      setData("protocols", {
-        loading: true,
-      });
-      let response = await loadingTracker(setLoading, () => fetchAgg(request));
-      setData("protocols", {
-        loading: false,
-        data: response.rows,
+
+      setProtocols("loading", true);
+      setProtocols("data", []);
+
+      return await API.getSseAgg(request, version, (data: any) => {
+        if (data) {
+          if (protocols.data.length == 0) {
+            setProtocols("data", data.rows);
+          } else {
+            let labels = data.rows.map((e: any) => e.key);
+            let dataset = data.rows.map((e: any) => e.count);
+            let chart: any = Chart.getChart(protocolsPieChartRef!);
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = dataset;
+            chart.update();
+          }
+        }
+      }).finally(() => {
+        setProtocols("loading", false);
       });
     });
 
@@ -125,10 +169,17 @@ export function OverviewReport() {
       setData("tlsSni", {
         loading: true,
       });
-      let response = await loadingTracker(setLoading, () => fetchAgg(request));
-      setData("tlsSni", {
-        loading: false,
-        data: response.rows,
+
+      return await API.getSseAgg(request, version, (data: any) => {
+        if (data) {
+          setData("tlsSni", {
+            data: data.rows,
+          });
+        }
+      }).finally(() => {
+        setData("tlsSni", {
+          loading: false,
+        });
       });
     });
 
@@ -143,10 +194,17 @@ export function OverviewReport() {
       setData("quicSni", {
         loading: true,
       });
-      let response = await loadingTracker(setLoading, () => fetchAgg(request));
-      setData("quicSni", {
-        loading: false,
-        data: response.rows,
+
+      return await API.getSseAgg(request, version, (data: any) => {
+        if (data) {
+          setData("quicSni", {
+            data: data.rows,
+          });
+        }
+      }).finally(() => {
+        setData("quicSni", {
+          loading: false,
+        });
       });
     });
 
@@ -170,6 +228,7 @@ export function OverviewReport() {
       };
 
       loadingTracker(setLoading, async () => {
+        setEventsOverTimeLoading((v) => v + 1);
         let response = await API.histogramTime(request);
         if (labels.length === 0) {
           response.data.forEach((e) => {
@@ -194,6 +253,8 @@ export function OverviewReport() {
           });
           histogram.update();
         }
+      }).finally(() => {
+        setEventsOverTimeLoading((v) => v - 1);
       });
     }
   }
@@ -202,7 +263,7 @@ export function OverviewReport() {
     const ctx = getChartCanvasElement("histogram");
 
     const config: ChartConfiguration | any = {
-      type: "line",
+      type: "bar",
       data: {
         labels: [],
         datasets: [],
@@ -216,8 +277,30 @@ export function OverviewReport() {
             display: false,
             padding: 0,
           },
+          tooltip: {
+            enabled: true,
+            callbacks: {
+              label: function (context: any) {
+                let label = context.dataset.label;
+                let value = context.parsed.y;
+                if (value == 0) {
+                  return null;
+                }
+                return `${label}: ${value}`;
+              },
+            },
+            // Sort items in descending order.
+            itemSort: function (a: any, b: any) {
+              return b.raw - a.raw;
+            },
+            // Limit the tooltip to the top 5 items. Like default Kibana.
+            filter: function (item: any, _data: any) {
+              return item.datasetIndex < 6;
+            },
+          },
           legend: {
             display: true,
+            position: "top",
             onClick: (_e: any, legendItem: any, legend: any) => {
               const eventType = legendItem.text;
               const index = legendItem.datasetIndex;
@@ -250,6 +333,7 @@ export function OverviewReport() {
             ticks: {
               source: "auto",
             },
+            stacked: true,
           },
           y: {
             display: true,
@@ -288,8 +372,24 @@ export function OverviewReport() {
         <div class="row">
           <div class="mt-2 col col-lg-10 col-md-8 col-sm-12">
             <Card>
-              <Card.Header class={"text-center"}>
+              <Card.Header class="d-flex">
                 <b>Events by Type Over Time</b>
+                <Show when={eventsOverTimeLoading() > 0}>
+                  <button
+                    class="btn ms-auto"
+                    type="button"
+                    disabled
+                    style="border: 0; padding: 0;"
+                  >
+                    <span
+                      class="spinner-border spinner-border-sm"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="visually-hidden" role="status">
+                      Loading...
+                    </span>
+                  </button>
+                </Show>
               </Card.Header>
               <Card.Body class={"p-0"}>
                 <div class="chart-container" style="position; relative;">
@@ -306,10 +406,7 @@ export function OverviewReport() {
               <div class="card-header d-flex">
                 Protocols
                 <Show
-                  when={
-                    data.protocols.loading !== undefined &&
-                    data.protocols.loading
-                  }
+                  when={protocols.loading !== undefined && protocols.loading}
                 >
                   {/* Loader in a button for placement reason's. */}
                   <button
@@ -329,7 +426,7 @@ export function OverviewReport() {
                 </Show>
               </div>
               <div class="card-body p-0">
-                <PieChart data={data.protocols.data} />
+                <PieChart data={protocols.data} ref={protocolsPieChartRef} />
               </div>
             </div>
           </div>
@@ -347,7 +444,13 @@ export function OverviewReport() {
           </div>
           <div class="col">
             <CountValueDataTable
-              title="Top DNS Requests"
+              title="Top DNS Reqeuests"
+              suffix={() => {
+                if (data.topDnsRequestsFrom) {
+                  const timestamp = dayjs(data.topDnsRequestsFrom);
+                  return `from ${timestamp.fromNow()}`;
+                }
+              }}
               label="Hostname"
               rows={data.topDnsRequests}
               loading={data.topDnsRequestsLoading}
@@ -381,7 +484,7 @@ export function OverviewReport() {
   );
 }
 
-function PieChart(props: { data: any[] }) {
+function PieChart(props: { data: any[]; ref?: any }) {
   const chartId = createUniqueId();
   let chart: any = null;
 
@@ -432,6 +535,7 @@ function PieChart(props: { data: any[] }) {
       <div>
         <div class="chart-container" style="height: 180px; position; relative;">
           <canvas
+            ref={props.ref}
             id={chartId}
             style="max-height: 150px; height: 150px;"
           ></canvas>

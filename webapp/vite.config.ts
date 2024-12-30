@@ -7,6 +7,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       "/api": "http://127.0.0.1:5636",
+      "/sse": "http://127.0.0.1:5636",
     },
   },
   build: {

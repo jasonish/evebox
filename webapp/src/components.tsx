@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { For, Show, createMemo } from "solid-js";
+import { For, JSXElement, Show, createMemo } from "solid-js";
 import { SearchLink } from "./common/SearchLink";
 import { parse_timestamp } from "./datetime";
 import { EventSource } from "./types";
@@ -13,7 +13,8 @@ import dayjs from "dayjs";
 // Creates a table where the first column is a count, and the second
 // column is value.
 export function CountValueDataTable(props: {
-  title: string;
+  title: string | JSXElement | (() => string | JSXElement);
+  suffix?: string | JSXElement | (() => string | JSXElement);
   label: string;
   searchField?: string;
   loading?: boolean;
@@ -31,11 +32,25 @@ export function CountValueDataTable(props: {
     }
   };
 
+  const title = () => {
+    if (typeof props.title === "function") {
+      return props.title();
+    }
+    return props.title;
+  };
+
+  const suffix = () => {
+    if (typeof props.suffix === "function") {
+      return props.suffix();
+    }
+    return props.suffix;
+  };
+
   return (
     <>
       <div class="card app-count-value-data-table">
         <div class="card-header d-flex">
-          {props.title}
+          {title()}
           <Show when={props.loading !== undefined && props.loading}>
             {/* Loader in a button for placement reason's. */}
             <button
@@ -44,6 +59,7 @@ export function CountValueDataTable(props: {
               disabled
               style="border: 0; padding: 0;"
             >
+              <span class="small text-muted fst-italic">{suffix()} </span>
               <span
                 class="spinner-border spinner-border-sm"
                 aria-hidden="true"

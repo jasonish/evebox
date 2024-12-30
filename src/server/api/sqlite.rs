@@ -41,7 +41,7 @@ pub(crate) async fn info(
         let max_row_id = sqlite.max_row_id().await?;
         let event_count_estimate = max_row_id - min_row_id;
 
-        let min_timestamp = sqlite.min_timestamp().await?;
+        let min_timestamp = sqlite.earliest_timestamp().await?;
         let max_timestamp = sqlite.max_timestamp().await?;
 
         let mut response = Response {

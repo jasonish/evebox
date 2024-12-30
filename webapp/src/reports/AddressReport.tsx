@@ -3,9 +3,9 @@
 
 import { TIME_RANGE, Top } from "../Top";
 import { useParams } from "@solidjs/router";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup } from "solid-js";
 import { Col, Container, Row } from "solid-bootstrap";
-import { API, AggRequest, AggResponseRow, fetchAgg } from "../api";
+import { API, AggRequest, AggResponseRow } from "../api";
 import { CountValueDataTable } from "../components";
 import { createStore } from "solid-js/store";
 import { RefreshButton } from "../common/RefreshButton";
@@ -19,7 +19,9 @@ export function AddressReport() {
     []
   );
   const [loading, setLoading] = createSignal(0);
-  const [isLoading, setIsLoading] = createSignal(false);
+
+  // For SSE cancellation.
+  const [version, setVersion] = createSignal(0);
 
   const [results, setResults] = createStore<{
     mostRequestedDns: AggResponseRow[];
@@ -75,12 +77,12 @@ export function AddressReport() {
     tlsLeastRequestedIssueDn: [],
   });
 
-  createEffect(() => {
-    forceRefresh();
+  onCleanup(() => {
+    API.cancelAllSse();
   });
 
   createEffect(() => {
-    setIsLoading(loading() > 1);
+    forceRefresh();
   });
 
   function forceRefresh() {
@@ -420,24 +422,21 @@ export function AddressReport() {
   ];
 
   function refresh(timeRange: string) {
-    const runLoader = (i: number) => {
-      let loader = LOADERS[i];
-      if (!loader) {
-        return;
-      }
+    setVersion((version) => version + 1);
+    setLoading(LOADERS.length);
+
+    for (const loader of LOADERS) {
       let request = { time_range: timeRange, ...loader.request };
       request.q = request.q?.replace("{{address}}", params.address);
-      fetchAgg(request)
-        .then((response) => {
-          loader.setter(response.rows);
-        })
-        .finally(() => {
-          runLoader(i + 1);
-          setLoading((n) => n - 1);
-        });
-    };
-    setLoading(LOADERS.length);
-    runLoader(0);
+
+      API.getSseAgg(request, version, (data: any) => {
+        if (data) {
+          loader.setter(data.rows);
+        }
+      }).finally(() => {
+        setLoading((n) => n - 1);
+      });
+    }
   }
 
   return (

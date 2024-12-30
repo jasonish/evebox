@@ -8,17 +8,13 @@ import { createSignal } from "solid-js";
 import { get_timezone_offset_str } from "./datetime";
 import { SET_IS_AUTHENTICATED } from "./global";
 
-const SESSION_ID_HEADER = "x-evebox-session-id";
-
 export const [SERVER_REVISION, SET_SERVER_REVISION] = createSignal<
   null | string
 >(null);
 
-let SESSION_ID: string | null = localStorage.getItem("SESSION_ID");
-
 export const [QUEUE_SIZE, SET_QUEUE_SIZE] = createSignal(0);
 
-const QUEUE = new Queue({ concurrency: 3 });
+const QUEUE = new Queue({ concurrency: 9 });
 
 function queueAdd(func: any): Promise<any> {
   const p = new Promise<any>((resolve, reject) => {
@@ -42,13 +38,8 @@ function queueAdd(func: any): Promise<any> {
   return p;
 }
 
-function setSessionId(session_id: string) {
-  SESSION_ID = session_id;
-  localStorage.setItem("SESSION_ID", SESSION_ID);
-}
-
 async function update_revision(response: AxiosResponse<any, any>) {
-  if (response.headers && response.headers) {
+  if (response && response.headers) {
     const server_rev = response!.headers["x-evebox-git-revision"];
     if (server_rev) {
       SET_SERVER_REVISION(server_rev);
@@ -58,18 +49,13 @@ async function update_revision(response: AxiosResponse<any, any>) {
 }
 
 export async function get(url: string, params: any = {}): Promise<any> {
-  let headers = {
-    "x-evebox-session-id": SESSION_ID,
-  };
-
   return axios
     .get(url, {
-      headers: headers,
       params: params,
     })
     .then(update_revision)
     .catch((error) => {
-      if (error.response.status === 401) {
+      if (error && error.rsponse && error.response.status === 401) {
         SET_IS_AUTHENTICATED(false);
       }
       throw error;
@@ -77,21 +63,11 @@ export async function get(url: string, params: any = {}): Promise<any> {
 }
 
 export async function post(url: string, params: any = {}): Promise<any> {
-  let headers = {
-    "x-evebox-session-id": SESSION_ID,
-  };
-  return axios.post(url, params, {
-    headers: headers,
-  });
+  return axios.post(url, params, {});
 }
 
 async function postJson(url: string, body: any = {}): Promise<any> {
-  let headers = {
-    "x-evebox-session-id": SESSION_ID,
-  };
-  return axios.post(url, body, {
-    headers: headers,
-  });
+  return axios.post(url, body, {});
 }
 
 export async function postComment(
@@ -131,7 +107,6 @@ export async function login(
   });
 
   let response = await axios.post<LoginResponse>("api/1/login", params);
-  setSessionId(response.data.session_id);
   return [true, response.data];
 }
 
@@ -332,8 +307,8 @@ export async function dhcpRequest(query: {
   return response.data;
 }
 
-class Api {
-  async histogramTime(request: {
+export namespace API {
+  export async function histogramTime(request: {
     time_range: string;
     interval?: string;
     event_type: string;
@@ -344,15 +319,17 @@ class Api {
     );
   }
 
-  async getSensors(): Promise<{ data: string[] }> {
+  export async function getSensors(): Promise<{ data: string[] }> {
     return get("api/1/sensors").then((response) => response.data);
   }
 
-  async getEventTypes(request: { time_range?: string }): Promise<string[]> {
+  export async function getEventTypes(request: {
+    time_range?: string;
+  }): Promise<string[]> {
     return get("api/event_types", request).then((response) => response.data);
   }
 
-  escalateAggregateAlert(alert: EventWrapper) {
+  export async function escalateAggregateAlert(alert: EventWrapper) {
     const params = {
       signature_id: alert._source.alert!.signature_id,
       src_ip: alert._source.src_ip,
@@ -365,7 +342,7 @@ class Api {
     });
   }
 
-  deEscalateAggregateAlert(alert: EventWrapper) {
+  export async function deEscalateAggregateAlert(alert: EventWrapper) {
     const params = {
       signature_id: alert._source.alert!.signature_id,
       src_ip: alert._source.src_ip,
@@ -378,21 +355,18 @@ class Api {
     });
   }
 
-  escalateEvent(event: EventWrapper) {
+  export async function escalateEvent(event: EventWrapper) {
     return post(`api/1/event/${event._id}/escalate`);
   }
 
-  deEscalateEvent(event: EventWrapper) {
+  export async function deEscalateEvent(event: EventWrapper) {
     return post(`api/1/event/${event._id}/de-escalate`);
   }
 
-  eventToPcap(event: EventWrapper, what: "packet" | "payload") {
-    // Set a cook with the session key to expire in 60 seconds from now.
-    const expires = new Date(new Date().getTime() + 60000);
-    const cookie = `${SESSION_ID_HEADER}=${SESSION_ID}; expires=${expires.toUTCString()}`;
-    console.log("Setting cookie: " + cookie);
-    document.cookie = cookie;
-
+  export async function eventToPcap(
+    event: EventWrapper,
+    what: "packet" | "payload"
+  ) {
     const form = document.createElement("form") as HTMLFormElement;
     form.setAttribute("method", "post");
     form.setAttribute("action", "api/1/eve2pcap");
@@ -412,6 +386,56 @@ class Api {
     document.body.appendChild(form);
     form.submit();
   }
-}
 
-export const API = new Api();
+  let ES_TRACKER: EventSource[] = [];
+
+  export async function cancelAllSse() {
+    while (ES_TRACKER.length > 0) {
+      const es = ES_TRACKER.pop();
+      if (es) {
+        es.close();
+      }
+    }
+  }
+
+  export async function getSseAgg(
+    params: any,
+    version: () => number,
+    onData?: any
+  ): Promise<void> {
+    return new Promise((resolve, _reject) => {
+      const currentVersion = version();
+      let urlSearchParams = new URLSearchParams(Object.entries(params));
+      let url = `/sse/agg?${urlSearchParams.toString()}`;
+      const es = new EventSource(url);
+      ES_TRACKER.push(es);
+      es.onmessage = (e) => {
+        if (currentVersion != version()) {
+          console.log("SSE version invalidated, closing");
+          es.close();
+          return;
+        }
+        const data = JSON.parse(e.data);
+        if (onData) {
+          onData(data);
+        }
+      };
+
+      es.onerror = () => {
+        es.close();
+        if (currentVersion == version()) {
+          if (onData) {
+            onData(null);
+          }
+        }
+
+        const index = ES_TRACKER.indexOf(es);
+        if (index > -1) {
+          ES_TRACKER.splice(index, 1);
+        }
+
+        resolve();
+      };
+    });
+  }
+}

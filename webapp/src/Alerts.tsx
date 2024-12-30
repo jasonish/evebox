@@ -1170,6 +1170,43 @@ export function Alerts() {
                                       Filter for to {event._source.timestamp}
                                     </a>
                                   </li>
+                                  <Show when={event._source.host}>
+                                    <li>
+                                      <a
+                                        class="dropdown-item"
+                                        href="#"
+                                        onclick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          addFilter(
+                                            "host",
+                                            "",
+                                            event._source.host
+                                          );
+                                        }}
+                                      >
+                                        Filter for sensor
+                                        {event._source.host}
+                                      </a>
+                                    </li>
+                                    <li>
+                                      <a
+                                        class="dropdown-item"
+                                        href="#"
+                                        onclick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          addFilter(
+                                            "host",
+                                            "-",
+                                            event._source.host
+                                          );
+                                        }}
+                                      >
+                                        Filter out host {event._source.host}
+                                      </a>
+                                    </li>
+                                  </Show>
                                 </ul>
                               </div>
                             </td>
@@ -1204,12 +1241,24 @@ export function Alerts() {
 
 export function AlertDescription(props: { event: EventWrapper }) {
   const alert = props.event._source.alert!;
+
+  let badges = [];
+
+  if (props.event._source.host && props.event._source.host.length > 0) {
+    badges.push(["primary", props.event._source.host]);
+  }
+
   return (
     <>
       <Show when={alert.action && alert.action !== "allowed"}>
         <Badge class={"bg-warning me-1"}>{alert.action.toUpperCase()}</Badge>
       </Show>
       {alert.signature}{" "}
+      <For each={badges}>
+        {(b) => {
+          return <span class={"me-2 badge text-bg-" + b[0]}>{b[1]}</span>;
+        }}
+      </For>
       <Show when={props.event._source.app_proto != "failed"}>
         <span class="badge text-bg-secondary me-2">
           {props.event._source.app_proto}

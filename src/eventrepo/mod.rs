@@ -169,4 +169,11 @@ impl EventRepo {
             EventRepo::SQLite(ds) => Ok(ds.agg(field, size, order, query).await?),
         }
     }
+
+    pub(crate) async fn earliest_timestamp(&self) -> Result<Option<DateTime>> {
+        match self {
+            EventRepo::Elastic(repo) => repo.earliest_timestamp().await,
+            EventRepo::SQLite(repo) => repo.earliest_timestamp().await,
+        }
+    }
 }

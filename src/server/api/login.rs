@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use axum::extract::Extension;
+use axum::http::header::HeaderMap;
+use axum::http::header::SET_COOKIE;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
@@ -92,8 +94,18 @@ pub(crate) async fn post(
             error!("Failed to save session: {:?}", err);
         }
 
+        let mut headers = HeaderMap::new();
+        if let Some(session_id) = &session.session_id {
+            let cookie = format!(
+                "x-evebox-session-id={}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age={}",
+                session_id,
+                chrono::Duration::days(365).num_seconds()
+            );
+            headers.insert(SET_COOKIE, cookie.parse().unwrap());
+        }
+
         (
-            StatusCode::OK,
+            headers,
             Json(serde_json::json!({
                 "session_id": session.session_id,
             })),

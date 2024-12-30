@@ -82,6 +82,7 @@ impl ElasticEventRepo {
                 "http.hostname",
                 "quic.sni",
                 "tls.sni",
+                "host",
             ])
         };
 

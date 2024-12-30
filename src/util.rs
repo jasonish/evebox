@@ -20,7 +20,11 @@ pub(crate) fn histogram_interval(range: i64) -> u64 {
         3600
     } else if range <= 3600 * 24 * 7 {
         3600 * 3
+    } else if range <= 3600 * 24 * 14 {
+        // 12 hours.
+        3600 * 12
     } else {
+        // 1 day.
         3600 * 24
     }
 }

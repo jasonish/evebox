@@ -16,7 +16,9 @@ import { SearchLink } from "../common/SearchLink";
 export function DhcpReport() {
   const [acks, setAcks] = createSignal<EventSource[]>([]);
   const [dhcpServers, setDhcpServers] = createSignal<string[]>([]);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams<{
+    sensor?: string;
+  }>();
   const [loading, setLoading] = createSignal(0);
 
   createEffect(() => {

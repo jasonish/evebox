@@ -42,7 +42,8 @@ export const Login = () => {
         SET_IS_AUTHENTICATED(true);
         navigate(searchParams.redirectTo || "/inbox");
       })
-      .catch(() => {
+      .catch((error) => {
+        console.log(`Login error: ${error.toString()}`);
         setError(true);
       });
   };

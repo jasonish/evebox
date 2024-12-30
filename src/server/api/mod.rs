@@ -5,6 +5,7 @@ use crate::datetime::DateTime;
 use crate::error::AppError;
 use crate::eventrepo::EventQueryParams;
 use crate::eventrepo::EventRepo;
+use crate::prelude::*;
 use crate::queryparser;
 use crate::queryparser::{QueryElement, QueryValue};
 use crate::server::api::genericquery::GenericQuery;
@@ -23,7 +24,6 @@ use std::collections::HashMap;
 use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::{error, info, warn};
 
 use self::genericquery::TimeRange;
 use self::util::parse_duration;
@@ -74,6 +74,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/find-dns", get(find_dns))
         .route("/api/events/count", get(count::count))
         .route("/api/events/earliest-timestamp", get(earliest_timestamp))
+        .route("/sse/agg", get(agg::agg_sse))
         .nest("/api/1/stats", stats::router())
 }
 
@@ -105,6 +106,7 @@ pub(crate) async fn config(
 
 pub(crate) async fn get_user(SessionExtractor(session): SessionExtractor) -> impl IntoResponse {
     let user = json!({
+        "anonymous": session.session_id.is_none(),
         "username": session.username,
     });
     Json(user)
@@ -141,7 +143,7 @@ pub(crate) async fn dhcp_ack(
 
     #[rustfmt::skip]
     let response = json!({
-	      "events": response,
+	"events": response,
     });
 
     Ok(Json(response))

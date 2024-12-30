@@ -82,7 +82,7 @@ impl SqliteEventRepo {
 
     /// Return the earliest/minimum timestamp found in the events
     /// table.
-    pub async fn min_timestamp(&self) -> Result<Option<DateTime>> {
+    pub(crate) async fn earliest_timestamp(&self) -> Result<Option<DateTime>> {
         let sql = "SELECT MIN(timestamp) FROM events";
 
         if *LOG_QUERY_PLAN {

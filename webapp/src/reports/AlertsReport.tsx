@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { TIME_RANGE, Top } from "../Top";
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 import { Col, Container, Form, Row } from "solid-bootstrap";
-import { API, fetchAgg } from "../api";
+import { API } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";
@@ -12,27 +12,61 @@ import { SensorSelect } from "../common/SensorSelect";
 import { loadingTracker } from "../util";
 import { CountValueDataTable } from "../components";
 import { Colors } from "../common/colors";
+import { createStore } from "solid-js/store";
+import type { SetStoreFunction } from "solid-js/store";
 
 interface CountValueRow {
   count: number;
   key: any;
 }
 
+interface Model {
+  rows: CountValueRow[];
+  loading: boolean;
+}
+
+function defaultModel(): Model {
+  return {
+    rows: [],
+    loading: false,
+  };
+}
+
 export function AlertsReport() {
-  const [mostAlerts, setMostAlerts] = createSignal<CountValueRow[]>([]);
-  const [leastAlerts, setLeastAlerts] = createSignal<CountValueRow[]>([]);
-  const [mostSourceAddrs, setMostSourceAddrs] = createSignal<CountValueRow[]>(
-    []
-  );
-  const [mostDestAddrs, setMostDestAddrs] = createSignal<CountValueRow[]>([]);
-  const [leastSourceAddrs, setLeastSourcesAddrs] = createSignal<
-    CountValueRow[]
-  >([]);
-  const [leastDestAddrs, setLeastDestAddrs] = createSignal<CountValueRow[]>([]);
+  const [version, setVersion] = createSignal(0);
+
   const [loading, setLoading] = createSignal(0);
-  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [searchParams, setSearchParams] = useSearchParams<{
+    sensor?: string;
+    q?: string;
+  }>();
+
+  const [mostAlerting, setMostAlerting] = createStore<Model>(defaultModel());
+
+  const [leastAlerting, setLeastAlerting] = createStore<Model>(defaultModel());
+
+  const [mostAlertingSource, setMostAlertingSource] = createStore<Model>(
+    defaultModel()
+  );
+
+  const [leastAlertingSource, setLeastAlertingSource] = createStore<Model>(
+    defaultModel()
+  );
+
+  const [mostAlertingDest, setMostAlertingDest] = createStore<Model>(
+    defaultModel()
+  );
+
+  const [leastAlertingDest, setLeastAlertingDest] = createStore<Model>(
+    defaultModel()
+  );
 
   let histogram: any = undefined;
+
+  onCleanup(() => {
+    API.cancelAllSse();
+  });
 
   createEffect(() => {
     refresh();
@@ -96,6 +130,7 @@ export function AlertsReport() {
 
   function refresh() {
     console.log("AlertsReport.refresh");
+    setVersion((version) => version + 1);
     const timeRange = TIME_RANGE();
 
     let queryString = [];
@@ -118,51 +153,57 @@ export function AlertsReport() {
       field: string;
       q: string;
       order: "desc" | "asc";
-      setter: (arg0: any) => void;
+      setter: SetStoreFunction<Model>;
     }[] = [
       // Top alerting signatures.
       {
         field: "alert.signature",
         q: "event_type:alert",
         order: "desc",
-        setter: setMostAlerts,
+        setter: setMostAlerting,
       },
       // Least alerting signatures.
       {
         field: "alert.signature",
         q: "event_type:alert",
         order: "asc",
-        setter: setLeastAlerts,
+        setter: setLeastAlerting,
       },
       // Top alerting source addresses.
       {
         field: "src_ip",
         q: "event_type:alert",
         order: "desc",
-        setter: setMostSourceAddrs,
+        setter: setMostAlertingSource,
+      },
+      // Least alerting source addresses.
+      {
+        field: "src_ip",
+        q: "event_type:alert",
+        order: "asc",
+        setter: setLeastAlertingSource,
       },
       // Top alerting destination addresses.
       {
         field: "dest_ip",
         q: "event_type:alert",
         order: "desc",
-        setter: setMostDestAddrs,
+        setter: setMostAlertingDest,
       },
-      {
-        field: "src_ip",
-        q: "event_type:alert",
-        order: "asc",
-        setter: setLeastSourcesAddrs,
-      },
+      // Least alerting destination addresses.
       {
         field: "dest_ip",
         q: "event_type:alert",
         order: "asc",
-        setter: setLeastDestAddrs,
+        setter: setLeastAlertingDest,
       },
     ];
 
     for (const loader of loaders) {
+      if (loader.setter) {
+        loader.setter("loading", true);
+      }
+
       let q = [...queryString];
       if (loader.q) {
         q.push(loader.q);
@@ -175,12 +216,16 @@ export function AlertsReport() {
         q: q.length > 0 ? q.join(" ") : undefined,
       };
 
-      loader.setter([]);
-
       loadingTracker(setLoading, () => {
-        return fetchAgg(request).then((response) => {
-          loader.setter(response.rows);
+        return API.getSseAgg(request, version, (data: any) => {
+          if (data) {
+            loader.setter("rows", data.rows);
+          }
         });
+      }).finally(() => {
+        if (loader.setter) {
+          loader.setter("loading", false);
+        }
       });
     }
   }
@@ -266,7 +311,8 @@ export function AlertsReport() {
               title={"Most Alerting Signatures"}
               label={"Signature"}
               searchField="alert.signature"
-              rows={mostAlerts()}
+              rows={mostAlerting.rows}
+              loading={mostAlerting.loading}
             />
           </Col>
 
@@ -275,7 +321,8 @@ export function AlertsReport() {
               title={"Least Alerting Signatures"}
               label={"Signature"}
               searchField="alert.signature"
-              rows={leastAlerts()}
+              rows={leastAlerting.rows}
+              loading={leastAlerting.loading}
             />
           </Col>
         </Row>
@@ -286,15 +333,17 @@ export function AlertsReport() {
               title={"Most Alerting Source Addresses"}
               label={"Address"}
               searchField={"@ip"}
-              rows={mostSourceAddrs()}
+              rows={mostAlertingSource.rows}
+              loading={mostAlertingSource.loading}
             />
           </Col>
           <Col class={"mt-2"}>
             <CountValueDataTable
-              title={"Most Alerting Destination Addresses"}
+              title={"Least Alerting Source Addresses"}
               label={"Address"}
               searchField={"@ip"}
-              rows={mostDestAddrs()}
+              rows={leastAlertingSource.rows}
+              loading={leastAlertingSource.loading}
             />
           </Col>
         </Row>
@@ -302,10 +351,11 @@ export function AlertsReport() {
         <Row>
           <Col class={"mt-2"}>
             <CountValueDataTable
-              title={"Least Alerting Source Addresses"}
+              title={"Most Alerting Destination Addresses"}
               label={"Address"}
               searchField={"@ip"}
-              rows={leastSourceAddrs()}
+              rows={mostAlertingDest.rows}
+              loading={mostAlertingDest.loading}
             />
           </Col>
           <Col class={"mt-2"}>
@@ -313,7 +363,8 @@ export function AlertsReport() {
               title={"Least Alerting Destination Addresses"}
               label={"Address"}
               searchField={"@ip"}
-              rows={leastDestAddrs()}
+              rows={leastAlertingDest.rows}
+              loading={leastAlertingDest.loading}
             />
           </Col>
         </Row>

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { Alert, Col, Container, Row } from "solid-bootstrap";
+import { Alert, Container } from "solid-bootstrap";
 import { Top } from "./Top";
 import {
   currentThemeName,

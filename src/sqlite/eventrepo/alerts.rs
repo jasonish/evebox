@@ -25,14 +25,14 @@ impl SqliteEventRepo {
     pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
         if let Some(timeout) = options.timeout {
             if timeout > 0 {
-                return Ok(self.alerts_with_timeout(options).await?);
+                return self.alerts_with_timeout(options).await;
             }
         }
 
         if std::env::var("EVEBOX_ALERTS_WITH_TIMEOUT").is_ok() {
             let mut options = options;
             options.timeout = Some(3);
-            return Ok(self.alerts_with_timeout(options).await?);
+            return self.alerts_with_timeout(options).await;
         }
 
         // Legacy.
@@ -187,7 +187,8 @@ impl SqliteEventRepo {
             let rowid: u64 = row.try_get("rowid")?;
             let timestamp: i64 = row.try_get("timestamp")?;
 
-            // If timed-out, we want to keep process events in this second...
+            // If timed-out, we want to keep processing events in this
+            // second...
             if timed_out {
                 let abort_at = abort_at.unwrap();
                 let this_dt = DateTime::from_nanos(timestamp).datetime;
@@ -201,8 +202,8 @@ impl SqliteEventRepo {
             }
             min_timestamp = Some(timestamp);
 
-            if let Some(host) = host {
-                sensors.insert(host);
+            if let Some(host) = &host {
+                sensors.insert(host.to_string());
             }
 
             let key = format!("{alert_signature_id}{src_ip}{dest_ip}");
@@ -235,6 +236,7 @@ impl SqliteEventRepo {
                     "dest_ip": dest_ip,
                     "src_ip": src_ip,
                     "app_proto": app_proto,
+                    "host": host,
                     "alert": {
                         "signature": alert_signature,
                         "signature_id": alert_signature_id,

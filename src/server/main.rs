@@ -555,20 +555,10 @@ where
                 .unwrap();
         let headers = &req.headers;
 
-        let get_session_id = || {
-            let header_session_id = headers
-                .get("x-evebox-session-id")
-                .and_then(|h| h.to_str().map(|s| s.to_string()).ok());
-            if header_session_id.is_some() {
-                return header_session_id;
-            }
-
-            CookieJar::from_headers(headers)
-                .get("x-evebox-session-id")
-                .map(|c| c.value().to_string())
-        };
-
-        let session_id = get_session_id();
+        let cookies = CookieJar::from_headers(headers);
+        let session_id = cookies
+            .get("x-evebox-session-id")
+            .map(|c| c.value().to_string());
 
         let remote_user = headers
             .get("remote_user")

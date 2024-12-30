@@ -619,7 +619,7 @@ impl ElasticEventRepo {
             .await
     }
 
-    pub(crate) async fn get_earliest_timestamp(&self) -> Result<Option<crate::datetime::DateTime>> {
+    pub(crate) async fn earliest_timestamp(&self) -> Result<Option<crate::datetime::DateTime>> {
         #[rustfmt::skip]
 	let request = json!({
 	    "query": {
@@ -662,7 +662,7 @@ impl ElasticEventRepo {
         let bound_max = datetime::DateTime::now();
         let bound_min = if let Some(timestamp) = qs.first_from() {
             timestamp
-        } else if let Some(timestamp) = self.get_earliest_timestamp().await? {
+        } else if let Some(timestamp) = self.earliest_timestamp().await? {
             debug!(
                 "No time-range provided by client, using earliest from database of {}",
                 &timestamp

@@ -27,7 +27,7 @@ import { AddressReport } from "./reports/AddressReport";
 import { AlertsReport } from "./reports/AlertsReport";
 import { OverviewReport } from "./reports/OverviewReport";
 import { DhcpReport } from "./reports/DhcpReport";
-import { IS_AUTHENTICATED } from "./global";
+import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 import { Ja4Report } from "./pages/ja4";
 import { Admin } from "./pages/admin/Admin";
 
@@ -101,8 +101,12 @@ function AuthenticationRequired(props: any) {
   onMount(() => {
     console.log("Wrapper.onMount: checking user");
     API.getUser()
-      .then((user) => {
+      .then((user: any) => {
         console.log(`Hello ${user.username}`);
+        console.log(user);
+        if (!user.anonymous) {
+          SET_IS_AUTHENTICATED(true);
+        }
         API.getConfig().then((config) => {
           console.log("Got server config:");
           console.log(config);
@@ -110,7 +114,7 @@ function AuthenticationRequired(props: any) {
           setLoading(false);
         });
       })
-      .catch((error) => {
+      .catch((error: any) => {
         console.log(`Failed to get user: ${error}`);
         navigate(
           `/login?redirectTo=${encodeURIComponent(
