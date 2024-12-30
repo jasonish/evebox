@@ -120,11 +120,11 @@ impl SqliteEventRepo {
                                     builder.wherejs(k, op, format!("%{}%", v))?;
                                 }
                             }
-                            queryparser::QueryValue::From(_) => {
-                                warn!("QueryValue::From not supported here");
+                            queryparser::QueryValue::From(dt) => {
+                                builder.timestamp_gte(dt)?;
                             }
-                            queryparser::QueryValue::To(_) => {
-                                warn!("QueryValue::From not supported here");
+                            queryparser::QueryValue::To(dt) => {
+                                builder.timestamp_lte(dt)?;
                             }
                         }
                     }

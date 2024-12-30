@@ -1193,6 +1193,40 @@ export function Alerts() {
                                       Filter out SID {alert.signature_id}
                                     </a>
                                   </li>
+                                  <li>
+                                    <a
+                                      class="dropdown-item"
+                                      href="#"
+                                      onclick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        addFilter(
+                                          "@from",
+                                          "",
+                                          event._source.timestamp
+                                        );
+                                      }}
+                                    >
+                                      Filter for from {event._source.timestamp}
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a
+                                      class="dropdown-item"
+                                      href="#"
+                                      onclick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        addFilter(
+                                          "@to",
+                                          "",
+                                          event._source.timestamp
+                                        );
+                                      }}
+                                    >
+                                      Filter for to {event._source.timestamp}
+                                    </a>
+                                  </li>
                                 </ul>
                               </div>
                             </td>
