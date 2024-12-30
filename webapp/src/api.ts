@@ -344,6 +344,10 @@ class Api {
     return get("api/1/sensors").then((response) => response.data);
   }
 
+  async getEventTypes(request: { time_range?: string }): Promise<string[]> {
+    return get("api/event_types", request).then((response) => response.data);
+  }
+
   escalateAggregateAlert(alert: EventWrapper) {
     const params = {
       signature_id: alert._source.alert!.signature_id,

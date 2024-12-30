@@ -161,24 +161,16 @@ export function OverviewReport() {
 
     initChart();
 
-    let eventTypeAggs = await loadingTracker(setLoading, () =>
-      fetchAgg({
-        field: "event_type",
-        size: 100,
-        time_range: TIME_RANGE(),
-        q: q,
-      }).then((response) => response.rows)
-    );
+    let eventTypes = await API.getEventTypes({
+      time_range: TIME_RANGE(),
+    });
 
-    let eventTypes: string[] = [];
     let labels: number[] = [];
 
-    for (const row of eventTypeAggs) {
-      const eventType = row.key;
-      eventTypes.push(eventType);
+    for (const row of eventTypes) {
       let request = {
         time_range: TIME_RANGE(),
-        event_type: eventType,
+        event_type: row,
         query_string: q,
       };
 
@@ -195,11 +187,11 @@ export function OverviewReport() {
           console.log("ERROR: Label and data mismatch");
         } else {
           let values = response.data.map((e) => e.count);
-          let hidden = hiddenTypes[eventType];
+          let hidden = hiddenTypes[row];
           let colorIdx = histogram.data.datasets.length;
           histogram.data.datasets.push({
             data: values,
-            label: row.key,
+            label: row,
             pointRadius: 0,
             hidden: hidden,
             backgroundColor: Colors[colorIdx % Colors.length],

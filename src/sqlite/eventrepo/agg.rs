@@ -68,4 +68,19 @@ impl SqliteEventRepo {
 
         Ok(results)
     }
+
+    pub(crate) async fn get_event_types(&self, query: Vec<QueryElement>) -> Result<Vec<String>> {
+        let mut builder = EventQueryBuilder::new(self.fts().await);
+        builder.select("distinct json_extract(events.source, '$.event_type')");
+        builder.from("events");
+        builder.apply_query_string(&query)?;
+
+        let (sql, args) = builder.build()?;
+
+        let rows: Vec<String> = sqlx::query_scalar_with(&sql, args)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows)
+    }
 }

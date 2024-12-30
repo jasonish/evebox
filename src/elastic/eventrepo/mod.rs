@@ -894,4 +894,41 @@ impl ElasticEventRepo {
         let sensors: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
         Ok(sensors)
     }
+
+    pub async fn get_event_types(&self) -> anyhow::Result<Vec<String>> {
+        #[rustfmt::skip]
+        let request = json!({
+            "size": 0,
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "exists": {
+                                "field": self.map_field("event_type")
+                            }
+                        }
+                    ]
+                }
+            },
+            "aggs": {
+                "event_types": {
+                    "terms": {
+                        "field": self.map_field("event_type"),
+                        "size": 100,
+                    }
+                },
+            }
+        });
+        let mut response: serde_json::Value = self.search(&request).await?.json().await?;
+        let buckets = response["aggregations"]["event_types"]["buckets"].take();
+
+        #[derive(Deserialize, Debug)]
+        struct Bucket {
+            key: String,
+        }
+
+        let buckets: Vec<Bucket> = serde_json::from_value(buckets)?;
+        let event_types: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
+        Ok(event_types)
+    }
 }

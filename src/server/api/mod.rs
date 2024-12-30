@@ -61,6 +61,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/1/submit", post(submit::handler))
         .route("/api/1/sensors", get(stats::get_sensor_names))
         .route("/api/agg", get(agg::agg))
+        .route("/api/event_types", get(agg::event_types))
         .route("/api/1/sqlite/info", get(sqlite::info))
         .route("/api/1/sqlite/fts/check", get(sqlite::fts_check))
         .route("/api/1/sqlite/fts/enable", post(sqlite::fts_enable))
