@@ -1002,6 +1002,7 @@ export function Alerts() {
                             <td class={"col-timestamp"}>
                               <TimestampCell
                                 timestamp={event._source.timestamp}
+                                addFilter={addFilter}
                               />
                             </td>
                             <td class={"col-address col-1"}>
