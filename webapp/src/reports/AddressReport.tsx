@@ -6,7 +6,7 @@ import { useParams } from "@solidjs/router";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { Col, Container, Row } from "solid-bootstrap";
 import { API, AggRequest, AggResponseRow, fetchAgg } from "../api";
-import { CountValueDataTable } from "../components/CountValueDataTable";
+import { CountValueDataTable } from "../components";
 import { createStore } from "solid-js/store";
 import { RefreshButton } from "../common/RefreshButton";
 

@@ -5,7 +5,7 @@ import { useParams } from "@solidjs/router";
 import { TIME_RANGE, Top } from "../Top";
 import * as api from "../api";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
-import { CountValueDataTable } from "../components/CountValueDataTable";
+import { CountValueDataTable } from "../components";
 import { SearchLink } from "../common/SearchLink";
 
 function getPrefix(ja4: string) {

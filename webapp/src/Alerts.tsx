@@ -48,6 +48,7 @@ import { eventStore } from "./eventstore";
 import { Logger } from "./util";
 import { SensorSelect } from "./common/SensorSelect";
 import * as bootstrap from "bootstrap";
+import { FilterStrip } from "./components";
 
 const DEFAULT_SORTBY = "timestamp";
 const DEFAULT_SORTORDER = "desc";
@@ -760,13 +761,11 @@ export function Alerts() {
             </Col>
           </Row>
         </Show>
-
         {/* For mobile detection. */}
         <div style={"height: 0; width: 0"}>
           <span class={"d-none d-sm-block"}></span>
           <span id="small-only" class={"d-block d-sm-none"}></span>
         </div>
-
         <Row>
           <Col class="d-flex">
             <Show when={!isLoading()}>
@@ -871,44 +870,13 @@ export function Alerts() {
           </Col>
         </Row>
 
-        {/* Filter strip */}
+        {/* Filter strip. */}
         <Show when={filters().length > 0}>
-          <div class="row">
-            <div class="col">
-              <button
-                class="btn btn-sm btn-secondary mt-2 me-1"
-                onClick={clearFilters}
-              >
-                Clear
-              </button>
-              <For each={filters()}>
-                {(filter) => {
-                  return (
-                    <>
-                      <div
-                        class="btn-group btn-group-sm mt-2 me-1"
-                        role="group"
-                        aria-label="Button group with nested dropdown"
-                      >
-                        <button type="button" class="btn btn-outline-secondary">
-                          {filter}
-                        </button>
-                        <button
-                          type="button"
-                          class="btn btn-outline-secondary"
-                          onClick={(e) => {
-                            removeFilter(filter);
-                          }}
-                        >
-                          X
-                        </button>
-                      </div>
-                    </>
-                  );
-                }}
-              </For>
-            </div>
-          </div>
+          <FilterStrip
+            filters={filters}
+            clear={clearFilters}
+            remove={removeFilter}
+          />
         </Show>
 
         <div
@@ -924,7 +892,6 @@ export function Alerts() {
             timedOut={timedOut()}
           />
         </div>
-
         <Transition name={"fade"}>
           {visibleEvents().length > 0 && (
             <div>
@@ -1240,7 +1207,6 @@ export function Alerts() {
             </div>
           )}
         </Transition>
-
         <Show when={visibleEvents().length > 0}>
           <div
             class="mt-2"

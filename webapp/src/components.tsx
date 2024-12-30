@@ -1,13 +1,11 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { Accessor, For, Show } from "solid-js";
-import { SearchLink } from "../common/SearchLink";
+import { For, Show } from "solid-js";
+import { SearchLink } from "./common/SearchLink";
 
 // Creates a table where the first column is a count, and the second
 // column is value.
-//
-// TODO: Loading prop so we can display loading instead of no data.
 export function CountValueDataTable(props: {
   title: string;
   label: string;
@@ -15,7 +13,7 @@ export function CountValueDataTable(props: {
   loading?: boolean;
   rows: { count: number; key: any }[];
 }) {
-  function searchLink(value: any) {
+  const searchLink = (value: any) => {
     if (props.searchField) {
       return (
         <SearchLink value={value} field={props.searchField}>
@@ -25,7 +23,7 @@ export function CountValueDataTable(props: {
     } else {
       return <SearchLink value={value}>{value}</SearchLink>;
     }
-  }
+  };
 
   return (
     <>
@@ -75,6 +73,53 @@ export function CountValueDataTable(props: {
             </table>
           </div>
         </Show>
+      </div>
+    </>
+  );
+}
+
+export function FilterStrip(props: {
+  filters: any;
+  remove: (filter: any) => void;
+  clear: () => void;
+}) {
+  return (
+    <>
+      <div class="row">
+        <div class="col">
+          <button
+            class="btn btn-sm btn-secondary mt-2 me-1"
+            onClick={props.clear}
+          >
+            Clear
+          </button>
+          <For each={props.filters()}>
+            {(filter) => {
+              return (
+                <>
+                  <div
+                    class="btn-group btn-group-sm mt-2 me-1"
+                    role="group"
+                    aria-label="Button group with nested dropdown"
+                  >
+                    <button type="button" class="btn btn-outline-secondary">
+                      {filter}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      onClick={() => {
+                        props.remove(filter);
+                      }}
+                    >
+                      X
+                    </button>
+                  </div>
+                </>
+              );
+            }}
+          </For>
+        </div>
       </div>
     </>
   );
