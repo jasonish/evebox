@@ -10,7 +10,7 @@ import { RefreshButton } from "../common/RefreshButton";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { Colors } from "../common/colors";
-import { loadingTracker } from "../util";
+import { getChartCanvasElement, loadingTracker } from "../util";
 import { createStore } from "solid-js/store";
 import { CountValueDataTable } from "../components/CountValueDataTable";
 
@@ -44,7 +44,9 @@ export function OverviewReport() {
     stats: true,
     netflow: true,
   };
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams<{
+    sensor?: string;
+  }>();
   const [data, setData] = createStore(initialData);
 
   function initChart() {
@@ -210,9 +212,7 @@ export function OverviewReport() {
   }
 
   function buildChart() {
-    const ctx = (
-      document.getElementById("histogram") as HTMLCanvasElement
-    ).getContext("2d") as CanvasRenderingContext2D;
+    const ctx = getChartCanvasElement("histogram");
 
     const config: ChartConfiguration | any = {
       type: "line",
@@ -399,7 +399,7 @@ function PieChart(props: { data: any[] }) {
   let chart: any = null;
 
   createEffect(() => {
-    const element = getChartElement(chartId);
+    const element = getChartCanvasElement(chartId);
 
     if (chart != null) {
       chart.destroy();
@@ -455,10 +455,4 @@ function PieChart(props: { data: any[] }) {
       </div>
     </>
   );
-}
-
-// Move to utils.
-function getChartElement(id: string) {
-  let element = document.getElementById(id) as HTMLCanvasElement;
-  return element.getContext("2d") as CanvasRenderingContext2D;
 }

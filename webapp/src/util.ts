@@ -49,3 +49,8 @@ export function getVisibleRowCount(offsetId: string) {
   let numRows = Math.floor(windowHeight / rowHeight);
   return numRows;
 }
+
+export function getChartCanvasElement(id: string) {
+  let element = document.getElementById(id) as HTMLCanvasElement;
+  return element.getContext("2d") as CanvasRenderingContext2D;
+}
