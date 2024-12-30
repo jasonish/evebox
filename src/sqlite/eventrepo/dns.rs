@@ -26,8 +26,8 @@ impl SqliteEventRepo {
         builder.from("events");
         builder.from("json_each(events.source, '$.dns.answers') AS answers");
 
-        builder.latest_timestamp(&before).unwrap();
-        builder.earliest_timestamp(&after).unwrap();
+        builder.timestamp_lte(&before).unwrap();
+        builder.timestamp_gte(&after).unwrap();
 
         builder
             .push_where("json_extract(events.source, '$.event_type') = ?")

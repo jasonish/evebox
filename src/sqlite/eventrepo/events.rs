@@ -32,11 +32,11 @@ impl SqliteEventRepo {
         }
 
         if let Some(dt) = &options.to {
-            builder.latest_timestamp(dt)?;
+            builder.timestamp_lte(dt)?;
         }
 
         if let Some(dt) = &options.from {
-            builder.earliest_timestamp(dt)?;
+            builder.timestamp_gte(dt)?;
         }
 
         builder.apply_query_string(&options.query_string)?;

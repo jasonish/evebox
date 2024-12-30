@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::datetime::DateTime;
 use crate::queryparser;
 use crate::sqlite::prelude::*;
 
@@ -151,7 +150,6 @@ impl<'a> EventQueryBuilder<'a> {
         for e in q {
             match &e.value {
                 queryparser::QueryValue::KeyValue(k, _v) => {
-                    //if k == "dns.rrname" || k == "dns.queries.rrname" {
                     if k == "dns.rrname" || k.starts_with("dns.queries") {
                         self.add_left_join(
                             "LEFT JOIN json_each(events.source, '$.dns.queries') AS _dns_queries"
@@ -301,11 +299,6 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(())
     }
 
-    pub fn earliest_timestamp(&mut self, ts: &DateTime) -> Result<&mut Self, sqlx::Error> {
-        self.push_where("timestamp >= ?").push_arg(ts.to_nanos())?;
-        Ok(self)
-    }
-
     pub fn timestamp_gte(
         &mut self,
         ts: &crate::datetime::DateTime,
@@ -318,11 +311,6 @@ impl<'a> EventQueryBuilder<'a> {
         &mut self,
         ts: &crate::datetime::DateTime,
     ) -> Result<&mut Self, sqlx::Error> {
-        self.push_where("timestamp <= ?").push_arg(ts.to_nanos())?;
-        Ok(self)
-    }
-
-    pub fn latest_timestamp(&mut self, ts: &DateTime) -> Result<&mut Self, sqlx::Error> {
         self.push_where("timestamp <= ?").push_arg(ts.to_nanos())?;
         Ok(self)
     }
