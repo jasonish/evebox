@@ -397,9 +397,6 @@ function PieChart(props: { data: any[] }) {
       chart.destroy();
     }
 
-    const values = props.data.map((e) => e.count);
-    console.log(values);
-
     chart = new Chart(element, {
       type: "pie",
       data: {
