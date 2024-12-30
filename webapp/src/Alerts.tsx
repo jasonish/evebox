@@ -42,13 +42,12 @@ import {
   eventSetEscalated,
   Tag,
 } from "./event";
-import { AddressCell, TimestampCell } from "./TimestampCell";
 import { IdleTimer } from "./idletimer";
 import { eventStore } from "./eventstore";
 import { Logger } from "./util";
 import { SensorSelect } from "./common/SensorSelect";
 import * as bootstrap from "bootstrap";
-import { FilterStrip } from "./components";
+import { AddressCell, FilterStrip, TimestampCell } from "./components";
 
 const DEFAULT_SORTBY = "timestamp";
 const DEFAULT_SORTORDER = "desc";
@@ -374,7 +373,6 @@ export function Alerts() {
     untrack(() => {
       const logger = new Logger("Alerts.refreshEvents", true);
       let qFilters = getFilters();
-      console.log(qFilters);
       let q: undefined | string = qFilters.join(" ");
 
       if (searchParams.q) {
@@ -670,34 +668,8 @@ export function Alerts() {
     });
   }
 
-  function removeFilter(filter: string) {
-    // TODO: There is a cleaner way with closure to do this.
-    let newFilters = filters();
-    newFilters = newFilters.filter((f: any) => f !== filter);
-
-    // But we have an effect to do this.. But it might not happen
-    // until after the refresh. Need to revisit effect/reactive
-    // dependency chains here.
-    setFilters(newFilters);
-
-    if (newFilters.length == 0) {
-      console.log("Setting filters to null");
-      setSearchParams({
-        filters: undefined,
-      });
-    } else {
-      setSearchParams({
-        filters: newFilters,
-      });
-    }
-  }
-
-  const clearFilters = () => {
-    setFilters([]);
-    setSearchParams({ filters: null });
-  };
-
-  // Getter for searchParams.filters to convert to an array if there is only one "filters" parameter.
+  // Getter for searchParams.filters to convert to an array if there
+  // is only one "filters" parameter.
   const getFilters = createMemo(() => {
     let filters = searchParams.filters || [];
 
@@ -711,6 +683,13 @@ export function Alerts() {
   // Effect to update the filter strip based on the filters in the query string.
   createEffect(() => {
     setFilters(getFilters());
+  });
+
+  // Effect to update the query parameters when the filters signal updates.
+  createEffect(() => {
+    setSearchParams({
+      filters: filters().length == 0 ? undefined : filters(),
+    });
   });
 
   function updateSort(key: string) {
@@ -872,11 +851,7 @@ export function Alerts() {
 
         {/* Filter strip. */}
         <Show when={filters().length > 0}>
-          <FilterStrip
-            filters={filters}
-            clear={clearFilters}
-            remove={removeFilter}
-          />
+          <FilterStrip filters={filters} setFilters={setFilters} />
         </Show>
 
         <div

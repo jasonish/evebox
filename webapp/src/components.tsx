@@ -3,6 +3,10 @@
 
 import { For, Show } from "solid-js";
 import { SearchLink } from "./common/SearchLink";
+import { parse_timestamp } from "./datetime";
+import { EventSource } from "./types";
+import { formatAddress } from "./formatters";
+import { BiDashCircle, BiFilter, BiPlusCircle } from "./icons";
 
 // Creates a table where the first column is a count, and the second
 // column is value.
@@ -78,18 +82,20 @@ export function CountValueDataTable(props: {
   );
 }
 
-export function FilterStrip(props: {
-  filters: any;
-  remove: (filter: any) => void;
-  clear: () => void;
-}) {
+export function FilterStrip(props: { filters: any; setFilters: any }) {
+  const removeFilter = (filter: any) => {
+    props.setFilters((filters: any[]) =>
+      filters.filter((f: any) => f !== filter)
+    );
+  };
+
   return (
     <>
       <div class="row">
         <div class="col">
           <button
             class="btn btn-sm btn-secondary mt-2 me-1"
-            onClick={props.clear}
+            onClick={() => props.setFilters([])}
           >
             Clear
           </button>
@@ -109,7 +115,7 @@ export function FilterStrip(props: {
                       type="button"
                       class="btn btn-outline-secondary"
                       onClick={() => {
-                        props.remove(filter);
+                        removeFilter(filter);
                       }}
                     >
                       X
@@ -123,4 +129,114 @@ export function FilterStrip(props: {
       </div>
     </>
   );
+}
+
+export function TimestampCell(props: {
+  timestamp: string;
+  addFilter?: (what: string, op: string, value: string) => void;
+}) {
+  let timestamp = parse_timestamp(props.timestamp);
+  let formatted = timestamp.format("YYYY-MM-DD HH:mm:ss");
+  return (
+    <div title={props.timestamp}>
+      {timestamp.format("YYYY-MM-DD HH:mm:ss")}
+      <br />
+      <span class={"small"}>{timestamp.fromNow()}</span>{" "}
+      <Show when={props.addFilter}>
+        <span class="dropdown" onclick={(e) => e.stopPropagation()}>
+          <span data-bs-toggle="dropdown">
+            <BiFilter />
+          </span>
+          <ul class="dropdown-menu">
+            <li>
+              <a
+                class="dropdown-item"
+                onClick={() => {
+                  props.addFilter!("@from", "", props.timestamp);
+                }}
+              >
+                Filter for from {formatted}
+              </a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                onClick={() => {
+                  props.addFilter!("@to", "", props.timestamp);
+                }}
+              >
+                Filter for to {formatted}
+              </a>
+            </li>
+          </ul>
+        </span>
+      </Show>
+    </div>
+  );
+}
+
+export function AddressCell(props: {
+  source: EventSource;
+  fn?: (what: string, op: string, value: string | number) => void;
+}) {
+  try {
+    return (
+      <>
+        <Show when={props.source.src_ip && props.source.src_ip.length > 0}>
+          S: {formatAddress(props.source.src_ip)}
+          <Show when={props.fn}>
+            <span
+              class="show-on-hover ms-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.fn!("src_ip", "+", props.source.src_ip);
+              }}
+              title="Filter for this src_ip"
+            >
+              <BiPlusCircle />
+            </span>
+            <span
+              class="show-on-hover ms-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.fn!("src_ip", "-", props.source.src_ip);
+              }}
+              title="Filter out this src_ip"
+            >
+              <BiDashCircle />
+            </span>
+          </Show>
+          <br />
+        </Show>
+        <Show when={props.source.dest_ip && props.source.dest_ip.length > 0}>
+          D: {formatAddress(props.source.dest_ip)}
+          <Show when={props.fn}>
+            <span
+              class="show-on-hover ms-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.fn!("dest_ip", "+", props.source.dest_ip);
+              }}
+              title="Filter for this dest_ip"
+            >
+              <BiPlusCircle />
+            </span>
+            <span
+              class="show-on-hover ms-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.fn!("dest_ip", "-", props.source.dest_ip);
+              }}
+              title="Filter out this dest_ip"
+            >
+              <BiDashCircle />
+            </span>
+          </Show>
+        </Show>
+      </>
+    );
+  } catch (e) {
+    console.log(e);
+    return <>`Failed to format address: ${e}`</>;
+  }
 }

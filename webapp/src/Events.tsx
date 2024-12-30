@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { TIME_RANGE, Top } from "./Top";
+import { Top } from "./Top";
 import * as API from "./api";
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   Match,
@@ -15,16 +16,16 @@ import {
 } from "solid-js";
 import { EventWrapper } from "./types";
 import { Button, Col, Container, Form, Row } from "solid-bootstrap";
-import { AddressCell, TimestampCell } from "./TimestampCell";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { formatEventDescription } from "./formatters";
-import { BiCaretRightFill } from "./icons";
+import { BiCaretRightFill, BiDashCircle, BiPlusCircle } from "./icons";
 import tinykeys from "tinykeys";
 import { scrollToClass } from "./scroll";
 import { Transition } from "solid-transition-group";
 import { eventIsArchived, eventSetArchived } from "./event";
 import { AlertDescription } from "./Alerts";
 import { EventsQueryParams } from "./api";
+import { AddressCell, FilterStrip, TimestampCell } from "./components";
 
 // The list of event types that will be shown in dropdowns.
 export const EVENT_TYPES: { name: string; eventType: string }[] = [
@@ -87,8 +88,10 @@ export function Events() {
     event_type?: string;
     from?: string;
     to?: string;
+    filters?: string[];
   }>();
   const [cursor, setCursor] = createSignal(0);
+  const [filters, setFilters] = createSignal<string[]>([]);
   let keybindings: any = null;
 
   onMount(() => {
@@ -131,6 +134,23 @@ export function Events() {
     }
   });
 
+  // Getter for searchParams.filters to convert to an array if there
+  // is only one "filters" parameter.
+  const getFilters = createMemo(() => {
+    let filters = searchParams.filters || [];
+
+    if (!Array.isArray(filters)) {
+      return [filters];
+    } else {
+      return filters;
+    }
+  });
+
+  // Effect to update the filter strip based on the filters in the query string.
+  createEffect(() => {
+    setFilters(getFilters());
+  });
+
   createEffect(() => {
     loadEvents();
   });
@@ -144,15 +164,23 @@ export function Events() {
   }
 
   function loadEvents() {
-    let params: EventsQueryParams = {};
+    let params: EventsQueryParams = {
+      query_string: searchParams.q || "",
+    };
 
     if (searchParams.event_type) {
       params.event_type = searchParams.event_type;
       setEventType(params.event_type);
     }
 
-    if (searchParams.q) {
-      params.query_string = searchParams.q;
+    /* if (searchParams.q) {
+     *   params.query_string = searchParams.q;
+     * } */
+
+    //const filterQuery: string = getFilters()?.join(" ");
+    const filterQuery: string = filters()?.join(" ");
+    if (filterQuery && filterQuery.length > 0) {
+      params.query_string += " " + filterQuery;
     }
 
     if (searchParams.order) {
@@ -251,6 +279,39 @@ export function Events() {
       return events;
     });
   }
+
+  function addFilter(what: string, op: string, value: any) {
+    if (op == "+") {
+      op = "";
+    }
+    let entry: string = "";
+    if (typeof value === "number") {
+      entry = `${op}${what}:${value}`;
+    } else if (value.includes(" ")) {
+      entry = `${op}${what}:"${value}"`;
+    } else {
+      entry = `${op}${what}:${value}`;
+    }
+
+    let newFilters = filters();
+
+    // If if entry already exists.
+    if (newFilters.indexOf(entry) > -1) {
+      return;
+    }
+
+    newFilters.push(entry);
+    setSearchParams({
+      filters: newFilters,
+    });
+  }
+
+  // Effect to update the query parameters when the filters signal updates.
+  createEffect(() => {
+    setSearchParams({
+      filters: filters().length == 0 ? undefined : filters(),
+    });
+  });
 
   return (
     <>
@@ -357,6 +418,10 @@ export function Events() {
           </Col>
         </Row>
 
+        <Show when={filters().length != 0}>
+          <FilterStrip filters={filters} setFilters={setFilters} />
+        </Show>
+
         <Row>
           <div class={"col-md-6 col-sm-12 mt-2 me-auto"}></div>
           <div class={"col-md-6 col-sm-12 mt-2"}>
@@ -438,16 +503,48 @@ export function Events() {
                                 <td class={"col-timestamp"}>
                                   <TimestampCell
                                     timestamp={event._source.timestamp}
+                                    addFilter={addFilter}
                                   />
                                 </td>
                                 <td class={"col-event-type"}>
                                   {event._source.event_type?.toUpperCase() ||
                                     "???"}
+                                  <span
+                                    class="show-on-hover ms-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addFilter(
+                                        "event_type",
+                                        "+",
+                                        event._source.event_type
+                                      );
+                                    }}
+                                    title={`Filter for event_type: ${event._source.event_type}`}
+                                  >
+                                    <BiPlusCircle />
+                                  </span>
+                                  <span
+                                    class="show-on-hover ms-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addFilter(
+                                        "event_type",
+                                        "-",
+                                        event._source.event_type
+                                      );
+                                    }}
+                                    title={`Filter out event_type: ${event._source.event_type}`}
+                                  >
+                                    <BiDashCircle />
+                                  </span>
                                 </td>
                                 <td class={"col-address"} style={"width: 0%;"}>
                                   <Switch fallback={<>{event._source.host}</>}>
                                     <Match when={event._source.src_ip}>
-                                      <AddressCell source={event._source} />
+                                      <AddressCell
+                                        source={event._source}
+                                        fn={addFilter}
+                                      />
                                     </Match>
                                     <Match
                                       when={
