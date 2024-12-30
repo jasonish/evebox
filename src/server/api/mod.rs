@@ -12,16 +12,21 @@ use crate::server::ServerContext;
 use crate::{elastic, queryparser};
 use axum::extract::{Extension, Form, Path, State};
 use axum::http::StatusCode;
+use axum::response::sse::Event;
 use axum::response::IntoResponse;
 use axum::response::Response;
+use axum::response::Sse;
 use axum::routing::{get, post};
 use axum::Json;
+use futures::Stream;
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::{error, info, warn};
 
 use self::genericquery::TimeRange;
@@ -69,6 +74,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/ja4db/:fingerprint", get(ja4db))
         .route("/api/admin/update/ja4db", post(admin::update_ja4db))
         .route("/api/find-dns", get(find_dns))
+        .route("/api/sse", get(sse_handler))
         .nest("/api/1/stats", stats::router())
 }
 
@@ -465,6 +471,43 @@ pub(crate) async fn events(
 
     let results = context.datastore.events(params).await?;
     Ok(Json(results).into_response())
+}
+
+async fn sse_handler(
+    _session: SessionExtractor,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Result<Event, Infallible>>();
+
+    tokio::spawn(async move {
+        let msg = json!({
+            "foo": "bar",
+        });
+        let event = Event::default().json_data(&msg);
+        if let Err(err) = tx.send(Ok(event.unwrap())) {
+            dbg!(err);
+            return;
+        }
+
+        tokio::time::sleep(Duration::from_secs(5)).await;
+
+        let event = Event::default().json_data(msg);
+        if let Err(err) = tx.send(Ok(event.unwrap())) {
+            dbg!(err);
+            return;
+        }
+
+
+        println!("End of SSE");
+
+    });
+
+    let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(Duration::from_secs(1))
+            .text("keep-alive-text"),
+    )
 }
 
 async fn ja4db(
