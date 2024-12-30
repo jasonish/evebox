@@ -108,7 +108,6 @@ export function OverviewReport() {
         loading: true,
       });
       let response = await loadingTracker(setLoading, () => fetchAgg(request));
-      console.log(response.rows);
       setData("protocols", {
         loading: false,
         data: response.rows,
@@ -127,7 +126,6 @@ export function OverviewReport() {
         loading: true,
       });
       let response = await loadingTracker(setLoading, () => fetchAgg(request));
-      console.log(response.rows);
       setData("tlsSni", {
         loading: false,
         data: response.rows,
@@ -146,7 +144,6 @@ export function OverviewReport() {
         loading: true,
       });
       let response = await loadingTracker(setLoading, () => fetchAgg(request));
-      console.log(response.rows);
       setData("quicSni", {
         loading: false,
         data: response.rows,
@@ -157,8 +154,6 @@ export function OverviewReport() {
   }
 
   async function fetchEventsHistogram(q: string) {
-    console.log("Fetching histogram");
-
     initChart();
 
     let eventTypes = await API.getEventTypes({
