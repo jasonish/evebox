@@ -120,6 +120,18 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
     return false;
   };
 
+  const toggleToFrom = (filter: string) => {
+    props.setFilters((filters: string[]) => {
+      const i = filters.indexOf(filter);
+      if (filters[i].startsWith("@to")) {
+        filters[i] = filters[i].replace("@to", "@from");
+      } else {
+        filters[i] = filters[i].replace("@from", "@to");
+      }
+      return [...filters];
+    });
+  };
+
   return (
     <>
       <div class="row">
@@ -162,6 +174,28 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
                             onClick={() => invertFilter(filter)}
                           >
                             Exclude results
+                          </a>
+                        </li>
+                      </Show>
+
+                      <Show when={filter.startsWith("@to")}>
+                        <li>
+                          <a
+                            class="dropdown-item"
+                            onClick={() => toggleToFrom(filter)}
+                          >
+                            Change to @from
+                          </a>
+                        </li>
+                      </Show>
+
+                      <Show when={filter.startsWith("@from")}>
+                        <li>
+                          <a
+                            class="dropdown-item"
+                            onClick={() => toggleToFrom(filter)}
+                          >
+                            Change to @to
                           </a>
                         </li>
                       </Show>
