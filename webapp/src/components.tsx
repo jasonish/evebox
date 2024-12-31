@@ -89,12 +89,35 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
     );
   };
 
+  const invertFilter = (filter: string) => {
+    props.setFilters((filters: any[]) => {
+      const i = filters.indexOf(filter);
+      if (filters[i].startsWith("-")) {
+        filters[i] = filters[i].slice(1);
+      } else {
+        filters[i] = `-${filters[i]}`;
+      }
+      return [...filters];
+    });
+  };
+
   const buttonClass = (filter: string) => {
     if (filter.startsWith("-")) {
       return "filter-button-out";
     } else {
       return "filter-button-for";
     }
+  };
+
+  const isExclude = (filter: string) => {
+    return filter.startsWith("-");
+  };
+
+  const isInclude = (filter: string) => {
+    if (!filter.startsWith("@") && !filter.startsWith("-")) {
+      return true;
+    }
+    return false;
   };
 
   return (
@@ -112,9 +135,38 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
               return (
                 <>
                   <div class="btn-group btn-group-sm mt-2 me-1" role="group">
-                    <button type="button" class={"btn " + buttonClass(filter)}>
+                    <button
+                      type="button"
+                      class={"btn " + buttonClass(filter)}
+                      data-bs-toggle="dropdown"
+                    >
                       {filter}
                     </button>
+
+                    <ul class="dropdown-menu">
+                      <Show when={isExclude(filter)}>
+                        <li>
+                          <a
+                            class="dropdown-item"
+                            onClick={() => invertFilter(filter)}
+                          >
+                            Include results
+                          </a>
+                        </li>
+                      </Show>
+
+                      <Show when={isInclude(filter)}>
+                        <li>
+                          <a
+                            class="dropdown-item"
+                            onClick={() => invertFilter(filter)}
+                          >
+                            Exclude results
+                          </a>
+                        </li>
+                      </Show>
+                    </ul>
+
                     <button
                       type="button"
                       class={"btn " + buttonClass(filter)}
