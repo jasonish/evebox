@@ -246,3 +246,23 @@ td:hover .show-on-hover {
   opacity: 1;
   display: inline;
 }
+
+.filter-button-for {
+  @extend .btn-outline-secondary;
+  &:hover {
+    text-decoration: none;
+    color: inherit;
+    background: none;
+  }
+}
+
+.filter-button-out {
+  @extend .btn-outline-secondary;
+  border: 1px solid $danger;
+  &:hover {
+    text-decoration: none;
+    color: inherit;
+    background: none;
+    border: 1px solid $danger;
+  }
+}

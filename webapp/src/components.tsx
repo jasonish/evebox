@@ -89,6 +89,14 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
     );
   };
 
+  const buttonClass = (filter: string) => {
+    if (filter.startsWith("-")) {
+      return "filter-button-out";
+    } else {
+      return "filter-button-for";
+    }
+  };
+
   return (
     <>
       <div class="row">
@@ -103,17 +111,13 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
             {(filter) => {
               return (
                 <>
-                  <div
-                    class="btn-group btn-group-sm mt-2 me-1"
-                    role="group"
-                    aria-label="Button group with nested dropdown"
-                  >
-                    <button type="button" class="btn btn-outline-secondary">
+                  <div class="btn-group btn-group-sm mt-2 me-1" role="group">
+                    <button type="button" class={"btn " + buttonClass(filter)}>
                       {filter}
                     </button>
                     <button
                       type="button"
-                      class="btn btn-outline-secondary"
+                      class={"btn " + buttonClass(filter)}
                       onClick={() => {
                         removeFilter(filter);
                       }}
