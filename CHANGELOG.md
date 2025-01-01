@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.20.0 - unreleased
+
+- Feature to fit screen height instead of number of rows. Only
+  available for alerts.
+- [fix] Pagination fixes.
+- Kibana inspired filters. This is still a work in progress.
+- [fix] Handle "null" or "empty" IP addresses.
+- [fix] [sqlite] Fix negated queries.
+- [webapp] Attempt to resolve IP addresses to hostnames using DNS
+  records. This is still a work in progress.
+- [fix] [opensearch] Fixes for OpenSearch as features only available in
+  Elasticsearch were being used. This increases compatiblity with
+  OpenSearch as its used by ClearNDR (formerly SELKS).
+- [eve2pcap] Use SID as filename when available.
+
 ## 0.19.0 - 2024-12-13
 
 - [server] Don't forget session on server restart. Persists session
