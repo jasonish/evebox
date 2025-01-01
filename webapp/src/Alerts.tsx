@@ -95,7 +95,7 @@ export function Alerts() {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     sensor?: undefined | string;
-    filters?: string[];
+    f?: string[];
   }>();
   const [cursor, setCursor] = createSignal(0);
   const [isLoading, setIsLoading] = createSignal(false);
@@ -104,9 +104,7 @@ export function Alerts() {
   const [timedOut, setTimedOut] = createSignal(false);
 
   // For display of the filters. Reactiveness comes from the searchParams.
-  const [filters, setFilters] = createSignal<string[]>(
-    searchParams.filters || []
-  );
+  const [filters, setFilters] = createSignal<string[]>(searchParams.f || []);
 
   let toggleSelectAllRef: HTMLInputElement | null = null;
   let bindings: any = null;
@@ -338,7 +336,7 @@ export function Alerts() {
       q: searchParams.q,
       timeRange: TIME_RANGE(),
       sensor: searchParams.sensor,
-      filters: searchParams.filters,
+      filters: searchParams.f,
     };
     if (prev === undefined) {
       logger.log("Initial check of sortBy and sortOrder, not refreshing");
@@ -664,14 +662,14 @@ export function Alerts() {
 
     newFilters.push(entry);
     setSearchParams({
-      filters: newFilters,
+      f: newFilters,
     });
   }
 
   // Getter for searchParams.filters to convert to an array if there
   // is only one "filters" parameter.
   const getFilters = createMemo(() => {
-    let filters = searchParams.filters || [];
+    let filters = searchParams.f || [];
 
     if (!Array.isArray(filters)) {
       return [filters];
@@ -688,7 +686,7 @@ export function Alerts() {
   // Effect to update the query parameters when the filters signal updates.
   createEffect(() => {
     setSearchParams({
-      filters: filters().length == 0 ? undefined : filters(),
+      f: filters().length == 0 ? undefined : filters(),
     });
   });
 

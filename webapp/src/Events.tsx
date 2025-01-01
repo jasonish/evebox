@@ -88,7 +88,7 @@ export function Events() {
     event_type?: string;
     from?: string;
     to?: string;
-    filters?: string[];
+    f?: string[];
   }>();
   const [cursor, setCursor] = createSignal(0);
   const [filters, setFilters] = createSignal<string[]>([]);
@@ -137,7 +137,7 @@ export function Events() {
   // Getter for searchParams.filters to convert to an array if there
   // is only one "filters" parameter.
   const getFilters = createMemo(() => {
-    let filters = searchParams.filters || [];
+    let filters = searchParams.f || [];
 
     if (!Array.isArray(filters)) {
       return [filters];
@@ -173,11 +173,6 @@ export function Events() {
       setEventType(params.event_type);
     }
 
-    /* if (searchParams.q) {
-     *   params.query_string = searchParams.q;
-     * } */
-
-    //const filterQuery: string = getFilters()?.join(" ");
     const filterQuery: string = filters()?.join(" ");
     if (filterQuery && filterQuery.length > 0) {
       params.query_string += " " + filterQuery;
@@ -302,14 +297,14 @@ export function Events() {
 
     newFilters.push(entry);
     setSearchParams({
-      filters: newFilters,
+      f: newFilters,
     });
   }
 
   // Effect to update the query parameters when the filters signal updates.
   createEffect(() => {
     setSearchParams({
-      filters: filters().length == 0 ? undefined : filters(),
+      f: filters().length == 0 ? undefined : filters(),
     });
   });
 
