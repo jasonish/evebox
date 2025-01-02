@@ -3,10 +3,12 @@
 
 import relativeTime from "dayjs/plugin/relativeTime";
 import duration, { DurationUnitType } from "dayjs/plugin/duration";
+import utc from "dayjs/plugin/utc";
 import dayjs from "dayjs";
 
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
+dayjs.extend(utc);
 
 export function parse_timestamp(timestamp: string): dayjs.Dayjs {
   return dayjs(timestamp);

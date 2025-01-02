@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { For, Show } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 import { SearchLink } from "./common/SearchLink";
 import { parse_timestamp } from "./datetime";
 import { EventSource } from "./types";
 import { formatAddress } from "./formatters";
 import { BiDashCircle, BiFilter, BiPlusCircle } from "./icons";
+import { PREFS } from "./preferences";
+import dayjs from "dayjs";
 
 // Creates a table where the first column is a count, and the second
 // column is value.
@@ -221,17 +223,47 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
   );
 }
 
+export function FormattedTimestamp(props: {
+  timestamp: string;
+  withMillis?: boolean;
+}) {
+  const timestamp = createMemo(() => {
+    return parse_timestamp(props.timestamp);
+  });
+
+  const formatted = createMemo(() => {
+    let formatString = "YYYY-MM-DD HH:mm:ss";
+    if (props.withMillis === true) {
+      formatString += ".SSS";
+    }
+
+    if (PREFS().timestamp_format === "utc") {
+      return timestamp().utc().format(formatString) + "Z";
+    } else {
+      return timestamp().format(formatString);
+    }
+  });
+
+  return <>{formatted}</>;
+}
+
 export function TimestampCell(props: {
   timestamp: string;
   addFilter?: (what: string, op: string, value: string) => void;
 }) {
-  let timestamp = parse_timestamp(props.timestamp);
-  let formatted = timestamp.format("YYYY-MM-DD HH:mm:ss");
+  const timestamp = createMemo(() => {
+    return parse_timestamp(props.timestamp);
+  });
+
+  const formatted = createMemo(() => {
+    return <FormattedTimestamp timestamp={props.timestamp} />;
+  });
+
   return (
     <div title={props.timestamp}>
-      {timestamp.format("YYYY-MM-DD HH:mm:ss")}
+      {formatted()}
       <br />
-      <span class={"small"}>{timestamp.fromNow()}</span>{" "}
+      <span class={"small"}>{timestamp().fromNow()}</span>{" "}
       <Show when={props.addFilter}>
         <span class="dropdown" onclick={(e) => e.stopPropagation()}>
           <span data-bs-toggle="dropdown">
@@ -245,7 +277,7 @@ export function TimestampCell(props: {
                   props.addFilter!("@from", "", props.timestamp);
                 }}
               >
-                Filter for from {formatted}
+                Filter for from {formatted()}
               </a>
             </li>
             <li>
@@ -255,7 +287,7 @@ export function TimestampCell(props: {
                   props.addFilter!("@to", "", props.timestamp);
                 }}
               >
-                Filter for to {formatted}
+                Filter for to {formatted()}
               </a>
             </li>
           </ul>

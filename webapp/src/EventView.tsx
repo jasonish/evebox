@@ -42,6 +42,7 @@ import { createStore } from "solid-js/store";
 import { BiInfoCircle } from "./icons";
 import { SearchLink } from "./common/SearchLink";
 import * as api from "./api";
+import { FormattedTimestamp } from "./components";
 
 const PCAP_BUTTON_STYLE =
   "--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .7rem;";
@@ -258,10 +259,11 @@ export function EventView() {
       commonDetails.push([
         "Timestamp",
         <SearchLink field={"timestamp"} value={source.timestamp}>
-          {formatTimestamp(source.timestamp)}
+          <FormattedTimestamp timestamp={source.timestamp} withMillis={true} />
         </SearchLink>,
       ]);
     }
+
     if (source.host) {
       commonDetails.push(["Sensor", source.host]);
     }

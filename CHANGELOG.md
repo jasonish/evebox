@@ -14,6 +14,8 @@
   Elasticsearch were being used. This increases compatiblity with
   OpenSearch as its used by ClearNDR (formerly SELKS).
 - [eve2pcap] Use SID as filename when available.
+- [webapp] Allow user to choose local time or UTC time:
+  https://github.com/jasonish/evebox/issues/161
 
 ## 0.19.0 - 2024-12-13
 
