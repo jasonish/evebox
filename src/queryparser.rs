@@ -64,8 +64,18 @@ impl QueryParser {
 pub(crate) enum QueryValue {
     String(String),
     KeyValue(String, String),
+
+    /// From includes the time (ie: GTE).
     From(datetime::DateTime),
+
+    /// To includes the time (ie: LTE)
     To(datetime::DateTime),
+
+    // Like from, but greater than.
+    After(datetime::DateTime),
+
+    // Like to, but less than.
+    Before(datetime::DateTime),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -106,6 +116,20 @@ pub(crate) fn parse(
                     elements.push(QueryElement {
                         negated: false,
                         value: QueryValue::To(ts),
+                    });
+                }
+                "@before" => {
+                    let ts = datetime::parse(&token, tz_offset)?;
+                    elements.push(QueryElement {
+                        negated: false,
+                        value: QueryValue::Before(ts),
+                    });
+                }
+                "@after" => {
+                    let ts = datetime::parse(&token, tz_offset)?;
+                    elements.push(QueryElement {
+                        negated: false,
+                        value: QueryValue::After(ts),
                     });
                 }
                 _ => {

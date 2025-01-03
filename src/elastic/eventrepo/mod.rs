@@ -504,6 +504,12 @@ impl ElasticEventRepo {
                 queryparser::QueryValue::To(td) => {
                     filter.push(request::timestamp_lte_filter(td));
                 }
+                queryparser::QueryValue::After(ts) => {
+                    filter.push(request::timestamp_gt_filter(ts));
+                }
+                queryparser::QueryValue::Before(td) => {
+                    filter.push(request::timestamp_lt_filter(td));
+                }
             }
         }
     }

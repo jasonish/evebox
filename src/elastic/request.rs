@@ -44,10 +44,26 @@ pub fn range_gte_filter(field: &str, value: &str) -> serde_json::Value {
     json!({"range": {field: {"gte": value}}})
 }
 
+pub fn range_lt_filter(field: &str, value: &str) -> serde_json::Value {
+    json!({"range": {field: {"lt": value}}})
+}
+
+pub fn range_gt_filter(field: &str, value: &str) -> serde_json::Value {
+    json!({"range": {field: {"gt": value}}})
+}
+
 pub fn timestamp_gte_filter(dt: &crate::datetime::DateTime) -> serde_json::Value {
     range_gte_filter("@timestamp", &dt.to_elastic())
 }
 
 pub fn timestamp_lte_filter(dt: &crate::datetime::DateTime) -> serde_json::Value {
     range_lte_filter("@timestamp", &dt.to_elastic())
+}
+
+pub fn timestamp_gt_filter(dt: &crate::datetime::DateTime) -> serde_json::Value {
+    range_gt_filter("@timestamp", &dt.to_elastic())
+}
+
+pub fn timestamp_lt_filter(dt: &crate::datetime::DateTime) -> serde_json::Value {
+    range_lt_filter("@timestamp", &dt.to_elastic())
 }

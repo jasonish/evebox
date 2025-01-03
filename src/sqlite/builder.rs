@@ -165,6 +165,8 @@ impl<'a> EventQueryBuilder<'a> {
                 queryparser::QueryValue::String(_) => {}
                 queryparser::QueryValue::From(_) => {}
                 queryparser::QueryValue::To(_) => {}
+                queryparser::QueryValue::After(_) => {}
+                queryparser::QueryValue::Before(_) => {}
             }
         }
         Ok(())
@@ -294,6 +296,12 @@ impl<'a> EventQueryBuilder<'a> {
                 queryparser::QueryValue::To(ts) => {
                     self.timestamp_lte(ts)?;
                 }
+                queryparser::QueryValue::After(ts) => {
+                    self.timestamp_gt(ts)?;
+                }
+                queryparser::QueryValue::Before(ts) => {
+                    self.timestamp_lt(ts)?;
+                }
             }
         }
         Ok(())
@@ -307,11 +315,27 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(self)
     }
 
+    pub fn timestamp_gt(
+        &mut self,
+        ts: &crate::datetime::DateTime,
+    ) -> Result<&mut Self, sqlx::Error> {
+        self.push_where("timestamp > ?").push_arg(ts.to_nanos())?;
+        Ok(self)
+    }
+
     pub fn timestamp_lte(
         &mut self,
         ts: &crate::datetime::DateTime,
     ) -> Result<&mut Self, sqlx::Error> {
         self.push_where("timestamp <= ?").push_arg(ts.to_nanos())?;
+        Ok(self)
+    }
+
+    pub fn timestamp_lt(
+        &mut self,
+        ts: &crate::datetime::DateTime,
+    ) -> Result<&mut Self, sqlx::Error> {
+        self.push_where("timestamp < ?").push_arg(ts.to_nanos())?;
         Ok(self)
     }
 

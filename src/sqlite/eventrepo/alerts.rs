@@ -126,6 +126,12 @@ impl SqliteEventRepo {
                             queryparser::QueryValue::To(dt) => {
                                 builder.timestamp_lte(dt)?;
                             }
+                            queryparser::QueryValue::After(dt) => {
+                                builder.timestamp_gt(dt)?;
+                            }
+                            queryparser::QueryValue::Before(dt) => {
+                                builder.timestamp_lt(dt)?;
+                            }
                         }
                     }
                 }
@@ -381,6 +387,13 @@ impl SqliteEventRepo {
                             }
                             queryparser::QueryValue::To(ts) => {
                                 filters.push("timestamp <= ?".into());
+                                args.push(ts.to_nanos())?;
+                            }
+                            queryparser::QueryValue::After(_) => {
+                                warn!("QueryValue::After not supported here");
+                            }
+                            queryparser::QueryValue::Before(ts) => {
+                                filters.push("timestamp < ?".into());
                                 args.push(ts.to_nanos())?;
                             }
                         }
