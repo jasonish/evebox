@@ -165,23 +165,16 @@ impl SqliteEventRepo {
         let mut count = 0;
         let mut abort_at = None;
         while let Some(row) = rows.try_next().await? {
+            // The columns the make up the key.
+            let alert_signature_id: u64 = row.try_get("alert.signature_id")?;
+            let src_ip: String = row.try_get("src_ip")?;
+            let dest_ip: String = row.try_get("dest_ip")?;
+
+            let escalated: bool = row.try_get("escalated")?;
+            let host: Option<String> = row.try_get("host").unwrap_or(None);
+
             let rowid: u64 = row.try_get("rowid")?;
             let timestamp: i64 = row.try_get("timestamp")?;
-            let escalated: bool = row.try_get("escalated")?;
-            let archived: bool = row.try_get("archived")?;
-            let alert_signature_id: u64 = row.try_get("alert.signature_id")?;
-            let alert_signature: String = row.try_get("alert.signature")?;
-            let alert_severity: u64 = row.try_get("alert.severity")?;
-            let alert_action: String = row.try_get("alert.action")?;
-            let app_proto: String = row.try_get("app_proto")?;
-            let dest_ip: String = row.try_get("dest_ip")?;
-            let src_ip: String = row.try_get("src_ip")?;
-            let tags: serde_json::Value = row.try_get("tags").unwrap_or(serde_json::Value::Null);
-            let host: Option<String> = row.try_get("host").unwrap_or(None);
-            let tls: serde_json::Value = row.try_get("tls").unwrap_or(serde_json::Value::Null);
-            let dns: serde_json::Value = row.try_get("dns").unwrap_or(serde_json::Value::Null);
-            let quic: serde_json::Value = row.try_get("quic").unwrap_or(serde_json::Value::Null);
-            let http_hostname: Option<String> = row.try_get("http.hostname")?;
 
             // If timed-out, we want to keep process events in this second...
             if timed_out {
@@ -201,39 +194,7 @@ impl SqliteEventRepo {
                 sensors.insert(host);
             }
 
-            let mut source = json!({
-                "timestamp": DateTime::from_nanos(timestamp).to_eve(),
-                "tags": tags,
-                "dest_ip": dest_ip,
-                "src_ip": src_ip,
-                "app_proto": app_proto,
-                "alert": {
-                    "signature": alert_signature,
-                    "signature_id": alert_signature_id,
-                    "severity": alert_severity,
-                    "action": alert_action,
-                },
-                "tls": tls,
-                "dns": dns,
-                "quic": quic,
-            });
-
-            if let Some(http_hostname) = http_hostname {
-                source["http"]["hostname"] = http_hostname.into();
-            }
-
             let key = format!("{alert_signature_id}{src_ip}{dest_ip}");
-
-            if let serde_json::Value::Null = &source["tags"] {
-                let tags: Vec<String> = Vec::new();
-                source["tags"] = tags.into();
-            }
-
-            if let serde_json::Value::Array(ref mut tags) = &mut source["tags"] {
-                if archived {
-                    tags.push("evebox.archived".into());
-                }
-            }
 
             if let Some(entry) = events.get_mut(&key) {
                 entry.metadata.count += 1;
@@ -242,6 +203,53 @@ impl SqliteEventRepo {
                 }
                 entry.metadata.min_timestamp = DateTime::from_nanos(timestamp);
             } else {
+                // Now get the columns that are only needed to
+                // construct a new entry.
+                let quic: serde_json::Value =
+                    row.try_get("quic").unwrap_or(serde_json::Value::Null);
+                let http_hostname: Option<String> = row.try_get("http.hostname")?;
+                let tls: serde_json::Value = row.try_get("tls").unwrap_or(serde_json::Value::Null);
+                let dns: serde_json::Value = row.try_get("dns").unwrap_or(serde_json::Value::Null);
+                let archived: bool = row.try_get("archived")?;
+                let alert_signature: String = row.try_get("alert.signature")?;
+                let alert_severity: u64 = row.try_get("alert.severity")?;
+                let alert_action: String = row.try_get("alert.action")?;
+                let app_proto: String = row.try_get("app_proto")?;
+                let tags: serde_json::Value =
+                    row.try_get("tags").unwrap_or(serde_json::Value::Null);
+
+                let mut source = json!({
+                    "timestamp": DateTime::from_nanos(timestamp).to_eve(),
+                    "tags": tags,
+                    "dest_ip": dest_ip,
+                    "src_ip": src_ip,
+                    "app_proto": app_proto,
+                    "alert": {
+                        "signature": alert_signature,
+                        "signature_id": alert_signature_id,
+                        "severity": alert_severity,
+                        "action": alert_action,
+                    },
+                    "tls": tls,
+                    "dns": dns,
+                    "quic": quic,
+                });
+
+                if let Some(http_hostname) = http_hostname {
+                    source["http"]["hostname"] = http_hostname.into();
+                }
+
+                if let serde_json::Value::Null = &source["tags"] {
+                    let tags: Vec<String> = Vec::new();
+                    source["tags"] = tags.into();
+                }
+
+                if let serde_json::Value::Array(ref mut tags) = &mut source["tags"] {
+                    if archived {
+                        tags.push("evebox.archived".into());
+                    }
+                }
+
                 let alert = AggAlert {
                     id: rowid.to_string(),
                     source,
