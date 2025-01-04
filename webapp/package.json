@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@solidjs/router": "^0.15.0",
+    "@types/bootstrap": "^5.2.10",
     "axios": "^1.2.1",
     "bootstrap": "^5.3.2",
     "chart.js": "^4.2.0",
