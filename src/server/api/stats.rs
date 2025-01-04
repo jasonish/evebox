@@ -11,7 +11,7 @@ use axum::extract::{Form, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::get;
-use axum::{Json, Router};
+use axum::{Extension, Json, Router};
 use serde::Deserialize;
 use std::sync::Arc;
 use tracing::error;
@@ -123,4 +123,20 @@ pub(crate) async fn get_sensor_names(
     });
 
     Ok(Json(response).into_response())
+}
+
+pub(crate) async fn earliest_timestamp(
+    _session: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+) -> Result<impl IntoResponse, AppError> {
+    match &context.datastore {
+        EventRepo::Elastic(ds) => {
+            let ts = ds.get_earliest_timestamp().await?;
+            Ok(Json(ts).into_response())
+        }
+        EventRepo::SQLite(ds) => {
+            let ts = ds.min_timestamp().await?;
+            Ok(Json(ts).into_response())
+        }
+    }
 }

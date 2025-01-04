@@ -379,7 +379,7 @@ impl ElasticEventRepo {
         Ok(None)
     }
 
-    fn apply_query_string(
+    pub(crate) fn apply_query_string(
         &self,
         q: &[queryparser::QueryElement],
         filter: &mut Vec<serde_json::Value>,
@@ -619,7 +619,7 @@ impl ElasticEventRepo {
             .await
     }
 
-    async fn get_earliest_timestamp(&self) -> Result<Option<crate::datetime::DateTime>> {
+    pub(crate) async fn get_earliest_timestamp(&self) -> Result<Option<crate::datetime::DateTime>> {
         #[rustfmt::skip]
 	let request = json!({
 	    "query": {

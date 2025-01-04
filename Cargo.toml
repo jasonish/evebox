@@ -23,7 +23,7 @@ thiserror = "1.0.56"
 
 axum = { version = "0.7.5" }
 axum-server = { version = "0.6.0", features = ["tls-rustls"] }
-axum-extra = { version = "0.9.3", default-features = false, features = ["cookie", "typed-header"] }
+axum-extra = { version = "0.9.3", default-features = false, features = ["cookie", "typed-header", "form"] }
 hyper = "1.0"
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
 tower-http = { version = "0.5", features = ["set-header", "trace", "limit"] }

@@ -18,6 +18,7 @@ use axum::routing::{get, post};
 use axum::Json;
 use serde::Deserialize;
 use serde_json::json;
+use stats::earliest_timestamp;
 use std::collections::HashMap;
 use std::ops::Sub;
 use std::str::FromStr;
@@ -29,6 +30,7 @@ use self::util::parse_duration;
 
 pub(crate) mod admin;
 pub(crate) mod agg;
+pub(crate) mod count;
 pub(crate) mod eve2pcap;
 pub(crate) mod genericquery;
 pub(crate) mod login;
@@ -69,6 +71,8 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/ja4db/:fingerprint", get(ja4db))
         .route("/api/admin/update/ja4db", post(admin::update_ja4db))
         .route("/api/find-dns", get(find_dns))
+        .route("/api/events/count", get(count::count))
+        .route("/api/events/earliest-timestamp", get(earliest_timestamp))
         .nest("/api/1/stats", stats::router())
 }
 
