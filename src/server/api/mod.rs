@@ -5,11 +5,11 @@ use crate::datetime::DateTime;
 use crate::error::AppError;
 use crate::eventrepo::EventQueryParams;
 use crate::eventrepo::EventRepo;
+use crate::queryparser;
 use crate::queryparser::{QueryElement, QueryValue};
 use crate::server::api::genericquery::GenericQuery;
 use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
-use crate::{elastic, queryparser};
 use axum::extract::{Extension, Form, Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -30,6 +30,7 @@ use self::util::parse_duration;
 
 pub(crate) mod admin;
 pub(crate) mod agg;
+pub(crate) mod alerts;
 pub(crate) mod count;
 pub(crate) mod eve2pcap;
 pub(crate) mod genericquery;
@@ -46,7 +47,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/1/config", get(config))
         .route("/api/1/version", get(get_version))
         .route("/api/1/user", get(get_user))
-        .route("/api/1/alerts", get(alerts))
+        .route("/api/1/alerts", get(alerts::alerts))
         .route("/api/1/events", get(events))
         .route("/api/1/event/:id", get(get_event_by_id))
         .route("/api/1/alert-group/star", post(alert_group_star))
@@ -261,50 +262,6 @@ pub(crate) async fn histogram_time(
     })?;
 
     Ok(Json(json!({ "data": results })))
-}
-
-pub(crate) async fn alerts(
-    Extension(context): Extension<Arc<ServerContext>>,
-    // Session required to get here.
-    _session: SessionExtractor,
-    Form(query): Form<GenericQuery>,
-) -> Result<impl IntoResponse, AppError> {
-    let mut options = elastic::AlertQueryOptions {
-        query_string: query.query_string,
-        sensor: query.sensor,
-        ..elastic::AlertQueryOptions::default()
-    };
-
-    if let Some(tags) = query.tags {
-        if !tags.is_empty() {
-            let tags: Vec<String> = tags.split(',').map(|s| s.to_string()).collect();
-            options.tags = tags;
-        }
-    }
-
-    if let Some(time_range) = query.time_range {
-        if !time_range.is_empty() {
-            let now = DateTime::now();
-            match parse_then_from_duration(&now, &time_range) {
-                None => {
-                    error!("Failed to parse time_range: {}", time_range);
-                }
-                Some(then) => {
-                    options.timestamp_gte = Some(then);
-                }
-            }
-        }
-    }
-
-    if let Some(_ts) = query.min_timestamp {
-        error!("alert_query: min_timestamp query argument not implemented");
-    }
-
-    if let Some(_ts) = query.max_timestamp {
-        error!("alert_query: max_timeestamp query argument not implemented");
-    }
-
-    Ok(Json(context.datastore.alerts(options).await?).into_response())
 }
 
 pub(crate) async fn get_event_by_id(
