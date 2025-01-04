@@ -176,16 +176,16 @@ impl Ip4Builder {
         let mut out = buf.to_vec();
 
         let csum = &self.ip_checksum(&out);
-        out[10] = (csum >> 8 & 0xffu16) as u8;
+        out[10] = ((csum >> 8) & 0xffu16) as u8;
         out[11] = (csum & 0xff) as u8;
 
         if let Protocol::Udp = &self.protocol {
             let csum = &self.tcpudp_checksum(&out, Protocol::Udp);
-            out[26] = (csum >> 8 & 0xffu16) as u8;
+            out[26] = ((csum >> 8) & 0xffu16) as u8;
             out[27] = (csum & 0xff) as u8;
         } else if let Protocol::Tcp = &self.protocol {
             let csum = &self.tcpudp_checksum(&out, Protocol::Tcp);
-            out[36] = (csum >> 8 & 0xffu16) as u8;
+            out[36] = ((csum >> 8) & 0xffu16) as u8;
             out[37] = (csum & 0xff) as u8;
         }
 
