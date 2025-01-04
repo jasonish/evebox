@@ -7,6 +7,7 @@ use crate::sqlite::prelude::*;
 use std::collections::HashSet;
 use std::time::Instant;
 
+use chrono::Timelike;
 use indexmap::IndexMap;
 use sqlx::sqlite::{SqliteArguments, SqliteRow};
 use sqlx::Row;
@@ -153,14 +154,19 @@ impl SqliteEventRepo {
         // Track sensors.
         let mut sensors: HashSet<String> = HashSet::new();
 
+        // Track the time range.
+        let mut max_timestamp = None;
+        let mut min_timestamp = None;
+
         let mut events: IndexMap<String, AggAlert> = IndexMap::new();
         let mut rows = sqlx::query_with(&sql, args).fetch(&self.pool);
         let mut now = Instant::now();
         let mut timed_out = false;
         let mut count = 0;
+        let mut abort_at = None;
         while let Some(row) = rows.try_next().await? {
             let rowid: u64 = row.try_get("rowid")?;
-            let timestamp: u64 = row.try_get("timestamp")?;
+            let timestamp: i64 = row.try_get("timestamp")?;
             let escalated: bool = row.try_get("escalated")?;
             let archived: bool = row.try_get("archived")?;
             let alert_signature_id: u64 = row.try_get("alert.signature_id")?;
@@ -177,12 +183,26 @@ impl SqliteEventRepo {
             let quic: serde_json::Value = row.try_get("quic").unwrap_or(serde_json::Value::Null);
             let http_hostname: Option<String> = row.try_get("http.hostname")?;
 
+            // If timed-out, we want to keep process events in this second...
+            if timed_out {
+                let abort_at = abort_at.unwrap();
+                let this_dt = DateTime::from_nanos(timestamp).datetime;
+                if this_dt < abort_at {
+                    break;
+                }
+            }
+
+            if max_timestamp.is_none() {
+                max_timestamp = Some(timestamp);
+            }
+            min_timestamp = Some(timestamp);
+
             if let Some(host) = host {
                 sensors.insert(host);
             }
 
             let mut source = json!({
-                "timestamp": DateTime::from_nanos(timestamp as i64).to_eve(),
+                "timestamp": DateTime::from_nanos(timestamp).to_eve(),
                 "tags": tags,
                 "dest_ip": dest_ip,
                 "src_ip": src_ip,
@@ -220,7 +240,7 @@ impl SqliteEventRepo {
                 if escalated {
                     entry.metadata.escalated_count += 1;
                 }
-                entry.metadata.min_timestamp = DateTime::from_nanos(timestamp as i64);
+                entry.metadata.min_timestamp = DateTime::from_nanos(timestamp);
             } else {
                 let alert = AggAlert {
                     id: rowid.to_string(),
@@ -228,8 +248,8 @@ impl SqliteEventRepo {
                     metadata: AggAlertMetadata {
                         count: 1,
                         escalated_count: if escalated { 1 } else { 0 },
-                        min_timestamp: DateTime::from_nanos(timestamp as i64),
-                        max_timestamp: DateTime::from_nanos(timestamp as i64),
+                        min_timestamp: DateTime::from_nanos(timestamp),
+                        max_timestamp: DateTime::from_nanos(timestamp),
                     },
                 };
                 events.insert(key, alert);
@@ -246,11 +266,14 @@ impl SqliteEventRepo {
 
             if now.elapsed() > std::time::Duration::from_secs(3) {
                 timed_out = true;
-                break;
+                abort_at = DateTime::from_nanos(timestamp).datetime.with_nanosecond(0);
             }
         }
 
         let took = now.elapsed();
+
+        let min_timestamp = min_timestamp.map(DateTime::from_nanos);
+        let max_timestamp = max_timestamp.map(DateTime::from_nanos);
 
         if timed_out {
             info!(
@@ -272,6 +295,8 @@ impl SqliteEventRepo {
             timed_out,
             took: took.as_millis() as u64,
             ecs: false,
+            min_timestamp,
+            max_timestamp,
         })
     }
 
@@ -411,6 +436,12 @@ impl SqliteEventRepo {
             info!("query={}; args={:?}", &query.trim(), &args);
         }
 
+        // Lowest timestamp found.
+        let mut from = None;
+
+        // Largest timestamp found.
+        let mut to = None;
+
         let mut sensors = HashSet::new();
         let now = Instant::now();
         let mut rows = sqlx::query_with(&query, args).fetch(&self.pool);
@@ -420,6 +451,23 @@ impl SqliteEventRepo {
             if let serde_json::Value::String(host) = &row.source["host"] {
                 sensors.insert(host.to_string());
             }
+
+            if let Some(ts) = &from {
+                if row.metadata.min_timestamp > *ts {
+                    from = Some(row.metadata.min_timestamp.clone());
+                }
+            } else {
+                from = Some(row.metadata.min_timestamp.clone());
+            }
+
+            if let Some(ts) = &to {
+                if row.metadata.max_timestamp > *ts {
+                    to = Some(row.metadata.max_timestamp.clone());
+                }
+            } else {
+                to = Some(row.metadata.max_timestamp.clone());
+            }
+
             results.push(row);
         }
 
@@ -433,6 +481,8 @@ impl SqliteEventRepo {
             timed_out: false,
             took: 0,
             ecs: false,
+            min_timestamp: from,
+            max_timestamp: to,
         })
     }
 }

@@ -52,4 +52,3 @@ pub(crate) async fn alerts(
 
     Ok(Json(context.datastore.alerts(options).await?).into_response())
 }
-

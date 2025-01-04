@@ -36,12 +36,14 @@ pub(crate) struct StatsAggQueryParams {
     pub start_time: DateTime,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Default, Debug, Serialize)]
 pub(crate) struct AlertsResult {
     pub(crate) ecs: bool,
     pub(crate) events: Vec<AggAlert>,
     pub(crate) took: u64,
     pub(crate) timed_out: bool,
+    pub(crate) min_timestamp: Option<crate::datetime::DateTime>,
+    pub(crate) max_timestamp: Option<crate::datetime::DateTime>,
 }
 
 #[derive(Debug, Serialize)]

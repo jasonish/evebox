@@ -183,6 +183,12 @@ impl ElasticEventRepo {
             response.timed_out,
         );
 
+        // Lowest timestamp found.
+        let mut from = None;
+
+        // Largest timestamp found.
+        let mut to = None;
+
         let mut alerts: Vec<AggAlert> = vec![];
         if let Some(aggregrations) = response.aggregations {
             if let serde_json::Value::Array(buckets) = &aggregrations["signatures"]["buckets"] {
@@ -249,6 +255,22 @@ impl ElasticEventRepo {
                                     // "_elastic" field in the
                                     // response.
 
+                                    if let Some(ts) = &from {
+                                        if min_timestamp < *ts {
+                                            from = Some(min_timestamp.clone());
+                                        }
+                                    } else {
+                                        from = Some(min_timestamp.clone());
+                                    }
+
+                                    if let Some(ts) = &to {
+                                        if max_timestamp > *ts {
+                                            to = Some(max_timestamp.clone());
+                                        }
+                                    } else {
+                                        to = Some(max_timestamp.clone());
+                                    }
+
                                     let alert = AggAlert {
                                         id,
                                         source,
@@ -275,6 +297,8 @@ impl ElasticEventRepo {
             events: alerts,
             took: response.took,
             timed_out: response.timed_out,
+            min_timestamp: from,
+            max_timestamp: to,
         };
 
         Ok(response)
