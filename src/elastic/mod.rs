@@ -46,6 +46,7 @@ pub(crate) struct AlertQueryOptions {
     pub query_string: Option<String>,
     pub tags: Vec<String>,
     pub sensor: Option<String>,
+    pub timeout: Option<u64>,
 }
 
 #[derive(Serialize)]

@@ -28,6 +28,8 @@ pub(crate) struct GenericQuery {
     // Replaces min_timestamp and max_timestamp.
     pub from: Option<String>,
     pub to: Option<String>,
+
+    pub timeout: Option<u64>,
 }
 
 impl TimeRange {

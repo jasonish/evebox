@@ -23,11 +23,20 @@ use crate::{queryparser, LOG_QUERIES, LOG_QUERY_PLAN};
 impl SqliteEventRepo {
     #[instrument(skip_all)]
     pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
-        if std::env::var("EVEBOX_ALERTS_WITH_TIMEOUT").is_ok() {
-            self.alerts_with_timeout(options).await
-        } else {
-            self.alerts_group_by(options).await
+        if let Some(timeout) = options.timeout {
+            if timeout > 0 {
+                return Ok(self.alerts_with_timeout(options).await?);
+            }
         }
+
+        if std::env::var("EVEBOX_ALERTS_WITH_TIMEOUT").is_ok() {
+            let mut options = options;
+            options.timeout = Some(3);
+            return Ok(self.alerts_with_timeout(options).await?);
+        }
+
+        // Legacy.
+        self.alerts_group_by(options).await
     }
 
     #[instrument(skip_all)]
@@ -158,6 +167,8 @@ impl SqliteEventRepo {
         let mut max_timestamp = None;
         let mut min_timestamp = None;
 
+        let timeout = options.timeout.unwrap_or(3);
+
         let mut events: IndexMap<String, AggAlert> = IndexMap::new();
         let mut rows = sqlx::query_with(&sql, args).fetch(&self.pool);
         let mut now = Instant::now();
@@ -272,7 +283,7 @@ impl SqliteEventRepo {
 
             count += 1;
 
-            if now.elapsed() > std::time::Duration::from_secs(3) {
+            if now.elapsed() > std::time::Duration::from_secs(timeout) {
                 timed_out = true;
                 abort_at = DateTime::from_nanos(timestamp).datetime.with_nanosecond(0);
             }

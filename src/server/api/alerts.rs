@@ -18,6 +18,7 @@ pub(crate) async fn alerts(
     let mut options = elastic::AlertQueryOptions {
         query_string: query.query_string,
         sensor: query.sensor,
+        timeout: query.timeout,
         ..elastic::AlertQueryOptions::default()
     };
 

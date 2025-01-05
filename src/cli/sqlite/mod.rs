@@ -308,9 +308,7 @@ async fn optimize(args: &OptimizeArgs) -> Result<()> {
     let gte = datetime::DateTime::now().sub(chrono::Duration::days(1));
     repo.alerts(AlertQueryOptions {
         timestamp_gte: Some(gte),
-        query_string: None,
-        tags: vec![],
-        sensor: None,
+        ..Default::default()
     })
     .await
     .map_err(|err| anyhow::anyhow!(format!("{}", err)))?;
