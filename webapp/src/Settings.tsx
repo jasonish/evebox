@@ -11,7 +11,24 @@ import {
 } from "./settings";
 import { getClientPreferences, saveClientPreferences } from "./preferences";
 
+import * as bootstrap from "bootstrap";
+import { createEffect } from "solid-js";
+import { BiQuestionCircle } from "./icons";
+
 export function Settings() {
+  createEffect(() => {
+    const popoverTriggerList = document.querySelectorAll(
+      '[data-bs-toggle="popover"]'
+    );
+    [...popoverTriggerList].map(
+      (popoverTriggerEl) =>
+        new bootstrap.Popover(popoverTriggerEl, { html: true })
+    );
+  });
+
+  const query_timeout_tooltip =
+    "<b>Experimental:</b> Timeout queries after a number of seconds. 0 to disable timeout. If set, recommended to be at least 3 seconds. Not applied to all queries yet. <br/>Default: 0 (disabled)";
+
   return (
     <>
       <Top />
@@ -124,6 +141,41 @@ export function Settings() {
                     UTC
                   </option>
                 </select>
+              </div>
+            </div>
+          </div>
+          <div class="col"></div>
+        </div>
+
+        <div class="row mt-2">
+          <div class="col"></div>
+          <div class="col-sm-12 col-md-8 col-lg-6">
+            <div class={"row form-group"}>
+              <label class="col-md-4 col-form-label">
+                Query Timeout
+                <span
+                  class="float-end"
+                  data-bs-container="body"
+                  data-bs-toggle="popover"
+                  data-bs-placement="right"
+                  data-bs-title="Query Timeout"
+                  data-bs-content={query_timeout_tooltip}
+                >
+                  <BiQuestionCircle />
+                </span>
+              </label>
+
+              <div class="col-md-8">
+                <input
+                  class="form-control"
+                  type="number"
+                  value={getClientPreferences().query_timeout || 0}
+                  onChange={(e) => {
+                    let prefs = getClientPreferences();
+                    prefs.query_timeout = +e.target.value || undefined;
+                    saveClientPreferences(prefs);
+                  }}
+                />
               </div>
             </div>
           </div>

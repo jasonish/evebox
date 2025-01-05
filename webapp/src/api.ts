@@ -157,6 +157,7 @@ export async function alerts(options?: {
   // Tags that must not be present.
   not_tags?: string[];
   sensor: string | undefined;
+  timeout: undefined | number;
 }): Promise<AlertsResponse> {
   let params: any = {
     query_string: options?.query_string,
@@ -169,6 +170,9 @@ export async function alerts(options?: {
   }
   if (options?.sensor) {
     params.sensor = options.sensor;
+  }
+  if (options?.timeout) {
+    params.timeout = options.timeout;
   }
   return get("api/1/alerts", params).then((response) => response.data);
 }

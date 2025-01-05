@@ -9,6 +9,7 @@ export const [PREFS, SET_PREFS] = createSignal<ClientPreferences>(
 
 export interface ClientPreferences {
   timestamp_format?: "utc" | "local";
+  query_timeout?: number;
 }
 
 export function createDefaultClientPreferences(): ClientPreferences {

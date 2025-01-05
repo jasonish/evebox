@@ -48,6 +48,7 @@ import { Logger } from "./util";
 import { SensorSelect } from "./common/SensorSelect";
 import * as bootstrap from "bootstrap";
 import { AddressCell, FilterStrip, TimestampCell } from "./components";
+import { PREFS } from "./preferences";
 
 const DEFAULT_SORTBY = "timestamp";
 const DEFAULT_SORTORDER = "desc";
@@ -384,6 +385,7 @@ export function Alerts() {
       let params: any = {
         query_string: q,
         time_range: parse_timerange(TIME_RANGE()) || undefined,
+        timeout: PREFS().query_timeout,
       };
 
       if (searchParams.sensor) {
