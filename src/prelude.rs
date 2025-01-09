@@ -7,6 +7,7 @@ pub(crate) use tracing::debug;
 pub(crate) use tracing::error;
 pub(crate) use tracing::info;
 pub(crate) use tracing::instrument;
+pub(crate) use tracing::trace;
 pub(crate) use tracing::warn;
 
 pub(crate) use anyhow::Context;

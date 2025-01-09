@@ -1,14 +1,54 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+
 use crate::{
     eve::{self, filters::AutoArchiveFilter, Eve},
     sqlite::has_table,
 };
 use anyhow::Context;
 use sqlx::Connection;
-use std::sync::Arc;
-use tracing::{debug, error, warn};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
+
+#[derive(Clone, Debug, Default)]
+struct Metrics {
+    total_duration: Duration,
+    occurrences: u64,
+    events: usize,
+    min: Duration,
+    max: Duration,
+}
+
+impl Metrics {
+    fn update(&mut self, duration: Duration, events: usize) {
+        if duration > self.max {
+            self.max = duration;
+        }
+        if self.occurrences == 0 || duration < self.min {
+            self.min = duration;
+        }
+
+        self.total_duration += duration;
+        self.occurrences += 1;
+        self.events += events;
+    }
+}
+
+impl std::fmt::Display for Metrics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let avg_duration = self.total_duration.as_millis() / self.occurrences as u128;
+        let avg_duration = Duration::from_millis(avg_duration as u64);
+        write!(
+            f,
+            "avg={:?}, occurrences={}, events={}, min={:?}, max={:?}",
+            avg_duration, self.occurrences, self.events, self.min, self.max
+        )
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum IndexError {
@@ -26,6 +66,7 @@ struct PreparedEvent {
 pub(crate) struct SqliteEventSink {
     conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     queue: Vec<PreparedEvent>,
+    metrics: Arc<Mutex<Metrics>>,
 }
 
 impl Clone for SqliteEventSink {
@@ -33,15 +74,18 @@ impl Clone for SqliteEventSink {
         Self {
             conn: self.conn.clone(),
             queue: Vec::new(),
+            metrics: self.metrics.clone(),
         }
     }
 }
 
 impl SqliteEventSink {
     pub fn new(conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>) -> Self {
+        println!("Creating SQLite event sync");
         Self {
             conn,
             queue: Vec::new(),
+            metrics: Arc::new(Mutex::new(Metrics::default())),
         }
     }
 
@@ -133,10 +177,14 @@ impl SqliteEventSink {
 
         let elapsed = start.elapsed();
         let in_lock = insert_start.elapsed();
+
         let msg = format!(
             "Commited {n} events in {:?}: lock={:?}, insert={:?}, commit={:?}",
             elapsed, lock_elapsed, insert_elapsed, commit_elapsed
         );
+
+        let mut metrics = self.metrics.lock().unwrap();
+        metrics.update(insert_elapsed + commit_elapsed, n);
 
         // For slow insert, that is the amount of time inside the
         // lock, log a message.
@@ -144,10 +192,14 @@ impl SqliteEventSink {
         // While we do care about total time, which means time waiting
         // on the lock, I'm currently looking for slow activity in the
         // lock.
-        if in_lock > std::time::Duration::from_secs(3) {
-            warn!("Commit took longer than 3s: {}", msg);
+        if in_lock > Duration::from_secs(3) {
+            warn!(
+                "Commit took longer than 3s: {} -- {}",
+                msg,
+                metrics.to_string()
+            );
         } else {
-            debug!("{}", msg);
+            trace!("{}: {}", msg, metrics.to_string());
         }
 
         self.queue.truncate(0);
