@@ -27,7 +27,7 @@ use axum_extra::TypedHeader;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tower_http::trace::TraceLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 use tracing::{debug, error, info, warn, Level};
@@ -518,7 +518,13 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             init_event_db(&mut conn).await?;
             let writer = Arc::new(tokio::sync::Mutex::new(conn));
             let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
-            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(writer.clone(), pool);
+            let rusqlite_writer = connection_builder.open_with_rusqlite().unwrap();
+            let rusqlite_writer = Arc::new(Mutex::new(rusqlite_writer));
+            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(
+                writer.clone(),
+                pool,
+                Some(rusqlite_writer),
+            );
 
             // Start retention task.
             sqlite::retention::start_retention_task(config.clone(), writer.clone(), db_filename)

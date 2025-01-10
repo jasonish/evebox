@@ -67,6 +67,8 @@ pub(crate) struct SqliteEventSink {
     conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     queue: Vec<PreparedEvent>,
     metrics: Arc<Mutex<Metrics>>,
+    writer: Option<Arc<Mutex<rusqlite::Connection>>>,
+    use_rusqlite: bool,
 }
 
 impl Clone for SqliteEventSink {
@@ -75,17 +77,30 @@ impl Clone for SqliteEventSink {
             conn: self.conn.clone(),
             queue: Vec::new(),
             metrics: self.metrics.clone(),
+            writer: self.writer.clone(),
+            use_rusqlite: self.use_rusqlite,
         }
     }
 }
 
 impl SqliteEventSink {
-    pub fn new(conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>) -> Self {
-        println!("Creating SQLite event sync");
+    pub fn new(
+        conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
+        writer: Option<Arc<Mutex<rusqlite::Connection>>>,
+    ) -> Self {
+        let use_rusqlite = match std::env::var("USE_RUSQLITE") {
+            Ok(val) => matches!(val.as_ref(), "yes" | "1" | "true"),
+            Err(_) => false,
+        };
+        if use_rusqlite && writer.is_some() {
+            info!("SqliteEventSink will use Rusqlite");
+        }
         Self {
             conn,
             queue: Vec::new(),
             metrics: Arc::new(Mutex::new(Metrics::default())),
+            writer,
+            use_rusqlite,
         }
     }
 
@@ -125,7 +140,96 @@ impl SqliteEventSink {
         Ok(false)
     }
 
+    pub async fn commit_with_rusqlite(&mut self) -> anyhow::Result<usize> {
+        let conn = self.writer.clone().unwrap().clone();
+        let metrics = self.metrics.clone();
+        let queue = std::mem::take(&mut self.queue);
+        let n: usize = tokio::spawn(async move {
+            let mut conn = conn.lock().unwrap();
+            let timer = std::time::Instant::now();
+            let tx = conn.transaction()?;
+
+            {
+                let fts = tx
+                    .query_row(
+                        "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'fts'",
+                        [],
+                        |row| {
+                            let count: i32 = row.get(0).unwrap_or(0);
+                            Ok(count > 0)
+                        },
+                    )
+                    .unwrap_or(false);
+
+                let mut events_st = tx.prepare_cached(
+                    r#"
+                            INSERT INTO events (timestamp, archived, source, source_values)
+                            VALUES (?, ?, ?, ?)"#,
+                )?;
+
+                let mut fts_st = tx.prepare(
+                    r#"
+                            INSERT INTO fts (rowid, timestamp, source_values)
+                            VALUES (last_insert_rowid(), ?, ?)"#,
+                )?;
+
+                for event in queue.iter() {
+                    events_st.execute((
+                        event.ts,
+                        event.archived,
+                        &event.event,
+                        &event.source_values,
+                    ))?;
+
+                    if fts {
+                        fts_st.execute((event.ts, &event.source_values))?;
+                    }
+                }
+            }
+            match tx.commit() {
+                Ok(_) => {}
+                Err(err) => {
+                    error!("Commit failed: {:?}", err);
+                }
+            }
+
+            let n = queue.len();
+
+            let elapsed = timer.elapsed();
+            let mut metrics = metrics.lock().unwrap();
+            metrics.update(elapsed, n);
+
+            if elapsed > Duration::from_secs(3) {
+                warn!(
+                    "Commit too longer than 3s: time={:?}, events={} -- {}",
+                    elapsed,
+                    n,
+                    metrics.to_string()
+                );
+            } else {
+                trace!(
+                    "Committed {} events in time={:?} -- {}",
+                    n,
+                    elapsed,
+                    metrics.to_string()
+                );
+            }
+
+            Ok::<usize, anyhow::Error>(n)
+        })
+        .await??;
+        Ok(n)
+    }
+
     pub async fn commit(&mut self) -> anyhow::Result<usize> {
+        if self.use_rusqlite {
+            self.commit_with_rusqlite().await
+        } else {
+            self.commit_with_sqlx().await
+        }
+    }
+
+    async fn commit_with_sqlx(&mut self) -> anyhow::Result<usize> {
         let start = std::time::Instant::now();
         let lock_start = std::time::Instant::now();
         let mut conn = self.conn.lock().await;

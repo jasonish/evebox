@@ -36,6 +36,12 @@ clap = { version = "4.5.4", features = ["env", "derive", "color"] }
 
 sqlx = { version = "0.8.2", default-features = false, features = ["macros", "migrate", "runtime-tokio", "sqlite", "tls-rustls", "json"] }
 
+# While sqlx is nice to use, Rusqlite is fast for bulk operations.
+rusqlite = { version = "0.32.1", features = ["bundled"] }
+
+# Hopefully this makes sure both sqlx and rusqlite are on the same version of libsqlite3-sys.
+libsqlite3-sys = { version = "=0.30.1" }
+
 filetime = "0.2.23"
 glob = "0.3.1"
 humantime = "2.1.0"

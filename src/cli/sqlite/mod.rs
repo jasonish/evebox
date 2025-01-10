@@ -259,7 +259,7 @@ async fn load(args: &LoadArgs) -> Result<()> {
     let mut count = 0;
 
     let conn = Arc::new(tokio::sync::Mutex::new(conn));
-    let mut importer = crate::sqlite::importer::SqliteEventSink::new(conn);
+    let mut importer = crate::sqlite::importer::SqliteEventSink::new(conn, None);
 
     // This could be improved if the importer exposed some more inner
     // details so the caller could control the transaction.
@@ -302,7 +302,7 @@ async fn optimize(args: &OptimizeArgs) -> Result<()> {
         .await?;
     let conn = Arc::new(tokio::sync::Mutex::new(conn));
     let pool = crate::sqlite::connection::open_pool(Some(&args.filename), false).await?;
-    let repo = SqliteEventRepo::new(conn, pool.clone());
+    let repo = SqliteEventRepo::new(conn, pool.clone(), None);
 
     info!("Running inbox style query");
     let gte = datetime::DateTime::now().sub(chrono::Duration::days(1));

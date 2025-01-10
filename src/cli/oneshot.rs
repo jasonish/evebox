@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+
 use crate::config::Config;
 use crate::eve;
 use crate::geoip;
@@ -8,12 +10,7 @@ use crate::server::main::build_axum_service;
 use crate::sqlite;
 use crate::sqlite::configrepo;
 use std::path::PathBuf;
-use std::sync::Arc;
 use tokio::sync;
-use tracing::debug;
-use tracing::error;
-use tracing::info;
-use tracing::warn;
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let config_loader = Config::new(args.clone(), None)?;
@@ -34,10 +31,13 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
     let db = crate::sqlite::connection::open_connection(Some(&db_filename), true).await?;
     let db = Arc::new(tokio::sync::Mutex::new(db));
+    let writer = Some(Arc::new(Mutex::new(
+        db_connection_builder.open_with_rusqlite()?,
+    )));
 
     let import_task = {
         tokio::spawn(async move {
-            if let Err(err) = run_import(db, limit, &input).await {
+            if let Err(err) = run_import(db, writer, limit, &input).await {
                 error!("Import failure: {}", err);
             }
         })
@@ -64,7 +64,8 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 let conn = Arc::new(tokio::sync::Mutex::new(
                     db_connection_builder.open_connection(false).await.unwrap(),
                 ));
-                let sqlite_datastore = sqlite::eventrepo::SqliteEventRepo::new(conn, pool.clone());
+                let sqlite_datastore =
+                    sqlite::eventrepo::SqliteEventRepo::new(conn, pool.clone(), None);
                 let ds = crate::eventrepo::EventRepo::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port,
@@ -150,6 +151,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
 async fn run_import(
     sqlx: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
+    writer: Option<Arc<Mutex<rusqlite::Connection>>>,
     limit: u64,
     input: &str,
 ) -> anyhow::Result<()> {
@@ -157,7 +159,7 @@ async fn run_import(
         Ok(geoipdb) => Some(geoipdb),
         Err(_) => None,
     };
-    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx);
+    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, writer);
     let mut reader = eve::reader::EveReader::new(input.into());
     info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;

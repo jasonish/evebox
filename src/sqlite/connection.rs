@@ -32,6 +32,37 @@ impl ConnectionBuilder {
     pub async fn open_pool(&self, create: bool) -> Result<SqlitePool, sqlx::Error> {
         open_pool(self.filename.clone(), create).await
     }
+
+    pub fn open_with_rusqlite(&self) -> Result<rusqlite::Connection, rusqlite::Error> {
+        let flags = rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE;
+        let conn = if let Some(filename) = &self.filename {
+            rusqlite::Connection::open_with_flags(filename, flags)?
+        } else {
+            //rusqlite::Connection::open("file::memory:?cache=shared")?
+            unreachable!()
+        };
+
+        conn.pragma_query(None, "journal_mode", |row| {
+            let mode: String = row.get(0)?;
+            info!("Rusqlite connection: journal_mode={}", mode);
+            Ok(())
+        })?;
+
+        conn.pragma_update(None, "synchronous", "NORMAL")?;
+        conn.pragma_query(None, "synchronous", |row| {
+            let synchronous: i64 = row.get(0)?;
+            info!("Rusqlite connection: synchronous={}", synchronous);
+            Ok(())
+        })?;
+
+        conn.pragma_query(None, "auto_vacuum", |row| {
+            let mode: i64 = row.get(0)?;
+            info!("Rusqlite connection: auto_vacuum={}", mode);
+            Ok(())
+        })?;
+
+        Ok(conn)
+    }
 }
 
 fn sqlite_options() -> SqliteConnectOptions {
