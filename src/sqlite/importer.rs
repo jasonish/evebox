@@ -8,6 +8,7 @@ use crate::{
     sqlite::has_table,
 };
 use anyhow::Context;
+use rusqlite::TransactionBehavior;
 use sqlx::Connection;
 use std::{
     sync::{Arc, Mutex},
@@ -147,7 +148,7 @@ impl SqliteEventSink {
         let n: usize = tokio::spawn(async move {
             let mut conn = conn.lock().unwrap();
             let timer = std::time::Instant::now();
-            let tx = conn.transaction()?;
+            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
             {
                 let fts = tx
