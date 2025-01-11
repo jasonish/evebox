@@ -74,7 +74,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/find-dns", get(find_dns))
         .route("/api/events/count", get(count::count))
         .route("/api/events/earliest-timestamp", get(earliest_timestamp))
-        .route("/sse/agg", get(agg::agg_sse))
+        .route("/api/sse/agg", get(agg::agg_sse))
         .nest("/api/1/stats", stats::router())
 }
 

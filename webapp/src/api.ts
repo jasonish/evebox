@@ -406,7 +406,7 @@ export namespace API {
     return new Promise((resolve, _reject) => {
       const currentVersion = version();
       let urlSearchParams = new URLSearchParams(Object.entries(params));
-      let url = `/sse/agg?${urlSearchParams.toString()}`;
+      let url = `api/sse/agg?${urlSearchParams.toString()}`;
       const es = new EventSource(url);
       ES_TRACKER.push(es);
       es.onmessage = (e) => {
