@@ -27,7 +27,7 @@ export function Settings() {
   });
 
   const query_timeout_tooltip =
-    "<b>Experimental:</b> Timeout queries after a number of seconds. 0 to disable timeout. If set, recommended to be at least 3 seconds. Not applied to all queries yet. <br/>Default: 0 (disabled)";
+    "<b>Experimental:</b> Timeout queries after a number of seconds. 0 to disable timeout. If set, recommended to be at least 3 seconds. Not applied to all queries yet. <br/>Default: 5 (disabled)";
 
   return (
     <>

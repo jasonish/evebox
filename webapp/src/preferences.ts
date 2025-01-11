@@ -15,6 +15,7 @@ export interface ClientPreferences {
 export function createDefaultClientPreferences(): ClientPreferences {
   return {
     timestamp_format: "local",
+    query_timeout: 5,
   };
 }
 
