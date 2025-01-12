@@ -14,7 +14,7 @@ use tracing::{error, info, warn};
 use crate::server::main::SessionExtractor;
 use crate::server::session::Session;
 use crate::server::ServerContext;
-use crate::sqlite::configrepo::ConfigRepoError;
+use crate::sqlite::configdb::ConfigDbError;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct LoginForm {
@@ -55,15 +55,15 @@ pub(crate) async fn post(
         };
 
         let user = match context
-            .config_repo
+            .configdb
             .get_user_by_username_password(&username, &password)
             .await
         {
             Ok(user) => user,
             Err(err) => match err {
-                ConfigRepoError::UsernameNotFound(_)
-                | ConfigRepoError::BadPassword(_)
-                | ConfigRepoError::NoUser(_) => {
+                ConfigDbError::UsernameNotFound(_)
+                | ConfigDbError::BadPassword(_)
+                | ConfigDbError::NoUser(_) => {
                     warn!("Login failure for username={}, error={:?}", &username, err);
                     return (StatusCode::UNAUTHORIZED, "").into_response();
                 }
@@ -83,7 +83,7 @@ pub(crate) async fn post(
         // Create expiry data one week in the future.
         let expiry = chrono::Utc::now() + chrono::Duration::weeks(1);
         if let Err(err) = context
-            .config_repo
+            .configdb
             .save_session(
                 session.session_id.as_ref().unwrap(),
                 &user.uuid,
@@ -124,7 +124,7 @@ pub(crate) async fn logout(
         } else {
             info!("User logged out: {:?}", session.username);
         }
-        let _ = context.config_repo.delete_session(session_id).await;
+        let _ = context.configdb.delete_session(session_id).await;
     }
     StatusCode::OK
 }

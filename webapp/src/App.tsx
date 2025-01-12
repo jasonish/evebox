@@ -30,6 +30,7 @@ import { DhcpReport } from "./reports/DhcpReport";
 import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 import { Ja4Report } from "./pages/ja4";
 import { Admin } from "./pages/admin/Admin";
+import { AdminFilters } from "./pages/admin/AdminFilters";
 
 export function AppRouter() {
   return (
@@ -63,6 +64,7 @@ export function AppRouter() {
         <Route path={"stats"} component={Stats} />
 
         <Route path="admin" component={Admin} />
+        <Route path="admin/filters" component={AdminFilters} />
 
         <Route path="*" component={RedirectToIndex} />
       </Route>

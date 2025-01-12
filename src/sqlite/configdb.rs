@@ -1,21 +1,16 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use std::path::Path;
+use crate::prelude::*;
+use crate::sqlite::prelude::*;
 
-use serde::Serialize;
-use sqlx::Row;
-use sqlx::SqlitePool;
-use sqlx::{Connection, SqliteConnection};
-use tracing::debug;
-use tracing::error;
-use tracing::info;
+use std::path::Path;
 
 use crate::datetime::DateTime;
 use crate::sqlite::has_table;
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum ConfigRepoError {
+pub(crate) enum ConfigDbError {
     #[error("username not found: {0}")]
     UsernameNotFound(String),
     #[error("bad password for user: {0}")]
@@ -30,6 +25,33 @@ pub(crate) enum ConfigRepoError {
     SqlxError(#[from] sqlx::Error),
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, FromRow)]
+pub(crate) struct FilterRow {
+    pub id: i64,
+    pub filter: sqlx::types::Json<FilterEntry>,
+    pub user_id: i64,
+    pub enabled: bool,
+    pub created_at: crate::datetime::ChronoDateTime,
+    pub updated_at: crate::datetime::ChronoDateTime,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+pub(crate) struct FilterEntry {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub src_ip: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dest_ip: Option<String>,
+    pub signature_id: i64,
+
+    // Only here for ease of the API, should be removed as it has its
+    // own field in the database.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct User {
     pub uuid: String,
@@ -37,11 +59,11 @@ pub(crate) struct User {
 }
 
 #[derive(Clone)]
-pub(crate) struct ConfigRepo {
+pub(crate) struct ConfigDb {
     pub(crate) pool: SqlitePool,
 }
 
-impl ConfigRepo {
+impl ConfigDb {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
@@ -50,7 +72,7 @@ impl ConfigRepo {
         &self,
         username: &str,
         password_in: &str,
-    ) -> Result<User, ConfigRepoError> {
+    ) -> Result<User, ConfigDbError> {
         let query = sqlx::query::<sqlx::Sqlite>(
             "SELECT uuid, username, password FROM users WHERE username = ?",
         )
@@ -62,14 +84,14 @@ impl ConfigRepo {
             if bcrypt::verify(password_in, &password_hash)? {
                 return Ok(User { uuid, username });
             } else {
-                return Err(ConfigRepoError::BadPassword(username));
+                return Err(ConfigDbError::BadPassword(username));
             }
         }
 
-        Err(ConfigRepoError::UsernameNotFound(username.to_string()))
+        Err(ConfigDbError::UsernameNotFound(username.to_string()))
     }
 
-    pub async fn get_user_by_name(&self, username: &str) -> Result<User, ConfigRepoError> {
+    pub async fn get_user_by_name(&self, username: &str) -> Result<User, ConfigDbError> {
         let row = sqlx::query("SELECT uuid, username FROM users WHERE username = ?")
             .bind(username)
             .fetch_optional(&self.pool)
@@ -80,18 +102,18 @@ impl ConfigRepo {
                 username: row.try_get("username")?,
             })
         } else {
-            Err(ConfigRepoError::NoUser(username.to_string()))
+            Err(ConfigDbError::NoUser(username.to_string()))
         }
     }
 
-    pub async fn has_users(&self) -> Result<bool, ConfigRepoError> {
+    pub async fn has_users(&self) -> Result<bool, ConfigDbError> {
         let (count,): (u64,) = sqlx::query_as("SELECT count(*) FROM users")
             .fetch_one(&self.pool)
             .await?;
         Ok(count > 0)
     }
 
-    pub async fn get_users(&self) -> Result<Vec<User>, ConfigRepoError> {
+    pub async fn get_users(&self) -> Result<Vec<User>, ConfigDbError> {
         let rows: Vec<(String, String)> = sqlx::query_as("SELECT uuid, username FROM users")
             .fetch_all(&self.pool)
             .await?;
@@ -104,11 +126,7 @@ impl ConfigRepo {
             .collect())
     }
 
-    pub async fn add_user(
-        &self,
-        username: &str,
-        password: &str,
-    ) -> Result<String, ConfigRepoError> {
+    pub async fn add_user(&self, username: &str, password: &str) -> Result<String, ConfigDbError> {
         let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)?;
         let user_id = uuid::Uuid::new_v4().to_string();
         sqlx::query("INSERT INTO users (uuid, username, password) VALUES (?, ?, ?)")
@@ -120,7 +138,7 @@ impl ConfigRepo {
         Ok(user_id)
     }
 
-    pub async fn remove_user(&self, username: &str) -> Result<u64, ConfigRepoError> {
+    pub async fn remove_user(&self, username: &str) -> Result<u64, ConfigDbError> {
         Ok(sqlx::query("DELETE FROM users WHERE username = ?")
             .bind(username)
             .execute(&self.pool)
@@ -132,7 +150,7 @@ impl ConfigRepo {
         &self,
         id: &str,
         password: &str,
-    ) -> Result<bool, ConfigRepoError> {
+    ) -> Result<bool, ConfigDbError> {
         let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)?;
         let result = sqlx::query("UPDATE users SET password = ? WHERE uuid = ?")
             .bind(&password_hash)
@@ -147,7 +165,7 @@ impl ConfigRepo {
         token: &str,
         uuid: &str,
         expires: i64,
-    ) -> Result<(), ConfigRepoError> {
+    ) -> Result<(), ConfigDbError> {
         let sql = "INSERT INTO sessions (token, uuid, expires_at) VALUES (?, ?, ?)";
         sqlx::query(sql)
             .bind(token)
@@ -158,13 +176,13 @@ impl ConfigRepo {
         Ok(())
     }
 
-    pub async fn delete_session(&self, token: &str) -> Result<(), ConfigRepoError> {
+    pub async fn delete_session(&self, token: &str) -> Result<(), ConfigDbError> {
         let sql = "DELETE FROM sessions WHERE token = ?";
         sqlx::query(sql).bind(token).execute(&self.pool).await?;
         Ok(())
     }
 
-    async fn expire_sessions(&self) -> Result<u64, ConfigRepoError> {
+    async fn expire_sessions(&self) -> Result<u64, ConfigDbError> {
         let now = DateTime::now().to_seconds();
         let result = sqlx::query("DELETE FROM sessions WHERE expires_at < ?")
             .bind(now)
@@ -173,7 +191,7 @@ impl ConfigRepo {
         Ok(result.rows_affected())
     }
 
-    pub async fn get_user_by_session(&self, token: &str) -> Result<Option<User>, ConfigRepoError> {
+    pub async fn get_user_by_session(&self, token: &str) -> Result<Option<User>, ConfigDbError> {
         let sql = r#"
             SELECT users.uuid, users.username, sessions.expires_at
             FROM users 
@@ -210,6 +228,12 @@ impl ConfigRepo {
             return Ok(Some(User { uuid, username }));
         }
         Ok(None)
+    }
+
+    pub(crate) async fn get_filters(&self) -> Result<Vec<FilterRow>> {
+        let sql = "SELECT * FROM filters";
+        let rows: Vec<FilterRow> = sqlx::query_as(sql).fetch_all(&self.pool).await?;
+        Ok(rows)
     }
 }
 
@@ -276,7 +300,7 @@ async fn init_db(db: &mut SqliteConnection) -> Result<(), sqlx::Error> {
 
 /// Open and initialize the configuration database, returning a
 /// ConfigRepo.
-pub(crate) async fn open(filename: Option<&Path>) -> Result<ConfigRepo, sqlx::Error> {
+pub(crate) async fn open(filename: Option<&Path>) -> Result<ConfigDb, sqlx::Error> {
     info!(
         "Opening configuration database {}",
         filename
@@ -286,7 +310,7 @@ pub(crate) async fn open(filename: Option<&Path>) -> Result<ConfigRepo, sqlx::Er
     let pool = crate::sqlite::connection::open_pool(filename, true).await?;
     let mut conn = pool.acquire().await?;
     init_db(&mut conn).await?;
-    Ok(ConfigRepo::new(pool))
+    Ok(ConfigDb::new(pool))
 }
 
 pub(crate) async fn open_connection_in_directory(

@@ -5,6 +5,7 @@ import { A, useLocation, useNavigate, useParams } from "@solidjs/router";
 import { Top } from "./Top";
 import {
   createEffect,
+  createMemo,
   createSignal,
   createUniqueId,
   For,
@@ -39,10 +40,10 @@ import { addNotification } from "./Notifications";
 import { eventNameFromType } from "./Events";
 import { EventServiceConfig, serverConfig } from "./config";
 import { createStore } from "solid-js/store";
-import { BiInfoCircle } from "./icons";
+import { BiGear, BiInfoCircle } from "./icons";
 import { SearchLink } from "./common/SearchLink";
 import * as api from "./api";
-import { FormattedTimestamp } from "./components";
+import { FormattedTimestamp, AutoArchiveMenuElements } from "./components";
 
 const PCAP_BUTTON_STYLE =
   "--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .7rem;";
@@ -94,6 +95,14 @@ export function EventView() {
       },
       f8: () => {
         archiveAlert();
+      },
+      ".": () => {
+        console.log("asdf");
+        let element = document.getElementById("tool-menu");
+        if (element) {
+          element.click();
+          element.focus();
+        }
       },
     });
 
@@ -609,6 +618,20 @@ export function EventView() {
     }
   }
 
+  const showToolMenu = createMemo(() => {
+    console.log(event()?._source?.tags);
+    const tags = event()?._source?.tags || [];
+    const autoArchived =
+      tags.indexOf("evebox.auto-archived") > -1 ||
+      tags.indexOf("evebox.auto_archived") > -1;
+    return event()?._source?.event_type == "alert" && !autoArchived;
+  });
+
+  const autoArchiveWithParams = (params: API.AddAutoArchiveRequest) => {
+    API.addAutoArchive(params);
+    archiveAlert();
+  };
+
   return (
     <>
       <Top />
@@ -652,6 +675,27 @@ export function EventView() {
               </Show>
             </Show>
           </Col>
+          <div class="col mt-2">
+            <Show when={showToolMenu()}>
+              <span class="dropdown float-end">
+                <button
+                  id="tool-menu"
+                  class="btn btn-secondary dropdown-toggle pt-1 pb-2"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <BiGear />
+                </button>
+                <ul class="dropdown-menu">
+                  <AutoArchiveMenuElements
+                    event={event()}
+                    callback={autoArchiveWithParams}
+                  />
+                </ul>
+              </span>
+            </Show>
+          </div>
         </Row>
 
         <Show when={event()}>

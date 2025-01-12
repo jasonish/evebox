@@ -13,7 +13,7 @@ pub(super) struct Args {
 
 pub(super) async fn main(args: Args) -> Result<()> {
     let dd = crate::config::get_data_directory(args.data_directory.as_deref());
-    let mut configdb = crate::sqlite::configrepo::open_connection_in_directory(&dd).await?;
+    let mut configdb = crate::sqlite::configdb::open_connection_in_directory(&dd).await?;
     let n = crate::commands::ja4db::updatedb(&mut configdb).await?;
     info!("Updated {n} JA4 entries");
     Ok(())

@@ -1,0 +1,8 @@
+CREATE TABLE filters (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       filter JSON NOT NULL,
+       user_id INTEGER NOT NULL,
+       enabled BOOLEAN DEFAULT TRUE,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       comment STRING);

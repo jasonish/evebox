@@ -28,8 +28,10 @@ pub(crate) fn add_evebox_metadata(event: &mut serde_json::Value, filename: Optio
         }
     }
 
-    // Add a tags object.
-    event["tags"] = serde_json::json!([]);
+    // Make sure a tags object exists as an array.
+    if event["tags"].as_array().is_none() {
+        event["tags"] = serde_json::json!([]);
+    }
 }
 
 pub(crate) fn ensure_has_history(event: &mut serde_json::Value) {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Setter } from "solid-js";
+import { API } from "./api";
 
 export class Logger {
   constructor(private prefix: string, announce: boolean = false) {

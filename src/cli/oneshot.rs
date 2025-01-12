@@ -8,7 +8,7 @@ use crate::eve;
 use crate::geoip;
 use crate::server::main::build_axum_service;
 use crate::sqlite;
-use crate::sqlite::configrepo;
+use crate::sqlite::configdb;
 use std::path::PathBuf;
 use tokio::sync;
 
@@ -54,7 +54,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let (port_tx, mut port_rx) = sync::mpsc::unbounded_channel::<u16>();
 
     // Initialize config repo.
-    let config_repo = configrepo::open(None).await?;
+    let config_repo = configdb::open(None).await?;
 
     let server = {
         let host = host.clone();

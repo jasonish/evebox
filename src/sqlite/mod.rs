@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 pub mod builder;
-pub mod configrepo;
+pub mod configdb;
 pub mod connection;
 pub mod eventrepo;
 pub mod importer;
@@ -85,8 +85,11 @@ pub(crate) mod prelude {
     pub use sqlx::sqlite::SqliteArguments;
     pub use sqlx::sqlite::SqliteRow;
     pub use sqlx::Arguments;
+    pub use sqlx::Connection;
+    pub use sqlx::FromRow;
     pub use sqlx::Row;
     pub use sqlx::SqliteConnection;
+    pub use sqlx::SqlitePool;
 
     pub use futures::TryStreamExt;
 

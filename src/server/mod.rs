@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 use crate::eventrepo::EventRepo;
-use crate::sqlite::configrepo::ConfigRepo;
+use crate::sqlite::configdb::ConfigDb;
 pub(crate) use main::build_context;
 pub use main::main;
 use serde::Serialize;
 use session::SessionStore;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
-pub mod api;
+pub(crate) mod api;
 pub(crate) mod main;
-pub mod session;
+pub(crate) mod session;
 
 #[derive(Serialize, Default, Debug)]
 pub(crate) struct Defaults {
@@ -23,24 +23,29 @@ pub(crate) struct ServerContext {
     pub config: ServerConfig,
     pub datastore: EventRepo,
     pub session_store: session::SessionStore,
-    pub config_repo: Arc<ConfigRepo>,
+    pub configdb: Arc<ConfigDb>,
     pub event_services: Option<serde_json::Value>,
     pub defaults: Defaults,
+    pub ingest: crate::ingest::IngestPipeline,
+    pub auto_archive: Arc<RwLock<crate::ingest::AutoArchive>>,
 }
 
 impl ServerContext {
     pub(crate) fn new(
         config: ServerConfig,
-        config_repo: Arc<ConfigRepo>,
+        config_repo: Arc<ConfigDb>,
         datastore: EventRepo,
     ) -> Self {
+        let auto_archive: Arc<RwLock<crate::ingest::AutoArchive>> = Default::default();
         Self {
             config,
             datastore,
             session_store: SessionStore::new(),
-            config_repo,
+            configdb: config_repo,
             event_services: None,
             defaults: Defaults::default(),
+            ingest: crate::ingest::IngestPipeline::new(auto_archive.clone()),
+            auto_archive,
         }
     }
 }

@@ -19,6 +19,7 @@ mod eventrepo;
 mod file;
 mod geoip;
 mod importer;
+mod ingest;
 mod packet;
 mod path;
 mod pcap;

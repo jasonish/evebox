@@ -6,7 +6,7 @@ use std::time::SystemTime;
 use chrono::SecondsFormat;
 use serde::{Serialize, Serializer};
 
-type ChronoDateTime = chrono::DateTime<chrono::FixedOffset>;
+pub(crate) type ChronoDateTime = chrono::DateTime<chrono::FixedOffset>;
 
 #[derive(Debug)]
 pub(crate) struct ParseError(String);

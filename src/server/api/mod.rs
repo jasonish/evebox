@@ -15,6 +15,7 @@ use axum::extract::{Extension, Form, Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Response;
+use axum::routing::delete;
 use axum::routing::{get, post};
 use axum::Json;
 use serde::Deserialize;
@@ -70,11 +71,14 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/1/sqlite/fts/enable", post(sqlite::fts_enable))
         .route("/api/1/sqlite/fts/disable", post(sqlite::fts_disable))
         .route("/api/ja4db/:fingerprint", get(ja4db))
-        .route("/api/admin/update/ja4db", post(admin::update_ja4db))
         .route("/api/find-dns", get(find_dns))
         .route("/api/events/count", get(count::count))
         .route("/api/events/earliest-timestamp", get(earliest_timestamp))
         .route("/api/sse/agg", get(agg::agg_sse))
+        .route("/api/admin/filters", get(admin::get_filters))
+        .route("/api/admin/filter/add", post(admin::add_filter))
+        .route("/api/admin/filter/:id", delete(admin::delete_filter))
+        .route("/api/admin/update/ja4db", post(admin::update_ja4db))
         .nest("/api/1/stats", stats::router())
 }
 
@@ -83,6 +87,7 @@ pub(crate) struct AlertGroupSpec {
     pub signature_id: u64,
     pub src_ip: Option<String>,
     pub dest_ip: Option<String>,
+    pub sensor: Option<String>,
     pub min_timestamp: String,
     pub max_timestamp: String,
 }
@@ -438,7 +443,7 @@ async fn ja4db(
     let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
     let entry: Option<serde_json::Value> = sqlx::query_scalar(sql)
         .bind(fingerprint)
-        .fetch_optional(&context.config_repo.pool)
+        .fetch_optional(&context.configdb.pool)
         .await?;
     if let Some(entry) = entry {
         Ok(Json(entry).into_response())

@@ -3,6 +3,7 @@
 
 use crate::prelude::*;
 
+use crate::server::api::AlertGroupSpec;
 use crate::{
     elastic::{AlertQueryOptions, ElasticResponse},
     eventrepo::{AggAlert, AggAlertMetadata, AlertsResult},
@@ -166,7 +167,11 @@ impl ElasticEventRepo {
         query
     }
 
-    pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
+    pub async fn alerts(
+        &self,
+        options: AlertQueryOptions,
+        auto_archive: Arc<RwLock<crate::ingest::AutoArchive>>,
+    ) -> Result<AlertsResult> {
         let mut query = self.build_inbox_query(options);
         query["timeout"] = "3s".into();
         let start = std::time::Instant::now();
@@ -270,6 +275,50 @@ impl ElasticEventRepo {
                                         }
                                     } else {
                                         to = Some(max_timestamp.clone());
+                                    }
+
+                                    let is_archived = source["tags"]
+                                        .as_array()
+                                        .map(|a| a.iter().any(|t| t == "evebox.archived"))
+                                        .unwrap_or(false);
+
+                                    if !is_archived {
+                                        let auto_archive = auto_archive.read().unwrap();
+
+                                        if auto_archive.is_match(&source) {
+                                            let sensor =
+                                                &source["host"].as_str().map(|s| s.to_string());
+
+                                            // Chrono to get unix epoch.
+                                            let min =
+                                                chrono::DateTime::<chrono::Utc>::from_timestamp(
+                                                    0, 0,
+                                                )
+                                                .map(crate::datetime::DateTime::from)
+                                                .unwrap()
+                                                .to_elastic();
+                                            let max = crate::datetime::DateTime::now().to_elastic();
+
+                                            let spec = AlertGroupSpec {
+                                                signature_id: source["alert"]["signature_id"]
+                                                    .as_u64()
+                                                    .unwrap_or(0),
+                                                src_ip: source["src_ip"]
+                                                    .as_str()
+                                                    .map(|s| s.to_string()),
+                                                dest_ip: source["dest_ip"]
+                                                    .as_str()
+                                                    .map(|s| s.to_string()),
+                                                sensor: sensor.clone(),
+                                                min_timestamp: min,
+                                                max_timestamp: max,
+                                            };
+
+                                            if let Some(tx) = &self.auto_archive_tx {
+                                                let _ = tx.send(spec);
+                                            }
+                                            continue;
+                                        }
                                     }
 
                                     let alert = AggAlert {

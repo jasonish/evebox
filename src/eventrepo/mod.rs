@@ -102,9 +102,13 @@ impl EventRepo {
         }
     }
 
-    pub async fn alerts(&self, options: elastic::AlertQueryOptions) -> Result<AlertsResult> {
+    pub async fn alerts(
+        &self,
+        options: elastic::AlertQueryOptions,
+        auto_archive: Arc<RwLock<crate::ingest::AutoArchive>>,
+    ) -> Result<AlertsResult> {
         match self {
-            EventRepo::Elastic(ds) => ds.alerts(options).await,
+            EventRepo::Elastic(ds) => ds.alerts(options, auto_archive).await,
             EventRepo::SQLite(ds) => ds.alerts(options).await,
         }
     }

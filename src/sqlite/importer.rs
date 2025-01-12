@@ -122,6 +122,21 @@ impl SqliteEventSink {
             }
         }
 
+        if archived == 0 {
+            archived = event["tags"]
+                .as_array()
+                .map(|tags| {
+                    let i =
+                        tags.contains(&serde_json::Value::String("evebox.archived".to_string()));
+                    if i {
+                        1
+                    } else {
+                        0
+                    }
+                })
+                .unwrap_or(0);
+        }
+
         eve::eve::add_evebox_metadata(&mut event, None);
         AutoArchiveFilter::new().run(&mut event);
 

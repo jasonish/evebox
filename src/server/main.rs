@@ -11,7 +11,7 @@ use crate::eve::watcher::EvePatternWatcher;
 use crate::eventrepo::EventRepo;
 use crate::server::api;
 use crate::server::session::Session;
-use crate::sqlite::configrepo::{self, ConfigRepo};
+use crate::sqlite::configdb::{self, ConfigDb};
 use crate::sqlite::connection::init_event_db;
 use crate::sqlite::{self};
 use anyhow::Result;
@@ -125,15 +125,15 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     let config_repo = if let Some(directory) = &server_config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
         info!("Configuration database filename: {:?}", filename);
-        configrepo::open(Some(&filename)).await?
+        configdb::open(Some(&filename)).await?
     } else {
         info!("Using temporary in-memory configuration database");
-        configrepo::open(None).await?
+        configdb::open(None).await?
     };
 
     let mut context = build_context(server_config.clone(), datastore, config_repo).await?;
 
-    if server_config.authentication_required && !context.config_repo.has_users().await? {
+    if server_config.authentication_required && !context.configdb.has_users().await? {
         warn!("Username/password authentication is required, but no users exist, creating a user");
         let (username, password) = create_admin_user(&context).await?;
         warn!(
@@ -289,7 +289,7 @@ async fn create_admin_user(context: &ServerContext) -> Result<(String, String)> 
         .take(12)
         .map(char::from)
         .collect();
-    context.config_repo.add_user(username, &password).await?;
+    context.configdb.add_user(username, &password).await?;
     Ok((username.to_string(), password))
 }
 
@@ -428,9 +428,27 @@ async fn fallback_handler(uri: Uri) -> impl IntoResponse {
 pub(crate) async fn build_context(
     config: ServerConfig,
     datastore: EventRepo,
-    config_repo: ConfigRepo,
+    configdb: ConfigDb,
 ) -> Result<ServerContext> {
-    let context = ServerContext::new(config, Arc::new(config_repo), datastore);
+    let configdb = Arc::new(configdb);
+    let context = ServerContext::new(config, configdb.clone(), datastore);
+
+    // Will probably need a refactor at some point.
+    match configdb.get_filters().await {
+        Ok(filters) => {
+            let mut archive_filters = context.auto_archive.write().unwrap();
+            for filter in &filters {
+                archive_filters.add(&filter.filter.0);
+            }
+        }
+        Err(err) => {
+            warn!(
+                "Failed to load initial archive filters from database: {:?}",
+                err
+            );
+        }
+    }
+
     Ok(context)
 }
 
@@ -486,12 +504,14 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
                 format!("{}-*", server_config.elastic_index)
             };
 
-            let eventstore = elastic::ElasticEventRepo {
+            let mut eventstore = elastic::ElasticEventRepo {
                 base_index: server_config.elastic_index.clone(),
                 index_pattern,
                 client: client.clone(),
                 ecs: server_config.elastic_ecs,
+                auto_archive_tx: None,
             };
+            eventstore.start_archive_processor();
             debug!("Elasticsearch base index: {}", &eventstore.base_index);
             debug!(
                 "Elasticsearch search index pattern: {}",
@@ -589,7 +609,7 @@ where
 
             debug!("Session not found in cache, checking database");
 
-            match context.config_repo.get_user_by_session(&session_id).await {
+            match context.configdb.get_user_by_session(&session_id).await {
                 Ok(Some(user)) => {
                     info!("Found session for user {}", &user.username);
                     let session = Session {
@@ -626,7 +646,7 @@ where
         if context.config.authentication_required {
             if let Some(basic) = authorization {
                 match context
-                    .config_repo
+                    .configdb
                     .get_user_by_username_password(basic.username(), basic.password())
                     .await
                 {

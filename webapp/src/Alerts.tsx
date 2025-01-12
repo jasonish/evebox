@@ -47,8 +47,14 @@ import { eventStore } from "./eventstore";
 import { Logger } from "./util";
 import { SensorSelect } from "./common/SensorSelect";
 import * as bootstrap from "bootstrap";
-import { AddressCell, FilterStrip, TimestampCell } from "./components";
+import {
+  AddressCell,
+  FilterStrip,
+  AutoArchiveMenuElements,
+  TimestampCell,
+} from "./components";
 import { PREFS } from "./preferences";
+import { addNotification } from "./Notifications";
 
 const DEFAULT_SORTBY = "timestamp";
 const DEFAULT_SORTORDER = "desc";
@@ -177,7 +183,7 @@ export function Alerts() {
         if (visibleEvents().length > 0) {
           if (!archiveSelected()) {
             console.log("No selected rows to archive, will archive at cursor.");
-            archive(cursor());
+            archiveByRelIndex(cursor());
           }
         }
       },
@@ -198,7 +204,7 @@ export function Alerts() {
         refresh();
       },
       f8: () => {
-        archive(cursor());
+        archiveByRelIndex(cursor());
       },
       f9: () => {
         escalateArchive(cursor());
@@ -514,29 +520,33 @@ export function Alerts() {
       return false;
     }
     for (const i of selected) {
-      archive(i);
+      archiveByRelIndex(i);
     }
     return true;
   }
 
-  function archive(i: number) {
+  // Archive an event by its relative index (visible index).
+  function archiveByRelIndex(i: number) {
     const event = visibleEvents()[i];
     if (!event) {
       return;
     }
+    return archiveByEvent(event);
+  }
 
-    const allEventsIndex = eventStore.events.indexOf(event);
-    console.log(
-      `Archiving visible event ${i}, index in all events = ${allEventsIndex}`
-    );
+  function archiveByEvent(event: EventWrapper) {
+    const relIndex = visibleEvents().indexOf(event);
+    const absIndex = eventStore.events.indexOf(event);
     let ignore = API.archiveAggregateAlert(event);
     if (view === View.Inbox) {
-      eventStore.events.splice(allEventsIndex, 1);
-      if (cursor() > 0 && cursor() > i) {
-        setCursor(cursor() - 1);
-      }
-      if (cursor() > visibleEvents().length - 1) {
-        setCursor(Math.max(0, cursor() - 1));
+      eventStore.events.splice(absIndex, 1);
+      if (relIndex > -1) {
+        if (cursor() > 0 && cursor() > relIndex) {
+          setCursor(cursor() - 1);
+        }
+        if (cursor() > visibleEvents().length - 1) {
+          setCursor(Math.max(0, cursor() - 1));
+        }
       }
     } else {
       eventSetArchived(event);
@@ -714,8 +724,29 @@ export function Alerts() {
   }
 
   function escalateArchive(index: number) {
-    escalate(index).then(() => archive(index));
+    escalate(index).then(() => archiveByRelIndex(index));
   }
+
+  const autoArchiveWithParams = (params: API.API.AddAutoArchiveRequest) => {
+    API.API.addAutoArchive(params);
+    const matchingEvents = eventStore.events.filter((e: EventWrapper) => {
+      if (params.sensor && e._source?.host !== params.sensor) {
+        return false;
+      }
+      if (params.src_ip && params.dest_ip) {
+        if (!(e._source?.src_ip == params.src_ip && e._source?.dest_ip)) {
+          return false;
+        }
+      }
+      return params.signature_id == e._source?.alert?.signature_id;
+    });
+    for (let event of matchingEvents) {
+      archiveByEvent(event);
+    }
+    addNotification(
+      `Auto-archive filter successfully added and ${matchingEvents.length} events archived.`
+    );
+  };
 
   return (
     <>
@@ -1049,7 +1080,7 @@ export function Alerts() {
                                   <button
                                     class="btn btn-secondary"
                                     onclick={() => {
-                                      archive(i());
+                                      archiveByRelIndex(i());
                                     }}
                                   >
                                     Archive
@@ -1206,6 +1237,11 @@ export function Alerts() {
                                         Filter out host {event._source.host}
                                       </a>
                                     </li>
+
+                                    <AutoArchiveMenuElements
+                                      event={event}
+                                      callback={autoArchiveWithParams}
+                                    />
                                   </Show>
                                 </ul>
                               </div>

@@ -149,10 +149,10 @@ impl SqliteEventRepo {
             }
 
             if let serde_json::Value::Array(ref mut tags) = &mut parsed["tags"] {
-                if archived > 0 {
+                if archived > 0 && !tags.contains(&"evebox.archived".into()) {
                     tags.push("evebox.archived".into());
                 }
-                if escalated > 0 {
+                if escalated > 0 && !tags.contains(&"evebox.escalated".into()) {
                     tags.push("evebox.escalated".into());
                 }
             }

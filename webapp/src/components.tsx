@@ -8,7 +8,7 @@ import { EventSource } from "./types";
 import { formatAddress } from "./formatters";
 import { BiDashCircle, BiFilter, BiPlusCircle } from "./icons";
 import { PREFS } from "./preferences";
-import dayjs from "dayjs";
+import { API } from "./api";
 
 // Creates a table where the first column is a count, and the second
 // column is value.
@@ -374,7 +374,89 @@ export function AddressCell(props: {
       </>
     );
   } catch (e) {
-    console.log(e);
     return <>`Failed to format address: ${e}`</>;
   }
+}
+
+export function AutoArchiveMenuElements(props: {
+  event: any;
+  callback: (params: API.AddAutoArchiveRequest) => void;
+}) {
+  const event = props.event;
+  const signature_id = event?._source?.alert?.signature_id!;
+  const src_ip = event?._source?.src_ip!;
+  const dest_ip = event?._source?.dest_ip!;
+  const sensor = event?._source.host!;
+  const comment = `msg: ${event?._source?.alert?.signature}`;
+
+  const autoArchive = (e: any, params: API.AddAutoArchiveRequest) => {
+    e.preventDefault();
+    params.comment = comment;
+    props.callback(params);
+  };
+
+  let entries = [];
+
+  entries.push(
+    <>
+      <li>
+        <a
+          class="dropdown-item"
+          href=""
+          onclick={(e) => autoArchive(e, { signature_id })}
+        >
+          Auto-archive SID {signature_id}
+        </a>
+      </li>
+    </>
+  );
+
+  entries.push(
+    <>
+      <li>
+        <a
+          class="dropdown-item"
+          href=""
+          onclick={(e) => autoArchive(e, { signature_id, src_ip, dest_ip })}
+        >
+          Auto-archive SID {signature_id} when from {src_ip} to {dest_ip}
+        </a>
+      </li>
+    </>
+  );
+
+  if (sensor && sensor.length > 0) {
+    entries.push(
+      <>
+        <li>
+          <a
+            class="dropdown-item"
+            href=""
+            onclick={(e) =>
+              autoArchive(e, { signature_id, src_ip, dest_ip, sensor })
+            }
+          >
+            Auto-archive SID {signature_id} when from {src_ip} to {dest_ip} and
+            from sensor {sensor}
+          </a>
+        </li>
+      </>
+    );
+
+    entries.push(
+      <>
+        <li>
+          <a
+            class="dropdown-item"
+            href=""
+            onclick={(e) => autoArchive(e, { signature_id, sensor })}
+          >
+            Auto-archive SID {signature_id} from sensor {sensor}
+          </a>
+        </li>
+      </>
+    );
+  }
+
+  return entries;
 }

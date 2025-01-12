@@ -51,5 +51,11 @@ pub(crate) async fn alerts(
         error!("alert_query: max_timeestamp query argument not implemented");
     }
 
-    Ok(Json(context.datastore.alerts(options).await?).into_response())
+    Ok(Json(
+        context
+            .datastore
+            .alerts(options, context.auto_archive.clone())
+            .await?,
+    )
+    .into_response())
 }

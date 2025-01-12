@@ -11,6 +11,7 @@ pub(crate) use client::{Client, ClientBuilder};
 pub(crate) use eventrepo::ElasticEventRepo;
 pub(crate) use importer::ElasticEventSink;
 
+pub(crate) mod autoarchive;
 pub(crate) mod client;
 pub(crate) mod eventrepo;
 pub(crate) mod importer;
@@ -18,9 +19,12 @@ pub(crate) mod request;
 pub(crate) mod util;
 
 pub(crate) const TAG_ESCALATED: &str = "evebox.escalated";
-pub(crate) const TAGS_ESCALATED: [&str; 1] = [TAG_ESCALATED];
 pub(crate) const TAG_ARCHIVED: &str = "evebox.archived";
+pub(crate) const TAG_AUTO_ARCHIVED: &str = "evebox.auto-archived";
+
+pub(crate) const TAGS_ESCALATED: [&str; 1] = [TAG_ESCALATED];
 pub(crate) const TAGS_ARCHIVED: [&str; 1] = [TAG_ARCHIVED];
+pub(crate) const TAGS_AUTO_ARCHIVED: [&str; 2] = [TAG_ARCHIVED, TAG_AUTO_ARCHIVED];
 
 pub(crate) enum HistoryType {
     Archived,

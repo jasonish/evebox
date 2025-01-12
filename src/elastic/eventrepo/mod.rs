@@ -1,10 +1,13 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use self::api::AlertGroupSpec;
+
 use super::query_string_query;
 use super::Client;
 use super::HistoryEntry;
 use super::HistoryEntryBuilder;
+use super::TAGS_AUTO_ARCHIVED;
 use super::TAG_ESCALATED;
 use crate::datetime;
 use crate::elastic::importer::ElasticEventSink;
@@ -20,6 +23,7 @@ use crate::util;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 
 mod alerts;
 mod dhcp;
@@ -36,9 +40,15 @@ pub(crate) struct ElasticEventRepo {
     pub index_pattern: String,
     pub client: Client,
     pub ecs: bool,
+    pub auto_archive_tx: Option<UnboundedSender<AlertGroupSpec>>,
 }
 
 impl ElasticEventRepo {
+    pub fn start_archive_processor(&mut self) {
+        let tx = super::autoarchive::AutoArchiveProcessor::start(self.clone());
+        self.auto_archive_tx = Some(tx);
+    }
+
     pub fn get_importer(&self) -> Option<ElasticEventSink> {
         if self.ecs {
             None
@@ -188,15 +198,10 @@ impl ElasticEventRepo {
         });
 
         let path = "_update_by_query?refresh=true&conflicts=proceed";
-        let response: ElasticResponse = self.post(path, &body).await?.json().await?;
+        let response = self.post(path, &body).await?.text().await?;
+        let response: ElasticResponse = serde_json::from_str(&response)?;
         let updated = response.updated.unwrap_or_default();
-        if updated == 0 {
-            warn!(
-                ?response,
-                "No events updated: query={}",
-                serde_json::to_string(&body).unwrap()
-            );
-        }
+        debug!("Tags added to {} events", updated);
 
         Ok(())
     }
@@ -601,6 +606,15 @@ impl ElasticEventRepo {
             .await
     }
 
+    pub async fn auto_archive_by_alert_group(
+        &self,
+        alert_group: api::AlertGroupSpec,
+    ) -> Result<()> {
+        let action = HistoryEntryBuilder::new_archive().build();
+        self.add_tags_by_alert_group(alert_group, &TAGS_AUTO_ARCHIVED, &action)
+            .await
+    }
+
     pub async fn escalate_by_alert_group(
         &self,
         alert_group: api::AlertGroupSpec,
@@ -849,6 +863,11 @@ impl ElasticEventRepo {
             must_not.push(json!({"exists": {"field": "dest_ip"}}));
         }
         filter.push(json!({"term": {self.map_field("alert.signature_id"): request.signature_id}}));
+
+        // If we have a sensor, restrict the query to a sensor.
+        if let Some(sensor) = &request.sensor {
+            filter.push(json!({"term": {self.map_field("host"): sensor}}));
+        }
         filter
     }
 

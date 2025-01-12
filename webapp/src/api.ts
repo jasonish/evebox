@@ -438,4 +438,41 @@ export namespace API {
       };
     });
   }
+
+  export interface AddAutoArchiveRequest {
+    sensor?: string;
+    src_ip?: string;
+    dest_ip?: string;
+    signature_id: number;
+    comment?: string;
+  }
+
+  export async function addAutoArchive(
+    params: AddAutoArchiveRequest
+  ): Promise<any> {
+    let urlSearchParams = new URLSearchParams(Object.entries(params));
+    return fetch("api/admin/filter/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: urlSearchParams.toString(),
+    });
+  }
+
+  export async function fetchFilters(): Promise<any> {
+    let response = await fetch("api/admin/filters");
+    console.log(response);
+    if (response.ok) {
+      let json = await response.json();
+      return json;
+    }
+  }
+
+  export async function deleteFilter(id: number): Promise<any> {
+    return fetch(`api/admin/filter/${id}`, {
+      method: "DELETE",
+    });
+  }
 }
