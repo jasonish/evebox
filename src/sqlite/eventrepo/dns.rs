@@ -99,19 +99,3 @@ async fn set_tx_timeout(
         .set_progress_handler(100, move || now.elapsed() <= duration);
     Ok(())
 }
-
-#[allow(dead_code)]
-trait EveBoxSqlxErrorExt {
-    fn is_interrupted(&self) -> bool;
-}
-
-impl EveBoxSqlxErrorExt for sqlx::error::Error {
-    fn is_interrupted(&self) -> bool {
-        if let Some(err) = self.as_database_error() {
-            if err.message() == "interrupted" {
-                return true;
-            }
-        }
-        false
-    }
-}

@@ -6,6 +6,7 @@ use crate::prelude::*;
 use crate::{
     eve::{self, filters::AutoArchiveFilter, Eve},
     sqlite::has_table,
+    sqlite::EveBoxSqlxErrorExt,
 };
 use anyhow::Context;
 use rusqlite::TransactionBehavior;
@@ -22,6 +23,7 @@ struct Metrics {
     events: usize,
     min: Duration,
     max: Duration,
+    lock_errors: u64,
 }
 
 impl Metrics {
@@ -45,8 +47,8 @@ impl std::fmt::Display for Metrics {
         let avg_duration = Duration::from_millis(avg_duration as u64);
         write!(
             f,
-            "avg={:?}, occurrences={}, events={}, min={:?}, max={:?}",
-            avg_duration, self.occurrences, self.events, self.min, self.max
+            "avg={:?}, occurrences={}, events={}, min={:?}, max={:?}, lock_errors={}",
+            avg_duration, self.occurrences, self.events, self.min, self.max, self.lock_errors
         )
     }
 }
@@ -241,7 +243,25 @@ impl SqliteEventSink {
         if self.use_rusqlite {
             self.commit_with_rusqlite().await
         } else {
-            self.commit_with_sqlx().await
+            let mut tries = 0;
+            loop {
+                tries += 1;
+                match self.commit_with_sqlx().await {
+                    Ok(n) => return Ok(n),
+                    Err(err) => {
+                        if let Some(sqlxerr) = err.downcast_ref::<sqlx::Error>() {
+                            if sqlxerr.is_locked() && tries < 6 {
+                                if let Ok(mut metrics) = self.metrics.lock() {
+                                    metrics.lock_errors += 1;
+                                }
+                                tokio::time::sleep(Duration::from_millis(1000)).await;
+                                continue;
+                            }
+                        }
+                        return Err(err).with_context(|| format!("retries={}", tries));
+                    }
+                }
+            }
         }
     }
 

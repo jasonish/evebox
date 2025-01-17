@@ -70,26 +70,17 @@ pub(crate) async fn handler(
         return Json(response).into_response();
     }
 
-    let mut err_count = 0;
-    loop {
-        match importer.commit().await {
-            Ok(n) => {
-                let response = json!({
-                    // Kept capitolized for compatibility with the Go agent.
-                    "Count": n,
-                });
-                return Json(response).into_response();
-            }
-            Err(err) => {
-                if err_count > 3 {
-                    error!("Failed to commit events (received {}): {:#}", count, err);
-                    return (StatusCode::INTERNAL_SERVER_ERROR, "").into_response();
-                }
-                err_count += 1;
-
-                // Sleep for 500ms.
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            }
+    match importer.commit().await {
+        Ok(n) => {
+            let response = json!({
+                // Kept capitolized for compatibility with the Go agent.
+                "Count": n,
+            });
+            Json(response).into_response()
+        }
+        Err(err) => {
+            error!("Failed to commit events (received {}): {:#}", count, err);
+            (StatusCode::INTERNAL_SERVER_ERROR, "").into_response()
         }
     }
 }
