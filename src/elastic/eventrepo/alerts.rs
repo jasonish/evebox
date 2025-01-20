@@ -4,6 +4,7 @@
 use crate::prelude::*;
 
 use crate::server::api::AlertGroupSpec;
+use crate::server::autoarchive::AutoArchive;
 use crate::{
     elastic::{AlertQueryOptions, ElasticResponse},
     eventrepo::{AggAlert, AggAlertMetadata, AlertsResult},
@@ -170,7 +171,7 @@ impl ElasticEventRepo {
     pub async fn alerts(
         &self,
         options: AlertQueryOptions,
-        auto_archive: Arc<RwLock<crate::ingest::AutoArchive>>,
+        auto_archive: Arc<RwLock<AutoArchive>>,
     ) -> Result<AlertsResult> {
         let mut query = self.build_inbox_query(options);
         query["timeout"] = "3s".into();

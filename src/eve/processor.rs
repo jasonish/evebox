@@ -6,22 +6,22 @@
 //! - importer: to send those events somewhere
 //! - bookmarker: to remember the last location reader
 
-use tracing::{debug, error, info, warn};
+use crate::prelude::*;
 
 use crate::bookmark;
-use crate::eve::filters::EveFilter;
 use crate::eve::reader::EveReader;
 use crate::importer::EventSink;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
+
+use super::filters::EveFilterChain;
 
 const DEFAULT_BATCH_SIZE: usize = 100;
 
 pub(crate) struct Processor {
     pub reader: EveReader,
     pub importer: EventSink,
-    pub filters: Arc<Vec<EveFilter>>,
+    pub filter_chain: Option<EveFilterChain>,
     pub bookmark_filename: Option<PathBuf>,
     pub report_interval: Duration,
 
@@ -38,7 +38,7 @@ impl Processor {
         Self {
             reader,
             importer,
-            filters: Arc::new(Vec::new()),
+            filter_chain: None,
             bookmark_filename: None,
             report_interval: Duration::from_secs(0),
             end: false,
@@ -134,8 +134,8 @@ impl Processor {
                     self.sleep_for(1000).await;
                 }
                 Ok(Some(mut event)) => {
-                    for filter in &*self.filters {
-                        filter.run(&mut event);
+                    if let Some(filters) = &self.filter_chain {
+                        filters.run(&mut event);
                     }
                     count += 1;
                     let commit = self.importer.submit(event).await.unwrap();

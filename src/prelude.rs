@@ -23,3 +23,4 @@ pub(crate) use serde::Deserialize;
 pub(crate) use serde::Serialize;
 
 pub(crate) use crate::error::AppError;
+pub(crate) use crate::eve::eve::Eve;

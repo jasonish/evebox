@@ -3,10 +3,10 @@
 
 use crate::agent::client::Client;
 use crate::agent::importer::EveBoxEventSink;
-use crate::bookmark;
 use crate::config::Config;
-use crate::eve::filters::{AddRuleFilter, EveFilter};
+use crate::eve::filters::EveFilterChain;
 use crate::importer::EventSink;
+use crate::{bookmark, eve};
 use clap::{CommandFactory, Parser};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -127,12 +127,10 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         .get_one::<bool>("geoip.enabled")
         .is_some_and(|v| *v);
 
-    // Get additional fields to add to events.
-    let additional_fields = get_additional_fields(&config)?;
-
     let rule_filenames = get_rule_filenames(&config)?;
 
-    let mut filters: Vec<EveFilter> = vec![];
+    let mut filters = EveFilterChain::with_defaults();
+    filters.add_filter(eve::filters::AddAgentHostnameFilter::default());
 
     if enable_geoip {
         match crate::geoip::GeoIP::open(None) {
@@ -140,29 +138,26 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
                 warn!("Failed to open GeoIP database: {}", err);
             }
             Ok(geoipdb) => {
-                filters.push(crate::eve::filters::EveFilter::GeoIP(geoipdb));
+                filters.add_filter(eve::filters::GeoIpFilter::new(geoipdb));
             }
         }
     }
 
     if !rule_filenames.is_empty() {
         let rule_collection = Arc::new(crate::rules::load_rules(&rule_filenames));
-        filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
-            AddRuleFilter {
-                map: rule_collection.clone(),
-            },
+        filters.add_filter(crate::eve::filters::AddRuleFilter::new(
+            rule_collection.clone(),
         ));
         crate::rules::watch_rules(rule_collection);
     }
 
+    // Get additional fields to add to events.
+    let additional_fields = get_additional_fields(&config)?;
     if let Some(custom_fields) = additional_fields {
         for (field, value) in custom_fields {
             info!("Adding custom field: {} -> {:?}", field, value);
-            let filter = crate::eve::filters::CustomFieldFilter {
-                field: field.to_string(),
-                value: value.to_string(),
-            };
-            filters.push(crate::eve::filters::EveFilter::CustomFieldFilter(filter));
+            let filter = crate::eve::filters::AddFieldFilter::new(field, value);
+            filters.add_filter(filter);
         }
     }
 
@@ -242,7 +237,7 @@ fn start_runner(
     filename: &str,
     importer: EventSink,
     bookmark_directory: Option<String>,
-    mut filters: Vec<EveFilter>,
+    mut filters: EveFilterChain,
 ) -> JoinHandle<()> {
     let mut end = false;
     let reader = crate::eve::reader::EveReader::new(filename.into());
@@ -256,13 +251,11 @@ fn start_runner(
     let mut processor = crate::eve::Processor::new(reader, importer);
     processor.end = end;
 
-    filters.push(crate::eve::filters::EveFilter::EveBoxMetadataFilter(
-        crate::eve::filters::EveBoxMetadataFilter {
-            filename: Some(filename.to_string()),
-        },
+    filters.add_filter(eve::filters::AddAgentFilenameFilter::new(
+        filename.to_string(),
     ));
 
-    processor.filters = Arc::new(filters);
+    processor.filter_chain = Some(filters);
     processor.report_interval = std::time::Duration::from_secs(60);
     processor.bookmark_filename = bookmark_filename;
     tokio::spawn(async move {
@@ -282,25 +275,18 @@ fn find_config_filename() -> Option<&'static str> {
     None
 }
 
-fn get_additional_fields(config: &Config) -> anyhow::Result<Option<HashMap<String, String>>> {
-    match config.get_value::<HashMap<String, String>>("additional-fields") {
-        Ok(Some(fields)) => Ok(Some(fields)),
-        Ok(None) => {
-            // No `additional-fields` found, check `input.custom-fields`.
-            match config.get_value::<HashMap<String, String>>("input.custom-fields") {
-                Ok(Some(fields)) => {
-                    warn!("Found additional fields in deprecated configuration section 'input.custom-fields'");
-                    Ok(Some(fields))
-                }
-                Ok(None) => Ok(None),
-                Err(_) => {
-                    bail!("There was an error reading 'input.custom-fields' from the configuration file");
-                }
-            }
-        }
-        Err(_) => {
-            bail!("There was an error reading 'additional-fields' from the configuration file");
-        }
+fn get_additional_fields(
+    config: &Config,
+) -> anyhow::Result<Option<HashMap<String, serde_json::Value>>> {
+    let additional_fields: Option<HashMap<String, serde_yaml::Value>> =
+        config.get_value("additional-fields")?;
+    if let Some(fields) = &additional_fields {
+        // Convert to JSON.
+        let fields: HashMap<String, serde_json::Value> =
+            serde_json::from_str(&serde_json::to_string(&fields)?)?;
+        Ok(Some(fields))
+    } else {
+        Ok(None)
     }
 }
 

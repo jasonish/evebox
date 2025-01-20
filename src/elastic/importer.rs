@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 use super::client::BulkResponse;
-use crate::eve::filters::AutoArchiveFilter;
 use crate::eve::Eve;
 use tracing::{error, trace};
 
@@ -12,7 +11,6 @@ pub(crate) struct ElasticEventSink {
     queue: Vec<String>,
     client: crate::elastic::Client,
     no_index_suffix: bool,
-    auto_archive_filter: AutoArchiveFilter,
 }
 
 impl ElasticEventSink {
@@ -22,7 +20,6 @@ impl ElasticEventSink {
             queue: Vec::new(),
             client,
             no_index_suffix,
-            auto_archive_filter: AutoArchiveFilter::default(),
         }
     }
 
@@ -30,10 +27,7 @@ impl ElasticEventSink {
         self.queue.len() / 2
     }
 
-    pub async fn submit(
-        &mut self,
-        mut event: serde_json::Value,
-    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn submit(&mut self, mut event: serde_json::Value) -> anyhow::Result<bool> {
         let ts = event.datetime().unwrap();
         let st: std::time::SystemTime = ts.to_systemtime();
 
@@ -45,7 +39,6 @@ impl ElasticEventSink {
         let event_id = ulid::Ulid::from_datetime(st).to_string();
         let at_timestamp = ts.to_elastic();
         event["@timestamp"] = at_timestamp.into();
-        self.auto_archive_filter.run(&mut event);
 
         let header = serde_json::json!({
             "create": {

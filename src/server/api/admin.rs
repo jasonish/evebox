@@ -57,7 +57,7 @@ pub(super) async fn add_filter(
         entry.signature_id
     );
 
-    if let Ok(filters) = context.ingest.archive_filters.read() {
+    if let Ok(filters) = context.auto_archive.read() {
         if filters.has_key(&key) {
             info!("Arhive filters already contains key {}", &key);
             return Ok(Json(json!({})));
@@ -68,15 +68,18 @@ pub(super) async fn add_filter(
     sqlx::query(sql)
         .bind(0)
         .bind(serde_json::to_value(&entry).unwrap())
-        .bind(comment)
+        .bind(&comment)
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
 
-    let mut ingest = context.ingest.archive_filters.write().unwrap();
+    let mut ingest = context.auto_archive.write().unwrap();
     ingest.add(&entry);
 
-    info!("New auto-archive filter added {:?}", &entry);
+    info!(
+        "New auto-archive filter added {:?} with comment: {:?}",
+        &entry, &comment
+    );
 
     Ok(Json(json!({})))
 }
@@ -113,7 +116,7 @@ pub(super) async fn delete_filter(
 
     // Remove from current ingest processing.
     if let Some(row) = row {
-        let mut ingest = context.ingest.archive_filters.write().unwrap();
+        let mut ingest = context.auto_archive.write().unwrap();
         ingest.remove(&row.filter.0);
     }
 

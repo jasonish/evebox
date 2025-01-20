@@ -11,13 +11,14 @@ use crate::datetime::DateTime;
 const DAYS_28: i64 = 86400 * 28;
 const UPDATE_CHECK_TIMEOUT: u64 = 60;
 
+#[derive(Debug)]
 struct Inner {
     reader: Reader<Vec<u8>>,
     last_modified: u64,
     last_update_check: std::time::Instant,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct GeoIP {
     filename: String,
     inner: Arc<Mutex<Inner>>,

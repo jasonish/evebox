@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::eventrepo::EventRepo;
+use crate::server::autoarchive::AutoArchive;
 use crate::sqlite::configdb::ConfigDb;
 pub(crate) use main::build_context;
 pub use main::main;
@@ -11,6 +12,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 pub(crate) mod api;
+pub(crate) mod autoarchive;
 pub(crate) mod main;
 pub(crate) mod session;
 
@@ -26,8 +28,8 @@ pub(crate) struct ServerContext {
     pub configdb: Arc<ConfigDb>,
     pub event_services: Option<serde_json::Value>,
     pub defaults: Defaults,
-    pub ingest: crate::ingest::IngestPipeline,
-    pub auto_archive: Arc<RwLock<crate::ingest::AutoArchive>>,
+    pub filters: Option<crate::eve::filters::EveFilterChain>,
+    pub auto_archive: Arc<RwLock<AutoArchive>>,
 }
 
 impl ServerContext {
@@ -36,7 +38,7 @@ impl ServerContext {
         config_repo: Arc<ConfigDb>,
         datastore: EventRepo,
     ) -> Self {
-        let auto_archive: Arc<RwLock<crate::ingest::AutoArchive>> = Default::default();
+        let auto_archive: Arc<RwLock<AutoArchive>> = Default::default();
         Self {
             config,
             datastore,
@@ -44,7 +46,7 @@ impl ServerContext {
             configdb: config_repo,
             event_services: None,
             defaults: Defaults::default(),
-            ingest: crate::ingest::IngestPipeline::new(auto_archive.clone()),
+            filters: None,
             auto_archive,
         }
     }

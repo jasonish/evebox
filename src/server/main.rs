@@ -6,7 +6,7 @@ use crate::bookmark;
 use crate::config::Config;
 use crate::elastic;
 use crate::elastic::Version;
-use crate::eve::filters::{AddFieldFilter, AddRuleFilter};
+use crate::eve::filters::{AddFieldFilter, EveFilterChain};
 use crate::eve::watcher::EvePatternWatcher;
 use crate::eventrepo::EventRepo;
 use crate::server::api;
@@ -153,6 +153,13 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         }
     }
 
+    let mut filters = EveFilterChain::with_defaults();
+    filters.add_filter(crate::eve::filters::AutoArchiveFilter::new(
+        context.auto_archive.clone(),
+    ));
+
+    context.filters = Some(filters.clone());
+
     if is_input_enabled(&config) {
         let input_patterns = get_input_patterns(&config)?;
         if input_patterns.is_empty() {
@@ -162,17 +169,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             "An event importer is not implemented for this datastore"
         ))?;
 
-        let mut filters = Vec::new();
-
         match config.get_config_value::<Vec<String>>("input.rules") {
             Ok(Some(rules)) => {
                 let rulemap = crate::rules::load_rules(&rules);
                 let rulemap = Arc::new(rulemap);
-                filters.push(crate::eve::filters::EveFilter::AddRuleFilter(
-                    AddRuleFilter {
-                        map: rulemap.clone(),
-                    },
-                ));
+                filters.add_filter(crate::eve::filters::AddRuleFilter::new(rulemap.clone()));
                 crate::rules::watch_rules(rulemap);
             }
             Ok(None) => {}
@@ -188,7 +189,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             let geoip_database = config.get_string("geoip.database");
             match crate::geoip::GeoIP::open(geoip_database) {
                 Ok(db) => {
-                    filters.push(crate::eve::filters::EveFilter::GeoIP(db));
+                    filters.add_filter(crate::eve::filters::GeoIpFilter::new(db.clone()));
                 }
                 Err(err) => {
                     warn!("Failed to open GeoIP database: error={}", err);
@@ -196,17 +197,13 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             }
         }
 
-        filters.push(crate::eve::filters::EveFilter::AutoArchiveFilter(
-            crate::eve::filters::AutoArchiveFilter::default(),
-        ));
-
         let additional_fields: Option<HashMap<String, serde_yaml::Value>> =
             config.get_value("input.additional-fields")?;
         if let Some(fields) = additional_fields {
             for (k, v) in fields {
                 let v = serde_json::from_str(&serde_json::to_string(&v)?)?;
                 let filter = AddFieldFilter::new(k, v);
-                filters.push(crate::eve::filters::EveFilter::AddFieldFilter(filter));
+                filters.add_filter(filter.clone());
             }
         }
 

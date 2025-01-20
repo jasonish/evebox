@@ -27,10 +27,7 @@ impl EveBoxEventSink {
     }
 
     /// The result will be true if the user should `commit` before submitting new events.
-    pub async fn submit(
-        &mut self,
-        event: serde_json::Value,
-    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn submit(&mut self, event: serde_json::Value) -> anyhow::Result<bool> {
         let as_string = event.to_string();
         self.size += as_string.len();
         self.queue.push(as_string);

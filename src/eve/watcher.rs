@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use tracing::{info, warn};
+use crate::prelude::*;
 
-use super::{filters::EveFilter, EveReader, Processor};
-use crate::{eve::filters::EveBoxMetadataFilter, importer::EventSink};
+use super::filters::EveFilterChain;
+use super::{EveReader, Processor};
+use crate::eve::filters::AddAgentFilenameFilter;
+use crate::importer::EventSink;
 use std::time::Duration;
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, path::PathBuf};
 
 /// Watches a collection of filename patterns and starts a new EVE
 /// pipeline when a new file is found.
@@ -14,7 +16,7 @@ pub(crate) struct EvePatternWatcher {
     patterns: Vec<String>,
     filenames: HashSet<PathBuf>,
     sink: EventSink,
-    filters: Vec<EveFilter>,
+    filters: EveFilterChain,
     end: bool,
     bookmark_directory: Option<String>,
     data_directory: Option<String>,
@@ -24,7 +26,7 @@ impl EvePatternWatcher {
     pub fn new(
         patterns: Vec<String>,
         sink: EventSink,
-        filters: Vec<EveFilter>,
+        filters: EveFilterChain,
         end: bool,
         bookmark_directory: Option<String>,
         data_directory: Option<String>,
@@ -70,12 +72,7 @@ impl EvePatternWatcher {
         let reader = EveReader::new(filename.clone());
         let mut processor = Processor::new(reader, self.sink.clone());
         let mut filters = self.filters.clone();
-        filters.push(
-            EveBoxMetadataFilter {
-                filename: Some(filename.display().to_string()),
-            }
-            .into(),
-        );
+        filters.add_filter(AddAgentFilenameFilter::new(filename.display().to_string()));
 
         let bookmark_filename = crate::server::main::get_bookmark_filename(
             filename,
@@ -83,7 +80,7 @@ impl EvePatternWatcher {
             self.data_directory.as_deref(),
         );
 
-        processor.filters = Arc::new(filters);
+        processor.filter_chain = Some(filters);
         if bookmark_filename.is_none() && !self.end {
             warn!(
                 "Failed to create bookmark file for {}, will read from end of file",

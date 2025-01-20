@@ -14,17 +14,11 @@ pub(crate) enum EventSink {
 }
 
 impl EventSink {
-    pub async fn submit(
-        &mut self,
-        event: serde_json::Value,
-    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn submit(&mut self, event: serde_json::Value) -> anyhow::Result<bool> {
         match self {
-            EventSink::EveBox(importer) => importer.submit(event).await,
-            EventSink::Elastic(importer) => importer.submit(event).await,
-            EventSink::SQLite(importer) => match importer.submit(event).await {
-                Ok(commit) => Ok(commit),
-                Err(err) => Err(Box::new(err)),
-            },
+            EventSink::EveBox(importer) => Ok(importer.submit(event).await?),
+            EventSink::Elastic(importer) => Ok(importer.submit(event).await?),
+            EventSink::SQLite(importer) => Ok(importer.submit(event).await?),
         }
     }
 

@@ -5,6 +5,7 @@ use crate::datetime::DateTime;
 use crate::importer::EventSink;
 use crate::prelude::*;
 use crate::server::api;
+use crate::server::autoarchive::AutoArchive;
 use crate::server::session::Session;
 use crate::sqlite::eventrepo::SqliteEventRepo;
 use crate::{elastic, queryparser};
@@ -105,7 +106,7 @@ impl EventRepo {
     pub async fn alerts(
         &self,
         options: elastic::AlertQueryOptions,
-        auto_archive: Arc<RwLock<crate::ingest::AutoArchive>>,
+        auto_archive: Arc<RwLock<AutoArchive>>,
     ) -> Result<AlertsResult> {
         match self {
             EventRepo::Elastic(ds) => ds.alerts(options, auto_archive).await,

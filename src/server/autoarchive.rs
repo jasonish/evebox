@@ -5,40 +5,11 @@
 //! pipeline, but the idea is the same. Take in event event, and
 //! return a modified, enriched, enhanced event.
 
-use crate::{prelude::*, sqlite::configdb::FilterEntry};
+use crate::sqlite::configdb::FilterEntry;
 
 use std::collections::HashSet;
 
-#[derive(Default, Clone)]
-pub(crate) struct IngestPipeline {
-    pub archive_filters: Arc<RwLock<AutoArchive>>,
-}
-
-impl IngestPipeline {
-    pub fn new(archive_filters: Arc<RwLock<AutoArchive>>) -> Self {
-        Self { archive_filters }
-    }
-
-    fn set_archive_tags(&self, event: &mut serde_json::Value) {
-        let tags = &mut event["tags"]
-            .as_array()
-            .cloned()
-            .unwrap_or_else(std::vec::Vec::new);
-        tags.push("evebox.archived".into());
-        tags.push("evebox.auto-archived".into());
-        tags.push("evebox.auto-archived-by-server".into());
-        event["tags"] = serde_json::Value::Array(tags.clone());
-    }
-
-    pub fn handle(&self, event: &mut serde_json::Value) {
-        let filters = self.archive_filters.read().unwrap();
-        if filters.is_match(event) {
-            self.set_archive_tags(event);
-        }
-    }
-}
-
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(crate) struct AutoArchive {
     filters: HashSet<String>,
 }

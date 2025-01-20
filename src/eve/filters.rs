@@ -1,84 +1,109 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::rules::RuleMap;
-use serde_json::json;
-use std::sync::Arc;
-use tracing::{trace, warn};
+use crate::prelude::*;
 
-#[derive(Clone)]
-pub(crate) enum EveFilter {
-    GeoIP(crate::geoip::GeoIP),
-    EveBoxMetadataFilter(EveBoxMetadataFilter),
-    CustomFieldFilter(CustomFieldFilter),
-    AddRuleFilter(AddRuleFilter),
-    AutoArchiveFilter(AutoArchiveFilter),
-    AddFieldFilter(AddFieldFilter),
+use crate::rules::RuleMap;
+use crate::server::autoarchive::AutoArchive;
+use std::sync::Arc;
+
+#[derive(Clone, Default)]
+pub(crate) struct EveFilterChain {
+    filters: Vec<Arc<Box<dyn EveFilterTrait + Send + Sync>>>,
 }
 
-impl EveFilter {
-    pub fn run(&self, event: &mut serde_json::Value) {
-        match self {
-            EveFilter::GeoIP(geoip) => {
-                geoip.add_geoip_to_eve(event);
-            }
-            EveFilter::EveBoxMetadataFilter(filter) => {
-                filter.run(event);
-            }
-            EveFilter::CustomFieldFilter(filter) => {
-                filter.run(event);
-            }
-            EveFilter::AddFieldFilter(filter) => {
-                filter.run(event);
-            }
-            EveFilter::AddRuleFilter(filter) => {
-                filter.run(event);
-            }
-            EveFilter::AutoArchiveFilter(filter) => {
-                filter.run(event);
-            }
+impl EveFilterChain {
+    pub(crate) fn with_defaults() -> Self {
+        let mut this = Self::default();
+        this.add_filter(EnsureFilter::default());
+        this.add_filter(AlertMetadataEveBoxActionFilter::default());
+        this
+    }
+
+    pub(crate) fn add_filter<T>(&mut self, filter: T)
+    where
+        T: EveFilterTrait + Send + Sync + 'static,
+    {
+        let filter: Box<dyn EveFilterTrait + Send + Sync> = Box::new(filter);
+        self.filters.push(Arc::new(filter));
+    }
+
+    pub(crate) fn run(&self, event: &mut serde_json::Value) {
+        for filter in &self.filters {
+            filter.run(event);
         }
     }
 }
 
 #[derive(Debug, Default, Clone)]
-pub(crate) struct EveBoxMetadataFilter {
-    pub filename: Option<String>,
+struct EnsureFilter {}
+
+impl EveFilterTrait for EnsureFilter {
+    fn run(&self, event: &mut serde_json::Value) {
+        super::eve::ensure_has_history(event);
+        super::eve::ensure_has_tags(event);
+        super::eve::ensure_has_evebox(event);
+    }
 }
 
-impl EveBoxMetadataFilter {
-    pub fn run(&self, event: &mut serde_json::Value) {
-        // Create the "evebox" object.
-        if let serde_json::Value::Null = event["evebox"] {
-            event["evebox"] = json!({});
-        }
+#[derive(Debug, Clone)]
+pub(crate) struct GeoIpFilter {
+    geoip: crate::geoip::GeoIP,
+}
 
-        // Add fields to the EveBox object.
-        if let serde_json::Value::Object(_) = &event["evebox"] {
-            if let Some(filename) = &self.filename {
-                event["evebox"]["filename"] = filename.to_string().into();
-            }
-        }
+impl GeoIpFilter {
+    pub(crate) fn new(geoip: crate::geoip::GeoIP) -> Self {
+        Self { geoip }
+    }
+}
 
-        // Add the hostname.
-        if let Ok(hostname) = gethostname::gethostname().into_string() {
-            event["evebox"]["hostname"] = hostname.into();
-        }
+impl EveFilterTrait for GeoIpFilter {
+    fn run(&self, event: &mut serde_json::Value) {
+        self.geoip.add_geoip_to_eve(event);
+    }
+}
 
-        // Add a tags object.
-        if event.get("tags").is_none() {
-            event["tags"] = serde_json::Value::Array(vec![]);
+#[derive(Debug, Clone)]
+pub(crate) struct AddAgentFilenameFilter {
+    filename: serde_json::Value,
+}
+
+impl AddAgentFilenameFilter {
+    pub(crate) fn new(filename: String) -> Self {
+        Self {
+            filename: serde_json::Value::String(filename),
         }
     }
 }
 
-impl From<EveBoxMetadataFilter> for EveFilter {
-    fn from(filter: EveBoxMetadataFilter) -> Self {
-        EveFilter::EveBoxMetadataFilter(filter)
+impl EveFilterTrait for AddAgentFilenameFilter {
+    fn run(&self, event: &mut serde_json::Value) {
+        event["evebox"]["agent"]["filename"] = self.filename.clone();
     }
 }
 
-#[derive(Clone)]
+/// Filter to add the agent hostname. Should be used on the agent only.
+#[derive(Clone, Debug)]
+pub(crate) struct AddAgentHostnameFilter {
+    hostname: serde_json::Value,
+}
+
+impl Default for AddAgentHostnameFilter {
+    fn default() -> Self {
+        let hostname = gethostname::gethostname().to_string_lossy().to_string();
+        Self {
+            hostname: hostname.into(),
+        }
+    }
+}
+
+impl EveFilterTrait for AddAgentHostnameFilter {
+    fn run(&self, event: &mut serde_json::Value) {
+        event["evebox"]["agent"]["hostname"] = self.hostname.clone();
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct AddFieldFilter {
     pub field: String,
     pub value: serde_json::Value,
@@ -91,37 +116,27 @@ impl AddFieldFilter {
             value,
         }
     }
+}
 
-    pub fn run(&self, event: &mut serde_json::Value) {
+impl EveFilterTrait for AddFieldFilter {
+    fn run(&self, event: &mut serde_json::Value) {
         event[&self.field] = self.value.clone();
     }
 }
 
-#[derive(Clone)]
-pub(crate) struct CustomFieldFilter {
-    pub field: String,
-    pub value: String,
-}
-
-impl CustomFieldFilter {
-    pub fn run(&self, event: &mut serde_json::Value) {
-        event[&self.field] = self.value.clone().into();
-    }
-}
-
-impl From<CustomFieldFilter> for EveFilter {
-    fn from(filter: CustomFieldFilter) -> Self {
-        EveFilter::CustomFieldFilter(filter)
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct AddRuleFilter {
     pub map: Arc<RuleMap>,
 }
 
 impl AddRuleFilter {
-    pub fn run(&self, event: &mut serde_json::Value) {
+    pub fn new(map: Arc<RuleMap>) -> Self {
+        Self { map }
+    }
+}
+
+impl EveFilterTrait for AddRuleFilter {
+    fn run(&self, event: &mut serde_json::Value) {
         if let serde_json::Value::String(_) = event["alert"]["rule"] {
             return;
         }
@@ -135,37 +150,79 @@ impl AddRuleFilter {
     }
 }
 
-#[derive(Default, Clone, Debug)]
-pub(crate) struct AutoArchiveFilter {}
+/// Handle an action such as archive from
+/// event["alert"]["metadata"]["evebox-action"] which may be set by
+/// Suricata-Update.
+#[derive(Clone, Default, Debug)]
+struct AlertMetadataEveBoxActionFilter {}
 
-impl AutoArchiveFilter {
-    pub fn new() -> Self {
-        Self {}
-    }
+impl EveFilterTrait for AlertMetadataEveBoxActionFilter {
+    fn run(&self, event: &mut serde_json::Value) {
+        if event.has_tag("evebox.archived") {
+            // Just return, already archived.
+            return;
+        }
 
-    pub fn run(&self, event: &mut serde_json::Value) {
-        // Look for alert.metadata.
-        let action = event["alert"]["metadata"]["evebox-action"]
-            .as_array()
-            .and_then(|a| a.iter().next().and_then(|e| e.as_str()));
-        if let Some(action) = action {
-            if action == "archive" {
-                match &mut event["tags"] {
-                    serde_json::Value::Array(tags) => {
-                        tags.push("evebox.archived".into());
-                        tags.push("evebox.auto-archived".into());
-                    }
-                    serde_json::Value::Null => {
-                        event["tags"] = serde_json::Value::Array(vec![
-                            "evebox.archived".into(),
-                            "evebox.auto_archived".into(),
-                        ]);
-                    }
-                    _ => {
-                        warn!("Unable to auto-archive event, event has incompatible tags entry");
-                    }
-                }
+        let metadata_evebox_action = event["alert"]["metadata"]["evebox-action"].as_array_mut();
+        if let Some(action) = metadata_evebox_action {
+            if action.contains(&serde_json::Value::String("archive".into())) {
+                let tags = &mut event["tags"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_else(std::vec::Vec::new);
+                tags.push("evebox.archived".into());
+                tags.push("evebox.auto-archived".into());
+                event["tags"] = serde_json::Value::Array(tags.clone());
             }
         }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct AutoArchiveFilter {
+    processor: Arc<RwLock<AutoArchive>>,
+}
+
+impl AutoArchiveFilter {
+    pub(crate) fn new(auto_archive: Arc<RwLock<AutoArchive>>) -> Self {
+        Self {
+            processor: auto_archive,
+        }
+    }
+}
+
+impl EveFilterTrait for AutoArchiveFilter {
+    fn run(&self, event: &mut serde_json::Value) {
+        if event.has_tag("evebox.archived") {
+            return;
+        }
+
+        let processor = self.processor.read().unwrap();
+        if processor.is_match(event) {
+            let tags = &mut event["tags"]
+                .as_array()
+                .cloned()
+                .unwrap_or_else(std::vec::Vec::new);
+            tags.push("evebox.archived".into());
+            tags.push("evebox.auto-archived".into());
+            event["tags"] = serde_json::Value::Array(tags.clone());
+        }
+    }
+}
+
+pub(crate) trait EveFilterTrait: std::fmt::Debug {
+    fn run(&self, event: &mut serde_json::Value);
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_clone() {
+        let a = EveFilterChain::with_defaults();
+        let mut b = a.clone();
+        b.add_filter(AddAgentFilenameFilter::new("eve.json".to_string()));
+        assert_eq!(a.filters.len(), b.filters.len() - 1);
     }
 }

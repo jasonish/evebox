@@ -8,6 +8,7 @@ use std::sync::{Arc, RwLock};
 
 use tracing::{debug, error, info};
 
+#[derive(Debug)]
 struct Inner {
     map: HashMap<u64, String>,
     files: HashMap<PathBuf, i64>,
@@ -47,6 +48,7 @@ impl Inner {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct RuleMap {
     paths: Vec<String>,
     inner: RwLock<Inner>,

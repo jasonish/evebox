@@ -3,11 +3,7 @@
 
 use crate::prelude::*;
 
-use crate::{
-    eve::{self, filters::AutoArchiveFilter, Eve},
-    sqlite::has_table,
-    sqlite::EveBoxSqlxErrorExt,
-};
+use crate::{eve::Eve, sqlite::has_table, sqlite::EveBoxSqlxErrorExt};
 use anyhow::Context;
 use rusqlite::TransactionBehavior;
 use sqlx::Connection;
@@ -111,44 +107,17 @@ impl SqliteEventSink {
         let ts = event.datetime().ok_or(IndexError::TimestampMissing)?;
         reformat_timestamps(&mut event);
         let source_values = extract_values(&event);
-        let mut archived = 0;
-
-        if let Some(actions) = event["alert"]["metadata"]["evebox-action"].as_array() {
-            for action in actions {
-                if let serde_json::Value::String(action) = action {
-                    if action == "archive" {
-                        archived = 1;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if archived == 0 {
-            archived = event["tags"]
-                .as_array()
-                .map(|tags| {
-                    let i =
-                        tags.contains(&serde_json::Value::String("evebox.archived".to_string()));
-                    if i {
-                        1
-                    } else {
-                        0
-                    }
-                })
-                .unwrap_or(0);
-        }
-
-        eve::eve::add_evebox_metadata(&mut event, None);
-        AutoArchiveFilter::new().run(&mut event);
-
+        let archived = if event.has_tag("evebox.archived") {
+            1
+        } else {
+            0
+        };
         let prepared = PreparedEvent {
             ts: ts.to_nanos(),
             source_values,
             event: event.to_string(),
             archived,
         };
-
         Ok(prepared)
     }
 

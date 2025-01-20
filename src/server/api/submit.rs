@@ -24,8 +24,6 @@ pub(crate) async fn handler(
     };
     let mut errors = Vec::new();
 
-    let ingest = context.ingest.clone();
-
     let mut buf = &body[..];
     let mut count = 0;
     let mut line = String::new();
@@ -49,7 +47,11 @@ pub(crate) async fn handler(
                     }
                     Ok(mut event) => {
                         count += 1;
-                        ingest.handle(&mut event);
+
+                        if let Some(filters) = &context.filters {
+                            filters.run(&mut event);
+                        }
+
                         if let Err(err) = importer.submit(event).await {
                             error!("Failed to submit event to importer: {}", err);
                         }
