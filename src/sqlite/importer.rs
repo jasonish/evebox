@@ -250,11 +250,11 @@ impl SqliteEventSink {
                     Ok(n) => return Ok(n),
                     Err(err) => {
                         if let Some(sqlxerr) = err.downcast_ref::<sqlx::Error>() {
-                            if sqlxerr.is_locked() && tries < 6 {
+                            if sqlxerr.is_locked() && tries < 35 {
                                 if let Ok(mut metrics) = self.metrics.lock() {
                                     metrics.lock_errors += 1;
                                 }
-                                tokio::time::sleep(Duration::from_millis(1000)).await;
+                                tokio::time::sleep(Duration::from_millis(2000)).await;
                                 continue;
                             }
                         }
