@@ -19,16 +19,7 @@ import {
 } from "solid-js";
 import { API, archiveEvent, getEventById, postComment } from "./api";
 import { archiveAggregateAlert } from "./api";
-import {
-  Button,
-  Card,
-  Col,
-  Container,
-  Row,
-  Tab,
-  Tabs,
-  Toast,
-} from "solid-bootstrap";
+import { Button, Col, Container, Row, Tab, Tabs, Toast } from "solid-bootstrap";
 import { prettyPrintJson } from "pretty-print-json";
 import { AggregateAlert, EcsGeo, EveDns, Event, EventWrapper } from "./types";
 import { parse_timestamp } from "./datetime";
@@ -724,13 +715,9 @@ export function EventView() {
 
           <Row>
             <Col class={"mb-2"} lg={12} xl={6}>
-              <Card>
-                <Card.Body class="p-0">
-                  <table
-                    class={
-                      "table table-sm table-borderless table-striped table-hover app-detail-table mb-0"
-                    }
-                  >
+              <div class="card">
+                <div class="card-body" style="padding: 2px;">
+                  <table class="table table-sm table-borderless table-striped table-hover app-detail-table mb-0">
                     <tbody>
                       <For each={commonDetails()}>
                         {(e) => (
@@ -746,13 +733,13 @@ export function EventView() {
                       </For>
                     </tbody>
                   </table>
-                </Card.Body>
-              </Card>
+                </div>
+              </div>
             </Col>
             <Show when={eventDetails()}>
               <Col class={"mb-2"} lg={12} xl={6}>
-                <Card>
-                  <Card.Body class={"p-0"}>
+                <div class="card">
+                  <div class="card-body" style="padding: 2px;">
                     <table
                       class={
                         "table table-sm app-detail-table table-borderless table-striped table-hover mb-0"
@@ -773,12 +760,12 @@ export function EventView() {
                         </For>
                       </tbody>
                     </table>
-                  </Card.Body>
-                </Card>
+                  </div>
+                </div>
 
                 <Show when={srcIpDns() || destIpDns()}>
-                  <Card class="mt-2">
-                    <Card.Body class={"p-0"}>
+                  <div class="card mt-2">
+                    <div class="card-body" style="padding: 2px;">
                       <table
                         class={
                           "table table-sm app-detail-table table-borderless table-striped table-hover mb-0"
@@ -811,8 +798,8 @@ export function EventView() {
                           </Show>
                         </tbody>
                       </table>
-                    </Card.Body>
-                  </Card>
+                    </div>
+                  </div>
                 </Show>
               </Col>
             </Show>
@@ -828,12 +815,12 @@ export function EventView() {
           <Show when={event()?._source?.alert?.rule}>
             <Row class={"mb-2"}>
               <Col>
-                <Card>
-                  <Card.Header>Rule</Card.Header>
-                  <Card.Body>
+                <div class="card">
+                  <div class="card-header">Rule</div>
+                  <div class="card-body">
                     <HighlightedRule rule={event()?._source.alert?.rule!} />
-                  </Card.Body>
-                </Card>
+                  </div>
+                </div>
               </Col>
             </Row>
           </Show>
@@ -859,9 +846,9 @@ export function EventView() {
           <Show when={geoIp.source || geoIp.destination}>
             <Row class={"mb-2"}>
               <Col>
-                <Card>
-                  <Card.Header>GeoIP</Card.Header>
-                  <Card.Body class={"p-0"}>
+                <div class="card">
+                  <div class="card-header">GeoIP</div>
+                  <div class="card-body p-0">
                     <table
                       class={
                         "mb-0 table table-sm table-striped table-bordered app-detail-table"
@@ -886,8 +873,8 @@ export function EventView() {
                         </Show>
                       </tbody>
                     </table>
-                  </Card.Body>
-                </Card>
+                  </div>
+                </div>
               </Col>
             </Row>
           </Show>
@@ -899,8 +886,8 @@ export function EventView() {
           {/* Tabbed? */}
           <Row>
             <Col class={"mb-2"}>
-              <Card class={""} style={""}>
-                <Card.Body class={"p-0"}>
+              <div class="card">
+                <div class="card-body p-0">
                   <Tabs defaultActiveKey={"All"}>
                     <Tab eventKey="All" title="All">
                       {/* Object Cards */}
@@ -912,14 +899,10 @@ export function EventView() {
                                 <For each={col}>
                                   {(o) => (
                                     <>
-                                      <Card class={"m-2 event-detail-card"}>
-                                        <Card.Header>{o.title}</Card.Header>
-                                        <Card.Body class={"p-0"}>
-                                          <table
-                                            class={
-                                              "mb-0 table table-sm table-striped table-bordered app-detail-table"
-                                            }
-                                          >
+                                      <div class="card m-2 event-detail-card">
+                                        <div class="card-header">{o.title}</div>
+                                        <div class="card-body p-0">
+                                          <table class="mb-0 table table-sm table-striped table-bordered app-detail-table">
                                             <tbody>
                                               <For each={o.rows}>
                                                 {(e) => (
@@ -985,8 +968,8 @@ export function EventView() {
                                               </For>
                                             </tbody>
                                           </table>
-                                        </Card.Body>
-                                      </Card>
+                                        </div>
+                                      </div>
                                     </>
                                   )}
                                 </For>
@@ -1052,8 +1035,8 @@ export function EventView() {
                       }}
                     </For>
                   </Tabs>
-                </Card.Body>
-              </Card>
+                </div>
+              </div>
             </Col>
           </Row>
 
@@ -1099,9 +1082,9 @@ export function EventView() {
 
           <Row>
             <Col class={"mt-2"} sm={12} xxl={6}>
-              <Card>
-                <Card.Header>Event Listing</Card.Header>
-                <Card.Body class="p-0">
+              <div class="card">
+                <div class="card-header">Event Listing</div>
+                <div class="card-body p-0">
                   <table
                     class={
                       "mb-0 table table-sm table-striped table-bordered app-detail-table"
@@ -1120,12 +1103,12 @@ export function EventView() {
                       </For>
                     </tbody>
                   </table>
-                </Card.Body>
-              </Card>
+                </div>
+              </div>
             </Col>
             <Col class={"mt-2"} sm={12} xxl={6}>
-              <Card>
-                <Card.Header>
+              <div class="card">
+                <div class="card-header">
                   JSON
                   <div class={"small float-end"}>
                     [
@@ -1170,11 +1153,11 @@ export function EventView() {
                       </Toast>
                     </div>
                   </div>
-                </Card.Header>
-                <Card.Body>
+                </div>
+                <div class="card-body">
                   <PrettyJson id={"formatted-json"} json={event()} />
-                </Card.Body>
-              </Card>
+                </div>
+              </div>
             </Col>
           </Row>
 
@@ -1303,25 +1286,25 @@ function Base64BufferCard(props: {
   addOn?: any;
 }) {
   return (
-    <Card>
-      <Card.Header>
+    <div class="card">
+      <div class="card-header">
         {props.title}
         <Show when={props.addOn}>
           <span class={"float-end"}>{props.addOn}</span>
         </Show>
-      </Card.Header>
-      <Card.Body class={"p-2"}>
+      </div>
+      <div class="card-body p-2">
         <Row>
           <Col md={12} xl={6} class={"pb-2"}>
-            <Card>
-              <Card.Body class={"p-2"}>
+            <div class="card">
+              <div class="card-body p-2">
                 <pre class={"force-wrap"}>{atob(props.buffer)}</pre>
-              </Card.Body>
-            </Card>
+              </div>
+            </div>
           </Col>
           <Col md={12} xl={6}>
-            <Card>
-              <Card.Body class={"p-2"}>
+            <div class="card">
+              <div class="card-body p-2">
                 <table class={"m-0 table table-borderless table-striped"}>
                   <tbody>
                     <For each={toPrettyHex(atob(props.buffer))}>
@@ -1340,12 +1323,12 @@ function Base64BufferCard(props: {
                     </For>
                   </tbody>
                 </table>
-              </Card.Body>
-            </Card>
+              </div>
+            </div>
           </Col>
         </Row>
-      </Card.Body>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -1455,7 +1438,7 @@ function DnsInfoCol(props: { dns: EveDns }) {
       <For each={cards}>
         {(card, i) => (
           <>
-            <Card class={"mb-2"}>
+            <div class="card mb-2">
               <table class={"table table-striped table-hover mb-0"}>
                 <Show when={card.title}>
                   <thead>
@@ -1475,7 +1458,7 @@ function DnsInfoCol(props: { dns: EveDns }) {
                   </For>
                 </tbody>
               </table>
-            </Card>
+            </div>
           </>
         )}
       </For>
