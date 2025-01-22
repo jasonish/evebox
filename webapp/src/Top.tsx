@@ -280,9 +280,9 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
               </NavDropdown>
               <Nav.Item>
                 <button
-                  type={"button"}
-                  class={"btn btn-secondary btn-sm"}
-                  style={"margin-top: 5px !important;"}
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  style="margin-top: 5px !important; font-family: monospace;"
                 >
                   {QUEUE_SIZE()}
                 </button>
