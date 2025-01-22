@@ -1216,8 +1216,7 @@ export function Alerts() {
                                           );
                                         }}
                                       >
-                                        Filter for sensor
-                                        {event._source.host}
+                                        Filter for sensor {event._source.host}
                                       </a>
                                     </li>
                                     <li>
