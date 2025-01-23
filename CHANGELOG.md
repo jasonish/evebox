@@ -16,6 +16,10 @@
 - [eve2pcap] Use SID as filename when available.
 - [webapp] Allow user to choose local time or UTC time:
   https://github.com/jasonish/evebox/issues/161
+- Auto-archive events by filter:
+  https://github.com/jasonish/evebox/issues/52
+- [sqlite] Use server side events to stream back data such as
+  aggregations, so updates in the UI can start right away.
 
 ## 0.19.0 - 2024-12-13
 
