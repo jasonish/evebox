@@ -66,6 +66,7 @@ pub(crate) struct ServerConfig {
     pub elastic_no_index_suffix: bool,
     pub elastic_username: Option<String>,
     pub elastic_password: Option<String>,
+    pub elastic_cacert: Option<String>,
     pub elastic_ecs: bool,
     pub data_directory: Option<String>,
     pub authentication_required: bool,

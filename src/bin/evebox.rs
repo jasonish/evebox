@@ -123,6 +123,14 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .hide(true),
         )
         .arg(
+            clap::Arg::new("database.elasticsearch.cacert")
+                .long("elasticsearch-cacert")
+                .action(ArgAction::Set)
+                .value_name("FILENAME")
+                .help("Elasticsearch CA certificate filename")
+                .env("EVEBOX_ELASTICSEARCH_CACERT"),
+        )
+        .arg(
             clap::Arg::new("database.elasticsearch.index")
                 .short('i')
                 .long("index")

@@ -78,6 +78,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     server_config.elastic_ecs = config.get_bool("database.elasticsearch.ecs")?;
     server_config.elastic_username = config.get("database.elasticsearch.username")?;
     server_config.elastic_password = config.get("database.elasticsearch.password")?;
+    server_config.elastic_cacert = config.get("database.elasticsearch.cacert")?;
     server_config.data_directory = config.get("data-directory")?;
     server_config.no_check_certificate = config
         .get_bool("database.elasticsearch.disable-certificate-check")?
@@ -458,6 +459,9 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             }
             if let Some(password) = &server_config.elastic_password {
                 client = client.with_password(password);
+            }
+            if let Some(cacert) = &server_config.elastic_cacert {
+                client = client.with_cacert(cacert)?;
             }
             client = client.disable_certificate_validation(server_config.no_check_certificate);
 

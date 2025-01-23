@@ -20,6 +20,7 @@
   https://github.com/jasonish/evebox/issues/52
 - [sqlite] Use server side events to stream back data such as
   aggregations, so updates in the UI can start right away.
+- [elastic] Support custom certificate authority: https://github.com/jasonish/evebox/issues/222
 
 ## 0.19.0 - 2024-12-13
 

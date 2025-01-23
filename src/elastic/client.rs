@@ -6,6 +6,8 @@ use serde::Serialize;
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::io::BufReader;
+use std::io::Read;
 use std::time::Duration;
 use tracing::warn;
 
@@ -23,23 +25,13 @@ pub enum ClientError {
     String(String),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub(crate) struct Client {
     pub url: String,
     pub disable_certificate_validation: bool,
     pub username: Option<String>,
     pub password: Option<String>,
-}
-
-impl Clone for Client {
-    fn clone(&self) -> Self {
-        Self {
-            url: self.url.clone(),
-            disable_certificate_validation: self.disable_certificate_validation,
-            username: self.username.clone(),
-            password: self.password.clone(),
-        }
-    }
+    cert: Option<reqwest::Certificate>,
 }
 
 fn default_username() -> Option<String> {
@@ -50,12 +42,38 @@ fn default_password() -> Option<String> {
     std::env::var("EVEBOX_ELASTICSEARCH_PASSWORD").ok()
 }
 
+fn load_certificate_from_file(filename: &str) -> anyhow::Result<reqwest::Certificate> {
+    let file = std::fs::File::open(filename)?;
+    let mut reader = BufReader::new(file);
+    let mut buffer = vec![];
+    reader.read_to_end(&mut buffer)?;
+    Ok(reqwest::Certificate::from_pem(&buffer)?)
+}
+
+/// Load a certificate from the specified in
+/// EVEBOX_ELASTICSEARCH_HTTP_CA_CERT. Returning None if not set, or
+/// if an error occurs. But log the error before returning None.
+fn load_certificate_from_env() -> Option<reqwest::Certificate> {
+    if let Ok(filename) = std::env::var("EVEBOX_ELASTICSEARCH_CACERT") {
+        match load_certificate_from_file(&filename) {
+            Ok(cert) => Some(cert),
+            Err(err) => {
+                warn!("Failed to load Elasticsearch HTTP CA certificate from {}, will continue without: {}", filename, err);
+                None
+            }
+        }
+    } else {
+        None
+    }
+}
+
 impl Client {
     pub fn new(url: &str) -> Self {
         Self {
             url: url.to_string(),
             username: std::env::var("EVEBOX_ELASTICSEARCH_USERNAME").ok(),
             password: std::env::var("EVEBOX_ELASTICSEARCH_PASSWORD").ok(),
+            cert: load_certificate_from_env(),
             ..Default::default()
         }
     }
@@ -65,6 +83,11 @@ impl Client {
         if self.disable_certificate_validation {
             builder = builder.danger_accept_invalid_certs(true);
         }
+
+        if let Some(cert) = self.cert.clone() {
+            builder = builder.add_root_certificate(cert);
+        }
+
         builder.build()
     }
 
@@ -272,6 +295,7 @@ pub(crate) struct ClientBuilder {
     disable_certificate_validation: bool,
     username: Option<String>,
     password: Option<String>,
+    cert: Option<reqwest::Certificate>,
 }
 
 impl ClientBuilder {
@@ -280,6 +304,7 @@ impl ClientBuilder {
             url: url.to_string(),
             username: default_username(),
             password: default_password(),
+            cert: load_certificate_from_env(),
             ..ClientBuilder::default()
         }
     }
@@ -299,14 +324,21 @@ impl ClientBuilder {
         self
     }
 
+    pub(crate) fn with_cacert(mut self, cacert: &str) -> anyhow::Result<Self> {
+        self.cert = Some(load_certificate_from_file(cacert)?);
+        Ok(self)
+    }
+
     pub fn build(self) -> Client {
         Client {
             url: self.url.clone(),
             disable_certificate_validation: self.disable_certificate_validation,
             username: self.username,
             password: self.password,
+            cert: self.cert,
         }
     }
+
 }
 
 #[derive(Deserialize, Serialize, Debug)]

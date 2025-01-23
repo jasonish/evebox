@@ -56,6 +56,8 @@ database:
     #username: username
     #password: password
 
+    #cacert: http_ca.crt
+
   retention:
     # Only keep events for the past 7 days.
     # - SQLite only
