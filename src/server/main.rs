@@ -121,9 +121,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         std::process::exit(0);
     });
 
-    let datastore = configure_datastore(config.clone(), &server_config).await?;
-
-    let config_repo = if let Some(directory) = &server_config.data_directory {
+    let configdb = if let Some(directory) = &server_config.data_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
         info!("Configuration database filename: {:?}", filename);
         configdb::open(Some(&filename)).await?
@@ -132,7 +130,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         configdb::open(None).await?
     };
 
-    let mut context = build_context(server_config.clone(), datastore, config_repo).await?;
+    let datastore = configure_datastore(configdb.clone(), config.clone(), &server_config).await?;
+
+    let mut context = build_context(server_config.clone(), datastore, configdb).await?;
 
     if server_config.authentication_required && !context.configdb.has_users().await? {
         warn!("Username/password authentication is required, but no users exist, creating a user");
@@ -450,7 +450,11 @@ pub(crate) async fn build_context(
     Ok(context)
 }
 
-async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Result<EventRepo> {
+async fn configure_datastore(
+    configdb: ConfigDb,
+    config: Config,
+    server_config: &ServerConfig,
+) -> Result<EventRepo> {
     match server_config.datastore.as_ref() {
         "elasticsearch" => {
             let mut client = elastic::ClientBuilder::new(&server_config.elastic_url);
@@ -520,6 +524,8 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             );
             debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
 
+            crate::elastic::retention::start(configdb, eventstore.clone());
+
             elastic::util::check_and_set_field_limit(&client, &eventstore.base_index).await;
 
             Ok(EventRepo::Elastic(eventstore))
@@ -548,8 +554,13 @@ async fn configure_datastore(config: Config, server_config: &ServerConfig) -> Re
             );
 
             // Start retention task.
-            sqlite::retention::start_retention_task(config.clone(), writer.clone(), db_filename)
-                .await?;
+            sqlite::retention::start_retention_task(
+                configdb,
+                config.clone(),
+                writer.clone(),
+                db_filename,
+            )
+            .await?;
             info!("Retention task started");
 
             Ok(EventRepo::SQLite(eventstore))

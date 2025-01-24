@@ -79,6 +79,8 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/admin/filter/add", post(admin::add_filter))
         .route("/api/admin/filter/:id", delete(admin::delete_filter))
         .route("/api/admin/update/ja4db", post(admin::update_ja4db))
+        .route("/api/admin/kv/config", get(admin::kv_get_config))
+        .route("/api/admin/kv/config/:key", post(admin::kv_set_config))
         .nest("/api/1/stats", stats::router())
 }
 

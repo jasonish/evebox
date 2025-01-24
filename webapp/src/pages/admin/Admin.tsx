@@ -4,7 +4,29 @@
 import { createStore } from "solid-js/store";
 import { Top } from "../../Top";
 import * as api from "../../api";
-import { Show } from "solid-js";
+import { Show, createEffect, createMemo, createResource } from "solid-js";
+
+interface AutoArchiveSettings {
+  enabled: boolean;
+  value: number;
+}
+
+async function fetchAutoArchiveSettings(): Promise<AutoArchiveSettings> {
+  const json = await api.API.getJson("/api/admin/kv/config");
+  const config = json["config.autoarchive"];
+  if (config) {
+    return config;
+  } else {
+    return defaultAutoArchiveSettings();
+  }
+}
+
+function defaultAutoArchiveSettings(): AutoArchiveSettings {
+  return {
+    enabled: false,
+    value: 7,
+  };
+}
 
 export function Admin() {
   const [state, setState] = createStore({
@@ -14,6 +36,32 @@ export function Admin() {
       failed: false,
     },
   });
+
+  const [autoArchiveSettings, { refetch: refetchAutoArchiveSettings }] =
+    createResource<AutoArchiveSettings>(fetchAutoArchiveSettings);
+  const [localAutoArchiveSettings, setLocalAutoArchiveSettings] =
+    createStore<AutoArchiveSettings>(defaultAutoArchiveSettings());
+
+  createEffect(() => {
+    if (autoArchiveSettings()) {
+      setLocalAutoArchiveSettings(autoArchiveSettings()!);
+    }
+  });
+
+  const archiveSettingsModified = createMemo(() => {
+    return (
+      JSON.stringify(localAutoArchiveSettings) !=
+      JSON.stringify(autoArchiveSettings.latest)
+    );
+  });
+
+  const saveAutoArchiveSettings = async () => {
+    await api.API.postJson(
+      "/api/admin/kv/config/config.autoarchive",
+      localAutoArchiveSettings
+    );
+    refetchAutoArchiveSettings();
+  };
 
   const updateJa4Db = async (e: any) => {
     e.preventDefault();
@@ -45,6 +93,7 @@ export function Admin() {
             </span>
           </div>
         </div>
+
         <div class="row mt-2">
           <div class="col">
             <div class="card">
@@ -67,6 +116,70 @@ export function Admin() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mt-2">
+          <div class="col">
+            <div class="card">
+              <div class="card-body">
+                <div class="row">
+                  <label class="col col-form-label">
+                    <div class="form-check form-switch">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        checked={localAutoArchiveSettings.enabled}
+                        onChange={(e) => {
+                          setLocalAutoArchiveSettings({
+                            enabled: e.target.checked,
+                          });
+                        }}
+                      />
+                      <label class="form-check-label">
+                        Auto-archive events older than:
+                      </label>
+                    </div>
+                  </label>
+                  <div class="col">
+                    <div class="input-group">
+                      <input
+                        type="number"
+                        class="form-control"
+                        value={localAutoArchiveSettings.value}
+                        onChange={(e) => {
+                          setLocalAutoArchiveSettings("value", +e.target.value);
+                        }}
+                      />
+                      <span class="input-group-text">Days</span>
+                    </div>
+                  </div>
+                  <div class="col text-end">
+                    <Show when={archiveSettingsModified()}>
+                      <button
+                        class="btn btn-success me-2"
+                        onClick={() => {
+                          saveAutoArchiveSettings();
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        class="btn btn-danger"
+                        onClick={() => {
+                          setLocalAutoArchiveSettings(
+                            autoArchiveSettings.latest!
+                          );
+                        }}
+                      >
+                        Reset
+                      </button>
+                    </Show>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

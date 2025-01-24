@@ -174,7 +174,7 @@ impl SqliteEventRepo {
     pub async fn archive_by_alert_group(&self, alert_group: AlertGroupSpec) -> Result<()> {
         debug!("Archiving alert group: {:?}", alert_group);
 
-        let action = HistoryEntryBuilder::new_archive().build();
+        let action = HistoryEntryBuilder::new_archived().build();
         let sql = "
             UPDATE events
             SET archived = 1,
@@ -330,7 +330,7 @@ impl SqliteEventRepo {
     }
 
     pub async fn archive_event_by_id(&self, event_id: &str) -> Result<()> {
-        let action = HistoryEntryBuilder::new_archive().build();
+        let action = HistoryEntryBuilder::new_archived().build();
         let sql = r#"
             UPDATE events
             SET archived = 1,

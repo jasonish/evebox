@@ -4,6 +4,7 @@
 use crate::prelude::*;
 use crate::sqlite::prelude::*;
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use crate::datetime::DateTime;
@@ -58,7 +59,13 @@ pub(crate) struct User {
     pub username: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Deserialize)]
+pub(crate) struct AutoArchiveConfig {
+    pub enabled: bool,
+    pub value: u64,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct ConfigDb {
     pub(crate) pool: SqlitePool,
 }
@@ -234,6 +241,47 @@ impl ConfigDb {
         let sql = "SELECT * FROM filters";
         let rows: Vec<FilterRow> = sqlx::query_as(sql).fetch_all(&self.pool).await?;
         Ok(rows)
+    }
+
+    pub(crate) async fn kv_get_config(&self) -> Result<HashMap<String, serde_json::Value>> {
+        let sql = "SELECT key, value FROM kv WHERE key LIKE 'config.%'";
+        let rows: Vec<(String, serde_json::Value)> =
+            sqlx::query_as(sql).fetch_all(&self.pool).await?;
+        Ok(rows.into_iter().collect())
+    }
+
+    pub(crate) async fn kv_get_config_as_json(
+        &self,
+        key: &str,
+    ) -> Result<Option<serde_json::Value>> {
+        let sql = "SELECT value FROM kv WHERE key = ?";
+        let value: Option<serde_json::Value> = sqlx::query_scalar(sql)
+            .bind(key)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(value)
+    }
+
+    pub(crate) async fn kv_get_config_as_t<T>(&self, key: &str) -> Result<Option<T>>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        let value = self.kv_get_config_as_json(key).await?;
+        Ok(value.map(|v| serde_json::from_value(v)).transpose()?)
+    }
+
+    pub(crate) async fn kv_set_config(
+        &self,
+        key: &str,
+        value: &serde_json::Value,
+    ) -> Result<(), sqlx::Error> {
+        let sql = "INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)";
+        sqlx::query(sql)
+            .bind(key)
+            .bind(value)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 }
 

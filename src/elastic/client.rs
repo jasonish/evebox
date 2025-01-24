@@ -338,7 +338,6 @@ impl ClientBuilder {
             cert: self.cert,
         }
     }
-
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -77,14 +77,20 @@ impl EventRepo {
 
     pub async fn archive_event_by_id(&self, event_id: &str) -> Result<()> {
         match self {
-            EventRepo::Elastic(ds) => ds.archive_event_by_id(event_id).await,
+            EventRepo::Elastic(ds) => {
+                ds.archive_event_by_id(event_id).await?;
+                Ok(())
+            }
             EventRepo::SQLite(ds) => ds.archive_event_by_id(event_id).await,
         }
     }
 
     pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<()> {
         match self {
-            EventRepo::Elastic(ds) => ds.escalate_event_by_id(event_id).await,
+            EventRepo::Elastic(ds) => {
+                ds.escalate_event_by_id(event_id).await?;
+                Ok(())
+            }
             EventRepo::SQLite(ds) => ds.escalate_event_by_id(event_id).await,
         }
     }
@@ -116,7 +122,10 @@ impl EventRepo {
 
     pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<()> {
         match self {
-            EventRepo::Elastic(ds) => ds.archive_by_alert_group(alert_group).await,
+            EventRepo::Elastic(ds) => {
+                ds.archive_by_alert_group(alert_group).await?;
+                Ok(())
+            }
             EventRepo::SQLite(ds) => ds.archive_by_alert_group(alert_group).await,
         }
     }
@@ -127,7 +136,10 @@ impl EventRepo {
         session: Arc<Session>,
     ) -> Result<()> {
         match self {
-            EventRepo::Elastic(ds) => ds.escalate_by_alert_group(alert_group, session).await,
+            EventRepo::Elastic(ds) => {
+                ds.escalate_by_alert_group(alert_group, session).await?;
+                Ok(())
+            }
             EventRepo::SQLite(ds) => ds.escalate_by_alert_group(session, alert_group).await,
         }
     }
@@ -157,7 +169,10 @@ impl EventRepo {
         session: Arc<Session>,
     ) -> Result<()> {
         match self {
-            EventRepo::Elastic(ds) => ds.comment_event_by_id(event_id, comment, session).await,
+            EventRepo::Elastic(ds) => {
+                ds.comment_event_by_id(event_id, comment, session).await?;
+                Ok(())
+            }
             EventRepo::SQLite(ds) => ds.comment_event_by_id(event_id, comment, session).await,
         }
     }

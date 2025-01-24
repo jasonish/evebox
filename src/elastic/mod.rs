@@ -16,6 +16,7 @@ pub(crate) mod client;
 pub(crate) mod eventrepo;
 pub(crate) mod importer;
 pub(crate) mod request;
+pub(crate) mod retention;
 pub(crate) mod util;
 
 pub(crate) const TAG_ESCALATED: &str = "evebox.escalated";
@@ -28,6 +29,7 @@ pub(crate) const TAGS_AUTO_ARCHIVED: [&str; 2] = [TAG_ARCHIVED, TAG_AUTO_ARCHIVE
 
 pub(crate) enum HistoryType {
     Archived,
+    AutoArchived,
     Escalated,
     Deescalated,
     Comment,
@@ -37,6 +39,7 @@ impl std::fmt::Display for HistoryType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             HistoryType::Archived => write!(f, "archived"),
+            HistoryType::AutoArchived => write!(f, "auto-archived"),
             HistoryType::Escalated => write!(f, "escalated"),
             HistoryType::Deescalated => write!(f, "de-escalated"),
             HistoryType::Comment => write!(f, "comment"),
@@ -53,7 +56,7 @@ pub(crate) struct AlertQueryOptions {
     pub timeout: Option<u64>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub(crate) struct HistoryEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
@@ -86,8 +89,12 @@ impl HistoryEntryBuilder {
         }
     }
 
-    pub fn new_archive() -> Self {
+    pub fn new_archived() -> Self {
         Self::new(HistoryType::Archived)
+    }
+
+    pub fn new_auto_archived() -> Self {
+        Self::new(HistoryType::AutoArchived)
     }
 
     pub fn new_escalate() -> Self {

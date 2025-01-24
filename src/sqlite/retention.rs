@@ -1,14 +1,17 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::elastic::HistoryEntryBuilder;
+use crate::sqlite::prelude::*;
+
 use anyhow::Result;
 use core::ops::Sub;
-use sqlx::SqliteConnection;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::{debug, error, info, trace, warn};
 
+use super::configdb::{AutoArchiveConfig, ConfigDb};
 use super::info::Info;
 use crate::config::Config;
 use crate::datetime::DateTime;
@@ -27,6 +30,7 @@ const LIMIT: usize = 1000;
 
 #[derive(Debug)]
 pub(crate) struct RetentionConfig {
+    pub configdb: crate::sqlite::configdb::ConfigDb,
     pub range: Option<usize>,
     pub size: usize,
 }
@@ -62,6 +66,7 @@ fn get_days(config: &Config) -> Result<Option<usize>> {
 }
 
 pub(crate) async fn start_retention_task(
+    configdb: crate::sqlite::configdb::ConfigDb,
     config: Config,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     filename: PathBuf,
@@ -74,7 +79,11 @@ pub(crate) async fn start_retention_task(
         range.unwrap_or(0),
         size
     );
-    let config = RetentionConfig { range, size };
+    let config = RetentionConfig {
+        configdb,
+        range,
+        size,
+    };
     tokio::spawn(async move {
         retention_task(config, conn, filename).await;
     });
@@ -83,7 +92,6 @@ pub(crate) async fn start_retention_task(
 }
 
 async fn size_enabled(conn: Arc<tokio::sync::Mutex<SqliteConnection>>) -> bool {
-    use sqlx::Connection;
     let mut conn = conn.lock().await;
     let mut tx = conn.begin().await.unwrap();
     match Info::new(&mut tx).get_auto_vacuum().await {
@@ -171,8 +179,47 @@ async fn retention_task(
             last_report = Instant::now();
         }
 
+        if let Err(err) = auto_archive(&config.configdb, conn.clone()).await {
+            warn!("Failed to auto-archive events: {:?}", err);
+        }
+
         tokio::time::sleep(delay).await;
     }
+}
+
+async fn auto_archive(
+    configdb: &ConfigDb,
+    conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
+) -> Result<()> {
+    let config: Option<AutoArchiveConfig> =
+        configdb.kv_get_config_as_t("config.autoarchive").await?;
+    if let Some(config) = config {
+        if config.enabled {
+            let now = DateTime::now();
+            let then = now.sub(Duration::from_secs(86400 * config.value));
+            let mut conn = conn.lock().await;
+            let action = HistoryEntryBuilder::new_auto_archived().build();
+            let sql = r#"
+                UPDATE events
+                SET archived = 1,
+                  history = json_insert(history, '$[#]', json(?))
+                WHERE
+                  json_extract(source, '$.event_type') = 'alert'
+                  AND timestamp < ?
+                  AND archived = 0"#;
+            let mut tx = conn.begin().await?;
+            let n = sqlx::query(sql)
+                .bind(action.to_json())
+                .bind(then.to_nanos())
+                .execute(&mut *tx)
+                .await?
+                .rows_affected();
+            tx.commit().await?;
+            debug!("Auto-archived {} alerts", n);
+        }
+    }
+
+    Ok(())
 }
 
 async fn delete_to_size(

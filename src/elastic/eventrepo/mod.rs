@@ -156,16 +156,16 @@ impl ElasticEventRepo {
         query: serde_json::Value,
         tag: &str,
         action: &HistoryEntry,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         self.add_tags_by_query(query, &[tag], action).await
     }
 
-    async fn add_tags_by_query(
+    pub(crate) async fn add_tags_by_query(
         &self,
         query: serde_json::Value,
         tags: &[&str],
         action: &HistoryEntry,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let script = json!({
             "lang": "painless",
             "inline": "
@@ -203,7 +203,7 @@ impl ElasticEventRepo {
         let updated = response.updated.unwrap_or_default();
         debug!("Tags added to {} events", updated);
 
-        Ok(())
+        Ok(updated)
     }
 
     async fn remove_tag_by_query(
@@ -256,7 +256,7 @@ impl ElasticEventRepo {
         alert_group: api::AlertGroupSpec,
         tags: &[&str],
         action: &HistoryEntry,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let mut must_not = Vec::new();
         for tag in tags {
             must_not.push(json!({"term": {"tags": tag}}));
@@ -292,7 +292,7 @@ impl ElasticEventRepo {
         self.remove_tags_by_query(query, tags, action).await
     }
 
-    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<()> {
+    pub async fn archive_event_by_id(&self, event_id: &str) -> Result<u64> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -300,11 +300,11 @@ impl ElasticEventRepo {
                 }
             }
         });
-        let action = HistoryEntryBuilder::new_archive().build();
+        let action = HistoryEntryBuilder::new_archived().build();
         self.add_tag_by_query(query, TAG_ARCHIVED, &action).await
     }
 
-    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<()> {
+    pub async fn escalate_event_by_id(&self, event_id: &str) -> Result<u64> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -334,7 +334,7 @@ impl ElasticEventRepo {
         event_id: &str,
         comment: String,
         session: Arc<Session>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let query = json!({
             "bool": {
                 "filter": {
@@ -600,8 +600,8 @@ impl ElasticEventRepo {
         }
     }
 
-    pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<()> {
-        let action = HistoryEntryBuilder::new_archive().build();
+    pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<u64> {
+        let action = HistoryEntryBuilder::new_archived().build();
         self.add_tags_by_alert_group(alert_group, &TAGS_ARCHIVED, &action)
             .await
     }
@@ -609,8 +609,8 @@ impl ElasticEventRepo {
     pub async fn auto_archive_by_alert_group(
         &self,
         alert_group: api::AlertGroupSpec,
-    ) -> Result<()> {
-        let action = HistoryEntryBuilder::new_archive().build();
+    ) -> Result<u64> {
+        let action = HistoryEntryBuilder::new_archived().build();
         self.add_tags_by_alert_group(alert_group, &TAGS_AUTO_ARCHIVED, &action)
             .await
     }
@@ -619,7 +619,7 @@ impl ElasticEventRepo {
         &self,
         alert_group: api::AlertGroupSpec,
         session: Arc<Session>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let action = HistoryEntryBuilder::new_escalate()
             .username(session.username.clone())
             .build();

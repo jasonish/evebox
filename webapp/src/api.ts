@@ -308,6 +308,22 @@ export async function dhcpRequest(query: {
 }
 
 export namespace API {
+  export async function getJson(url: string): Promise<any> {
+    let response = await fetch(url);
+    let json = response.json();
+    return json;
+  }
+
+  export async function postJson(url: string, body: any): Promise<Response> {
+    return await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
   export async function histogramTime(request: {
     time_range: string;
     interval?: string;
@@ -463,7 +479,6 @@ export namespace API {
 
   export async function fetchFilters(): Promise<any> {
     let response = await fetch("api/admin/filters");
-    console.log(response);
     if (response.ok) {
       let json = await response.json();
       return json;

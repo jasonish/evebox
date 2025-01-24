@@ -122,3 +122,21 @@ pub(super) async fn delete_filter(
 
     Ok(Json(json!({})))
 }
+
+pub(super) async fn kv_get_config(
+    _sesssion: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+) -> Result<impl IntoResponse, AppError> {
+    let rows = context.configdb.kv_get_config().await?;
+    Ok(Json(rows))
+}
+
+pub(super) async fn kv_set_config(
+    _sesssion: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+    Path(key): Path<String>,
+    Json(value): Json<serde_json::Value>,
+) -> Result<impl IntoResponse, AppError> {
+    context.configdb.kv_set_config(&key, &value).await?;
+    Ok(())
+}
