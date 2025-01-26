@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::elastic::HistoryEntryBuilder;
+use crate::server::metrics::Metrics;
 use crate::sqlite::prelude::*;
 
 use anyhow::Result;
@@ -66,6 +67,7 @@ fn get_days(config: &Config) -> Result<Option<usize>> {
 }
 
 pub(crate) async fn start_retention_task(
+    metrics: Arc<Metrics>,
     configdb: crate::sqlite::configdb::ConfigDb,
     config: Config,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
@@ -85,7 +87,7 @@ pub(crate) async fn start_retention_task(
         size,
     };
     tokio::spawn(async move {
-        retention_task(config, conn, filename).await;
+        retention_task(metrics, config, conn, filename).await;
     });
 
     Ok(())
@@ -121,6 +123,7 @@ async fn size_enabled(conn: Arc<tokio::sync::Mutex<SqliteConnection>>) -> bool {
 }
 
 async fn retention_task(
+    metrics: Arc<Metrics>,
     config: RetentionConfig,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     filename: PathBuf,
@@ -179,7 +182,7 @@ async fn retention_task(
             last_report = Instant::now();
         }
 
-        if let Err(err) = auto_archive(&config.configdb, conn.clone()).await {
+        if let Err(err) = auto_archive(&metrics, &config.configdb, conn.clone()).await {
             warn!("Failed to auto-archive events: {:?}", err);
         }
 
@@ -188,6 +191,7 @@ async fn retention_task(
 }
 
 async fn auto_archive(
+    metrics: &Metrics,
     configdb: &ConfigDb,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
 ) -> Result<()> {
@@ -215,6 +219,7 @@ async fn auto_archive(
                 .await?
                 .rows_affected();
             tx.commit().await?;
+            metrics.incr_autoarchived_by_age(n);
             debug!("Auto-archived {} alerts", n);
         }
     }

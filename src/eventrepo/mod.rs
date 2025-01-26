@@ -120,12 +120,9 @@ impl EventRepo {
         }
     }
 
-    pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<()> {
+    pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<u64> {
         match self {
-            EventRepo::Elastic(ds) => {
-                ds.archive_by_alert_group(alert_group).await?;
-                Ok(())
-            }
+            EventRepo::Elastic(ds) => ds.archive_by_alert_group(alert_group).await,
             EventRepo::SQLite(ds) => ds.archive_by_alert_group(alert_group).await,
         }
     }

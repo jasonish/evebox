@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 use crate::rules::RuleMap;
 use crate::server::autoarchive::AutoArchive;
+use crate::server::metrics::Metrics;
 use std::sync::Arc;
 
 #[derive(Clone, Default)]
@@ -181,12 +182,14 @@ impl EveFilterTrait for AlertMetadataEveBoxActionFilter {
 #[derive(Debug)]
 pub(crate) struct AutoArchiveFilter {
     processor: Arc<RwLock<AutoArchive>>,
+    metrics: Arc<Metrics>,
 }
 
 impl AutoArchiveFilter {
-    pub(crate) fn new(auto_archive: Arc<RwLock<AutoArchive>>) -> Self {
+    pub(crate) fn new(auto_archive: Arc<RwLock<AutoArchive>>, metrics: Arc<Metrics>) -> Self {
         Self {
             processor: auto_archive,
+            metrics,
         }
     }
 }
@@ -206,6 +209,7 @@ impl EveFilterTrait for AutoArchiveFilter {
             tags.push("evebox.archived".into());
             tags.push("evebox.auto-archived".into());
             event["tags"] = serde_json::Value::Array(tags.clone());
+            self.metrics.incr_autoarchived_by_filter(1)
         }
     }
 }

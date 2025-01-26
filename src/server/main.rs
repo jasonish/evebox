@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use super::{ServerConfig, ServerContext};
+use super::{Metrics, ServerConfig, ServerContext};
 use crate::bookmark;
 use crate::config::Config;
 use crate::elastic;
@@ -130,9 +130,18 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         configdb::open(None).await?
     };
 
-    let datastore = configure_datastore(configdb.clone(), config.clone(), &server_config).await?;
+    let metrics = Arc::new(crate::server::metrics::Metrics::default());
 
-    let mut context = build_context(server_config.clone(), datastore, configdb).await?;
+    let datastore = configure_datastore(
+        metrics.clone(),
+        configdb.clone(),
+        config.clone(),
+        &server_config,
+    )
+    .await?;
+
+    let mut context =
+        build_context(server_config.clone(), datastore, configdb, metrics.clone()).await?;
 
     if server_config.authentication_required && !context.configdb.has_users().await? {
         warn!("Username/password authentication is required, but no users exist, creating a user");
@@ -157,6 +166,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     let mut filters = EveFilterChain::with_defaults();
     filters.add_filter(crate::eve::filters::AutoArchiveFilter::new(
         context.auto_archive.clone(),
+        metrics.clone(),
     ));
 
     context.filters = Some(filters.clone());
@@ -427,9 +437,10 @@ pub(crate) async fn build_context(
     config: ServerConfig,
     datastore: EventRepo,
     configdb: ConfigDb,
+    metrics: Arc<Metrics>,
 ) -> Result<ServerContext> {
     let configdb = Arc::new(configdb);
-    let context = ServerContext::new(config, configdb.clone(), datastore);
+    let context = ServerContext::new(config, configdb.clone(), datastore, metrics);
 
     // Will probably need a refactor at some point.
     match configdb.get_filters().await {
@@ -451,6 +462,7 @@ pub(crate) async fn build_context(
 }
 
 async fn configure_datastore(
+    metrics: Arc<Metrics>,
     configdb: ConfigDb,
     config: Config,
     server_config: &ServerConfig,
@@ -524,7 +536,7 @@ async fn configure_datastore(
             );
             debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
 
-            crate::elastic::retention::start(configdb, eventstore.clone());
+            crate::elastic::retention::start(metrics, configdb, eventstore.clone());
 
             elastic::util::check_and_set_field_limit(&client, &eventstore.base_index).await;
 
@@ -551,10 +563,12 @@ async fn configure_datastore(
                 writer.clone(),
                 pool,
                 Some(rusqlite_writer),
+                metrics.clone(),
             );
 
             // Start retention task.
             sqlite::retention::start_retention_task(
+                metrics,
                 configdb,
                 config.clone(),
                 writer.clone(),

@@ -12,8 +12,8 @@ use std::{
     time::Duration,
 };
 
-#[derive(Clone, Debug, Default)]
-struct Metrics {
+#[derive(Clone, Debug, Default, Serialize)]
+pub(crate) struct SqliteEventConsumerMetrics {
     total_duration: Duration,
     occurrences: u64,
     events: usize,
@@ -22,7 +22,7 @@ struct Metrics {
     lock_errors: u64,
 }
 
-impl Metrics {
+impl SqliteEventConsumerMetrics {
     fn update(&mut self, duration: Duration, events: usize) {
         if duration > self.max {
             self.max = duration;
@@ -37,7 +37,7 @@ impl Metrics {
     }
 }
 
-impl std::fmt::Display for Metrics {
+impl std::fmt::Display for SqliteEventConsumerMetrics {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let avg_duration = self.total_duration.as_millis() / self.occurrences as u128;
         let avg_duration = Duration::from_millis(avg_duration as u64);
@@ -65,9 +65,10 @@ struct PreparedEvent {
 pub(crate) struct SqliteEventSink {
     conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     queue: Vec<PreparedEvent>,
-    metrics: Arc<Mutex<Metrics>>,
+    metrics: Arc<Mutex<SqliteEventConsumerMetrics>>,
     writer: Option<Arc<Mutex<rusqlite::Connection>>>,
     use_rusqlite: bool,
+    server_metrics: Arc<crate::server::metrics::Metrics>,
 }
 
 impl Clone for SqliteEventSink {
@@ -78,6 +79,7 @@ impl Clone for SqliteEventSink {
             metrics: self.metrics.clone(),
             writer: self.writer.clone(),
             use_rusqlite: self.use_rusqlite,
+            server_metrics: self.server_metrics.clone(),
         }
     }
 }
@@ -86,6 +88,7 @@ impl SqliteEventSink {
     pub fn new(
         conn: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
         writer: Option<Arc<Mutex<rusqlite::Connection>>>,
+        server_metrics: Arc<crate::server::metrics::Metrics>,
     ) -> Self {
         let use_rusqlite = match std::env::var("USE_RUSQLITE") {
             Ok(val) => matches!(val.as_ref(), "yes" | "1" | "true"),
@@ -97,9 +100,10 @@ impl SqliteEventSink {
         Self {
             conn,
             queue: Vec::new(),
-            metrics: Arc::new(Mutex::new(Metrics::default())),
+            metrics: server_metrics.sqlite_event_consumer.clone(),
             writer,
             use_rusqlite,
+            server_metrics,
         }
     }
 

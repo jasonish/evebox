@@ -24,7 +24,11 @@ pub(crate) struct DateTime {
     pub datetime: ChronoDateTime,
 }
 
-impl DateTime {}
+impl Default for DateTime {
+    fn default() -> Self {
+        DateTime::now()
+    }
+}
 
 impl Serialize for DateTime {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

@@ -6,6 +6,7 @@ use crate::server::autoarchive::AutoArchive;
 use crate::sqlite::configdb::ConfigDb;
 pub(crate) use main::build_context;
 pub use main::main;
+use metrics::Metrics;
 use serde::Serialize;
 use session::SessionStore;
 use std::path::PathBuf;
@@ -14,6 +15,7 @@ use std::sync::{Arc, RwLock};
 pub(crate) mod api;
 pub(crate) mod autoarchive;
 pub(crate) mod main;
+pub(super) mod metrics;
 pub(crate) mod session;
 
 #[derive(Serialize, Default, Debug)]
@@ -30,6 +32,7 @@ pub(crate) struct ServerContext {
     pub defaults: Defaults,
     pub filters: Option<crate::eve::filters::EveFilterChain>,
     pub auto_archive: Arc<RwLock<AutoArchive>>,
+    pub metrics: Arc<Metrics>,
 }
 
 impl ServerContext {
@@ -37,6 +40,7 @@ impl ServerContext {
         config: ServerConfig,
         config_repo: Arc<ConfigDb>,
         datastore: EventRepo,
+        metrics: Arc<Metrics>,
     ) -> Self {
         let auto_archive: Arc<RwLock<AutoArchive>> = Default::default();
         Self {
@@ -48,6 +52,7 @@ impl ServerContext {
             defaults: Defaults::default(),
             filters: None,
             auto_archive,
+            metrics,
         }
     }
 }

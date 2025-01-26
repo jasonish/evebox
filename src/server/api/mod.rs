@@ -81,6 +81,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/admin/update/ja4db", post(admin::update_ja4db))
         .route("/api/admin/kv/config", get(admin::kv_get_config))
         .route("/api/admin/kv/config/:key", post(admin::kv_set_config))
+        .route("/api/metrics", get(metrics))
         .nest("/api/1/stats", stats::router())
 }
 
@@ -213,7 +214,10 @@ pub(crate) async fn alert_group_archive(
     Json(request): Json<AlertGroupSpec>,
 ) -> impl IntoResponse {
     match context.datastore.archive_by_alert_group(request).await {
-        Ok(_) => StatusCode::OK,
+        Ok(n) => {
+            context.metrics.incr_autoarchived_by_user(n);
+            StatusCode::OK
+        }
         Err(err) => {
             error!("Failed to archive by alert group: {:?}", err);
             StatusCode::INTERNAL_SERVER_ERROR
@@ -291,7 +295,11 @@ pub(crate) async fn archive_event_by_id(
     _session: SessionExtractor,
 ) -> impl IntoResponse {
     match context.datastore.archive_event_by_id(&event_id).await {
-        Ok(()) => StatusCode::OK,
+        Ok(()) => {
+            // Assume success as far as metrics are concerned.
+            context.metrics.incr_autoarchived_by_user(1);
+            StatusCode::OK
+        }
         Err(err) => {
             error!(
                 "Failed to archive event by ID: id={}, err={:?}",
@@ -395,6 +403,13 @@ async fn find_dns(
             Ok(Json(response))
         }
     }
+}
+
+pub(crate) async fn metrics(
+    _session: SessionExtractor,
+    Extension(context): Extension<Arc<ServerContext>>,
+) -> impl IntoResponse {
+    Json(context.metrics.clone())
 }
 
 pub(crate) async fn events(

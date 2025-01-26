@@ -7,6 +7,7 @@ use crate::config::Config;
 use crate::eve;
 use crate::geoip;
 use crate::server::main::build_axum_service;
+use crate::server::metrics::Metrics;
 use crate::sqlite;
 use crate::sqlite::configdb;
 use std::path::PathBuf;
@@ -35,9 +36,12 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         db_connection_builder.open_with_rusqlite()?,
     )));
 
+    let metrics = Arc::new(Metrics::default());
+
     let import_task = {
+        let metrics = metrics.clone();
         tokio::spawn(async move {
-            if let Err(err) = run_import(db, writer, limit, &input).await {
+            if let Err(err) = run_import(db, writer, limit, &input, metrics).await {
                 error!("Import failure: {}", err);
             }
         })
@@ -58,14 +62,19 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
     let server = {
         let host = host.clone();
+        let metrics = metrics.clone();
         tokio::spawn(async move {
             let mut port = 5636;
             loop {
                 let conn = Arc::new(tokio::sync::Mutex::new(
                     db_connection_builder.open_connection(false).await.unwrap(),
                 ));
-                let sqlite_datastore =
-                    sqlite::eventrepo::SqliteEventRepo::new(conn, pool.clone(), None);
+                let sqlite_datastore = sqlite::eventrepo::SqliteEventRepo::new(
+                    conn,
+                    pool.clone(),
+                    None,
+                    metrics.clone(),
+                );
                 let ds = crate::eventrepo::EventRepo::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port,
@@ -77,19 +86,23 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                     ..crate::server::ServerConfig::default()
                 };
 
-                let context =
-                    match crate::server::build_context(config.clone(), ds, config_repo.clone())
-                        .await
-                    {
-                        Ok(mut context) => {
-                            context.defaults.time_range = Some("all".to_string());
-                            Arc::new(context)
-                        }
-                        Err(err) => {
-                            error!("Failed to build server context: {}", err);
-                            std::process::exit(1);
-                        }
-                    };
+                let context = match crate::server::build_context(
+                    config.clone(),
+                    ds,
+                    config_repo.clone(),
+                    Arc::new(Metrics::default()),
+                )
+                .await
+                {
+                    Ok(mut context) => {
+                        context.defaults.time_range = Some("all".to_string());
+                        Arc::new(context)
+                    }
+                    Err(err) => {
+                        error!("Failed to build server context: {}", err);
+                        std::process::exit(1);
+                    }
+                };
                 debug!("Successfully build server context");
 
                 match tokio::net::TcpListener::bind(&format!("{}:{}", config.host, port)).await {
@@ -154,12 +167,13 @@ async fn run_import(
     writer: Option<Arc<Mutex<rusqlite::Connection>>>,
     limit: u64,
     input: &str,
+    metrics: Arc<crate::server::metrics::Metrics>,
 ) -> anyhow::Result<()> {
     let geoipdb = match geoip::GeoIP::open(None) {
         Ok(geoipdb) => Some(geoipdb),
         Err(_) => None,
     };
-    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, writer);
+    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, writer, metrics);
     let mut reader = eve::reader::EveReader::new(input.into());
     info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;

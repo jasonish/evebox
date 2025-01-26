@@ -41,11 +41,13 @@ impl SqliteEventRepo {
         writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
         pool: SqlitePool,
         rusqlite_writer: Option<Arc<Mutex<rusqlite::Connection>>>,
+        metrics: Arc<crate::server::metrics::Metrics>,
     ) -> Self {
         Self {
             importer: super::importer::SqliteEventSink::new(
                 writer.clone(),
                 rusqlite_writer.clone(),
+                metrics,
             ),
             pool,
             writer: writer.clone(),
@@ -171,7 +173,7 @@ impl SqliteEventRepo {
 
     // TODO: Unsure if the current query string needs to be considered. The Go code didn't
     //          consider it.
-    pub async fn archive_by_alert_group(&self, alert_group: AlertGroupSpec) -> Result<()> {
+    pub async fn archive_by_alert_group(&self, alert_group: AlertGroupSpec) -> Result<u64> {
         debug!("Archiving alert group: {:?}", alert_group);
 
         let action = HistoryEntryBuilder::new_archived().build();
@@ -229,16 +231,18 @@ impl SqliteEventRepo {
         let start = Instant::now();
         let mut conn = self.writer.lock().await;
         let write_lock_elapsed = start.elapsed();
-        let x = sqlx::query_with(&sql, args).execute(&mut *conn).await?;
+        let n = sqlx::query_with(&sql, args)
+            .execute(&mut *conn)
+            .await?
+            .rows_affected();
         let query_elapsed = start.elapsed();
-        let n = x.rows_affected();
         debug!(
             "Archived {n} alerts in {} ms (write-lock wait: {})",
             query_elapsed.as_millis(),
             write_lock_elapsed.as_millis()
         );
 
-        Ok(())
+        Ok(n)
     }
 
     pub async fn set_escalation_by_alert_group(

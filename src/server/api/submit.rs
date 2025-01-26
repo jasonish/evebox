@@ -74,6 +74,7 @@ pub(crate) async fn handler(
 
     match importer.commit().await {
         Ok(n) => {
+            context.metrics.incr_events_rx(count);
             let response = json!({
                 // Kept capitolized for compatibility with the Go agent.
                 "Count": n,
