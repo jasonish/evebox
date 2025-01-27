@@ -31,10 +31,11 @@ import { addNotification } from "./Notifications";
 import { eventNameFromType } from "./Events";
 import { EventServiceConfig, serverConfig } from "./config";
 import { createStore } from "solid-js/store";
-import { BiGear, BiInfoCircle } from "./icons";
+import { BiGear, BiInfoCircle, BiQuestionCircle } from "./icons";
 import { SearchLink } from "./common/SearchLink";
 import * as api from "./api";
 import { FormattedTimestamp, AutoArchiveMenuElements } from "./components";
+import * as bootstrap from "bootstrap";
 
 const PCAP_BUTTON_STYLE =
   "--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .7rem;";
@@ -107,6 +108,18 @@ export function EventView() {
     if (keybindings) {
       keybindings();
     }
+  });
+
+  createEffect(() => {
+    const _event = event();
+    const _srcIpDns = srcIpDns();
+    const _destIpDns = destIpDns();
+    const popoverTriggerList = document.querySelectorAll(
+      '[data-bs-toggle="popover"]'
+    );
+    const popoverList = [...popoverTriggerList].map(
+      (popoverTriggerEl) => new bootstrap.Popover(popoverTriggerEl)
+    );
   });
 
   createEffect(() => {
@@ -765,6 +778,16 @@ export function EventView() {
 
                 <Show when={srcIpDns() || destIpDns()}>
                   <div class="card mt-2">
+                    <div class="card-header">
+                      DNS Hostnames
+                      <span
+                        class="float-end"
+                        data-bs-toggle="popover"
+                        data-bs-content="DNS hostnames from Suricata DNS records"
+                      >
+                        <BiQuestionCircle />
+                      </span>
+                    </div>
                     <div class="card-body" style="padding: 2px;">
                       <table
                         class={
