@@ -21,6 +21,8 @@
 - [sqlite] Use server side events to stream back data such as
   aggregations, so updates in the UI can start right away.
 - [elastic] Support custom certificate authority: https://github.com/jasonish/evebox/issues/222
+- Auto archive events by date. Allows users to set a number of days,
+  events older will be automatically archived.
 
 ## 0.19.0 - 2024-12-13
 
