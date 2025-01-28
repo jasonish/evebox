@@ -21,24 +21,19 @@ import { createStore } from "solid-js/store";
 import { CountValueDataTable } from "../components";
 import dayjs from "dayjs";
 
-const initialData = {
-  topAlertsLoading: false,
-  topAlerts: [],
+interface AggResults {
+  loading: boolean;
+  rows: any[];
+  timestamp: null | dayjs.Dayjs;
+}
 
-  topDnsRequestsLoading: false,
-  topDnsRequests: [],
-  topDnsRequestsFrom: null,
-
-  tlsSni: {
+function defaultAggResults(): AggResults {
+  return {
     loading: false,
-    data: [],
-  },
-
-  quicSni: {
-    loading: false,
-    data: [],
-  },
-};
+    rows: [],
+    timestamp: null,
+  };
+}
 
 export function OverviewReport() {
   const [version, setVersion] = createSignal(0);
@@ -49,10 +44,26 @@ export function OverviewReport() {
     stats: true,
     netflow: true,
   };
+
   const [searchParams, setSearchParams] = useSearchParams<{
     sensor?: string;
   }>();
-  const [data, setData] = createStore(initialData);
+
+  const [topAlerts, setTopAlerts] = createStore<AggResults>(
+    defaultAggResults()
+  );
+
+  const [topDnsRequests, setTopDnsRequests] = createStore<AggResults>(
+    defaultAggResults()
+  );
+
+  const [topTlsSni, setTopTlsSni] = createStore<AggResults>(
+    defaultAggResults()
+  );
+
+  const [topQuicSni, setTopQuicSni] = createStore<AggResults>(
+    defaultAggResults()
+  );
 
   const [eventsOverTimeLoading, setEventsOverTimeLoading] = createSignal(0);
 
@@ -94,13 +105,15 @@ export function OverviewReport() {
         q: q + " event_type:alert",
       };
 
-      setData("topAlertsLoading", true);
+      setTopAlerts("loading", true);
 
       API.getSseAgg(request, version, (data: any) => {
         if (data === null) {
-          setData("topAlertsLoading", false);
+          setTopAlerts("loading", false);
         } else {
-          setData("topAlerts", data.rows);
+          const timestamp = dayjs(data.earliest_ts);
+          setTopAlerts("timestamp", timestamp);
+          setTopAlerts("rows", data.rows);
         }
       });
     });
@@ -114,14 +127,14 @@ export function OverviewReport() {
         q: q + " event_type:dns dns.type:query",
       };
 
-      setData("topDnsRequestsLoading", true);
+      setTopDnsRequests("loading", true);
 
       return API.getSseAgg(request, version, (data: any) => {
         if (data === null) {
-          setData("topDnsRequestsLoading", false);
+          setTopDnsRequests("loading", false);
         } else {
-          setData("topDnsRequestsFrom", data.earliest_ts);
-          setData("topDnsRequests", data.rows);
+          setTopDnsRequests("timestamp", dayjs(data.earliest_ts));
+          setTopDnsRequests("rows", data.rows);
         }
       });
     });
@@ -166,20 +179,16 @@ export function OverviewReport() {
         time_range: TIME_RANGE(),
         q: q + " event_type:tls",
       };
-      setData("tlsSni", {
-        loading: true,
-      });
+
+      setTopTlsSni("loading", true);
 
       return await API.getSseAgg(request, version, (data: any) => {
         if (data) {
-          setData("tlsSni", {
-            data: data.rows,
-          });
+          setTopTlsSni("timestamp", dayjs(data.earliest_ts));
+          setTopTlsSni("rows", data.rows);
         }
       }).finally(() => {
-        setData("tlsSni", {
-          loading: false,
-        });
+        setTopTlsSni("loading", false);
       });
     });
 
@@ -191,20 +200,15 @@ export function OverviewReport() {
         time_range: TIME_RANGE(),
         q: q + " event_type:quic",
       };
-      setData("quicSni", {
-        loading: true,
-      });
+      setTopQuicSni("loading", true);
 
       return await API.getSseAgg(request, version, (data: any) => {
         if (data) {
-          setData("quicSni", {
-            data: data.rows,
-          });
+          setTopQuicSni("timestamp", dayjs(data.earliest_ts));
+          setTopQuicSni("rows", data.rows);
         }
       }).finally(() => {
-        setData("quicSni", {
-          loading: false,
-        });
+        setTopQuicSni("loading", false);
       });
     });
 
@@ -347,6 +351,13 @@ export function OverviewReport() {
     histogram = new Chart(ctx, config);
   }
 
+  const formatSuffix = (timestamp: dayjs.Dayjs | null) => {
+    if (timestamp) {
+      return `since ${timestamp.fromNow()}`;
+    }
+    return undefined;
+  };
+
   return (
     <>
       <Top />
@@ -437,24 +448,20 @@ export function OverviewReport() {
             <CountValueDataTable
               title="Top Alerts"
               label="Signature"
-              rows={data.topAlerts}
-              loading={data.topAlertsLoading}
+              rows={topAlerts.rows}
+              loading={topAlerts.loading}
               searchField="alert.signature"
+              suffix={formatSuffix(topAlerts.timestamp)}
             />
           </div>
           <div class="col">
             <CountValueDataTable
               title="Top DNS Reqeuests"
-              suffix={() => {
-                if (data.topDnsRequestsFrom) {
-                  const timestamp = dayjs(data.topDnsRequestsFrom);
-                  return `from ${timestamp.fromNow()}`;
-                }
-              }}
               label="Hostname"
-              rows={data.topDnsRequests}
-              loading={data.topDnsRequestsLoading}
+              rows={topDnsRequests.rows}
+              loading={topDnsRequests.loading}
               searchField="dns.rrname"
+              suffix={formatSuffix(topDnsRequests.timestamp)}
             />
           </div>
         </div>
@@ -464,18 +471,20 @@ export function OverviewReport() {
             <CountValueDataTable
               title="Top TLS SNI"
               label="Hostname"
-              rows={data.tlsSni.data}
-              loading={data.tlsSni.loading}
+              rows={topTlsSni.rows}
+              loading={topTlsSni.loading}
               searchField="tls.sni"
+              suffix={formatSuffix(topTlsSni.timestamp)}
             />
           </div>
           <div class="col">
             <CountValueDataTable
               title="Top Quic SNI"
               label="Hostname"
-              rows={data.quicSni.data}
-              loading={data.quicSni.loading}
+              rows={topQuicSni.rows}
+              loading={topQuicSni.loading}
               searchField="quic.sni"
+              suffix={formatSuffix(topQuicSni.timestamp)}
             />
           </div>
         </div>

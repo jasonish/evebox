@@ -14,6 +14,7 @@ import { CountValueDataTable } from "../components";
 import { Colors } from "../common/colors";
 import { createStore } from "solid-js/store";
 import type { SetStoreFunction } from "solid-js/store";
+import dayjs from "dayjs";
 
 interface CountValueRow {
   count: number;
@@ -23,12 +24,14 @@ interface CountValueRow {
 interface Model {
   rows: CountValueRow[];
   loading: boolean;
+  timestamp: null | dayjs.Dayjs;
 }
 
 function defaultModel(): Model {
   return {
     rows: [],
     loading: false,
+    timestamp: null,
   };
 }
 
@@ -220,6 +223,7 @@ export function AlertsReport() {
         return API.getSseAgg(request, version, (data: any) => {
           if (data) {
             loader.setter("rows", data.rows);
+            loader.setter("timestamp", dayjs(data.earliest_ts));
           }
         });
       }).finally(() => {
@@ -229,6 +233,13 @@ export function AlertsReport() {
       });
     }
   }
+
+  const formatSuffix = (timestamp: dayjs.Dayjs | null) => {
+    if (timestamp) {
+      return `since ${timestamp.fromNow()}`;
+    }
+    return undefined;
+  };
 
   return (
     <>
@@ -313,6 +324,7 @@ export function AlertsReport() {
               searchField="alert.signature"
               rows={mostAlerting.rows}
               loading={mostAlerting.loading}
+              suffix={formatSuffix(mostAlerting.timestamp)}
             />
           </Col>
 
@@ -323,6 +335,7 @@ export function AlertsReport() {
               searchField="alert.signature"
               rows={leastAlerting.rows}
               loading={leastAlerting.loading}
+              suffix={formatSuffix(leastAlerting.timestamp)}
             />
           </Col>
         </Row>
@@ -335,6 +348,7 @@ export function AlertsReport() {
               searchField={"@ip"}
               rows={mostAlertingSource.rows}
               loading={mostAlertingSource.loading}
+              suffix={formatSuffix(mostAlertingSource.timestamp)}
             />
           </Col>
           <Col class={"mt-2"}>
@@ -344,6 +358,7 @@ export function AlertsReport() {
               searchField={"@ip"}
               rows={leastAlertingSource.rows}
               loading={leastAlertingSource.loading}
+              suffix={formatSuffix(leastAlertingSource.timestamp)}
             />
           </Col>
         </Row>
@@ -356,6 +371,7 @@ export function AlertsReport() {
               searchField={"@ip"}
               rows={mostAlertingDest.rows}
               loading={mostAlertingDest.loading}
+              suffix={formatSuffix(mostAlertingDest.timestamp)}
             />
           </Col>
           <Col class={"mt-2"}>
@@ -365,6 +381,7 @@ export function AlertsReport() {
               searchField={"@ip"}
               rows={leastAlertingDest.rows}
               loading={leastAlertingDest.loading}
+              suffix={formatSuffix(leastAlertingDest.timestamp)}
             />
           </Col>
         </Row>

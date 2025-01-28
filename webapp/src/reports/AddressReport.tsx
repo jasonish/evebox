@@ -7,75 +7,118 @@ import { createEffect, createSignal, For, onCleanup } from "solid-js";
 import { Col, Container, Row } from "solid-bootstrap";
 import { API, AggRequest, AggResponseRow } from "../api";
 import { CountValueDataTable } from "../components";
-import { createStore } from "solid-js/store";
+import { SetStoreFunction, createStore } from "solid-js/store";
 import { RefreshButton } from "../common/RefreshButton";
+import dayjs from "dayjs";
+
+interface AggResults {
+  loading: boolean;
+  rows: AggResponseRow[];
+  timestamp: null | dayjs.Dayjs;
+}
+
+function defaultAggResults(): AggResults {
+  return {
+    loading: false,
+    rows: [],
+    timestamp: null,
+  };
+}
 
 export function AddressReport() {
   const params = useParams<{ address: string }>();
-  const [mostSignatures, setMostSignatures] = createSignal<AggResponseRow[]>(
-    []
-  );
-  const [leastSignatures, setLeastSignatures] = createSignal<AggResponseRow[]>(
-    []
-  );
+
   const [loading, setLoading] = createSignal(0);
 
   // For SSE cancellation.
   const [version, setVersion] = createSignal(0);
 
-  const [results, setResults] = createStore<{
-    mostRequestedDns: AggResponseRow[];
-    leastRequestedDns: AggResponseRow[];
-    mostHttpUserAgents: AggResponseRow[];
-    leastHttpUserAgents: AggResponseRow[];
-    mostRequestedTlsSni: AggResponseRow[];
-    leastRequestedTlsSni: AggResponseRow[];
-    mostSshClientVersions: AggResponseRow[];
-    leastSshClientVersions: AggResponseRow[];
-    mostSshServerVersions: AggResponseRow[];
-    leastSshServerVersions: AggResponseRow[];
+  const [mostAlertingSignature, setMostAlertingSignature] = createStore(
+    defaultAggResults()
+  );
 
-    httpTopOutboundHostnames: AggResponseRow[];
-    httpLeastOutboundHostnames: AggResponseRow[];
+  const [leastAlertingSignature, setLeastAlertingSignature] = createStore(
+    defaultAggResults()
+  );
 
-    httpTopInboundHostnames: AggResponseRow[];
-    httpLeastInboundHostnames: AggResponseRow[];
+  const [mostRequestedDns, setMostRequestedDns] = createStore(
+    defaultAggResults()
+  );
 
-    tlsSniInboundTop: AggResponseRow[];
-    tlsSniInboundLeast: AggResponseRow[];
+  const [leastRequestedDns, setLeastRequestedDns] = createStore(
+    defaultAggResults()
+  );
 
-    tlsMostRequestedSubjects: AggResponseRow[];
-    tlsLeastRequestedSubjects: AggResponseRow[];
+  const [mostHttpUserAgents, setMostHttpUserAgents] = createStore(
+    defaultAggResults()
+  );
 
-    tlsMostRequestedIssueDn: AggResponseRow[];
-    tlsLeastRequestedIssueDn: AggResponseRow[];
-  }>({
-    mostRequestedDns: [],
-    leastRequestedDns: [],
-    mostHttpUserAgents: [],
-    leastHttpUserAgents: [],
-    mostRequestedTlsSni: [],
-    leastRequestedTlsSni: [],
-    mostSshClientVersions: [],
-    leastSshClientVersions: [],
-    mostSshServerVersions: [],
-    leastSshServerVersions: [],
+  const [leastHttpUserAgents, setLeastHttpUserAgents] = createStore(
+    defaultAggResults()
+  );
 
-    httpTopOutboundHostnames: [],
-    httpLeastOutboundHostnames: [],
+  const [mostRequestedTlsSni, setMostRequestedTlsSni] = createStore(
+    defaultAggResults()
+  );
 
-    httpTopInboundHostnames: [],
-    httpLeastInboundHostnames: [],
+  const [leastRequestedTlsSni, setLeastRequestedTlsSni] = createStore(
+    defaultAggResults()
+  );
 
-    tlsSniInboundTop: [],
-    tlsSniInboundLeast: [],
+  const [mostSshClientVersions, setMostSshClientVersions] = createStore(
+    defaultAggResults()
+  );
 
-    tlsMostRequestedSubjects: [],
-    tlsLeastRequestedSubjects: [],
+  const [leastSshClientVersions, setLeastSshClientVersions] = createStore(
+    defaultAggResults()
+  );
 
-    tlsMostRequestedIssueDn: [],
-    tlsLeastRequestedIssueDn: [],
-  });
+  const [mostSshServerVersions, setMostSshServerVersions] = createStore(
+    defaultAggResults()
+  );
+
+  const [leastSshServerVersions, setLeastSshServerVersions] = createStore(
+    defaultAggResults()
+  );
+
+  const [httpTopOutboundHostnames, setHttpTopOutboundHostnames] = createStore(
+    defaultAggResults()
+  );
+
+  const [httpLeastOutboundHostnames, setHttpLeastOutboundHostnames] =
+    createStore(defaultAggResults());
+
+  const [httpTopInboundHostnames, setHttpTopInboundHostnames] = createStore(
+    defaultAggResults()
+  );
+
+  const [httpLeastInboundHostnames, setHttpLeastInboundHostnames] = createStore(
+    defaultAggResults()
+  );
+
+  const [tlsSniInboundTop, setTlsSniInboundTop] = createStore(
+    defaultAggResults()
+  );
+
+  const [tlsSniInboundLeast, setTlsSniInboundLeast] = createStore(
+    defaultAggResults()
+  );
+
+  const [tlsMostRequestedSubjects, setTlsMostRequestedSubjects] = createStore(
+    defaultAggResults()
+  );
+
+  const [tlsLeastRequestedSubjects, setTlsLeastRequestedSubjects] = createStore(
+    defaultAggResults()
+  );
+
+  const [tlsMostRequestedIssueDn, setTlsMostRequestedIssueDn] = createStore(
+    defaultAggResults()
+  );
+
+  const [tlsLeastRequestedIssueDn, setTlsLeastRequestedIssueDn] = createStore(
+    defaultAggResults()
+  );
 
   onCleanup(() => {
     API.cancelAllSse();
@@ -94,10 +137,10 @@ export function AddressReport() {
   //   address when it changes.
   const LOADERS: {
     request: AggRequest;
-    setter: (rows: AggResponseRow[]) => void;
+    setter: SetStoreFunction<AggResults>;
+    getter: AggResults;
     title: string;
     label: string;
-    get: () => AggResponseRow[];
   }[] = [
     // Most alerting rules.
     {
@@ -107,10 +150,10 @@ export function AddressReport() {
         q: `event_type:alert @ip:{{address}}`,
         size: 10,
       },
-      setter: setMostSignatures,
+      setter: setMostAlertingSignature,
+      getter: mostAlertingSignature,
       title: "Most Alerting Rules",
       label: "Signature",
-      get: () => mostSignatures(),
     },
 
     // Least alerting rules.
@@ -121,10 +164,10 @@ export function AddressReport() {
         q: `event_type:alert @ip:{{address}}`,
         size: 10,
       },
-      setter: setLeastSignatures,
+      setter: setLeastAlertingSignature,
+      getter: leastAlertingSignature,
       title: "Least Alerting Rules",
       label: "Signature",
-      get: () => leastSignatures(),
     },
 
     // Most requested DNS hostnames.
@@ -135,10 +178,10 @@ export function AddressReport() {
         q: `event_type:dns dns.type:query src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) => setResults("mostRequestedDns", rows),
+      setter: setMostRequestedDns,
+      getter: mostRequestedDns,
       title: "Most Requested DNS Hostnames",
       label: "Hostname",
-      get: () => results.mostRequestedDns,
     },
 
     // Least requested DNS hostnames.
@@ -149,10 +192,10 @@ export function AddressReport() {
         q: `event_type:dns dns.type:query src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) => setResults("leastRequestedDns", rows),
+      setter: setLeastRequestedDns,
+      getter: leastRequestedDns,
       title: "Least Requested DNS Hostnames",
       label: "Hostname",
-      get: () => results.leastRequestedDns,
     },
 
     // Top outbound HTTP hostnames
@@ -163,11 +206,10 @@ export function AddressReport() {
         q: `event_type:http src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("httpTopOutboundHostnames", rows),
+      setter: setHttpTopOutboundHostnames,
+      getter: httpTopOutboundHostnames,
       title: "Top Outbound HTTP Hostnames",
       label: "Hostname",
-      get: () => results.httpTopOutboundHostnames,
     },
 
     // Least outbound HTTP hostnames
@@ -178,11 +220,10 @@ export function AddressReport() {
         q: `event_type:http src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("httpLeastOutboundHostnames", rows),
+      setter: setHttpLeastOutboundHostnames,
+      getter: httpLeastOutboundHostnames,
       title: "Least Outbound HTTP Hostnames",
       label: "Hostname",
-      get: () => results.httpLeastOutboundHostnames,
     },
 
     // Top inbound HTTP hostnames
@@ -193,11 +234,10 @@ export function AddressReport() {
         q: `event_type:http dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("httpTopInboundHostnames", rows),
+      setter: setHttpTopInboundHostnames,
+      getter: httpTopInboundHostnames,
       title: "Top Inbound HTTP Hostnames",
       label: "Hostname",
-      get: () => results.httpTopInboundHostnames,
     },
 
     // Least inbound HTTP hostnames
@@ -208,11 +248,10 @@ export function AddressReport() {
         q: `event_type:http dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("httpLeastInboundHostnames", rows),
+      setter: setHttpLeastInboundHostnames,
+      getter: httpLeastInboundHostnames,
       title: "Least Inbound HTTP Hostnames",
       label: "Hostname",
-      get: () => results.httpLeastInboundHostnames,
     },
 
     // Most HTTP user agents.
@@ -223,11 +262,10 @@ export function AddressReport() {
         q: `event_type:http src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("mostHttpUserAgents", rows),
+      setter: setMostHttpUserAgents,
+      getter: mostHttpUserAgents,
       title: "Top Outbound HTTP User Agents",
       label: "User Agent",
-      get: () => results.mostHttpUserAgents,
     },
 
     // Least HTTP user agents.
@@ -238,11 +276,10 @@ export function AddressReport() {
         q: `event_type:http src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("leastHttpUserAgents", rows),
+      setter: setLeastHttpUserAgents,
+      getter: leastHttpUserAgents,
       title: "Least Outbound HTTP User Agents",
       label: "User Agent",
-      get: () => results.leastHttpUserAgents,
     },
 
     // Most TLS SNI.
@@ -253,11 +290,10 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("mostRequestedTlsSni", rows),
+      setter: setMostRequestedTlsSni,
+      getter: mostRequestedTlsSni,
       title: "Most Requested TLS SNI Names",
       label: "Name",
-      get: () => results.mostRequestedTlsSni,
     },
 
     // Least TLS SNI.
@@ -268,11 +304,10 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("leastRequestedTlsSni", rows),
+      setter: setLeastRequestedTlsSni,
+      getter: leastRequestedTlsSni,
       title: "Least Requested TLS SNI Names",
       label: "Name",
-      get: () => results.leastRequestedTlsSni,
     },
 
     // TLS: Top Inbound SNI
@@ -283,10 +318,10 @@ export function AddressReport() {
         q: `event_type:tls dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) => setResults("tlsSniInboundTop", rows),
+      setter: setTlsSniInboundTop,
+      getter: tlsSniInboundTop,
       title: "Top Inbound TLS SNI Names",
       label: "Name",
-      get: () => results.tlsSniInboundTop,
     },
 
     // TLS: Least Inbound SNI
@@ -297,11 +332,10 @@ export function AddressReport() {
         q: `event_type:tls dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("tlsSniInboundLeast", rows),
+      setter: setTlsSniInboundLeast,
+      getter: tlsSniInboundLeast,
       title: "Least Inbound TLS SNI Names",
       label: "Name",
-      get: () => results.tlsSniInboundLeast,
     },
 
     // Top Requests TLS Subjects
@@ -312,11 +346,10 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("tlsMostRequestedSubjects", rows),
+      setter: setTlsMostRequestedSubjects,
+      getter: tlsMostRequestedSubjects,
       title: "Most Requested TLS Subjects",
       label: "Name",
-      get: () => results.tlsMostRequestedSubjects,
     },
 
     // Least Requested TLS Subjects
@@ -327,11 +360,10 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("tlsLeastRequestedSubjects", rows),
+      setter: setTlsLeastRequestedSubjects,
+      getter: tlsLeastRequestedSubjects,
       title: "Least Requested TLS Subjects",
       label: "Name",
-      get: () => results.tlsLeastRequestedSubjects,
     },
 
     // Top Requested TLS Issuer DN
@@ -342,11 +374,10 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("tlsMostRequestedIssueDn", rows),
+      setter: setTlsMostRequestedIssueDn,
+      getter: tlsMostRequestedIssueDn,
       title: "Most Requested TLS Issuer DN",
       label: "Name",
-      get: () => results.tlsMostRequestedIssueDn,
     },
 
     // Least Requested TLS Issuer DN
@@ -357,11 +388,10 @@ export function AddressReport() {
         q: `event_type:tls src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows: AggResponseRow[]) =>
-        setResults("tlsLeastRequestedIssueDn", rows),
+      setter: setTlsLeastRequestedIssueDn,
+      getter: tlsLeastRequestedIssueDn,
       title: "Least Requested TLS Issuer DN",
       label: "Name",
-      get: () => results.tlsLeastRequestedIssueDn,
     },
 
     // Most SSH client versions
@@ -372,10 +402,10 @@ export function AddressReport() {
         q: `event_type:ssh src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows) => setResults("mostSshClientVersions", rows),
+      setter: setMostSshClientVersions,
+      getter: mostSshClientVersions,
       title: "Most SSH Client Software Versions",
       label: "Version",
-      get: () => results.mostSshClientVersions,
     },
 
     // Least SSH client versions
@@ -386,10 +416,10 @@ export function AddressReport() {
         q: `event_type:ssh src_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows) => setResults("leastSshClientVersions", rows),
+      setter: setLeastSshClientVersions,
+      getter: leastSshClientVersions,
       title: "Least SSH Client Software Versions",
       label: "Version",
-      get: () => results.leastSshClientVersions,
     },
 
     // Most SSH server versions
@@ -400,10 +430,10 @@ export function AddressReport() {
         q: `event_type:ssh dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows) => setResults("mostSshServerVersions", rows),
+      setter: setMostSshServerVersions,
+      getter: mostSshServerVersions,
       title: "Most SSH Server Software Versions",
       label: "Version",
-      get: () => results.mostSshServerVersions,
     },
 
     // Least SSH server versions
@@ -414,10 +444,10 @@ export function AddressReport() {
         q: `event_type:ssh dest_ip:{{address}}`,
         size: 10,
       },
-      setter: (rows) => setResults("leastSshServerVersions", rows),
+      setter: setLeastSshServerVersions,
+      getter: leastSshServerVersions,
       title: "Least SSH Server Software Versions",
       label: "Version",
-      get: () => results.leastSshServerVersions,
     },
   ];
 
@@ -429,15 +459,26 @@ export function AddressReport() {
       let request = { time_range: timeRange, ...loader.request };
       request.q = request.q?.replace("{{address}}", params.address);
 
+      loader.setter("loading", true);
+
       API.getSseAgg(request, version, (data: any) => {
         if (data) {
-          loader.setter(data.rows);
+          loader.setter("timestamp", dayjs(data.earliest_ts));
+          loader.setter("rows", data.rows);
         }
       }).finally(() => {
+        loader.setter("loading", false);
         setLoading((n) => n - 1);
       });
     }
   }
+
+  const formatSuffix = (timestamp: dayjs.Dayjs | null) => {
+    if (timestamp) {
+      return `since ${timestamp.fromNow()}`;
+    }
+    return undefined;
+  };
 
   return (
     <>
@@ -460,7 +501,9 @@ export function AddressReport() {
                   <CountValueDataTable
                     title={loader.title!}
                     label={loader.label!}
-                    rows={loader.get()}
+                    rows={loader.getter.rows}
+                    loading={loader.getter.loading}
+                    suffix={formatSuffix(loader.getter.timestamp)}
                   />
                 </Col>
               </>

@@ -59,7 +59,7 @@ export function CountValueDataTable(props: {
               disabled
               style="border: 0; padding: 0;"
             >
-              <span class="small text-muted fst-italic">{suffix()} </span>
+              <span class="me-2 small text-muted fst-italic">{suffix()} </span>
               <span
                 class="spinner-border spinner-border-sm"
                 aria-hidden="true"
