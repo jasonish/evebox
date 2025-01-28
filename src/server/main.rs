@@ -130,6 +130,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         configdb::open(None).await?
     };
 
+    crate::server::context::set_configdb(configdb.clone());
+
     let metrics = Arc::new(crate::server::metrics::Metrics::default());
 
     let datastore = configure_datastore(

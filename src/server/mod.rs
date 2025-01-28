@@ -14,6 +14,7 @@ use std::sync::{Arc, RwLock};
 
 pub(crate) mod api;
 pub(crate) mod autoarchive;
+pub(crate) mod context;
 pub(crate) mod main;
 pub(super) mod metrics;
 pub(crate) mod session;

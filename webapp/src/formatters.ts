@@ -6,6 +6,7 @@ import { get_duration } from "./datetime";
 
 export function formatEventDescription(event: Event): string {
   try {
+    const source = event._source;
     switch (event._source.event_type) {
       case "alert": {
         const alert = event._source.alert!;
@@ -164,7 +165,7 @@ export function formatEventDescription(event: Event): string {
         return parts.join(" ");
       }
       case "tls": {
-        const tls = event._source.tls!;
+        const tls = source.tls!;
         let parts = [];
         if (tls.version) {
           parts.push(tls.version);
@@ -176,6 +177,9 @@ export function formatEventDescription(event: Event): string {
         }
         if (tls.subject) {
           parts.push(tls.subject);
+        }
+        if (source.ja4db?.user_agent_string) {
+          parts.push(source.ja4db.user_agent_string);
         }
         return parts.join(" - ");
       }
