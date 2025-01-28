@@ -23,10 +23,10 @@ import { Notifications } from "./Notifications";
 import { Events } from "./Events";
 import { Stats } from "./Stats";
 import { serverConfigSet } from "./config";
-import { AddressReport } from "./reports/AddressReport";
-import { AlertsReport } from "./reports/AlertsReport";
-import { OverviewReport } from "./reports/OverviewReport";
-import { DhcpReport } from "./reports/DhcpReport";
+import { Address } from "./dashboards/Address";
+import { AlertsDashboard } from "./dashboards/Alerts";
+import { Overview } from "./dashboards/Overview";
+import { DHCP } from "./dashboards/DHCP";
 import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 import { Ja4Report } from "./pages/ja4";
 import { Admin } from "./pages/admin/Admin";
@@ -56,10 +56,10 @@ export function AppRouter() {
         <Route path={"events"} component={Events} />
         <Route path={"event/:id"} component={EventView} />
         <Route path={"settings"} component={Settings} />
-        <Route path={"reports/overview"} component={OverviewReport} />
-        <Route path={"reports/alerts"} component={AlertsReport} />
-        <Route path={"reports/dhcp"} component={DhcpReport} />
-        <Route path={"reports/address/:address"} component={AddressReport} />
+        <Route path={"dashboards/overview"} component={Overview} />
+        <Route path={"dashboards/alerts"} component={AlertsDashboard} />
+        <Route path={"dashboards/dhcp"} component={DHCP} />
+        <Route path={"dashboards/address/:address"} component={Address} />
         <Route path="ja4/:ja4" component={Ja4Report} />
         <Route path={"stats"} component={Stats} />
 

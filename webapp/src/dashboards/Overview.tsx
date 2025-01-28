@@ -35,7 +35,7 @@ function defaultAggResults(): AggResults {
   };
 }
 
-export function OverviewReport() {
+export function Overview() {
   const [version, setVersion] = createSignal(0);
   const [loading, setLoading] = createSignal(0);
   let histogram: any = undefined;

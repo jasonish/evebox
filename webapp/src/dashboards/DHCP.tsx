@@ -13,7 +13,7 @@ import { RefreshButton } from "../common/RefreshButton";
 import { loadingTracker } from "../util";
 import { SearchLink } from "../common/SearchLink";
 
-export function DhcpReport() {
+export function DHCP() {
   const [acks, setAcks] = createSignal<EventSource[]>([]);
   const [dhcpServers, setDhcpServers] = createSignal<string[]>([]);
   const [searchParams, setSearchParams] = useSearchParams<{

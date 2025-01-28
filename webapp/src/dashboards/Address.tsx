@@ -25,7 +25,7 @@ function defaultAggResults(): AggResults {
   };
 }
 
-export function AddressReport() {
+export function Address() {
   const params = useParams<{ address: string }>();
 
   const [loading, setLoading] = createSignal(0);

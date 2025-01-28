@@ -196,16 +196,16 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
                 </A>
               </Nav.Item>
               <NavDropdown
-                title="Reports"
-                active={location.pathname.startsWith("/reports")}
+                title="Dashboards"
+                active={location.pathname.startsWith("/dashboards")}
               >
-                <A href={"/reports/overview"} class={"dropdown-item"}>
+                <A href={"/dashboards/overview"} class={"dropdown-item"}>
                   Overview
                 </A>
-                <A href={"/reports/alerts"} class={"dropdown-item"}>
+                <A href={"/dashboards/alerts"} class={"dropdown-item"}>
                   Alerts
                 </A>
-                <A href={"/reports/dhcp"} class={"dropdown-item"}>
+                <A href={"/dashboards/dhcp"} class={"dropdown-item"}>
                   DHCP
                 </A>
               </NavDropdown>

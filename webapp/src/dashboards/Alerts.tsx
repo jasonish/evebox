@@ -35,7 +35,7 @@ function defaultModel(): Model {
   };
 }
 
-export function AlertsReport() {
+export function AlertsDashboard() {
   const [version, setVersion] = createSignal(0);
 
   const [loading, setLoading] = createSignal(0);
@@ -132,7 +132,7 @@ export function AlertsReport() {
   }
 
   function refresh() {
-    console.log("AlertsReport.refresh");
+    console.log("Alerts.refresh");
     setVersion((version) => version + 1);
     const timeRange = TIME_RANGE();
 
