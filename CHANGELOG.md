@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.20.0 - unreleased
+## 0.20.0 - 2025-01-28
 
 - Feature to fit screen height instead of number of rows. Only
   available for alerts.
