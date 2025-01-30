@@ -14,4 +14,4 @@ fi
 export RUST_BACKTRACE=1
 
 (cd webapp && npm start) &
-cargo watch -w src -i webapp -x "run ${RELEASE} server -k --no-tls --no-auth ${args}"
+cargo watch -w src -i webapp -x "run ${RELEASE} server -k --no-tls ${args}"

@@ -114,9 +114,10 @@ impl ConfigDb {
     }
 
     pub async fn has_users(&self) -> Result<bool, ConfigDbError> {
-        let (count,): (u64,) = sqlx::query_as("SELECT count(*) FROM users")
-            .fetch_one(&self.pool)
-            .await?;
+        let (count,): (u64,) =
+            sqlx::query_as("SELECT count(*) FROM users WHERE username != '__system__'")
+                .fetch_one(&self.pool)
+                .await?;
         Ok(count > 0)
     }
 
