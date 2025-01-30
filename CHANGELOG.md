@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.20.1 - 2025-01-30
+
+- Fix broken authentication on non-https connections. Introduced with
+  0.20.0. https://github.com/jasonish/evebox/issues/326.
+
 ## 0.20.0 - 2025-01-28
 
 - Feature to fit screen height instead of number of rows. Only
