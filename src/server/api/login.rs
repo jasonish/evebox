@@ -97,7 +97,7 @@ pub(crate) async fn post(
         let mut headers = HeaderMap::new();
         if let Some(session_id) = &session.session_id {
             let cookie = format!(
-                "x-evebox-session-id={}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age={}",
+                "x-evebox-session-id={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}",
                 session_id,
                 chrono::Duration::days(365).num_seconds()
             );
