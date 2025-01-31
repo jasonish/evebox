@@ -81,5 +81,5 @@ chrono = { version = "0.4.38", default-features = false, features = ["std", "now
 log = "0.4.21"
 owo-colors = "4.0.0"
 indexmap = "2.2.6"
-tokio-stream = "0.1.17"
+tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = "0.7.13"

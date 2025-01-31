@@ -34,6 +34,7 @@ pub(crate) mod agg;
 pub(crate) mod alerts;
 pub(crate) mod count;
 pub(crate) mod eve2pcap;
+pub(crate) mod firehose;
 pub(crate) mod genericquery;
 pub(crate) mod login;
 pub(crate) mod sqlite;
@@ -81,6 +82,8 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/admin/update/ja4db", post(admin::update_ja4db))
         .route("/api/admin/kv/config", get(admin::kv_get_config))
         .route("/api/admin/kv/config/:key", post(admin::kv_set_config))
+        .route("/api/firehose/sse", get(firehose::sse))
+        .route("/api/firehose", get(firehose::stream))
         .route("/api/metrics", get(metrics))
         .nest("/api/1/stats", stats::router())
 }

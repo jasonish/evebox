@@ -34,6 +34,7 @@ pub(crate) struct ServerContext {
     pub filters: Option<crate::eve::filters::EveFilterChain>,
     pub auto_archive: Arc<RwLock<AutoArchive>>,
     pub metrics: Arc<Metrics>,
+    pub firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
 }
 
 impl ServerContext {
@@ -43,6 +44,7 @@ impl ServerContext {
         datastore: EventRepo,
         metrics: Arc<Metrics>,
     ) -> Self {
+        let (firehose, _) = tokio::sync::broadcast::channel::<serde_json::Value>(8192);
         let auto_archive: Arc<RwLock<AutoArchive>> = Default::default();
         Self {
             config,
@@ -54,6 +56,7 @@ impl ServerContext {
             filters: None,
             auto_archive,
             metrics,
+            firehose,
         }
     }
 }

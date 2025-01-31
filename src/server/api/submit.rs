@@ -52,9 +52,11 @@ pub(crate) async fn handler(
                             filters.run(&mut event);
                         }
 
-                        if let Err(err) = importer.submit(event).await {
+                        if let Err(err) = importer.submit(event.clone()).await {
                             error!("Failed to submit event to importer: {}", err);
                         }
+
+                        let _ = context.firehose.send(event);
                     }
                 }
             }
