@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.20.2 - unreleased
+
+- Remove JA4db user agent from event description. It can often be
+  wrong.
+- Non-alert events were getting an "alert" object due to
+  "as_array_mut()" when checking for the existence of an
+  "evebox-action" in the metadata. I don't think this was causing any
+  issues, but annoying.
+
 ## 0.20.1 - 2025-01-30
 
 - Fix broken authentication on non-https connections. Introduced with
