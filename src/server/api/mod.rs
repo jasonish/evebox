@@ -287,8 +287,23 @@ pub(crate) async fn get_event_by_id(
 ) -> impl IntoResponse {
     match context.datastore.get_event_by_id(event_id.clone()).await {
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
-        Ok(Some(event)) => Json(event).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "not found").into_response(),
+        Ok(Some(mut event)) => {
+            if let Some(ja4) = event["_source"]["tls"]["ja4"].as_str() {
+                if let Some(configdb) = crate::server::context::get_configdb() {
+                    let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
+                    let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
+                        .bind(ja4)
+                        .fetch_optional(&configdb.pool)
+                        .await;
+                    if let Ok(Some(info)) = info {
+                        event["_source"]["ja4db"] = info;
+                    }
+                }
+            }
+
+            Json(event).into_response()
+        }
     }
 }
 

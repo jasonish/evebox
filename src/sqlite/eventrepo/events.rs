@@ -64,11 +64,11 @@ impl SqliteEventRepo {
             if let Some(ja4) = row["_source"]["tls"]["ja4"].as_str() {
                 if let Some(configdb) = crate::server::context::get_configdb() {
                     let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
-                    let info: Option<serde_json::Value> = sqlx::query_scalar(sql)
+                    let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
                         .bind(ja4)
                         .fetch_optional(&configdb.pool)
-                        .await?;
-                    if let Some(info) = info {
+                        .await;
+                    if let Ok(Some(info)) = info {
                         row["_source"]["ja4db"] = info;
                     }
                 }
