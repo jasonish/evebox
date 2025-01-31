@@ -164,7 +164,7 @@ impl EveFilterTrait for AlertMetadataEveBoxActionFilter {
             return;
         }
 
-        let metadata_evebox_action = event["alert"]["metadata"]["evebox-action"].as_array_mut();
+        let metadata_evebox_action = event["alert"]["metadata"]["evebox-action"].as_array();
         if let Some(action) = metadata_evebox_action {
             if action.contains(&serde_json::Value::String("archive".into())) {
                 let tags = &mut event["tags"]
