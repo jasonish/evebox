@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.20.2 - unreleased
+## 0.20.2 - 2025-01-31
 
 - Remove JA4db user agent from event description. It can often be
   wrong.
