@@ -178,9 +178,6 @@ export function formatEventDescription(event: Event): string {
         if (tls.subject) {
           parts.push(tls.subject);
         }
-        if (source.ja4db?.user_agent_string) {
-          parts.push(source.ja4db.user_agent_string);
-        }
         return parts.join(" - ");
       }
       case "http": {
