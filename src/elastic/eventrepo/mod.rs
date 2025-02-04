@@ -882,7 +882,6 @@ impl ElasticEventRepo {
                             "range": {
                                 self.map_field("timestamp"): {
                                     "gte": "now-24h/h",
-                                    "lt": "now/h"
                                 }
                             }
                         },
