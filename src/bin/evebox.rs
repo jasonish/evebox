@@ -74,6 +74,18 @@ async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Configuration filename"),
         )
         .arg(
+            Arg::new("config-directory")
+                .long("config-directory")
+                .short('C')
+                .action(ArgAction::Set)
+                .value_name("DIR")
+                .help("Configuration directory")
+                .env("EVEBOX_CONFIG_DIRECTORY")
+                .hide_env(true)
+                .hide(true)
+                .global(true),
+        )
+        .arg(
             clap::Arg::new("http.host")
                 .long("host")
                 .value_name("HOSTNAME")

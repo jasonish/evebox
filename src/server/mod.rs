@@ -78,6 +78,7 @@ pub(crate) struct ServerConfig {
     pub elastic_cacert: Option<String>,
     pub elastic_ecs: bool,
     pub data_directory: Option<String>,
+    pub config_directory: Option<String>,
     pub authentication_required: bool,
     pub http_reverse_proxy: bool,
     pub http_request_logging: bool,

@@ -66,6 +66,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         server_config.datastore = config.get("database.type")?.unwrap();
     }
 
+    server_config.data_directory = config.get("data-directory")?;
+    server_config.config_directory = config.get("config-directory")?;
+
     server_config.port = config.get("http.port")?.unwrap();
     server_config.host = config.get("http.host")?.unwrap();
     server_config.tls_enabled = config.get_bool("http.tls.enabled")?;
@@ -79,7 +82,6 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     server_config.elastic_username = config.get("database.elasticsearch.username")?;
     server_config.elastic_password = config.get("database.elasticsearch.password")?;
     server_config.elastic_cacert = config.get("database.elasticsearch.cacert")?;
-    server_config.data_directory = config.get("data-directory")?;
     server_config.no_check_certificate = config
         .get_bool("database.elasticsearch.disable-certificate-check")?
         || config.get_bool("no-check-certificate")?;
@@ -114,6 +116,10 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         );
     }
 
+    if server_config.config_directory.is_none() {
+        server_config.config_directory = server_config.data_directory.clone();
+    }
+
     tokio::spawn(async move {
         tokio::signal::ctrl_c()
             .await
@@ -121,7 +127,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         std::process::exit(0);
     });
 
-    let configdb = if let Some(directory) = &server_config.data_directory {
+    let configdb = if let Some(directory) = &server_config.config_directory {
         let filename = PathBuf::from(directory).join("config.sqlite");
         info!("Configuration database filename: {:?}", filename);
         configdb::open(Some(&filename)).await?
@@ -244,7 +250,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         if server_config.tls_key_filename.is_none() && server_config.tls_cert_filename.is_none() {
             // No TLS certificate or key filenames have been provided,
             // generate self signed certificates.
-            let tls_dir = if let Some(dir) = &server_config.data_directory {
+            let tls_dir = if let Some(dir) = &server_config.config_directory {
                 PathBuf::from(dir)
             } else {
                 error!("Unable to determine what directory to store TLS certificate and key in, please provide a data directory or start with --no-tls to disable TLS");
