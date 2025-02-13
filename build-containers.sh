@@ -44,7 +44,9 @@ if [[ "${GIT_TAG}" ]]; then
     version="${GIT_TAG}"
 elif [[ "${GIT_BRANCH}" = "devel" ]]; then
     version="devel"
-    tag="devel"
+    if [ "${tag}" = "" ]; then
+        tag="devel"
+    fi
 elif [[ "${GIT_BRANCH}" = "main" ]]; then
     echo "Building devel version from branch main"
     version="devel"
