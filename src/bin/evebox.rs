@@ -19,7 +19,6 @@ fn get_clap_style() -> clap::builder::Styles {
 }
 
 fn main() {
-    logger::init_offset();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         if let Err(err) = evebox_main().await {
