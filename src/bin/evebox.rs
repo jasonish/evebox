@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-#![allow(clippy::redundant_field_names)]
-
 use clap::{value_parser, ArgAction};
 use clap::{Arg, Command};
 use evebox::logger;
@@ -18,17 +16,8 @@ fn get_clap_style() -> clap::builder::Styles {
         .placeholder(clap::builder::styling::AnsiColor::Cyan.on_default())
 }
 
-fn main() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        if let Err(err) = evebox_main().await {
-            error!("{}", err);
-            std::process::exit(1);
-        }
-    })
-}
-
-async fn evebox_main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(command) = std::env::args().nth(1) {
         if command == "elastic-import" {
             logger::init_logger(tracing::Level::INFO).unwrap();
