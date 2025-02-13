@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.20.3 - unreleased
+
+- Fix persistence of a 0 query timeout in local storage.
+
 ## 0.20.2 - 2025-01-31
 
 - Remove JA4db user agent from event description. It can often be
