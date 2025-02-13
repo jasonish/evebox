@@ -171,8 +171,16 @@ export function Settings() {
                   type="number"
                   value={getClientPreferences().query_timeout || 0}
                   onChange={(e) => {
+                    let value: undefined | number = +e.target.value;
+                    if (isNaN(value) || value < 0) {
+                      console.log(
+                        `Invalid query timeout value: ${e.target.value}, will use default.`
+                      );
+                      value = undefined;
+                    }
+                    console.log(`New query timeout value: ${e.target.value}`);
                     let prefs = getClientPreferences();
-                    prefs.query_timeout = +e.target.value || undefined;
+                    prefs.query_timeout = value;
                     saveClientPreferences(prefs);
                   }}
                 />
