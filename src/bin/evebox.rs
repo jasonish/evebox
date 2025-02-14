@@ -137,6 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .action(ArgAction::Set)
                 .default_value("logstash")
                 .value_name("INDEX")
+                .env("EVEBOX_ELASTICSEARCH_INDEX")
                 .help("Elastic Search index prefix"),
         )
         .arg(
