@@ -45,7 +45,7 @@ pub(crate) struct ElasticOptions {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Display infomratiot about the Elasticsearch server
+    /// Display information about the Elasticsearch server
     Info(ElasticOptions),
 
     /// Set the field limit
