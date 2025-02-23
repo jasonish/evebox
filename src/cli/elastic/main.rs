@@ -53,6 +53,9 @@ pub(crate) enum Commands {
 
     /// Get the field limit.
     GetFieldLimit,
+
+    /// Delete indices.
+    Delete(super::delete::DeleteArgs),
 }
 
 pub fn main_options() -> Command {
@@ -65,6 +68,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
         Commands::Info(args) => crate::cli::elastic::info::main(args).await?,
         Commands::SetFieldLimit(args) => set_field_limit::main(args).await?,
         Commands::GetFieldLimit => get_field_limit(&args).await?,
+        Commands::Delete(args) => super::delete::delete(args).await?,
     }
     Ok(())
 }

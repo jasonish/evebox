@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -9,7 +11,6 @@ use std::collections::HashMap;
 use std::io::BufReader;
 use std::io::Read;
 use std::time::Duration;
-use tracing::warn;
 
 use super::ElasticResponseError;
 
@@ -238,6 +239,31 @@ impl Client {
         let mut response: serde_json::Value = serde_json::from_str(&text)?;
         Ok(response[name].take())
     }
+
+    pub(crate) async fn get_index_stats(&self, base: &str) -> Result<Vec<SimpleIndexStats>> {
+        let path = format!("{}*/_stats", base);
+        let response = self.get(&path)?.send().await?;
+        let json: serde_json::Value = response.json().await?;
+        let indices: HashMap<String, IndexStatsResponse> =
+            serde_json::from_value(json["indices"].clone())?;
+        let mut keys: Vec<&String> = indices.keys().collect();
+        keys.sort();
+        let mut simple = vec![];
+        for key in keys {
+            simple.push(SimpleIndexStats {
+                name: key.clone(),
+                doc_count: indices[key].primaries.docs.count,
+                store_size: indices[key].primaries.store.size_in_bytes,
+            });
+        }
+
+        Ok(simple)
+    }
+
+    pub(crate) async fn delete_index(&self, index: &str) -> anyhow::Result<reqwest::StatusCode> {
+        let response = self.delete(index)?.send().await?;
+        Ok(response.status())
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -402,6 +428,34 @@ pub(crate) struct InfoResponse {
 pub(crate) struct InfoResponseVersion {
     pub distribution: Option<String>,
     pub number: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct IndexStatsResponse {
+    primaries: IndexStatsPrimaries,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct IndexStatsPrimaries {
+    pub docs: IndexStatsDocs,
+    pub store: IndexStatsStore,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct IndexStatsDocs {
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct IndexStatsStore {
+    pub size_in_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct SimpleIndexStats {
+    pub name: String,
+    pub doc_count: u64,
+    pub store_size: u64,
 }
 
 #[cfg(test)]
