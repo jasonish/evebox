@@ -485,9 +485,21 @@ export namespace API {
     }
   }
 
-  export async function deleteFilter(id: number): Promise<any> {
-    return fetch(`api/admin/filter/${id}`, {
+  export async function doDelete(path: string): Promise<any> {
+    let response = await fetch(path, {
       method: "DELETE",
     });
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP error! status: ${response.status} - ${response.statusText}`
+      );
+    }
+
+    return response;
+  }
+
+  export async function deleteFilter(id: number): Promise<any> {
+    return doDelete(`api/admin/filter/${id}`);
   }
 }

@@ -10,6 +10,7 @@ const DEFAULT_DELAY = 3000;
 let notificationId = 0;
 
 interface Notification {
+  bg: string;
   id: number;
   message: string;
   delay: number;
@@ -23,6 +24,18 @@ export function addNotification(message: string, options?: { delay?: number }) {
       id: notificationId++,
       message: message,
       delay: options?.delay || DEFAULT_DELAY,
+    },
+    ...l,
+  ]);
+}
+
+export function addError(message: string, options?: { delay?: number }) {
+  setNotifications((l: any) => [
+    {
+      id: notificationId++,
+      message: message,
+      delay: options?.delay || DEFAULT_DELAY,
+      bg: "danger",
     },
     ...l,
   ]);
@@ -45,7 +58,7 @@ export function Notifications() {
         {(e) => (
           <>
             <Toast
-              bg={"info"}
+              bg={e.bg || "info"}
               autohide
               delay={e.delay}
               onClose={() => {

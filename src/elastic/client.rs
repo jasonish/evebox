@@ -133,6 +133,20 @@ impl Client {
         Ok(request)
     }
 
+    pub fn delete(&self, path: &str) -> Result<reqwest::RequestBuilder, reqwest::Error> {
+        let url = format!("{}/{}", self.url, path);
+        let request = self
+            .get_http_client()?
+            .delete(url)
+            .header("Content-Type", "application/json");
+        let request = if let Some(username) = &self.username {
+            request.basic_auth(username, self.password.clone())
+        } else {
+            request
+        };
+        Ok(request)
+    }
+
     /// Put request with a body that can be serialized into JSON.
     pub fn put_json<T: Serialize>(
         &self,

@@ -5,6 +5,7 @@ import { createStore } from "solid-js/store";
 import { Top } from "../../Top";
 import * as api from "../../api";
 import { Show, createEffect, createMemo, createResource } from "solid-js";
+import { serverConfig } from "../../config";
 
 interface AutoArchiveSettings {
   enabled: boolean;
@@ -82,15 +83,24 @@ export function Admin() {
     }
   };
 
+  const links = () => {
+    let links = [<>[</>];
+    if (serverConfig?.datastore === "elasticsearch") {
+      links.push(<a href="/admin/elastic">Elasticsearch</a>);
+      links.push(<> | </>);
+    }
+    links.push(<a href="/admin/filters">Filters</a>);
+    links.push(<>]</>);
+    return links;
+  };
+
   return (
     <>
       <Top />
       <div class="container mt-2">
         <div class="row">
           <div class="col">
-            <span class="float-end">
-              [ <a href="/admin/filters">Filters</a> ]
-            </span>
+            <span class="float-end">{links()}</span>
           </div>
         </div>
 

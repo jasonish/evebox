@@ -33,10 +33,12 @@ pub(crate) mod admin;
 pub(crate) mod agg;
 pub(crate) mod alerts;
 pub(crate) mod count;
+pub(crate) mod elastic;
 pub(crate) mod eve2pcap;
 pub(crate) mod firehose;
 pub(crate) mod genericquery;
 pub(crate) mod login;
+pub(crate) mod prelude;
 pub(crate) mod sqlite;
 pub(crate) mod stats;
 pub(crate) mod submit;
@@ -85,6 +87,8 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/firehose/sse", get(firehose::sse))
         .route("/api/firehose", get(firehose::stream))
         .route("/api/metrics", get(metrics))
+        .route("/api/admin/elastic/indices", get(elastic::indices))
+        .route("/api/admin/elastic/index/:name", delete(elastic::delete))
         .nest("/api/1/stats", stats::router())
 }
 

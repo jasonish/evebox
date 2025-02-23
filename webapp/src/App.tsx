@@ -31,6 +31,7 @@ import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 import { Ja4Report } from "./pages/ja4";
 import { Admin } from "./pages/admin/Admin";
 import { AdminFilters } from "./pages/admin/AdminFilters";
+import { AdminElastic } from "./pages/admin/AdminElastic";
 
 export function AppRouter() {
   return (
@@ -65,6 +66,7 @@ export function AppRouter() {
 
         <Route path="admin" component={Admin} />
         <Route path="admin/filters" component={AdminFilters} />
+        <Route path="admin/elastic" component={AdminElastic} />
 
         <Route path="*" component={RedirectToIndex} />
       </Route>
