@@ -7,7 +7,7 @@ import { Top } from "../../Top";
 import { addError, addNotification } from "../../Notifications";
 
 async function fetchIndices() {
-  const indices = await API.getJson("/api/admin/elastic/indices");
+  const indices = await API.getJson("api/admin/elastic/indices");
   return indices;
 }
 
@@ -15,7 +15,7 @@ export function AdminElastic() {
   const [indices, { refetch: refetchIndices }] = createResource(fetchIndices);
 
   const deleteIndex = (name: string) => {
-    API.doDelete(`/api/admin/elastic/index/${name}`)
+    API.doDelete(`api/admin/elastic/index/${name}`)
       .then((response) => {
         console.log(response);
         addNotification(`Index ${name} has been deleted.`);
