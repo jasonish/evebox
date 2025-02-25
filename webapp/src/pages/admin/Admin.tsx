@@ -13,7 +13,7 @@ interface AutoArchiveSettings {
 }
 
 async function fetchAutoArchiveSettings(): Promise<AutoArchiveSettings> {
-  const json = await api.API.getJson("/api/admin/kv/config");
+  const json = await api.API.getJson("api/admin/kv/config");
   const config = json["config.autoarchive"];
   if (config) {
     return config;
@@ -35,7 +35,7 @@ interface RetentionSettings {
 }
 
 async function fetchRetentionSettings(): Promise<AutoArchiveSettings> {
-  const json = await api.API.getJson("/api/admin/kv/config");
+  const json = await api.API.getJson("api/admin/kv/config");
   const config = json["config.retention"];
   if (config) {
     return config;
@@ -97,7 +97,7 @@ export function Admin() {
 
   const saveAutoArchiveSettings = async () => {
     await api.API.postJson(
-      "/api/admin/kv/config/config.autoarchive",
+      "api/admin/kv/config/config.autoarchive",
       localAutoArchiveSettings,
     );
     refetchAutoArchiveSettings();
@@ -105,7 +105,7 @@ export function Admin() {
 
   const saveRetentionSettings = async () => {
     await api.API.postJson(
-      "/api/admin/kv/config/config.retention",
+      "api/admin/kv/config/config.retention",
       localRetentionSettings
     );
     refetchRetentionSettings();
@@ -115,7 +115,7 @@ export function Admin() {
     e.preventDefault();
     try {
       setState("ja4", { updating: true });
-      await api.post("/api/admin/update/ja4db");
+      await api.post("api/admin/update/ja4db");
       setState("ja4", {
         success: true,
         failed: false,
