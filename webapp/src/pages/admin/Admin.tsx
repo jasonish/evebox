@@ -29,6 +29,28 @@ function defaultAutoArchiveSettings(): AutoArchiveSettings {
   };
 }
 
+interface RetentionSettings {
+  enabled: boolean;
+  value: number;
+}
+
+async function fetchRetentionSettings(): Promise<AutoArchiveSettings> {
+  const json = await api.API.getJson("/api/admin/kv/config");
+  const config = json["config.retention"];
+  if (config) {
+    return config;
+  } else {
+    return defaultRetentionSettings();
+  }
+}
+
+function defaultRetentionSettings(): RetentionSettings {
+  return {
+    enabled: false,
+    value: 365,
+  };
+}
+
 export function Admin() {
   const [state, setState] = createStore({
     ja4: {
@@ -40,12 +62,22 @@ export function Admin() {
 
   const [autoArchiveSettings, { refetch: refetchAutoArchiveSettings }] =
     createResource<AutoArchiveSettings>(fetchAutoArchiveSettings);
+
   const [localAutoArchiveSettings, setLocalAutoArchiveSettings] =
     createStore<AutoArchiveSettings>(defaultAutoArchiveSettings());
+
+  const [retentionSettings, { refetch: refetchRetentionSettings }] =
+    createResource<RetentionSettings>(fetchRetentionSettings);
+
+  const [localRetentionSettings, setLocalRetentionSettings] =
+    createStore<RetentionSettings>(defaultRetentionSettings());
 
   createEffect(() => {
     if (autoArchiveSettings()) {
       setLocalAutoArchiveSettings(autoArchiveSettings()!);
+    }
+    if (retentionSettings()) {
+      setLocalRetentionSettings(retentionSettings()!);
     }
   });
 
@@ -56,12 +88,27 @@ export function Admin() {
     );
   });
 
+  const retentionSettingsModified = createMemo(() => {
+    return (
+      JSON.stringify(localRetentionSettings) !=
+      JSON.stringify(retentionSettings.latest)
+    );
+  });
+
   const saveAutoArchiveSettings = async () => {
     await api.API.postJson(
       "/api/admin/kv/config/config.autoarchive",
       localAutoArchiveSettings,
     );
     refetchAutoArchiveSettings();
+  };
+
+  const saveRetentionSettings = async () => {
+    await api.API.postJson(
+      "/api/admin/kv/config/config.retention",
+      localRetentionSettings
+    );
+    refetchRetentionSettings();
   };
 
   const updateJa4Db = async (e: any) => {
@@ -130,6 +177,7 @@ export function Admin() {
           </div>
         </div>
 
+        {/* Auto archive. */}
         <div class="row mt-2">
           <div class="col">
             <div class="card">
@@ -159,6 +207,9 @@ export function Admin() {
                         type="number"
                         class="form-control"
                         value={localAutoArchiveSettings.value}
+                        onInput={(e) => {
+                          setLocalAutoArchiveSettings("value", +e.target.value);
+                        }}
                         onChange={(e) => {
                           setLocalAutoArchiveSettings("value", +e.target.value);
                         }}
@@ -193,6 +244,82 @@ export function Admin() {
             </div>
           </div>
         </div>
+
+        {/* Retention settings. */}
+        <Show when={serverConfig?.datastore === "elasticsearch"}>
+          <div class="row mt-2">
+            <div class="col">
+              <div class="card">
+                <div class="card-body">
+                  <div class="row mt-2">
+                    <div class="col">
+                      Warning: Do not enable if you have Elasticsearch ILM
+                      policies managing your indices.
+                    </div>
+                  </div>
+                  <div class="row mt-2">
+                    <label class="col col-form-label">
+                      <div class="form-check form-switch">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          checked={localRetentionSettings.enabled}
+                          onChange={(e) => {
+                            setLocalRetentionSettings({
+                              enabled: e.target.checked,
+                            });
+                          }}
+                        />
+                        <label class="form-check-label">
+                          Delete indices older than:
+                        </label>
+                      </div>
+                    </label>
+                    <div class="col">
+                      <div class="input-group">
+                        <input
+                          type="number"
+                          class="form-control"
+                          value={localRetentionSettings.value}
+                          onInput={(e) => {
+                            setLocalRetentionSettings("value", +e.target.value);
+                          }}
+                          onChange={(e) => {
+                            setLocalRetentionSettings("value", +e.target.value);
+                          }}
+                        />
+                        <span class="input-group-text">Days</span>
+                      </div>
+                    </div>
+                    <div class="col text-end">
+                      <Show when={retentionSettingsModified()}>
+                        <button
+                          class="btn btn-success me-2"
+                          onClick={() => {
+                            saveRetentionSettings();
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          class="btn btn-danger"
+                          onClick={() => {
+                            setLocalAutoArchiveSettings(
+                              retentionSettings.latest!
+                            );
+                          }}
+                        >
+                          Reset
+                        </button>
+                      </Show>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Show>
       </div>
     </>
   );
