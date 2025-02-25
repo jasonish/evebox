@@ -89,7 +89,7 @@ export function Stats(): JSX.Element {
           chart.field,
           chart.differential,
           timeRange,
-          sensor
+          sensor,
         ).then((response) => {
           const labels: any[] = [];
           const values: any[] = [];
@@ -101,7 +101,7 @@ export function Stats(): JSX.Element {
             chart.canvasId,
             chart.title,
             labels,
-            values
+            values,
           );
           charts.push(canvas);
         });
@@ -152,7 +152,7 @@ function buildChart(
   elementId: string,
   title: string,
   labels: Date[],
-  values: number[]
+  values: number[],
 ): Chart<any> {
   const ctx = (
     document.getElementById(elementId) as HTMLCanvasElement

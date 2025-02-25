@@ -115,10 +115,10 @@ export function EventView() {
     const _srcIpDns = srcIpDns();
     const _destIpDns = destIpDns();
     const popoverTriggerList = document.querySelectorAll(
-      '[data-bs-toggle="popover"]'
+      '[data-bs-toggle="popover"]',
     );
     const popoverList = [...popoverTriggerList].map(
-      (popoverTriggerEl) => new bootstrap.Popover(popoverTriggerEl)
+      (popoverTriggerEl) => new bootstrap.Popover(popoverTriggerEl),
     );
   });
 
@@ -254,12 +254,12 @@ export function EventView() {
       switch (typeof props.value) {
         case "number":
           q = encodeURIComponent(
-            `${props.field ? props.field + ":" : ""}${props.value}`
+            `${props.field ? props.field + ":" : ""}${props.value}`,
           );
           break;
         default:
           q = encodeURIComponent(
-            `${props.field ? props.field + ":" : ""}"${props.value}"`
+            `${props.field ? props.field + ":" : ""}"${props.value}"`,
           );
           break;
       }
@@ -393,7 +393,7 @@ export function EventView() {
 
   function copyRawJson() {
     const e: HTMLInputElement | null = document.getElementById(
-      "raw-json"
+      "raw-json",
     ) as HTMLInputElement;
     if (e) {
       e.select();
@@ -421,7 +421,7 @@ export function EventView() {
 
   function selectRawJson() {
     const e: HTMLInputElement | null = document.getElementById(
-      "formatted-json"
+      "formatted-json",
     ) as HTMLInputElement;
     if (e) {
       selectElementText(e);
@@ -604,7 +604,7 @@ export function EventView() {
         }
         let url = service.url.replace(
           "{{raw}}",
-          encodeURIComponent(JSON.stringify(event._source))
+          encodeURIComponent(JSON.stringify(event._source)),
         );
         if (serviceLinks.length > 0) {
           serviceLinks.push(" | ");
@@ -1227,7 +1227,7 @@ function toPrettyHex(data: string): [string, string][] {
 function formatTitle(event: Event): string {
   try {
     return `${event._source.event_type.toUpperCase()}: ${formatEventDescription(
-      event
+      event,
     )}`;
   } catch (err) {
     return JSON.stringify(event);
@@ -1253,7 +1253,7 @@ function formatTimestamp(timestamp: string) {
 function flattenJson(
   object: any,
   prefix: string[] = [],
-  output: { key: string; val: any }[] = []
+  output: { key: string; val: any }[] = [],
 ): { key: string; val: any }[] {
   if (object === null) {
     return output;
@@ -1372,19 +1372,19 @@ function HighlightedRule(props: { rule: string }) {
                  <span class="rule-header-port">$4</span> 
                  <span class="rule-header-direction">$5</span> 
                  <span class="rule-header-addr">$6</span>
-                 <span class="rule-header-port">$7</span> `
+                 <span class="rule-header-port">$7</span> `,
     );
 
     html = html.replace(
       /:([^;]+)/g,
-      `:<span class="rule-keyword-value">$1</span>`
+      `:<span class="rule-keyword-value">$1</span>`,
     );
     html = html.replace(/(\w+\:)/g, `<span class="rule-keyword">$1</span>`);
 
     // Catch keywords without a value.
     html = html.replace(
       /(;\s*)(\w+;)/g,
-      `$1<span class="rule-keyword">$2</span>`
+      `$1<span class="rule-keyword">$2</span>`,
     );
 
     // Replace referece URLs with the URL.

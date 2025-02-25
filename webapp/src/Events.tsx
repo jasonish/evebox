@@ -244,7 +244,7 @@ export function Events() {
     const timestamp = events()
       [events().length - 1]._source["@timestamp"].replace(
         /(\d{4})-(\d{2})-(\d{2})/,
-        "$1$2$3"
+        "$1$2$3",
       )
       .replaceAll(":", "");
     setSearchParams({
@@ -511,7 +511,7 @@ export function Events() {
                                       addFilter(
                                         "event_type",
                                         "+",
-                                        event._source.event_type
+                                        event._source.event_type,
                                       );
                                     }}
                                     title={`Filter for event_type: ${event._source.event_type}`}
@@ -525,7 +525,7 @@ export function Events() {
                                       addFilter(
                                         "event_type",
                                         "-",
-                                        event._source.event_type
+                                        event._source.event_type,
                                       );
                                     }}
                                     title={`Filter out event_type: ${event._source.event_type}`}

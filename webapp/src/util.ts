@@ -5,7 +5,10 @@ import { Setter } from "solid-js";
 import { API } from "./api";
 
 export class Logger {
-  constructor(private prefix: string, announce: boolean = false) {
+  constructor(
+    private prefix: string,
+    announce: boolean = false,
+  ) {
     if (announce) {
       this.log("*************************************************");
     }
@@ -19,7 +22,7 @@ export class Logger {
 // Utility function to wrap a promise with managing a loading counter.
 export async function loadingTracker(
   setter: Setter<number>,
-  fn: () => Promise<any>
+  fn: () => Promise<any>,
 ) {
   let delay = 100;
   setter((c) => {

@@ -49,21 +49,17 @@ export function AlertsDashboard() {
 
   const [leastAlerting, setLeastAlerting] = createStore<Model>(defaultModel());
 
-  const [mostAlertingSource, setMostAlertingSource] = createStore<Model>(
-    defaultModel()
-  );
+  const [mostAlertingSource, setMostAlertingSource] =
+    createStore<Model>(defaultModel());
 
-  const [leastAlertingSource, setLeastAlertingSource] = createStore<Model>(
-    defaultModel()
-  );
+  const [leastAlertingSource, setLeastAlertingSource] =
+    createStore<Model>(defaultModel());
 
-  const [mostAlertingDest, setMostAlertingDest] = createStore<Model>(
-    defaultModel()
-  );
+  const [mostAlertingDest, setMostAlertingDest] =
+    createStore<Model>(defaultModel());
 
-  const [leastAlertingDest, setLeastAlertingDest] = createStore<Model>(
-    defaultModel()
-  );
+  const [leastAlertingDest, setLeastAlertingDest] =
+    createStore<Model>(defaultModel());
 
   let histogram: any = undefined;
 
@@ -96,10 +92,10 @@ export function AlertsDashboard() {
             data: dataValues,
 
             backgroundColor: dataValues.map(
-              (_, index) => Colors[index % Colors.length]
+              (_, index) => Colors[index % Colors.length],
             ),
             borderColor: dataValues.map(
-              (_, index) => Colors[index % Colors.length]
+              (_, index) => Colors[index % Colors.length],
             ),
           },
         ],

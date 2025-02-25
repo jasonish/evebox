@@ -18,7 +18,7 @@ export function SearchLink(props: {
     case "number":
     case "boolean":
       q = encodeURIComponent(
-        `${props.field ? props.field + ":" : ""}${props.value}`
+        `${props.field ? props.field + ":" : ""}${props.value}`,
       );
       break;
     default:
@@ -29,7 +29,7 @@ export function SearchLink(props: {
         console.log(`Failed to escape ${props.value}`);
       }
       q = encodeURIComponent(
-        `${props.field ? props.field + ":" : ""}"${value}"`
+        `${props.field ? props.field + ":" : ""}"${value}"`,
       );
       break;
   }

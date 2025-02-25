@@ -31,7 +31,7 @@ export function AdminFilters() {
     setFilters(
       filters().filter((a: any) => {
         return JSON.stringify(a).indexOf(filterString) > -1;
-      })
+      }),
     );
   };
 

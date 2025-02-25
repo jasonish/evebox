@@ -18,11 +18,11 @@ import { BiQuestionCircle } from "./icons";
 export function Settings() {
   createEffect(() => {
     const popoverTriggerList = document.querySelectorAll(
-      '[data-bs-toggle="popover"]'
+      '[data-bs-toggle="popover"]',
     );
     [...popoverTriggerList].map(
       (popoverTriggerEl) =>
-        new bootstrap.Popover(popoverTriggerEl, { html: true })
+        new bootstrap.Popover(popoverTriggerEl, { html: true }),
     );
   });
 
@@ -174,7 +174,7 @@ export function Settings() {
                     let value: undefined | number = +e.target.value;
                     if (isNaN(value) || value < 0) {
                       console.log(
-                        `Invalid query timeout value: ${e.target.value}, will use default.`
+                        `Invalid query timeout value: ${e.target.value}, will use default.`,
                       );
                       value = undefined;
                     }

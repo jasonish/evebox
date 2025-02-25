@@ -49,21 +49,17 @@ export function Overview() {
     sensor?: string;
   }>();
 
-  const [topAlerts, setTopAlerts] = createStore<AggResults>(
-    defaultAggResults()
-  );
+  const [topAlerts, setTopAlerts] =
+    createStore<AggResults>(defaultAggResults());
 
-  const [topDnsRequests, setTopDnsRequests] = createStore<AggResults>(
-    defaultAggResults()
-  );
+  const [topDnsRequests, setTopDnsRequests] =
+    createStore<AggResults>(defaultAggResults());
 
-  const [topTlsSni, setTopTlsSni] = createStore<AggResults>(
-    defaultAggResults()
-  );
+  const [topTlsSni, setTopTlsSni] =
+    createStore<AggResults>(defaultAggResults());
 
-  const [topQuicSni, setTopQuicSni] = createStore<AggResults>(
-    defaultAggResults()
-  );
+  const [topQuicSni, setTopQuicSni] =
+    createStore<AggResults>(defaultAggResults());
 
   const [eventsOverTimeLoading, setEventsOverTimeLoading] = createSignal(0);
 

@@ -58,7 +58,7 @@ export const Login = () => {
       let redirectTo = searchParams.redirectTo || "/inbox";
       if (!options.authentication.required) {
         console.log(
-          `No authentication required, navigating back to ${redirectTo}`
+          `No authentication required, navigating back to ${redirectTo}`,
         );
         navigate(redirectTo);
       }

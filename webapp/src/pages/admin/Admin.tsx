@@ -59,7 +59,7 @@ export function Admin() {
   const saveAutoArchiveSettings = async () => {
     await api.API.postJson(
       "/api/admin/kv/config/config.autoarchive",
-      localAutoArchiveSettings
+      localAutoArchiveSettings,
     );
     refetchAutoArchiveSettings();
   };
@@ -180,7 +180,7 @@ export function Admin() {
                         class="btn btn-danger"
                         onClick={() => {
                           setLocalAutoArchiveSettings(
-                            autoArchiveSettings.latest!
+                            autoArchiveSettings.latest!,
                           );
                         }}
                       >

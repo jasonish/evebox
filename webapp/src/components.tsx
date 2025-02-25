@@ -103,7 +103,7 @@ export function CountValueDataTable(props: {
 export function FilterStrip(props: { filters: any; setFilters: any }) {
   const removeFilter = (filter: any) => {
     props.setFilters((filters: any[]) =>
-      filters.filter((f: any) => f !== filter)
+      filters.filter((f: any) => f !== filter),
     );
   };
 
@@ -408,7 +408,7 @@ export function AutoArchiveMenuElements(props: {
           Auto-archive SID {signature_id}
         </a>
       </li>
-    </>
+    </>,
   );
 
   entries.push(
@@ -422,7 +422,7 @@ export function AutoArchiveMenuElements(props: {
           Auto-archive SID {signature_id} when from {src_ip} to {dest_ip}
         </a>
       </li>
-    </>
+    </>,
   );
 
   if (sensor && sensor.length > 0) {
@@ -440,7 +440,7 @@ export function AutoArchiveMenuElements(props: {
             from sensor {sensor}
           </a>
         </li>
-      </>
+      </>,
     );
 
     entries.push(
@@ -454,7 +454,7 @@ export function AutoArchiveMenuElements(props: {
             Auto-archive SID {signature_id} from sensor {sensor}
           </a>
         </li>
-      </>
+      </>,
     );
   }
 

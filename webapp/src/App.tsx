@@ -92,12 +92,12 @@ function AuthenticationRequired(props: any) {
   createEffect(() => {
     if (!IS_AUTHENTICATED() && mounted) {
       console.log(
-        "App is mounted but not authenticated, redirecting to login."
+        "App is mounted but not authenticated, redirecting to login.",
       );
       navigate(
         `/login?redirectTo=${encodeURIComponent(
-          location.pathname + "?" + location.search
-        )}`
+          location.pathname + "?" + location.search,
+        )}`,
       );
     }
   });
@@ -122,8 +122,8 @@ function AuthenticationRequired(props: any) {
         console.log(`Failed to get user: ${error}`);
         navigate(
           `/login?redirectTo=${encodeURIComponent(
-            location.pathname + "?" + location.search
-          )}`
+            location.pathname + "?" + location.search,
+          )}`,
         );
       });
     mounted = true;

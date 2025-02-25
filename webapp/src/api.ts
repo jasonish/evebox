@@ -72,7 +72,7 @@ async function postJson(url: string, body: any = {}): Promise<any> {
 
 export async function postComment(
   eventId: string | number,
-  comment: string
+  comment: string,
 ): Promise<any> {
   let body = {
     comment: comment,
@@ -99,7 +99,7 @@ export async function getConfig(): Promise<ConfigResponse> {
 
 export async function login(
   username: string,
-  password: string
+  password: string,
 ): Promise<[boolean, LoginResponse]> {
   let params = new URLSearchParams({
     username: username,
@@ -162,7 +162,7 @@ export interface EventsQueryParams {
 }
 
 export async function getEvents(
-  params?: EventsQueryParams
+  params?: EventsQueryParams,
 ): Promise<{ events: EventWrapper[]; esc: boolean }> {
   if (!params) {
     params = {};
@@ -251,7 +251,7 @@ export async function statsAgg(
   field: string,
   differential: boolean = false,
   time_range?: number,
-  sensor_name?: string
+  sensor_name?: string,
 ): Promise<StatsAggResponse> {
   let url;
   if (differential) {
@@ -331,7 +331,7 @@ export namespace API {
     query_string?: string;
   }): Promise<{ data: { count: number; time: number }[] }> {
     return get("api/1/report/histogram/time", request).then(
-      (response) => response.data
+      (response) => response.data,
     );
   }
 
@@ -381,7 +381,7 @@ export namespace API {
 
   export async function eventToPcap(
     event: EventWrapper,
-    what: "packet" | "payload"
+    what: "packet" | "payload",
   ) {
     const form = document.createElement("form") as HTMLFormElement;
     form.setAttribute("method", "post");
@@ -417,7 +417,7 @@ export namespace API {
   export async function getSseAgg(
     params: any,
     version: () => number,
-    onData?: any
+    onData?: any,
   ): Promise<void> {
     return new Promise((resolve, _reject) => {
       const currentVersion = version();
@@ -464,7 +464,7 @@ export namespace API {
   }
 
   export async function addAutoArchive(
-    params: AddAutoArchiveRequest
+    params: AddAutoArchiveRequest,
   ): Promise<any> {
     let urlSearchParams = new URLSearchParams(Object.entries(params));
     return fetch("api/admin/filter/add", {
@@ -492,7 +492,7 @@ export namespace API {
 
     if (!response.ok) {
       throw new Error(
-        `HTTP error! status: ${response.status} - ${response.statusText}`
+        `HTTP error! status: ${response.status} - ${response.statusText}`,
       );
     }
 

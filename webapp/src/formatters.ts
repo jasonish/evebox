@@ -70,11 +70,11 @@ export function formatEventDescription(event: Event): string {
       case "drop": {
         const source = formatAddressWithPort(
           event._source.src_ip,
-          event._source.src_port
+          event._source.src_port,
         );
         const dest = formatAddressWithPort(
           event._source.dest_ip,
-          event._source.dest_port
+          event._source.dest_port,
         );
         return `${source} => ${dest}`;
       }
@@ -127,11 +127,11 @@ export function formatEventDescription(event: Event): string {
             event._source.flow?.bytes_toserver! || "N/A";
         const source = formatAddressWithPort(
           event._source.src_ip,
-          event._source.src_port
+          event._source.src_port,
         );
         const dest = formatAddressWithPort(
           event._source.dest_ip,
-          event._source.dest_port
+          event._source.dest_port,
         );
         let age =
           event._source.flow?.age != undefined ? event._source.flow.age : "N/A";
@@ -149,11 +149,11 @@ export function formatEventDescription(event: Event): string {
         formatAddress(event._source.src_ip);
         const source = formatAddressWithPort(
           event._source.src_ip,
-          event._source.src_port
+          event._source.src_port,
         );
         const dest = formatAddressWithPort(
           event._source.dest_ip,
-          event._source.dest_port
+          event._source.dest_port,
         );
         let parts = [
           event._source.proto,
@@ -260,7 +260,7 @@ export function formatEventDescription(event: Event): string {
 
 export function formatAddressWithPort(
   addr: string,
-  port: undefined | number
+  port: undefined | number,
 ): string {
   if (port) {
     return `${formatAddress(addr)}:[${port}]`;

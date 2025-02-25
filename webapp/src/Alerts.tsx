@@ -134,7 +134,7 @@ export function Alerts() {
       break;
     default:
       console.log(
-        `Location path ${location.pathname} not supported here, redirecting to /inbox`
+        `Location path ${location.pathname} not supported here, redirecting to /inbox`,
       );
       navigate("/inbox");
       break;
@@ -288,7 +288,7 @@ export function Alerts() {
     const logger = new Logger("Alerts.createEffect: visible events", true);
     batch(() => {
       setVisibleEvents(
-        eventStore.events.slice(getOffset(), getOffset() + getRowCount())
+        eventStore.events.slice(getOffset(), getOffset() + getRowCount()),
       );
       if (visibleEvents().length === 0 && getOffset() > 0) {
         logger.log("No more visible events, moving to previous page");
@@ -441,7 +441,7 @@ export function Alerts() {
   function sortAlerts(
     alerts: EventWrapper[],
     sortBy: string,
-    order: string
+    order: string,
   ): void {
     console.log(`sortAlerts: sortBy=${sortBy}, order=${order}`);
 
@@ -459,7 +459,7 @@ export function Alerts() {
         alerts.sort((a: any, b: any) => {
           return compare(
             a._source.alert.signature.toUpperCase(),
-            b._source.alert.signature.toUpperCase()
+            b._source.alert.signature.toUpperCase(),
           );
         });
         break;
@@ -744,7 +744,7 @@ export function Alerts() {
       archiveByEvent(event);
     }
     addNotification(
-      `Auto-archive filter successfully added and ${matchingEvents.length} events archived.`
+      `Auto-archive filter successfully added and ${matchingEvents.length} events archived.`,
     );
   };
 
@@ -766,7 +766,7 @@ export function Alerts() {
                   "eventStore.cursor": eventStore.cursor,
                 },
                 null,
-                1
+                1,
               )}
             </Col>
           </Row>
@@ -1145,7 +1145,7 @@ export function Alerts() {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         filterForSignatureId(
-                                          alert.signature_id
+                                          alert.signature_id,
                                         );
                                       }}
                                     >
@@ -1160,7 +1160,7 @@ export function Alerts() {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         filterOutSignatureId(
-                                          alert.signature_id
+                                          alert.signature_id,
                                         );
                                       }}
                                     >
@@ -1177,7 +1177,7 @@ export function Alerts() {
                                         addFilter(
                                           "@from",
                                           "",
-                                          event._source.timestamp
+                                          event._source.timestamp,
                                         );
                                       }}
                                     >
@@ -1194,7 +1194,7 @@ export function Alerts() {
                                         addFilter(
                                           "@to",
                                           "",
-                                          event._source.timestamp
+                                          event._source.timestamp,
                                         );
                                       }}
                                     >
@@ -1212,7 +1212,7 @@ export function Alerts() {
                                           addFilter(
                                             "host",
                                             "",
-                                            event._source.host
+                                            event._source.host,
                                           );
                                         }}
                                       >
@@ -1229,7 +1229,7 @@ export function Alerts() {
                                           addFilter(
                                             "host",
                                             "-",
-                                            event._source.host
+                                            event._source.host,
                                           );
                                         }}
                                       >
@@ -1375,10 +1375,10 @@ function PagerRow(props: {
 
   createEffect(() => {
     const tooltipTriggerList = document.querySelectorAll(
-      '[data-bs-toggle="tooltip"]'
+      '[data-bs-toggle="tooltip"]',
     );
     const tooltipList = [...tooltipTriggerList].map(
-      (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl)
+      (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl),
     );
   });
 

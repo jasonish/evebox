@@ -41,8 +41,8 @@ export function DHCP() {
         if (!event_1["dhcp"]) {
           console.log(
             `DHCP ACK entry does not contain DHCP object: ${JSON.stringify(
-              event_1
-            )}`
+              event_1,
+            )}`,
           );
         } else {
           const hostname = requestHostnames[event_1.dhcp!.id];
@@ -116,7 +116,7 @@ export function DHCP() {
                           <tr>
                             <td class={"ps-2"}>
                               {parse_timestamp(ack.timestamp).format(
-                                "YYYY-MM-DD HH:mm:ss"
+                                "YYYY-MM-DD HH:mm:ss",
                               )}
                             </td>
                             <td>{ack.host}</td>

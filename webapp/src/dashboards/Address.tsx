@@ -33,92 +33,71 @@ export function Address() {
   // For SSE cancellation.
   const [version, setVersion] = createSignal(0);
 
-  const [mostAlertingSignature, setMostAlertingSignature] = createStore(
-    defaultAggResults()
-  );
+  const [mostAlertingSignature, setMostAlertingSignature] =
+    createStore(defaultAggResults());
 
-  const [leastAlertingSignature, setLeastAlertingSignature] = createStore(
-    defaultAggResults()
-  );
+  const [leastAlertingSignature, setLeastAlertingSignature] =
+    createStore(defaultAggResults());
 
-  const [mostRequestedDns, setMostRequestedDns] = createStore(
-    defaultAggResults()
-  );
+  const [mostRequestedDns, setMostRequestedDns] =
+    createStore(defaultAggResults());
 
-  const [leastRequestedDns, setLeastRequestedDns] = createStore(
-    defaultAggResults()
-  );
+  const [leastRequestedDns, setLeastRequestedDns] =
+    createStore(defaultAggResults());
 
-  const [mostHttpUserAgents, setMostHttpUserAgents] = createStore(
-    defaultAggResults()
-  );
+  const [mostHttpUserAgents, setMostHttpUserAgents] =
+    createStore(defaultAggResults());
 
-  const [leastHttpUserAgents, setLeastHttpUserAgents] = createStore(
-    defaultAggResults()
-  );
+  const [leastHttpUserAgents, setLeastHttpUserAgents] =
+    createStore(defaultAggResults());
 
-  const [mostRequestedTlsSni, setMostRequestedTlsSni] = createStore(
-    defaultAggResults()
-  );
+  const [mostRequestedTlsSni, setMostRequestedTlsSni] =
+    createStore(defaultAggResults());
 
-  const [leastRequestedTlsSni, setLeastRequestedTlsSni] = createStore(
-    defaultAggResults()
-  );
+  const [leastRequestedTlsSni, setLeastRequestedTlsSni] =
+    createStore(defaultAggResults());
 
-  const [mostSshClientVersions, setMostSshClientVersions] = createStore(
-    defaultAggResults()
-  );
+  const [mostSshClientVersions, setMostSshClientVersions] =
+    createStore(defaultAggResults());
 
-  const [leastSshClientVersions, setLeastSshClientVersions] = createStore(
-    defaultAggResults()
-  );
+  const [leastSshClientVersions, setLeastSshClientVersions] =
+    createStore(defaultAggResults());
 
-  const [mostSshServerVersions, setMostSshServerVersions] = createStore(
-    defaultAggResults()
-  );
+  const [mostSshServerVersions, setMostSshServerVersions] =
+    createStore(defaultAggResults());
 
-  const [leastSshServerVersions, setLeastSshServerVersions] = createStore(
-    defaultAggResults()
-  );
+  const [leastSshServerVersions, setLeastSshServerVersions] =
+    createStore(defaultAggResults());
 
-  const [httpTopOutboundHostnames, setHttpTopOutboundHostnames] = createStore(
-    defaultAggResults()
-  );
+  const [httpTopOutboundHostnames, setHttpTopOutboundHostnames] =
+    createStore(defaultAggResults());
 
   const [httpLeastOutboundHostnames, setHttpLeastOutboundHostnames] =
     createStore(defaultAggResults());
 
-  const [httpTopInboundHostnames, setHttpTopInboundHostnames] = createStore(
-    defaultAggResults()
-  );
+  const [httpTopInboundHostnames, setHttpTopInboundHostnames] =
+    createStore(defaultAggResults());
 
-  const [httpLeastInboundHostnames, setHttpLeastInboundHostnames] = createStore(
-    defaultAggResults()
-  );
+  const [httpLeastInboundHostnames, setHttpLeastInboundHostnames] =
+    createStore(defaultAggResults());
 
-  const [tlsSniInboundTop, setTlsSniInboundTop] = createStore(
-    defaultAggResults()
-  );
+  const [tlsSniInboundTop, setTlsSniInboundTop] =
+    createStore(defaultAggResults());
 
-  const [tlsSniInboundLeast, setTlsSniInboundLeast] = createStore(
-    defaultAggResults()
-  );
+  const [tlsSniInboundLeast, setTlsSniInboundLeast] =
+    createStore(defaultAggResults());
 
-  const [tlsMostRequestedSubjects, setTlsMostRequestedSubjects] = createStore(
-    defaultAggResults()
-  );
+  const [tlsMostRequestedSubjects, setTlsMostRequestedSubjects] =
+    createStore(defaultAggResults());
 
-  const [tlsLeastRequestedSubjects, setTlsLeastRequestedSubjects] = createStore(
-    defaultAggResults()
-  );
+  const [tlsLeastRequestedSubjects, setTlsLeastRequestedSubjects] =
+    createStore(defaultAggResults());
 
-  const [tlsMostRequestedIssueDn, setTlsMostRequestedIssueDn] = createStore(
-    defaultAggResults()
-  );
+  const [tlsMostRequestedIssueDn, setTlsMostRequestedIssueDn] =
+    createStore(defaultAggResults());
 
-  const [tlsLeastRequestedIssueDn, setTlsLeastRequestedIssueDn] = createStore(
-    defaultAggResults()
-  );
+  const [tlsLeastRequestedIssueDn, setTlsLeastRequestedIssueDn] =
+    createStore(defaultAggResults());
 
   onCleanup(() => {
     API.cancelAllSse();

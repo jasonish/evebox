@@ -4,7 +4,7 @@
 import { createSignal } from "solid-js";
 
 export const [PREFS, SET_PREFS] = createSignal<ClientPreferences>(
-  getClientPreferences()
+  getClientPreferences(),
 );
 
 export interface ClientPreferences {
