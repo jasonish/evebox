@@ -11,7 +11,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "prettier": "2.8.3",
+    "prettier": "^3.5.2",
     "sass": "^1.57.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
