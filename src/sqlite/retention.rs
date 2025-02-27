@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+
 use crate::elastic::HistoryEntryBuilder;
 use crate::server::metrics::Metrics;
 use crate::sqlite::prelude::*;
@@ -10,7 +12,6 @@ use core::ops::Sub;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tracing::{debug, error, info, trace, warn};
 
 use super::configdb::{AutoArchiveConfig, ConfigDb};
 use super::info::Info;
@@ -29,13 +30,6 @@ const REPEAT_INTERVAL: u64 = 1;
 /// Number of events to delete per run.
 const LIMIT: usize = 1000;
 
-#[derive(Debug)]
-pub(crate) struct RetentionConfig {
-    pub configdb: crate::sqlite::configdb::ConfigDb,
-    pub range: Option<usize>,
-    pub size: usize,
-}
-
 fn get_size(config: &Config) -> Result<usize> {
     // Size as a number.
     if let Ok(Some(size)) = config.get::<usize>("database.retention.size") {
@@ -51,12 +45,42 @@ fn get_size(config: &Config) -> Result<usize> {
     }
 }
 
-fn get_days(config: &Config) -> Result<Option<usize>> {
+async fn get_days(configdb: &ConfigDb, config: &Config) -> Result<Option<usize>> {
     let days = if let Some(days) = config.get::<usize>("database.retention.days")? {
+        debug!(
+            "Found database.retention.days in configuration file of {} days",
+            days
+        );
         days
     } else if let Some(days) = config.get::<usize>("database.retention-period")? {
+        debug!(
+            "Found database.retention-period in configuration file of {} days",
+            days
+        );
         days
     } else {
+        let retention_config: Result<Option<AutoArchiveConfig>> =
+            configdb.kv_get_config_as_t("config.retention").await;
+        match retention_config {
+            Ok(None) => {
+                // Not set in database, use default.
+            }
+            Ok(Some(config)) => {
+                if config.enabled {
+                    return Ok(Some(config.value as usize));
+                }
+            }
+            Err(err) => {
+                error!(
+                    "Failed to get retention configuration will use default: error={}",
+                    err
+                );
+            }
+        }
+        debug!(
+            "Using default database retention period of {} days",
+            DEFAULT_RANGE
+        );
         DEFAULT_RANGE
     };
     if days > 0 {
@@ -68,28 +92,14 @@ fn get_days(config: &Config) -> Result<Option<usize>> {
 
 pub(crate) async fn start_retention_task(
     metrics: Arc<Metrics>,
-    configdb: crate::sqlite::configdb::ConfigDb,
+    configdb: ConfigDb,
     config: Config,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     filename: PathBuf,
 ) -> anyhow::Result<()> {
-    let size = get_size(&config)
-        .map_err(|err| anyhow::anyhow!("Bad database.retention.size: {:?}", err))?;
-    let range = get_days(&config)?;
-    info!(
-        "Database retention settings: days={}, size={}",
-        range.unwrap_or(0),
-        size
-    );
-    let config = RetentionConfig {
-        configdb,
-        range,
-        size,
-    };
     tokio::spawn(async move {
-        retention_task(metrics, config, conn, filename).await;
+        retention_task(metrics, config, configdb, conn, filename).await;
     });
-
     Ok(())
 }
 
@@ -124,7 +134,8 @@ async fn size_enabled(conn: Arc<tokio::sync::Mutex<SqliteConnection>>) -> bool {
 
 async fn retention_task(
     metrics: Arc<Metrics>,
-    config: RetentionConfig,
+    config: Config,
+    configdb: ConfigDb,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     filename: PathBuf,
 ) {
@@ -141,28 +152,38 @@ async fn retention_task(
     loop {
         let mut delay = default_delay;
 
-        // First, delete to size.
-        if size_enabled && config.size > 0 {
-            match delete_to_size(conn.clone(), &filename, config.size).await {
-                Err(err) => {
-                    error!("Failed to delete database to max size: {:?}", err);
-                }
-                Ok(n) => {
-                    if n > 0 {
-                        debug!(
-                            "Deleted {n} events to reduce database size to {} bytes",
-                            config.size
-                        );
-                        count += n;
+        if size_enabled {
+            match get_size(&config) {
+                Ok(size) => {
+                    if size > 0 {
+                        match delete_to_size(conn.clone(), &filename, size).await {
+                            Err(err) => {
+                                error!("Failed to delete database to max size: {:?}", err);
+                            }
+                            Ok(n) => {
+                                if n > 0 {
+                                    debug!(
+                                        "Deleted {n} events to reduce database size to {} bytes",
+                                        size
+                                    );
+                                    count += n;
+                                }
+                            }
+                        }
                     }
+                }
+                Err(err) => {
+                    error!(
+                        "Failed to get database retention by size setting: {:?}",
+                        err
+                    );
                 }
             }
         }
 
-        // Range (day) based retention.
-        if let Some(range) = config.range {
-            if range > 0 {
-                match delete_older_than(conn.clone(), range as u64, LIMIT as u64).await {
+        if let Ok(Some(days)) = get_days(&configdb, &config).await {
+            if days > 0 {
+                match delete_older_than(conn.clone(), days as u64, LIMIT as u64).await {
                     Ok(n) => {
                         count += n;
                         if n == LIMIT as u64 {
@@ -182,7 +203,7 @@ async fn retention_task(
             last_report = Instant::now();
         }
 
-        if let Err(err) = auto_archive(&metrics, &config.configdb, conn.clone()).await {
+        if let Err(err) = auto_archive(&metrics, &configdb, conn.clone()).await {
             warn!("Failed to auto-archive events: {:?}", err);
         }
 
