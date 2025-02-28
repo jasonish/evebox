@@ -3,6 +3,10 @@
 ## 0.20.3 - unreleased
 
 - Fix persistence of a 0 query timeout in local storage.
+- Fix issue disabling query timeout by setting it to 0.
+- Add admin page to delete Elasticsearch indices.
+- Date based retention for Elasticsearch.
+- Add SQLite size and age based retention to webapp.
 
 ## 0.20.2 - 2025-01-31
 
