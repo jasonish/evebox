@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use super::configdb::{AutoArchiveConfig, ConfigDb};
+use super::configdb::{ConfigDb, EnabledWithValue};
 use super::info::Info;
 use crate::config::Config;
 use crate::datetime::DateTime;
@@ -30,19 +30,26 @@ const REPEAT_INTERVAL: u64 = 1;
 /// Number of events to delete per run.
 const LIMIT: usize = 1000;
 
-fn get_size(config: &Config) -> Result<usize> {
-    // Size as a number.
-    if let Ok(Some(size)) = config.get::<usize>("database.retention.size") {
-        Ok(size)
-    } else if let Ok(Some(size)) = config.get::<String>("database.retention.size") {
+async fn get_size(configdb: &ConfigDb, config: &Config) -> Result<usize> {
+    if let Ok(Some(size)) = config.get::<String>("database.retention.size") {
         if let Ok(size) = size.parse::<usize>() {
-            Ok(size)
-        } else {
-            crate::util::parse_humansize(&size)
+            return Ok(size);
         }
-    } else {
-        Ok(0)
+        if let Ok(size) = crate::util::parse_humansize(&size) {
+            return Ok(size);
+        }
+        warn!("Invalid database.retention.size: {}", size);
     }
+
+    let retention_size_config: Result<Option<EnabledWithValue>> =
+        configdb.kv_get_config_as_t("config.retention.size").await;
+    if let Ok(Some(config)) = retention_size_config {
+        if config.enabled {
+            return Ok(config.value as usize * 1000000000);
+        }
+    }
+
+    Ok(0)
 }
 
 async fn get_days(configdb: &ConfigDb, config: &Config) -> Result<Option<usize>> {
@@ -59,7 +66,7 @@ async fn get_days(configdb: &ConfigDb, config: &Config) -> Result<Option<usize>>
         );
         days
     } else {
-        let retention_config: Result<Option<AutoArchiveConfig>> =
+        let retention_config: Result<Option<EnabledWithValue>> =
             configdb.kv_get_config_as_t("config.retention").await;
         match retention_config {
             Ok(None) => {
@@ -143,8 +150,8 @@ async fn retention_task(
     let default_delay = Duration::from_secs(INTERVAL);
     let report_interval = Duration::from_secs(60);
 
-    // Delay on startup.
-    tokio::time::sleep(default_delay).await;
+    // Short delay on startup.
+    tokio::time::sleep(Duration::from_secs(3)).await;
 
     let mut last_report = Instant::now();
     let mut count: u64 = 0;
@@ -152,15 +159,20 @@ async fn retention_task(
     loop {
         let mut delay = default_delay;
 
+        if !size_enabled {
+            debug!("Size based database retention not available.");
+        }
         if size_enabled {
-            match get_size(&config) {
+            match get_size(&configdb, &config).await {
                 Ok(size) => {
+                    dbg!(size);
                     if size > 0 {
                         match delete_to_size(conn.clone(), &filename, size).await {
                             Err(err) => {
                                 error!("Failed to delete database to max size: {:?}", err);
                             }
                             Ok(n) => {
+                                dbg!(n);
                                 if n > 0 {
                                     debug!(
                                         "Deleted {n} events to reduce database size to {} bytes",
@@ -216,7 +228,7 @@ async fn auto_archive(
     configdb: &ConfigDb,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
 ) -> Result<()> {
-    let config: Option<AutoArchiveConfig> =
+    let config: Option<EnabledWithValue> =
         configdb.kv_get_config_as_t("config.autoarchive").await?;
     if let Some(config) = config {
         if config.enabled {
@@ -257,6 +269,10 @@ async fn delete_to_size(
     loop {
         let file_size = crate::file::file_size(filename)? as usize;
         if file_size < bytes {
+            debug!(
+                "File size {} less than retention size limit of {}",
+                file_size, bytes
+            );
             break;
         }
 

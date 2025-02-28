@@ -5,7 +5,7 @@ use chrono::TimeZone;
 
 use crate::elastic::{HistoryEntryBuilder, TAG_ARCHIVED, TAG_AUTO_ARCHIVED};
 use crate::server::metrics::Metrics;
-use crate::sqlite::configdb::{AutoArchiveConfig, ConfigDb};
+use crate::sqlite::configdb::{ConfigDb, EnabledWithValue};
 use crate::{elastic::DateTime, prelude::*};
 
 use super::client::SimpleIndexStats;
@@ -32,7 +32,7 @@ async fn run(metrics: Arc<Metrics>, configdb: ConfigDb, repo: ElasticEventRepo) 
 }
 
 async fn delete_indices(configdb: &ConfigDb, repo: &ElasticEventRepo) -> Result<()> {
-    let config: Option<AutoArchiveConfig> = configdb.kv_get_config_as_t("config.retention").await?;
+    let config: Option<EnabledWithValue> = configdb.kv_get_config_as_t("config.retention").await?;
     let config = match config {
         Some(config) => config,
         None => return Ok(()),
@@ -86,7 +86,7 @@ async fn auto_archive(
     configdb: &ConfigDb,
     repo: &ElasticEventRepo,
 ) -> Result<()> {
-    let config: Option<AutoArchiveConfig> =
+    let config: Option<EnabledWithValue> =
         configdb.kv_get_config_as_t("config.autoarchive").await?;
     let config = match config {
         Some(config) => config,

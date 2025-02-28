@@ -44,10 +44,27 @@ async function fetchRetentionSettings(): Promise<AutoArchiveSettings> {
   }
 }
 
+async function fetchRetentionSizeSettings(): Promise<AutoArchiveSettings> {
+  const json = await api.API.getJson("api/admin/kv/config");
+  const config = json["config.retention.size"];
+  if (config) {
+    return config;
+  } else {
+    return defaultRetentionSizeSettings();
+  }
+}
+
 function defaultRetentionSettings(): RetentionSettings {
   return {
     enabled: false,
     value: 365,
+  };
+}
+
+function defaultRetentionSizeSettings(): RetentionSettings {
+  return {
+    enabled: false,
+    value: 20,
   };
 }
 
@@ -60,17 +77,23 @@ export function Admin() {
     },
   });
 
+  // Auto archive.
   const [autoArchiveSettings, { refetch: refetchAutoArchiveSettings }] =
     createResource<AutoArchiveSettings>(fetchAutoArchiveSettings);
-
   const [localAutoArchiveSettings, setLocalAutoArchiveSettings] =
     createStore<AutoArchiveSettings>(defaultAutoArchiveSettings());
 
+  // Retention by age.
   const [retentionSettings, { refetch: refetchRetentionSettings }] =
     createResource<RetentionSettings>(fetchRetentionSettings);
-
   const [localRetentionSettings, setLocalRetentionSettings] =
     createStore<RetentionSettings>(defaultRetentionSettings());
+
+  // Retention by size.
+  const [retentionSizeSettings, { refetch: refetchRetentionSizeSettings }] =
+    createResource<RetentionSettings>(fetchRetentionSizeSettings);
+  const [localRetentionSizeSettings, setLocalRetentionSizeSettings] =
+    createStore<RetentionSettings>(defaultRetentionSizeSettings());
 
   createEffect(() => {
     if (autoArchiveSettings()) {
@@ -81,6 +104,12 @@ export function Admin() {
   createEffect(() => {
     if (retentionSettings()) {
       setLocalRetentionSettings(retentionSettings()!);
+    }
+  });
+
+  createEffect(() => {
+    if (retentionSizeSettings()) {
+      setLocalRetentionSizeSettings(retentionSizeSettings()!);
     }
   });
 
@@ -98,6 +127,13 @@ export function Admin() {
     );
   });
 
+  const retentionSizeSettingsModified = createMemo(() => {
+    return (
+      JSON.stringify(localRetentionSizeSettings) !=
+      JSON.stringify(retentionSizeSettings.latest)
+    );
+  });
+
   const saveAutoArchiveSettings = async () => {
     await api.API.postJson(
       "api/admin/kv/config/config.autoarchive",
@@ -112,6 +148,14 @@ export function Admin() {
       localRetentionSettings,
     );
     refetchRetentionSettings();
+  };
+
+  const saveRetentionSizeSettings = async () => {
+    await api.API.postJson(
+      "api/admin/kv/config/config.retention.size",
+      localRetentionSizeSettings,
+    );
+    refetchRetentionSizeSettings();
   };
 
   const updateJa4Db = async (e: any) => {
@@ -248,7 +292,7 @@ export function Admin() {
           </div>
         </div>
 
-        {/* Retention settings. */}
+        {/* Retention by age. */}
         <div class="row mt-2">
           <div class="col">
             <div class="card">
@@ -324,9 +368,7 @@ export function Admin() {
                       <button
                         class="btn btn-danger"
                         onClick={() => {
-                          setLocalAutoArchiveSettings(
-                            retentionSettings.latest!,
-                          );
+                          setLocalRetentionSettings(retentionSettings.latest!);
                         }}
                       >
                         Reset
@@ -338,6 +380,88 @@ export function Admin() {
             </div>
           </div>
         </div>
+
+        {/* Retention by disk size. */}
+        <Show when={serverConfig?.datastore === "sqlite"}>
+          <div class="row mt-2">
+            <div class="col">
+              <div class="card">
+                <div class="card-body">
+                  <div class="row mt-2">
+                    <div class="col">
+                      Warning: This setting will not be effective if size
+                      retention is set in the configuration file.
+                    </div>
+                  </div>
+                  <div class="row mt-2">
+                    <label class="col col-form-label">
+                      <div class="form-check form-switch">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          checked={localRetentionSizeSettings.enabled}
+                          onChange={(e) => {
+                            setLocalRetentionSizeSettings({
+                              enabled: e.target.checked,
+                            });
+                          }}
+                        />
+                        <label class="form-check-label">
+                          Limit event database to size:
+                        </label>
+                      </div>
+                    </label>
+                    <div class="col">
+                      <div class="input-group">
+                        <input
+                          type="number"
+                          class="form-control"
+                          value={localRetentionSizeSettings.value}
+                          onInput={(e) => {
+                            setLocalRetentionSizeSettings(
+                              "value",
+                              +e.target.value,
+                            );
+                          }}
+                          onChange={(e) => {
+                            setLocalRetentionSizeSettings(
+                              "value",
+                              +e.target.value,
+                            );
+                          }}
+                        />
+                        <span class="input-group-text">Gigabytes</span>
+                      </div>
+                    </div>
+                    <div class="col text-end">
+                      <Show when={retentionSizeSettingsModified()}>
+                        <button
+                          class="btn btn-success me-2"
+                          onClick={() => {
+                            saveRetentionSizeSettings();
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          class="btn btn-danger"
+                          onClick={() => {
+                            setLocalRetentionSizeSettings(
+                              retentionSizeSettings.latest!,
+                            );
+                          }}
+                        >
+                          Reset
+                        </button>
+                      </Show>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Show>
       </div>
     </>
   );

@@ -60,7 +60,7 @@ pub(crate) struct User {
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct AutoArchiveConfig {
+pub(crate) struct EnabledWithValue {
     pub enabled: bool,
     pub value: u64,
 }
