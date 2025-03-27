@@ -72,15 +72,19 @@ export function EventView() {
   console.log(`- EventView: EVENT_STORE.active_id=${eventStore.active?._id}`);
 
   onMount(() => {
+    const ignoreKey = (e: any) => {
+      return ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName);
+    };
+
     keybindings = tinykeys(window, {
       u: (e: any) => {
-        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+        if (ignoreKey(e)) {
           return;
         }
         window.history.back();
       },
       e: (e: any) => {
-        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+        if (ignoreKey(e)) {
           return;
         }
         archiveAlert();
@@ -88,8 +92,10 @@ export function EventView() {
       f8: () => {
         archiveAlert();
       },
-      ".": () => {
-        console.log("asdf");
+      ".": (e: any) => {
+        if (ignoreKey(e)) {
+          return;
+        }
         let element = document.getElementById("tool-menu");
         if (element) {
           element.click();

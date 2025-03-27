@@ -2,6 +2,8 @@
 
 ## 0.20.3 - unreleased
 
+- Fix issue with "." in comment form:
+  https://github.com/jasonish/evebox/issues/330
 - Fix persistence of a 0 query timeout in local storage.
 - Fix issue disabling query timeout by setting it to 0.
 - Add admin page to delete Elasticsearch indices.
