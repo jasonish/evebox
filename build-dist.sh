@@ -10,31 +10,6 @@ echo "===> Git revision: ${BUILD_REV}"
 echo "===> Git branch: ${GIT_BRANCH}"
 echo "===> Git tag: ${GIT_TAG}"
 
-skip_windows="no"
-
-# Custom command.
-command=""
-
-for a in $@; do
-    case "$a" in
-        --skip-windows)
-            skip_windows="yes"
-            ;;
-        --linux)
-            skip_windows="yes"
-            ;;
-	--*)
-	    echo "error: bad argument: $a"
-	    exit 1
-	    ;;
-        *)
-	    command="$@"
-	    break
-            ;;
-    esac
-    shift
-done
-
 cross_run() {
     target="$1"
     shift
@@ -43,7 +18,7 @@ cross_run() {
         exit 1
     fi
     dockerfile="./docker/builder/Dockerfile.cross"
-    tag=${BUILDER_TAG:-"evebox/builder:cross"}
+    tag="private/evebox/builder:cross"
     env
     if [ -z "${GITHUB_REPOSITORY}" -a -t ]; then
         it="-it"
@@ -67,18 +42,12 @@ cross_run() {
             ${tag} $@
 }
 
-if [[ "${command}" ]]; then
-    $command
-else
-    cross_run x86_64-unknown-linux-musl make dist
-    cross_run aarch64-unknown-linux-musl make dist
-    
-    cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
-    
-    cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
-    cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
-    
-    if [[ "${skip_windows}" != "yes" ]]; then
-	cross_run x86_64-pc-windows-gnu make dist
-    fi
-fi
+cross_run x86_64-unknown-linux-musl make dist
+cross_run aarch64-unknown-linux-musl make dist
+
+cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
+
+cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
+cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
+
+cross_run x86_64-pc-windows-gnu make dist

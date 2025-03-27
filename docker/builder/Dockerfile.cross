@@ -19,6 +19,8 @@ RUN dnf -y install \
         ruby-devel \
         rubygem-ffi \
         ruby-devel
+
+# TODO: Update to 1.16.0
 RUN gem install --no-document --bindir=/usr/local/bin fpm -v 1.15.1
 
 ARG REAL_UID=1000
@@ -48,6 +50,3 @@ RUN rustup target add aarch64-unknown-linux-musl
 RUN rustup component add rust-src
 
 ENV CARGO=cross
-
-#COPY /docker/builder/docker-entrypoint.sh /
-#ENTRYPOINT ["/docker-entrypoint.sh"]
