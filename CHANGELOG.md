@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.20.3 - unreleased
+## 0.20.3 - 2025-03-27
 
 - Fix issue with "." in comment form:
   https://github.com/jasonish/evebox/issues/330
