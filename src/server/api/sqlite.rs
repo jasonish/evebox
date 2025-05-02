@@ -93,7 +93,7 @@ pub(crate) async fn fts_check(
             },
             Err(err) => Response {
                 ok: false,
-                error: Some(format!("{:?}", err)),
+                error: Some(format!("{err:?}")),
             },
         };
 

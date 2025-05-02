@@ -48,7 +48,7 @@ pub(crate) async fn handler(
             } else {
                 "event".to_string()
             };
-            let cs_hdr_value = format!("attachment; filename={}.pcap", filename);
+            let cs_hdr_value = format!("attachment; filename={filename}.pcap");
             hmap.insert(CONTENT_DISPOSITION, cs_hdr_value.parse().unwrap());
 
             let linktype = if let Some(linktype) = &event["xpacket_info"]["linktype"].as_u64() {
@@ -81,7 +81,7 @@ pub(crate) async fn handler(
             } else {
                 "event".to_string()
             };
-            let cs_hdr_value = format!("attachment; filename={}.pcap", filename);
+            let cs_hdr_value = format!("attachment; filename={filename}.pcap");
             hmap.insert(CONTENT_DISPOSITION, cs_hdr_value.parse().unwrap());
 
             let ts = event.datetime().ok_or_else(|| {

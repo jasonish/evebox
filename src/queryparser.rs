@@ -24,7 +24,7 @@ impl std::fmt::Display for QueryStringParseError {
 
 impl From<nom::Err<nom::error::Error<&str>>> for QueryStringParseError {
     fn from(value: nom::Err<nom::error::Error<&str>>) -> Self {
-        Self(format!("{:?}", value))
+        Self(format!("{value:?}"))
     }
 }
 
@@ -36,7 +36,7 @@ impl From<String> for QueryStringParseError {
 
 impl From<datetime::ParseError> for QueryStringParseError {
     fn from(value: datetime::ParseError) -> Self {
-        Self(format!("bad time format: {}", value))
+        Self(format!("bad time format: {value}"))
     }
 }
 

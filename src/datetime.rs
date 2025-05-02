@@ -168,8 +168,7 @@ pub(crate) fn parse(input: &str, tz_offset: Option<&str>) -> Result<DateTime, Pa
         let offset = c.get(9).map_or(default_tz, |m| m.as_str());
 
         let fixed = format!(
-            "{}-{}-{}T{}:{}:{}.{}{}",
-            year, month, day, hour, minute, second, subs, offset,
+            "{year}-{month}-{day}T{hour}:{minute}:{second}.{subs}{offset}",
         );
 
         // Try again.

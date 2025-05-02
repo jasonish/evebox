@@ -87,7 +87,7 @@ pub(crate) async fn agg_sse(
         });
         let event = Event::default()
             .json_data(response)
-            .map_err(|err| AppError::StringError(format!("{:?}", err)))?;
+            .map_err(|err| AppError::StringError(format!("{err:?}")))?;
         let _ = tx.send(Ok(event));
 
         let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
@@ -129,7 +129,7 @@ pub(crate) async fn agg_sse(
                     )
                     .await
                 {
-                    let event = Event::default().comment(format!("error: {:?}", err));
+                    let event = Event::default().comment(format!("error: {err:?}"));
                     let _ = tx.send(Ok(event));
                 }
 

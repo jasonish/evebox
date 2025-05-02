@@ -299,7 +299,7 @@ pub(crate) async fn update_indexes(conn: &mut SqliteConnection) -> anyhow::Resul
 }
 
 async fn drop_index(conn: &mut SqliteConnection, index: &str) -> anyhow::Result<()> {
-    sqlx::query(&format!("DROP INDEX {}", index))
+    sqlx::query(&format!("DROP INDEX {index}"))
         .execute(conn)
         .await?;
     Ok(())

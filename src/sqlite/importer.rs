@@ -231,7 +231,7 @@ impl SqliteEventSink {
                                 continue;
                             }
                         }
-                        return Err(err).with_context(|| format!("retries={}", tries));
+                        return Err(err).with_context(|| format!("retries={tries}"));
                     }
                 }
             }
@@ -263,7 +263,7 @@ impl SqliteEventSink {
             .bind(&event.source_values)
             .execute(&mut *tx)
             .await
-            .with_context(|| format!("Insert into events failed: event #{}", count))?;
+            .with_context(|| format!("Insert into events failed: event #{count}"))?;
 
             if fts {
                 sqlx::query(
@@ -275,7 +275,7 @@ impl SqliteEventSink {
                 .bind(&event.source_values)
                 .execute(&mut *tx)
                 .await
-                .with_context(|| format!("Insert into fts failed: event #{}", count))?;
+                .with_context(|| format!("Insert into fts failed: event #{count}"))?;
             }
         }
         let insert_elapsed = insert_start.elapsed();
@@ -292,8 +292,7 @@ impl SqliteEventSink {
         let in_lock = insert_start.elapsed();
 
         let msg = format!(
-            "Commited {n} events in {:?}: lock={:?}, insert={:?}, commit={:?}",
-            elapsed, lock_elapsed, insert_elapsed, commit_elapsed
+            "Commited {n} events in {elapsed:?}: lock={lock_elapsed:?}, insert={insert_elapsed:?}, commit={commit_elapsed:?}"
         );
 
         let mut metrics = self.metrics.lock().unwrap();

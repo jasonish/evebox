@@ -46,7 +46,7 @@ impl From<anyhow::Error> for AppError {
 
 impl From<QueryStringParseError> for AppError {
     fn from(value: QueryStringParseError) -> Self {
-        Self::BadRequest(format!("failed to parse query string: {}", value))
+        Self::BadRequest(format!("failed to parse query string: {value}"))
     }
 }
 

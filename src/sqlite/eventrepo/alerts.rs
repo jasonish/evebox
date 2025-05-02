@@ -108,11 +108,11 @@ impl SqliteEventRepo {
                                 if el.negated {
                                     builder
                                         .push_where("events.source NOT LIKE ?")
-                                        .push_arg(format!("%{}%", s))?;
+                                        .push_arg(format!("%{s}%"))?;
                                 } else {
                                     builder
                                         .push_where("events.source LIKE ?")
-                                        .push_arg(format!("%{}%", s))?;
+                                        .push_arg(format!("%{s}%"))?;
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
@@ -127,7 +127,7 @@ impl SqliteEventRepo {
                                     builder.wherejs(k, op, v)?;
                                 } else {
                                     let op = if el.negated { "NOT LIKE" } else { "LIKE" };
-                                    builder.wherejs(k, op, format!("%{}%", v))?;
+                                    builder.wherejs(k, op, format!("%{v}%"))?;
                                 }
                             }
                             queryparser::QueryValue::From(dt) => {

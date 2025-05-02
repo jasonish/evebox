@@ -169,10 +169,7 @@ async fn run_import(
     input: &str,
     metrics: Arc<crate::server::metrics::Metrics>,
 ) -> anyhow::Result<()> {
-    let geoipdb = match geoip::GeoIP::open(None) {
-        Ok(geoipdb) => Some(geoipdb),
-        Err(_) => None,
-    };
+    let geoipdb = geoip::GeoIP::open(None).ok();
     let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, writer, metrics);
     let mut reader = eve::reader::EveReader::new(input.into());
     info!("Reading {} ({} bytes)", input, reader.file_size());

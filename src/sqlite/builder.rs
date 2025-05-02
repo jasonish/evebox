@@ -247,28 +247,28 @@ impl<'a> EventQueryBuilder<'a> {
                                     let path: String = k
                                         .split('.')
                                         .skip(2)
-                                        .map(|p| format!("'{}'", p))
+                                        .map(|p| format!("'{p}'"))
                                         .collect::<Vec<String>>()
                                         .join("->>");
-                                    self.push_where(format!("_dns_queries.value->>{} = ?", path));
+                                    self.push_where(format!("_dns_queries.value->>{path} = ?"));
                                     self.push_arg(v)?;
                                 } else if k.starts_with("dns.answers.") {
                                     let path: String = k
                                         .split('.')
                                         .skip(2)
-                                        .map(|p| format!("'{}'", p))
+                                        .map(|p| format!("'{p}'"))
                                         .collect::<Vec<String>>()
                                         .join("->>");
-                                    self.push_where(format!("_dns_answers.value->>{} = ?", path));
+                                    self.push_where(format!("_dns_answers.value->>{path} = ?"));
                                     self.push_arg(v)?;
                                 } else if k.starts_with("dns.authorities") {
                                     // Lazy helper - can't be done with Elastic though.
                                     self.push_where("events.source->>'dns'->>'authorities' GLOB ?");
-                                    self.push_arg(format!("*{}*", v))?;
+                                    self.push_arg(format!("*{v}*"))?;
                                 } else if k.starts_with("dns.additionals") {
                                     // Lazy helper - can't be done with Elastic though.
                                     self.push_where("events.source->>'dns'->>'additionals' GLOB ?");
-                                    self.push_arg(format!("*{}*", v))?;
+                                    self.push_arg(format!("*{v}*"))?;
                                 } else {
                                     self.where_source_json_extract(k, "=", v)?;
                                 }
@@ -349,7 +349,7 @@ impl<'a> EventQueryBuilder<'a> {
         sql.push_str(&self.from.join(", "));
 
         for left_join in &self.left_join {
-            sql.push_str(&format!(" {}", left_join));
+            sql.push_str(&format!(" {left_join}"));
         }
 
         if !self.fts_phrases.is_empty() {

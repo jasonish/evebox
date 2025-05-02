@@ -181,7 +181,7 @@ impl Client {
             }
         } else {
             // OpenSearch does not return a JSON error for at least authentication errors.
-            let err = format!("{}", code);
+            let err = format!("{code}");
             Err(ClientError::String(err))
         }
     }
@@ -214,7 +214,7 @@ impl Client {
         pattern: &str,
     ) -> anyhow::Result<Vec<IndicesPatternResponse>> {
         let response = self
-            .get(&format!("_cat/indices/{}?format=json", pattern))?
+            .get(&format!("_cat/indices/{pattern}?format=json"))?
             .send()
             .await?;
         let text = response.text().await?;
@@ -226,14 +226,14 @@ impl Client {
         &self,
         index: &str,
     ) -> anyhow::Result<serde_json::Value> {
-        let response = self.get(&format!("{}/_settings", index))?.send().await?;
+        let response = self.get(&format!("{index}/_settings"))?.send().await?;
         let text = response.text().await?;
         let response = serde_json::from_str(&text)?;
         Ok(response)
     }
 
     pub(crate) async fn get_template(&self, name: &str) -> anyhow::Result<serde_json::Value> {
-        let response = self.get(&format!("_template/{}", name))?.send().await?;
+        let response = self.get(&format!("_template/{name}"))?.send().await?;
         let response = response.error_for_status()?;
         let text = response.text().await?;
         let mut response: serde_json::Value = serde_json::from_str(&text)?;
@@ -241,7 +241,7 @@ impl Client {
     }
 
     pub(crate) async fn get_index_stats(&self, base: &str) -> Result<Vec<SimpleIndexStats>> {
-        let path = format!("{}*/_stats", base);
+        let path = format!("{base}*/_stats");
         let response = self.get(&path)?.send().await?;
         let json: serde_json::Value = response.json().await?;
         let indices: HashMap<String, IndexStatsResponse> =

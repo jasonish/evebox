@@ -54,7 +54,7 @@ async fn update_index(client: &Client, index: &str, limit: usize) -> Result<()> 
     });
 
     let response = client
-        .put_json(&format!("{}/_settings", index), request)?
+        .put_json(&format!("{index}/_settings"), request)?
         .send()
         .await?;
     let status = response.status();

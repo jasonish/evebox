@@ -367,7 +367,7 @@ async fn enable_auto_vacuum(filename: &str) -> Result<()> {
     let auto_vacuum: i64 = sqlx::query_scalar("PRAGMA auto_vacuum")
         .fetch_one(&mut conn)
         .await?;
-    println!("Auto vacuum is now {}", auto_vacuum);
+    println!("Auto vacuum is now {auto_vacuum}");
     Ok(())
 }
 
@@ -392,7 +392,7 @@ async fn reindex(args: &ReindexArgs) -> Result<()> {
                 continue;
             }
             info!("Dropping index {index}");
-            sqlx::query(&format!("DROP INDEX {}", index))
+            sqlx::query(&format!("DROP INDEX {index}"))
                 .execute(&mut conn)
                 .await?;
         }
