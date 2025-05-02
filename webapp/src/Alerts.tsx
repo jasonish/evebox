@@ -1275,12 +1275,46 @@ export function Alerts() {
 }
 
 export function AlertDescription(props: { event: EventWrapper }) {
-  const alert = props.event._source.alert!;
+  const source = props.event._source;
+  const alert = source.alert!;
 
   let badges = [];
 
-  if (props.event._source.host && props.event._source.host.length > 0) {
-    badges.push(["primary", props.event._source.host]);
+  if (source.host && source.host.length > 0) {
+    badges.push(["primary", `sensor:${source.host}`]);
+  }
+
+  if (source.app_proto && source.app_proto != "failed") {
+    badges.push(["secondary", `app_proto:${source.app_proto}`]);
+  }
+
+  if (source.dns?.query) {
+    badges.push([
+      "secondary",
+      `rrname:${props.event?._source?.dns?.query?.[0]?.rrname}`,
+    ]);
+  }
+
+  if (source.dns?.queries?.[0]?.rrname) {
+    badges.push([
+      "secondary",
+      `rrname:${props.event?._source?.dns?.queries?.[0]?.rrname}`,
+    ]);
+  }
+
+  if (source.tls?.sni) {
+    badges.push(["secondary", `sni:${props.event?._source?.tls?.sni}`]);
+  }
+
+  if (source.quic?.sni) {
+    badges.push(["secondary", `sni:${props.event?._source?.quic?.sni}`]);
+  }
+
+  if (source.http?.hostname) {
+    badges.push([
+      "secondary",
+      `hostname:${props.event?._source?.http?.hostname}`,
+    ]);
   }
 
   return (
@@ -1294,41 +1328,11 @@ export function AlertDescription(props: { event: EventWrapper }) {
           return <span class={"me-2 badge text-bg-" + b[0]}>{b[1]}</span>;
         }}
       </For>
-      <Show when={props.event._source.app_proto != "failed"}>
-        <span class="badge text-bg-secondary me-2">
-          {props.event._source.app_proto}
-        </span>
-      </Show>
-      <Show when={props.event._source.tls?.sni}>
-        <span class="badge text-bg-secondary me-2">
-          {props.event?._source?.tls?.sni}
-        </span>
-      </Show>
-      <Show when={props.event._source.quic?.sni}>
-        <span class="badge text-bg-secondary me-2">
-          {props.event?._source?.quic?.sni}
-        </span>
-      </Show>
-      <Show when={props.event._source.dns?.query}>
-        <span class="badge text-bg-secondary me-2">
-          {props.event?._source?.dns?.query?.[0]?.rrname}
-        </span>
-      </Show>
-      <Show when={props.event._source.dns?.queries}>
-        <span class="badge text-bg-secondary me-2">
-          {props.event?._source?.dns?.queries?.[0]?.rrname}
-        </span>
-      </Show>
-      <Show when={props.event._source.http?.hostname}>
-        <span class="badge text-bg-secondary me-2">
-          {props.event?._source?.http?.hostname}
-        </span>
-      </Show>
       <Show
         when={
-          props.event._source.tags &&
-          (props.event._source.tags.indexOf("evebox.auto-archived") > -1 ||
-            props.event._source.tags.indexOf("evebox.auto_archived") > -1)
+          source.tags &&
+          (source.tags.indexOf("evebox.auto-archived") > -1 ||
+            source.tags.indexOf("evebox.auto_archived") > -1)
         }
       >
         <span class="badge text-bg-secondary me-2">auto-archived</span>
