@@ -119,7 +119,9 @@ export function DHCP() {
                                 "YYYY-MM-DD HH:mm:ss",
                               )}
                             </td>
-                            <td>{ack.host}</td>
+                            <td class="text-truncate" style="max-width: 150px;">
+                              {ack.host}
+                            </td>
                             <td>
                               <SearchLink
                                 value={ack.dhcp!.client_mac}
