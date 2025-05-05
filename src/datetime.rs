@@ -167,9 +167,7 @@ pub(crate) fn parse(input: &str, tz_offset: Option<&str>) -> Result<DateTime, Pa
         let subs = c.get(8).map_or("0", |m| m.as_str());
         let offset = c.get(9).map_or(default_tz, |m| m.as_str());
 
-        let fixed = format!(
-            "{year}-{month}-{day}T{hour}:{minute}:{second}.{subs}{offset}",
-        );
+        let fixed = format!("{year}-{month}-{day}T{hour}:{minute}:{second}.{subs}{offset}",);
 
         // Try again.
         if let Ok(ts) = fixed.parse::<chrono::DateTime<chrono::FixedOffset>>() {

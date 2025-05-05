@@ -345,9 +345,7 @@ async fn delete_oldest_events_n(
         .await?
         .rows_affected();
     let elapsed = timer.elapsed();
-    let msg = format!(
-        "Deleted {n} events in {elapsed:?} (lock-elapsed={lock_elapsed:?})"
-    );
+    let msg = format!("Deleted {n} events in {elapsed:?} (lock-elapsed={lock_elapsed:?})");
     if elapsed > std::time::Duration::from_secs(1) {
         warn!("{}: Delete took longer than 1s", msg);
     } else {
