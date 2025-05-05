@@ -10,7 +10,6 @@ import {
 } from "solid-js";
 import { API, AggRequest } from "../api";
 import { TIME_RANGE, Top } from "../Top";
-import { Card, Col, Container, Row } from "solid-bootstrap";
 import { Chart, ChartConfiguration } from "chart.js";
 import { RefreshButton } from "../common/RefreshButton";
 import { useSearchParams } from "@solidjs/router";
@@ -357,14 +356,14 @@ export function Overview() {
   return (
     <>
       <Top />
-      <Container fluid>
-        <Row>
-          <Col class={"mt-2"}>
-            <form class={"row row-cols-lg-auto align-items-center"}>
-              <div class={"col-12"}>
+      <div class="container-fluid">
+        <div class="row">
+          <div class="mt-2 col">
+            <form class="row row-cols-lg-auto align-items-center">
+              <div class="col-12">
                 <RefreshButton loading={loading()} refresh={refresh} />
               </div>
-              <div class={"col-12"}>
+              <div class="col-12">
                 <SensorSelect
                   selected={searchParams.sensor}
                   onchange={(sensor) => {
@@ -373,13 +372,13 @@ export function Overview() {
                 />
               </div>
             </form>
-          </Col>
-        </Row>
+          </div>
+        </div>
 
         <div class="row">
           <div class="mt-2 col col-lg-10 col-md-8 col-sm-12">
-            <Card>
-              <Card.Header class="d-flex">
+            <div class="card">
+              <div class="card-header d-flex">
                 <b>Events by Type Over Time</b>
                 <Show when={eventsOverTimeLoading() > 0}>
                   <button
@@ -397,16 +396,16 @@ export function Overview() {
                     </span>
                   </button>
                 </Show>
-              </Card.Header>
-              <Card.Body class={"p-0"}>
+              </div>
+              <div class="card-body p-0">
                 <div class="chart-container" style="position; relative;">
                   <canvas
-                    id={"histogram"}
+                    id="histogram"
                     style="max-height: 180px; height: 180px;"
                   ></canvas>
                 </div>
-              </Card.Body>
-            </Card>
+              </div>
+            </div>
           </div>
           <div class="mt-2 col col-lg-2 col-md-4 col-sm-12">
             <div class="card">
@@ -484,7 +483,7 @@ export function Overview() {
             />
           </div>
         </div>
-      </Container>
+      </div>
     </>
   );
 }

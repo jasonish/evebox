@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { Card, Col, Container, Row, Table } from "solid-bootstrap";
+// Removing solid-bootstrap imports
 import { TIME_RANGE, Top } from "../Top";
 import * as api from "../api";
 import { createEffect, createSignal, For } from "solid-js";
@@ -79,29 +79,29 @@ export function DHCP() {
   return (
     <>
       <Top />
-      <Container fluid={true}>
-        <Row>
-          <Col class={"pt-2 col-auto"}>
+      <div class="container-fluid">
+        <div class="row">
+          <div class="pt-2 col-auto">
             <RefreshButton loading={loading()} refresh={refresh} />
-          </Col>
-          <Col class={"pt-2 col-auto"}>
+          </div>
+          <div class="pt-2 col-auto">
             <SensorSelect
               onchange={(sensor) => {
                 setSearchParams({ sensor: sensor });
               }}
               selected={searchParams.sensor}
             />
-          </Col>
-        </Row>
-        <Row>
-          <Col class={"mt-2"} md={9}>
-            <Card>
-              <Card.Header>DHCP Leases</Card.Header>
-              <Card.Body class={"p-0"}>
-                <Table size={"sm"} hover={true} striped={true} class="mb-0">
+          </div>
+        </div>
+        <div class="row">
+          <div class="mt-2 col-md-9">
+            <div class="card">
+              <div class="card-header">DHCP Leases</div>
+              <div class="card-body p-0">
+                <table class="table table-sm table-hover table-striped mb-0">
                   <thead>
                     <tr>
-                      <th class={"ps-2"}>Timestamp</th>
+                      <th class="ps-2">Timestamp</th>
                       <th>Sensor</th>
                       <th>Client MAC</th>
                       <th>Assigned IP</th>
@@ -114,7 +114,7 @@ export function DHCP() {
                       {(ack) => (
                         <>
                           <tr>
-                            <td class={"ps-2"}>
+                            <td class="ps-2">
                               {parse_timestamp(ack.timestamp).format(
                                 "YYYY-MM-DD HH:mm:ss",
                               )}
@@ -147,29 +147,24 @@ export function DHCP() {
                       )}
                     </For>
                   </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-          </Col>
+                </table>
+              </div>
+            </div>
+          </div>
 
-          <Col md={3}>
-            <Row>
-              <Col class={"pt-2"} sm={6} md={12}>
-                <Card>
-                  <Card.Header>DHCP Servers</Card.Header>
-                  <Card.Body class={"p-0"}>
-                    <Table
-                      size={"sm"}
-                      class={"mb-0"}
-                      hover={true}
-                      striped={true}
-                    >
-                      <tbody class={""}>
+          <div class="col-md-3">
+            <div class="row">
+              <div class="pt-2 col-sm-6 col-md-12">
+                <div class="card">
+                  <div class="card-header">DHCP Servers</div>
+                  <div class="card-body p-0">
+                    <table class="table table-sm mb-0 table-hover table-striped">
+                      <tbody>
                         <For each={dhcpServers()}>
                           {(server) => (
                             <>
                               <tr>
-                                <td class={"ps-2"}>
+                                <td class="ps-2">
                                   <SearchLink value={server} field="@ip">
                                     {server}
                                   </SearchLink>
@@ -179,14 +174,14 @@ export function DHCP() {
                           )}
                         </For>
                       </tbody>
-                    </Table>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-          </Col>
-        </Row>
-      </Container>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }

@@ -4,7 +4,6 @@
 import { TIME_RANGE, Top } from "../Top";
 import { useParams } from "@solidjs/router";
 import { createEffect, createSignal, For, onCleanup } from "solid-js";
-import { Col, Container, Row } from "solid-bootstrap";
 import { API, AggRequest, AggResponseRow } from "../api";
 import { CountValueDataTable } from "../components";
 import { SetStoreFunction, createStore } from "solid-js/store";
@@ -462,21 +461,21 @@ export function Address() {
   return (
     <>
       <Top />
-      <Container fluid>
-        <Row class={"mt-2"}>
-          <Col>
+      <div class="container-fluid">
+        <div class="row mt-2">
+          <div class="col">
             <RefreshButton loading={loading()} refresh={forceRefresh} />
-            <h2 class={"d-inline align-middle ms-2"}>
+            <h2 class="d-inline align-middle ms-2">
               Report for {params.address}
             </h2>
-          </Col>
-        </Row>
+          </div>
+        </div>
 
-        <Row>
+        <div class="row">
           <For each={LOADERS}>
             {(loader) => (
               <>
-                <Col class={"mt-2"} md={6}>
+                <div class="mt-2 col-md-6">
                   <CountValueDataTable
                     title={loader.title!}
                     label={loader.label!}
@@ -484,12 +483,12 @@ export function Address() {
                     loading={loader.getter.loading}
                     suffix={formatSuffix(loader.getter.timestamp)}
                   />
-                </Col>
+                </div>
               </>
             )}
           </For>
-        </Row>
-      </Container>
+        </div>
+      </div>
     </>
   );
 }

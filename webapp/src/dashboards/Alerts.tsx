@@ -3,7 +3,6 @@
 
 import { TIME_RANGE, Top } from "../Top";
 import { createEffect, createSignal, onCleanup } from "solid-js";
-import { Col, Container, Form, Row } from "solid-bootstrap";
 import { API } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
@@ -241,14 +240,14 @@ export function AlertsDashboard() {
     <>
       <Top />
 
-      <Container fluid={true}>
-        <Row class="mt-2">
-          <Col>
-            <form class={"row row-cols-lg-auto align-items-center"}>
-              <div class={"col-12"}>
+      <div class="container-fluid">
+        <div class="row mt-2">
+          <div class="col">
+            <form class="row row-cols-lg-auto align-items-center">
+              <div class="col-12">
                 <RefreshButton loading={loading()} refresh={refresh} />
               </div>
-              <div class={"col-12"}>
+              <div class="col-12">
                 <SensorSelect
                   selected={searchParams.sensor}
                   onchange={(sensor) => {
@@ -257,10 +256,10 @@ export function AlertsDashboard() {
                 />
               </div>
             </form>
-          </Col>
+          </div>
 
-          <Col>
-            <Form
+          <div class="col">
+            <form
               class="input-group"
               onsubmit={(e) => {
                 e.preventDefault();
@@ -299,21 +298,21 @@ export function AlertsDashboard() {
               >
                 Clear
               </button>
-            </Form>
-          </Col>
-        </Row>
+            </form>
+          </div>
+        </div>
 
-        <Row>
-          <Col class={"mt-2"}>
+        <div class="row">
+          <div class="col mt-2">
             <canvas
-              id={"histogram"}
+              id="histogram"
               style="max-height: 250px; height: 300px"
             ></canvas>
-          </Col>
-        </Row>
+          </div>
+        </div>
 
-        <Row class={"mt-2"}>
-          <Col>
+        <div class="row mt-2">
+          <div class="col">
             <CountValueDataTable
               title={"Most Alerting Signatures"}
               label={"Signature"}
@@ -322,9 +321,9 @@ export function AlertsDashboard() {
               loading={mostAlerting.loading}
               suffix={formatSuffix(mostAlerting.timestamp)}
             />
-          </Col>
+          </div>
 
-          <Col>
+          <div class="col">
             <CountValueDataTable
               title={"Least Alerting Signatures"}
               label={"Signature"}
@@ -333,11 +332,11 @@ export function AlertsDashboard() {
               loading={leastAlerting.loading}
               suffix={formatSuffix(leastAlerting.timestamp)}
             />
-          </Col>
-        </Row>
+          </div>
+        </div>
 
-        <Row>
-          <Col class={"mt-2"}>
+        <div class="row">
+          <div class="col mt-2">
             <CountValueDataTable
               title={"Most Alerting Source Addresses"}
               label={"Address"}
@@ -346,8 +345,8 @@ export function AlertsDashboard() {
               loading={mostAlertingSource.loading}
               suffix={formatSuffix(mostAlertingSource.timestamp)}
             />
-          </Col>
-          <Col class={"mt-2"}>
+          </div>
+          <div class="col mt-2">
             <CountValueDataTable
               title={"Least Alerting Source Addresses"}
               label={"Address"}
@@ -356,11 +355,11 @@ export function AlertsDashboard() {
               loading={leastAlertingSource.loading}
               suffix={formatSuffix(leastAlertingSource.timestamp)}
             />
-          </Col>
-        </Row>
+          </div>
+        </div>
 
-        <Row>
-          <Col class={"mt-2"}>
+        <div class="row">
+          <div class="col mt-2">
             <CountValueDataTable
               title={"Most Alerting Destination Addresses"}
               label={"Address"}
@@ -369,8 +368,8 @@ export function AlertsDashboard() {
               loading={mostAlertingDest.loading}
               suffix={formatSuffix(mostAlertingDest.timestamp)}
             />
-          </Col>
-          <Col class={"mt-2"}>
+          </div>
+          <div class="col mt-2">
             <CountValueDataTable
               title={"Least Alerting Destination Addresses"}
               label={"Address"}
@@ -379,9 +378,9 @@ export function AlertsDashboard() {
               loading={leastAlertingDest.loading}
               suffix={formatSuffix(leastAlertingDest.timestamp)}
             />
-          </Col>
-        </Row>
-      </Container>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
