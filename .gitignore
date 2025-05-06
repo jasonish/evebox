@@ -12,3 +12,5 @@
 /*.iml
 *.swp
 /data
+**/.claude/settings.local.json
+/*.pcap

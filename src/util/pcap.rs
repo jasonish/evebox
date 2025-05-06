@@ -1,79 +1,115 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+//! PCAP file generation and EVE to PCAP conversion utilities.
+
 use std::net::IpAddr;
 
+use anyhow::Result;
 use base64::prelude::*;
 use bytes::{BufMut, BytesMut};
+use tracing::warn;
 
-use crate::{datetime::DateTime, packet};
+use crate::datetime::DateTime;
+use crate::eve::Eve;
+use crate::util::packet;
 
+// PCAP file constants and sizes
 const MAGIC: u32 = 0xa1b2_c3d4;
 const VERSION_MAJOR: u16 = 2;
 const VERSION_MINOR: u16 = 4;
 
-const FILE_HEADER_LEN: usize = 30;
-const PACKET_HEADER_LEN: usize = 4;
+pub(crate) const FILE_HEADER_LEN: usize = 24;
+const PACKET_HEADER_LEN: usize = 16;
+const PCAP_RECORD_HEADER_SIZE: usize = 16;
 
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum Error {
-    #[error("missing field: {0}")]
-    MissingField(String),
-    #[error("invalid protocol: {0}")]
-    InvalidProto(String),
-    #[error("failed to decode payload: {0}")]
-    PayloadDecode(base64::DecodeError),
-    #[error("bad address: {0}")]
-    BadAddr(std::net::AddrParseError),
-    #[error("mismatched ip address versions")]
-    MissMatchedIpAddrVersions,
-    #[error("invalid source port")]
-    InvalidSourcePort,
-    #[error("invalid destination port")]
-    InvalidDestinationPort,
-    #[error("IPv6 not supported")]
-    Ipv6NotSupported,
-}
-
+/// Link types for PCAP files
 #[repr(C)]
 pub(crate) enum LinkType {
     Ethernet = 1,
     Raw = 101,
 }
 
-pub(crate) fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, Error> {
-    let payload = if let Some(payload) = &event["payload"].as_str() {
-        BASE64_STANDARD
-            .decode(payload)
-            .map_err(Error::PayloadDecode)?
-    } else {
-        return Err(Error::MissingField("payload".to_string()));
-    };
-    let proto = if let Some(proto) = &event["proto"].as_str() {
-        packet::Protocol::from_name(proto)
-            .ok_or_else(|| Error::InvalidProto((*proto).to_string()))?
-    } else {
-        return Err(Error::MissingField("proto".to_string()));
-    };
-    let src_ip = if let Some(src_ip) = &event["src_ip"].as_str() {
-        src_ip.parse::<IpAddr>().map_err(Error::BadAddr)?
-    } else {
-        return Err(Error::MissingField("src_ip".to_string()));
-    };
-    let dest_ip = if let Some(dest_ip) = &event["dest_ip"].as_str() {
-        dest_ip.parse::<IpAddr>().map_err(Error::BadAddr)?
-    } else {
-        return Err(Error::MissingField("dest_ip".to_string()));
-    };
+//
+// PCAP File Generation Functions
+//
+
+/// Creates a PCAP file header
+pub(crate) fn create_header(linktype: u32) -> Vec<u8> {
+    let mut buf = BytesMut::with_capacity(FILE_HEADER_LEN);
+
+    // Write out the file header.
+    buf.put_u32_le(MAGIC);
+    buf.put_u16_le(VERSION_MAJOR);
+    buf.put_u16_le(VERSION_MINOR);
+    buf.put_u32_le(0); // This zone (GMT to local correction)
+    buf.put_u32_le(0); // Accuracy of timestamps (sigfigs)
+    buf.put_u32_le(0xFFFF_FFFF); // Snap length (max value)
+    buf.put_u32_le(linktype); // Data link type
+
+    buf.to_vec()
+}
+
+/// Creates a PCAP packet record (header + data).
+pub(crate) fn create_record(ts: DateTime, packet: &[u8]) -> Vec<u8> {
+    let mut buf = BytesMut::with_capacity(PCAP_RECORD_HEADER_SIZE + packet.len());
+
+    // The record header.
+    // FIXME: Should this really be nanos?
+    buf.put_u32_le(ts.to_nanos() as u32); // ts_sec
+    buf.put_u32_le(ts.micros_part() as u32); // ts_usec
+    buf.put_u32_le(packet.len() as u32); // incl_len (captured length)
+    buf.put_u32_le(packet.len() as u32); // orig_len (actual length)
+    buf.put_slice(packet);
+
+    buf.to_vec()
+}
+
+/// Create a complete PCAP file with a single packet
+/// This is a convenience function that calls create_header and create_record
+pub(crate) fn create(linktype: u32, ts: DateTime, packet: &[u8]) -> Vec<u8> {
+    let mut buf = BytesMut::with_capacity(FILE_HEADER_LEN + PACKET_HEADER_LEN + packet.len());
+
+    let header = create_header(linktype);
+    let record = create_record(ts, packet);
+
+    buf.put_slice(&header);
+    buf.put_slice(&record);
+
+    buf.to_vec()
+}
+
+/// Construct a packet from EVE event payload
+pub(crate) fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>> {
+    let payload = &event["payload"]
+        .as_str()
+        .ok_or_else(|| anyhow!("no payload field"))?;
+    let payload = BASE64_STANDARD.decode(payload)?;
+
+    let proto = &event["proto"]
+        .as_str()
+        .ok_or_else(|| anyhow!("no proto field"))?;
+    let proto =
+        packet::Protocol::from_name(proto).ok_or_else(|| anyhow!("invalid protocol {}", proto))?;
+
+    let src_ip = &event["src_ip"]
+        .as_str()
+        .ok_or_else(|| anyhow!("no src_ip field"))?;
+    let src_ip = src_ip.parse::<IpAddr>()?;
+
+    let dest_ip = &event["dest_ip"]
+        .as_str()
+        .ok_or_else(|| anyhow!("no dest_ip field"))?;
+    let dest_ip = dest_ip.parse::<IpAddr>()?;
 
     match proto {
         packet::Protocol::Tcp => {
             let src_port = &event["src_port"]
                 .as_u64()
-                .ok_or(Error::InvalidDestinationPort)?;
+                .ok_or(anyhow!("invalid source port"))?;
             let dest_port = &event["dest_port"]
                 .as_u64()
-                .ok_or(Error::InvalidSourcePort)?;
+                .ok_or(anyhow!("invalid destination port"))?;
             match (src_ip, dest_ip) {
                 (IpAddr::V4(src), IpAddr::V4(dst)) => {
                     let tcp = packet::TcpBuilder::new(*src_port as u16, *dest_port as u16)
@@ -87,17 +123,16 @@ pub(crate) fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, 
                         .build();
                     Ok(packet)
                 }
-                (IpAddr::V6(_src), IpAddr::V6(_dst)) => Err(Error::Ipv6NotSupported),
-                _ => Err(Error::MissMatchedIpAddrVersions),
+                (IpAddr::V6(_), _) | (_, IpAddr::V6(_)) => bail!("ipv6 not supported"),
             }
         }
         packet::Protocol::Udp => {
             let src_port = &event["src_port"]
                 .as_u64()
-                .ok_or(Error::InvalidDestinationPort)?;
+                .ok_or(anyhow!("invalid source port"))?;
             let dest_port = &event["dest_port"]
                 .as_u64()
-                .ok_or(Error::InvalidSourcePort)?;
+                .ok_or(anyhow!("invalid destination port"))?;
             match (src_ip, dest_ip) {
                 (IpAddr::V4(src), IpAddr::V4(dst)) => {
                     let udp = packet::UdpBuilder::new(*src_port as u16, *dest_port as u16)
@@ -111,43 +146,60 @@ pub(crate) fn packet_from_payload(event: &serde_json::Value) -> Result<Vec<u8>, 
                         .build();
                     Ok(packet)
                 }
-                (IpAddr::V6(_src), IpAddr::V6(_dst)) => Err(Error::Ipv6NotSupported),
-                _ => Err(Error::MissMatchedIpAddrVersions),
+                (IpAddr::V6(_), _) | (_, IpAddr::V6(_)) => bail!("ipv6 not supported"),
             }
         }
     }
 }
 
-pub(crate) fn create(linktype: u32, ts: DateTime, packet: &[u8]) -> Vec<u8> {
-    let mut buf = BytesMut::with_capacity(FILE_HEADER_LEN + PACKET_HEADER_LEN + packet.len());
+/// Convert an EVE packet to PCAP data
+pub(crate) fn packet_to_pcap(event: &serde_json::Value) -> Result<Vec<u8>> {
+    let linktype = if let Some(linktype) = &event["packet_info"]["linktype"].as_u64() {
+        *linktype as u32
+    } else {
+        warn!("No usable link-type in event, will use ethernet");
+        LinkType::Ethernet as u32
+    };
 
-    // Write out the file header.
-    buf.put_u32_le(MAGIC);
-    buf.put_u16_le(VERSION_MAJOR);
-    buf.put_u16_le(VERSION_MINOR);
-    buf.put_u32_le(0); // This zone (GMT to local correction)
-    buf.put_u32_le(0); // Accuracy of timestamps (sigfigs)
-    buf.put_u32_le(0); // Snap length
-    buf.put_u32_le(linktype); // Data link type
+    let packet = &event["packet"]
+        .as_str()
+        .map(|s| BASE64_STANDARD.decode(s))
+        .ok_or_else(|| anyhow!("no packet in event".to_string()))?
+        .map_err(|err| anyhow!(format!("failed to base64 decode packet: {err}")))?;
 
-    // The record header.
-    // FIXME: Should this really be nanos?
-    buf.put_u32_le(ts.to_nanos() as u32);
-    buf.put_u32_le(ts.micros_part() as u32);
-    buf.put_u32_le(packet.len() as u32);
-    buf.put_u32_le(packet.len() as u32);
-    buf.put_slice(packet);
+    let ts = event
+        .datetime()
+        .ok_or_else(|| anyhow!("bad or missing timestamp field".to_string()))?;
 
-    buf.to_vec()
+    let pcap_buffer = create(linktype, ts, packet);
+    Ok(pcap_buffer)
+}
+
+/// Convert an EVE payload to PCAP data
+pub(crate) fn payload_to_pcap(event: &serde_json::Value) -> Result<Vec<u8>> {
+    let ts = event
+        .datetime()
+        .ok_or_else(|| anyhow!("bad or missing timestamp field".to_string()))?;
+    let packet = packet_from_payload(event)?;
+    let pcap_buffer = create(LinkType::Raw as u32, ts, &packet);
+    Ok(pcap_buffer)
+}
+
+/// Convert an EVE event to PCAP data based on the specified type
+pub(crate) fn eve_to_pcap(event_type: &str, event: &serde_json::Value) -> Result<Vec<u8>> {
+    match event_type {
+        "packet" => packet_to_pcap(event),
+        "payload" => payload_to_pcap(event),
+        _ => bail!("invalid event type"),
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::eve::Eve;
 
     #[test]
-    fn test_pcap_file() {
+    fn test_pcap_from_packet() {
         let linktype = LinkType::Ethernet;
         let eve_timestamp = "2020-05-01T08:50:23.297919-0600";
         let packet_base64 =
@@ -158,7 +210,7 @@ mod test {
     }
 
     #[test]
-    fn test_packet_from_payload() {
+    fn test_pcap_from_payload() {
         let event: serde_json::Value = serde_json::from_str(TEST_EVE_RECORD).unwrap();
         let packet = super::packet_from_payload(&event).unwrap();
         let ts = event.datetime().unwrap();
@@ -209,11 +261,7 @@ mod test {
       ]
     },
     "packet": "bDvlJzW6ABEyF0nwCABFAAXcU/VAAEAGyvkKEAEEChABCggBAyG2gRJvgUzqtYAQB9OhogAAAQEICgDk/MxsMrfsfGdvbGFudHVzLmNvbSI7IGRpc3RhbmNlOjE7IHdpdGhpbjoxMzsgcmVmZXJlbmNlOnVybCxzc2xibC5hYnVzZS5jaDsgY2xhc3N0eXBlOnRyb2phbi1hY3Rpdml0eTsgc2lkOjIwMjE5MTE7IHJldjoyOyBtZXRhZGF0YTphdHRhY2tfdGFyZ2V0IENsaWVudF9FbmRwb2ludCwgZGVwbG95bWVudCBQZXJpbWV0ZXIsIHRhZyBTU0xfTWFsaWNpb3VzX0NlcnQsIHNpZ25hdHVyZV9zZXZlcml0eSBNYWpvciwgY3JlYXRlZF9hdCAyMDE1XzEwXzA2LCB1cGRhdGVkX2F0IDIwMTZfMDdfMDE7KQphbGVydCB0Y3AgYW55IGFueSAtPiBhbnkgYW55IChtc2c6IkVUIE1BTFdBUkUgRUxGL211Qm9UIElSQyBBY3Rpdml0eSAxIjsgZmxvdzplc3RhYmxpc2hlZCxmcm9tX3NlcnZlcjsgY29udGVudDoiTk9USUNFIjsgY29udGVudDoifDNhfG11Qm9UfDIwfFByaXZ8MjB8VmVyc2lvbiI7IGZhc3RfcGF0dGVybjsgZGlzdGFuY2U6MDsgcmVmZXJlbmNlOnVybCxwYXN0ZWJpbi5jb20vRUgxU0g5YUw7IGNsYXNzdHlwZTp0cm9qYW4tYWN0aXZpdHk7IHNpZDoyMDIxOTEyOyByZXY6MTsgbWV0YWRhdGE6Y3JlYXRlZF9hdCAyMDE1XzEwXzA2LCB1cGRhdGVkX2F0IDIwMTVfMTBfMDY7KQphbGVydCB0Y3AgYW55IGFueSAtPiBhbnkgYW55IChtc2c6IkVUIE1BTFdBUkUgRUxGL211Qm9UIElSQyBBY3Rpdml0eSAyIjsgZmxvdzplc3RhYmxpc2hlZCxmcm9tX3NlcnZlcjsgY29udGVudDoiTk9USUNFIjsgY29udGVudDoifDNhfG11Qm9UfDIwfHNheXN8MjB8IjsgZmFzdF9wYXR0ZXJuOyBkaXN0YW5jZTowOyByZWZlcmVuY2U6dXJsLHBhc3RlYmluLmNvbS9FSDFTSDlhTDsgY2xhc3N0eXBlOnRyb2phbi1hY3Rpdml0eTsgc2lkOjIwMjE5MTM7IHJldjoxOyBtZXRhZGF0YTpjcmVhdGVkX2F0IDIwMTVfMTBfMDYsIHVwZGF0ZWRfYXQgMjAxNV8xMF8wNjspCmFsZXJ0IHRjcCBhbnkgYW55IC0+IGFueSBhbnkgKG1zZzoiRVQgTUFMV0FSRSBFTEYvbXVCb1QgSVJDIEFjdGl2aXR5IDMiOyBmbG93OmVzdGFibGlzaGVkLGZyb21fc2VydmVyOyBjb250ZW50OiJOT1RJQ0UiOyBjb250ZW50OiJ8M2F8W0FwYWNoZSAvIFBIUCA1LngiOyBmYXN0X3BhdHRlcm47IGRpc3RhbmNlOjA7IHJlZmVyZW5jZTp1cmwscGFzdGViaW4uY29tL0VIMVNIOWFMOyBjbGFzc3R5cGU6dHJvamFuLWFjdGl2aXR5OyBzaWQ6MjAyMTkxNDsgcmV2OjE7IG1ldGFkYXRhOmNyZWF0ZWRfYXQgMjAxNV8xMF8wNiwgdXBkYXRlZF9hdCAyMDE1XzEwXzA2OykKYWxlcnQgdGNwIGFueSBhbnkgLT4gYW55IGFueSAobXNnOiJFVCBNQUxXQVJFIEVMRi9tdUJvVCBJUkMgQWN0aXZpdHkgNCI7IGZsb3c6ZXN0YWJsaXNoZWQsZnJvbV9zZXJ2ZXI7IGNvbnRlbnQ6Ik5PVElDRSI7IGNvbnRlbnQ6IkZMT09EIDx0YXJnZXQ+IDxwb3J0PiA8c2Vjcz4iOyBmYXN0X3BhdHRlcm47IGRpc3RhbmNlOjA7IHJlZmVyZW5jZTp1cmwscGFzdGU=",
-    "packet_info": {
-      "linktype": 1
-    },
     "payload": "fGdvbGFudHVzLmNvbSI7IGRpc3RhbmNlOjE7IHdpdGhpbjoxMzsgcmVmZXJlbmNlOnVybCxzc2xibC5hYnVzZS5jaDsgY2xhc3N0eXBlOnRyb2phbi1hY3Rpdml0eTsgc2lkOjIwMjE5MTE7IHJldjoyOyBtZXRhZGF0YTphdHRhY2tfdGFyZ2V0IENsaWVudF9FbmRwb2ludCwgZGVwbG95bWVudCBQZXJpbWV0ZXIsIHRhZyBTU0xfTWFsaWNpb3VzX0NlcnQsIHNpZ25hdHVyZV9zZXZlcml0eSBNYWpvciwgY3JlYXRlZF9hdCAyMDE1XzEwXzA2LCB1cGRhdGVkX2F0IDIwMTZfMDdfMDE7KQphbGVydCB0Y3AgYW55IGFueSAtPiBhbnkgYW55IChtc2c6IkVUIE1BTFdBUkUgRUxGL211Qm9UIElSQyBBY3Rpdml0eSAxIjsgZmxvdzplc3RhYmxpc2hlZCxmcm9tX3NlcnZlcjsgY29udGVudDoiTk9USUNFIjsgY29udGVudDoifDNhfG11Qm9UfDIwfFByaXZ8MjB8VmVyc2lvbiI7IGZhc3RfcGF0dGVybjsgZGlzdGFuY2U6MDsgcmVmZXJlbmNlOnVybCxwYXN0ZWJpbi5jb20vRUgxU0g5YUw7IGNsYXNzdHlwZTp0cm9qYW4tYWN0aXZpdHk7IHNpZDoyMDIxOTEyOyByZXY6MTsgbWV0YWRhdGE6Y3JlYXRlZF9hdCAyMDE1XzEwXzA2LCB1cGRhdGVkX2F0IDIwMTVfMTBfMDY7KQphbGVydCB0Y3AgYW55IGFueSAtPiBhbnkgYW55IChtc2c6IkVUIE1BTFdBUkUgRUxGL211Qm9UIElSQyBBY3Rpdml0eSAyIjsgZmxvdzplc3RhYmxpc2hlZCxmcm9tX3NlcnZlcjsgY29udGVudDoiTk9USUNFIjsgY29udGVudDoifDNhfG11Qm9UfDIwfHNheXN8MjB8IjsgZmFzdF9wYXR0ZXJuOyBkaXN0YW5jZTowOyByZWZlcmVuY2U6dXJsLHBhc3RlYmluLmNvbS9FSDFTSDlhTDsgY2xhc3N0eXBlOnRyb2phbi1hY3Rpdml0eTsgc2lkOjIwMjE5MTM7IHJldjoxOyBtZXRhZGF0YTpjcmVhdGVkX2F0IDIwMTVfMTBfMDYsIHVwZGF0ZWRfYXQgMjAxNV8xMF8wNjspCmFsZXJ0IHRjcCBhbnkgYW55IC0+IGFueSBhbnkgKG1zZzoiRVQgTUFMV0FSRSBFTEYvbXVCb1QgSVJDIEFjdGl2aXR5IDMiOyBmbG93OmVzdGFibGlzaGVkLGZyb21fc2VydmVyOyBjb250ZW50OiJOT1RJQ0UiOyBjb250ZW50OiJ8M2F8W0FwYWNoZSAvIFBIUCA1LngiOyBmYXN0X3BhdHRlcm47IGRpc3RhbmNlOjA7IHJlZmVyZW5jZTp1cmwscGFzdGViaW4uY29tL0VIMVNIOWFMOyBjbGFzc3R5cGU6dHJvamFuLWFjdGl2aXR5OyBzaWQ6MjAyMTkxNDsgcmV2OjE7IG1ldGFkYXRhOmNyZWF0ZWRfYXQgMjAxNV8xMF8wNiwgdXBkYXRlZF9hdCAyMDE1XzEwXzA2OykKYWxlcnQgdGNwIGFueSBhbnkgLT4gYW55IGFueSAobXNnOiJFVCBNQUxXQVJFIEVMRi9tdUJvVCBJUkMgQWN0aXZpdHkgNCI7IGZsb3c6ZXN0YWJsaXNoZWQsZnJvbV9zZXJ2ZXI7IGNvbnRlbnQ6Ik5PVElDRSI7IGNvbnRlbnQ6IkZMT09EIDx0YXJnZXQ+IDxwb3J0PiA8c2Vjcz4iOyBmYXN0X3BhdHRlcm47IGRpc3RhbmNlOjA7IHJlZmVyZW5jZTp1cmwscGFzdGU=",
-    "payload_printable": "|golantus.com\"; distance:1; within:13; reference:url,sslbl.abuse.ch; classtype:trojan-activity; sid:2021911; rev:2; metadata:attack_target Client_Endpoint, deployment Perimeter, tag SSL_Malicious_Cert, signature_severity Major, created_at 2015_10_06, updated_at 2016_07_01;)\nalert tcp any any -> any any (msg:\"ET MALWARE ELF/muBoT IRC Activity 1\"; flow:established,from_server; content:\"NOTICE\"; content:\"|3a|muBoT|20|Priv|20|Version\"; fast_pattern; distance:0; reference:url,pastebin.com/EH1SH9aL; classtype:trojan-activity; sid:2021912; rev:1; metadata:created_at 2015_10_06, updated_at 2015_10_06;)\nalert tcp any any -> any any (msg:\"ET MALWARE ELF/muBoT IRC Activity 2\"; flow:established,from_server; content:\"NOTICE\"; content:\"|3a|muBoT|20|says|20|\"; fast_pattern; distance:0; reference:url,pastebin.com/EH1SH9aL; classtype:trojan-activity; sid:2021913; rev:1; metadata:created_at 2015_10_06, updated_at 2015_10_06;)\nalert tcp any any -> any any (msg:\"ET MALWARE ELF/muBoT IRC Activity 3\"; flow:established,from_server; content:\"NOTICE\"; content:\"|3a|[Apache / PHP 5.x\"; fast_pattern; distance:0; reference:url,pastebin.com/EH1SH9aL; classtype:trojan-activity; sid:2021914; rev:1; metadata:created_at 2015_10_06, updated_at 2015_10_06;)\nalert tcp any any -> any any (msg:\"ET MALWARE ELF/muBoT IRC Activity 4\"; flow:established,from_server; content:\"NOTICE\"; content:\"FLOOD <target> <port> <secs>\"; fast_pattern; distance:0; reference:url,paste",
     "proto": "TCP",
     "src_ip": "10.16.1.4",
     "src_port": 2049,
