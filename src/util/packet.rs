@@ -242,7 +242,7 @@ impl Ip4Builder {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{datetime::DateTime, pcap};
+    use crate::{datetime::DateTime, util::pcap};
 
     #[test]
     fn parse_ip_addr() {
