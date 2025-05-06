@@ -8,5 +8,6 @@ pub mod oneshot;
 pub mod print;
 pub mod sqlite;
 pub mod update;
+pub mod util;
 
 pub(crate) mod prelude;

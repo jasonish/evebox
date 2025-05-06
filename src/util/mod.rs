@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+pub(crate) mod pcap;
+
 /// Given a time range in seconds, return a suitable date histogram
 /// interval.
 pub(crate) fn histogram_interval(range: i64) -> u64 {
