@@ -60,6 +60,18 @@ export function Overview() {
   const [topQuicSni, setTopQuicSni] =
     createStore<AggResults>(defaultAggResults());
 
+  const [topSourceIp, setTopSourceIp] =
+    createStore<AggResults>(defaultAggResults());
+
+  const [topDestIp, setTopDestIp] =
+    createStore<AggResults>(defaultAggResults());
+
+  const [topSourcePort, setTopSourcePort] =
+    createStore<AggResults>(defaultAggResults());
+
+  const [topDestPort, setTopDestPort] =
+    createStore<AggResults>(defaultAggResults());
+
   const [eventsOverTimeLoading, setEventsOverTimeLoading] = createSignal(0);
 
   const [protocols, setProtocols] = createStore({
@@ -204,6 +216,90 @@ export function Overview() {
         }
       }).finally(() => {
         setTopQuicSni("loading", false);
+      });
+    });
+
+    // Top Source IP.
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "src_ip",
+        size: 10,
+        order: "desc",
+        time_range: TIME_RANGE(),
+        q: q + " event_type:flow",
+      };
+      setTopSourceIp("loading", true);
+
+      return await API.getSseAgg(request, version, (data: any) => {
+        if (data) {
+          setTopSourceIp("timestamp", dayjs(data.earliest_ts));
+          setTopSourceIp("rows", data.rows);
+        }
+      }).finally(() => {
+        setTopSourceIp("loading", false);
+      });
+    });
+
+    // Top Destination IP.
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "dest_ip",
+        size: 10,
+        order: "desc",
+        time_range: TIME_RANGE(),
+        q: q + " event_type:flow",
+      };
+      setTopDestIp("loading", true);
+
+      return await API.getSseAgg(request, version, (data: any) => {
+        if (data) {
+          setTopDestIp("timestamp", dayjs(data.earliest_ts));
+          setTopDestIp("rows", data.rows);
+        }
+      }).finally(() => {
+        setTopDestIp("loading", false);
+      });
+    });
+
+    // Top Source Port.
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "src_port",
+        size: 10,
+        order: "desc",
+        time_range: TIME_RANGE(),
+        q: q + " event_type:flow",
+      };
+      setTopSourcePort("loading", true);
+
+      return await API.getSseAgg(request, version, (data: any) => {
+        if (data) {
+          setTopSourcePort("timestamp", dayjs(data.earliest_ts));
+          setTopSourcePort("rows", data.rows);
+        }
+      }).finally(() => {
+        setTopSourcePort("loading", false);
+      });
+    });
+
+    // Top Destination Port.
+    loadingTracker(setLoading, async () => {
+      let request: AggRequest = {
+        field: "dest_port",
+        size: 10,
+        order: "desc",
+        time_range: TIME_RANGE(),
+        q: q + " event_type:flow",
+      };
+      setTopDestPort("loading", true);
+
+      return await API.getSseAgg(request, version, (data: any) => {
+        if (data) {
+          setTopDestPort("timestamp", dayjs(data.earliest_ts));
+          setTopDestPort("rows", data.rows);
+        }
+      }).finally(() => {
+        setTopDestPort("loading", false);
       });
     });
 
@@ -480,6 +576,56 @@ export function Overview() {
               loading={topQuicSni.loading}
               searchField="quic.sni"
               suffix={formatSuffix(topQuicSni.timestamp)}
+            />
+          </div>
+        </div>
+
+        <div class="row mt-2">
+          <div class="col">
+            <CountValueDataTable
+              title="Top Source IP Addresses"
+              label="IP Address"
+              rows={topSourceIp.rows}
+              loading={topSourceIp.loading}
+              searchField="src_ip"
+              suffix={formatSuffix(topSourceIp.timestamp)}
+              tooltip="Based on flow events"
+            />
+          </div>
+          <div class="col">
+            <CountValueDataTable
+              title="Top Destination IP Addresses"
+              label="IP Address"
+              rows={topDestIp.rows}
+              loading={topDestIp.loading}
+              searchField="dest_ip"
+              suffix={formatSuffix(topDestIp.timestamp)}
+              tooltip="Based on flow events"
+            />
+          </div>
+        </div>
+
+        <div class="row mt-2">
+          <div class="col">
+            <CountValueDataTable
+              title="Top Source Ports"
+              label="Port"
+              rows={topSourcePort.rows}
+              loading={topSourcePort.loading}
+              searchField="src_port"
+              suffix={formatSuffix(topSourcePort.timestamp)}
+              tooltip="Based on flow events"
+            />
+          </div>
+          <div class="col">
+            <CountValueDataTable
+              title="Top Destination Ports"
+              label="Port"
+              rows={topDestPort.rows}
+              loading={topDestPort.loading}
+              searchField="dest_port"
+              suffix={formatSuffix(topDestPort.timestamp)}
+              tooltip="Based on flow events"
             />
           </div>
         </div>
