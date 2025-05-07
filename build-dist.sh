@@ -19,7 +19,6 @@ cross_run() {
     fi
     dockerfile="./docker/builder/Dockerfile.cross"
     tag="private/evebox/builder:cross"
-    env
     if [ -z "${GITHUB_REPOSITORY}" -a -t ]; then
         it="-it"
     else
@@ -28,7 +27,6 @@ cross_run() {
     ${ECHO} docker build \
             --build-arg REAL_UID="$(id -u)" \
             --build-arg REAL_GID="$(id -g)" \
-            --cache-from ${tag} \
 	    -t ${tag} \
 	    -f ${dockerfile} .
     ${ECHO} docker run --rm ${it} --privileged \

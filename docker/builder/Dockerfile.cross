@@ -1,4 +1,4 @@
-FROM fedora:40
+FROM fedora:41
 
 RUN dnf -y install \
         curl \
@@ -21,7 +21,7 @@ RUN dnf -y install \
         ruby-devel
 
 # TODO: Update to 1.16.0
-RUN gem install --no-document --bindir=/usr/local/bin fpm -v 1.15.1
+RUN gem install --no-document --bindir=/usr/local/bin fpm -v 1.16.0
 
 ARG REAL_UID=1000
 ARG REAL_GID=1000
