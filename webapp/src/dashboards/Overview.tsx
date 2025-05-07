@@ -224,7 +224,6 @@ export function Overview() {
       let request: AggRequest = {
         field: "src_ip",
         size: 10,
-        order: "desc",
         time_range: TIME_RANGE(),
         q: q + " event_type:flow",
       };
@@ -245,7 +244,6 @@ export function Overview() {
       let request: AggRequest = {
         field: "dest_ip",
         size: 10,
-        order: "desc",
         time_range: TIME_RANGE(),
         q: q + " event_type:flow",
       };
@@ -266,7 +264,6 @@ export function Overview() {
       let request: AggRequest = {
         field: "src_port",
         size: 10,
-        order: "desc",
         time_range: TIME_RANGE(),
         q: q + " event_type:flow",
       };
@@ -287,7 +284,6 @@ export function Overview() {
       let request: AggRequest = {
         field: "dest_port",
         size: 10,
-        order: "desc",
         time_range: TIME_RANGE(),
         q: q + " event_type:flow",
       };

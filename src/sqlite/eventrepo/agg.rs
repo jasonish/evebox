@@ -43,7 +43,10 @@ impl SqliteEventRepo {
                 "coalesce(source->>'dns'->>'queries'->>0->>'rrname', source->>'dns'->>'rrname')";
             builder.select(format!("{coa} as agg"));
         } else {
-            builder.select(format!("json_extract(events.source, '$.{field}') as agg"));
+            // Always cast to TEXT to handle both strings and integers consistently
+            builder.select(format!(
+                "CAST(json_extract(events.source, '$.{field}') AS TEXT) as agg"
+            ));
         }
 
         builder.push_where("agg IS NOT NULL");
@@ -143,7 +146,10 @@ impl SqliteEventRepo {
             builder.select(format!(
                 "count(json_extract(events.source, '$.{field}')) as count"
             ));
-            builder.select(format!("json_extract(events.source, '$.{field}') as agg"));
+            // Always cast to TEXT to handle both strings and integers consistently
+            builder.select(format!(
+                "CAST(json_extract(events.source, '$.{field}') AS TEXT) as agg"
+            ));
         }
         builder.from("events");
         builder.group_by("agg");
@@ -171,7 +177,6 @@ impl SqliteEventRepo {
         while let Some(row) = rows.try_next().await? {
             let count: i64 = row.try_get(0)?;
             if count > 0 {
-                // Rely on everything being a string in SQLite.
                 let val: String = row.try_get(1)?;
                 results.push(json!({"count": count, "key": val}));
             }
