@@ -1,5 +1,24 @@
 # Change Log
 
+## 0.20.4 - (Unreleased)
+
+### Added
+- Added top source and destination IP cards to Overview dashboard
+- Added eve2pcap CLI program
+
+### Fixed
+- Fixed sensor limit in Elasticsearch increased from 10 to 1000
+  [#335](https://github.com/jasonish/evebox/issues/335)
+- Fixed aggregation values by casting all to string
+- Fixed DHCP dashboard by truncating sensor name if needed
+
+### Changed
+- Updated interface with prefix badges in alerts view
+- Switched dashboard components to use pure Bootstrap
+- Run webapp dev server on port 3636
+- Updated dependencies (cargo, npm)
+- Various build fixups and code formatting improvements
+
 ## 0.20.3 - 2025-03-27
 
 - Fix issue with "." in comment form:
