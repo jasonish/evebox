@@ -902,6 +902,7 @@ impl ElasticEventRepo {
                 "sensors": {
                     "terms": {
                         "field": self.map_field("host"),
+                        "size": 1000
                     }
                 },
             }
