@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.20.4 - (Unreleased)
+## 0.20.4 - 2025-05-08
 
 ### Added
 - Added top source and destination IP cards to Overview dashboard
