@@ -244,6 +244,16 @@ export function formatEventDescription(event: Event): string {
           return `${JSON.stringify(sip)}`;
         }
       }
+      case "mdns": {
+        let mdns = event._source.mdns;
+        let parts = [mdns.type.toUpperCase()];
+        if (mdns.type == "request") {
+          parts.push(JSON.stringify(mdns.queries[0]));
+        } else {
+          parts.push(JSON.stringify(mdns.answers[0]));
+        }
+        return parts.join(" ");
+      }
       default: {
         const event_type = event._source.event_type;
         if (event_type && event._source[event_type]) {
