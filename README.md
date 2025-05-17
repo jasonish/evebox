@@ -126,15 +126,6 @@ make dist
 
 ### Possible Issues
 
-#### JavaScript heap out of memory
-
-If you get a JavaScript out of memory issue while building, try setting the
-following environment variable and rebuild:
-
-```
-export NODE_OPTIONS="--max-old-space-size=4096"
-```
-
 ## Run in Development Mode
 
 ```
