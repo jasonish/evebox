@@ -43,11 +43,16 @@ Then visit http://localhost:5636 with your browser.
 Available downloads including RPM and Debian package repositories can be found
 at [https://evebox.org/#downloads](https://evebox.org/#downloads).
 
-### SELKS
+### EveCtl
 
-EveBox is also included
-in [SELKS](https://www.stamus-networks.com/selks) which
-provides Suricata and an ELK stack configured and ready to go.
+EveCtl (https://evebox.org/evectl) is an easy way to get started with
+Suricata and EveBox on Linux machines. (Note: Podman or Docker
+required).
+
+### ClearNDR Community Edition
+
+EveBox is included in the [ClearNDR Community
+Edition](https://www.stamus-networks.com/clear-ndr-community).
 
 ### Docker
 
