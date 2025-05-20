@@ -165,7 +165,8 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     // Collect eve filenames.
     let eve_filenames = get_eve_filenames(&config)?;
     let delete_processed_spool_files = config.get_bool("input.delete-spool-files")?;
-    if eve_filenames.is_empty() {
+    let eve_sockets = get_eve_sockets(&config)?;
+    if eve_filenames.is_empty() && eve_sockets.is_empty() {
         if pcap_channel.is_some() {
             info!("No EVE log files provided; running in pcap-only mode (events are not shipped)");
         } else {
@@ -307,6 +308,17 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
                 tasks.push(task);
             }
         }
+        #[cfg(unix)]
+        for path in &eve_sockets {
+            if !log_runners.contains(path) {
+                info!("Starting EVE stream socket reader {}", path);
+                log_runners.insert(path.clone());
+                match start_socket_runner(path, importer.clone(), filters.clone()) {
+                    Ok(runner) => tasks.push(runner),
+                    Err(err) => warn!("Could not create socket file {}: {}", path, err),
+                }
+            }
+        }
         tokio::select! {
             _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {}
             _ = tasks.select_next_some(), if !tasks.is_empty() => {
@@ -385,7 +397,7 @@ fn start_runner(
     delete_processed_spool_files: bool,
 ) -> JoinHandle<()> {
     let mut end = false;
-    let reader = crate::eve::reader::EveReader::from_input(input);
+    let reader = crate::eve::reader::EveReaderFile::from_input(input);
     let input_key = input.key().display().to_string();
     let bookmark_filename = get_bookmark_filename(&input_key, bookmark_directory);
     if let Some(bookmark_filename) = &bookmark_filename {
@@ -415,6 +427,26 @@ fn start_runner(
     tokio::spawn(async move {
         processor.run().await;
     })
+}
+
+#[cfg(unix)]
+fn start_socket_runner(
+    filename: &str,
+    importer: EventSink,
+    mut filters: EveFilterChain,
+) -> Result<JoinHandle<()>, eve::EveReaderError> {
+    let reader = crate::eve::reader::EveReaderSocket::new(filename.into())?;
+    let mut processor = crate::eve::Processor::new(reader, importer);
+
+    filters.add_filter(eve::filters::AddAgentFilenameFilter::new(
+        filename.to_string(),
+    ));
+
+    processor.filter_chain = Some(filters);
+    processor.report_interval = std::time::Duration::from_secs(60);
+    Ok(tokio::spawn(async move {
+        processor.run().await;
+    }))
 }
 
 fn find_config_filename() -> Option<&'static str> {
@@ -474,6 +506,19 @@ fn get_eve_filenames(config: &Config) -> anyhow::Result<Vec<String>> {
     }
 
     Ok(eve_filenames)
+}
+
+fn get_eve_sockets(config: &Config) -> anyhow::Result<Vec<String>> {
+    let mut eve_sockets = vec![];
+
+    match config.get_value::<Vec<String>>("input.sockets") {
+        Ok(Some(filenames)) => eve_sockets.extend(filenames),
+        Ok(None) => {}
+        Err(_) => {
+            bail!("There was an error reading 'input.sockets' from the configuration file");
+        }
+    }
+    Ok(eve_sockets)
 }
 
 fn get_rule_filenames(config: &Config) -> anyhow::Result<Vec<String>> {

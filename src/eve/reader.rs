@@ -7,7 +7,11 @@ use std::io::BufReader;
 use std::io::Seek;
 use std::io::SeekFrom;
 #[cfg(unix)]
+use std::os::unix::fs::FileTypeExt;
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
+#[cfg(unix)]
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
 
 use tracing::debug;
@@ -35,7 +39,22 @@ impl From<std::io::Error> for EveReaderError {
     }
 }
 
-pub(crate) struct EveReader {
+pub(crate) trait EveReader {
+    fn get_filename(&self) -> PathBuf;
+    fn open(&mut self) -> Result<(), EveReaderError>;
+    fn reopen(&mut self) -> Result<(), EveReaderError>;
+    fn goto_lineno(&mut self, lineno: u64) -> Result<u64, EveReaderError>;
+    fn goto_end(&mut self) -> Result<u64, EveReaderError>;
+    fn select_bookmark(&mut self, filename: &str) -> Result<(), EveReaderError>;
+    fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError>;
+    fn metadata(&self) -> Option<Metadata>;
+    fn is_file_changed(&self) -> bool;
+    fn set_delete_processed_spool_files(&mut self, enabled: bool);
+    fn has_completed_spool_files(&self) -> bool;
+    fn delete_completed_spool_files(&mut self);
+}
+
+pub(crate) struct EveReaderFile {
     pub filename: PathBuf,
     line: String,
     reader: Option<BufReader<std::fs::File>>,
@@ -47,7 +66,7 @@ pub(crate) struct EveReader {
     completed_spool_files: Vec<PathBuf>,
 }
 
-impl EveReader {
+impl EveReaderFile {
     pub(crate) fn new(filename: PathBuf) -> Self {
         Self {
             filename,
@@ -396,9 +415,59 @@ impl EveReader {
     }
 }
 
+impl EveReader for EveReaderFile {
+    fn get_filename(&self) -> PathBuf {
+        self.filename.clone()
+    }
+
+    fn open(&mut self) -> Result<(), EveReaderError> {
+        EveReaderFile::open(self)
+    }
+
+    fn reopen(&mut self) -> Result<(), EveReaderError> {
+        EveReaderFile::reopen(self)
+    }
+
+    fn goto_lineno(&mut self, lineno: u64) -> Result<u64, EveReaderError> {
+        EveReaderFile::goto_lineno(self, lineno)
+    }
+
+    fn goto_end(&mut self) -> Result<u64, EveReaderError> {
+        EveReaderFile::goto_end(self)
+    }
+
+    fn select_bookmark(&mut self, filename: &str) -> Result<(), EveReaderError> {
+        EveReaderFile::select_bookmark(self, filename)
+    }
+
+    fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
+        EveReaderFile::next_record(self)
+    }
+
+    fn metadata(&self) -> Option<Metadata> {
+        EveReaderFile::metadata(self)
+    }
+
+    fn is_file_changed(&self) -> bool {
+        EveReaderFile::is_file_changed(self)
+    }
+
+    fn set_delete_processed_spool_files(&mut self, enabled: bool) {
+        EveReaderFile::set_delete_processed_spool_files(self, enabled);
+    }
+
+    fn has_completed_spool_files(&self) -> bool {
+        EveReaderFile::has_completed_spool_files(self)
+    }
+
+    fn delete_completed_spool_files(&mut self) {
+        EveReaderFile::delete_completed_spool_files(self);
+    }
+}
+
 /// EVE record reader over a non-seekable stream such as stdin.
 ///
-/// Follows the same rules as [`EveReader::next_file_record`]: blank lines
+/// Follows the same rules as [`EveReaderFile::next_file_record`]: blank lines
 /// are skipped, an unterminated final line is accepted, and an
 /// unparseable, unterminated final line is ignored as truncated input.
 pub(crate) struct EveStreamReader<R: BufRead> {
@@ -457,6 +526,130 @@ pub(crate) struct Metadata {
     pub inode: Option<u64>,
 }
 
+#[cfg(unix)]
+pub(crate) struct EveReaderSocket {
+    pub filename: PathBuf,
+    listener: UnixListener,
+    reader: Option<BufReader<UnixStream>>,
+}
+
+#[cfg(unix)]
+impl EveReaderSocket {
+    pub fn new(filename: PathBuf) -> Result<Self, EveReaderError> {
+        let listener = Self::bind_listener(&filename)?;
+        Ok(Self {
+            filename,
+            listener,
+            reader: None,
+        })
+    }
+
+    fn bind_listener(filename: &PathBuf) -> Result<UnixListener, EveReaderError> {
+        if let Ok(metadata) = std::fs::metadata(filename) {
+            if !metadata.file_type().is_socket() {
+                error!("Refusing to delete non-socket file");
+            } else {
+                std::fs::remove_file(filename)?;
+            }
+        }
+
+        let listener = UnixListener::bind(filename)?;
+        if let Err(err) = listener.set_nonblocking(true) {
+            debug!(
+                "UnixListener for {} could not be set to non-blocking: {err}",
+                filename.display()
+            );
+        }
+        Ok(listener)
+    }
+
+    fn accept(&mut self) -> Result<(), EveReaderError> {
+        let (socket, addr) = self.listener.accept()?;
+        debug!(
+            "Accepted connection on {} from: {addr:?}",
+            self.filename.display()
+        );
+        if let Err(err) = socket.set_nonblocking(true) {
+            debug!(
+                "UnixStream for {} could not be set to non-blocking: {err}",
+                self.filename.display()
+            );
+        }
+        self.reader = Some(BufReader::new(socket));
+        Ok(())
+    }
+}
+
+#[cfg(unix)]
+impl EveReader for EveReaderSocket {
+    fn get_filename(&self) -> PathBuf {
+        self.filename.clone()
+    }
+
+    fn open(&mut self) -> Result<(), EveReaderError> {
+        self.accept()
+    }
+
+    fn reopen(&mut self) -> Result<(), EveReaderError> {
+        self.reader = None;
+        self.open()
+    }
+
+    fn goto_lineno(&mut self, _lineno: u64) -> Result<u64, EveReaderError> {
+        Ok(0)
+    }
+
+    fn goto_end(&mut self) -> Result<u64, EveReaderError> {
+        Ok(0)
+    }
+
+    fn select_bookmark(&mut self, _filename: &str) -> Result<(), EveReaderError> {
+        Ok(())
+    }
+
+    fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
+        match &mut self.reader {
+            Some(reader) => {
+                let mut line = String::new();
+                let len = match reader.read_line(&mut line) {
+                    Ok(len) => len,
+                    Err(_) => return Ok(None),
+                };
+
+                if len == 0 {
+                    self.reader = None;
+                    debug!("Socket stream EOF on {}", self.filename.display());
+                    return Ok(None);
+                }
+
+                let record = serde_json::from_str(line.trim())
+                    .map_err(|source| EveReaderError::ParseError { line: 0, source })?;
+                Ok(Some(record))
+            }
+            None => {
+                let _ = self.accept();
+                Ok(None)
+            }
+        }
+    }
+
+    fn metadata(&self) -> Option<Metadata> {
+        None
+    }
+
+    fn is_file_changed(&self) -> bool {
+        false
+    }
+
+    fn set_delete_processed_spool_files(&mut self, _enabled: bool) {}
+
+    fn has_completed_spool_files(&self) -> bool {
+        false
+    }
+
+    fn delete_completed_spool_files(&mut self) {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -464,12 +657,12 @@ mod tests {
 
     const RECORD: &str = r#"{"timestamp":"2026-07-15T12:00:00.000000+0000","event_type":"stats"}"#;
 
-    fn reader_for(contents: &[u8]) -> (tempfile::TempDir, EveReader) {
+    fn reader_for(contents: &[u8]) -> (tempfile::TempDir, EveReaderFile) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("eve.json");
         let mut file = File::create(&path).unwrap();
         file.write_all(contents).unwrap();
-        (dir, EveReader::new(path))
+        (dir, EveReaderFile::new(path))
     }
 
     fn spool_reader_for(contents: &[u8], timestamp: u64) -> (tempfile::TempDir, EveReader) {

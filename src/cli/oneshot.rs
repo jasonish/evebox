@@ -719,7 +719,7 @@ fn cleanup_generated(path: &Option<PathBuf>) {
 
 /// The record sources run_import can read from.
 enum RecordStream {
-    File(Box<eve::reader::EveReader>),
+    File(Box<eve::reader::EveReaderFile>),
     Stdin(sync::mpsc::Receiver<Result<serde_json::Value, EveReaderError>>),
 }
 
@@ -750,7 +750,7 @@ async fn run_import(
                 RecordStream::Stdin(stdin_records())
             }
             EveInput::File(path) => {
-                let reader = eve::reader::EveReader::new(path.clone());
+                let reader = eve::reader::EveReaderFile::new(path.clone());
                 info!("Reading {} ({} bytes)", path.display(), reader.file_size());
                 RecordStream::File(Box::new(reader))
             }

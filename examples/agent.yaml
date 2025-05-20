@@ -47,6 +47,12 @@ input:
   # bookmark advances to a newer file. Requires a writable bookmark.
   #delete-spool-files: false
 
+  # Suricata can write the EVE log to a unix stream socket by specifying
+  # the eve-log filetype attribute as 'unix_stream' instead of 'regular'.
+  # EveBox will create the sockets below and listen for events once connected.
+  #sockets:
+  #  - "/var/log/suricata/eve.log.socket"
+
 # Keep a persistent control connection to the EveBox server and serve packet
 # capture requests from this host's Suricata pcap-log spool. Setting a
 # directory enables packet capture. The control channel requires an agent

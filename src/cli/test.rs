@@ -36,7 +36,7 @@ use crate::datetime::DateTime;
 use crate::elastic::{self, ClientBuilder, ElasticEventRepo, TAG_ARCHIVED, TAG_AUTO_ARCHIVED};
 use crate::eve::Eve;
 use crate::eve::filters::EveFilterChain;
-use crate::eve::reader::EveReader;
+use crate::eve::reader::EveReaderFile;
 use crate::eventrepo::{AggAlert, AlertsResult, EventQueryParams, EventRepo, StatsAggQueryParams};
 use crate::importer::EventSink;
 use crate::queryparser;
@@ -2137,7 +2137,10 @@ async fn import_events(
     limit: usize,
 ) -> Result<(usize, BTreeMap<String, usize>)> {
     let chain = EveFilterChain::with_defaults();
-    let mut readers: Vec<EveReader> = files.iter().map(|f| EveReader::new(f.clone())).collect();
+    let mut readers: Vec<EveReaderFile> = files
+        .iter()
+        .map(|f| EveReaderFile::new(f.clone()))
+        .collect();
     let mut exhausted = vec![false; readers.len()];
     let mut remaining = readers.len();
     let mut count = 0usize;
