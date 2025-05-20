@@ -40,6 +40,12 @@ input:
     - "/var/log/suricata/eve.json"
     - "/var/log/suricata/eve.*.json"
 
+  # Suricata can write the EVE log to a unix stream socket by specifying
+  # the eve-log filetype attribute as 'unix_stream' instead of 'regular'.
+  # EveBox will create the sockets below and listen for events once connected.
+  #sockets:
+  #  - "/var/log/suricata/eve.log.socket"
+
 # Additional fields that will be added to each event. This is currently limited
 # to strings at this time.
 additional-fields:

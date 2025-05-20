@@ -100,6 +100,12 @@ input:
   #  - /usr/share/suricata/rules/*.rules
   #  - /etc/suricata/rules/*.rules
 
+  # Suricata can write the EVE log to a unix stream socket by specifying
+  # the eve-log filetype attribute as 'unix_stream' instead of 'regular'.
+  # EveBox will create the sockets below and listen for events once connected.
+  #sockets:
+  #  - "/var/log/suricata/eve.log.socket"
+
 geoip:
   disabled: false
   # Path to the MaxMind database. This must be the version 2 database

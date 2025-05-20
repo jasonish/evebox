@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 use crate::config::Config;
 use crate::eve;
+use crate::eve::EveReader;
 use crate::geoip;
 use crate::server::main::build_axum_service;
 use crate::server::metrics::Metrics;
@@ -171,7 +172,7 @@ async fn run_import(
 ) -> anyhow::Result<()> {
     let geoipdb = geoip::GeoIP::open(None).ok();
     let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, writer, metrics);
-    let mut reader = eve::reader::EveReader::new(input.into());
+    let mut reader = eve::reader::EveReaderFile::new(input.into());
     info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;
     let mut count = 0;

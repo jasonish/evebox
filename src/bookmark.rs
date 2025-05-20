@@ -73,7 +73,7 @@ impl Bookmark {
 
     #[cfg(not(unix))]
     fn check_inode(&self, _meta: &std::fs::Metadata) -> bool {
-        return true;
+        true
     }
 }
 
