@@ -46,6 +46,7 @@ export const EVENT_TYPES: { name: string; eventType: string }[] = [
   { name: "HTTP", eventType: "http" },
   { name: "IKE", eventType: "ike" },
   { name: "KRB5", eventType: "krb5" },
+  { name: "mDNS", eventType: "mdns" },
   { name: "Modbus", eventType: "modbus" },
   { name: "MQTT", eventType: "mqtt" },
   { name: "NetFlow", eventType: "netflow" },
