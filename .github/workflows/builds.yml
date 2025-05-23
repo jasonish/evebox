@@ -22,6 +22,24 @@ jobs:
       - run: git config --global --add safe.directory /__w/evebox/evebox
       - run: cargo test --all
 
+  msrv-check:
+    name: Check MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract MSRV from Cargo.toml
+        id: msrv
+        run: |
+          MSRV=$(grep '^rust-version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$MSRV" >> $GITHUB_OUTPUT
+          echo "Detected MSRV: $MSRV"
+      - name: Install Rust ${{ steps.msrv.outputs.version }}
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+      - name: Test with MSRV
+        run: cargo test --all
+
   build-dist:
     name: Build Distributions
     runs-on: ubuntu-latest
