@@ -40,6 +40,24 @@ jobs:
       - name: Test with MSRV
         run: cargo test --all
 
+  clippy:
+    name: Clippy Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          targets: x86_64-pc-windows-gnu
+      - name: Run clippy
+        run: cargo clippy --all --all-targets -- -D warnings
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Run clippy with cross for Windows
+        run: cross clippy --all --all-targets --target x86_64-pc-windows-gnu -- -D warnings
+
   build-dist:
     name: Build Distributions
     runs-on: ubuntu-latest
