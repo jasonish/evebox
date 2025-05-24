@@ -11,3 +11,6 @@ pub(crate) mod watcher;
 pub(crate) use eve::Eve;
 pub(crate) use processor::Processor;
 pub(crate) use reader::EveReader;
+pub(crate) use reader::EveReaderFile;
+#[cfg(unix)]
+pub(crate) use reader::EveReaderSocket;

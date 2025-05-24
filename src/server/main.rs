@@ -181,7 +181,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     if is_input_enabled(&config) {
         let input_patterns = get_input_patterns(&config)?;
-        if input_patterns.is_empty() {
+        let input_sockets = get_input_sockets(&config)?;
+        if input_patterns.is_empty() && input_sockets.is_empty() {
             bail!("EVE input enabled, but no paths provided");
         }
         let sink = context.datastore.get_importer().ok_or(anyhow!(
@@ -232,6 +233,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         let data_directory = server_config.data_directory.clone();
         let watcher = EvePatternWatcher::new(
             input_patterns,
+            #[cfg(unix)]
+            input_sockets,
             sink,
             filters,
             end,
@@ -330,6 +333,21 @@ fn get_input_patterns(config: &Config) -> Result<Vec<String>> {
 
     let input_patterns: Vec<String> = input_pattern_set.iter().map(|s| s.to_string()).collect();
     Ok(input_patterns)
+}
+
+fn get_input_sockets(config: &Config) -> Result<Vec<String>> {
+    let mut eve_sockets: Vec<String> = vec![];
+
+    match config.get_value::<Vec<String>>("input.sockets") {
+        Ok(Some(filenames)) => {
+            eve_sockets.extend(filenames);
+        }
+        Ok(None) => {}
+        Err(_) => {
+            bail!("There was an error reading 'input.sockets' from the configuration file");
+        }
+    }
+    Ok(eve_sockets)
 }
 
 pub(crate) fn build_axum_service(
