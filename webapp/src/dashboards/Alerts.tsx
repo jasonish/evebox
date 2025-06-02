@@ -9,7 +9,7 @@ import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { loadingTracker } from "../util";
-import { CountValueDataTable } from "../components";
+import { CountValueDataTable } from "../components/CountValueDataTable";
 import { Colors } from "../common/colors";
 import { createStore } from "solid-js/store";
 import type { SetStoreFunction } from "solid-js/store";

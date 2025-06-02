@@ -17,7 +17,7 @@ import { SensorSelect } from "../common/SensorSelect";
 import { Colors } from "../common/colors";
 import { getChartCanvasElement, loadingTracker } from "../util";
 import { createStore } from "solid-js/store";
-import { CountValueDataTable } from "../components";
+import { CountValueDataTable } from "../components/CountValueDataTable";
 import dayjs from "dayjs";
 
 interface AggResults {

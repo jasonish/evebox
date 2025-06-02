@@ -5,7 +5,7 @@ import { TIME_RANGE, Top } from "../Top";
 import { useParams } from "@solidjs/router";
 import { createEffect, createSignal, For, onCleanup } from "solid-js";
 import { API, AggRequest, AggResponseRow } from "../api";
-import { CountValueDataTable } from "../components";
+import { CountValueDataTable } from "../components/CountValueDataTable";
 import { SetStoreFunction, createStore } from "solid-js/store";
 import { RefreshButton } from "../common/RefreshButton";
 import dayjs from "dayjs";
