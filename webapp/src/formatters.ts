@@ -248,9 +248,9 @@ export function formatEventDescription(event: Event): string {
         let mdns = event._source.mdns;
         let parts = [mdns.type.toUpperCase()];
         if (mdns.type == "request") {
-          parts.push(JSON.stringify(mdns.queries[0]));
+          parts.push(mdns.queries[0].rrname);
         } else {
-          parts.push(JSON.stringify(mdns.answers[0]));
+          parts.push(mdns.answers[0].rrname);
         }
         return parts.join(" ");
       }

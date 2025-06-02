@@ -145,6 +145,8 @@ impl ElasticEventRepo {
                 "tls.ja4" => "tls.ja4.keyword",
                 "traffic.id" => "traffic.id.keyword",
                 "traffic.label" => "traffic.label.keyword",
+                "mdns.answers.rrname" => "mdns.answers.rrname.keyword",
+                "mdns.queries.rrname" => "mdns.queries.rrname.keyword",
                 _ => name,
             }
             .to_string()

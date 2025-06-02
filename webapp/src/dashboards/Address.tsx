@@ -98,6 +98,10 @@ export function Address() {
   const [tlsLeastRequestedIssueDn, setTlsLeastRequestedIssueDn] =
     createStore(defaultAggResults());
 
+  const [mdnsRequests, setMdnsRequests] = createStore(defaultAggResults());
+
+  const [mdnsResponses, setMdnsResponses] = createStore(defaultAggResults());
+
   onCleanup(() => {
     API.cancelAllSse();
   });
@@ -119,6 +123,7 @@ export function Address() {
     getter: AggResults;
     title: string;
     label: string;
+    searchField?: string;
   }[] = [
     // Most alerting rules.
     {
@@ -146,6 +151,36 @@ export function Address() {
       getter: leastAlertingSignature,
       title: "Least Alerting Rules",
       label: "Signature",
+    },
+
+    // mDNS Requests
+    {
+      request: {
+        field: "mdns.queries.rrname",
+        order: "desc",
+        q: `event_type:mdns mdns.type:request src_ip:{{address}}`,
+        size: 10,
+      },
+      setter: setMdnsRequests,
+      getter: mdnsRequests,
+      title: "mDNS Requests",
+      label: "Hostname",
+      searchField: "mdns.queries.rrname",
+    },
+
+    // mDNS Responses
+    {
+      request: {
+        field: "mdns.answers.rrname",
+        order: "desc",
+        q: `event_type:mdns mdns.type:response src_ip:{{address}}`,
+        size: 10,
+      },
+      setter: setMdnsResponses,
+      getter: mdnsResponses,
+      title: "mDNS Responses",
+      label: "Hostname",
+      searchField: "mdns.answers.rrname",
     },
 
     // Most requested DNS hostnames.
@@ -482,6 +517,7 @@ export function Address() {
                     rows={loader.getter.rows}
                     loading={loader.getter.loading}
                     suffix={formatSuffix(loader.getter.timestamp)}
+                    searchField={loader.searchField}
                   />
                 </div>
               </>
