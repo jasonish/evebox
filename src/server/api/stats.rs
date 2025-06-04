@@ -10,17 +10,10 @@ use crate::server::ServerContext;
 use axum::extract::{Form, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::get;
-use axum::{Extension, Json, Router};
+use axum::{Extension, Json};
 use serde::Deserialize;
 use std::sync::Arc;
 use tracing::error;
-
-pub(crate) fn router() -> Router<Arc<ServerContext>> {
-    Router::new()
-        .route("/agg/diff", get(agg_differential))
-        .route("/agg", get(agg))
-}
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct StatsAggQuery {
@@ -51,7 +44,7 @@ impl StatsAggQuery {
     }
 }
 
-async fn agg(
+pub(crate) async fn agg(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
@@ -75,7 +68,7 @@ async fn agg(
     }
 }
 
-async fn agg_differential(
+pub(crate) async fn agg_differential(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,

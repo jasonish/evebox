@@ -48,7 +48,7 @@ impl EveBoxEventSink {
         let body = self.queue.join("\n");
         let size = body.len();
         trace!("Committing {} events (bytes: {})", n, size);
-        let r = self.client.post("api/1/submit")?.body(body).send().await?;
+        let r = self.client.post("api/submit")?.body(body).send().await?;
         let status_code = r.status();
         if status_code != 200 {
             let response_body = r.text().await?;

@@ -81,7 +81,7 @@ export async function postComment(
 }
 
 export async function getUser(): Promise<UserResponse> {
-  let response = await get("api/1/user");
+  let response = await get("api/user");
   return response.data;
 }
 
@@ -94,7 +94,7 @@ export interface ConfigResponse {
 }
 
 export async function getConfig(): Promise<ConfigResponse> {
-  return get("api/1/config").then((response) => response.data);
+  return get("api/config").then((response) => response.data);
 }
 
 export async function login(
@@ -106,12 +106,12 @@ export async function login(
     password: password,
   });
 
-  let response = await axios.post<LoginResponse>("api/1/login", params);
+  let response = await axios.post<LoginResponse>("api/login", params);
   return [true, response.data];
 }
 
 export async function logout() {
-  let _response = await post("api/1/logout");
+  let _response = await post("api/logout");
   SET_IS_AUTHENTICATED(false);
 }
 
@@ -149,7 +149,7 @@ export async function alerts(options?: {
   if (options?.timeout) {
     params.timeout = options.timeout;
   }
-  return get("api/1/alerts", params).then((response) => response.data);
+  return get("api/alerts", params).then((response) => response.data);
 }
 
 export interface EventsQueryParams {
@@ -170,7 +170,7 @@ export async function getEvents(
   if (!params?.tz_offset) {
     params.tz_offset = get_timezone_offset_str();
   }
-  return get("api/1/events", params).then((response) => response.data);
+  return get("api/events", params).then((response) => response.data);
 }
 
 export async function archiveAggregateAlert(alert: EventWrapper) {
@@ -182,13 +182,13 @@ export async function archiveAggregateAlert(alert: EventWrapper) {
     max_timestamp: alert._metadata?.max_timestamp,
   };
   return queueAdd(() => {
-    return post("api/1/alert-group/archive", params);
+    return post("api/alert-group/archive", params);
   });
 }
 
 export async function archiveEvent(event: EventWrapper): Promise<any> {
   return queueAdd(() => {
-    return post(`api/1/event/${event._id}/archive`);
+    return post(`api/event/${event._id}/archive`);
   });
 }
 
@@ -201,7 +201,7 @@ export async function escalateAggregateAlert(alert: EventWrapper) {
     max_timestamp: alert._metadata?.max_timestamp,
   };
   return queueAdd(() => {
-    return post("api/1/alert-group/star", params);
+    return post("api/alert-group/star", params);
   });
 }
 
@@ -214,19 +214,19 @@ export async function unescalateAggregateAlert(alert: EventWrapper) {
     max_timestamp: alert._metadata?.max_timestamp,
   };
   return queueAdd(() => {
-    return post("api/1/alert-group/unstar", params);
+    return post("api/alert-group/unstar", params);
   });
 }
 
 export async function getEventById(id: string): Promise<EventWrapper> {
-  return get(`api/1/event/${id}`).then((response) => response.data);
+  return get(`api/event/${id}`).then((response) => response.data);
 }
 
 export async function getVersion(): Promise<{
   revision: string;
   version: string;
 }> {
-  return get("api/1/version").then((response) => response.data);
+  return get("api/version").then((response) => response.data);
 }
 
 export interface LoginOptions {
@@ -255,9 +255,9 @@ export async function statsAgg(
 ): Promise<StatsAggResponse> {
   let url;
   if (differential) {
-    url = "api/1/stats/agg/diff";
+    url = "api/stats/agg/diff";
   } else {
-    url = "api/1/stats/agg";
+    url = "api/stats/agg";
   }
   return get(url, {
     field: field,
@@ -267,7 +267,7 @@ export async function statsAgg(
 }
 
 export async function getSensors(): Promise<{ data: string[] }> {
-  return get("api/1/sensors").then((response) => response.data);
+  return get("api/sensors").then((response) => response.data);
 }
 
 export interface AggRequest {
@@ -295,7 +295,7 @@ export async function dhcpAck(query: {
   time_range?: string;
   sensor?: string;
 }): Promise<any> {
-  const response = await get(`api/1/dhcp/ack`, query);
+  const response = await get(`api/dhcp/ack`, query);
   return response.data;
 }
 
@@ -303,7 +303,7 @@ export async function dhcpRequest(query: {
   time_range?: string;
   sensor?: string;
 }): Promise<any> {
-  const response = await get(`api/1/dhcp/request`, query);
+  const response = await get(`api/dhcp/request`, query);
   return response.data;
 }
 
@@ -330,13 +330,13 @@ export namespace API {
     event_type: string;
     query_string?: string;
   }): Promise<{ data: { count: number; time: number }[] }> {
-    return get("api/1/report/histogram/time", request).then(
+    return get("api/report/histogram/time", request).then(
       (response) => response.data,
     );
   }
 
   export async function getSensors(): Promise<{ data: string[] }> {
-    return get("api/1/sensors").then((response) => response.data);
+    return get("api/sensors").then((response) => response.data);
   }
 
   export async function getEventTypes(request: {
@@ -354,7 +354,7 @@ export namespace API {
       max_timestamp: alert._metadata?.max_timestamp,
     };
     return queueAdd(() => {
-      return post("api/1/alert-group/star", params);
+      return post("api/alert-group/star", params);
     });
   }
 
@@ -367,16 +367,16 @@ export namespace API {
       max_timestamp: alert._metadata?.max_timestamp,
     };
     return queueAdd(() => {
-      return post("api/1/alert-group/unstar", params);
+      return post("api/alert-group/unstar", params);
     });
   }
 
   export async function escalateEvent(event: EventWrapper) {
-    return post(`api/1/event/${event._id}/escalate`);
+    return post(`api/event/${event._id}/escalate`);
   }
 
   export async function deEscalateEvent(event: EventWrapper) {
-    return post(`api/1/event/${event._id}/de-escalate`);
+    return post(`api/event/${event._id}/de-escalate`);
   }
 
   export async function eventToPcap(
@@ -385,7 +385,7 @@ export namespace API {
   ) {
     const form = document.createElement("form") as HTMLFormElement;
     form.setAttribute("method", "post");
-    form.setAttribute("action", "api/1/eve2pcap");
+    form.setAttribute("action", "api/eve2pcap");
 
     const whatField = document.createElement("input") as HTMLElement;
     whatField.setAttribute("type", "hidden");
