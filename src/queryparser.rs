@@ -6,7 +6,7 @@ use nom::{
     bytes::complete::{tag, take_till},
     character::complete::multispace0,
     combinator::opt,
-    IResult,
+    IResult, Parser,
 };
 
 use crate::datetime;
@@ -158,10 +158,10 @@ pub(crate) fn parse(
 
 fn parse_token(input: &str) -> IResult<&str, String> {
     // Skip any leading whitespace.
-    let (input, _) = multispace0(input)?;
+    let (input, _) = multispace0.parse(input)?;
 
     // Looking for a leading operator of ! or - for negation.
-    let (input, op) = opt(alt((tag("!"), tag("-"))))(input)?;
+    let (input, op) = opt(alt((tag("!"), tag("-")))).parse(input)?;
     if let Some(op) = op {
         return Ok((input, op.to_string()));
     }
@@ -170,7 +170,7 @@ fn parse_token(input: &str) -> IResult<&str, String> {
         return Ok(parse_quoted_string(input));
     }
 
-    let (input, token) = take_till(|c| c == ' ' || c == ':')(input)?;
+    let (input, token) = take_till(|c| c == ' ' || c == ':').parse(input)?;
 
     Ok((input, token.to_string()))
 }
@@ -178,10 +178,10 @@ fn parse_token(input: &str) -> IResult<&str, String> {
 // Much like parse_token, but will consume ':' chars.
 fn parse_value(input: &str) -> IResult<&str, String> {
     // Skip any leading whitespace.
-    let (input, _) = multispace0(input)?;
+    let (input, _) = multispace0.parse(input)?;
 
     // Looking for a leading operator of ! or - for negation.
-    let (input, op) = opt(alt((tag("!"), tag("-"))))(input)?;
+    let (input, op) = opt(alt((tag("!"), tag("-")))).parse(input)?;
     if let Some(op) = op {
         return Ok((input, op.to_string()));
     }
@@ -190,7 +190,7 @@ fn parse_value(input: &str) -> IResult<&str, String> {
         return Ok(parse_quoted_string(input));
     }
 
-    let (input, token) = take_till(|c| c == ' ')(input)?;
+    let (input, token) = take_till(|c| c == ' ').parse(input)?;
 
     Ok((input, token.to_string()))
 }
