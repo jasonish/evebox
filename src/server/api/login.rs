@@ -35,7 +35,7 @@ pub(crate) async fn options(
 
 pub(crate) async fn post(
     context: Extension<Arc<ServerContext>>,
-    _session: Option<SessionExtractor>,
+    //_session: Option<SessionExtractor>,
     form: axum::extract::Form<LoginForm>,
 ) -> impl IntoResponse {
     if !context.config.authentication_required {

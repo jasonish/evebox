@@ -16,7 +16,9 @@ use crate::sqlite::connection::init_event_db;
 use crate::sqlite::{self};
 use anyhow::Result;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts};
+use axum::extract::{
+    ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts, OptionalFromRequestParts,
+};
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
@@ -24,6 +26,7 @@ use axum::Router;
 use axum_extra::extract::CookieJar;
 use axum_extra::TypedHeader;
 use std::collections::{HashMap, HashSet};
+use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -593,7 +596,23 @@ async fn configure_datastore(
 #[derive(Debug)]
 pub(crate) struct SessionExtractor(pub(crate) Arc<Session>);
 
-#[async_trait::async_trait]
+impl<S> OptionalFromRequestParts<S> for SessionExtractor
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        match <Self as FromRequestParts<S>>::from_request_parts(parts, state).await {
+            Ok(res) => Ok(Some(res)),
+            Err(_) => Ok(None),
+        }
+    }
+}
+
 impl<S> FromRequestParts<S> for SessionExtractor
 where
     S: Send + Sync,
@@ -604,14 +623,17 @@ where
         req: &mut axum::http::request::Parts,
         state: &S,
     ) -> Result<Self, Self::Rejection> {
-        let Extension(context) = Extension::<Arc<ServerContext>>::from_request_parts(req, state)
-            .await
-            .unwrap();
-        let enable_reverse_proxy = context.config.http_reverse_proxy;
-        let Extension(ConnectInfo(remote_addr)) =
-            Extension::<ConnectInfo<SocketAddr>>::from_request_parts(req, state)
+        let Extension(context) =
+            <Extension<Arc<ServerContext>> as FromRequestParts<S>>::from_request_parts(req, state)
                 .await
                 .unwrap();
+        let enable_reverse_proxy = context.config.http_reverse_proxy;
+        let Extension(ConnectInfo(remote_addr)) =
+            <Extension<ConnectInfo<SocketAddr>> as FromRequestParts<S>>::from_request_parts(
+                req, state,
+            )
+            .await
+            .unwrap();
         let headers = &req.headers;
 
         let cookies = CookieJar::from_headers(headers);
@@ -665,12 +687,14 @@ where
 
         let authorization = if headers.contains_key("authorization") {
             let TypedHeader(Authorization(basic)) =
-                TypedHeader::<Authorization<Basic>>::from_request_parts(req, state)
-                    .await
-                    .map_err(|err| {
-                        warn!("Failed to decode basic authentication header: {:?}", err);
-                        (StatusCode::UNAUTHORIZED, "bad authorization header")
-                    })?;
+                <TypedHeader<Authorization<Basic>> as FromRequestParts<S>>::from_request_parts(
+                    req, state,
+                )
+                .await
+                .map_err(|err| {
+                    warn!("Failed to decode basic authentication header: {:?}", err);
+                    (StatusCode::UNAUTHORIZED, "bad authorization header")
+                })?;
             Some(basic)
         } else {
             None
@@ -700,7 +724,7 @@ where
             return Ok(Self(Arc::new(Session::anonymous(remote_user))));
         }
 
-        return Err((StatusCode::UNAUTHORIZED, "authentication required"));
+        Err((StatusCode::UNAUTHORIZED, "authentication required"))
     }
 }
 
