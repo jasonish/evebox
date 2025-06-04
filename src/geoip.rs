@@ -119,7 +119,9 @@ impl GeoIP {
         addr: &str,
     ) -> Result<geoip2::City<'a>, Box<dyn std::error::Error>> {
         let ip: std::net::IpAddr = std::str::FromStr::from_str(addr)?;
-        Ok(reader.lookup(ip)?)
+        reader
+            .lookup(ip)?
+            .ok_or_else(|| "No city data found for IP address".into())
     }
 
     pub fn add_geoip_to_eve(&self, eve: &mut serde_json::Value) {
