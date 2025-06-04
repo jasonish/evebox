@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.20.5 - 2025-06-04
+
+### Added
+- Added mDNS cards to address dashboard
+- Added mDNS to event type dropdown
+
 ## 0.20.4 - 2025-05-08
 
 ### Added
