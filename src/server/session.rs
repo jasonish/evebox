@@ -78,7 +78,7 @@ impl Session {
 }
 
 pub(crate) fn generate_session_id() -> String {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut buf = vec![0; 256];
     rng.fill_bytes(&mut buf);
     BASE64_STANDARD.encode(&buf)
