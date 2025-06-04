@@ -15,7 +15,6 @@ use crate::sqlite::configdb::{self, ConfigDb};
 use crate::sqlite::connection::init_event_db;
 use crate::sqlite::{self};
 use anyhow::Result;
-use axum::async_trait;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts};
 use axum::http::header::HeaderName;
@@ -298,10 +297,10 @@ fn is_authentication_required(config: &Config) -> bool {
 
 async fn create_admin_user(context: &ServerContext) -> Result<(String, String)> {
     use rand::Rng;
-    let rng = rand::thread_rng();
+    let rng = rand::rng();
     let username = "admin";
     let password: String = rng
-        .sample_iter(&rand::distributions::Alphanumeric)
+        .sample_iter(&rand::distr::Alphanumeric)
         .take(12)
         .map(char::from)
         .collect();
@@ -594,7 +593,7 @@ async fn configure_datastore(
 #[derive(Debug)]
 pub(crate) struct SessionExtractor(pub(crate) Arc<Session>);
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<S> FromRequestParts<S> for SessionExtractor
 where
     S: Send + Sync,

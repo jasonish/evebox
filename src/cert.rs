@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use anyhow::Result;
-use rcgen::{Certificate, CertificateParams, DistinguishedName, DnType};
+use rcgen::{CertificateParams, DistinguishedName, DnType, Ia5String, KeyPair};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -21,13 +21,16 @@ pub(crate) fn create_and_write_cert<P: AsRef<Path>>(dir: P) -> Result<(PathBuf, 
         .distinguished_name
         .push(DnType::OrganizationName, ORG_NAME);
     params.distinguished_name.push(DnType::CommonName, CN_NAME);
-    params.subject_alt_names = vec![rcgen::SanType::DnsName("localhost".to_string())];
-    let cert = Certificate::from_params(params)?;
+    params.subject_alt_names = vec![rcgen::SanType::DnsName(Ia5String::try_from(
+        "localhost".to_string(),
+    )?)];
+    let key_pair = KeyPair::generate()?;
+    let cert = params.self_signed(&key_pair)?;
     let dir = dir.as_ref();
     let cert_path = dir.join(CERT_FILENAME);
     let key_path = dir.join(KEY_FILENAME);
-    fs::write(&cert_path, cert.serialize_pem()?.as_bytes())?;
-    fs::write(&key_path, cert.serialize_private_key_pem().as_bytes())?;
+    fs::write(&cert_path, cert.pem().as_bytes())?;
+    fs::write(&key_path, key_pair.serialize_pem().as_bytes())?;
     Ok((cert_path, key_path))
 }
 
