@@ -18,23 +18,23 @@ lto = true
 opt-level = 3
 
 [dependencies]
-anyhow = "1.0.79"
-thiserror = "1.0.56"
+anyhow = "1.0.98"
+thiserror = "1.0.69"
 
-axum = { version = "0.7.5" }
+axum = { version = "0.7.9" }
 axum-server = { version = "0.6.0", features = ["tls-rustls"] }
-axum-extra = { version = "0.9.3", default-features = false, features = ["cookie", "typed-header", "form"] }
-hyper = "1.0"
+axum-extra = { version = "0.9.6", default-features = false, features = ["cookie", "typed-header", "form"] }
+hyper = "1.6"
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
 tower-http = { version = "0.5", features = ["set-header", "trace", "limit"] }
-futures = "0.3.21"
+futures = "0.3.31"
 
 base64 = "0.22.1"
-bcrypt = "0.15.0"
-bytes = "1.5.0"
-clap = { version = "4.5.4", features = ["env", "derive", "color"] }
+bcrypt = "0.15.1"
+bytes = "1.10.1"
+clap = { version = "4.5.39", features = ["env", "derive", "color"] }
 
-sqlx = { version = "0.8.3", default-features = false, features = ["macros", "migrate", "runtime-tokio", "sqlite", "tls-rustls", "json", "chrono"] }
+sqlx = { version = "0.8.6", default-features = false, features = ["macros", "migrate", "runtime-tokio", "sqlite", "tls-rustls", "json", "chrono"] }
 
 # While sqlx is nice to use, Rusqlite is fast for bulk operations.
 rusqlite = { version = "0.32.1", features = ["bundled"] }
@@ -42,44 +42,44 @@ rusqlite = { version = "0.32.1", features = ["bundled"] }
 # Hopefully this makes sure both sqlx and rusqlite are on the same version of libsqlite3-sys.
 libsqlite3-sys = { version = "=0.30.1" }
 
-filetime = "0.2.23"
-glob = "0.3.1"
-humantime = "2.1.0"
-lazy_static = "1.4.0"
+filetime = "0.2.25"
+glob = "0.3.2"
+humantime = "2.2.0"
+lazy_static = "1.5.0"
 maxminddb = "0.23.0"
 md5 = "0.7.0"
-mime_guess = "2.0.4"
+mime_guess = "2.0.5"
 nom = "7.1.3"
 percent-encoding = "2.3.1"
 rand = "0.8.5"
-reqwest = { version = "0.11.23", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots"] }
-rust-embed = { version = "8.2.0", features = ["compression", "debug-embed"] }
+reqwest = { version = "0.11.27", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots"] }
+rust-embed = { version = "8.7.2", features = ["compression", "debug-embed"] }
 
-serde = { version = "1.0.196", features = ["derive"] }
-serde_json = "1.0.112"
-serde_yaml = "0.9.30"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+serde_yaml = "0.9.34"
 
 suricatax-rule-parser = { git = "https://github.com/jasonish/suricatax-rule-parser-rs" }
 
 # Currently only used for tracing_subscriber based logging.
-time = { version = "0.3.37", features = ["macros"] }
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["fmt", "env-filter", "time", "local-time"] }
+time = { version = "0.3.41", features = ["macros"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter", "time", "local-time"] }
 tracing-log = "0.2.0"
 
-ulid = "1.1.0"
-uuid = { version = "1.7.0", features = ["v4"] }
-webbrowser = "0.8.12"
-regex = "1.10.3"
-libc = { version = "0.2.152", default-features = false }
+ulid = "1.2.1"
+uuid = { version = "1.17.0", features = ["v4"] }
+webbrowser = "0.8.15"
+regex = "1.11.1"
+libc = { version = "0.2.172", default-features = false }
 rcgen = "0.12.1"
 directories = "5.0.1"
 gethostname = "0.4.3"
-tempfile = "3.9.0"
+tempfile = "3.20.0"
 inquire = "0.6.2"
-chrono = { version = "0.4.38", default-features = false, features = ["std", "now", "serde"] }
-log = "0.4.21"
-owo-colors = "4.0.0"
-indexmap = "2.2.6"
+chrono = { version = "0.4.41", default-features = false, features = ["std", "now", "serde"] }
+log = "0.4.27"
+owo-colors = "4.2.1"
+indexmap = "2.9.0"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-util = "0.7.13"
+tokio-util = "0.7.15"
