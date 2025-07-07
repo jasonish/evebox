@@ -43,10 +43,10 @@ if [[ "${GIT_TAG}" ]]; then
     echo "Building container for version ${GIT_TAG}"
     version="${GIT_TAG}"
 elif [[ "${GIT_BRANCH}" = "devel" ]]; then
+    echo "Building devel version from branch devel"
     version="devel"
-    if [ "${tag}" = "" ]; then
-        tag="devel"
-    fi
+    tag="main"
+    aliases+=("master")
 elif [[ "${GIT_BRANCH}" = "main" ]]; then
     echo "Building devel version from branch main"
     version="devel"
