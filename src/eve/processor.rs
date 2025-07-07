@@ -150,7 +150,7 @@ impl Processor {
             // the same number of processors is worker threads, and
             // we're processing a large backlog of events, we have to
             // give up some CPU to other tasks.
-            self.sleep_for(0).await;
+            tokio::task::yield_now().await;
         }
         info!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
     }
