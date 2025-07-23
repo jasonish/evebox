@@ -2,7 +2,7 @@
 Description=EveBox Agent
 
 [Service]
-ExecStart=/usr/bin/evebox agent
+ExecStart=/usr/bin/evebox -D /var/lib/evebox agent
 
 [Install]
 WantedBy=multi-user.target
