@@ -1,5 +1,27 @@
 # Change Log
 
+## Unreleased
+
+### Changed
+- API routes simplified by removing version prefix (/api/1/* to /api/*)
+  - Legacy /api/1/submit endpoint retained for backward compatibility with older agents
+- Agent systemd service now uses /var/lib/evebox as default data directory
+  - Prevents bookmark files from being created in root directory
+  - Data directory can be overridden via environment variable
+- Container build process updated to properly handle devel branch tagging
+
+### Performance
+- Server processor read efficiency optimized by replacing sleep(0) with yield_now()
+  - Improves CPU utilization and reduces unnecessary spinning
+
+### Technical Updates
+- Updated to Axum web framework latest version
+- Updated Rust MSRV to 1.82.0
+- Updated dependencies:
+  - nom parser updated to version 8
+  - maxminddb updated
+  - Various other Cargo dependencies updated
+
 ## 0.20.5 - 2025-06-04
 
 ### Added
