@@ -2,7 +2,9 @@
 Description=EveBox Agent
 
 [Service]
-ExecStart=/usr/bin/evebox -D /var/lib/evebox agent
+Environment=EVEBOX_DATA_DIRECTORY=/var/lib/evebox
+EnvironmentFile=-/etc/sysconf/evebox-agent
+ExecStart=/usr/bin/evebox agent
 
 [Install]
 WantedBy=multi-user.target
