@@ -14,6 +14,11 @@
 - Server processor read efficiency optimized by replacing sleep(0) with yield_now()
   - Improves CPU utilization and reduces unnecessary spinning
 
+### Fixed
+- Fixed Debian package installation by ensuring /var/lib/evebox directory is created
+  - Resolves issues when evebox services use EVEBOX_DATA_DIRECTORY=/var/lib/evebox
+  - Fixes [#346](https://github.com/jasonish/evebox/issues/346)
+
 ### Technical Updates
 - Updated to Axum web framework latest version
 - Updated Rust MSRV to 1.82.0
