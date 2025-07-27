@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.21.0 - 2025-07-27
 
 ### Changed
 - API routes simplified by removing version prefix (/api/1/* to /api/*)
