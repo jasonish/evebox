@@ -1,5 +1,13 @@
 # Change Log
 
+## Unreleased
+
+### Performance
+- Use Hickory DNS resolver for HTTP requests in server and agent
+  - Avoids system resolver for better performance when making many DNS requests
+  - Adds internal DNS caching to reduce repeated lookups
+  - Particularly beneficial for agents sending batches of events
+
 ## 0.21.0 - 2025-07-27
 
 ### Changed
