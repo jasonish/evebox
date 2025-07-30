@@ -1,7 +1,7 @@
 [package]
 name = "evebox"
 # Suffix with -dev when not a release.
-version = "0.21.0"
+version = "0.21.1-alpha.1"
 authors = ["Jason Ish <ish@unx.ca>"]
 edition = "2021"
 description = "A web based Suricata event manager"
