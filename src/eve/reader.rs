@@ -7,7 +7,11 @@ use std::io::BufReader;
 use std::io::Seek;
 use std::io::SeekFrom;
 #[cfg(unix)]
+use std::os::unix::fs::FileTypeExt;
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
+#[cfg(unix)]
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
 
 use tracing::debug;
@@ -29,7 +33,20 @@ impl From<std::io::Error> for EveReaderError {
     }
 }
 
-pub(crate) struct EveReader {
+pub trait EveReader {
+    fn get_filename(&self) -> PathBuf;
+    fn open(&mut self) -> Result<(), EveReaderError>;
+    fn reopen(&mut self) -> Result<(), EveReaderError>;
+    fn goto_lineno(&mut self, lineno: u64) -> Result<u64, EveReaderError>;
+    fn goto_end(&mut self) -> Result<u64, EveReaderError>;
+    fn offset(&mut self) -> u64;
+    fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError>;
+    fn metadata(&self) -> Option<Metadata>;
+    fn is_file_changed(&self) -> bool;
+    fn file_size(&self) -> u64;
+}
+
+pub(crate) struct EveReaderFile {
     pub filename: PathBuf,
     line: String,
     reader: Option<BufReader<std::fs::File>>,
@@ -37,18 +54,12 @@ pub(crate) struct EveReader {
     offset: u64,
 }
 
-impl EveReader {
-    pub fn new(filename: PathBuf) -> Self {
-        Self {
-            filename,
-            line: String::new(),
-            reader: None,
-            lineno: 0,
-            offset: 0,
-        }
+impl EveReader for EveReaderFile {
+    fn get_filename(&self) -> PathBuf {
+        self.filename.clone()
     }
 
-    pub fn open(&mut self) -> Result<(), EveReaderError> {
+    fn open(&mut self) -> Result<(), EveReaderError> {
         let file = File::open(&self.filename)?;
         let reader = BufReader::new(file);
         self.reader = Some(reader);
@@ -57,7 +68,7 @@ impl EveReader {
         Ok(())
     }
 
-    pub fn reopen(&mut self) -> Result<(), EveReaderError> {
+    fn reopen(&mut self) -> Result<(), EveReaderError> {
         if let Err(err) = self.open() {
             self.reader = None;
             self.lineno = 0;
@@ -67,7 +78,7 @@ impl EveReader {
         Ok(())
     }
 
-    pub fn goto_lineno(&mut self, lineno: u64) -> Result<u64, EveReaderError> {
+    fn goto_lineno(&mut self, lineno: u64) -> Result<u64, EveReaderError> {
         if self.reader.is_none() {
             self.open()?;
         }
@@ -81,7 +92,7 @@ impl EveReader {
         Ok(count)
     }
 
-    pub fn goto_end(&mut self) -> Result<u64, EveReaderError> {
+    fn goto_end(&mut self) -> Result<u64, EveReaderError> {
         if self.reader.is_none() {
             self.open()?;
         }
@@ -98,7 +109,7 @@ impl EveReader {
     /// Return the current offset the reader is into the file.
     ///
     /// Will return 0 if no file is open.
-    pub fn offset(&mut self) -> u64 {
+    fn offset(&mut self) -> u64 {
         if let Some(reader) = &mut self.reader {
             if let Ok(pos) = reader.stream_position() {
                 return pos;
@@ -107,31 +118,8 @@ impl EveReader {
         0
     }
 
-    fn next_line(&mut self) -> Result<Option<&str>, EveReaderError> {
-        self.line.truncate(0);
-        if let Some(reader) = &mut self.reader {
-            let pos = reader.stream_position()?;
-            let n = reader.read_line(&mut self.line)?;
-            if n > 0 {
-                if !self.line.ends_with('\n') {
-                    info!(
-                        "Line does not end with new line character, seeking back to {}",
-                        pos
-                    );
-                    reader.seek(SeekFrom::Start(pos))?;
-                } else {
-                    self.offset = pos + n as u64;
-                    self.lineno += 1;
-                    let line = self.line.trim();
-                    return Ok(Some(line));
-                }
-            }
-        }
-        Ok(None)
-    }
-
     /// Not named next as we don't implement the iterator pattern (yet).
-    pub fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
+    fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
         if self.reader.is_none() {
             self.open()?;
         }
@@ -150,7 +138,7 @@ impl EveReader {
         Ok(None)
     }
 
-    pub fn metadata(&self) -> Option<Metadata> {
+    fn metadata(&self) -> Option<Metadata> {
         if let Some(reader) = &self.reader {
             match reader.get_ref().metadata() {
                 Err(err) => {
@@ -173,7 +161,7 @@ impl EveReader {
 
     // An overly complex method to check if the file on disk has been truncate,
     // or replaced.
-    pub fn is_file_changed(&self) -> bool {
+    fn is_file_changed(&self) -> bool {
         let open: Option<std::fs::Metadata> = if let Some(reader) = &self.reader {
             match reader.get_ref().metadata() {
                 Err(err) => {
@@ -234,12 +222,47 @@ impl EveReader {
 
     /// Get the size of the file. This is taken directly from disk, so may not be the
     /// exact file currently being read by this reader.
-    pub fn file_size(&self) -> u64 {
+    fn file_size(&self) -> u64 {
         if let Ok(metadata) = std::fs::metadata(&self.filename) {
             metadata.len()
         } else {
             0
         }
+    }
+}
+
+impl EveReaderFile {
+    pub fn new(filename: PathBuf) -> Self {
+        Self {
+            filename,
+            line: String::new(),
+            reader: None,
+            lineno: 0,
+            offset: 0,
+        }
+    }
+
+    fn next_line(&mut self) -> Result<Option<&str>, EveReaderError> {
+        self.line.truncate(0);
+        if let Some(reader) = &mut self.reader {
+            let pos = reader.stream_position()?;
+            let n = reader.read_line(&mut self.line)?;
+            if n > 0 {
+                if !self.line.ends_with('\n') {
+                    info!(
+                        "Line does not end with new line character, seeking back to {}",
+                        pos
+                    );
+                    reader.seek(SeekFrom::Start(pos))?;
+                } else {
+                    self.offset = pos + n as u64;
+                    self.lineno += 1;
+                    let line = self.line.trim();
+                    return Ok(Some(line));
+                }
+            }
+        }
+        Ok(None)
     }
 
     #[cfg(unix)]
@@ -259,4 +282,137 @@ pub(crate) struct Metadata {
     pub lineno: u64,
     pub size: u64,
     pub inode: Option<u64>,
+}
+
+#[cfg(unix)]
+pub(crate) struct EveReaderSocket {
+    pub filename: PathBuf,
+    listener: UnixListener,
+    reader: Option<BufReader<UnixStream>>,
+}
+
+#[cfg(unix)]
+impl EveReaderSocket {
+    pub fn new(filename: PathBuf) -> Result<Self, EveReaderError> {
+        let listener = Self::bind_listener(&filename)?;
+        Ok(Self {
+            filename,
+            listener,
+            reader: None,
+        })
+    }
+
+    // The UnixListener lives through the lifetime of EveReaderSocket,
+    // only needs to be bound once and can accept a connection from Suricata multiple times.
+    fn bind_listener(filename: &PathBuf) -> Result<UnixListener, EveReaderError> {
+        // Remove socket file before use
+        if let Ok(metadata) = std::fs::metadata(filename) {
+            if !metadata.file_type().is_socket() {
+                error!("Refusing to delete non-socket file");
+            } else {
+                std::fs::remove_file(filename)?;
+            }
+        }
+
+        let listener = UnixListener::bind(filename.clone())?;
+        if let Err(e) = listener.set_nonblocking(true) {
+            debug!(
+                "UnixListener for {} could not be set to non-blocking: {e}",
+                filename.display()
+            );
+        }
+        Ok(listener)
+    }
+
+    // A UnixListener can accept multiple simultaneous connections, but
+    // we only call accept() when there is not an established self.reader
+    fn accept(&mut self) -> Result<(), EveReaderError> {
+        let (socket, addr) = self.listener.accept()?;
+        debug!(
+            "Accepted connection on {} to: {addr:?}",
+            self.filename.display()
+        );
+        if let Err(e) = socket.set_nonblocking(true) {
+            debug!(
+                "UnixStream for {} could not be set to non-blocking: {e}",
+                self.filename.display()
+            );
+        }
+        self.reader = Some(BufReader::new(socket));
+        Ok(())
+    }
+}
+
+#[cfg(unix)]
+impl EveReader for EveReaderSocket {
+    fn get_filename(&self) -> PathBuf {
+        self.filename.clone()
+    }
+
+    fn open(&mut self) -> Result<(), EveReaderError> {
+        self.accept()
+    }
+
+    fn reopen(&mut self) -> Result<(), EveReaderError> {
+        // NOTE: this function is not used
+        self.reader = None;
+        self.open()
+    }
+
+    // EveReaderSocket cannot seek
+    fn goto_lineno(&mut self, _lineno: u64) -> Result<u64, EveReaderError> {
+        Ok(0)
+    }
+
+    fn goto_end(&mut self) -> Result<u64, EveReaderError> {
+        Ok(0)
+    }
+
+    fn offset(&mut self) -> u64 {
+        0
+    }
+
+    fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
+        match &mut self.reader {
+            Some(reader) => {
+                let mut line = String::new();
+                let len = match reader.read_line(&mut line) {
+                    Ok(len) => len,
+                    Err(_) => {
+                        // Assuming io error: Resource temporarily unavailable
+                        return Ok(None);
+                    }
+                };
+
+                if len == 0 {
+                    // The stream is EOF
+                    self.reader = None;
+                    debug!("Socket stream EOF on {}", self.filename.display());
+                    return Ok(None);
+                }
+
+                let record: serde_json::Value =
+                    serde_json::from_str(line.as_str()).map_err(|err| {
+                        error!("Failed to parse event: {}", err);
+                        EveReaderError::ParseError(line.to_string())
+                    })?;
+                Ok(Some(record))
+            }
+            None => {
+                // Stream has not been established
+                let _ = self.accept();
+                Ok(None)
+            }
+        }
+    }
+
+    fn metadata(&self) -> Option<Metadata> {
+        None
+    }
+    fn is_file_changed(&self) -> bool {
+        false
+    }
+    fn file_size(&self) -> u64 {
+        0
+    }
 }
