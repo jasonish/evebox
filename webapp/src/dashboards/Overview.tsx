@@ -163,15 +163,21 @@ export function Overview() {
       return await API.getSseAgg(request, version, (data: any) => {
         if (data) {
           if (protocols.data.length == 0) {
+            console.log("SSE request for flow protos: first response");
             setProtocols("data", data.rows);
           } else {
+            console.log("SSE request for flow protos: subsequent response");
             let labels = data.rows.map((e: any) => e.key);
             let dataset = data.rows.map((e: any) => e.count);
             let chart: any = Chart.getChart(protocolsPieChartRef!);
             chart.data.labels = labels;
             chart.data.datasets[0].data = dataset;
+            chart.data.datasets[0].backgroundColor = dataset.map((_, i) => Colors[i % Colors.length]);
+            chart.data.datasets[0].borderColor = dataset.map((_, i) => Colors[i % Colors.length]);
             chart.update();
           }
+        } else {
+          console.log("SSE request for flow protos done.");
         }
       }).finally(() => {
         setProtocols("loading", false);
@@ -648,6 +654,9 @@ function PieChart(props: { data: any[]; ref?: any }) {
         datasets: [
           {
             data: props.data.map((e) => e.count),
+            backgroundColor: props.data.map((_, i) => Colors[i % Colors.length]),
+            borderColor: props.data.map((_, i) => Colors[i % Colors.length]),
+            borderWidth: 1,
           },
         ],
       },
