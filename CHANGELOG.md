@@ -8,6 +8,11 @@
   - Adds internal DNS caching to reduce repeated lookups
   - Particularly beneficial for agents sending batches of events
 
+### Changed
+- Improved color palette consistency in webapp
+  - Use consistent app color palette in overview pie chart instead of ChartJS defaults
+  - Made first 20 colors in palette more visually distinct for better chart readability
+
 ## 0.21.0 - 2025-07-27
 
 ### Changed
