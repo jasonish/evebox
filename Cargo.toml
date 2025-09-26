@@ -18,21 +18,21 @@ lto = true
 opt-level = 3
 
 [dependencies]
-anyhow = "1.0.98"
-thiserror = "2.0.12"
+anyhow = "1.0.100"
+thiserror = "2.0.16"
 
 axum = { version = "0.8.4" }
 axum-server = { version = "0.7.2", features = ["tls-rustls-no-provider"] }
 axum-extra = { version = "0.10.1", default-features = false, features = ["cookie", "typed-header", "form"] }
-hyper = "1.6"
+hyper = "1.7"
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
 tower-http = { version = "0.6", features = ["set-header", "trace", "limit"] }
 futures = "0.3.31"
 
 base64 = "0.22.1"
-bcrypt = "0.17.0"
+bcrypt = "0.17.1"
 bytes = "1.10.1"
-clap = { version = "4.5.39", features = ["env", "derive", "color"] }
+clap = { version = "4.5.48", features = ["env", "derive", "color"] }
 
 sqlx = { version = "0.8.6", default-features = false, features = ["macros", "migrate", "runtime-tokio", "sqlite", "tls-rustls", "json", "chrono"] }
 
@@ -42,45 +42,45 @@ rusqlite = { version = "0.32.1", features = ["bundled"] }
 # Hopefully this makes sure both sqlx and rusqlite are on the same version of libsqlite3-sys.
 libsqlite3-sys = { version = "=0.30.1" }
 
-filetime = "0.2.25"
-glob = "0.3.2"
-humantime = "2.2.0"
+filetime = "0.2.26"
+glob = "0.3.3"
+humantime = "2.3.0"
 lazy_static = "1.5.0"
 maxminddb = "0.26.0"
 md5 = "0.7.0"
 mime_guess = "2.0.5"
 nom = "8"
-percent-encoding = "2.3.1"
-rand = "0.9.1"
-reqwest = { version = "0.12.19", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots", "hickory-dns"] }
+percent-encoding = "2.3.2"
+rand = "0.9.2"
+reqwest = { version = "0.12.23", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots", "hickory-dns"] }
 rust-embed = { version = "8.7.2", features = ["compression", "debug-embed"] }
 
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
+serde = { version = "1.0.227", features = ["derive"] }
+serde_json = "1.0.145"
 serde_yaml = "0.9.34"
 
 suricatax-rule-parser = { git = "https://github.com/jasonish/suricatax-rule-parser-rs" }
 
 # Currently only used for tracing_subscriber based logging.
-time = { version = "0.3.41", features = ["macros"] }
+time = { version = "0.3.44", features = ["macros"] }
 tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter", "time", "local-time"] }
+tracing-subscriber = { version = "0.3.20", features = ["fmt", "env-filter", "time", "local-time"] }
 tracing-log = "0.2.0"
 
 ulid = "1.2.1"
-uuid = { version = "1.17.0", features = ["v4"] }
-webbrowser = "1.0.4"
-regex = "1.11.1"
-libc = { version = "0.2.172", default-features = false }
+uuid = { version = "1.18.1", features = ["v4"] }
+webbrowser = "1.0.5"
+regex = "1.11.3"
+libc = { version = "0.2.176", default-features = false }
 rcgen = "0.13.2"
 directories = "6.0.0"
 gethostname = "1.0.2"
-tempfile = "3.20.0"
+tempfile = "3.23.0"
 inquire = "0.7.5"
-chrono = { version = "0.4.41", default-features = false, features = ["std", "now", "serde"] }
-log = "0.4.27"
-owo-colors = "4.2.1"
-indexmap = "2.9.0"
+chrono = { version = "0.4.42", default-features = false, features = ["std", "now", "serde"] }
+log = "0.4.28"
+owo-colors = "4.2.2"
+indexmap = "2.11.4"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-util = "0.7.15"
-async-trait = "0.1.88"
+tokio-util = "0.7.16"
+async-trait = "0.1.89"

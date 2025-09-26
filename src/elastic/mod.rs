@@ -171,12 +171,6 @@ pub(crate) struct ElasticResponse {
     pub other: std::collections::HashMap<String, serde_json::Value>,
 }
 
-pub(crate) mod response {
-    use super::Deserialize;
-    #[derive(Deserialize, Debug)]
-    pub(crate) struct Version {}
-}
-
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct ElasticResponseError {
     pub root_cause: Vec<RootCause>,
