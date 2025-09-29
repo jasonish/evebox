@@ -17,7 +17,14 @@ impl ElasticEventRepo {
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
         if let Some(sensor_name) = &params.sensor_name {
-            filters.push(json!({"term": {self.map_field("host"): sensor_name}}));
+            if sensor_name == "(no-name)" {
+                // Filter for documents without a host field
+                filters.push(
+                    json!({"bool": {"must_not": {"exists": {"field": self.map_field("host")}}}}),
+                );
+            } else {
+                filters.push(json!({"term": {self.map_field("host"): sensor_name}}));
+            }
         }
         let field = self.map_field(&params.field);
         let query = json!({
@@ -81,7 +88,14 @@ impl ElasticEventRepo {
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
         if let Some(sensor_name) = &params.sensor_name {
-            filters.push(json!({"term": {self.map_field("host"): sensor_name}}));
+            if sensor_name == "(no-name)" {
+                // Filter for documents without a host field
+                filters.push(
+                    json!({"bool": {"must_not": {"exists": {"field": self.map_field("host")}}}}),
+                );
+            } else {
+                filters.push(json!({"term": {self.map_field("host"): sensor_name}}));
+            }
         }
         let field = self.map_field(&params.field);
         let query = json!({
@@ -154,5 +168,238 @@ impl ElasticEventRepo {
             "data": response_data,
         });
         Ok(response)
+    }
+
+    pub async fn stats_agg_by_sensor(
+        &self,
+        params: &StatsAggQueryParams,
+    ) -> Result<serde_json::Value> {
+        let range = DateTime::now().datetime - params.start_time.datetime;
+        let range = range.num_seconds();
+        let interval = util::histogram_interval(range);
+
+        let start_time = params.start_time.to_rfc3339_utc();
+        let mut filters = vec![];
+        filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
+        filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
+
+        let field = self.map_field(&params.field);
+        let host_field = self.map_field("host");
+
+        let query = json!({
+           "query": {
+                "bool": {
+                    "filter": filters,
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_sensor": {
+                    "terms": {
+                        "field": host_field,
+                        "size": 100,
+                        "missing": "_default"
+                    },
+                    "aggs": {
+                        "histogram": {
+                            "date_histogram": {
+                                "field": "@timestamp",
+                                "fixed_interval": format!("{interval}s"),
+                            },
+                            "aggs": {
+                                "value": {
+                                    "max": {
+                                        "field": field,
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        let mut response: serde_json::Value = self.search(&query).await?.json().await?;
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct Value {
+            value: Option<f64>,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct HistogramBucket {
+            key_as_string: String,
+            value: Value,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct Histogram {
+            buckets: Vec<HistogramBucket>,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct SensorBucket {
+            key: String,
+            histogram: Histogram,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct BySensor {
+            buckets: Vec<SensorBucket>,
+        }
+
+        let by_sensor: BySensor =
+            serde_json::from_value(response["aggregations"]["by_sensor"].take())?;
+
+        let mut result = std::collections::HashMap::new();
+        for sensor_bucket in by_sensor.buckets {
+            let sensor_name = if sensor_bucket.key == "_default" {
+                "(no-name)".to_string()
+            } else {
+                sensor_bucket.key
+            };
+
+            let data_points: Vec<serde_json::Value> = sensor_bucket
+                .histogram
+                .buckets
+                .iter()
+                .map(|b| {
+                    json!({
+                        "timestamp": b.key_as_string,
+                        "value": b.value.value.unwrap_or(0.0) as u64,
+                    })
+                })
+                .collect();
+
+            result.insert(sensor_name, data_points);
+        }
+
+        Ok(json!({
+            "data": result,
+        }))
+    }
+
+    pub async fn stats_agg_diff_by_sensor(
+        &self,
+        params: &StatsAggQueryParams,
+    ) -> Result<serde_json::Value> {
+        let start_time = params.start_time.to_rfc3339_utc();
+        let range = (DateTime::now().datetime - params.start_time.datetime).num_seconds();
+        let interval = crate::util::histogram_interval(range);
+
+        let mut filters = vec![];
+        filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
+        filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
+
+        let field = self.map_field(&params.field);
+        let host_field = self.map_field("host");
+
+        let query = json!({
+          "query": {
+            "bool": {
+              "filter": filters,
+            }
+          },
+          "size": 0,
+          "aggs": {
+            "by_sensor": {
+              "terms": {
+                "field": host_field,
+                "size": 100,
+                "missing": "_default"
+              },
+              "aggs": {
+                "histogram": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "fixed_interval": format!("{interval}s"),
+                  },
+                  "aggs": {
+                    "values": {
+                      "max": {
+                        "field": field,
+                      }
+                    },
+                    "values_deriv": {
+                      "derivative": {
+                        "buckets_path": "values"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        let response = self.search(&query).await?;
+        if response.status() != 200 {
+            let error_text = response.text().await?;
+            anyhow::bail!(error_text);
+        }
+        let mut response: serde_json::Value = response.json().await?;
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct Value {
+            value: Option<f64>,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct HistogramBucket {
+            key_as_string: String,
+            values_deriv: Option<Value>,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct Histogram {
+            buckets: Vec<HistogramBucket>,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct SensorBucket {
+            key: String,
+            histogram: Histogram,
+        }
+
+        #[derive(Debug, Deserialize, Serialize)]
+        struct BySensor {
+            buckets: Vec<SensorBucket>,
+        }
+
+        let by_sensor: BySensor =
+            serde_json::from_value(response["aggregations"]["by_sensor"].take())?;
+
+        let mut result = std::collections::HashMap::new();
+        for sensor_bucket in by_sensor.buckets {
+            let sensor_name = if sensor_bucket.key == "_default" {
+                "(no-name)".to_string()
+            } else {
+                sensor_bucket.key
+            };
+
+            let data_points: Vec<serde_json::Value> = sensor_bucket
+                .histogram
+                .buckets
+                .iter()
+                .map(|b| {
+                    let value = b
+                        .values_deriv
+                        .as_ref()
+                        .and_then(|v| v.value.as_ref())
+                        .copied()
+                        .unwrap_or(0.0) as u64;
+                    json!({
+                        "timestamp": b.key_as_string,
+                        "value": value,
+                    })
+                })
+                .collect();
+
+            result.insert(sensor_name, data_points);
+        }
+
+        Ok(json!({
+            "data": result,
+        }))
     }
 }

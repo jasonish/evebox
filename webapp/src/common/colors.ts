@@ -68,4 +68,3 @@ export const Colors = [
   "#AEEA00",
   "#FFD600",
 ];
-

@@ -82,7 +82,12 @@ impl SqliteEventRepo {
         }
 
         if let Some(sensor) = options.sensor {
-            builder.wherejs("host", "=", sensor)?;
+            if sensor == "(no-name)" {
+                // Filter for documents without a host field
+                builder.push_where("json_extract(events.source, '$.host') IS NULL");
+            } else {
+                builder.wherejs("host", "=", sensor)?;
+            }
         }
 
         // TODO: With a timeout, we can remove this.
@@ -377,8 +382,13 @@ impl SqliteEventRepo {
         }
 
         if let Some(sensor) = options.sensor {
-            filters.push("json_extract(events.source, '$.host') = ?".into());
-            args.push(sensor)?;
+            if sensor == "(no-name)" {
+                // Filter for documents without a host field
+                filters.push("json_extract(events.source, '$.host') IS NULL".into());
+            } else {
+                filters.push("json_extract(events.source, '$.host') = ?".into());
+                args.push(sensor)?;
+            }
         }
 
         if let Some(ts) = options.timestamp_gte {

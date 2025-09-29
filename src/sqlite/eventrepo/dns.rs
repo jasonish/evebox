@@ -35,7 +35,11 @@ impl SqliteEventRepo {
             .unwrap();
 
         if let Some(host) = sensor {
-            builder.wherejs("host", "=", host).unwrap();
+            if host == "(no-name)" {
+                builder.push_where("json_extract(events.source, '$.host') IS NULL");
+            } else {
+                builder.wherejs("host", "=", host).unwrap();
+            }
         }
 
         builder.push_where(

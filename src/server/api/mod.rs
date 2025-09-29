@@ -93,6 +93,11 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/admin/elastic/index/{name}", delete(elastic::delete))
         .route("/api/stats/agg", get(stats::agg))
         .route("/api/stats/agg/diff", get(stats::agg_differential))
+        .route("/api/stats/agg/by-sensor", get(stats::agg_by_sensor))
+        .route(
+            "/api/stats/agg/diff/by-sensor",
+            get(stats::agg_differential_by_sensor),
+        )
 }
 
 #[derive(Deserialize, Debug, Clone)]

@@ -247,6 +247,10 @@ export interface StatsAggResponse {
   data: { timestamp: string; value: number }[];
 }
 
+export interface StatsAggBySensorResponse {
+  data: { [sensor: string]: { timestamp: string; value: number }[] };
+}
+
 export async function statsAgg(
   field: string,
   differential: boolean = false,
@@ -263,6 +267,23 @@ export async function statsAgg(
     field: field,
     time_range: time_range,
     sensor_name: sensor_name,
+  }).then((response) => response.data);
+}
+
+export async function statsAggBySensor(
+  field: string,
+  differential: boolean = false,
+  time_range?: number,
+): Promise<StatsAggBySensorResponse> {
+  let url;
+  if (differential) {
+    url = "api/stats/agg/diff/by-sensor";
+  } else {
+    url = "api/stats/agg/by-sensor";
+  }
+  return get(url, {
+    field: field,
+    time_range: time_range,
   }).then((response) => response.data);
 }
 

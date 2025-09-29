@@ -19,4 +19,24 @@ impl EventRepo {
             EventRepo::SQLite(ds) => ds.stats_agg_diff(params).await,
         }
     }
+
+    pub async fn stats_agg_by_sensor(
+        &self,
+        params: &StatsAggQueryParams,
+    ) -> Result<serde_json::Value> {
+        match self {
+            EventRepo::Elastic(ds) => ds.stats_agg_by_sensor(params).await,
+            EventRepo::SQLite(ds) => ds.stats_agg_by_sensor(params).await,
+        }
+    }
+
+    pub async fn stats_agg_diff_by_sensor(
+        &self,
+        params: &StatsAggQueryParams,
+    ) -> Result<serde_json::Value> {
+        match self {
+            EventRepo::Elastic(ds) => ds.stats_agg_diff_by_sensor(params).await,
+            EventRepo::SQLite(ds) => ds.stats_agg_diff_by_sensor(params).await,
+        }
+    }
 }

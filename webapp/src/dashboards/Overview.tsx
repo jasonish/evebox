@@ -172,8 +172,12 @@ export function Overview() {
             let chart: any = Chart.getChart(protocolsPieChartRef!);
             chart.data.labels = labels;
             chart.data.datasets[0].data = dataset;
-            chart.data.datasets[0].backgroundColor = dataset.map((_, i) => Colors[i % Colors.length]);
-            chart.data.datasets[0].borderColor = dataset.map((_, i) => Colors[i % Colors.length]);
+            chart.data.datasets[0].backgroundColor = dataset.map(
+              (_, i) => Colors[i % Colors.length],
+            );
+            chart.data.datasets[0].borderColor = dataset.map(
+              (_, i) => Colors[i % Colors.length],
+            );
             chart.update();
           }
         } else {
@@ -654,7 +658,9 @@ function PieChart(props: { data: any[]; ref?: any }) {
         datasets: [
           {
             data: props.data.map((e) => e.count),
-            backgroundColor: props.data.map((_, i) => Colors[i % Colors.length]),
+            backgroundColor: props.data.map(
+              (_, i) => Colors[i % Colors.length],
+            ),
             borderColor: props.data.map((_, i) => Colors[i % Colors.length]),
             borderWidth: 1,
           },

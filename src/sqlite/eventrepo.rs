@@ -405,19 +405,53 @@ impl SqliteEventRepo {
     #[instrument(skip_all)]
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
         let from = DateTime::now() - std::time::Duration::from_secs(86400);
+
+        // Get sensors with host field
         let sql = r#"
             SELECT DISTINCT json_extract(events.source, '$.host')
             FROM events
             WHERE json_extract(events.source, '$.host') IS NOT NULL
+              AND timestamp >= ?
             "#;
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
-        let sensors: Vec<String> = sqlx::query_scalar(sql)
+        let mut sensors: Vec<String> = sqlx::query_scalar(sql)
             .bind(from.to_nanos())
             .fetch_all(&self.pool)
             .await?;
+
+        // Check if there are any documents without a host field
+        let sql_no_host = r#"
+            SELECT COUNT(*)
+            FROM events
+            WHERE json_extract(events.source, '$.host') IS NULL
+              AND timestamp >= ?
+            LIMIT 1
+            "#;
+
+        let count_no_host: i64 = sqlx::query_scalar(sql_no_host)
+            .bind(from.to_nanos())
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or(0);
+
+        if count_no_host > 0 {
+            sensors.push("(no-name)".to_string());
+        }
+
+        // Sort sensors, keeping "(no-name)" at the end
+        sensors.sort_by(|a, b| {
+            if a == "(no-name)" {
+                std::cmp::Ordering::Greater
+            } else if b == "(no-name)" {
+                std::cmp::Ordering::Less
+            } else {
+                a.cmp(b)
+            }
+        });
+
         Ok(sensors)
     }
 }

@@ -44,7 +44,14 @@ impl ElasticEventRepo {
         filters.push(json!({"term": {self.map_field("event_type"): "alert"}}));
 
         if let Some(sensor) = &options.sensor {
-            filters.push(json!({"term": {self.map_field("host"): sensor}}));
+            if sensor == "(no-name)" {
+                // Filter for documents without a host field
+                filters.push(
+                    json!({"bool": {"must_not": {"exists": {"field": self.map_field("host")}}}}),
+                );
+            } else {
+                filters.push(json!({"term": {self.map_field("host"): sensor}}));
+            }
         }
 
         if !has_min_timestamp {

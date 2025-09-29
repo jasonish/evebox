@@ -25,7 +25,14 @@ impl ElasticEventRepo {
         }
 
         if let Some(host) = sensor {
-            filters.push(term_filter(&self.map_field("host"), &host));
+            if host == "(no-name)" {
+                // Filter for documents without a host field
+                filters.push(
+                    json!({"bool": {"must_not": {"exists": {"field": self.map_field("host")}}}}),
+                );
+            } else {
+                filters.push(term_filter(&self.map_field("host"), &host));
+            }
         }
 
         filters.push(json!({

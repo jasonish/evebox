@@ -473,6 +473,25 @@ impl ElasticEventRepo {
                             }
                         }
                     },
+                    "host" => {
+                        if v == "(no-name)" {
+                            // Filter for documents without a host field
+                            let expression = json!({"bool": {"must_not": {"exists": {"field": self.map_field("host")}}}});
+                            if el.negated {
+                                // If negated, we want documents WITH a host field
+                                filter.push(json!({"exists": {"field": self.map_field("host")}}));
+                            } else {
+                                filter.push(expression);
+                            }
+                        } else {
+                            let expression = json!({"term": {self.map_field("host"): v}});
+                            if el.negated {
+                                must_not.push(expression);
+                            } else {
+                                filter.push(expression);
+                            }
+                        }
+                    }
                     _ => {
                         if k.starts_with(' ') {
                             warn!("Query parameter starting with a space: {k}");
@@ -868,12 +887,20 @@ impl ElasticEventRepo {
 
         // If we have a sensor, restrict the query to a sensor.
         if let Some(sensor) = &request.sensor {
-            filter.push(json!({"term": {self.map_field("host"): sensor}}));
+            if sensor == "(no-name)" {
+                // Filter for documents without a host field
+                filter.push(
+                    json!({"bool": {"must_not": {"exists": {"field": self.map_field("host")}}}}),
+                );
+            } else {
+                filter.push(json!({"term": {self.map_field("host"): sensor}}));
+            }
         }
         filter
     }
 
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
+        // First query: get sensors with host field
         #[rustfmt::skip]
         let request = json!({
             "size": 0,
@@ -885,11 +912,6 @@ impl ElasticEventRepo {
                                 self.map_field("timestamp"): {
                                     "gte": "now-24h/h",
                                 }
-                            }
-                        },
-                        {
-                            "term": {
-                                self.map_field("event_type"): "stats"
                             }
                         },
                         {
@@ -918,7 +940,61 @@ impl ElasticEventRepo {
         }
 
         let buckets: Vec<Bucket> = serde_json::from_value(buckets)?;
-        let sensors: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
+        let mut sensors: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
+
+        // Second query: check if there are any documents without a host field
+        #[rustfmt::skip]
+        let request_no_host = json!({
+            "size": 0,
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                self.map_field("timestamp"): {
+                                    "gte": "now-24h/h",
+                                }
+                            }
+                        }
+                    ],
+                    "must_not": [
+                        {
+                            "exists": {
+                                "field": self.map_field("host")
+                            }
+                        }
+                    ]
+                }
+            }
+        });
+        let response_no_host: serde_json::Value =
+            self.search(&request_no_host).await?.json().await?;
+
+        // Handle both ES 6.x and 7.x+ response formats
+        let total_no_host = if let Some(total_obj) = response_no_host["hits"]["total"].as_object() {
+            // ES 7.x+ format: {"value": 123, "relation": "eq"}
+            total_obj["value"].as_u64().unwrap_or(0)
+        } else {
+            // ES 6.x format: just a number
+            response_no_host["hits"]["total"].as_u64().unwrap_or(0)
+        };
+
+        // If there are documents without a host field, add "(no-name)" to the list
+        if total_no_host > 0 {
+            sensors.push("(no-name)".to_string());
+        }
+
+        // Sort the sensors, keeping "(no-name)" at the end
+        sensors.sort_by(|a, b| {
+            if a == "(no-name)" {
+                std::cmp::Ordering::Greater
+            } else if b == "(no-name)" {
+                std::cmp::Ordering::Less
+            } else {
+                a.cmp(b)
+            }
+        });
+
         Ok(sensors)
     }
 

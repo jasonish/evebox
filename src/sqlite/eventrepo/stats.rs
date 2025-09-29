@@ -176,8 +176,12 @@ impl SqliteEventRepo {
         args.push(start_time)?;
 
         if let Some(sensor_name) = qp.sensor_name.as_ref() {
-            filters.push("json_extract(events.source, '$.host') = ?");
-            args.push(sensor_name)?;
+            if sensor_name == "(no-name)" {
+                filters.push("json_extract(events.source, '$.host') IS NULL");
+            } else {
+                filters.push("json_extract(events.source, '$.host') = ?");
+                args.push(sensor_name)?;
+            }
         }
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
@@ -241,6 +245,142 @@ impl SqliteEventRepo {
         }
         Ok(json!({
             "data": response_data,
+        }))
+    }
+
+    pub async fn stats_agg_by_sensor(
+        &self,
+        params: &StatsAggQueryParams,
+    ) -> anyhow::Result<serde_json::Value> {
+        let field = format!("$.{}", &params.field);
+        let start_time = params.start_time.to_nanos();
+        let range = (DateTime::now().datetime - params.start_time.datetime).num_seconds();
+        let interval = crate::util::histogram_interval(range);
+
+        let mut args = SqliteArguments::default();
+
+        // Use COALESCE to map NULL host to "(no-name)" directly in SQL
+        let sql = format!(
+            "
+            SELECT
+              COALESCE(json_extract(events.source, '$.host'), '(no-name)') AS sensor,
+              (timestamp / 1000000000 / {interval}) * {interval} AS bucket_time,
+              MAX(json_extract(events.source, ?))
+            FROM events
+            WHERE json_extract(events.source, '$.event_type') = 'stats'
+              AND timestamp >= ?
+            GROUP BY sensor, bucket_time
+            ORDER BY sensor, bucket_time
+            "
+        );
+        args.push(&field)?;
+        args.push(start_time)?;
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, &sql, &args).await;
+        }
+
+        if *LOG_QUERIES {
+            info!("sql={}, params={:?}", &sql, &args);
+        }
+
+        let timer = Instant::now();
+
+        let rows: Vec<(String, i64, Option<i64>)> = sqlx::query_as_with(&sql, args)
+            .fetch_all(&self.pool)
+            .await?;
+
+        debug!(
+            "Returning {} stats records by sensor in {} ms",
+            rows.len(),
+            timer.elapsed().as_millis()
+        );
+
+        // Group data by sensor in the exact format Elasticsearch returns
+        let mut sensor_data: std::collections::HashMap<String, Vec<serde_json::Value>> = std::collections::HashMap::new();
+
+        for (sensor, timestamp, value) in rows {
+            let entry = json!({
+                "timestamp": DateTime::from_seconds(timestamp).to_rfc3339_utc(),
+                "value": value.unwrap_or(0),
+            });
+            sensor_data.entry(sensor).or_insert_with(Vec::new).push(entry);
+        }
+
+        Ok(json!({
+            "data": sensor_data,
+        }))
+    }
+
+    pub async fn stats_agg_diff_by_sensor(
+        &self,
+        params: &StatsAggQueryParams,
+    ) -> anyhow::Result<serde_json::Value> {
+        let field = format!("$.{}", &params.field);
+        let start_time = params.start_time.to_nanos();
+        let range = (DateTime::now().datetime - params.start_time.datetime).num_seconds();
+        let interval = crate::util::histogram_interval(range);
+
+        let mut args = SqliteArguments::default();
+
+        // Use COALESCE to map NULL host to "(no-name)" directly in SQL
+        let sql = format!(
+            "
+            SELECT
+              COALESCE(json_extract(events.source, '$.host'), '(no-name)') AS sensor,
+              (timestamp / 1000000000 / {interval}) * {interval} AS bucket_time,
+              MAX(json_extract(events.source, ?))
+            FROM events
+            WHERE json_extract(events.source, '$.event_type') = 'stats'
+              AND timestamp >= ?
+            GROUP BY sensor, bucket_time
+            ORDER BY sensor, bucket_time
+            "
+        );
+        args.push(&field)?;
+        args.push(start_time)?;
+
+        if *LOG_QUERY_PLAN {
+            log_query_plan(&self.pool, &sql, &args).await;
+        }
+
+        if *LOG_QUERIES {
+            info!("sql={}, params={:?}", &sql, &args);
+        }
+
+        let timer = Instant::now();
+
+        let rows: Vec<(String, i64, Option<i64>)> = sqlx::query_as_with(&sql, args)
+            .fetch_all(&self.pool)
+            .await?;
+
+        debug!(
+            "Returning {} stats diff records by sensor in {} ms",
+            rows.len(),
+            timer.elapsed().as_millis()
+        );
+
+        // Group data by sensor and calculate differentials
+        let mut sensor_data: std::collections::HashMap<String, Vec<serde_json::Value>> = std::collections::HashMap::new();
+        let mut previous_values: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+
+        for (sensor, timestamp, value) in rows {
+            let value = value.unwrap_or(0);
+
+            if let Some(&previous) = previous_values.get(&sensor) {
+                let diff_value = if previous <= value { value - previous } else { value };
+                let entry = json!({
+                    "timestamp": DateTime::from_seconds(timestamp).to_rfc3339_utc(),
+                    "value": diff_value,
+                });
+                sensor_data.entry(sensor.clone()).or_insert_with(Vec::new).push(entry);
+            }
+            // Always update the previous value for this sensor
+            previous_values.insert(sensor, value);
+        }
+
+        Ok(json!({
+            "data": sensor_data,
         }))
     }
 }

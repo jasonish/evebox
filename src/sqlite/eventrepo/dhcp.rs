@@ -28,8 +28,12 @@ impl SqliteEventRepo {
         }
 
         if let Some(sensor) = &sensor {
-            wheres.push("json_extract(events.source, '$.host') = ?".to_string());
-            params.push(sensor.to_string())?;
+            if sensor == "(no-name)" {
+                wheres.push("json_extract(events.source, '$.host') IS NULL".to_string());
+            } else {
+                wheres.push("json_extract(events.source, '$.host') = ?".to_string());
+                params.push(sensor.to_string())?;
+            }
         }
 
         let sql = r#"

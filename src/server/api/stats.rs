@@ -125,3 +125,51 @@ pub(crate) async fn earliest_timestamp(
     let ts = context.datastore.earliest_timestamp().await?;
     Ok(Json(ts))
 }
+
+pub(crate) async fn agg_by_sensor(
+    _session: SessionExtractor,
+    State(context): State<Arc<ServerContext>>,
+    Form(form): Form<StatsAggQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let start_time = form.start_datetime().unwrap();
+    let params = eventrepo::StatsAggQueryParams {
+        field: form.field.to_string(),
+        sensor_name: None, // We don't filter by sensor, we group by all sensors
+        start_time,
+    };
+
+    match context.datastore.stats_agg_by_sensor(&params).await {
+        Ok(response) => Ok(Json(response)),
+        Err(err) => {
+            error!(
+                "Stats agg by sensor query failed: params={:?}, error={:?}",
+                &params, err
+            );
+            Err(AppError::InternalServerError)
+        }
+    }
+}
+
+pub(crate) async fn agg_differential_by_sensor(
+    _session: SessionExtractor,
+    State(context): State<Arc<ServerContext>>,
+    Form(form): Form<StatsAggQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let start_time = form.start_datetime().unwrap();
+    let params = eventrepo::StatsAggQueryParams {
+        field: form.field.to_string(),
+        sensor_name: None, // We don't filter by sensor, we group by all sensors
+        start_time,
+    };
+
+    match context.datastore.stats_agg_diff_by_sensor(&params).await {
+        Ok(response) => Ok(Json(response)),
+        Err(err) => {
+            error!(
+                "Stats agg differential by sensor query failed: params={:?}, error={:?}",
+                &params, err
+            );
+            Err(AppError::InternalServerError)
+        }
+    }
+}

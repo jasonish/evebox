@@ -22,7 +22,14 @@ impl ElasticEventRepo {
             filters.push(timestamp_gte_filter(earliest));
         }
         if let Some(sensor) = &sensor {
-            filters.push(term_filter(&self.map_field("host"), sensor));
+            if sensor == "(no-name)" {
+                // Filter for documents without a host field
+                filters.push(
+                    json!({"bool": {"must_not": {"exists": {"field": self.map_field("host")}}}}),
+                );
+            } else {
+                filters.push(term_filter(&self.map_field("host"), sensor));
+            }
         }
 
         filters.push(term_filter(&self.map_field("dhcp.dhcp_type"), dhcp_type));
