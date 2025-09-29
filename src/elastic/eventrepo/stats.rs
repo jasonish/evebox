@@ -17,7 +17,7 @@ impl ElasticEventRepo {
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
         filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
         if let Some(sensor_name) = &params.sensor_name {
-            filters.push(json!({"term": {"host": sensor_name}}));
+            filters.push(json!({"term": {self.map_field("host"): sensor_name}}));
         }
         let field = self.map_field(&params.field);
         let query = json!({
