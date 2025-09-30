@@ -259,11 +259,11 @@ impl SqliteEventRepo {
 
         let mut args = SqliteArguments::default();
 
-        // Use COALESCE to map NULL host to "(no-name)" directly in SQL
+        // Get sensor data without COALESCE for better performance
         let sql = format!(
             "
             SELECT
-              COALESCE(json_extract(events.source, '$.host'), '(no-name)') AS sensor,
+              json_extract(events.source, '$.host') AS sensor,
               (timestamp / 1000000000 / {interval}) * {interval} AS bucket_time,
               MAX(json_extract(events.source, ?))
             FROM events
@@ -286,7 +286,7 @@ impl SqliteEventRepo {
 
         let timer = Instant::now();
 
-        let rows: Vec<(String, i64, Option<i64>)> = sqlx::query_as_with(&sql, args)
+        let rows: Vec<(Option<String>, i64, Option<i64>)> = sqlx::query_as_with(&sql, args)
             .fetch_all(&self.pool)
             .await?;
 
@@ -297,14 +297,17 @@ impl SqliteEventRepo {
         );
 
         // Group data by sensor in the exact format Elasticsearch returns
-        let mut sensor_data: std::collections::HashMap<String, Vec<serde_json::Value>> = std::collections::HashMap::new();
+        let mut sensor_data: std::collections::HashMap<String, Vec<serde_json::Value>> =
+            std::collections::HashMap::new();
 
         for (sensor, timestamp, value) in rows {
+            // Map NULL sensor to "(no-name)" in Rust for better performance
+            let sensor_name = sensor.unwrap_or_else(|| "(no-name)".to_string());
             let entry = json!({
                 "timestamp": DateTime::from_seconds(timestamp).to_rfc3339_utc(),
                 "value": value.unwrap_or(0),
             });
-            sensor_data.entry(sensor).or_insert_with(Vec::new).push(entry);
+            sensor_data.entry(sensor_name).or_default().push(entry);
         }
 
         Ok(json!({
@@ -323,11 +326,11 @@ impl SqliteEventRepo {
 
         let mut args = SqliteArguments::default();
 
-        // Use COALESCE to map NULL host to "(no-name)" directly in SQL
+        // Get sensor data without COALESCE for better performance
         let sql = format!(
             "
             SELECT
-              COALESCE(json_extract(events.source, '$.host'), '(no-name)') AS sensor,
+              json_extract(events.source, '$.host') AS sensor,
               (timestamp / 1000000000 / {interval}) * {interval} AS bucket_time,
               MAX(json_extract(events.source, ?))
             FROM events
@@ -350,7 +353,7 @@ impl SqliteEventRepo {
 
         let timer = Instant::now();
 
-        let rows: Vec<(String, i64, Option<i64>)> = sqlx::query_as_with(&sql, args)
+        let rows: Vec<(Option<String>, i64, Option<i64>)> = sqlx::query_as_with(&sql, args)
             .fetch_all(&self.pool)
             .await?;
 
@@ -361,22 +364,33 @@ impl SqliteEventRepo {
         );
 
         // Group data by sensor and calculate differentials
-        let mut sensor_data: std::collections::HashMap<String, Vec<serde_json::Value>> = std::collections::HashMap::new();
-        let mut previous_values: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+        let mut sensor_data: std::collections::HashMap<String, Vec<serde_json::Value>> =
+            std::collections::HashMap::new();
+        let mut previous_values: std::collections::HashMap<String, i64> =
+            std::collections::HashMap::new();
 
         for (sensor, timestamp, value) in rows {
+            // Map NULL sensor to "(no-name)" in Rust for better performance
+            let sensor_name = sensor.unwrap_or_else(|| "(no-name)".to_string());
             let value = value.unwrap_or(0);
 
-            if let Some(&previous) = previous_values.get(&sensor) {
-                let diff_value = if previous <= value { value - previous } else { value };
+            if let Some(&previous) = previous_values.get(&sensor_name) {
+                let diff_value = if previous <= value {
+                    value - previous
+                } else {
+                    value
+                };
                 let entry = json!({
                     "timestamp": DateTime::from_seconds(timestamp).to_rfc3339_utc(),
                     "value": diff_value,
                 });
-                sensor_data.entry(sensor.clone()).or_insert_with(Vec::new).push(entry);
+                sensor_data
+                    .entry(sensor_name.clone())
+                    .or_default()
+                    .push(entry);
             }
             // Always update the previous value for this sensor
-            previous_values.insert(sensor, value);
+            previous_values.insert(sensor_name, value);
         }
 
         Ok(json!({

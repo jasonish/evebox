@@ -407,39 +407,26 @@ impl SqliteEventRepo {
         let from = DateTime::now() - std::time::Duration::from_secs(86400);
 
         // Get sensors with host field
+        // Single query to get all sensors, including NULL values
         let sql = r#"
             SELECT DISTINCT json_extract(events.source, '$.host')
             FROM events
-            WHERE json_extract(events.source, '$.host') IS NOT NULL
-              AND timestamp >= ?
+            WHERE timestamp >= ?
             "#;
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
-        let mut sensors: Vec<String> = sqlx::query_scalar(sql)
+        let rows: Vec<Option<String>> = sqlx::query_scalar(sql)
             .bind(from.to_nanos())
             .fetch_all(&self.pool)
             .await?;
 
-        // Check if there are any documents without a host field
-        let sql_no_host = r#"
-            SELECT COUNT(*)
-            FROM events
-            WHERE json_extract(events.source, '$.host') IS NULL
-              AND timestamp >= ?
-            LIMIT 1
-            "#;
-
-        let count_no_host: i64 = sqlx::query_scalar(sql_no_host)
-            .bind(from.to_nanos())
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
-
-        if count_no_host > 0 {
-            sensors.push("(no-name)".to_string());
-        }
+        // Map NULL values to "(no-name)" in Rust
+        let mut sensors: Vec<String> = rows
+            .into_iter()
+            .map(|host| host.unwrap_or_else(|| "(no-name)".to_string()))
+            .collect();
 
         // Sort sensors, keeping "(no-name)" at the end
         sensors.sort_by(|a, b| {
