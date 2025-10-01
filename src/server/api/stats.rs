@@ -132,6 +132,7 @@ pub(crate) async fn agg_by_sensor(
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, AppError> {
     let start_time = form.start_datetime().unwrap();
+    let min_timestamp = start_time.to_rfc3339_utc();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: None, // We don't filter by sensor, we group by all sensors
@@ -139,7 +140,15 @@ pub(crate) async fn agg_by_sensor(
     };
 
     match context.datastore.stats_agg_by_sensor(&params).await {
-        Ok(response) => Ok(Json(response)),
+        Ok(response) => {
+            let now = DateTime::now();
+            let response_with_metadata = json!({
+                "data": response.get("data"),
+                "min_timestamp": min_timestamp,
+                "max_timestamp": now.to_rfc3339_utc(),
+            });
+            Ok(Json(response_with_metadata))
+        }
         Err(err) => {
             error!(
                 "Stats agg by sensor query failed: params={:?}, error={:?}",
@@ -156,6 +165,7 @@ pub(crate) async fn agg_differential_by_sensor(
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, AppError> {
     let start_time = form.start_datetime().unwrap();
+    let min_timestamp = start_time.to_rfc3339_utc();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: None, // We don't filter by sensor, we group by all sensors
@@ -163,7 +173,15 @@ pub(crate) async fn agg_differential_by_sensor(
     };
 
     match context.datastore.stats_agg_diff_by_sensor(&params).await {
-        Ok(response) => Ok(Json(response)),
+        Ok(response) => {
+            let now = DateTime::now();
+            let response_with_metadata = json!({
+                "data": response.get("data"),
+                "min_timestamp": min_timestamp,
+                "max_timestamp": now.to_rfc3339_utc(),
+            });
+            Ok(Json(response_with_metadata))
+        }
         Err(err) => {
             error!(
                 "Stats agg differential by sensor query failed: params={:?}, error={:?}",

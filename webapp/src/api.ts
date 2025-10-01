@@ -249,6 +249,8 @@ export interface StatsAggResponse {
 
 export interface StatsAggBySensorResponse {
   data: { [sensor: string]: { timestamp: string; value: number }[] };
+  min_timestamp?: string;
+  max_timestamp?: string;
 }
 
 export async function statsAgg(
