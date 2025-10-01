@@ -8,6 +8,7 @@ import {
   JSX,
   onCleanup,
   onMount,
+  Show,
 } from "solid-js";
 import { Top, TIME_RANGE, SET_TIME_RANGE } from "./Top";
 import { Col, Container, Row } from "solid-bootstrap";
@@ -77,6 +78,10 @@ const SENSOR_COLORS = [
 export function Stats(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams<{ sensor: string }>();
   const [loadingCounter, setLoadingCounter] = createSignal(0);
+  const [timeRange, setTimeRange] = createSignal<{
+    min: string;
+    max: string;
+  } | null>(null);
   let charts: any[] = [];
 
   // Enforce max 7-day time range for stats page
@@ -114,13 +119,22 @@ export function Stats(): JSX.Element {
 
     console.log("Loading charts...");
 
-    for (const chart of CHARTS) {
+    for (let i = 0; i < CHARTS.length; i++) {
+      const chart = CHARTS[i];
       loadingTracker(setLoadingCounter, () => {
         return statsAggBySensor(
           chart.field,
           chart.differential,
           timeRange,
         ).then((response) => {
+          // Capture time range from first response
+          if (i === 0 && response.min_timestamp && response.max_timestamp) {
+            setTimeRange({
+              min: response.min_timestamp,
+              max: response.max_timestamp,
+            });
+          }
+
           // Build datasets for each sensor
           const datasets: any[] = [];
           let allTimestamps = new Set<string>();
@@ -210,6 +224,22 @@ export function Stats(): JSX.Element {
             </form>
           </Col>
         </Row>
+        <Show when={timeRange()}>
+          <Row class={"mt-2"}>
+            <Col>
+              <div class={"text-end text-muted small"}>
+                Showing data from{" "}
+                {parse_timestamp(timeRange()!.min).format(
+                  "YYYY-MM-DD HH:mm:ss",
+                )}{" "}
+                to{" "}
+                {parse_timestamp(timeRange()!.max).format(
+                  "YYYY-MM-DD HH:mm:ss",
+                )}
+              </div>
+            </Col>
+          </Row>
+        </Show>
         <For each={CHARTS}>
           {(chart) => (
             <>
