@@ -82,12 +82,23 @@ export function SET_TIME_RANGE(range: string) {
   localStorage.setItem("TIME_RANGE", range);
 }
 
-export function Top(props: { brand?: string; disableRange?: boolean }) {
+export function Top(props: {
+  brand?: string;
+  disableRange?: boolean;
+  excludeTimeRanges?: string[];
+}) {
   console.log("Top");
   console.log(`Top: disableRange=${props.disableRange}`);
   const navigate = useNavigate();
   const [_searchParams, setSearchParams] = useSearchParams();
   const brand = props.brand || "EveBox";
+
+  // Filter time range options based on excludeTimeRanges prop
+  const timeRangeOptions = props.excludeTimeRanges
+    ? TIME_RANGE_OPTIONS.filter(
+        (opt) => !props.excludeTimeRanges!.includes(opt[0] as string),
+      )
+    : TIME_RANGE_OPTIONS;
 
   // Control the state of the tool dropdown here to get around a SolidJS router issue where click on the active route
   // in the dropdown will not cause the dropdown to close.
@@ -148,7 +159,7 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
 
   createEffect(() => {
     if (!props.disableRange) {
-      for (let opt of TIME_RANGE_OPTIONS) {
+      for (let opt of timeRangeOptions) {
         if (opt[0] === TIME_RANGE()) {
           document.getElementById("time-range-dropdown")!.innerHTML = opt[1]!;
         }
@@ -237,7 +248,7 @@ export function Top(props: { brand?: string; disableRange?: boolean }) {
                       style={"width: 9em;"}
                     ></Dropdown.Toggle>
                     <Dropdown.Menu>
-                      <For each={TIME_RANGE_OPTIONS}>
+                      <For each={timeRangeOptions}>
                         {(o) => {
                           return (
                             <>

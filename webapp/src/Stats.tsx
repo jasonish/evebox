@@ -1,8 +1,15 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { createEffect, createSignal, For, JSX, onCleanup } from "solid-js";
-import { Top } from "./Top";
+import {
+  createEffect,
+  createSignal,
+  For,
+  JSX,
+  onCleanup,
+  onMount,
+} from "solid-js";
+import { Top, TIME_RANGE, SET_TIME_RANGE } from "./Top";
 import { Col, Container, Row } from "solid-bootstrap";
 import { timeRangeAsSeconds } from "./settings";
 import { statsAggBySensor } from "./api";
@@ -71,6 +78,13 @@ export function Stats(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams<{ sensor: string }>();
   const [loadingCounter, setLoadingCounter] = createSignal(0);
   let charts: any[] = [];
+
+  // Enforce max 7-day time range for stats page
+  onMount(() => {
+    if (TIME_RANGE() === "") {
+      SET_TIME_RANGE("7d");
+    }
+  });
 
   onCleanup(() => {
     destroyAllCharts();
@@ -177,7 +191,7 @@ export function Stats(): JSX.Element {
 
   return (
     <div>
-      <Top />
+      <Top excludeTimeRanges={[""]} />
       <Container fluid>
         <Row class={"mt-2"}>
           <Col>
