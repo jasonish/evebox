@@ -276,6 +276,8 @@ export async function statsAggBySensor(
   field: string,
   differential: boolean = false,
   time_range?: number,
+  min_timestamp?: string,
+  max_timestamp?: string,
 ): Promise<StatsAggBySensorResponse> {
   let url;
   if (differential) {
@@ -286,6 +288,8 @@ export async function statsAggBySensor(
   return get(url, {
     field: field,
     time_range: time_range,
+    min_timestamp: min_timestamp,
+    max_timestamp: max_timestamp,
   }).then((response) => response.data);
 }
 

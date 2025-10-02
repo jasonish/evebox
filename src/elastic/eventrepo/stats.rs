@@ -2,20 +2,21 @@
 // SPDX-License-Identifier: MIT
 
 use super::ElasticEventRepo;
-use crate::{datetime::DateTime, eventrepo::StatsAggQueryParams, util};
+use crate::{eventrepo::StatsAggQueryParams, util};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 impl ElasticEventRepo {
     pub async fn stats_agg(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
-        let range = DateTime::now().datetime - params.start_time.datetime;
+        let range = params.end_time.datetime - params.start_time.datetime;
         let range = range.num_seconds();
         let interval = util::histogram_interval(range);
 
         let start_time = params.start_time.to_rfc3339_utc();
+        let end_time = params.end_time.to_rfc3339_utc();
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
-        filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
+        filters.push(json!({"range": {"@timestamp": {"gte": start_time, "lte": end_time}}}));
         if let Some(sensor_name) = &params.sensor_name {
             if sensor_name == "(no-name)" {
                 // Filter for documents without a host field
@@ -82,11 +83,12 @@ impl ElasticEventRepo {
 
     pub async fn stats_agg_diff(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
         let start_time = params.start_time.to_rfc3339_utc();
-        let range = (DateTime::now().datetime - params.start_time.datetime).num_seconds();
+        let end_time = params.end_time.to_rfc3339_utc();
+        let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
         let interval = crate::util::histogram_interval(range);
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
-        filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
+        filters.push(json!({"range": {"@timestamp": {"gte": start_time, "lte": end_time}}}));
         if let Some(sensor_name) = &params.sensor_name {
             if sensor_name == "(no-name)" {
                 // Filter for documents without a host field
@@ -174,14 +176,15 @@ impl ElasticEventRepo {
         &self,
         params: &StatsAggQueryParams,
     ) -> Result<serde_json::Value> {
-        let range = DateTime::now().datetime - params.start_time.datetime;
+        let range = params.end_time.datetime - params.start_time.datetime;
         let range = range.num_seconds();
         let interval = util::histogram_interval(range);
 
         let start_time = params.start_time.to_rfc3339_utc();
+        let end_time = params.end_time.to_rfc3339_utc();
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
-        filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
+        filters.push(json!({"range": {"@timestamp": {"gte": start_time, "lte": end_time}}}));
 
         let field = self.map_field(&params.field);
         let host_field = self.map_field("host");
@@ -284,12 +287,13 @@ impl ElasticEventRepo {
         params: &StatsAggQueryParams,
     ) -> Result<serde_json::Value> {
         let start_time = params.start_time.to_rfc3339_utc();
-        let range = (DateTime::now().datetime - params.start_time.datetime).num_seconds();
+        let end_time = params.end_time.to_rfc3339_utc();
+        let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
-        filters.push(json!({"range": {"@timestamp": {"gte": start_time}}}));
+        filters.push(json!({"range": {"@timestamp": {"gte": start_time, "lte": end_time}}}));
 
         let field = self.map_field(&params.field);
         let host_field = self.map_field("host");
