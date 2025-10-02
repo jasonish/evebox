@@ -119,10 +119,13 @@ export function Stats(): JSX.Element {
     const currentTimeRange = TIME_RANGE();
 
     // If time range changed and we had a previous value, clear timestamps
-    if (previousTimeRange !== undefined && previousTimeRange !== currentTimeRange) {
+    if (
+      previousTimeRange !== undefined &&
+      previousTimeRange !== currentTimeRange
+    ) {
       setSearchParams({
         min_timestamp: undefined,
-        max_timestamp: undefined
+        max_timestamp: undefined,
       });
     }
 
@@ -223,11 +226,10 @@ export function Stats(): JSX.Element {
 
   function refresh() {
     const tw = timeWindow();
-    loadData(timeRangeAsSeconds(), searchParams.sensor, tw);
+    loadData(searchParams.sensor, tw);
   }
 
   function loadData(
-    timeRange: undefined | number,
     selectedSensor: string | undefined,
     timeWindow: { min: string; max: string } | null,
   ) {
@@ -241,7 +243,6 @@ export function Stats(): JSX.Element {
         return statsAggBySensor(
           chart.field,
           chart.differential,
-          timeRange,
           timeWindow?.min,
           timeWindow?.max,
         ).then((response) => {

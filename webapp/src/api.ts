@@ -256,7 +256,8 @@ export interface StatsAggBySensorResponse {
 export async function statsAgg(
   field: string,
   differential: boolean = false,
-  time_range?: number,
+  min_timestamp?: string,
+  max_timestamp?: string,
   sensor_name?: string,
 ): Promise<StatsAggResponse> {
   let url;
@@ -267,7 +268,8 @@ export async function statsAgg(
   }
   return get(url, {
     field: field,
-    time_range: time_range,
+    min_timestamp: min_timestamp,
+    max_timestamp: max_timestamp,
     sensor_name: sensor_name,
   }).then((response) => response.data);
 }
@@ -275,7 +277,6 @@ export async function statsAgg(
 export async function statsAggBySensor(
   field: string,
   differential: boolean = false,
-  time_range?: number,
   min_timestamp?: string,
   max_timestamp?: string,
 ): Promise<StatsAggBySensorResponse> {
@@ -287,7 +288,6 @@ export async function statsAggBySensor(
   }
   return get(url, {
     field: field,
-    time_range: time_range,
     min_timestamp: min_timestamp,
     max_timestamp: max_timestamp,
   }).then((response) => response.data);

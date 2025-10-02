@@ -19,47 +19,30 @@ use tracing::error;
 pub(crate) struct StatsAggQuery {
     field: String,
     sensor_name: Option<String>,
-    time_range: Option<i64>,
     min_timestamp: Option<String>,
     max_timestamp: Option<String>,
 }
 
 impl StatsAggQuery {
     fn start_datetime(&self) -> anyhow::Result<DateTime> {
-        // If absolute min_timestamp is provided, use it
         if let Some(ref min_ts) = self.min_timestamp {
             return crate::datetime::parse(min_ts, None)
                 .map_err(|e| anyhow::anyhow!("Failed to parse min_timestamp: {}", e));
         }
 
-        // Otherwise fall back to relative time_range calculation
-        let start_time = if let Some(time_range) = self.time_range {
-            if time_range == 0 {
-                let then = chrono::DateTime::UNIX_EPOCH;
-                then.fixed_offset()
-            } else {
-                let delta = chrono::Duration::seconds(time_range);
-                let now = DateTime::now();
-
-                now.datetime - delta
-            }
-        } else {
-            let delta = chrono::Duration::hours(24);
-            let now = DateTime::now();
-
-            now.datetime - delta
-        };
-        Ok(start_time.into())
+        // Default to 24 hours ago if no min_timestamp provided
+        let delta = chrono::Duration::hours(24);
+        let now = DateTime::now();
+        Ok((now.datetime - delta).into())
     }
 
     fn end_datetime(&self) -> anyhow::Result<DateTime> {
-        // If absolute max_timestamp is provided, use it
         if let Some(ref max_ts) = self.max_timestamp {
             return crate::datetime::parse(max_ts, None)
                 .map_err(|e| anyhow::anyhow!("Failed to parse max_timestamp: {}", e));
         }
 
-        // Otherwise use current time
+        // Default to current time if no max_timestamp provided
         Ok(DateTime::now())
     }
 
