@@ -3,10 +3,10 @@
 
 use crate::{
     eventrepo::EventRepo,
-    server::{main::SessionExtractor, ServerContext},
+    server::{ServerContext, main::SessionExtractor},
     sqlite::{self, info::Info},
 };
-use axum::{response::IntoResponse, Extension, Json};
+use axum::{Extension, Json, response::IntoResponse};
 use serde::Serialize;
 use sqlx::Connection;
 use std::sync::Arc;

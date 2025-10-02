@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use anyhow::Result;
-use clap::{parser::ValueSource, ArgMatches};
+use clap::{ArgMatches, parser::ValueSource};
 use serde::de::DeserializeOwned;
 use serde_yaml::Value;
 use std::fmt::Display;

@@ -9,8 +9,8 @@ use std::time::Instant;
 
 use chrono::Timelike;
 use indexmap::IndexMap;
-use sqlx::sqlite::{SqliteArguments, SqliteRow};
 use sqlx::Row;
+use sqlx::sqlite::{SqliteArguments, SqliteRow};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
@@ -18,7 +18,7 @@ use crate::elastic::AlertQueryOptions;
 use crate::eventrepo::{AggAlert, AggAlertMetadata, AlertsResult};
 use crate::sqlite::builder::EventQueryBuilder;
 use crate::sqlite::log_query_plan;
-use crate::{queryparser, LOG_QUERIES, LOG_QUERY_PLAN};
+use crate::{LOG_QUERIES, LOG_QUERY_PLAN, queryparser};
 
 impl SqliteEventRepo {
     #[instrument(skip_all)]
@@ -262,7 +262,7 @@ impl SqliteEventRepo {
                     source["tags"] = tags.into();
                 }
 
-                if let serde_json::Value::Array(ref mut tags) = &mut source["tags"] {
+                if let serde_json::Value::Array(tags) = &mut source["tags"] {
                     if archived && !tags.contains(&"evebox.archived".into()) {
                         tags.push("evebox.archived".into());
                     }
@@ -532,7 +532,7 @@ fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert> {
         parsed["tags"] = tags.into();
     }
 
-    if let serde_json::Value::Array(ref mut tags) = &mut parsed["tags"] {
+    if let serde_json::Value::Array(tags) = &mut parsed["tags"] {
         if archived > 0 {
             tags.push("evebox.archived".into());
         }

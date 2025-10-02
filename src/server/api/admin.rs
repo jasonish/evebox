@@ -3,11 +3,11 @@
 
 use crate::prelude::*;
 
-use axum::response::IntoResponse;
 use axum::Form;
-use axum::{extract::Path, Extension, Json};
+use axum::response::IntoResponse;
+use axum::{Extension, Json, extract::Path};
 
-use crate::server::{main::SessionExtractor, ServerContext};
+use crate::server::{ServerContext, main::SessionExtractor};
 use crate::sqlite::configdb::{FilterEntry, FilterRow};
 
 pub(super) async fn update_ja4db(

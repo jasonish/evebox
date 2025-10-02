@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::server::main::SessionExtractor;
 use crate::server::ServerContext;
+use crate::server::main::SessionExtractor;
 use crate::util::pcap;
 
 use std::sync::Arc;
@@ -11,7 +11,7 @@ use axum::extract::{Extension, Form};
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use hyper::header::{HeaderMap, CONTENT_DISPOSITION, CONTENT_TYPE};
+use hyper::header::{CONTENT_DISPOSITION, CONTENT_TYPE, HeaderMap};
 
 use crate::error::AppError;
 

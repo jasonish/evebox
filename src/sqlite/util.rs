@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use sqlx::{prelude::FromRow, SqliteConnection, SqliteExecutor};
+use sqlx::{SqliteConnection, SqliteExecutor, prelude::FromRow};
 use tracing::info;
 
 use crate::sqlite::importer::extract_values;

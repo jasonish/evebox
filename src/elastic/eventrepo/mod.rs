@@ -3,16 +3,16 @@
 
 use self::api::AlertGroupSpec;
 
-use super::query_string_query;
 use super::Client;
 use super::HistoryEntry;
 use super::HistoryEntryBuilder;
-use super::TAGS_AUTO_ARCHIVED;
 use super::TAG_ESCALATED;
+use super::TAGS_AUTO_ARCHIVED;
+use super::query_string_query;
 use crate::datetime;
 use crate::elastic::importer::ElasticEventSink;
 use crate::elastic::request::exists_filter;
-use crate::elastic::{request, ElasticResponse, TAGS_ARCHIVED, TAGS_ESCALATED, TAG_ARCHIVED};
+use crate::elastic::{ElasticResponse, TAG_ARCHIVED, TAGS_ARCHIVED, TAGS_ESCALATED, request};
 use crate::prelude::*;
 use crate::queryparser;
 use crate::queryparser::QueryElement;

@@ -5,11 +5,12 @@ use crate::prelude::*;
 use crate::sqlite::prelude::*;
 
 use crate::{
+    LOG_QUERIES, LOG_QUERY_PLAN,
     datetime::DateTime,
     eventrepo::StatsAggQueryParams,
     queryparser::{QueryElement, QueryValue},
     sqlite::{builder::EventQueryBuilder, log_query_plan, log_query_plan2},
-    util, LOG_QUERIES, LOG_QUERY_PLAN,
+    util,
 };
 use futures::TryStreamExt;
 use serde::Serialize;

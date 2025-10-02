@@ -6,7 +6,7 @@ use crate::{
     elastic::AlertQueryOptions,
     server::metrics::Metrics,
     sqlite::{
-        connection::init_event_db, eventrepo::SqliteEventRepo, info::Info, ConnectionBuilder,
+        ConnectionBuilder, connection::init_event_db, eventrepo::SqliteEventRepo, info::Info,
     },
 };
 use anyhow::Result;
@@ -14,8 +14,8 @@ use chrono::DateTime;
 use clap::CommandFactory;
 use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
 use futures::TryStreamExt;
-use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
+use sqlx::sqlite::SqliteRow;
 use std::{fs::File, sync::Arc};
 use tracing::info;
 

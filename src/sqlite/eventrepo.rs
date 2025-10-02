@@ -150,7 +150,7 @@ impl SqliteEventRepo {
                 parsed["tags"] = tags.into();
             }
 
-            if let serde_json::Value::Array(ref mut tags) = &mut parsed["tags"] {
+            if let serde_json::Value::Array(tags) = &mut parsed["tags"] {
                 if archived > 0 && !tags.contains(&"evebox.archived".into()) {
                     tags.push("evebox.archived".into());
                 }

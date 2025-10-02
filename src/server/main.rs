@@ -15,6 +15,7 @@ use crate::sqlite::configdb::{self, ConfigDb};
 use crate::sqlite::connection::init_event_db;
 use crate::sqlite::{self};
 use anyhow::Result;
+use axum::Router;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::extract::{
     ConnectInfo, DefaultBodyLimit, Extension, FromRequestParts, OptionalFromRequestParts,
@@ -22,9 +23,8 @@ use axum::extract::{
 use axum::http::header::HeaderName;
 use axum::http::{HeaderValue, StatusCode, Uri};
 use axum::response::IntoResponse;
-use axum::Router;
-use axum_extra::extract::CookieJar;
 use axum_extra::TypedHeader;
+use axum_extra::extract::CookieJar;
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::net::SocketAddr;
@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tower_http::trace::TraceLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
-use tracing::{debug, error, info, warn, Level};
+use tracing::{Level, debug, error, info, warn};
 
 fn load_event_services(filename: &str) -> Result<serde_json::Value> {
     let finput = std::fs::File::open(filename)?;
@@ -255,7 +255,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             let tls_dir = if let Some(dir) = &server_config.config_directory {
                 PathBuf::from(dir)
             } else {
-                error!("Unable to determine what directory to store TLS certificate and key in, please provide a data directory or start with --no-tls to disable TLS");
+                error!(
+                    "Unable to determine what directory to store TLS certificate and key in, please provide a data directory or start with --no-tls to disable TLS"
+                );
                 std::process::exit(1);
             };
             info!(
@@ -501,7 +503,9 @@ async fn configure_datastore(
                 info!("Found Opensearch version {}", &server_info.version.number);
                 if let Ok(version) = Version::parse(&server_info.version.number) {
                     if version.major < 2 || (version.major < 3 && version.minor < 6) {
-                        error!("Opensearch versions less than 2.6.0 not supported. EveBox likely won't work properly.");
+                        error!(
+                            "Opensearch versions less than 2.6.0 not supported. EveBox likely won't work properly."
+                        );
                     }
                 } else {
                     error!("Failed to parse Opensearch version, EveBox likely won't work properly");
@@ -516,7 +520,9 @@ async fn configure_datastore(
                 );
                 if let Ok(version) = Version::parse(&server_info.version.number) {
                     if version.major < 7 || (version.major < 8 && version.minor < 10) {
-                        error!("Elasticsearch versions less than 7.10 not support. EveBox likely won't work properly.");
+                        error!(
+                            "Elasticsearch versions less than 7.10 not support. EveBox likely won't work properly."
+                        );
                     }
                 } else {
                     error!(
@@ -682,8 +688,8 @@ where
             }
         }
 
-        use axum_extra::headers::authorization::Basic;
         use axum_extra::headers::Authorization;
+        use axum_extra::headers::authorization::Basic;
 
         let authorization = if headers.contains_key("authorization") {
             let TypedHeader(Authorization(basic)) =

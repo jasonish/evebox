@@ -24,7 +24,8 @@ pub fn init_logger(level: Level) -> anyhow::Result<()> {
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z")
     } else {
         format_description!(
-            "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour sign:mandatory][offset_minute]")
+            "[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour sign:mandatory][offset_minute]"
+        )
     };
 
     let timer = tracing_subscriber::fmt::time::LocalTime::new(format);

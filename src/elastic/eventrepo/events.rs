@@ -4,9 +4,9 @@
 use crate::prelude::*;
 
 use super::ElasticEventRepo;
+use crate::LOG_QUERIES;
 use crate::elastic::request;
 use crate::eventrepo::{self};
-use crate::LOG_QUERIES;
 use serde_json::json;
 
 const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";

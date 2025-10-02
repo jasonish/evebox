@@ -7,9 +7,9 @@ use crate::datetime::DateTime;
 use crate::prelude::*;
 use crate::sqlite::prelude::*;
 use crate::{
+    LOG_QUERY_PLAN,
     queryparser::QueryElement,
     sqlite::{builder::EventQueryBuilder, log_query_plan},
-    LOG_QUERY_PLAN,
 };
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::instrument;

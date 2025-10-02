@@ -3,18 +3,18 @@
 
 use crate::error::AppError;
 use crate::prelude::*;
-use crate::server::{main::SessionExtractor, ServerContext};
+use crate::server::{ServerContext, main::SessionExtractor};
+use axum::Extension;
 use axum::body::Body;
 use axum::response::sse::Event;
 use axum::response::{IntoResponse, Sse};
-use axum::Extension;
 use futures::Stream;
 use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
-use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt;
+use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 
 pub(crate) async fn sse(
     _session: SessionExtractor,

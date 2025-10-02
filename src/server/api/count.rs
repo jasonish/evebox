@@ -6,7 +6,7 @@ use crate::{elastic::ElasticEventRepo, prelude::*};
 use std::sync::Arc;
 
 use axum::Json;
-use axum::{response::IntoResponse, Extension};
+use axum::{Extension, response::IntoResponse};
 use axum_extra::extract::Form;
 use serde::Serialize;
 

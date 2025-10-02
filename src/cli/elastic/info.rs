@@ -54,7 +54,9 @@ async fn get_info(client: &mut Client) -> Result<InfoResponse> {
         Ok(info) => return Ok(info),
         Err(err) => {
             if client.url.starts_with("https") {
-                println!("Failed to get server info, will disable certificate validation and try again: error = {err}");
+                println!(
+                    "Failed to get server info, will disable certificate validation and try again: error = {err}"
+                );
                 client.disable_certificate_validation = true;
             } else {
                 anyhow::bail!(err);

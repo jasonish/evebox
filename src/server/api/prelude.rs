@@ -3,6 +3,6 @@
 
 pub(super) use std::sync::Arc;
 
-pub(super) use axum::{response::IntoResponse, Extension};
+pub(super) use axum::{Extension, response::IntoResponse};
 
 pub(super) use super::{AppError, ServerContext, SessionExtractor};

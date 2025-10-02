@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use super::{
-    request::{term_filter, timestamp_lte_filter},
     ElasticEventRepo,
+    request::{term_filter, timestamp_lte_filter},
 };
 use crate::elastic::DateTime;
 use crate::prelude::*;

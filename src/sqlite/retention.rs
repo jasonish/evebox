@@ -90,11 +90,7 @@ async fn get_days(configdb: &ConfigDb, config: &Config) -> Result<Option<usize>>
         );
         DEFAULT_RANGE
     };
-    if days > 0 {
-        Ok(Some(days))
-    } else {
-        Ok(None)
-    }
+    if days > 0 { Ok(Some(days)) } else { Ok(None) }
 }
 
 pub(crate) async fn start_retention_task(

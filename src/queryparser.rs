@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 use nom::{
+    IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take_till},
     character::complete::multispace0,
     combinator::opt,
-    IResult, Parser,
 };
 
 use crate::datetime;

@@ -6,7 +6,7 @@ use clap::Parser;
 use serde_json::json;
 use tracing::info;
 
-use crate::elastic::{util::update_template_field_limit, Client};
+use crate::elastic::{Client, util::update_template_field_limit};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct Args {

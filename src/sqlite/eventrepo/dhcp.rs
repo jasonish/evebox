@@ -5,9 +5,9 @@ use crate::prelude::*;
 use crate::sqlite::prelude::*;
 
 use super::SqliteEventRepo;
+use crate::LOG_QUERY_PLAN;
 use crate::datetime::DateTime;
 use crate::sqlite::log_query_plan;
-use crate::LOG_QUERY_PLAN;
 
 impl SqliteEventRepo {
     pub async fn dhcp(

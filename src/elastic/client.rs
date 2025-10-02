@@ -59,7 +59,10 @@ fn load_certificate_from_env() -> Option<reqwest::Certificate> {
         match load_certificate_from_file(&filename) {
             Ok(cert) => Some(cert),
             Err(err) => {
-                warn!("Failed to load Elasticsearch HTTP CA certificate from {}, will continue without: {}", filename, err);
+                warn!(
+                    "Failed to load Elasticsearch HTTP CA certificate from {}, will continue without: {}",
+                    filename, err
+                );
                 None
             }
         }

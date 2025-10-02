@@ -3,7 +3,7 @@ name = "evebox"
 # Suffix with -dev when not a release.
 version = "0.21.1-alpha.1"
 authors = ["Jason Ish <ish@unx.ca>"]
-edition = "2021"
+edition = "2024"
 description = "A web based Suricata event manager"
 license = "MIT"
 homepage = "https://evebox.org"
@@ -11,7 +11,7 @@ repository = "https://github.com/jasonish/evebox"
 documentation = "https://evebox.org"
 
 # This is not a guarantee, just helps notify me when the MSRV changes.
-rust-version = "1.82.0"
+rust-version = "1.85.0"
 
 [profile.release]
 lto = true

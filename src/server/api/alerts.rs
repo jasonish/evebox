@@ -5,10 +5,10 @@ use crate::{elastic, prelude::*};
 
 use std::sync::Arc;
 
-use axum::{response::IntoResponse, Extension, Json};
+use axum::{Extension, Json, response::IntoResponse};
 use axum_extra::extract::Form;
 
-use super::{parse_then_from_duration, DateTime, GenericQuery, ServerContext, SessionExtractor};
+use super::{DateTime, GenericQuery, ServerContext, SessionExtractor, parse_then_from_duration};
 
 pub(crate) async fn alerts(
     _session: SessionExtractor,

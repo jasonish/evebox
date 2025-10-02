@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2025 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use std::sync::{atomic::AtomicU64, Arc, Mutex};
+use std::sync::{Arc, Mutex, atomic::AtomicU64};
 
 use serde::Serialize;
 

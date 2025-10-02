@@ -6,9 +6,9 @@ use crate::sqlite::prelude::*;
 
 use super::SqliteEventRepo;
 use crate::{
+    LOG_QUERIES, LOG_QUERY_PLAN,
     eventrepo::EventQueryParams,
     sqlite::{builder::EventQueryBuilder, log_query_plan},
-    LOG_QUERIES, LOG_QUERY_PLAN,
 };
 use std::time::Instant;
 
@@ -106,7 +106,7 @@ fn row_mapper(row: SqliteRow) -> Result<serde_json::Value, sqlx::Error> {
         parsed["tags"] = tags.into();
     }
 
-    if let serde_json::Value::Array(ref mut tags) = &mut parsed["tags"] {
+    if let serde_json::Value::Array(tags) = &mut parsed["tags"] {
         if archived > 0 {
             tags.push("evebox.archived".into());
         }

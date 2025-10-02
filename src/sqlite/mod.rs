@@ -12,7 +12,7 @@ pub mod util;
 
 pub(crate) use connection::ConnectionBuilder;
 use sqlx::Arguments;
-use sqlx::{sqlite::SqliteArguments, SqliteConnection, SqliteExecutor, SqlitePool};
+use sqlx::{SqliteConnection, SqliteExecutor, SqlitePool, sqlite::SqliteArguments};
 use tracing::{error, instrument};
 
 pub(crate) async fn has_table<'a>(
@@ -108,14 +108,14 @@ impl EveBoxSqlxErrorExt for sqlx::error::Error {
 
 #[allow(unused_imports)]
 pub(crate) mod prelude {
-    pub use sqlx::sqlite::SqliteArguments;
-    pub use sqlx::sqlite::SqliteRow;
     pub use sqlx::Arguments;
     pub use sqlx::Connection;
     pub use sqlx::FromRow;
     pub use sqlx::Row;
     pub use sqlx::SqliteConnection;
     pub use sqlx::SqlitePool;
+    pub use sqlx::sqlite::SqliteArguments;
+    pub use sqlx::sqlite::SqliteRow;
 
     pub use futures::TryStreamExt;
 

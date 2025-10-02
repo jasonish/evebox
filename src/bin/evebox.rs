@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use clap::{value_parser, ArgAction};
 use clap::{Arg, Command};
+use clap::{ArgAction, value_parser};
 use evebox::logger;
 use evebox::version;
 use tracing::error;
@@ -21,7 +21,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(command) = std::env::args().nth(1) {
         if command == "elastic-import" {
             logger::init_logger(tracing::Level::INFO).unwrap();
-            error!("elastic-import has been deprecated. The Agent can now be used to send events to Elasticsearch.");
+            error!(
+                "elastic-import has been deprecated. The Agent can now be used to send events to Elasticsearch."
+            );
             std::process::exit(1);
         }
     }

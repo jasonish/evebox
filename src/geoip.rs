@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use maxminddb::{geoip2, Reader};
+use maxminddb::{Reader, geoip2};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, UNIX_EPOCH};
 use tracing::{debug, error, info, warn};

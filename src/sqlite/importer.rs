@@ -3,7 +3,7 @@
 
 use crate::prelude::*;
 
-use crate::{eve::Eve, sqlite::has_table, sqlite::EveBoxSqlxErrorExt};
+use crate::{eve::Eve, sqlite::EveBoxSqlxErrorExt, sqlite::has_table};
 use anyhow::Context;
 use rusqlite::TransactionBehavior;
 use sqlx::Connection;

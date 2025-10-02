@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::{FtsArgs, FtsCommand};
-use crate::sqlite::{connection::init_event_db, has_table, util, ConnectionBuilder};
+use crate::sqlite::{ConnectionBuilder, connection::init_event_db, has_table, util};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use sqlx::{Connection, SqliteConnection};

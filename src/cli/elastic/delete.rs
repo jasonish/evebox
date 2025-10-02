@@ -4,7 +4,7 @@
 use clap::Parser;
 
 use crate::{
-    elastic::{retention::do_delete_indices, Client},
+    elastic::{Client, retention::do_delete_indices},
     prelude::*,
 };
 
