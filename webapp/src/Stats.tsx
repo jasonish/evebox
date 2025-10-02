@@ -3,6 +3,7 @@
 
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   JSX,
@@ -16,6 +17,7 @@ import { timeRangeAsSeconds } from "./settings";
 import { statsAggBySensor } from "./api";
 import { Chart } from "chart.js";
 import { parse_timestamp } from "./datetime";
+import dayjs from "dayjs";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "./common/SensorSelect";
 import { RefreshButton } from "./common/RefreshButton";
@@ -76,12 +78,17 @@ const SENSOR_COLORS = [
 ];
 
 export function Stats(): JSX.Element {
-  const [searchParams, setSearchParams] = useSearchParams<{ sensor: string }>();
+  const [searchParams, setSearchParams] = useSearchParams<{
+    sensor: string;
+    min_timestamp: string;
+    max_timestamp: string;
+  }>();
   const [loadingCounter, setLoadingCounter] = createSignal(0);
   const [timeRange, setTimeRange] = createSignal<{
     min: string;
     max: string;
   } | null>(null);
+
   let charts: any[] = [];
 
   // Enforce max 7-day time range for stats page
@@ -95,8 +102,31 @@ export function Stats(): JSX.Element {
     destroyAllCharts();
   });
 
+  // React to URL parameter changes and time range changes
   createEffect(() => {
+    // Track these reactive values to trigger re-render
+    const sensor = searchParams.sensor;
+    const minTs = searchParams.min_timestamp;
+    const maxTs = searchParams.max_timestamp;
+    const tr = TIME_RANGE();
+
     refresh();
+  });
+
+  // Clear timestamps when time range selector changes
+  let previousTimeRange: string | undefined;
+  createEffect(() => {
+    const currentTimeRange = TIME_RANGE();
+
+    // If time range changed and we had a previous value, clear timestamps
+    if (previousTimeRange !== undefined && previousTimeRange !== currentTimeRange) {
+      setSearchParams({
+        min_timestamp: undefined,
+        max_timestamp: undefined
+      });
+    }
+
+    previousTimeRange = currentTimeRange;
   });
 
   function destroyAllCharts() {
@@ -107,13 +137,99 @@ export function Stats(): JSX.Element {
     }
   }
 
+  // Use createMemo for computed values that depend on reactive state
+  const timeWindow = createMemo<{ min: string; max: string } | null>(() => {
+    const timeRangeSeconds = timeRangeAsSeconds();
+    if (!timeRangeSeconds) return null;
+
+    // If URL has timestamps, use them
+    if (searchParams.min_timestamp && searchParams.max_timestamp) {
+      return {
+        min: searchParams.min_timestamp,
+        max: searchParams.max_timestamp,
+      };
+    }
+
+    // Otherwise calculate current time window based on NOW
+    const now = dayjs();
+    const startTime = now.subtract(timeRangeSeconds, "second");
+
+    return {
+      min: startTime.utc().toISOString(),
+      max: now.utc().toISOString(),
+    };
+  });
+
+  // Simplified navigation functions
+  function navigateToPrevious() {
+    const tw = timeWindow();
+    if (!tw) return;
+
+    const timeRangeSeconds = timeRangeAsSeconds();
+    if (!timeRangeSeconds) return;
+
+    // Move window back by one time range
+    const minDate = dayjs(tw.min).subtract(timeRangeSeconds, "second");
+    const maxDate = dayjs(tw.max).subtract(timeRangeSeconds, "second");
+
+    setSearchParams({
+      min_timestamp: minDate.utc().toISOString(),
+      max_timestamp: maxDate.utc().toISOString(),
+    });
+  }
+
+  function navigateToNext() {
+    const tw = timeWindow();
+    if (!tw) return;
+
+    const timeRangeSeconds = timeRangeAsSeconds();
+    if (!timeRangeSeconds) return;
+
+    // Move window forward by one time range
+    const minDate = dayjs(tw.min).add(timeRangeSeconds, "second");
+    const maxDate = dayjs(tw.max).add(timeRangeSeconds, "second");
+
+    setSearchParams({
+      min_timestamp: minDate.utc().toISOString(),
+      max_timestamp: maxDate.utc().toISOString(),
+    });
+  }
+
+  function navigateToNow() {
+    // Clear timestamps to show current time window
+    setSearchParams({ min_timestamp: undefined, max_timestamp: undefined });
+  }
+
+  // Memoized computed values for button states
+  const isViewingCurrentTime = createMemo(() => {
+    return !searchParams.min_timestamp && !searchParams.max_timestamp;
+  });
+
+  const canNavigateNext = createMemo(() => {
+    // Can't navigate next if we're already at current time
+    if (isViewingCurrentTime()) return false;
+
+    // Can navigate next if we have timestamps and max is in the past
+    const tw = timeWindow();
+    if (tw && tw.max) {
+      const maxDate = dayjs(tw.max);
+      const now = dayjs();
+      // Allow navigation if the window's max time is before now
+      return maxDate.isBefore(now);
+    }
+
+    return false;
+  });
+
   function refresh() {
-    loadData(timeRangeAsSeconds(), searchParams.sensor);
+    const tw = timeWindow();
+    loadData(timeRangeAsSeconds(), searchParams.sensor, tw);
   }
 
   function loadData(
     timeRange: undefined | number,
     selectedSensor: string | undefined,
+    timeWindow: { min: string; max: string } | null,
   ) {
     destroyAllCharts();
 
@@ -126,6 +242,8 @@ export function Stats(): JSX.Element {
           chart.field,
           chart.differential,
           timeRange,
+          timeWindow?.min,
+          timeWindow?.max,
         ).then((response) => {
           // Capture time range from first response
           if (i === 0 && response.min_timestamp && response.max_timestamp) {
@@ -227,15 +345,44 @@ export function Stats(): JSX.Element {
         <Show when={timeRange()}>
           <Row class={"mt-2"}>
             <Col>
-              <div class={"text-end text-muted small"}>
-                Showing data from{" "}
-                {parse_timestamp(timeRange()!.min).format(
-                  "YYYY-MM-DD HH:mm:ss",
-                )}{" "}
-                to{" "}
-                {parse_timestamp(timeRange()!.max).format(
-                  "YYYY-MM-DD HH:mm:ss",
-                )}
+              <div
+                class={"d-flex justify-content-end align-items-center gap-2"}
+              >
+                <div class={"text-muted small"}>
+                  Showing data from{" "}
+                  {parse_timestamp(timeRange()!.min).format(
+                    "YYYY-MM-DD HH:mm:ss",
+                  )}{" "}
+                  to{" "}
+                  {parse_timestamp(timeRange()!.max).format(
+                    "YYYY-MM-DD HH:mm:ss",
+                  )}
+                </div>
+                <div class={"btn-group"}>
+                  <button
+                    type={"button"}
+                    class={"btn btn-sm btn-outline-secondary"}
+                    onClick={navigateToPrevious}
+                  >
+                    &larr; Previous
+                  </button>
+                  <button
+                    type={"button"}
+                    class={"btn btn-sm btn-outline-secondary"}
+                    onClick={navigateToNext}
+                    disabled={!canNavigateNext()}
+                  >
+                    Next &rarr;
+                  </button>
+                  <button
+                    type={"button"}
+                    class={"btn btn-sm btn-outline-secondary"}
+                    onClick={navigateToNow}
+                    disabled={isViewingCurrentTime()}
+                  >
+                    Now
+                  </button>
+                </div>
               </div>
             </Col>
           </Row>

@@ -35,6 +35,7 @@ pub(crate) struct StatsAggQueryParams {
     pub field: String,
     pub sensor_name: Option<String>,
     pub start_time: DateTime,
+    pub end_time: DateTime,
 }
 
 #[derive(Default, Debug, Serialize)]

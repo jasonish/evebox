@@ -151,7 +151,8 @@ impl SqliteEventRepo {
         let qp = qp.clone();
         let field = format!("$.{}", &qp.field);
         let start_time = qp.start_time.to_nanos();
-        let range = (DateTime::now().datetime - qp.start_time.datetime).num_seconds();
+        let end_time = qp.end_time.to_nanos();
+        let range = (qp.end_time.datetime - qp.start_time.datetime).num_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut args = SqliteArguments::default();
@@ -172,8 +173,10 @@ impl SqliteEventRepo {
         let mut filters = vec![
             "json_extract(events.source, '$.event_type') = 'stats'",
             "timestamp >= ?",
+            "timestamp <= ?",
         ];
         args.push(start_time)?;
+        args.push(end_time)?;
 
         if let Some(sensor_name) = qp.sensor_name.as_ref() {
             if sensor_name == "(no-name)" {
@@ -254,7 +257,8 @@ impl SqliteEventRepo {
     ) -> anyhow::Result<serde_json::Value> {
         let field = format!("$.{}", &params.field);
         let start_time = params.start_time.to_nanos();
-        let range = (DateTime::now().datetime - params.start_time.datetime).num_seconds();
+        let end_time = params.end_time.to_nanos();
+        let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut args = SqliteArguments::default();
@@ -269,12 +273,14 @@ impl SqliteEventRepo {
             FROM events
             WHERE json_extract(events.source, '$.event_type') = 'stats'
               AND timestamp >= ?
+              AND timestamp <= ?
             GROUP BY sensor, bucket_time
             ORDER BY sensor, bucket_time
             "
         );
         args.push(&field)?;
         args.push(start_time)?;
+        args.push(end_time)?;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, &sql, &args).await;
@@ -321,7 +327,8 @@ impl SqliteEventRepo {
     ) -> anyhow::Result<serde_json::Value> {
         let field = format!("$.{}", &params.field);
         let start_time = params.start_time.to_nanos();
-        let range = (DateTime::now().datetime - params.start_time.datetime).num_seconds();
+        let end_time = params.end_time.to_nanos();
+        let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut args = SqliteArguments::default();
@@ -336,12 +343,14 @@ impl SqliteEventRepo {
             FROM events
             WHERE json_extract(events.source, '$.event_type') = 'stats'
               AND timestamp >= ?
+              AND timestamp <= ?
             GROUP BY sensor, bucket_time
             ORDER BY sensor, bucket_time
             "
         );
         args.push(&field)?;
         args.push(start_time)?;
+        args.push(end_time)?;
 
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, &sql, &args).await;

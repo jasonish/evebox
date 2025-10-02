@@ -20,10 +20,19 @@ pub(crate) struct StatsAggQuery {
     field: String,
     sensor_name: Option<String>,
     time_range: Option<i64>,
+    min_timestamp: Option<String>,
+    max_timestamp: Option<String>,
 }
 
 impl StatsAggQuery {
     fn start_datetime(&self) -> anyhow::Result<DateTime> {
+        // If absolute min_timestamp is provided, use it
+        if let Some(ref min_ts) = self.min_timestamp {
+            return crate::datetime::parse(min_ts, None)
+                .map_err(|e| anyhow::anyhow!("Failed to parse min_timestamp: {}", e));
+        }
+
+        // Otherwise fall back to relative time_range calculation
         let start_time = if let Some(time_range) = self.time_range {
             if time_range == 0 {
                 let then = chrono::DateTime::UNIX_EPOCH;
@@ -42,6 +51,32 @@ impl StatsAggQuery {
         };
         Ok(start_time.into())
     }
+
+    fn end_datetime(&self) -> anyhow::Result<DateTime> {
+        // If absolute max_timestamp is provided, use it
+        if let Some(ref max_ts) = self.max_timestamp {
+            return crate::datetime::parse(max_ts, None)
+                .map_err(|e| anyhow::anyhow!("Failed to parse max_timestamp: {}", e));
+        }
+
+        // Otherwise use current time
+        Ok(DateTime::now())
+    }
+
+    fn validate_timestamps(&self) -> anyhow::Result<()> {
+        // Only validate if both absolute timestamps are provided
+        if let (Some(min_ts), Some(max_ts)) = (&self.min_timestamp, &self.max_timestamp) {
+            let start = crate::datetime::parse(min_ts, None)?;
+            let end = crate::datetime::parse(max_ts, None)?;
+
+            if start.datetime >= end.datetime {
+                return Err(anyhow::anyhow!(
+                    "Invalid time range: min_timestamp must be before max_timestamp"
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 pub(crate) async fn agg(
@@ -49,11 +84,15 @@ pub(crate) async fn agg(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, AppError> {
+    form.validate_timestamps()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
     let start_time = form.start_datetime().unwrap();
+    let end_time = form.end_datetime().unwrap();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
         start_time,
+        end_time,
     };
 
     match context.datastore.stats_agg(&params).await {
@@ -73,11 +112,15 @@ pub(crate) async fn agg_differential(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, AppError> {
+    form.validate_timestamps()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
     let start_time = form.start_datetime().unwrap();
+    let end_time = form.end_datetime().unwrap();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: form.sensor_name.clone(),
         start_time,
+        end_time,
     };
 
     match context.datastore.stats_agg_diff(&params).await {
@@ -131,21 +174,25 @@ pub(crate) async fn agg_by_sensor(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, AppError> {
+    form.validate_timestamps()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
     let start_time = form.start_datetime().unwrap();
+    let end_time = form.end_datetime().unwrap();
     let min_timestamp = start_time.to_rfc3339_utc();
+    let max_timestamp = end_time.to_rfc3339_utc();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: None, // We don't filter by sensor, we group by all sensors
         start_time,
+        end_time,
     };
 
     match context.datastore.stats_agg_by_sensor(&params).await {
         Ok(response) => {
-            let now = DateTime::now();
             let response_with_metadata = json!({
                 "data": response.get("data"),
                 "min_timestamp": min_timestamp,
-                "max_timestamp": now.to_rfc3339_utc(),
+                "max_timestamp": max_timestamp,
             });
             Ok(Json(response_with_metadata))
         }
@@ -164,21 +211,25 @@ pub(crate) async fn agg_differential_by_sensor(
     State(context): State<Arc<ServerContext>>,
     Form(form): Form<StatsAggQuery>,
 ) -> Result<impl IntoResponse, AppError> {
+    form.validate_timestamps()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
     let start_time = form.start_datetime().unwrap();
+    let end_time = form.end_datetime().unwrap();
     let min_timestamp = start_time.to_rfc3339_utc();
+    let max_timestamp = end_time.to_rfc3339_utc();
     let params = eventrepo::StatsAggQueryParams {
         field: form.field.to_string(),
         sensor_name: None, // We don't filter by sensor, we group by all sensors
         start_time,
+        end_time,
     };
 
     match context.datastore.stats_agg_diff_by_sensor(&params).await {
         Ok(response) => {
-            let now = DateTime::now();
             let response_with_metadata = json!({
                 "data": response.get("data"),
                 "min_timestamp": min_timestamp,
-                "max_timestamp": now.to_rfc3339_utc(),
+                "max_timestamp": max_timestamp,
             });
             Ok(Json(response_with_metadata))
         }
