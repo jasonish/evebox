@@ -53,7 +53,7 @@ nom = "8"
 percent-encoding = "2.3.2"
 rand = "0.9.2"
 reqwest = { version = "0.12.23", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots", "hickory-dns"] }
-rust-embed = { version = "8.7.2", features = ["compression", "debug-embed"] }
+rust-embed = { version = "8.7.2", features = ["debug-embed"] }
 
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
@@ -76,7 +76,7 @@ rcgen = "0.13.2"
 directories = "6.0.0"
 gethostname = "1.0.2"
 tempfile = "3.23.0"
-inquire = "0.7.5"
+inquire = "0.9.1"
 chrono = { version = "0.4.42", default-features = false, features = ["std", "now", "serde"] }
 log = "0.4.28"
 owo-colors = "4.2.3"
