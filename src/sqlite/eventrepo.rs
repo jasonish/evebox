@@ -404,23 +404,17 @@ impl SqliteEventRepo {
 
     #[instrument(skip_all)]
     pub async fn get_sensors(&self) -> anyhow::Result<Vec<String>> {
-        let from = DateTime::now() - std::time::Duration::from_secs(86400);
-
         // Get sensors with host field
         // Single query to get all sensors, including NULL values
         let sql = r#"
             SELECT DISTINCT json_extract(events.source, '$.host')
             FROM events
-            WHERE timestamp >= ?
             "#;
         if *LOG_QUERY_PLAN {
             log_query_plan(&self.pool, sql, &SqliteArguments::default()).await;
         }
 
-        let rows: Vec<Option<String>> = sqlx::query_scalar(sql)
-            .bind(from.to_nanos())
-            .fetch_all(&self.pool)
-            .await?;
+        let rows: Vec<Option<String>> = sqlx::query_scalar(sql).fetch_all(&self.pool).await?;
 
         // Map NULL values to "(no-name)" in Rust
         let mut sensors: Vec<String> = rows
