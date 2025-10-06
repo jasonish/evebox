@@ -2,16 +2,34 @@
 
 ## Unreleased
 
+### Features
+- Enhanced stats dashboard with time range support
+  - Added date navigation for browsing historical time windows
+  - Display selected time range in UI
+  - Multi-sensor support with per-sensor line graphs
+  - Time range metadata included in API responses
+  - Rate limiting for time range selection to prevent database overload
+
 ### Performance
 - Use Hickory DNS resolver for HTTP requests in server and agent
   - Avoids system resolver for better performance when making many DNS requests
   - Adds internal DNS caching to reduce repeated lookups
   - Particularly beneficial for agents sending batches of events
+- SQLite query optimizations
+  - Optimized sensor queries by mapping NULLs in Rust instead of SQL
+  - Removed redundant date parameter from sensors query
 
 ### Changed
 - Improved color palette consistency in webapp
   - Use consistent app color palette in overview pie chart instead of ChartJS defaults
   - Made first 20 colors in palette more visually distinct for better chart readability
+- Simplified stats API by removing redundant time_range parameter
+
+### Technical Updates
+- Upgraded to Rust edition 2024
+- Updated Rust MSRV to 1.85.0
+- Updated various dependencies including Vite
+- Fixed cargo audit warnings
 
 ## 0.21.0 - 2025-07-27
 
