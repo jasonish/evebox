@@ -24,7 +24,7 @@ thiserror = "2.0.17"
 axum = { version = "0.8.5" }
 axum-server = { version = "0.7.2", features = ["tls-rustls-no-provider"] }
 axum-extra = { version = "0.10.2", default-features = false, features = ["cookie", "typed-header", "form"] }
-hyper = "1.7"
+hyper = ">=1.7, <1.8"
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
 tower-http = { version = "0.6", features = ["set-header", "trace", "limit"] }
 futures = "0.3.31"
@@ -59,7 +59,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 serde_yaml = "0.9.34"
 
-suricatax-rule-parser = { git = "https://github.com/jasonish/suricatax-rule-parser-rs" }
+suricatax-rule-parser = { git = "https://github.com/jasonish/suricatax-rule-parser-rs", rev = "4b43a70f6e0a892970faa17b08d73d4a3b0b2cba" }
 
 # Currently only used for tracing_subscriber based logging.
 time = { version = "0.3.44", features = ["macros"] }
