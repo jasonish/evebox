@@ -22,19 +22,19 @@ pub(crate) struct EventQueryBuilder<'a> {
 }
 
 impl<'a> EventQueryBuilder<'a> {
-    pub fn new(fts: bool) -> Self {
+    pub(crate) fn new(fts: bool) -> Self {
         Self {
             fts,
             ..Default::default()
         }
     }
 
-    pub fn select<T: Into<String>>(&mut self, field: T) -> &mut Self {
+    pub(crate) fn select<T: Into<String>>(&mut self, field: T) -> &mut Self {
         self.select.push(field.into());
         self
     }
 
-    pub fn selectjs<T: Into<String>>(&mut self, field: T) -> &mut Self {
+    pub(crate) fn selectjs<T: Into<String>>(&mut self, field: T) -> &mut Self {
         let field: String = field.into();
         self.select.push(format!(
             "json_extract(events.source, '$.{field}') AS '{field}'"
@@ -42,23 +42,23 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn from<T: Into<String>>(&mut self, col: T) -> &mut Self {
+    pub(crate) fn from<T: Into<String>>(&mut self, col: T) -> &mut Self {
         self.from.push(col.into());
         self
     }
 
-    pub fn group_by<T: Into<String>>(&mut self, col: T) -> &mut Self {
+    pub(crate) fn group_by<T: Into<String>>(&mut self, col: T) -> &mut Self {
         self.group_by.push(col.into());
         self
     }
 
-    pub fn order_by<T: Into<String>>(&mut self, field: T, order: T) -> &mut Self {
+    pub(crate) fn order_by<T: Into<String>>(&mut self, field: T, order: T) -> &mut Self {
         self.order_by = Some((field.into(), order.into()));
         self
     }
 
     /// Add a where statement without requiring a value.
-    pub fn push_where<S>(&mut self, col: S) -> &mut Self
+    pub(crate) fn push_where<S>(&mut self, col: S) -> &mut Self
     where
         S: Into<String>,
     {
@@ -66,7 +66,12 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn wherejs<F, O, A>(&mut self, field: F, op: O, arg: A) -> Result<&mut Self, sqlx::Error>
+    pub(crate) fn wherejs<F, O, A>(
+        &mut self,
+        field: F,
+        op: O,
+        arg: A,
+    ) -> Result<&mut Self, sqlx::Error>
     where
         F: Into<String>,
         O: Into<String>,
@@ -80,7 +85,7 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(self)
     }
 
-    pub fn push_fts<S>(&mut self, val: S) -> &mut Self
+    pub(crate) fn push_fts<S>(&mut self, val: S) -> &mut Self
     where
         S: Into<String>,
     {
@@ -88,14 +93,14 @@ impl<'a> EventQueryBuilder<'a> {
         self
     }
 
-    pub fn push_arg<T>(&mut self, value: T) -> Result<(), sqlx::Error>
+    pub(crate) fn push_arg<T>(&mut self, value: T) -> Result<(), sqlx::Error>
     where
         T: sqlx::Encode<'a, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + 'a,
     {
         self.args.push(value)
     }
 
-    pub fn limit(&mut self, limit: i64) -> &mut Self {
+    pub(crate) fn limit(&mut self, limit: i64) -> &mut Self {
         self.limit = limit;
         self
     }
@@ -137,13 +142,13 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(self)
     }
 
-    pub fn add_left_join(&mut self, sql: String) {
+    pub(crate) fn add_left_join(&mut self, sql: String) {
         if !self.left_join.contains(&sql) {
             self.left_join.push(sql);
         }
     }
 
-    pub fn left_join_from_query_string(
+    pub(crate) fn left_join_from_query_string(
         &mut self,
         q: &'a [queryparser::QueryElement],
     ) -> Result<(), sqlx::Error> {
@@ -172,7 +177,7 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(())
     }
 
-    pub fn apply_query_string(
+    pub(crate) fn apply_query_string(
         &mut self,
         q: &'a [queryparser::QueryElement],
     ) -> Result<(), sqlx::Error> {
@@ -307,7 +312,7 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(())
     }
 
-    pub fn timestamp_gte(
+    pub(crate) fn timestamp_gte(
         &mut self,
         ts: &crate::datetime::DateTime,
     ) -> Result<&mut Self, sqlx::Error> {
@@ -315,7 +320,7 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(self)
     }
 
-    pub fn timestamp_gt(
+    pub(crate) fn timestamp_gt(
         &mut self,
         ts: &crate::datetime::DateTime,
     ) -> Result<&mut Self, sqlx::Error> {
@@ -323,7 +328,7 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(self)
     }
 
-    pub fn timestamp_lte(
+    pub(crate) fn timestamp_lte(
         &mut self,
         ts: &crate::datetime::DateTime,
     ) -> Result<&mut Self, sqlx::Error> {
@@ -331,7 +336,7 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(self)
     }
 
-    pub fn timestamp_lt(
+    pub(crate) fn timestamp_lt(
         &mut self,
         ts: &crate::datetime::DateTime,
     ) -> Result<&mut Self, sqlx::Error> {
@@ -339,7 +344,7 @@ impl<'a> EventQueryBuilder<'a> {
         Ok(self)
     }
 
-    pub fn build(&mut self) -> Result<(String, SqliteArguments<'a>), sqlx::Error> {
+    pub(crate) fn build(&mut self) -> Result<(String, SqliteArguments<'a>), sqlx::Error> {
         let mut sql = String::new();
 
         sql.push_str("select ");

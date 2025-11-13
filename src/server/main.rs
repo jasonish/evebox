@@ -537,24 +537,23 @@ async fn configure_datastore(
                 format!("{}-*", server_config.elastic_index)
             };
 
-            let mut eventstore = elastic::ElasticEventRepo {
-                base_index: server_config.elastic_index.clone(),
+            let mut eventstore = elastic::ElasticEventRepo::new(
+                server_config.elastic_index.clone(),
                 index_pattern,
-                client: client.clone(),
-                ecs: server_config.elastic_ecs,
-                auto_archive_tx: None,
-            };
+                client.clone(),
+                server_config.elastic_ecs,
+            );
             eventstore.start_archive_processor();
-            debug!("Elasticsearch base index: {}", &eventstore.base_index);
+            debug!("Elasticsearch base index: {}", eventstore.get_base_index());
             debug!(
                 "Elasticsearch search index pattern: {}",
-                &eventstore.index_pattern
+                eventstore.get_index_pattern()
             );
-            debug!("Elasticsearch ECS mode: {}", eventstore.ecs);
+            debug!("Elasticsearch ECS mode: {}", eventstore.is_ecs());
 
             crate::elastic::retention::start(metrics, configdb, eventstore.clone());
 
-            elastic::util::check_and_set_field_limit(&client, &eventstore.base_index).await;
+            elastic::util::check_and_set_field_limit(&client, eventstore.get_base_index()).await;
 
             Ok(EventRepo::Elastic(eventstore))
         }

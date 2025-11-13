@@ -13,7 +13,10 @@ pub(crate) async fn indices(
     match &context.datastore {
         crate::eventrepo::EventRepo::SQLite(_) => Err(AppError::InternalServerError),
         crate::eventrepo::EventRepo::Elastic(elastic) => {
-            let stats = elastic.client.get_index_stats(&elastic.base_index).await?;
+            let stats = elastic
+                .get_client()
+                .get_index_stats(elastic.get_base_index())
+                .await?;
             Ok(axum::Json(stats))
         }
     }
@@ -28,7 +31,7 @@ pub(crate) async fn delete(
         crate::eventrepo::EventRepo::SQLite(_) => Err(AppError::InternalServerError),
         crate::eventrepo::EventRepo::Elastic(elastic) => {
             info!("Deleting index: {}", name);
-            let status = elastic.client.delete_index(&name).await?;
+            let status = elastic.get_client().delete_index(&name).await?;
             let status = status.as_u16();
             let status = StatusCode::from_u16(status).map_err(|_| {
                 AppError::StringError("invalid status code returned from elasticsearch".to_string())

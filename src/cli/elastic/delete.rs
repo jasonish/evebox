@@ -28,11 +28,11 @@ pub(super) async fn delete(args: DeleteArgs) -> Result<()> {
     let mut client = Client::new(&args.elastic.elasticsearch);
 
     if args.elastic.username.is_some() {
-        client.username.clone_from(&args.elastic.username);
+        client.set_username(args.elastic.username.clone());
     }
 
     if args.elastic.password.is_some() {
-        client.password.clone_from(&args.elastic.password);
+        client.set_password(args.elastic.password.clone());
     }
 
     let indices = client.get_index_stats(&args.index).await?;

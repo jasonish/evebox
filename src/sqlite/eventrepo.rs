@@ -30,10 +30,10 @@ mod stats;
 
 /// SQLite implementation of the event datastore.
 pub(crate) struct SqliteEventRepo {
-    pub importer: super::importer::SqliteEventSink,
-    pub pool: SqlitePool,
-    pub writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
-    pub _rusqlite_writer: Option<Arc<Mutex<rusqlite::Connection>>>,
+    importer: super::importer::SqliteEventSink,
+    pool: SqlitePool,
+    writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
+    _rusqlite_writer: Option<Arc<Mutex<rusqlite::Connection>>>,
 }
 
 impl SqliteEventRepo {
@@ -434,5 +434,13 @@ impl SqliteEventRepo {
         });
 
         Ok(sensors)
+    }
+
+    pub fn get_pool(&self) -> &SqlitePool {
+        &self.pool
+    }
+
+    pub fn get_writer(&self) -> &Arc<tokio::sync::Mutex<SqliteConnection>> {
+        &self.writer
     }
 }

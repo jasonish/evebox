@@ -15,11 +15,11 @@ pub(crate) struct AutoArchive {
 }
 
 impl AutoArchive {
-    pub fn add(&mut self, entry: &FilterEntry) {
+    pub(crate) fn add(&mut self, entry: &FilterEntry) {
         self.filters.insert(self.key(entry));
     }
 
-    pub fn is_match(&self, event: &serde_json::Value) -> bool {
+    pub(crate) fn is_match(&self, event: &serde_json::Value) -> bool {
         self.filters.contains(&self.key4(event))
             || self.filters.contains(&self.key3(event))
             || self.filters.contains(&self.key1(event))
@@ -36,11 +36,11 @@ impl AutoArchive {
         )
     }
 
-    pub fn has_key(&self, key: &str) -> bool {
+    pub(crate) fn has_key(&self, key: &str) -> bool {
         self.filters.contains(key)
     }
 
-    pub fn remove(&mut self, entry: &FilterEntry) {
+    pub(crate) fn remove(&mut self, entry: &FilterEntry) {
         self.filters.remove(&self.key(entry));
     }
 

@@ -14,7 +14,7 @@ pub(crate) enum EventSink {
 }
 
 impl EventSink {
-    pub async fn submit(&mut self, event: serde_json::Value) -> anyhow::Result<bool> {
+    pub(crate) async fn submit(&mut self, event: serde_json::Value) -> anyhow::Result<bool> {
         match self {
             EventSink::EveBox(importer) => Ok(importer.submit(event).await?),
             EventSink::Elastic(importer) => Ok(importer.submit(event).await?),
@@ -22,7 +22,7 @@ impl EventSink {
         }
     }
 
-    pub async fn commit(&mut self) -> anyhow::Result<usize> {
+    pub(crate) async fn commit(&mut self) -> anyhow::Result<usize> {
         match self {
             EventSink::EveBox(importer) => importer.commit().await,
             EventSink::Elastic(importer) => importer.commit().await,
@@ -30,7 +30,7 @@ impl EventSink {
         }
     }
 
-    pub fn pending(&self) -> usize {
+    pub(crate) fn pending(&self) -> usize {
         match self {
             EventSink::EveBox(importer) => importer.pending(),
             EventSink::Elastic(importer) => importer.pending(),

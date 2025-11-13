@@ -65,7 +65,7 @@ async fn log_query_plan2<'a>(pool: &mut SqliteConnection, sql: &str, args: &Sqli
     }
 }
 
-pub trait SqliteArgumentsExt<'a> {
+pub(crate) trait SqliteArgumentsExt<'a> {
     fn push<T>(&mut self, value: T) -> Result<(), sqlx::error::Error>
     where
         T: sqlx::Encode<'a, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + 'a;
@@ -119,5 +119,5 @@ pub(crate) mod prelude {
 
     pub use futures::TryStreamExt;
 
-    pub use super::SqliteArgumentsExt;
+    pub(crate) use super::SqliteArgumentsExt;
 }

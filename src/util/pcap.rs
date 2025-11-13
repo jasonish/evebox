@@ -43,7 +43,7 @@ pub(crate) enum Protocol {
 }
 
 impl Protocol {
-    pub fn from_name(proto: &str) -> Option<Protocol> {
+    pub(crate) fn from_name(proto: &str) -> Option<Protocol> {
         let proto = proto.to_lowercase();
         match proto.as_str() {
             "tcp" => Some(Self::Tcp),
@@ -69,7 +69,7 @@ pub(crate) struct UdpBuilder {
 }
 
 impl UdpBuilder {
-    pub fn new(source_port: u16, destination_port: u16) -> Self {
+    pub(crate) fn new(source_port: u16, destination_port: u16) -> Self {
         Self {
             source_port,
             destination_port,
@@ -77,12 +77,12 @@ impl UdpBuilder {
         }
     }
 
-    pub fn payload(mut self, payload: Vec<u8>) -> Self {
+    pub(crate) fn payload(mut self, payload: Vec<u8>) -> Self {
         self.payload = Some(payload);
         self
     }
 
-    pub fn build(self) -> Vec<u8> {
+    pub(crate) fn build(self) -> Vec<u8> {
         let payload = self.payload.unwrap_or_default();
         let mut buf = BytesMut::new();
         buf.put_u16(self.source_port);
@@ -102,7 +102,7 @@ pub(crate) struct TcpBuilder {
 }
 
 impl TcpBuilder {
-    pub fn new(source_port: u16, destination_port: u16) -> Self {
+    pub(crate) fn new(source_port: u16, destination_port: u16) -> Self {
         Self {
             source_port,
             destination_port,
@@ -110,12 +110,12 @@ impl TcpBuilder {
         }
     }
 
-    pub fn payload(mut self, payload: Vec<u8>) -> Self {
+    pub(crate) fn payload(mut self, payload: Vec<u8>) -> Self {
         self.payload = payload;
         self
     }
 
-    pub fn build(self) -> Vec<u8> {
+    pub(crate) fn build(self) -> Vec<u8> {
         let mut buf = BytesMut::new();
 
         buf.put_u16(self.source_port);
@@ -153,7 +153,7 @@ impl Default for Ip4Builder {
 }
 
 impl Ip4Builder {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             source_addr: Ipv4Addr::new(0, 0, 0, 0),
             dest_addr: Ipv4Addr::new(0, 0, 0, 0),
@@ -163,27 +163,27 @@ impl Ip4Builder {
         }
     }
 
-    pub fn source(mut self, addr: Ipv4Addr) -> Self {
+    pub(crate) fn source(mut self, addr: Ipv4Addr) -> Self {
         self.source_addr = addr;
         self
     }
 
-    pub fn destination(mut self, addr: Ipv4Addr) -> Self {
+    pub(crate) fn destination(mut self, addr: Ipv4Addr) -> Self {
         self.dest_addr = addr;
         self
     }
 
-    pub fn protocol(mut self, protocol: Protocol) -> Self {
+    pub(crate) fn protocol(mut self, protocol: Protocol) -> Self {
         self.protocol = protocol;
         self
     }
 
-    pub fn payload(mut self, payload: Vec<u8>) -> Self {
+    pub(crate) fn payload(mut self, payload: Vec<u8>) -> Self {
         self.payload = payload;
         self
     }
 
-    pub fn build(self) -> Vec<u8> {
+    pub(crate) fn build(self) -> Vec<u8> {
         let mut buf = BytesMut::new();
 
         buf.put_u16(0x4500); // Version(4) + IHL(4) + DSCP + ECN

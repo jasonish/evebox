@@ -11,11 +11,11 @@ pub async fn main(args: super::main::ElasticOptions) -> anyhow::Result<()> {
     let mut client = Client::new(&args.elasticsearch);
 
     if args.username.is_some() {
-        client.username.clone_from(&args.username);
+        client.set_username(args.username.clone());
     }
 
     if args.password.is_some() {
-        client.password.clone_from(&args.password);
+        client.set_password(args.password.clone());
     }
 
     let server_info = get_info(&mut client).await?;
@@ -53,11 +53,11 @@ async fn get_info(client: &mut Client) -> Result<InfoResponse> {
     match client.get_info().await {
         Ok(info) => return Ok(info),
         Err(err) => {
-            if client.url.starts_with("https") {
+            if client.get_url().starts_with("https") {
                 println!(
                     "Failed to get server info, will disable certificate validation and try again: error = {err}"
                 );
-                client.disable_certificate_validation = true;
+                client.set_disable_certificate_validation(true);
             } else {
                 anyhow::bail!(err);
             }

@@ -3,7 +3,7 @@
 
 use crate::datetime::{self, DateTime};
 
-pub trait Eve {
+pub(crate) trait Eve {
     fn datetime(&self) -> Option<DateTime>;
     fn has_tag(&self, tag: &str) -> bool;
 }

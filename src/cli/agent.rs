@@ -344,7 +344,7 @@ fn get_rule_filenames(config: &Config) -> anyhow::Result<Vec<String>> {
     }
 }
 
-pub fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathBuf> {
+fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathBuf> {
     if let Some(directory) = directory {
         return Some(bookmark::bookmark_filename(input, &directory));
     } else {

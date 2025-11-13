@@ -36,14 +36,24 @@ const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";
 /// Elasticsearch eventstore - for searching events.
 #[derive(Debug, Clone)]
 pub(crate) struct ElasticEventRepo {
-    pub base_index: String,
-    pub index_pattern: String,
-    pub client: Client,
-    pub ecs: bool,
-    pub auto_archive_tx: Option<UnboundedSender<AlertGroupSpec>>,
+    base_index: String,
+    index_pattern: String,
+    client: Client,
+    ecs: bool,
+    auto_archive_tx: Option<UnboundedSender<AlertGroupSpec>>,
 }
 
 impl ElasticEventRepo {
+    pub fn new(base_index: String, index_pattern: String, client: Client, ecs: bool) -> Self {
+        Self {
+            base_index,
+            index_pattern,
+            client,
+            ecs,
+            auto_archive_tx: None,
+        }
+    }
+
     pub fn start_archive_processor(&mut self) {
         let tx = super::autoarchive::AutoArchiveProcessor::start(self.clone());
         self.auto_archive_tx = Some(tx);
@@ -1033,5 +1043,31 @@ impl ElasticEventRepo {
         let buckets: Vec<Bucket> = serde_json::from_value(buckets)?;
         let event_types: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
         Ok(event_types)
+    }
+
+    pub fn get_base_index(&self) -> &str {
+        &self.base_index
+    }
+
+    pub fn get_index_pattern(&self) -> &str {
+        &self.index_pattern
+    }
+
+    pub fn get_client(&self) -> &Client {
+        &self.client
+    }
+
+    pub fn is_ecs(&self) -> bool {
+        self.ecs
+    }
+
+    #[allow(dead_code)]
+    pub fn get_auto_archive_tx(&self) -> Option<UnboundedSender<AlertGroupSpec>> {
+        self.auto_archive_tx.clone()
+    }
+
+    #[allow(dead_code)]
+    pub fn set_auto_archive_tx(&mut self, tx: Option<UnboundedSender<AlertGroupSpec>>) {
+        self.auto_archive_tx = tx;
     }
 }

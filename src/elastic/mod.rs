@@ -89,37 +89,37 @@ impl HistoryEntryBuilder {
         }
     }
 
-    pub fn new_archived() -> Self {
+    pub(crate) fn new_archived() -> Self {
         Self::new(HistoryType::Archived)
     }
 
-    pub fn new_auto_archived() -> Self {
+    pub(crate) fn new_auto_archived() -> Self {
         Self::new(HistoryType::AutoArchived)
     }
 
-    pub fn new_escalate() -> Self {
+    pub(crate) fn new_escalate() -> Self {
         Self::new(HistoryType::Escalated)
     }
 
-    pub fn new_deescalate() -> Self {
+    pub(crate) fn new_deescalate() -> Self {
         Self::new(HistoryType::Deescalated)
     }
 
-    pub fn new_comment() -> Self {
+    pub(crate) fn new_comment() -> Self {
         Self::new(HistoryType::Comment)
     }
 
-    pub fn username(mut self, username: Option<impl Into<String>>) -> Self {
+    pub(crate) fn username(mut self, username: Option<impl Into<String>>) -> Self {
         self.username = username.map(|u| u.into());
         self
     }
 
-    pub fn comment(mut self, comment: impl Into<String>) -> Self {
+    pub(crate) fn comment(mut self, comment: impl Into<String>) -> Self {
         self.comment = Some(comment.into());
         self
     }
 
-    pub fn build(self) -> HistoryEntry {
+    pub(crate) fn build(self) -> HistoryEntry {
         HistoryEntry {
             username: self.username,
             timestamp: self.timestamp.to_rfc3339_utc(),
@@ -129,7 +129,7 @@ impl HistoryEntryBuilder {
     }
 }
 
-pub fn query_string_query(query_string: &str) -> serde_json::Value {
+pub(crate) fn query_string_query(query_string: &str) -> serde_json::Value {
     let escaped = query_string
         .replace('\\', "\\\\")
         .replace(':', "\\:")

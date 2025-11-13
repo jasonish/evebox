@@ -11,7 +11,7 @@ use crate::{elastic::DateTime, prelude::*};
 use super::client::SimpleIndexStats;
 use super::{Client, ElasticEventRepo};
 
-pub fn start(metrics: Arc<Metrics>, configdb: ConfigDb, repo: ElasticEventRepo) {
+pub(crate) fn start(metrics: Arc<Metrics>, configdb: ConfigDb, repo: ElasticEventRepo) {
     tokio::spawn(run(metrics, configdb, repo));
 }
 
@@ -41,8 +41,11 @@ async fn delete_indices(configdb: &ConfigDb, repo: &ElasticEventRepo) -> Result<
         return Ok(());
     }
 
-    let indices = repo.client.get_index_stats(&repo.base_index).await?;
-    let _count = do_delete_indices(&repo.client, indices, config.value, true).await?;
+    let indices = repo
+        .get_client()
+        .get_index_stats(repo.get_base_index())
+        .await?;
+    let _count = do_delete_indices(repo.get_client(), indices, config.value, true).await?;
 
     Ok(())
 }

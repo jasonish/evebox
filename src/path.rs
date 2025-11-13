@@ -5,7 +5,7 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
-pub const SYSTEM_DATA_DIR: &str = "/var/lib/evebox";
+const SYSTEM_DATA_DIR: &str = "/var/lib/evebox";
 
 pub(crate) fn expand(path: &str) -> anyhow::Result<Vec<std::path::PathBuf>> {
     Ok(glob::glob(path)?.flatten().collect())

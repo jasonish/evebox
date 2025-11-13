@@ -15,7 +15,7 @@ use std::time::Duration;
 use super::ElasticResponseError;
 
 #[derive(Debug, thiserror::Error)]
-pub enum ClientError {
+pub(crate) enum ClientError {
     #[error("request: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("json: {0}")]
@@ -28,10 +28,10 @@ pub enum ClientError {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Client {
-    pub url: String,
-    pub disable_certificate_validation: bool,
-    pub username: Option<String>,
-    pub password: Option<String>,
+    url: String,
+    disable_certificate_validation: bool,
+    username: Option<String>,
+    password: Option<String>,
     cert: Option<reqwest::Certificate>,
 }
 
@@ -266,6 +266,27 @@ impl Client {
     pub(crate) async fn delete_index(&self, index: &str) -> anyhow::Result<reqwest::StatusCode> {
         let response = self.delete(index)?.send().await?;
         Ok(response.status())
+    }
+
+    pub fn set_username(&mut self, username: Option<String>) {
+        self.username = username;
+    }
+
+    pub fn set_password(&mut self, password: Option<String>) {
+        self.password = password;
+    }
+
+    pub fn set_disable_certificate_validation(&mut self, disable: bool) {
+        self.disable_certificate_validation = disable;
+    }
+
+    pub fn get_url(&self) -> &str {
+        &self.url
+    }
+
+    #[allow(dead_code)]
+    pub fn get_disable_certificate_validation(&self) -> bool {
+        self.disable_certificate_validation
     }
 }
 

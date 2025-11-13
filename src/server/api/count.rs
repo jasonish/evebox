@@ -88,7 +88,7 @@ async fn sqlite_count(ds: &SqliteEventRepo, q: Vec<QueryElement>) -> anyhow::Res
     builder.apply_query_string(&q)?;
     let (sql, args) = builder.build()?;
     let total: i64 = sqlx::query_scalar_with(&sql, args)
-        .fetch_one(&ds.pool)
+        .fetch_one(ds.get_pool())
         .await?;
     let result = CountResult { total };
     Ok(result)

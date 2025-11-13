@@ -111,7 +111,7 @@ pub(crate) struct AddFieldFilter {
 }
 
 impl AddFieldFilter {
-    pub fn new<S: Into<String>>(field: S, value: serde_json::Value) -> Self {
+    pub(crate) fn new<S: Into<String>>(field: S, value: serde_json::Value) -> Self {
         Self {
             field: field.into(),
             value,
@@ -131,7 +131,7 @@ pub(crate) struct AddRuleFilter {
 }
 
 impl AddRuleFilter {
-    pub fn new(map: Arc<RuleMap>) -> Self {
+    pub(crate) fn new(map: Arc<RuleMap>) -> Self {
         Self { map }
     }
 }

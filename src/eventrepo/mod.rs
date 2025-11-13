@@ -25,7 +25,7 @@ pub(crate) struct EventQueryParams {
     pub query_string: Vec<queryparser::QueryElement>,
 }
 
-pub enum EventRepo {
+pub(crate) enum EventRepo {
     Elastic(crate::elastic::ElasticEventRepo),
     SQLite(SqliteEventRepo),
 }
@@ -69,7 +69,7 @@ pub(crate) struct AggAlertMetadata {
 
 #[allow(unreachable_patterns)]
 impl EventRepo {
-    pub fn get_importer(&self) -> Option<EventSink> {
+    pub(crate) fn get_importer(&self) -> Option<EventSink> {
         match self {
             EventRepo::Elastic(ds) => ds.get_importer().map(EventSink::Elastic),
             EventRepo::SQLite(ds) => Some(EventSink::SQLite(ds.get_importer())),

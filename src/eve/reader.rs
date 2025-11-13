@@ -16,7 +16,7 @@ use tracing::info;
 use tracing::trace;
 
 #[derive(thiserror::Error, Debug)]
-pub enum EveReaderError {
+pub(crate) enum EveReaderError {
     #[error("failed to parse event")]
     ParseError(String),
     #[error("io error: {0}")]
@@ -38,7 +38,7 @@ pub(crate) struct EveReader {
 }
 
 impl EveReader {
-    pub fn new(filename: PathBuf) -> Self {
+    pub(crate) fn new(filename: PathBuf) -> Self {
         Self {
             filename,
             line: String::new(),

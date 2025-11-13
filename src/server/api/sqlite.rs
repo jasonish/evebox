@@ -53,7 +53,7 @@ pub(crate) async fn info(
             ..Default::default()
         };
 
-        let mut tx = sqlite.pool.begin().await?;
+        let mut tx = sqlite.get_pool().begin().await?;
         let mut info = Info::new(&mut tx);
         response.auto_vacuum = info.get_auto_vacuum().await?;
         response.journal_mode = info.get_journal_mode().await?;
@@ -85,7 +85,7 @@ pub(crate) async fn fts_check(
 
         info!("Running SQLite FTS integrity check from API");
 
-        let mut tx = sqlite.pool.begin().await?;
+        let mut tx = sqlite.get_pool().begin().await?;
         let response = match sqlite::util::fts_check(&mut tx).await {
             Ok(_) => Response {
                 ok: true,
@@ -109,7 +109,7 @@ pub(crate) async fn fts_enable(
 ) -> Result<impl IntoResponse, AppError> {
     if let EventRepo::SQLite(sqlite) = &context.datastore {
         info!("Enabling SQLite FTS from API");
-        let mut conn = sqlite.writer.lock().await;
+        let mut conn = sqlite.get_writer().lock().await;
         let mut tx = conn.begin().await?;
         crate::sqlite::util::fts_enable(&mut tx).await?;
         tx.commit().await?;
@@ -124,7 +124,7 @@ pub(crate) async fn fts_disable(
 ) -> Result<impl IntoResponse, AppError> {
     if let EventRepo::SQLite(sqlite) = &context.datastore {
         info!("Disabling SQLite FTS from API");
-        let mut conn = sqlite.writer.lock().await;
+        let mut conn = sqlite.get_writer().lock().await;
         let mut tx = conn.begin().await?;
         crate::sqlite::util::fts_disable(&mut tx).await?;
         tx.commit().await?;
