@@ -40,12 +40,48 @@ cross_run() {
             ${tag} $@
 }
 
-cross_run x86_64-unknown-linux-musl make dist
-cross_run aarch64-unknown-linux-musl make dist
+build_linux_x64() {
+    echo "===> Building Linux x64 (dist + RPM + Debian)"
+    cross_run x86_64-unknown-linux-musl make dist
+    cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
+    cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
+}
 
-cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
+build_linux_arm64() {
+    echo "===> Building Linux ARM64 (dist + Debian)"
+    cross_run aarch64-unknown-linux-musl make dist
+    cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
+}
 
-cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
-cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
+build_windows_x64() {
+    echo "===> Building Windows x64 (dist)"
+    cross_run x86_64-pc-windows-gnu make dist
+}
 
-cross_run x86_64-pc-windows-gnu make dist
+# Parse arguments
+if [ $# -eq 0 ]; then
+    # No arguments: run everything (backward compatible)
+    build_linux_x64
+    build_linux_arm64
+    build_windows_x64
+else
+    # Run specific targets
+    for target in "$@"; do
+        case "$target" in
+            linux-x64)
+                build_linux_x64
+                ;;
+            linux-arm64)
+                build_linux_arm64
+                ;;
+            windows-x64)
+                build_windows_x64
+                ;;
+            *)
+                echo "Unknown target: $target"
+                echo "Valid targets: linux-x64, linux-arm64, windows-x64"
+                exit 1
+                ;;
+        esac
+    done
+fi
