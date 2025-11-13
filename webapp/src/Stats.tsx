@@ -56,6 +56,18 @@ const CHARTS: ChartConfig[] = [
     canvasId: "flowActive",
   },
   {
+    title: "Flow Total",
+    field: "stats.flow.total",
+    differential: true,
+    canvasId: "flowTotal",
+  },
+  {
+    title: "Flow Spare",
+    field: "stats.flow.spare",
+    differential: false,
+    canvasId: "flowSpare",
+  },
+  {
     title: "Flow Memory",
     field: "stats.flow.memuse",
     differential: false,
@@ -66,6 +78,12 @@ const CHARTS: ChartConfig[] = [
     field: "stats.tcp.memuse",
     differential: false,
     canvasId: "tcpMemuse",
+  },
+  {
+    title: "TCP Reassembly Memory",
+    field: "stats.tcp.reassembly_memuse",
+    differential: false,
+    canvasId: "tcpReassemblyMemuse",
   },
 ];
 
