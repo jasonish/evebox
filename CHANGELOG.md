@@ -9,6 +9,11 @@
   - Multi-sensor support with per-sensor line graphs
   - Time range metadata included in API responses
   - Rate limiting for time range selection to prevent database overload
+- Improved stats chart visualization
+  - Added synchronized crosshair across all charts for easier data comparison
+  - Fixed chart alignment by setting consistent Y-axis width
+  - Added flow active, flow total, flow spare charts
+  - Added TCP reassembly memory chart
 
 ### Performance
 - Use Hickory DNS resolver for HTTP requests in server and agent
