@@ -50,6 +50,12 @@ const CHARTS: ChartConfig[] = [
     canvasId: "kernelDrops",
   },
   {
+    title: "Flow Active",
+    field: "stats.flow.active",
+    differential: false,
+    canvasId: "flowActive",
+  },
+  {
     title: "Flow Memory",
     field: "stats.flow.memuse",
     differential: false,
