@@ -91,6 +91,14 @@ export function Stats(): JSX.Element {
 
   let charts: any[] = [];
 
+  // Function to update all charts (for crosshair sync)
+  function updateAllCharts() {
+    charts.forEach((chart) => chart.update("none"));
+  }
+
+  // Make it available globally for the buildChart function
+  (window as any).updateAllCharts = updateAllCharts;
+
   // Enforce max 7-day time range for stats page
   onMount(() => {
     if (TIME_RANGE() === "") {
@@ -433,6 +441,11 @@ function buildChart(
         x: {
           type: "time",
         },
+        y: {
+          afterFit: (scaleInstance) => {
+            scaleInstance.width = 100;
+          },
+        },
       },
       plugins: {
         title: {
@@ -448,7 +461,63 @@ function buildChart(
           intersect: false,
         },
       },
+      onHover: (event, activeElements, chart) => {
+        if (event.native) {
+          const rect = (
+            event.native.target as HTMLCanvasElement
+          ).getBoundingClientRect();
+          const x = (event.native as MouseEvent).clientX - rect.left;
+          const y = (event.native as MouseEvent).clientY - rect.top;
+
+          if (
+            x >= chart.chartArea.left &&
+            x <= chart.chartArea.right &&
+            y >= chart.chartArea.top &&
+            y <= chart.chartArea.bottom
+          ) {
+            crosshairX = x;
+            if ((window as any).updateAllCharts) {
+              (window as any).updateAllCharts();
+            }
+          }
+        }
+      },
     },
   });
+
+  // Handle mouse leave to clear crosshair
+  ctx.canvas.addEventListener("mouseleave", () => {
+    crosshairX = null;
+    if ((window as any).updateAllCharts) {
+      (window as any).updateAllCharts();
+    }
+  });
+
   return chart;
 }
+
+// Shared state for crosshair position across all charts
+let crosshairX: number | null = null;
+
+// Custom plugin to draw vertical crosshair line
+const crosshairPlugin = {
+  id: "crosshair",
+  afterDatasetsDraw(chart: Chart) {
+    if (crosshairX !== null) {
+      const ctx = chart.ctx;
+      const chartArea = chart.chartArea;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(crosshairX, chartArea.top);
+      ctx.lineTo(crosshairX, chartArea.bottom);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+};
+
+// Register the plugin
+Chart.register(crosshairPlugin);
