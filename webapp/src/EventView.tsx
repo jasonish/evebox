@@ -1367,8 +1367,8 @@ function HighlightedRule(props: { rule: string }) {
   createEffect(() => {
     let html = props.rule;
 
-    html = html.replace("<", "%___lt___%");
-    html = html.replace(">", "%___gt___%");
+    html = html.replace(/</g, "%___lt___%");
+    html = html.replace(/>/g, "%___gt___%");
 
     html = html.replace(
       /^([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/,
@@ -1396,8 +1396,8 @@ function HighlightedRule(props: { rule: string }) {
     // Replace referece URLs with the URL.
     html = html.replace(/url,(.*?)([;<])/g, `url,<a href="http://$1">$1</a>$2`);
 
-    html = html.replace("%___lt___%", "&lt;");
-    html = html.replace("%___gt___%", "&gt;");
+    html = html.replace(/%___lt___%/g, "&lt;");
+    html = html.replace(/%___gt___%/g, "&gt;");
 
     setRule(html);
   });
