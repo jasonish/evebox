@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.22.0 - 2025-11-15
 
 ### Features
 - Enhanced stats dashboard with time range support
