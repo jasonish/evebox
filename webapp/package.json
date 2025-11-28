@@ -11,10 +11,10 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "prettier": "^3.5.2",
-    "sass": "^1.57.1",
+    "prettier": "^3.7.1",
+    "sass": "^1.94.2",
     "typescript": "^5.3.3",
-    "vite": "^7.2.2",
+    "vite": "^7.2.4",
     "vite-plugin-solid": "^2.11.10"
   },
   "dependencies": {
@@ -26,7 +26,7 @@
     "chartjs-adapter-dayjs-4": "^1.0.4",
     "dayjs": "^1.11.7",
     "events": "^3.3.0",
-    "pretty-print-json": "^1.4.0",
+    "pretty-print-json": "^3.0.6",
     "queue": "^6.0.2",
     "solid-bootstrap": "^1.0.19",
     "solid-js": "^1.9.0",
