@@ -14,7 +14,7 @@ export const [SERVER_REVISION, SET_SERVER_REVISION] = createSignal<
 
 export const [QUEUE_SIZE, SET_QUEUE_SIZE] = createSignal(0);
 
-const QUEUE = new Queue({ concurrency: 9 });
+const QUEUE = new Queue({ concurrency: 9, autostart: true });
 
 function queueAdd(func: any): Promise<any> {
   const p = new Promise<any>((resolve, reject) => {
@@ -34,7 +34,6 @@ function queueAdd(func: any): Promise<any> {
     });
   });
   SET_QUEUE_SIZE(QUEUE.length);
-  QUEUE.start();
   return p;
 }
 

@@ -27,7 +27,7 @@
     "dayjs": "^1.11.7",
     "events": "^3.3.0",
     "pretty-print-json": "^3.0.6",
-    "queue": "^6.0.2",
+    "queue": "^7.0.0",
     "solid-bootstrap": "^1.0.19",
     "solid-js": "^1.9.0",
     "solid-transition-group": "^0.2.3",
