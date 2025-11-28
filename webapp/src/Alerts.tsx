@@ -32,7 +32,7 @@ import {
   BiStarFill,
   BiStarHalf,
 } from "./icons";
-import tinykeys from "tinykeys";
+import { tinykeys } from "tinykeys";
 import { scrollToClass } from "./scroll";
 import { Transition } from "solid-transition-group";
 import { getViewSize } from "./settings";

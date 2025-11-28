@@ -19,7 +19,7 @@ import { Button, Col, Container, Form, Row } from "solid-bootstrap";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { formatEventDescription } from "./formatters";
 import { BiCaretRightFill, BiDashCircle, BiPlusCircle } from "./icons";
-import tinykeys from "tinykeys";
+import { tinykeys } from "tinykeys";
 import { scrollToClass } from "./scroll";
 import { Transition } from "solid-transition-group";
 import { eventIsArchived, eventSetArchived } from "./event";

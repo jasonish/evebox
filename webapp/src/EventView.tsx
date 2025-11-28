@@ -24,7 +24,7 @@ import { prettyPrintJson } from "pretty-print-json";
 import { AggregateAlert, EcsGeo, EveDns, Event, EventWrapper } from "./types";
 import { parse_timestamp } from "./datetime";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
-import tinykeys from "tinykeys";
+import { tinykeys } from "tinykeys";
 import { eventIsArchived, eventIsEscalated, eventSetArchived } from "./event";
 import { eventStore } from "./eventstore";
 import { addNotification } from "./Notifications";

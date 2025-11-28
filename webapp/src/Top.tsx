@@ -5,7 +5,7 @@ import { Container, Dropdown, Nav, Navbar, NavDropdown } from "solid-bootstrap";
 import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 
-import tinykeys from "tinykeys";
+import { tinykeys } from "tinykeys";
 import { BiGear } from "./icons";
 import { HelpModal } from "./Help";
 import { QUEUE_SIZE, SERVER_REVISION } from "./api";
