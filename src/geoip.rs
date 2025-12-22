@@ -121,6 +121,7 @@ impl GeoIP {
         let ip: std::net::IpAddr = std::str::FromStr::from_str(addr)?;
         reader
             .lookup(ip)?
+            .decode()?
             .ok_or_else(|| "No city data found for IP address".into())
     }
 
@@ -145,43 +146,37 @@ impl GeoIP {
 
     fn as_json(&self, city: geoip2::City) -> serde_json::Value {
         let mut obj = serde_json::json!({});
-        if let Some(city) = city.city {
-            if let Some(names) = city.names {
-                if let Some(name) = names.get("en") {
-                    obj["city_name"] = name.to_string().into();
-                }
+        if !city.city.names.is_empty() {
+            if let Some(name) = city.city.names.english {
+                obj["city_name"] = name.to_string().into();
             }
         }
-        if let Some(country) = city.country {
-            if let Some(names) = country.names {
-                if let Some(name) = names.get("en") {
-                    obj["country_name"] = name.to_string().into();
-                }
-            }
-            if let Some(iso_code) = country.iso_code {
-                obj["country_iso_code"] = iso_code.into();
+        if !city.country.names.is_empty() {
+            if let Some(name) = city.country.names.english {
+                obj["country_name"] = name.to_string().into();
             }
         }
-        if let Some(subdivisions) = city.subdivisions {
-            if let Some(subdivision) = &subdivisions.first() {
-                if let Some(names) = &subdivision.names {
-                    if let Some(name) = names.get("en") {
-                        obj["region_name"] = name.to_string().into();
-                    }
-                }
-                if let Some(iso_code) = &subdivision.iso_code {
-                    obj["region_iso_code"] = iso_code.to_string().into();
+        if let Some(iso_code) = city.country.iso_code {
+            obj["country_iso_code"] = iso_code.into();
+        }
+        if let Some(subdivision) = city.subdivisions.first() {
+            if !subdivision.names.is_empty() {
+                if let Some(name) = subdivision.names.english {
+                    obj["region_name"] = name.to_string().into();
                 }
             }
+            if let Some(iso_code) = &subdivision.iso_code {
+                obj["region_iso_code"] = iso_code.to_string().into();
+            }
         }
-        if let Some(location) = city.location {
+        if !city.location.is_empty() {
             let mut locobj = serde_json::json!({});
             let mut include = false;
-            if let Some(lat) = location.latitude {
+            if let Some(lat) = city.location.latitude {
                 locobj["lat"] = lat.into();
                 include = true;
             }
-            if let Some(lon) = location.longitude {
+            if let Some(lon) = city.location.longitude {
                 locobj["lon"] = lon.into();
                 include = true;
             }
@@ -189,11 +184,9 @@ impl GeoIP {
                 obj["location"] = locobj;
             }
         }
-        if let Some(continent) = city.continent {
-            if let Some(names) = continent.names {
-                if let Some(name) = names.get("en") {
-                    obj["continent_name"] = name.to_string().into();
-                }
+        if !city.continent.names.is_empty() {
+            if let Some(name) = city.continent.names.english {
+                obj["continent_name"] = name.to_string().into();
             }
         }
         obj
