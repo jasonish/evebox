@@ -21,9 +21,9 @@ opt-level = 3
 anyhow = "1.0.100"
 thiserror = "2.0.17"
 
-axum = { version = "0.8.5" }
-axum-server = { version = "0.7.2", features = ["tls-rustls-no-provider"] }
-axum-extra = { version = "0.10.2", default-features = false, features = ["cookie", "typed-header", "form"] }
+axum = { version = "0.8.8" }
+axum-server = { version = "0.7.3", features = ["tls-rustls-no-provider"] }
+axum-extra = { version = "0.10.3", default-features = false, features = ["cookie", "typed-header", "form"] }
 hyper = ">=1.7, <1.8"
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
 tower-http = { version = "0.6", features = ["set-header", "trace", "limit"] }
@@ -31,8 +31,8 @@ futures = "0.3.31"
 
 base64 = "0.22.1"
 bcrypt = "0.17.1"
-bytes = "1.10.1"
-clap = { version = "4.5.48", features = ["env", "derive", "color"] }
+bytes = "1.11.0"
+clap = { version = "4.5.53", features = ["env", "derive", "color"] }
 
 sqlx = { version = "0.8.6", default-features = false, features = ["macros", "migrate", "runtime-tokio", "sqlite", "tls-rustls", "json", "chrono"] }
 
@@ -52,35 +52,35 @@ mime_guess = "2.0.5"
 nom = "8"
 percent-encoding = "2.3.2"
 rand = "0.9.2"
-reqwest = { version = "0.12.23", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots", "hickory-dns"] }
-rust-embed = { version = "8.7.2", features = ["debug-embed"] }
+reqwest = { version = "0.12.27", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots", "hickory-dns"] }
+rust-embed = { version = "8.9.0", features = ["debug-embed"] }
 
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
+serde_json = "1.0.146"
 serde_yaml = "0.9.34"
 
 suricatax-rule-parser = { git = "https://github.com/jasonish/suricatax-rule-parser-rs", rev = "4b43a70f6e0a892970faa17b08d73d4a3b0b2cba" }
 
 # Currently only used for tracing_subscriber based logging.
 time = { version = "0.3.44", features = ["macros"] }
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.20", features = ["fmt", "env-filter", "time", "local-time"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["fmt", "env-filter", "time", "local-time"] }
 tracing-log = "0.2.0"
 
 ulid = "1.2.1"
-uuid = { version = "1.18.1", features = ["v4"] }
-webbrowser = "1.0.5"
-regex = "1.11.3"
-libc = { version = "0.2.176", default-features = false }
+uuid = { version = "1.19.0", features = ["v4"] }
+webbrowser = "1.0.6"
+regex = "1.12.2"
+libc = { version = "0.2.178", default-features = false }
 rcgen = "0.13.2"
 directories = "6.0.0"
-gethostname = "1.0.2"
+gethostname = "1.1.0"
 tempfile = "3.23.0"
 inquire = "0.9.1"
 chrono = { version = "0.4.42", default-features = false, features = ["std", "now", "serde"] }
-log = "0.4.28"
+log = "0.4.29"
 owo-colors = "4.2.3"
-indexmap = "2.11.4"
+indexmap = "2.12.1"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-util = "0.7.16"
+tokio-util = "0.7.17"
 async-trait = "0.1.89"
