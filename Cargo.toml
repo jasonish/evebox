@@ -22,12 +22,14 @@ anyhow = "1.0.100"
 thiserror = "2.0.17"
 
 axum = { version = "0.8.8" }
-axum-server = { version = "0.7.3", features = ["tls-rustls-no-provider"] }
+axum-server = { version = "0.8.0", features = ["tls-rustls-no-provider"] }
 axum-extra = { version = "0.10.3", default-features = false, features = ["cookie", "typed-header", "form"] }
-hyper = ">=1.7, <1.8"
-tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread"] }
+hyper = ">=1.8, <1.9"
+tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread", "fs"] }
 tower-http = { version = "0.6", features = ["set-header", "trace", "limit"] }
 futures = "0.3.31"
+rustls = { version = "0.23", default-features = false }
+rustls-pki-types = { version = "1.13", features = ["alloc", "std"] }
 
 base64 = "0.22.1"
 bcrypt = "0.17.1"

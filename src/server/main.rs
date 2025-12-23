@@ -375,8 +375,8 @@ pub(crate) async fn run_axum_server_with_tls(
     let port: u16 = config.port;
     let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
     let service = build_axum_service(context.clone());
-    use axum_server::tls_rustls::RustlsConfig;
-    let tls_config = RustlsConfig::from_pem_file(
+
+    let tls_config = load_rustls_config(
         config.tls_cert_filename.as_ref().unwrap(),
         config.tls_key_filename.as_ref().unwrap(),
     )
@@ -393,6 +393,43 @@ pub(crate) async fn run_axum_server_with_tls(
         .serve(service)
         .await?;
     Ok(())
+}
+
+async fn load_rustls_config(
+    cert_path: impl AsRef<Path>,
+    key_path: impl AsRef<Path>,
+) -> std::io::Result<axum_server::tls_rustls::RustlsConfig> {
+    use rustls_pki_types::pem::PemObject;
+    use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+    use std::io;
+
+    // Read certificate file
+    let cert_pem = tokio::fs::read(cert_path.as_ref()).await?;
+    let certs: Vec<CertificateDer> = CertificateDer::pem_slice_iter(&cert_pem)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+
+    if certs.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "no certificates found in PEM file",
+        ));
+    }
+
+    // Read private key file
+    let key_pem = tokio::fs::read(key_path.as_ref()).await?;
+    let key = PrivateKeyDer::from_pem_slice(&key_pem)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+
+    // Build rustls ServerConfig
+    let server_config = rustls::ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs, key)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+
+    Ok(axum_server::tls_rustls::RustlsConfig::from_config(
+        std::sync::Arc::new(server_config),
+    ))
 }
 
 pub(crate) async fn run_axum_server(
