@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.23.0 - 2025-12-27
+
+- Release to update dependencies.
+
 ## 0.22.0 - 2025-11-15
 
 ### Features
