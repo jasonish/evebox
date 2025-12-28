@@ -1060,14 +1060,4 @@ impl ElasticEventRepo {
     pub fn is_ecs(&self) -> bool {
         self.ecs
     }
-
-    #[allow(dead_code)]
-    pub fn get_auto_archive_tx(&self) -> Option<UnboundedSender<AlertGroupSpec>> {
-        self.auto_archive_tx.clone()
-    }
-
-    #[allow(dead_code)]
-    pub fn set_auto_archive_tx(&mut self, tx: Option<UnboundedSender<AlertGroupSpec>>) {
-        self.auto_archive_tx = tx;
-    }
 }

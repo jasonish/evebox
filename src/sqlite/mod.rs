@@ -80,22 +80,11 @@ impl<'a> SqliteArgumentsExt<'a> for SqliteArguments<'a> {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) trait EveBoxSqlxErrorExt {
-    fn is_interrupted(&self) -> bool;
     fn is_locked(&self) -> bool;
 }
 
 impl EveBoxSqlxErrorExt for sqlx::error::Error {
-    fn is_interrupted(&self) -> bool {
-        if let Some(err) = self.as_database_error() {
-            if err.message() == "interrupted" {
-                return true;
-            }
-        }
-        false
-    }
-
     fn is_locked(&self) -> bool {
         if let Some(err) = self.as_database_error() {
             if err.message() == "database is locked" {

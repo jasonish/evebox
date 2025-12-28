@@ -158,17 +158,11 @@ pub(crate) struct ElasticResponse {
     pub updated: Option<u64>,
     pub aggregations: Option<serde_json::Value>,
 
-    #[allow(dead_code)]
     #[serde(default)]
     pub took: u64,
 
-    #[allow(dead_code)]
     #[serde(default)]
     pub timed_out: bool,
-
-    #[allow(dead_code)]
-    #[serde(flatten)]
-    pub other: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -186,10 +180,6 @@ impl ElasticResponseError {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-#[allow(dead_code)]
 pub(crate) struct RootCause {
-    #[serde(rename = "type")]
-    pub cause_type: String,
     pub reason: String,
-    pub header: serde_json::Value,
 }

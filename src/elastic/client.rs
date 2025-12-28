@@ -283,11 +283,6 @@ impl Client {
     pub fn get_url(&self) -> &str {
         &self.url
     }
-
-    #[allow(dead_code)]
-    pub fn get_disable_certificate_validation(&self) -> bool {
-        self.disable_certificate_validation
-    }
 }
 
 #[derive(Deserialize, Debug)]
