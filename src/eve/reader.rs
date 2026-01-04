@@ -12,7 +12,6 @@ use std::path::PathBuf;
 
 use tracing::debug;
 use tracing::error;
-use tracing::info;
 use tracing::trace;
 
 #[derive(thiserror::Error, Debug)]
@@ -114,7 +113,7 @@ impl EveReader {
             let n = reader.read_line(&mut self.line)?;
             if n > 0 {
                 if !self.line.ends_with('\n') {
-                    info!(
+                    trace!(
                         "Line does not end with new line character, seeking back to {}",
                         pos
                     );
