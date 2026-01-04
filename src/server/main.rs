@@ -87,6 +87,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     server_config.no_check_certificate = config
         .get_bool("database.elasticsearch.disable-certificate-check")?
         || config.get_bool("no-check-certificate")?;
+    server_config.postgres_url = config.get("database.postgresql.url")?;
     server_config.http_request_logging = config.get_bool("http.request-logging")?;
     server_config.http_reverse_proxy = config.get_bool("http.reverse-proxy")?;
 
@@ -631,8 +632,56 @@ async fn configure_datastore(
 
             Ok(EventRepo::SQLite(eventstore))
         }
+        "postgres" | "postgresql" => {
+            let url = server_config
+                .postgres_url
+                .clone()
+                .or_else(postgres_url_from_env)
+                .ok_or_else(|| anyhow!("PostgreSQL URL not configured"))?;
+
+            let pool = crate::postgres::connection::open_pool(&url).await?;
+            crate::postgres::connection::init_event_db(&pool).await?;
+
+            let eventstore = crate::postgres::eventrepo::PostgresEventRepo::new(
+                pool,
+                metrics.postgres_event_consumer.clone(),
+            );
+
+            // Start retention task
+            crate::postgres::retention::start(
+                metrics,
+                configdb,
+                config,
+                eventstore.partition_manager().clone(),
+            );
+            info!("PostgreSQL retention task started");
+
+            Ok(EventRepo::Postgres(eventstore))
+        }
         _ => panic!("unsupported datastore"),
     }
+}
+
+/// Build a PostgreSQL connection URL from standard PG* environment variables.
+///
+/// Uses PGHOST, PGPORT, PGDATABASE, PGUSER, and PGPASSWORD.
+fn postgres_url_from_env() -> Option<String> {
+    let host = std::env::var("PGHOST").ok()?;
+    let port = std::env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
+    let database = std::env::var("PGDATABASE").unwrap_or_else(|_| "evebox".to_string());
+    let user = std::env::var("PGUSER").ok();
+    let password = std::env::var("PGPASSWORD").ok();
+
+    let userinfo = match (user, password) {
+        (Some(u), Some(p)) => format!("{}:{}@", u, p),
+        (Some(u), None) => format!("{}@", u),
+        _ => String::new(),
+    };
+
+    Some(format!(
+        "postgres://{}{}:{}/{}",
+        userinfo, host, port, database
+    ))
 }
 
 #[derive(Debug)]

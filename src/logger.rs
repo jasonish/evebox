@@ -31,7 +31,7 @@ pub fn init_logger(level: Level) -> anyhow::Result<()> {
     let timer = tracing_subscriber::fmt::time::LocalTime::new(format);
     let builder = tracing_subscriber::FmtSubscriber::builder()
         .with_env_filter(format!(
-            "{level},h2=off,hyper=off,tokio_util=off,tower_http=debug,refinery_core=warn"
+            "{level},h2=off,hyper=off,tokio_util=off,tower_http=debug,refinery_core=warn,sqlx::query=warn"
         ))
         .with_writer(std::io::stderr)
         .with_timer(timer);
