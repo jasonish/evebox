@@ -77,6 +77,7 @@ pub(crate) struct ServerConfig {
     pub elastic_password: Option<String>,
     pub elastic_cacert: Option<String>,
     pub elastic_ecs: bool,
+    pub postgres_url: Option<String>,
     pub data_directory: Option<String>,
     pub config_directory: Option<String>,
     pub authentication_required: bool,

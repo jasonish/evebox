@@ -36,7 +36,7 @@ bcrypt = "0.17.1"
 bytes = "1.11.0"
 clap = { version = "4.5.53", features = ["env", "derive", "color"] }
 
-sqlx = { version = "0.8.6", default-features = false, features = ["macros", "migrate", "runtime-tokio", "sqlite", "tls-rustls", "json", "chrono"] }
+sqlx = { version = "0.8.6", default-features = false, features = ["macros", "migrate", "runtime-tokio", "sqlite", "postgres", "tls-rustls", "json", "chrono"] }
 
 # While sqlx is nice to use, Rusqlite is fast for bulk operations.
 rusqlite = { version = "0.32.1", features = ["bundled"] }

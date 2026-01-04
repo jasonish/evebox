@@ -129,7 +129,48 @@ pub(crate) async fn agg_sse(
                     )
                     .await
                 {
-                    let event = Event::default().comment(format!("error: {err:?}"));
+                    // Log the error server-side
+                    error!("SSE agg stream error (SQLite): {err}");
+                    // Sanitize error message - SSE comments cannot contain newlines
+                    let err_msg = format!("error: {err}").replace(['\n', '\r'], " ");
+                    let event = Event::default().comment(err_msg);
+                    let _ = tx.send(Ok(event));
+                }
+
+                let event = Event::default().comment("done");
+                let _ = tx.send(Ok(event));
+            }
+            EventRepo::Postgres(ds) => {
+                let (aggtx, mut aggrx) = tokio::sync::mpsc::unbounded_channel();
+
+                let tx0 = tx.clone();
+                let field = form.field.clone();
+                tokio::spawn(async move {
+                    while let Some(result) = aggrx.recv().await {
+                        if let Ok(event) = Event::default().json_data(result) {
+                            if tx0.send(Ok(event)).is_err() {
+                                debug!("Client disappeared, terminating SSE agg ({})", field);
+                                return;
+                            }
+                        }
+                    }
+                });
+
+                if let Err(err) = ds
+                    .agg_stream(
+                        &form.field,
+                        form.size,
+                        &form.order,
+                        query_string,
+                        Some(aggtx),
+                    )
+                    .await
+                {
+                    // Log the error server-side
+                    error!("SSE agg stream error (Postgres): {err}");
+                    // Sanitize error message - SSE comments cannot contain newlines
+                    let err_msg = format!("error: {err}").replace(['\n', '\r'], " ");
+                    let event = Event::default().comment(err_msg);
                     let _ = tx.send(Ok(event));
                 }
 
@@ -208,6 +249,10 @@ pub(crate) async fn event_types(
             Ok(Json(results))
         }
         crate::eventrepo::EventRepo::SQLite(ds) => {
+            let results = ds.get_event_types(query_string).await?;
+            Ok(Json(results))
+        }
+        crate::eventrepo::EventRepo::Postgres(ds) => {
             let results = ds.get_event_types(query_string).await?;
             Ok(Json(results))
         }

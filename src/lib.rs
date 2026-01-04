@@ -20,6 +20,7 @@ mod file;
 mod geoip;
 mod importer;
 mod path;
+mod postgres;
 mod prelude;
 mod queryparser;
 mod resource;

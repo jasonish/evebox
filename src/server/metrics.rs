@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, atomic::AtomicU64};
 
 use serde::Serialize;
 
+use crate::postgres::importer::PostgresEventConsumerMetrics;
 use crate::sqlite::importer::SqliteEventConsumerMetrics;
 
 #[derive(Debug, Default, Serialize)]
@@ -14,6 +15,7 @@ pub(crate) struct Metrics {
     pub autoarchived_by_filter: AtomicU64,
     pub autoarchived_by_user: AtomicU64,
     pub sqlite_event_consumer: Arc<Mutex<SqliteEventConsumerMetrics>>,
+    pub postgres_event_consumer: Arc<Mutex<PostgresEventConsumerMetrics>>,
     pub events_rx: AtomicU64,
 }
 

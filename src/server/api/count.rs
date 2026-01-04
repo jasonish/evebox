@@ -40,6 +40,7 @@ pub(crate) async fn count(
     let result = match &context.datastore {
         crate::eventrepo::EventRepo::Elastic(ds) => elastic_count(ds, q).await?,
         crate::eventrepo::EventRepo::SQLite(ds) => sqlite_count(ds, q).await?,
+        crate::eventrepo::EventRepo::Postgres(_) => todo!("count for postgres"),
     };
 
     Ok(Json(result).into_response())
