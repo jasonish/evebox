@@ -161,7 +161,6 @@ async fn retention_task(
         if size_enabled {
             match get_size(&configdb, &config).await {
                 Ok(size) => {
-                    dbg!(size);
                     if size > 0 {
                         match delete_to_size(conn.clone(), &filename, size).await {
                             Err(err) => {
