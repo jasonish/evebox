@@ -666,6 +666,27 @@ async fn configure_datastore(
 ///
 /// Uses PGHOST, PGPORT, PGDATABASE, PGUSER, and PGPASSWORD.
 fn postgres_url_from_env() -> Option<String> {
+    use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
+
+    // Characters that must be percent-encoded in userinfo (RFC 3986)
+    const USERINFO_ENCODE_SET: &AsciiSet = &CONTROLS
+        .add(b' ')
+        .add(b'"')
+        .add(b'#')
+        .add(b'%')
+        .add(b'/')
+        .add(b':')
+        .add(b'?')
+        .add(b'@')
+        .add(b'[')
+        .add(b'\\')
+        .add(b']')
+        .add(b'^')
+        .add(b'`')
+        .add(b'{')
+        .add(b'|')
+        .add(b'}');
+
     let host = std::env::var("PGHOST").ok()?;
     let port = std::env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
     let database = std::env::var("PGDATABASE").unwrap_or_else(|_| "evebox".to_string());
@@ -673,8 +694,15 @@ fn postgres_url_from_env() -> Option<String> {
     let password = std::env::var("PGPASSWORD").ok();
 
     let userinfo = match (user, password) {
-        (Some(u), Some(p)) => format!("{}:{}@", u, p),
-        (Some(u), None) => format!("{}@", u),
+        (Some(u), Some(p)) => {
+            let encoded_user = utf8_percent_encode(&u, USERINFO_ENCODE_SET);
+            let encoded_pass = utf8_percent_encode(&p, USERINFO_ENCODE_SET);
+            format!("{}:{}@", encoded_user, encoded_pass)
+        }
+        (Some(u), None) => {
+            let encoded_user = utf8_percent_encode(&u, USERINFO_ENCODE_SET);
+            format!("{}@", encoded_user)
+        }
         _ => String::new(),
     };
 

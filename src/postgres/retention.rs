@@ -63,6 +63,7 @@ async fn get_retention_days(configdb: &ConfigDb, config: &Config) -> Result<Opti
 }
 
 /// Start the retention task for PostgreSQL.
+// TODO: Use metrics to record retention task activity (partitions dropped, errors, etc.)
 pub(crate) fn start(
     _metrics: Arc<Metrics>,
     configdb: ConfigDb,
