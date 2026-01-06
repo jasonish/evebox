@@ -46,22 +46,10 @@ CREATE INDEX events_alert_signature_idx ON events ((source->'alert'->>'signature
 CREATE INDEX events_alert_signature_id_idx ON events ((source->'alert'->>'signature_id'));
 CREATE INDEX events_flow_id_idx ON events ((source->>'flow_id'));
 
--- Composite indexes for event views and archiving
-CREATE INDEX events_event_type_archived_idx ON events (
-    (source->>'event_type'),
-    archived,
-    (source->'alert'->>'signature_id'),
-    (source->>'src_ip'),
-    (source->>'dest_ip')
-);
-
-CREATE INDEX events_escalated_view_idx ON events (
-    (source->>'event_type'),
-    escalated,
-    (source->'alert'->>'signature_id'),
-    (source->>'src_ip'),
-    (source->>'dest_ip')
-);
+-- Optimized partial index for the default Inbox view (active alerts).
+-- This replaces larger composite indexes for the common use case.
+CREATE INDEX events_inbox_idx ON events (timestamp DESC) 
+WHERE archived = FALSE AND (source->>'event_type') = 'alert';
 
 -- GIN index for full text search on source_vector
 CREATE INDEX events_source_vector_idx ON events USING GIN (source_vector);
@@ -72,27 +60,6 @@ CREATE INDEX events_timestamp_host_idx ON events (timestamp, (source->>'host'));
 -- Composite index for event_type + timestamp filtering (common in aggregation queries)
 CREATE INDEX events_event_type_timestamp_idx 
     ON events ((source->>'event_type'), timestamp DESC);
-
--- Composite indexes for flow-related aggregations (src_ip, dest_ip, ports, proto)
-CREATE INDEX events_flow_src_ip_idx 
-    ON events ((source->>'event_type'), timestamp DESC, (source->>'src_ip'))
-    WHERE source->>'src_ip' IS NOT NULL;
-
-CREATE INDEX events_flow_dest_ip_idx 
-    ON events ((source->>'event_type'), timestamp DESC, (source->>'dest_ip'))
-    WHERE source->>'dest_ip' IS NOT NULL;
-
-CREATE INDEX events_flow_src_port_idx 
-    ON events ((source->>'event_type'), timestamp DESC, (source->>'src_port'))
-    WHERE source->>'src_port' IS NOT NULL;
-
-CREATE INDEX events_flow_dest_port_idx 
-    ON events ((source->>'event_type'), timestamp DESC, (source->>'dest_port'))
-    WHERE source->>'dest_port' IS NOT NULL;
-
-CREATE INDEX events_flow_proto_idx 
-    ON events ((source->>'event_type'), timestamp DESC, (source->>'proto'))
-    WHERE source->>'proto' IS NOT NULL;
 
 -- Composite index for DNS query type filtering
 CREATE INDEX events_dns_query_type_idx 
