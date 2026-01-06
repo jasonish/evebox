@@ -1,5 +1,13 @@
 # Change Log
 
+## Unreleased
+
+### Performance
+- Optimized printable payload tokenization in SQLite importer
+  - Extract ASCII alphanumeric words from printable payload fields
+  - Avoid regex overhead in the ingest pipeline
+  - Skip base64 and HTTP response body data via field-aware pathing
+
 ## 0.23.0 - 2025-12-27
 
 - Release to update dependencies.
