@@ -3,6 +3,7 @@
 
 use super::partition::PartitionManager;
 use crate::eve::Eve;
+use crate::eve::extract_values;
 use crate::prelude::*;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -63,6 +64,7 @@ impl std::fmt::Display for PostgresEventConsumerMetrics {
 struct PreparedEvent {
     ts: DateTime<Utc>,
     archived: bool,
+    source_values: String,
     event: serde_json::Value,
 }
 
@@ -94,10 +96,12 @@ impl PostgresEventSink {
         // Sanitize the event to remove null bytes which PostgreSQL JSONB cannot store
         sanitize_json(&mut event);
         let archived = event.has_tag("evebox.archived");
+        let source_values = extract_values(&event);
         Ok(PreparedEvent {
             ts: ts.datetime.to_utc(),
             event,
             archived,
+            source_values,
         })
     }
 
@@ -143,13 +147,14 @@ impl PostgresEventSink {
         for event in &events {
             let result = sqlx::query(
                 r#"
-                INSERT INTO events (timestamp, archived, source)
-                VALUES ($1, $2, $3)
+                INSERT INTO events (timestamp, archived, source, source_values)
+                VALUES ($1, $2, $3, $4)
                 "#,
             )
             .bind(event.ts)
             .bind(event.archived)
             .bind(&event.event)
+            .bind(&event.source_values)
             .execute(&self.pool)
             .await;
 
@@ -200,13 +205,14 @@ impl PostgresEventSink {
         for event in events {
             sqlx::query(
                 r#"
-                INSERT INTO events (timestamp, archived, source)
-                VALUES ($1, $2, $3)
+                INSERT INTO events (timestamp, archived, source, source_values)
+                VALUES ($1, $2, $3, $4)
                 "#,
             )
             .bind(event.ts)
             .bind(event.archived)
             .bind(&event.event)
+            .bind(&event.source_values)
             .execute(&mut *tx)
             .await?;
         }

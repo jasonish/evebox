@@ -183,10 +183,7 @@ impl PostgresEventRepo {
             WHERE id = $1
         "#;
 
-        let row = sqlx::query(sql)
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?;
+        let row = sqlx::query(sql).bind(id).fetch_optional(&self.pool).await?;
 
         if let Some(row) = row {
             let id: i64 = row.try_get("id")?;
@@ -394,14 +391,14 @@ impl PostgresEventRepo {
                                 if el.negated {
                                     builder
                                         .push_where(format!(
-                                            "NOT source_vector @@ plainto_tsquery('simple', {})",
+                                            "NOT source_values_tsv @@ plainto_tsquery('simple', {})",
                                             p
                                         ))
                                         .push_arg(s.to_string())?;
                                 } else {
                                     builder
                                         .push_where(format!(
-                                            "source_vector @@ plainto_tsquery('simple', {})",
+                                            "source_values_tsv @@ plainto_tsquery('simple', {})",
                                             p
                                         ))
                                         .push_arg(s.to_string())?;

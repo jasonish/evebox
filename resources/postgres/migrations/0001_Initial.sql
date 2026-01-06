@@ -22,9 +22,12 @@ CREATE TABLE events (
     -- The actual event as JSONB for efficient querying
     source JSONB,
 
+    -- Extracted text values from source for full text search
+    source_values TEXT,
+
     -- TSVECTOR generated column for full text search
-    source_vector TSVECTOR GENERATED ALWAYS AS (
-        jsonb_to_tsvector('simple', source, '["string", "numeric"]')
+    source_values_tsv TSVECTOR GENERATED ALWAYS AS (
+        to_tsvector('simple', COALESCE(source_values, ''))
     ) STORED,
 
     -- History/comments as JSON array
@@ -51,8 +54,8 @@ CREATE INDEX events_flow_id_idx ON events ((source->>'flow_id'));
 CREATE INDEX events_inbox_idx ON events (timestamp DESC) 
 WHERE archived = FALSE AND (source->>'event_type') = 'alert';
 
--- GIN index for full text search on source_vector
-CREATE INDEX events_source_vector_idx ON events USING GIN (source_vector);
+-- GIN index for full text search on source_values_tsv
+CREATE INDEX events_source_values_tsv_idx ON events USING GIN (source_values_tsv);
 
 -- Index on host field to improve performance of sensor list query
 CREATE INDEX events_timestamp_host_idx ON events (timestamp, (source->>'host'));

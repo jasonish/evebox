@@ -4,7 +4,7 @@
 use sqlx::{SqliteConnection, SqliteExecutor, prelude::FromRow};
 use tracing::info;
 
-use crate::sqlite::importer::extract_values;
+use crate::eve::extract_values;
 
 use super::has_table;
 

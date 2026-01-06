@@ -135,13 +135,13 @@ impl EventQueryBuilder {
                     let p = self.next_placeholder();
                     if e.negated {
                         self.push_where(format!(
-                            "NOT source_vector @@ plainto_tsquery('simple', {})",
+                            "NOT source_values_tsv @@ plainto_tsquery('simple', {})",
                             p
                         ))
                         .push_arg(s.to_string())?;
                     } else {
                         self.push_where(format!(
-                            "source_vector @@ plainto_tsquery('simple', {})",
+                            "source_values_tsv @@ plainto_tsquery('simple', {})",
                             p
                         ))
                         .push_arg(s.to_string())?;
@@ -155,13 +155,13 @@ impl EventQueryBuilder {
                             let p = self.next_placeholder();
                             if e.negated {
                                 self.push_where(format!(
-                                    "NOT source_vector @@ plainto_tsquery('simple', {})",
+                                    "NOT source_values_tsv @@ plainto_tsquery('simple', {})",
                                     p
                                 ))
                                 .push_arg(v.to_string())?;
                             } else {
                                 self.push_where(format!(
-                                    "source_vector @@ plainto_tsquery('simple', {})",
+                                    "source_values_tsv @@ plainto_tsquery('simple', {})",
                                     p
                                 ))
                                 .push_arg(v.to_string())?;
