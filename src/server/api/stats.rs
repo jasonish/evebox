@@ -8,7 +8,6 @@ use crate::eventrepo::EventRepo;
 use crate::server::ServerContext;
 use crate::server::main::SessionExtractor;
 use axum::extract::{Form, State};
-use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{Extension, Json};
 use serde::Deserialize;
@@ -123,18 +122,19 @@ pub(crate) async fn get_sensor_names(
     _session: SessionExtractor,
     State(context): State<Arc<ServerContext>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let sensors = if let EventRepo::Elastic(elastic) = &context.datastore {
-        elastic.get_sensors().await.map_err(|err| {
+    let sensors = match &context.datastore {
+        EventRepo::Elastic(elastic) => elastic.get_sensors().await.map_err(|err| {
             error!("Failed to get sensors: {:?}", err);
             AppError::InternalServerError
-        })?
-    } else if let EventRepo::SQLite(sqlite) = &context.datastore {
-        sqlite.get_sensors().await.map_err(|err| {
+        })?,
+        EventRepo::SQLite(sqlite) => sqlite.get_sensors().await.map_err(|err| {
             error!("Failed to get sensors: {:?}", err);
             AppError::InternalServerError
-        })?
-    } else {
-        return Ok((StatusCode::NOT_IMPLEMENTED, "").into_response());
+        })?,
+        EventRepo::Postgres(postgres) => postgres.get_sensors().await.map_err(|err| {
+            error!("Failed to get sensors: {:?}", err);
+            AppError::InternalServerError
+        })?,
     };
 
     let response = json!({

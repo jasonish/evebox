@@ -1,0 +1,15 @@
+services:
+  postgres:
+    build: .
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: evebox
+      POSTGRES_PASSWORD: evebox
+      POSTGRES_DB: evebox
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    shm_size: 256m
+
+volumes:
+  pgdata:
