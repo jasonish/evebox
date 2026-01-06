@@ -10,6 +10,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.stats_agg(params).await,
             EventRepo::SQLite(ds) => ds.stats_agg(params).await,
+            EventRepo::Postgres(ds) => ds.stats_agg(params).await,
         }
     }
 
@@ -17,6 +18,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.stats_agg_diff(params).await,
             EventRepo::SQLite(ds) => ds.stats_agg_diff(params).await,
+            EventRepo::Postgres(ds) => ds.stats_agg_diff(params).await,
         }
     }
 
@@ -27,6 +29,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.stats_agg_by_sensor(params).await,
             EventRepo::SQLite(ds) => ds.stats_agg_by_sensor(params).await,
+            EventRepo::Postgres(ds) => ds.stats_agg_by_sensor(params).await,
         }
     }
 
@@ -37,6 +40,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.stats_agg_diff_by_sensor(params).await,
             EventRepo::SQLite(ds) => ds.stats_agg_diff_by_sensor(params).await,
+            EventRepo::Postgres(ds) => ds.stats_agg_diff_by_sensor(params).await,
         }
     }
 }

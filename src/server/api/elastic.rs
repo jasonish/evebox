@@ -11,7 +11,9 @@ pub(crate) async fn indices(
     Extension(context): Extension<Arc<ServerContext>>,
 ) -> Result<impl IntoResponse, AppError> {
     match &context.datastore {
-        crate::eventrepo::EventRepo::SQLite(_) => Err(AppError::InternalServerError),
+        crate::eventrepo::EventRepo::SQLite(_) | crate::eventrepo::EventRepo::Postgres(_) => {
+            Err(AppError::InternalServerError)
+        }
         crate::eventrepo::EventRepo::Elastic(elastic) => {
             let stats = elastic
                 .get_client()
@@ -28,7 +30,9 @@ pub(crate) async fn delete(
     Path(name): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
     match &context.datastore {
-        crate::eventrepo::EventRepo::SQLite(_) => Err(AppError::InternalServerError),
+        crate::eventrepo::EventRepo::SQLite(_) | crate::eventrepo::EventRepo::Postgres(_) => {
+            Err(AppError::InternalServerError)
+        }
         crate::eventrepo::EventRepo::Elastic(elastic) => {
             info!("Deleting index: {}", name);
             let status = elastic.get_client().delete_index(&name).await?;

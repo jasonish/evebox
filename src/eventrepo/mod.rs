@@ -3,6 +3,7 @@
 
 use crate::datetime::DateTime;
 use crate::importer::EventSink;
+use crate::postgres::eventrepo::PostgresEventRepo;
 use crate::prelude::*;
 use crate::server::api;
 use crate::server::autoarchive::AutoArchive;
@@ -28,6 +29,7 @@ pub(crate) struct EventQueryParams {
 pub(crate) enum EventRepo {
     Elastic(crate::elastic::ElasticEventRepo),
     SQLite(SqliteEventRepo),
+    Postgres(PostgresEventRepo),
 }
 
 #[derive(Clone, Debug)]
@@ -73,6 +75,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.get_importer().map(EventSink::Elastic),
             EventRepo::SQLite(ds) => Some(EventSink::SQLite(ds.get_importer())),
+            EventRepo::Postgres(ds) => Some(EventSink::Postgres(ds.get_importer())),
         }
     }
 
@@ -83,6 +86,7 @@ impl EventRepo {
                 Ok(())
             }
             EventRepo::SQLite(ds) => ds.archive_event_by_id(event_id).await,
+            EventRepo::Postgres(ds) => ds.archive_event_by_id(event_id).await,
         }
     }
 
@@ -93,6 +97,7 @@ impl EventRepo {
                 Ok(())
             }
             EventRepo::SQLite(ds) => ds.escalate_event_by_id(event_id).await,
+            EventRepo::Postgres(ds) => ds.escalate_event_by_id(event_id).await,
         }
     }
 
@@ -100,6 +105,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.deescalate_event_by_id(event_id).await,
             EventRepo::SQLite(ds) => ds.deescalate_event_by_id(event_id).await,
+            EventRepo::Postgres(ds) => ds.deescalate_event_by_id(event_id).await,
         }
     }
 
@@ -107,6 +113,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.get_event_by_id(event_id).await,
             EventRepo::SQLite(ds) => ds.get_event_by_id(event_id).await,
+            EventRepo::Postgres(ds) => ds.get_event_by_id(event_id).await,
         }
     }
 
@@ -118,6 +125,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.alerts(options, auto_archive).await,
             EventRepo::SQLite(ds) => ds.alerts(options).await,
+            EventRepo::Postgres(ds) => ds.alerts(options).await,
         }
     }
 
@@ -125,6 +133,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.archive_by_alert_group(alert_group).await,
             EventRepo::SQLite(ds) => ds.archive_by_alert_group(alert_group).await,
+            EventRepo::Postgres(ds) => ds.archive_by_alert_group(alert_group).await,
         }
     }
 
@@ -138,7 +147,11 @@ impl EventRepo {
                 ds.escalate_by_alert_group(alert_group, session).await?;
                 Ok(())
             }
-            EventRepo::SQLite(ds) => ds.escalate_by_alert_group(session, alert_group).await,
+            EventRepo::SQLite(ds) => {
+                ds.escalate_by_alert_group(session.clone(), alert_group)
+                    .await
+            }
+            EventRepo::Postgres(ds) => ds.escalate_by_alert_group(session, alert_group).await,
         }
     }
 
@@ -149,7 +162,11 @@ impl EventRepo {
     ) -> Result<()> {
         match self {
             EventRepo::Elastic(ds) => ds.deescalate_by_alert_group(alert_group).await,
-            EventRepo::SQLite(ds) => ds.deescalate_by_alert_group(session, alert_group).await,
+            EventRepo::SQLite(ds) => {
+                ds.deescalate_by_alert_group(session.clone(), alert_group)
+                    .await
+            }
+            EventRepo::Postgres(ds) => ds.deescalate_by_alert_group(session, alert_group).await,
         }
     }
 
@@ -157,6 +174,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(ds) => ds.events(params).await,
             EventRepo::SQLite(ds) => ds.events(params).await,
+            EventRepo::Postgres(ds) => ds.events(params).await,
         }
     }
 
@@ -171,7 +189,11 @@ impl EventRepo {
                 ds.comment_event_by_id(event_id, comment, session).await?;
                 Ok(())
             }
-            EventRepo::SQLite(ds) => ds.comment_event_by_id(event_id, comment, session).await,
+            EventRepo::SQLite(ds) => {
+                ds.comment_event_by_id(event_id, comment, session.clone())
+                    .await
+            }
+            EventRepo::Postgres(ds) => ds.comment_event_by_id(event_id, comment, session).await,
         }
     }
 
@@ -184,7 +206,8 @@ impl EventRepo {
     ) -> Result<Vec<serde_json::Value>> {
         match self {
             EventRepo::Elastic(ds) => Ok(ds.agg(field, size, order, query).await?),
-            EventRepo::SQLite(ds) => Ok(ds.agg(field, size, order, query).await?),
+            EventRepo::SQLite(ds) => Ok(ds.agg(field, size, order, query.clone()).await?),
+            EventRepo::Postgres(ds) => Ok(ds.agg(field, size, order, query).await?),
         }
     }
 
@@ -192,6 +215,7 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(repo) => repo.earliest_timestamp().await,
             EventRepo::SQLite(repo) => repo.earliest_timestamp().await,
+            EventRepo::Postgres(repo) => repo.earliest_timestamp().await,
         }
     }
 }

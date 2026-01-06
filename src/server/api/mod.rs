@@ -117,6 +117,7 @@ pub(crate) async fn config(
     let datastore = match context.datastore {
         EventRepo::Elastic(_) => "elasticsearch",
         EventRepo::SQLite(_) => "sqlite",
+        EventRepo::Postgres(_) => "postgresql",
     };
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
@@ -162,6 +163,7 @@ pub(crate) async fn dhcp_ack(
     let response = match &context.datastore {
         EventRepo::Elastic(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
         EventRepo::SQLite(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
+        EventRepo::Postgres(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
     };
 
     #[rustfmt::skip]
@@ -185,6 +187,7 @@ pub(crate) async fn dhcp_request(
     let response = match &context.datastore {
         EventRepo::Elastic(ds) => ds.dhcp_request(earliest, query.sensor).await?,
         EventRepo::SQLite(ds) => ds.dhcp_request(earliest, query.sensor).await?,
+        EventRepo::Postgres(ds) => ds.dhcp_request(earliest, query.sensor).await?,
     };
 
     #[rustfmt::skip]
@@ -283,6 +286,7 @@ pub(crate) async fn histogram_time(
     let results = match &context.datastore {
         EventRepo::Elastic(ds) => ds.histogram_time(interval, &query_string).await,
         EventRepo::SQLite(ds) => ds.histogram_time(interval, &query_string).await,
+        EventRepo::Postgres(ds) => ds.histogram_time(interval, &query_string).await,
     }
     .map_err(|err| {
         error!("Histogram/time error: params={:?}, error={:?}", &query, err);
@@ -428,6 +432,12 @@ async fn find_dns(
         }
         EventRepo::SQLite(s) => {
             let response = s
+                .dns_reverse_lookup(before.clone(), host, src_ip, dest_ip)
+                .await?;
+            Ok(Json(response))
+        }
+        EventRepo::Postgres(p) => {
+            let response = p
                 .dns_reverse_lookup(before.clone(), host, src_ip, dest_ip)
                 .await?;
             Ok(Json(response))

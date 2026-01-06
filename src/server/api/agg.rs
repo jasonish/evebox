@@ -74,68 +74,92 @@ pub(crate) async fn agg_sse(
         value: QueryValue::From(min_timestamp.into()),
     });
 
-    if let EventRepo::Elastic(ds) = &context.datastore {
-        // For Elastic we delay the SSE reponse until we have data
-        // ready so we can return a proper HTTP error if the query
-        // fails.
-        let result = ds
-            .agg(&form.field, form.size, &form.order, query_string.clone())
-            .await?;
-        let response = json!({
-            "rows": result,
-            "done": true,
-        });
-        let event = Event::default()
-            .json_data(response)
-            .map_err(|err| AppError::StringError(format!("{err:?}")))?;
-        let _ = tx.send(Ok(event));
+    // For Elastic and Postgres, use the fast GROUP BY aggregation path.
+    // These databases handle aggregation efficiently server-side.
+    match &context.datastore {
+        EventRepo::Elastic(ds) => {
+            let result = ds
+                .agg(&form.field, form.size, &form.order, query_string.clone())
+                .await?;
+            let response = json!({
+                "rows": result,
+                "done": true,
+            });
+            let event = Event::default()
+                .json_data(response)
+                .map_err(|err| AppError::StringError(format!("{err:?}")))?;
+            let _ = tx.send(Ok(event));
 
-        let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
-        return Ok(Sse::new(stream).keep_alive(
-            axum::response::sse::KeepAlive::new()
-                .interval(Duration::from_secs(1))
-                .text("keep-alive-text"),
-        ));
+            let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+            return Ok(Sse::new(stream).keep_alive(
+                axum::response::sse::KeepAlive::new()
+                    .interval(Duration::from_secs(1))
+                    .text("keep-alive-text"),
+            ));
+        }
+        EventRepo::Postgres(ds) => {
+            let result = ds
+                .agg(&form.field, form.size, &form.order, query_string.clone())
+                .await?;
+            let response = json!({
+                "rows": result,
+                "done": true,
+            });
+            let event = Event::default()
+                .json_data(response)
+                .map_err(|err| AppError::StringError(format!("{err:?}")))?;
+            let _ = tx.send(Ok(event));
+
+            let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+            return Ok(Sse::new(stream).keep_alive(
+                axum::response::sse::KeepAlive::new()
+                    .interval(Duration::from_secs(1))
+                    .text("keep-alive-text"),
+            ));
+        }
+        EventRepo::SQLite(_) => {
+            // SQLite uses streaming for progressive updates
+        }
     }
 
+    // SQLite streaming path - provides progressive updates for potentially slow queries
     tokio::spawn(async move {
-        match &context.datastore {
-            EventRepo::Elastic(_) => {
-                unreachable!();
-            }
-            EventRepo::SQLite(ds) => {
-                let (aggtx, mut aggrx) = tokio::sync::mpsc::unbounded_channel();
+        if let EventRepo::SQLite(ds) = &context.datastore {
+            let (aggtx, mut aggrx) = tokio::sync::mpsc::unbounded_channel();
 
-                let tx0 = tx.clone();
-                let field = form.field.clone();
-                tokio::spawn(async move {
-                    while let Some(result) = aggrx.recv().await {
-                        if let Ok(event) = Event::default().json_data(result) {
-                            if tx0.send(Ok(event)).is_err() {
-                                debug!("Client disappeared, terminating SSE agg ({})", field);
-                                return;
-                            }
+            let tx0 = tx.clone();
+            let field = form.field.clone();
+            tokio::spawn(async move {
+                while let Some(result) = aggrx.recv().await {
+                    if let Ok(event) = Event::default().json_data(result) {
+                        if tx0.send(Ok(event)).is_err() {
+                            debug!("Client disappeared, terminating SSE agg ({})", field);
+                            return;
                         }
                     }
-                });
-
-                if let Err(err) = ds
-                    .agg_stream(
-                        &form.field,
-                        form.size,
-                        &form.order,
-                        query_string,
-                        Some(aggtx),
-                    )
-                    .await
-                {
-                    let event = Event::default().comment(format!("error: {err:?}"));
-                    let _ = tx.send(Ok(event));
                 }
+            });
 
-                let event = Event::default().comment("done");
+            if let Err(err) = ds
+                .agg_stream(
+                    &form.field,
+                    form.size,
+                    &form.order,
+                    query_string,
+                    Some(aggtx),
+                )
+                .await
+            {
+                // Log the error server-side
+                error!("SSE agg stream error (SQLite): {err}");
+                // Sanitize error message - SSE comments cannot contain newlines
+                let err_msg = format!("error: {err}").replace(['\n', '\r'], " ");
+                let event = Event::default().comment(err_msg);
                 let _ = tx.send(Ok(event));
             }
+
+            let event = Event::default().comment("done");
+            let _ = tx.send(Ok(event));
         }
     });
 
@@ -208,6 +232,10 @@ pub(crate) async fn event_types(
             Ok(Json(results))
         }
         crate::eventrepo::EventRepo::SQLite(ds) => {
+            let results = ds.get_event_types(query_string).await?;
+            Ok(Json(results))
+        }
+        crate::eventrepo::EventRepo::Postgres(ds) => {
             let results = ds.get_event_types(query_string).await?;
             Ok(Json(results))
         }
