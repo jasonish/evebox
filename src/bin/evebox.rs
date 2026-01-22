@@ -51,6 +51,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .hide_env(true)
                 .global(true),
         )
+        .arg(
+            Arg::new("config-directory")
+                .long("config-directory")
+                .short('C')
+                .action(ArgAction::Set)
+                .value_name("DIR")
+                .help("Configuration directory")
+                .env("EVEBOX_CONFIG_DIRECTORY")
+                .hide_env(true)
+                .global(true),
+        )
         .subcommand(clap::Command::new("version").about("Display version"));
 
     let server = clap::Command::new("server")
@@ -62,18 +73,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .action(ArgAction::Set)
                 .value_name("FILE")
                 .help("Configuration filename"),
-        )
-        .arg(
-            Arg::new("config-directory")
-                .long("config-directory")
-                .short('C')
-                .action(ArgAction::Set)
-                .value_name("DIR")
-                .help("Configuration directory")
-                .env("EVEBOX_CONFIG_DIRECTORY")
-                .hide_env(true)
-                .hide(true)
-                .global(true),
         )
         .arg(
             clap::Arg::new("http.host")

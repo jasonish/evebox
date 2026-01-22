@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- Make `--config-directory` a global CLI argument for user management commands
+
 ### Performance
 - Optimized printable payload tokenization in SQLite importer
   - Extract ASCII alphanumeric words from printable payload fields

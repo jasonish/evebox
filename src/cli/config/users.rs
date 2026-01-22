@@ -26,18 +26,24 @@ enum UsersCommands {
     /// Remove an existing user
     Rm {
         username: String,
+        #[arg(from_global, id = "config-directory")]
+        config_directory: Option<String>,
         #[arg(from_global, id = "data-directory")]
         data_directory: Option<String>,
     },
     /// List users
     #[command(alias = "ls")]
     List {
+        #[arg(from_global, id = "config-directory")]
+        config_directory: Option<String>,
         #[arg(from_global, id = "data-directory")]
         data_directory: Option<String>,
     },
     /// Change password
     Passwd {
         username: String,
+        #[arg(from_global, id = "config-directory")]
+        config_directory: Option<String>,
         #[arg(from_global, id = "data-directory")]
         data_directory: Option<String>,
     },
@@ -50,6 +56,8 @@ struct AddArgs {
     #[arg(long, short)]
     password: Option<String>,
 
+    #[arg(from_global, id = "config-directory")]
+    config_directory: Option<String>,
     #[arg(from_global, id = "data-directory")]
     data_directory: Option<String>,
 }
@@ -58,36 +66,46 @@ pub(crate) async fn main(args: &clap::ArgMatches) -> Result<()> {
     let args = UsersCommands::from_arg_matches(args)?;
     match args {
         UsersCommands::Add(args) => add(args).await,
-        UsersCommands::List { data_directory } => list(data_directory).await,
+        UsersCommands::List {
+            config_directory,
+            data_directory,
+        } => list(config_directory, data_directory).await,
         UsersCommands::Rm {
             username,
+            config_directory,
             data_directory,
-        } => remove(username, data_directory).await,
+        } => remove(username, config_directory, data_directory).await,
         UsersCommands::Passwd {
             username,
+            config_directory,
             data_directory,
-        } => password(username, data_directory).await,
+        } => password(username, config_directory, data_directory).await,
     }
 }
 
-async fn open_config_repo<P: AsRef<Path>>(data_directory: Option<P>) -> Result<ConfigDb> {
-    let data_directory = data_directory
+async fn open_config_repo<P: AsRef<Path>>(
+    config_directory: Option<P>,
+    data_directory: Option<P>,
+) -> Result<ConfigDb> {
+    // Prefer config_directory over data_directory
+    let directory = config_directory
         .map(|p| PathBuf::from(p.as_ref()))
+        .or_else(|| data_directory.map(|p| PathBuf::from(p.as_ref())))
         .or_else(crate::path::data_directory);
-    let data_directory = match data_directory {
-        Some(data_directory) => data_directory,
+    let directory = match directory {
+        Some(directory) => directory,
         None => {
-            return Err(anyhow!("--data-directory required"));
+            return Err(anyhow!("--config-directory or --data-directory required"));
         }
     };
-    info!("Using data directory {}", data_directory.display());
-    let filename = data_directory.join("config.sqlite");
+    info!("Using directory {}", directory.display());
+    let filename = directory.join("config.sqlite");
     let config_repo = configdb::open(Some(&filename)).await?;
     Ok(config_repo)
 }
 
-async fn list(dir: Option<String>) -> Result<()> {
-    let repo = open_config_repo(dir.as_deref()).await?;
+async fn list(config_directory: Option<String>, data_directory: Option<String>) -> Result<()> {
+    let repo = open_config_repo(config_directory.as_deref(), data_directory.as_deref()).await?;
     let users = repo.get_users().await?;
     for user in users {
         println!("{}", serde_json::to_string(&user).unwrap());
@@ -96,7 +114,11 @@ async fn list(dir: Option<String>) -> Result<()> {
 }
 
 async fn add(args: AddArgs) -> Result<()> {
-    let repo = open_config_repo(args.data_directory.as_deref()).await?;
+    let repo = open_config_repo(
+        args.config_directory.as_deref(),
+        args.data_directory.as_deref(),
+    )
+    .await?;
 
     let username = if let Some(username) = args.username {
         username.to_string()
@@ -124,8 +146,12 @@ async fn add(args: AddArgs) -> Result<()> {
     Ok(())
 }
 
-async fn remove(username: String, dir: Option<String>) -> Result<()> {
-    let repo = open_config_repo(dir.as_deref()).await?;
+async fn remove(
+    username: String,
+    config_directory: Option<String>,
+    data_directory: Option<String>,
+) -> Result<()> {
+    let repo = open_config_repo(config_directory.as_deref(), data_directory.as_deref()).await?;
     if repo.remove_user(&username).await? == 0 {
         return Err(anyhow!("user does not exist"));
     }
@@ -133,8 +159,12 @@ async fn remove(username: String, dir: Option<String>) -> Result<()> {
     Ok(())
 }
 
-async fn password(username: String, data_directory: Option<String>) -> Result<()> {
-    let repo = open_config_repo(data_directory).await?;
+async fn password(
+    username: String,
+    config_directory: Option<String>,
+    data_directory: Option<String>,
+) -> Result<()> {
+    let repo = open_config_repo(config_directory.as_deref(), data_directory.as_deref()).await?;
     let user = repo.get_user_by_name(&username).await?;
     let password = inquire::Password::new("Password:")
         .with_display_toggle_enabled()
