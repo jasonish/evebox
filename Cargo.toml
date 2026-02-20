@@ -86,3 +86,4 @@ indexmap = "2.12.1"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = "0.7.17"
 async-trait = "0.1.89"
+xz2 = { version = "0.1.7", features = ["static"] }

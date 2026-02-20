@@ -131,7 +131,7 @@ struct LoadArgs {
     /// Limit the number of events to count
     #[arg(long, value_name = "COUNT")]
     count: Option<usize>,
-    /// EVE file to load into database
+    /// EVE file to load into database (.xz supported)
     #[arg(short, long)]
     input: String,
     /// Filename of SQLite database
@@ -251,8 +251,16 @@ async fn dump(filename: &str) -> Result<()> {
 
 async fn load(args: &LoadArgs) -> Result<()> {
     use std::io::{BufRead, BufReader};
+
     let input = File::open(&args.input)?;
-    let reader = BufReader::new(input).lines();
+    let reader: Box<dyn BufRead> = if args.input.ends_with(".xz") {
+        let decoder = xz2::read::XzDecoder::new_multi_decoder(input);
+        Box::new(BufReader::new(decoder))
+    } else {
+        Box::new(BufReader::new(input))
+    };
+
+    let reader = reader.lines();
     let connection_builder = ConnectionBuilder::filename(Some(&args.filename));
     let mut conn = connection_builder.open_connection(true).await?;
     init_event_db(&mut conn).await?;
