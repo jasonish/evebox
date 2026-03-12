@@ -20,6 +20,7 @@ pub(crate) struct EventQueryParams {
     pub from: Option<DateTime>,
     pub to: Option<DateTime>,
     pub event_type: Option<String>,
+    pub sensor: Option<String>,
     pub size: Option<u64>,
     pub sort_by: Option<String>,
     pub query_string: Vec<queryparser::QueryElement>,

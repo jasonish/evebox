@@ -452,6 +452,7 @@ pub(crate) async fn events(
         sort_by: query.sort_by,
         event_type: query.event_type,
         order: query.order,
+        sensor: query.sensor,
         ..Default::default()
     };
 

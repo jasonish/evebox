@@ -26,6 +26,7 @@ import { eventIsArchived, eventSetArchived } from "./event";
 import { AlertDescription } from "./Alerts";
 import { EventsQueryParams } from "./api";
 import { AddressCell, FilterStrip, TimestampCell } from "./components";
+import { SensorSelect } from "./common/SensorSelect";
 
 // The list of event types that will be shown in dropdowns.
 export const EVENT_TYPES: { name: string; eventType: string }[] = [
@@ -87,6 +88,7 @@ export function Events() {
     q?: string;
     order?: "asc";
     event_type?: string;
+    sensor?: string;
     from?: string;
     to?: string;
     f?: string[];
@@ -172,6 +174,10 @@ export function Events() {
     if (searchParams.event_type) {
       params.event_type = searchParams.event_type;
       setEventType(params.event_type);
+    }
+
+    if (searchParams.sensor) {
+      params.sensor = searchParams.sensor;
     }
 
     const filterQuery: string = filters()?.join(" ");
@@ -366,6 +372,15 @@ export function Events() {
                 </select>
               </div>
             </div>
+          </div>
+
+          <div class="col-auto mt-2">
+            <SensorSelect
+              selected={searchParams.sensor}
+              onchange={(sensor) => {
+                setSearchParams({ sensor });
+              }}
+            />
           </div>
 
           <Col class={"mt-2"}>

@@ -31,6 +31,14 @@ impl SqliteEventRepo {
                 .push_arg(event_type)?;
         }
 
+        if let Some(sensor) = options.sensor {
+            if sensor == "(no-name)" {
+                builder.push_where("json_extract(events.source, '$.host') IS NULL");
+            } else {
+                builder.wherejs("host", "=", sensor)?;
+            }
+        }
+
         if let Some(dt) = &options.to {
             builder.timestamp_lte(dt)?;
         }

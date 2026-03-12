@@ -156,6 +156,7 @@ export interface EventsQueryParams {
   to?: string;
   from?: string;
   order?: "asc" | "desc";
+  sensor?: string;
   query_string?: string;
   tz_offset?: string;
 }

@@ -24,6 +24,16 @@ impl ElasticEventRepo {
             ));
         }
 
+        if let Some(sensor) = params.sensor {
+            if sensor == "(no-name)" {
+                filters.push(
+                    json!({"bool": {"must_not": {"exists": {"field": self.map_field("host")}}}}),
+                );
+            } else {
+                filters.push(request::term_filter(&self.map_field("host"), &sensor));
+            }
+        }
+
         self.apply_query_string(
             &params.query_string,
             &mut filters,
