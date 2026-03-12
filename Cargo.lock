@@ -708,7 +708,7 @@ dependencies = [
 
 [[package]]
 name = "evebox"
-version = "0.24.0-dev"
+version = "0.24.0"
 dependencies = [
  "anyhow",
  "async-trait",

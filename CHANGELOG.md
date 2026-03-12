@@ -2,14 +2,34 @@
 
 ## Unreleased
 
+## 0.24.0 - 2026-03-12
+
+### Added
+- Added a sensor selector to the events page
+- Added support for importing xz-compressed EVE JSON files with the SQLite CLI importer
+
 ### Changed
-- Make `--config-directory` a global CLI argument for user management commands
+- Made `--config-directory` a global CLI argument
+- Refined events page filter controls
+  - Adjusted the filter row layout
+  - Matched the event type selector styling with other controls
+- Unified dashboard refresh control layout and button styling
 
 ### Performance
-- Optimized printable payload tokenization in SQLite importer
+- Optimized printable payload tokenization in the SQLite importer
   - Extract ASCII alphanumeric words from printable payload fields
   - Avoid regex overhead in the ingest pipeline
   - Skip base64 and HTTP response body data via field-aware pathing
+
+### Fixed
+- Lowered the log level for lines not ending with a newline from `info` to `trace`
+- Removed stray debug logging from SQLite retention tasks
+
+### Technical Updates
+- Removed `rusqlite` from the SQLite importer (wasn't tested, maintained)
+- Updated Rust and webapp dependencies
+- Added a clippy disallow for `time` RFC2822 formatting
+- Removed dead code and cleaned up internal warnings
 
 ## 0.23.0 - 2025-12-27
 
