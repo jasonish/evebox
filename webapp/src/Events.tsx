@@ -75,6 +75,39 @@ export function eventNameFromType(type: string): string | undefined {
   return undefined;
 }
 
+function EventTypeSelector(props: {
+  selected: string | undefined;
+  onchange: (value: string | undefined) => void;
+}) {
+  function setEventType(event: Event & { currentTarget: HTMLSelectElement }) {
+    const eventType = event.currentTarget.value;
+    if (eventType === "") {
+      props.onchange(undefined);
+    } else {
+      props.onchange(eventType);
+    }
+    event.currentTarget.blur();
+  }
+
+  return (
+    <div class="input-group">
+      <label class="input-group-text">Event Type</label>
+      <select class="form-select" onchange={setEventType}>
+        <For each={EVENT_TYPES}>
+          {(eventType) => (
+            <option
+              value={eventType.eventType}
+              selected={eventType.eventType === (props.selected || "")}
+            >
+              {eventType.name}
+            </option>
+          )}
+        </For>
+      </select>
+    </div>
+  );
+}
+
 export function Events() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = createSignal(false);
@@ -83,7 +116,6 @@ export function Events() {
       return false;
     },
   });
-  const [eventType, setEventType] = createSignal(EVENT_TYPES[0].eventType);
   const [searchParams, setSearchParams] = useSearchParams<{
     q?: string;
     order?: "asc";
@@ -173,7 +205,6 @@ export function Events() {
 
     if (searchParams.event_type) {
       params.event_type = searchParams.event_type;
-      setEventType(params.event_type);
     }
 
     if (searchParams.sensor) {
@@ -342,36 +373,12 @@ export function Events() {
           </div>
 
           <div class="col-auto mt-2">
-            <div class={"row align-items-center"}>
-              <label for={"event-type-selector"} class={"col-auto"}>
-                Event Type:
-              </label>
-              <div class={"col-auto"}>
-                <select
-                  class="form-select"
-                  id={"event-type-selector"}
-                  onchange={(e) => {
-                    setSearchParams({ event_type: e.currentTarget.value });
-                    e.currentTarget.blur();
-                  }}
-                >
-                  <For each={EVENT_TYPES}>
-                    {(et) => {
-                      return (
-                        <>
-                          <option
-                            value={et.eventType}
-                            selected={et.eventType === eventType()}
-                          >
-                            {et.name}
-                          </option>
-                        </>
-                      );
-                    }}
-                  </For>
-                </select>
-              </div>
-            </div>
+            <EventTypeSelector
+              selected={searchParams.event_type}
+              onchange={(eventType) => {
+                setSearchParams({ event_type: eventType });
+              }}
+            />
           </div>
 
           <div class="col-auto mt-2">
