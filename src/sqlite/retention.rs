@@ -167,7 +167,6 @@ async fn retention_task(
                                 error!("Failed to delete database to max size: {:?}", err);
                             }
                             Ok(n) => {
-                                dbg!(n);
                                 if n > 0 {
                                     debug!(
                                         "Deleted {n} events to reduce database size to {} bytes",
