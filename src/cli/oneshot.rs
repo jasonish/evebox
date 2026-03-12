@@ -66,11 +66,8 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 let conn = Arc::new(tokio::sync::Mutex::new(
                     db_connection_builder.open_connection(false).await.unwrap(),
                 ));
-                let sqlite_datastore = sqlite::eventrepo::SqliteEventRepo::new(
-                    conn,
-                    pool.clone(),
-                    metrics.clone(),
-                );
+                let sqlite_datastore =
+                    sqlite::eventrepo::SqliteEventRepo::new(conn, pool.clone(), metrics.clone());
                 let ds = crate::eventrepo::EventRepo::SQLite(sqlite_datastore);
                 let config = crate::server::ServerConfig {
                     port,

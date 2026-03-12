@@ -107,15 +107,14 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     // TODO: A data directory should always be preferred, even if not
     // required as we store stuff like the JA4db in the configuration
     // database.
-    if server_config.data_directory.is_none() {
+    if let Some(data_directory) = server_config.data_directory.as_ref() {
+        if data_directory_required {
+            info!("Using data directory {}", data_directory);
+        }
+    } else {
         let dd = crate::config::get_data_directory(None);
         info!("Using (discovered) data-directory {}", dd.display());
         server_config.data_directory = Some(dd.display().to_string());
-    } else if data_directory_required {
-        info!(
-            "Using data directory {}",
-            server_config.data_directory.as_ref().unwrap()
-        );
     }
 
     if server_config.config_directory.is_none() {
