@@ -780,7 +780,7 @@ export function Alerts() {
           <Col class="d-flex flex-wrap align-items-center gap-2">
             <Show when={!isLoading()}>
               <button
-                class={"btn btn-secondary app-refresh-button"}
+                class={"btn btn-primary app-refresh-button"}
                 onclick={refresh}
               >
                 Refresh
@@ -788,7 +788,7 @@ export function Alerts() {
             </Show>
             <Show when={isLoading()}>
               <button
-                class={"btn btn-secondary app-refresh-button"}
+                class={"btn btn-primary app-refresh-button"}
                 disabled
               >
                 Loading

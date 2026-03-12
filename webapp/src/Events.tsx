@@ -354,7 +354,7 @@ export function Events() {
           <div class="col-auto mt-2 d-flex flex-wrap align-items-center gap-2">
             <Show when={!isLoading()}>
               <button
-                class={"btn btn-secondary app-refresh-button"}
+                class={"btn btn-primary app-refresh-button"}
                 onclick={loadEvents}
               >
                 Refresh
@@ -362,7 +362,7 @@ export function Events() {
             </Show>
             <Show when={isLoading()}>
               <button
-                class={"btn btn-secondary app-refresh-button"}
+                class={"btn btn-primary app-refresh-button"}
                 disabled
               >
                 Loading
