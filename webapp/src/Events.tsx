@@ -351,11 +351,10 @@ export function Events() {
       <Top disableRange />
       <Container fluid>
         <Row>
-          <div class="col-auto mt-2 d-flex gap-1">
+          <div class="col-auto mt-2 d-flex flex-wrap align-items-center gap-2">
             <Show when={!isLoading()}>
               <button
-                class={"btn btn-secondary"}
-                style="width: 7em;"
+                class={"btn btn-secondary app-refresh-button"}
                 onclick={loadEvents}
               >
                 Refresh
@@ -363,25 +362,28 @@ export function Events() {
             </Show>
             <Show when={isLoading()}>
               <button
-                class={"btn btn-secondary"}
-                style={"width: 7em;"}
+                class={"btn btn-secondary app-refresh-button"}
                 disabled
               >
                 Loading
               </button>
             </Show>
-            <SensorSelect
-              selected={searchParams.sensor}
-              onchange={(sensor) => {
-                setSearchParams({ sensor });
-              }}
-            />
-            <EventTypeSelector
-              selected={searchParams.event_type}
-              onchange={(eventType) => {
-                setSearchParams({ event_type: eventType });
-              }}
-            />
+            <div class="d-inline-flex">
+              <SensorSelect
+                selected={searchParams.sensor}
+                onchange={(sensor) => {
+                  setSearchParams({ sensor });
+                }}
+              />
+            </div>
+            <div class="d-inline-flex">
+              <EventTypeSelector
+                selected={searchParams.event_type}
+                onchange={(eventType) => {
+                  setSearchParams({ event_type: eventType });
+                }}
+              />
+            </div>
           </div>
 
           <Col class={"mt-2"}>

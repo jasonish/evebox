@@ -7,7 +7,7 @@ export function RefreshButton(props: { loading: number; refresh: () => void }) {
   return (
     <>
       <button
-        class="btn btn-primary position-relative"
+        class="btn btn-primary position-relative app-refresh-button"
         disabled={props.loading > 0}
         onclick={props.refresh}
       >

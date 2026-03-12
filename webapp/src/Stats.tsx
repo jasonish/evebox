@@ -360,11 +360,11 @@ export function Stats(): JSX.Element {
       <Container fluid>
         <Row class={"mt-2"}>
           <Col>
-            <form class={"row row-cols-lg-auto align-items-center"}>
-              <div class={"col-12"}>
+            <form class={"d-flex flex-wrap align-items-center gap-2"}>
+              <div>
                 <RefreshButton loading={loadingCounter()} refresh={refresh} />
               </div>
-              <div class={"col-12"}>
+              <div class={"d-inline-flex"}>
                 <SensorSelect
                   selected={searchParams.sensor}
                   onchange={(sensor) => {

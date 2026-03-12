@@ -777,11 +777,10 @@ export function Alerts() {
           <span id="small-only" class={"d-block d-sm-none"}></span>
         </div>
         <Row>
-          <Col class="d-flex">
+          <Col class="d-flex flex-wrap align-items-center gap-2">
             <Show when={!isLoading()}>
               <button
-                class={"btn btn-secondary me-2"}
-                style="width: 7em;"
+                class={"btn btn-secondary app-refresh-button"}
                 onclick={refresh}
               >
                 Refresh
@@ -789,8 +788,7 @@ export function Alerts() {
             </Show>
             <Show when={isLoading()}>
               <button
-                class={"btn btn-secondary me-2"}
-                style={"width: 7em;"}
+                class={"btn btn-secondary app-refresh-button"}
                 disabled
               >
                 Loading
@@ -798,8 +796,7 @@ export function Alerts() {
             </Show>
             <Show when={visibleEvents().length > 0 && !isAllSelected()}>
               <button
-                class={"btn btn-secondary me-2"}
-                style="width: 7em;"
+                class={"btn btn-secondary"}
                 onclick={selectAll}
               >
                 Select All
@@ -807,26 +804,19 @@ export function Alerts() {
             </Show>
             <Show when={isAllSelected()}>
               <button
-                class={"btn btn-secondary me-2"}
-                style="width: 8em;"
+                class={"btn btn-secondary"}
                 onclick={unselectAll}
               >
                 Unselect All
               </button>
             </Show>
             <Show when={getSelectedIndexes().length > 0}>
-              <button
-                class={"btn btn-secondary me-2"}
-                onclick={archiveSelected}
-              >
+              <button class={"btn btn-secondary"} onclick={archiveSelected}>
                 Archive
               </button>
             </Show>
             <Show when={getSelectedIndexes().length > 0}>
-              <button
-                class={"btn btn-secondary me-2"}
-                onclick={escalateSelected}
-              >
+              <button class={"btn btn-secondary"} onclick={escalateSelected}>
                 Escalate
               </button>
             </Show>
