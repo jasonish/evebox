@@ -29,7 +29,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 use tracing::{Level, debug, error, info, warn};
@@ -609,14 +609,8 @@ async fn configure_datastore(
             init_event_db(&mut conn).await?;
             let writer = Arc::new(tokio::sync::Mutex::new(conn));
             let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
-            let rusqlite_writer = connection_builder.open_with_rusqlite().unwrap();
-            let rusqlite_writer = Arc::new(Mutex::new(rusqlite_writer));
-            let eventstore = sqlite::eventrepo::SqliteEventRepo::new(
-                writer.clone(),
-                pool,
-                Some(rusqlite_writer),
-                metrics.clone(),
-            );
+            let eventstore =
+                sqlite::eventrepo::SqliteEventRepo::new(writer.clone(), pool, metrics.clone());
 
             // Start retention task.
             sqlite::retention::start_retention_task(

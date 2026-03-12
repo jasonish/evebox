@@ -32,16 +32,13 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
     let db = crate::sqlite::connection::open_connection(Some(&db_filename), true).await?;
     let db = Arc::new(tokio::sync::Mutex::new(db));
-    let writer = Some(Arc::new(Mutex::new(
-        db_connection_builder.open_with_rusqlite()?,
-    )));
 
     let metrics = Arc::new(Metrics::default());
 
     let import_task = {
         let metrics = metrics.clone();
         tokio::spawn(async move {
-            if let Err(err) = run_import(db, writer, limit, &input, metrics).await {
+            if let Err(err) = run_import(db, limit, &input, metrics).await {
                 error!("Import failure: {}", err);
             }
         })
@@ -72,7 +69,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 let sqlite_datastore = sqlite::eventrepo::SqliteEventRepo::new(
                     conn,
                     pool.clone(),
-                    None,
                     metrics.clone(),
                 );
                 let ds = crate::eventrepo::EventRepo::SQLite(sqlite_datastore);
@@ -164,13 +160,12 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
 async fn run_import(
     sqlx: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
-    writer: Option<Arc<Mutex<rusqlite::Connection>>>,
     limit: u64,
     input: &str,
     metrics: Arc<crate::server::metrics::Metrics>,
 ) -> anyhow::Result<()> {
     let geoipdb = geoip::GeoIP::open(None).ok();
-    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, writer, metrics);
+    let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, metrics);
     let mut reader = eve::reader::EveReader::new(input.into());
     info!("Reading {} ({} bytes)", input, reader.file_size());
     let mut last_percent = 0;

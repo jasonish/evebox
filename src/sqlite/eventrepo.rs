@@ -33,25 +33,18 @@ pub(crate) struct SqliteEventRepo {
     importer: super::importer::SqliteEventSink,
     pool: SqlitePool,
     writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
-    _rusqlite_writer: Option<Arc<Mutex<rusqlite::Connection>>>,
 }
 
 impl SqliteEventRepo {
     pub fn new(
         writer: Arc<tokio::sync::Mutex<SqliteConnection>>,
         pool: SqlitePool,
-        rusqlite_writer: Option<Arc<Mutex<rusqlite::Connection>>>,
         metrics: Arc<crate::server::metrics::Metrics>,
     ) -> Self {
         Self {
-            importer: super::importer::SqliteEventSink::new(
-                writer.clone(),
-                rusqlite_writer.clone(),
-                metrics,
-            ),
+            importer: super::importer::SqliteEventSink::new(writer.clone(), metrics),
             pool,
             writer: writer.clone(),
-            _rusqlite_writer: rusqlite_writer,
         }
     }
 
