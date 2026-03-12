@@ -81,16 +81,16 @@ export function DHCP() {
       <Top />
       <div class="container-fluid">
         <div class="row">
-          <div class="pt-2 col-auto">
+          <div class="pt-2 col d-flex flex-wrap align-items-center gap-2">
             <RefreshButton loading={loading()} refresh={refresh} />
-          </div>
-          <div class="pt-2 col-auto">
-            <SensorSelect
-              onchange={(sensor) => {
-                setSearchParams({ sensor: sensor });
-              }}
-              selected={searchParams.sensor}
-            />
+            <div class="d-inline-flex">
+              <SensorSelect
+                onchange={(sensor) => {
+                  setSearchParams({ sensor: sensor });
+                }}
+                selected={searchParams.sensor}
+              />
+            </div>
           </div>
         </div>
         <div class="row">

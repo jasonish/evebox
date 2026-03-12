@@ -461,11 +461,11 @@ export function Overview() {
       <div class="container-fluid">
         <div class="row">
           <div class="mt-2 col">
-            <form class="row row-cols-lg-auto align-items-center">
-              <div class="col-12">
+            <form class="d-flex flex-wrap align-items-center gap-2">
+              <div>
                 <RefreshButton loading={loading()} refresh={refresh} />
               </div>
-              <div class="col-12">
+              <div class="d-inline-flex">
                 <SensorSelect
                   selected={searchParams.sensor}
                   onchange={(sensor) => {
