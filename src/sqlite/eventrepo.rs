@@ -206,11 +206,11 @@ impl SqliteEventRepo {
 
         let mints_nanos = crate::datetime::parse(&alert_group.min_timestamp, None)?.to_nanos();
         filters.push("timestamp >= ?".to_string());
-        args.push(mints_nanos as i64)?;
+        args.push(mints_nanos)?;
 
         let maxts_nanos = crate::datetime::parse(&alert_group.max_timestamp, None)?.to_nanos();
         filters.push("timestamp <= ?".to_string());
-        args.push(maxts_nanos as i64)?;
+        args.push(maxts_nanos)?;
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
@@ -277,11 +277,11 @@ impl SqliteEventRepo {
 
         let mints = crate::datetime::parse(&alert_group.min_timestamp, None)?;
         filters.push("timestamp >= ?".to_string());
-        args.push(mints.to_nanos() as i64)?;
+        args.push(mints.to_nanos())?;
 
         let maxts = crate::datetime::parse(&alert_group.max_timestamp, None)?;
         filters.push("timestamp <= ?".to_string());
-        args.push(maxts.to_nanos() as i64)?;
+        args.push(maxts.to_nanos())?;
 
         let sql = sql.replace("%WHERE%", &filters.join(" AND "));
 
