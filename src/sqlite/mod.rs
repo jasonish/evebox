@@ -86,10 +86,10 @@ pub(crate) trait EveBoxSqlxErrorExt {
 
 impl EveBoxSqlxErrorExt for sqlx::error::Error {
     fn is_locked(&self) -> bool {
-        if let Some(err) = self.as_database_error() {
-            if err.message() == "database is locked" {
-                return true;
-            }
+        if let Some(err) = self.as_database_error()
+            && err.message() == "database is locked"
+        {
+            return true;
         }
         false
     }

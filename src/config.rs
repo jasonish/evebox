@@ -56,10 +56,10 @@ impl Config {
         }
 
         // database.elasticsearch.url
-        if name == "database.elasticsearch.url" {
-            if let Ok(Some(v)) = self.get_env("ELASTICSEARCH_URL") {
-                return Ok(Some(v));
-            }
+        if name == "database.elasticsearch.url"
+            && let Ok(Some(v)) = self.get_env("ELASTICSEARCH_URL")
+        {
+            return Ok(Some(v));
         }
 
         // Check from environment variables. Clap does some of this in
@@ -70,10 +70,10 @@ impl Config {
             "authentication.required" => Some("EVEBOX_AUTHENTICATION_REQUIRED"),
             _ => None,
         };
-        if let Some(environment_value) = environment_value {
-            if let Ok(Some(v)) = self.get_env(environment_value) {
-                return Ok(Some(v));
-            }
+        if let Some(environment_value) = environment_value
+            && let Ok(Some(v)) = self.get_env(environment_value)
+        {
+            return Ok(Some(v));
         }
 
         // Now the configuration file.
@@ -131,13 +131,13 @@ impl Config {
     pub fn get_node<'a>(&self, root: &'a Value, name: &str) -> Option<&'a Value> {
         let parts: Vec<&str> = name.splitn(2, '.').collect();
         let key = Value::String(parts[0].to_string());
-        if let Value::Mapping(map) = root {
-            if let Some(value) = map.get(&key) {
-                if parts.len() == 1 {
-                    return Some(value);
-                } else if value.is_mapping() {
-                    return self.get_node(value, parts[1]);
-                }
+        if let Value::Mapping(map) = root
+            && let Some(value) = map.get(&key)
+        {
+            if parts.len() == 1 {
+                return Some(value);
+            } else if value.is_mapping() {
+                return self.get_node(value, parts[1]);
             }
         }
         None

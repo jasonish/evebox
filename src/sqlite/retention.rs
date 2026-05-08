@@ -43,10 +43,10 @@ async fn get_size(configdb: &ConfigDb, config: &Config) -> Result<usize> {
 
     let retention_size_config: Result<Option<EnabledWithValue>> =
         configdb.kv_get_config_as_t("config.retention.size").await;
-    if let Ok(Some(config)) = retention_size_config {
-        if config.enabled {
-            return Ok(config.value as usize * 1000000000);
-        }
+    if let Ok(Some(config)) = retention_size_config
+        && config.enabled
+    {
+        return Ok(config.value as usize * 1000000000);
     }
 
     Ok(0)
@@ -187,18 +187,18 @@ async fn retention_task(
             }
         }
 
-        if let Ok(Some(days)) = get_days(&configdb, &config).await {
-            if days > 0 {
-                match delete_older_than(conn.clone(), days as u64, LIMIT as u64).await {
-                    Ok(n) => {
-                        count += n;
-                        if n == LIMIT as u64 {
-                            delay = Duration::from_secs(REPEAT_INTERVAL);
-                        }
+        if let Ok(Some(days)) = get_days(&configdb, &config).await
+            && days > 0
+        {
+            match delete_older_than(conn.clone(), days as u64, LIMIT as u64).await {
+                Ok(n) => {
+                    count += n;
+                    if n == LIMIT as u64 {
+                        delay = Duration::from_secs(REPEAT_INTERVAL);
                     }
-                    Err(err) => {
-                        error!("Database retention job failed: {}", err);
-                    }
+                }
+                Err(err) => {
+                    error!("Database retention job failed: {}", err);
                 }
             }
         }
@@ -224,13 +224,14 @@ async fn auto_archive(
 ) -> Result<()> {
     let config: Option<EnabledWithValue> =
         configdb.kv_get_config_as_t("config.autoarchive").await?;
-    if let Some(config) = config {
-        if config.enabled {
-            let now = DateTime::now();
-            let then = now.sub(Duration::from_secs(86400 * config.value));
-            let mut conn = conn.lock().await;
-            let action = HistoryEntryBuilder::new_auto_archived().build();
-            let sql = r#"
+    if let Some(config) = config
+        && config.enabled
+    {
+        let now = DateTime::now();
+        let then = now.sub(Duration::from_secs(86400 * config.value));
+        let mut conn = conn.lock().await;
+        let action = HistoryEntryBuilder::new_auto_archived().build();
+        let sql = r#"
                 UPDATE events
                 SET archived = 1,
                   history = json_insert(history, '$[#]', json(?))
@@ -238,17 +239,16 @@ async fn auto_archive(
                   json_extract(source, '$.event_type') = 'alert'
                   AND timestamp < ?
                   AND archived = 0"#;
-            let mut tx = conn.begin().await?;
-            let n = sqlx::query(sql)
-                .bind(action.to_json())
-                .bind(then.to_nanos())
-                .execute(&mut *tx)
-                .await?
-                .rows_affected();
-            tx.commit().await?;
-            metrics.incr_autoarchived_by_age(n);
-            debug!("Auto-archived {} alerts", n);
-        }
+        let mut tx = conn.begin().await?;
+        let n = sqlx::query(sql)
+            .bind(action.to_json())
+            .bind(then.to_nanos())
+            .execute(&mut *tx)
+            .await?
+            .rows_affected();
+        tx.commit().await?;
+        metrics.incr_autoarchived_by_age(n);
+        debug!("Auto-archived {} alerts", n);
     }
 
     Ok(())

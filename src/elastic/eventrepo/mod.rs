@@ -374,17 +374,17 @@ impl ElasticEventRepo {
         let response: ElasticResponse = self.search(&query).await?.json().await?;
         if let Some(error) = response.error {
             bail!("elasticsearch: {}", error.first_reason());
-        } else if let Some(hits) = &response.hits {
-            if let serde_json::Value::Array(hits) = &hits["hits"] {
-                if !hits.is_empty() {
-                    let mut hit = hits[0].clone();
-                    if self.ecs {
-                        self.transform_ecs(&mut hit);
-                    }
-                    return Ok(Some(hit));
-                } else {
-                    return Ok(None);
+        } else if let Some(hits) = &response.hits
+            && let serde_json::Value::Array(hits) = &hits["hits"]
+        {
+            if !hits.is_empty() {
+                let mut hit = hits[0].clone();
+                if self.ecs {
+                    self.transform_ecs(&mut hit);
                 }
+                return Ok(Some(hit));
+            } else {
+                return Ok(None);
             }
         }
 

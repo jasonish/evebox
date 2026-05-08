@@ -57,11 +57,11 @@ pub(super) async fn add_filter(
         entry.signature_id
     );
 
-    if let Ok(filters) = context.auto_archive.read() {
-        if filters.has_key(&key) {
-            info!("Arhive filters already contains key {}", &key);
-            return Ok(Json(json!({})));
-        }
+    if let Ok(filters) = context.auto_archive.read()
+        && filters.has_key(&key)
+    {
+        info!("Arhive filters already contains key {}", &key);
+        return Ok(Json(json!({})));
     }
 
     let sql = "INSERT INTO filters (user_id, filter, comment) VALUES (?, ?, ?)";

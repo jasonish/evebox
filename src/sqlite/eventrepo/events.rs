@@ -69,16 +69,16 @@ impl SqliteEventRepo {
         while let Some(row) = rows.try_next().await? {
             let mut row = row_mapper(row)?;
 
-            if let Some(ja4) = row["_source"]["tls"]["ja4"].as_str() {
-                if let Some(configdb) = crate::server::context::get_configdb() {
-                    let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
-                    let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
-                        .bind(ja4)
-                        .fetch_optional(&configdb.pool)
-                        .await;
-                    if let Ok(Some(info)) = info {
-                        row["_source"]["ja4db"] = info;
-                    }
+            if let Some(ja4) = row["_source"]["tls"]["ja4"].as_str()
+                && let Some(configdb) = crate::server::context::get_configdb()
+            {
+                let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
+                let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
+                    .bind(ja4)
+                    .fetch_optional(&configdb.pool)
+                    .await;
+                if let Ok(Some(info)) = info {
+                    row["_source"]["ja4db"] = info;
                 }
             }
 

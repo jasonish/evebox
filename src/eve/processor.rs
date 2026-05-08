@@ -176,16 +176,16 @@ impl Processor {
     }
 
     fn write_bookmark(&mut self) {
-        if let Some(bookmark_filename) = &self.bookmark_filename {
-            if let Some(meta) = self.reader.metadata() {
-                let bookmark = bookmark::Bookmark::from_metadata(&meta);
-                if let Err(err) = bookmark.write(bookmark_filename) {
-                    error!(
-                        "Failed to write bookmark: filename={}, err={}",
-                        bookmark_filename.display(),
-                        err
-                    );
-                }
+        if let Some(bookmark_filename) = &self.bookmark_filename
+            && let Some(meta) = self.reader.metadata()
+        {
+            let bookmark = bookmark::Bookmark::from_metadata(&meta);
+            if let Err(err) = bookmark.write(bookmark_filename) {
+                error!(
+                    "Failed to write bookmark: filename={}, err={}",
+                    bookmark_filename.display(),
+                    err
+                );
             }
         }
     }

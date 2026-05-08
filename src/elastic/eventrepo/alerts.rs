@@ -54,10 +54,8 @@ impl ElasticEventRepo {
             }
         }
 
-        if !has_min_timestamp {
-            if let Some(ts) = options.timestamp_gte {
-                filters.push(json!({"range": {"@timestamp": {"gte": ts.to_elastic()}}}));
-            }
+        if !has_min_timestamp && let Some(ts) = options.timestamp_gte {
+            filters.push(json!({"range": {"@timestamp": {"gte": ts.to_elastic()}}}));
         }
 
         for tag in options.tags {

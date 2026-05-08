@@ -22,23 +22,23 @@ pub(crate) async fn alerts(
         ..elastic::AlertQueryOptions::default()
     };
 
-    if let Some(tags) = query.tags {
-        if !tags.is_empty() {
-            let tags: Vec<String> = tags.split(',').map(|s| s.to_string()).collect();
-            options.tags = tags;
-        }
+    if let Some(tags) = query.tags
+        && !tags.is_empty()
+    {
+        let tags: Vec<String> = tags.split(',').map(|s| s.to_string()).collect();
+        options.tags = tags;
     }
 
-    if let Some(time_range) = query.time_range {
-        if !time_range.is_empty() {
-            let now = DateTime::now();
-            match parse_then_from_duration(&now, &time_range) {
-                None => {
-                    error!("Failed to parse time_range: {}", time_range);
-                }
-                Some(then) => {
-                    options.timestamp_gte = Some(then);
-                }
+    if let Some(time_range) = query.time_range
+        && !time_range.is_empty()
+    {
+        let now = DateTime::now();
+        match parse_then_from_duration(&now, &time_range) {
+            None => {
+                error!("Failed to parse time_range: {}", time_range);
+            }
+            Some(then) => {
+                options.timestamp_gte = Some(then);
             }
         }
     }

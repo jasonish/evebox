@@ -10,10 +10,10 @@ pub(crate) trait Eve {
 
 impl Eve for serde_json::Value {
     fn datetime(&self) -> Option<DateTime> {
-        if let serde_json::Value::String(timestamp) = &self["timestamp"] {
-            if let Ok(dt) = datetime::parse(timestamp, None) {
-                return Some(dt);
-            }
+        if let serde_json::Value::String(timestamp) = &self["timestamp"]
+            && let Ok(dt) = datetime::parse(timestamp, None)
+        {
+            return Some(dt);
         }
         None
     }
@@ -40,10 +40,10 @@ pub(crate) fn ensure_has_evebox(event: &mut serde_json::Value) {
 pub(crate) fn has_tag(event: &serde_json::Value, tag: &str) -> bool {
     if let serde_json::Value::Array(tags) = &event["tags"] {
         for t in tags {
-            if let serde_json::Value::String(t) = t {
-                if t == tag {
-                    return true;
-                }
+            if let serde_json::Value::String(t) = t
+                && t == tag
+            {
+                return true;
             }
         }
     }

@@ -123,14 +123,15 @@ impl SqliteEventSink {
             match self.commit_with_sqlx().await {
                 Ok(n) => return Ok(n),
                 Err(err) => {
-                    if let Some(sqlxerr) = err.downcast_ref::<sqlx::Error>() {
-                        if sqlxerr.is_locked() && tries < 35 {
-                            if let Ok(mut metrics) = self.metrics.lock() {
-                                metrics.lock_errors += 1;
-                            }
-                            tokio::time::sleep(Duration::from_millis(2000)).await;
-                            continue;
+                    if let Some(sqlxerr) = err.downcast_ref::<sqlx::Error>()
+                        && sqlxerr.is_locked()
+                        && tries < 35
+                    {
+                        if let Ok(mut metrics) = self.metrics.lock() {
+                            metrics.lock_errors += 1;
                         }
+                        tokio::time::sleep(Duration::from_millis(2000)).await;
+                        continue;
                     }
                     return Err(err).with_context(|| format!("retries={tries}"));
                 }

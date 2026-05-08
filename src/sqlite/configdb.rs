@@ -308,9 +308,8 @@ async fn init_db(db: &mut SqliteConnection) -> Result<(), sqlx::Error> {
     let has_slqx_migrations = has_table(&mut *tx, "_sqlx_migrations").await?;
     let legacy_version = get_legacy_version(&mut tx).await;
 
-    if !has_slqx_migrations {
-        if let Some(version) = legacy_version {
-            let sql = r#"
+    if !has_slqx_migrations && let Some(version) = legacy_version {
+        let sql = r#"
                         CREATE TABLE _sqlx_migrations (
                             version BIGINT PRIMARY KEY,
                             description TEXT NOT NULL,
@@ -319,21 +318,20 @@ async fn init_db(db: &mut SqliteConnection) -> Result<(), sqlx::Error> {
                             checksum BLOB NOT NULL,
                             execution_time BIGINT NOT NULL
                     );"#;
-            sqlx::query(sql).execute(&mut *tx).await?;
+        sqlx::query(sql).execute(&mut *tx).await?;
 
-            let rows = &[
-                "INSERT INTO _sqlx_migrations VALUES(1,'Initial','2024-05-14 22:07:37',1,X'3178dae65749760972807044cd00fc973daf8e325e0bbdd2491faad1f0357ba1e7943db275d7283fc791e9f9495e769c',2046643)",
-                "INSERT INTO _sqlx_migrations VALUES(2,'Sessions','2024-05-14 22:07:37',1,X'83b06692857c8f61cfc2d26ab18ed1207ca699213b06126b0aeb404219ff8c73b32439f15aebf44d30a5d972eca8546d',1180689)",
-            ];
+        let rows = &[
+            "INSERT INTO _sqlx_migrations VALUES(1,'Initial','2024-05-14 22:07:37',1,X'3178dae65749760972807044cd00fc973daf8e325e0bbdd2491faad1f0357ba1e7943db275d7283fc791e9f9495e769c',2046643)",
+            "INSERT INTO _sqlx_migrations VALUES(2,'Sessions','2024-05-14 22:07:37',1,X'83b06692857c8f61cfc2d26ab18ed1207ca699213b06126b0aeb404219ff8c73b32439f15aebf44d30a5d972eca8546d',1180689)",
+        ];
 
-            if version >= 1 {
-                debug!("Inserting fake configuration database migration for version 1");
-                sqlx::query(rows[0]).execute(&mut *tx).await?;
-            }
-            if version >= 2 {
-                debug!("Inserting fake configuration database migration for version 2");
-                sqlx::query(rows[1]).execute(&mut *tx).await?;
-            }
+        if version >= 1 {
+            debug!("Inserting fake configuration database migration for version 1");
+            sqlx::query(rows[0]).execute(&mut *tx).await?;
+        }
+        if version >= 2 {
+            debug!("Inserting fake configuration database migration for version 2");
+            sqlx::query(rows[1]).execute(&mut *tx).await?;
         }
     }
 

@@ -98,10 +98,10 @@ impl EveReader {
     ///
     /// Will return 0 if no file is open.
     pub fn offset(&mut self) -> u64 {
-        if let Some(reader) = &mut self.reader {
-            if let Ok(pos) = reader.stream_position() {
-                return pos;
-            }
+        if let Some(reader) = &mut self.reader
+            && let Ok(pos) = reader.stream_position()
+        {
+            return pos;
         }
         0
     }
@@ -136,14 +136,14 @@ impl EveReader {
         }
         if self.reader.is_some() {
             let line = self.next_line()?;
-            if let Some(line) = line {
-                if !line.is_empty() {
-                    let record: serde_json::Value = serde_json::from_str(line).map_err(|err| {
-                        error!("Failed to parse event: {}", err);
-                        EveReaderError::ParseError(line.to_string())
-                    })?;
-                    return Ok(Some(record));
-                }
+            if let Some(line) = line
+                && !line.is_empty()
+            {
+                let record: serde_json::Value = serde_json::from_str(line).map_err(|err| {
+                    error!("Failed to parse event: {}", err);
+                    EveReaderError::ParseError(line.to_string())
+                })?;
+                return Ok(Some(record));
             }
         }
         Ok(None)

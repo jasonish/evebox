@@ -53,10 +53,10 @@ impl EveBoxEventSink {
         if status_code != 200 {
             let response_body = r.text().await?;
             if !response_body.is_empty() {
-                if let Ok(error) = serde_json::from_str::<serde_json::Value>(&response_body) {
-                    if let serde_json::Value::String(error) = &error["error"] {
-                        return Err(anyhow!("{}", error));
-                    }
+                if let Ok(error) = serde_json::from_str::<serde_json::Value>(&response_body)
+                    && let serde_json::Value::String(error) = &error["error"]
+                {
+                    return Err(anyhow!("{}", error));
                 }
                 return Err(anyhow!("{}", response_body));
             }

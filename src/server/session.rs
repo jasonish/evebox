@@ -27,10 +27,10 @@ impl SessionStore {
 
     pub fn put(&self, session: Arc<Session>) -> Result<()> {
         let mut cache = self.cache.lock().unwrap();
-        if let Some(session_id) = &session.session_id {
-            if cache.insert(session_id.to_string(), session).is_some() {
-                return Err(anyhow!("duplicate session-id"));
-            }
+        if let Some(session_id) = &session.session_id
+            && cache.insert(session_id.to_string(), session).is_some()
+        {
+            return Err(anyhow!("duplicate session-id"));
         }
         Ok(())
     }

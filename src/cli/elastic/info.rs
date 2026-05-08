@@ -82,10 +82,10 @@ async fn check_logstash(client: &Client) -> anyhow::Result<()> {
         .json()
         .await?;
     let mut found = false;
-    if let Some(hits) = response["hits"]["hits"].as_array() {
-        if !hits.is_empty() {
-            found = true;
-        }
+    if let Some(hits) = response["hits"]["hits"].as_array()
+        && !hits.is_empty()
+    {
+        found = true;
     }
 
     if found {
@@ -112,10 +112,10 @@ async fn check_filebeat(client: &Client) -> anyhow::Result<()> {
         .json()
         .await?;
     let mut found = false;
-    if let Some(hits) = response["hits"]["hits"].as_array() {
-        if !hits.is_empty() {
-            found = true;
-        }
+    if let Some(hits) = response["hits"]["hits"].as_array()
+        && !hits.is_empty()
+    {
+        found = true;
     }
 
     if found {
@@ -142,10 +142,10 @@ async fn check_filebeat_ecs(client: &Client) -> anyhow::Result<()> {
         .await?;
 
     let mut found = false;
-    if let Some(hits) = response["hits"]["hits"].as_array() {
-        if !hits.is_empty() {
-            found = true;
-        }
+    if let Some(hits) = response["hits"]["hits"].as_array()
+        && !hits.is_empty()
+    {
+        found = true;
     }
 
     if found {

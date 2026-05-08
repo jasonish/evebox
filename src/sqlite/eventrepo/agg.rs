@@ -90,14 +90,14 @@ impl SqliteEventRepo {
                     "earliest_ts": DateTime::from_nanos(timestamp),
                 });
 
-                if let Some(tx) = &tx {
-                    if let Err(err) = tx.send(response) {
-                        debug!(
-                            "Failed to send agg update to channel, aborting: error={:?}",
-                            err
-                        );
-                        return Ok(vec![]);
-                    }
+                if let Some(tx) = &tx
+                    && let Err(err) = tx.send(response)
+                {
+                    debug!(
+                        "Failed to send agg update to channel, aborting: error={:?}",
+                        err
+                    );
+                    return Ok(vec![]);
                 }
 
                 now = std::time::Instant::now();
@@ -115,13 +115,13 @@ impl SqliteEventRepo {
             "earliest_ts": DateTime::from_nanos(timestamp),
         });
 
-        if let Some(tx) = &tx {
-            if let Err(err) = tx.send(response.clone()) {
-                error!(
-                    "Failed to send agg update to channel, aborting: error={:?}",
-                    err
-                );
-            }
+        if let Some(tx) = &tx
+            && let Err(err) = tx.send(response.clone())
+        {
+            error!(
+                "Failed to send agg update to channel, aborting: error={:?}",
+                err
+            );
         }
 
         Ok(rows)

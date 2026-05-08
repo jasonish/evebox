@@ -112,16 +112,16 @@ impl ElasticEventRepo {
                     self.transform_ecs(&mut hit);
                 }
 
-                if let Some(ja4) = hit["_source"]["tls"]["ja4"].as_str() {
-                    if let Some(configdb) = crate::server::context::get_configdb() {
-                        let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
-                        let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
-                            .bind(ja4)
-                            .fetch_optional(&configdb.pool)
-                            .await;
-                        if let Ok(Some(info)) = info {
-                            hit["_source"]["ja4db"] = info;
-                        }
+                if let Some(ja4) = hit["_source"]["tls"]["ja4"].as_str()
+                    && let Some(configdb) = crate::server::context::get_configdb()
+                {
+                    let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
+                    let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
+                        .bind(ja4)
+                        .fetch_optional(&configdb.pool)
+                        .await;
+                    if let Ok(Some(info)) = info {
+                        hit["_source"]["ja4db"] = info;
                     }
                 }
 

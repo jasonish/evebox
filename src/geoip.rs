@@ -132,38 +132,38 @@ impl GeoIP {
             info!("GeoIP database has been updated to {:?}", build_time);
         }
 
-        if let serde_json::Value::String(addr) = &eve["dest_ip"] {
-            if let Ok(city) = Self::lookup_city_from_str(&inner.reader, addr) {
-                eve["geoip_destination"] = self.as_json(city);
-            }
+        if let serde_json::Value::String(addr) = &eve["dest_ip"]
+            && let Ok(city) = Self::lookup_city_from_str(&inner.reader, addr)
+        {
+            eve["geoip_destination"] = self.as_json(city);
         }
-        if let serde_json::Value::String(addr) = &eve["src_ip"] {
-            if let Ok(city) = Self::lookup_city_from_str(&inner.reader, addr) {
-                eve["geoip_source"] = self.as_json(city);
-            }
+        if let serde_json::Value::String(addr) = &eve["src_ip"]
+            && let Ok(city) = Self::lookup_city_from_str(&inner.reader, addr)
+        {
+            eve["geoip_source"] = self.as_json(city);
         }
     }
 
     fn as_json(&self, city: geoip2::City) -> serde_json::Value {
         let mut obj = serde_json::json!({});
-        if !city.city.names.is_empty() {
-            if let Some(name) = city.city.names.english {
-                obj["city_name"] = name.to_string().into();
-            }
+        if !city.city.names.is_empty()
+            && let Some(name) = city.city.names.english
+        {
+            obj["city_name"] = name.to_string().into();
         }
-        if !city.country.names.is_empty() {
-            if let Some(name) = city.country.names.english {
-                obj["country_name"] = name.to_string().into();
-            }
+        if !city.country.names.is_empty()
+            && let Some(name) = city.country.names.english
+        {
+            obj["country_name"] = name.to_string().into();
         }
         if let Some(iso_code) = city.country.iso_code {
             obj["country_iso_code"] = iso_code.into();
         }
         if let Some(subdivision) = city.subdivisions.first() {
-            if !subdivision.names.is_empty() {
-                if let Some(name) = subdivision.names.english {
-                    obj["region_name"] = name.to_string().into();
-                }
+            if !subdivision.names.is_empty()
+                && let Some(name) = subdivision.names.english
+            {
+                obj["region_name"] = name.to_string().into();
             }
             if let Some(iso_code) = &subdivision.iso_code {
                 obj["region_iso_code"] = iso_code.to_string().into();
@@ -184,10 +184,10 @@ impl GeoIP {
                 obj["location"] = locobj;
             }
         }
-        if !city.continent.names.is_empty() {
-            if let Some(name) = city.continent.names.english {
-                obj["continent_name"] = name.to_string().into();
-            }
+        if !city.continent.names.is_empty()
+            && let Some(name) = city.continent.names.english
+        {
+            obj["continent_name"] = name.to_string().into();
         }
         obj
     }

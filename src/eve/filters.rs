@@ -165,16 +165,16 @@ impl EveFilterTrait for AlertMetadataEveBoxActionFilter {
         }
 
         let metadata_evebox_action = event["alert"]["metadata"]["evebox-action"].as_array();
-        if let Some(action) = metadata_evebox_action {
-            if action.contains(&serde_json::Value::String("archive".into())) {
-                let tags = &mut event["tags"]
-                    .as_array()
-                    .cloned()
-                    .unwrap_or_else(std::vec::Vec::new);
-                tags.push("evebox.archived".into());
-                tags.push("evebox.auto-archived".into());
-                event["tags"] = serde_json::Value::Array(tags.clone());
-            }
+        if let Some(action) = metadata_evebox_action
+            && action.contains(&serde_json::Value::String("archive".into()))
+        {
+            let tags = &mut event["tags"]
+                .as_array()
+                .cloned()
+                .unwrap_or_else(std::vec::Vec::new);
+            tags.push("evebox.archived".into());
+            tags.push("evebox.auto-archived".into());
+            event["tags"] = serde_json::Value::Array(tags.clone());
         }
     }
 }

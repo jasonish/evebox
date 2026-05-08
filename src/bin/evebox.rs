@@ -18,14 +18,14 @@ fn get_clap_style() -> clap::builder::Styles {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(command) = std::env::args().nth(1) {
-        if command == "elastic-import" {
-            logger::init_logger(tracing::Level::INFO).unwrap();
-            error!(
-                "elastic-import has been deprecated. The Agent can now be used to send events to Elasticsearch."
-            );
-            std::process::exit(1);
-        }
+    if let Some(command) = std::env::args().nth(1)
+        && command == "elastic-import"
+    {
+        logger::init_logger(tracing::Level::INFO).unwrap();
+        error!(
+            "elastic-import has been deprecated. The Agent can now be used to send events to Elasticsearch."
+        );
+        std::process::exit(1);
     }
 
     let parser = clap::Command::new("EveBox")

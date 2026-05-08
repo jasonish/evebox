@@ -110,11 +110,11 @@ pub(crate) async fn agg_sse(
                 let field = form.field.clone();
                 tokio::spawn(async move {
                     while let Some(result) = aggrx.recv().await {
-                        if let Ok(event) = Event::default().json_data(result) {
-                            if tx0.send(Ok(event)).is_err() {
-                                debug!("Client disappeared, terminating SSE agg ({})", field);
-                                return;
-                            }
+                        if let Ok(event) = Event::default().json_data(result)
+                            && tx0.send(Ok(event)).is_err()
+                        {
+                            debug!("Client disappeared, terminating SSE agg ({})", field);
+                            return;
                         }
                     }
                 });

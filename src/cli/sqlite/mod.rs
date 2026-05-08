@@ -280,10 +280,10 @@ async fn load(args: &LoadArgs) -> Result<()> {
         let eve: serde_json::Value = serde_json::from_str(&line)?;
         importer.submit(eve).await?;
         count += 1;
-        if let Some(limit) = args.count {
-            if count >= limit {
-                break;
-            }
+        if let Some(limit) = args.count
+            && count >= limit
+        {
+            break;
         }
         if count > 0 && count % 1000 == 0 {
             importer.commit().await?;

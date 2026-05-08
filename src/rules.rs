@@ -171,13 +171,12 @@ pub(crate) fn watch_rules(rulemap: Arc<RuleMap>) {
             let mut reload = false;
             let filenames = rulemap.filenames();
             for filename in &filenames {
-                if let Ok(metadata) = std::fs::metadata(filename) {
-                    if let Ok(modified) = metadata.modified() {
-                        if modified.gt(&last_modified) {
-                            reload = true;
-                            last_modified = modified;
-                        }
-                    }
+                if let Ok(metadata) = std::fs::metadata(filename)
+                    && let Ok(modified) = metadata.modified()
+                    && modified.gt(&last_modified)
+                {
+                    reload = true;
+                    last_modified = modified;
                 }
             }
             if reload {

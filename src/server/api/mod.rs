@@ -268,16 +268,16 @@ pub(crate) async fn histogram_time(
         })
     }
 
-    if let Some(time_range) = &query.time_range {
-        if !time_range.is_empty() {
-            let min_timestamp = parse_duration(time_range)
-                .map(|d| chrono::Utc::now().sub(d))
-                .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))?;
-            query_string.push(QueryElement {
-                negated: false,
-                value: QueryValue::From(min_timestamp.into()),
-            });
-        }
+    if let Some(time_range) = &query.time_range
+        && !time_range.is_empty()
+    {
+        let min_timestamp = parse_duration(time_range)
+            .map(|d| chrono::Utc::now().sub(d))
+            .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))?;
+        query_string.push(QueryElement {
+            negated: false,
+            value: QueryValue::From(min_timestamp.into()),
+        });
     }
 
     let results = match &context.datastore {
@@ -301,16 +301,16 @@ pub(crate) async fn get_event_by_id(
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "not found").into_response(),
         Ok(Some(mut event)) => {
-            if let Some(ja4) = event["_source"]["tls"]["ja4"].as_str() {
-                if let Some(configdb) = crate::server::context::get_configdb() {
-                    let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
-                    let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
-                        .bind(ja4)
-                        .fetch_optional(&configdb.pool)
-                        .await;
-                    if let Ok(Some(info)) = info {
-                        event["_source"]["ja4db"] = info;
-                    }
+            if let Some(ja4) = event["_source"]["tls"]["ja4"].as_str()
+                && let Some(configdb) = crate::server::context::get_configdb()
+            {
+                let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
+                let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
+                    .bind(ja4)
+                    .fetch_optional(&configdb.pool)
+                    .await;
+                if let Ok(Some(info)) = info {
+                    event["_source"]["ja4db"] = info;
                 }
             }
 

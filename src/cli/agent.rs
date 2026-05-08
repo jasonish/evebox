@@ -378,10 +378,10 @@ fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathB
             .open(&filename)
         {
             Ok(_) => {
-                if let Ok(meta) = std::fs::metadata(&filename) {
-                    if meta.len() == 0 {
-                        let _ = std::fs::remove_file(&filename);
-                    }
+                if let Ok(meta) = std::fs::metadata(&filename)
+                    && meta.len() == 0
+                {
+                    let _ = std::fs::remove_file(&filename);
                 }
                 info!("Bookmark file {:?} looks OK", filename);
                 return Some(filename);

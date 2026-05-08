@@ -63,10 +63,10 @@ impl Bookmark {
 
     #[cfg(unix)]
     fn check_inode(&self, meta: &std::fs::Metadata) -> bool {
-        if let Some(inode) = self.sys.inode {
-            if inode != meta.ino() {
-                return false;
-            }
+        if let Some(inode) = self.sys.inode
+            && inode != meta.ino()
+        {
+            return false;
         }
         true
     }

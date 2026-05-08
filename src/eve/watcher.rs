@@ -47,14 +47,14 @@ impl EvePatternWatcher {
             // This is for error reporting to the user, in the case
             // where the parent directory of the log files is not
             // readable by EveBox.
-            if let Some(p) = PathBuf::from(pattern).parent() {
-                if let Err(err) = std::fs::read_dir(p) {
-                    warn!(
-                        "Failed to read directory {}, EVE log files are likely unreadable: {}",
-                        p.display(),
-                        err
-                    );
-                }
+            if let Some(p) = PathBuf::from(pattern).parent()
+                && let Err(err) = std::fs::read_dir(p)
+            {
+                warn!(
+                    "Failed to read directory {}, EVE log files are likely unreadable: {}",
+                    p.display(),
+                    err
+                );
             }
             if let Ok(paths) = crate::path::expand(pattern) {
                 for path in paths {

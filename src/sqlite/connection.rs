@@ -279,10 +279,10 @@ fn parse_index_names(sql: &str) -> HashSet<String> {
 
     let re = Regex::new(r"CREATE INDEX IF NOT EXISTS (\w+)").unwrap();
     for line in sql.lines() {
-        if let Some(caps) = re.captures(line) {
-            if let Some(cap) = caps.get(1) {
-                indexes.insert(cap.as_str().to_string());
-            }
+        if let Some(caps) = re.captures(line)
+            && let Some(cap) = caps.get(1)
+        {
+            indexes.insert(cap.as_str().to_string());
         }
     }
 

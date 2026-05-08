@@ -23,10 +23,10 @@ use crate::{LOG_QUERIES, LOG_QUERY_PLAN, queryparser};
 impl SqliteEventRepo {
     #[instrument(skip_all)]
     pub async fn alerts(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
-        if let Some(timeout) = options.timeout {
-            if timeout > 0 {
-                return self.alerts_with_timeout(options).await;
-            }
+        if let Some(timeout) = options.timeout
+            && timeout > 0
+        {
+            return self.alerts_with_timeout(options).await;
         }
 
         if std::env::var("EVEBOX_ALERTS_WITH_TIMEOUT").is_ok() {
@@ -262,10 +262,11 @@ impl SqliteEventRepo {
                     source["tags"] = tags.into();
                 }
 
-                if let serde_json::Value::Array(tags) = &mut source["tags"] {
-                    if archived && !tags.contains(&"evebox.archived".into()) {
-                        tags.push("evebox.archived".into());
-                    }
+                if let serde_json::Value::Array(tags) = &mut source["tags"]
+                    && archived
+                    && !tags.contains(&"evebox.archived".into())
+                {
+                    tags.push("evebox.archived".into());
                 }
 
                 let alert = AggAlert {
@@ -532,10 +533,10 @@ fn alert_row_mapper(row: SqliteRow) -> Result<AggAlert> {
         parsed["tags"] = tags.into();
     }
 
-    if let serde_json::Value::Array(tags) = &mut parsed["tags"] {
-        if archived > 0 {
-            tags.push("evebox.archived".into());
-        }
+    if let serde_json::Value::Array(tags) = &mut parsed["tags"]
+        && archived > 0
+    {
+        tags.push("evebox.archived".into());
     }
 
     let min_ts = DateTime::from_nanos(min_ts_nanos);

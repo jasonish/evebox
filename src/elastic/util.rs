@@ -14,11 +14,11 @@ pub(crate) async fn check_and_set_field_limit(client: &Client, template_name: &s
                 serde_json::Value::String(s) => s.parse::<i64>().ok(),
                 _ => None,
             };
-            if let Some(limit) = limit {
-                if limit >= 5000 {
-                    info!("Field limit of {} OK, will not increase", limit);
-                    return;
-                }
+            if let Some(limit) = limit
+                && limit >= 5000
+            {
+                info!("Field limit of {} OK, will not increase", limit);
+                return;
             }
         }
         Err(err) => {
