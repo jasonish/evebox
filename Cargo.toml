@@ -51,7 +51,7 @@ mime_guess = "2.0.5"
 nom = "8"
 percent-encoding = "2.3.2"
 rand = "0.9.4"
-reqwest = { version = "0.12.28", default-features = false, features = ["json", "rustls-tls", "rustls-tls-webpki-roots", "rustls-tls-native-roots", "hickory-dns"] }
+reqwest = { version = "0.13.3", default-features = false, features = ["json", "rustls", "hickory-dns"] }
 rust-embed = { version = "8.11.0", features = ["debug-embed"] }
 
 serde = { version = "1.0.228", features = ["derive"] }
