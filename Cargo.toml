@@ -11,7 +11,7 @@ repository = "https://github.com/jasonish/evebox"
 documentation = "https://evebox.org"
 
 # This is not a guarantee, just helps notify me when the MSRV changes.
-rust-version = "1.85.0"
+rust-version = "1.88.0"
 
 [profile.release]
 lto = true
@@ -61,7 +61,7 @@ serde_yaml = "0.9.34"
 suricatax-rule-parser = { git = "https://github.com/jasonish/suricatax-rule-parser-rs", rev = "4b43a70f6e0a892970faa17b08d73d4a3b0b2cba" }
 
 # Currently only used for tracing_subscriber based logging.
-time = { version = "0.3.45", features = ["macros"] }
+time = { version = "0.3.47", features = ["macros"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter", "time", "local-time"] }
 tracing-log = "0.2.0"
