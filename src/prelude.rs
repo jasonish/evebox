@@ -17,7 +17,7 @@ pub(crate) use tracing::warn;
 pub(crate) use anyhow::Context;
 pub(crate) use anyhow::Result;
 
-pub(crate) use hyper::StatusCode;
+pub(crate) use axum::http::StatusCode;
 
 pub(crate) use serde::Deserialize;
 pub(crate) use serde::Serialize;

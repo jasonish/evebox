@@ -24,7 +24,6 @@ thiserror = "2.0.18"
 axum = { version = "0.8.9" }
 axum-server = { version = "0.8.0", features = ["tls-rustls-no-provider"] }
 axum-extra = { version = "0.12.6", default-features = false, features = ["cookie", "typed-header", "form"] }
-hyper = ">=1.8, <1.9"
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread", "fs"] }
 tower-http = { version = "0.6", features = ["set-header", "trace", "limit"] }
 futures = "0.3.32"

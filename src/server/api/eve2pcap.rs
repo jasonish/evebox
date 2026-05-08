@@ -11,7 +11,8 @@ use axum::extract::{Extension, Form};
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use hyper::header::{CONTENT_DISPOSITION, CONTENT_TYPE, HeaderMap};
+use axum::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
+use axum::http::HeaderMap;
 
 use crate::error::AppError;
 
