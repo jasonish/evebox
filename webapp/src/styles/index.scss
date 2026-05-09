@@ -35,22 +35,22 @@ $evebox-danger-color-dark: #72383e;
 }
 
 .app-event-table {
-  .col-timestamp {
+  .app-col-timestamp {
     white-space: nowrap;
     width: 1%;
   }
 
-  .col-address {
+  .app-col-address {
     white-space: nowrap;
     width: 1%;
   }
 
-  .col-event-type {
+  .app-col-event-type {
     white-space: nowrap;
     width: 1%;
   }
 
-  .col-count {
+  .app-col-count {
     white-space: nowrap;
     width: 1%;
   }
@@ -124,28 +124,28 @@ $evebox-danger-color-dark: #72383e;
 
 // Rule styling for dark mode.
 [data-bs-theme="dark"] {
-  .rule {
-    .rule-header-action {
+  .app-rule {
+    .app-rule-header-action {
       font-weight: bold;
     }
 
-    .rule-header-proto {
+    .app-rule-header-proto {
       font-weight: bold;
       font-style: italic;
     }
 
-    .rule-header-addr {
+    .app-rule-header-addr {
     }
 
-    .rule-header-port {
+    .app-rule-header-port {
     }
 
-    .rule-keyword {
+    .app-rule-keyword {
       color: dodgerblue;
       font-weight: bold;
     }
 
-    .rule-keyword-value {
+    .app-rule-keyword-value {
       color: lawngreen;
     }
   }
@@ -153,34 +153,34 @@ $evebox-danger-color-dark: #72383e;
 
 // Rule styling for light mode.
 [data-bs-theme="light"] {
-  .rule {
-    .rule-header-action {
+  .app-rule {
+    .app-rule-header-action {
       font-weight: bold;
     }
 
-    .rule-header-proto {
+    .app-rule-header-proto {
       font-weight: bold;
       font-style: italic;
     }
 
-    .rule-header-addr {
+    .app-rule-header-addr {
       color: dimgrey;
     }
 
-    .rule-header-port {
+    .app-rule-header-port {
       color: slategrey;
     }
 
-    .rule-header-direction {
+    .app-rule-header-direction {
       font-weight: bold;
     }
 
-    .rule-keyword {
+    .app-rule-keyword {
       color: blue;
       font-weight: bold;
     }
 
-    .rule-keyword-value {
+    .app-rule-keyword-value {
       color: green;
     }
   }
@@ -210,7 +210,7 @@ $evebox-danger-color-dark: #72383e;
 }
 
 // Force wrapping of text no matter what.
-.force-wrap {
+.app-force-wrap {
   word-break: break-word !important;
   word-wrap: break-word !important;
   overflow: hidden !important;
@@ -250,16 +250,16 @@ $evebox-danger-color-dark: #72383e;
 
 // Used to hide "filter" buttons. We use opacity so the space is
 // reserved, preventing reflow on hover.
-.show-on-hover {
+.app-show-on-hover {
   opacity: 0;
 }
 
-td:hover .show-on-hover {
+td:hover .app-show-on-hover {
   opacity: 1;
   display: inline;
 }
 
-.filter-button-for {
+.app-filter-button-for {
   @extend .btn-outline-secondary;
   &:hover {
     text-decoration: none;
@@ -268,7 +268,7 @@ td:hover .show-on-hover {
   }
 }
 
-.filter-button-out {
+.app-filter-button-out {
   @extend .btn-outline-secondary;
   border: 1px solid $danger;
   &:hover {

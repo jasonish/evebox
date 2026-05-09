@@ -32,9 +32,9 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
 
   const buttonClass = (filter: string) => {
     if (filter.startsWith("-")) {
-      return "filter-button-out";
+      return "app-filter-button-out";
     } else {
-      return "filter-button-for";
+      return "app-filter-button-for";
     }
   };
 
@@ -235,7 +235,7 @@ export function AddressCell(props: {
           S: {formatAddress(props.source.src_ip)}
           <Show when={props.fn}>
             <span
-              class="show-on-hover ms-1"
+              class="app-show-on-hover ms-1"
               onClick={(e) => {
                 e.stopPropagation();
                 props.fn!("src_ip", "+", props.source.src_ip);
@@ -245,7 +245,7 @@ export function AddressCell(props: {
               <BiPlusCircle />
             </span>
             <span
-              class="show-on-hover ms-1"
+              class="app-show-on-hover ms-1"
               onClick={(e) => {
                 e.stopPropagation();
                 props.fn!("src_ip", "-", props.source.src_ip);
@@ -261,7 +261,7 @@ export function AddressCell(props: {
           D: {formatAddress(props.source.dest_ip)}
           <Show when={props.fn}>
             <span
-              class="show-on-hover ms-1"
+              class="app-show-on-hover ms-1"
               onClick={(e) => {
                 e.stopPropagation();
                 props.fn!("dest_ip", "+", props.source.dest_ip);
@@ -271,7 +271,7 @@ export function AddressCell(props: {
               <BiPlusCircle />
             </span>
             <span
-              class="show-on-hover ms-1"
+              class="app-show-on-hover ms-1"
               onClick={(e) => {
                 e.stopPropagation();
                 props.fn!("dest_ip", "-", props.source.dest_ip);

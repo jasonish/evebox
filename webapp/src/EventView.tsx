@@ -938,7 +938,7 @@ export function EventView() {
                                                   <>
                                                     <tr>
                                                       <td>{e.key}</td>
-                                                      <td class="force-wrap">
+                                                      <td class="app-force-wrap">
                                                         <Switch
                                                           fallback={
                                                             <SearchLink
@@ -1026,7 +1026,7 @@ export function EventView() {
                                           <th class={""} style={"width: 1%;"}>
                                             {e.key}
                                           </th>
-                                          <td class="force-wrap">
+                                          <td class="app-force-wrap">
                                             <Switch
                                               fallback={
                                                 <SearchLink value={e.val}>
@@ -1125,7 +1125,7 @@ export function EventView() {
                           <>
                             <tr>
                               <td>{e.key}</td>
-                              <td class="force-wrap">{e.val}</td>
+                              <td class="app-force-wrap">{e.val}</td>
                             </tr>
                           </>
                         )}
@@ -1301,7 +1301,7 @@ function PrettyJson(props: any) {
     <>
       <pre
         ref={output}
-        class="json-container force-wrap"
+        class="json-container app-force-wrap"
         id={"formatted-json"}
         style={props.style}
       ></pre>
@@ -1327,7 +1327,7 @@ function Base64BufferCard(props: {
           <Col md={12} xl={6} class={"pb-2"}>
             <div class="card">
               <div class="card-body p-2">
-                <pre class={"force-wrap"}>{atob(props.buffer)}</pre>
+                <pre class={"app-force-wrap"}>{atob(props.buffer)}</pre>
               </div>
             </div>
           </Col>
@@ -1372,25 +1372,25 @@ function HighlightedRule(props: { rule: string }) {
 
     html = html.replace(
       /^([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/,
-      `<span class="rule-header-action">$1</span>
-                 <span class="rule-header-proto">$2</span>
-                 <span class="rule-header-addr">$3</span>
-                 <span class="rule-header-port">$4</span> 
-                 <span class="rule-header-direction">$5</span> 
-                 <span class="rule-header-addr">$6</span>
-                 <span class="rule-header-port">$7</span> `,
+      `<span class="app-rule-header-action">$1</span>
+                 <span class="app-rule-header-proto">$2</span>
+                 <span class="app-rule-header-addr">$3</span>
+                 <span class="app-rule-header-port">$4</span>
+                 <span class="app-rule-header-direction">$5</span>
+                 <span class="app-rule-header-addr">$6</span>
+                 <span class="app-rule-header-port">$7</span> `,
     );
 
     html = html.replace(
       /:([^;]+)/g,
-      `:<span class="rule-keyword-value">$1</span>`,
+      `:<span class="app-rule-keyword-value">$1</span>`,
     );
-    html = html.replace(/(\w+\:)/g, `<span class="rule-keyword">$1</span>`);
+    html = html.replace(/(\w+\:)/g, `<span class="app-rule-keyword">$1</span>`);
 
     // Catch keywords without a value.
     html = html.replace(
       /(;\s*)(\w+;)/g,
-      `$1<span class="rule-keyword">$2</span>`,
+      `$1<span class="app-rule-keyword">$2</span>`,
     );
 
     // Replace referece URLs with the URL.
@@ -1402,7 +1402,7 @@ function HighlightedRule(props: { rule: string }) {
     setRule(html);
   });
 
-  return <div innerHTML={rule()} class={"rule"}></div>;
+  return <div innerHTML={rule()} class={"app-rule"}></div>;
 }
 
 function DnsInfoCol(props: { dns: EveDns }) {

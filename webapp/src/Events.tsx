@@ -361,10 +361,7 @@ export function Events() {
               </button>
             </Show>
             <Show when={isLoading()}>
-              <button
-                class={"btn btn-primary app-refresh-button"}
-                disabled
-              >
+              <button class={"btn btn-primary app-refresh-button"} disabled>
                 Loading
               </button>
             </Show>
@@ -485,9 +482,9 @@ export function Events() {
                     <thead>
                       <tr>
                         <th class={"app-w-1"}></th>
-                        <th class={"col-timestamp"}>Timestamp</th>
-                        <th class={"col-event-type"}>Type</th>
-                        <th class={"col-address"}>Src/Dst</th>
+                        <th class={"app-col-timestamp"}>Timestamp</th>
+                        <th class={"app-col-event-type"}>Type</th>
+                        <th class={"app-col-address"}>Src/Dst</th>
                         <th>Description</th>
                       </tr>
                     </thead>
@@ -514,17 +511,17 @@ export function Events() {
                                     <BiCaretRightFill />
                                   </Show>
                                 </td>
-                                <td class={"col-timestamp"}>
+                                <td class={"app-col-timestamp"}>
                                   <TimestampCell
                                     timestamp={event._source.timestamp}
                                     addFilter={addFilter}
                                   />
                                 </td>
-                                <td class={"col-event-type"}>
+                                <td class={"app-col-event-type"}>
                                   {event._source.event_type?.toUpperCase() ||
                                     "???"}
                                   <span
-                                    class="show-on-hover ms-1"
+                                    class="app-show-on-hover ms-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       addFilter(
@@ -538,7 +535,7 @@ export function Events() {
                                     <BiPlusCircle />
                                   </span>
                                   <span
-                                    class="show-on-hover ms-1"
+                                    class="app-show-on-hover ms-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       addFilter(
@@ -552,7 +549,10 @@ export function Events() {
                                     <BiDashCircle />
                                   </span>
                                 </td>
-                                <td class={"col-address"} style={"width: 0%;"}>
+                                <td
+                                  class={"app-col-address"}
+                                  style={"width: 0%;"}
+                                >
                                   <Switch fallback={<>{event._source.host}</>}>
                                     <Match when={event._source.src_ip}>
                                       <AddressCell
@@ -573,7 +573,7 @@ export function Events() {
                                     </Match>
                                   </Switch>
                                 </td>
-                                <td class={"force-wrap col-auto"}>
+                                <td class={"app-force-wrap col-auto"}>
                                   <Switch
                                     fallback={
                                       <>

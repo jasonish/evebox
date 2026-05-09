@@ -171,7 +171,7 @@ export function Alerts() {
         }
       },
       ".": () => {
-        let element = document.getElementsByClassName("action-toggle")[
+        let element = document.getElementsByClassName("app-action-toggle")[
           cursor()
         ] as HTMLElement;
         if (element) {
@@ -787,26 +787,17 @@ export function Alerts() {
               </button>
             </Show>
             <Show when={isLoading()}>
-              <button
-                class={"btn btn-primary app-refresh-button"}
-                disabled
-              >
+              <button class={"btn btn-primary app-refresh-button"} disabled>
                 Loading
               </button>
             </Show>
             <Show when={visibleEvents().length > 0 && !isAllSelected()}>
-              <button
-                class={"btn btn-secondary"}
-                onclick={selectAll}
-              >
+              <button class={"btn btn-secondary"} onclick={selectAll}>
                 Select All
               </button>
             </Show>
             <Show when={isAllSelected()}>
-              <button
-                class={"btn btn-secondary"}
-                onclick={unselectAll}
-              >
+              <button class={"btn btn-secondary"} onclick={unselectAll}>
                 Unselect All
               </button>
             </Show>
@@ -915,7 +906,7 @@ export function Alerts() {
                       key={"count"}
                       sortBy={getSortBy()}
                       sortOrder={getSortOrder()}
-                      class={"col-count"}
+                      class={"app-col-count"}
                       onclick={updateSort}
                     />
                     <SortHeader
@@ -923,10 +914,10 @@ export function Alerts() {
                       key={"timestamp"}
                       sortBy={getSortBy()}
                       sortOrder={getSortOrder()}
-                      class={"col-timestamp"}
+                      class={"app-col-timestamp"}
                       onclick={updateSort}
                     />
-                    <th class="col-address" style={"cursor: pointer"}>
+                    <th class="app-col-address" style={"cursor: pointer"}>
                       <span onclick={() => updateSort("source")}>
                         Src{" "}
                         <Show when={getSortBy() === "source"}>
@@ -1014,19 +1005,19 @@ export function Alerts() {
                             </td>
                             <td>
                               <div
-                                class={"col-count"}
+                                class={"app-col-count"}
                                 style={"margin-top: 3px;"}
                               >
                                 {event._metadata!.count}
                               </div>
                             </td>
-                            <td class={"col-timestamp"}>
+                            <td class={"app-col-timestamp"}>
                               <TimestampCell
                                 timestamp={event._source.timestamp}
                                 addFilter={addFilter}
                               />
                             </td>
-                            <td class={"col-address col-1"}>
+                            <td class={"app-col-address col-1"}>
                               <AddressCell
                                 source={event._source}
                                 fn={addFilter}
@@ -1036,7 +1027,7 @@ export function Alerts() {
                               <AlertDescription event={event} />
 
                               <span
-                                class="show-on-hover ms-1"
+                                class="app-show-on-hover ms-1"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   addFilter("@sid", "+", alert.signature_id);
@@ -1046,7 +1037,7 @@ export function Alerts() {
                                 <BiPlusCircle />
                               </span>
                               <span
-                                class="show-on-hover ms-1"
+                                class="app-show-on-hover ms-1"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   addFilter("@sid", "-", alert.signature_id);
@@ -1093,7 +1084,7 @@ export function Alerts() {
 
                                 <button
                                   type="button"
-                                  class="btn btn-secondary dropdown-toggle action-toggle"
+                                  class="btn btn-secondary dropdown-toggle app-action-toggle"
                                   data-bs-toggle="dropdown"
                                   aria-expanded="false"
                                 ></button>

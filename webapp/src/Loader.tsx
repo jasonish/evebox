@@ -4,5 +4,5 @@
 import "./Loader.scss";
 
 export const Loader = () => {
-  return <div class="loader">Loading...</div>;
+  return <div class="app-loader">Loading...</div>;
 };
