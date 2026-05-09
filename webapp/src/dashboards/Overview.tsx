@@ -500,7 +500,7 @@ export function Overview() {
                 </Show>
               </div>
               <div class="card-body p-0">
-                <div class="chart-container" style="position; relative;">
+                <div>
                   <canvas
                     id="histogram"
                     style="max-height: 180px; height: 180px;"
@@ -694,7 +694,7 @@ function PieChart(props: { data: any[]; ref?: any }) {
   return (
     <>
       <div>
-        <div class="chart-container" style="height: 180px; position; relative;">
+        <div style="height: 180px;">
           <canvas
             ref={props.ref}
             id={chartId}
