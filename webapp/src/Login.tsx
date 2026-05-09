@@ -78,46 +78,48 @@ export const Login = () => {
               </Alert>
             </Show>
 
-            <div class={"bg-theme"} style={"padding: 20px"}>
-              <Suspense>
-                {loginOptions() && (
-                  <Form onsubmit={doLogin}>
-                    <Form.Group>
-                      <Form.Label>Username:</Form.Label>
-                      <Form.Control
-                        type={"text"}
-                        spellcheck={false}
-                        oninput={(e) =>
-                          setLoginForm("username", e.currentTarget.value)
-                        }
-                        placeholder={"Username..."}
-                      />
-                    </Form.Group>
+            <div class={"card"}>
+              <div class={"card-body"}>
+                <Suspense>
+                  {loginOptions() && (
+                    <Form onsubmit={doLogin}>
+                      <Form.Group>
+                        <Form.Label>Username:</Form.Label>
+                        <Form.Control
+                          type={"text"}
+                          spellcheck={false}
+                          oninput={(e) =>
+                            setLoginForm("username", e.currentTarget.value)
+                          }
+                          placeholder={"Username..."}
+                        />
+                      </Form.Group>
 
-                    <Form.Group class={"mt-3"}>
-                      <Form.Label>Password:</Form.Label>
-                      <Form.Control
-                        oninput={(e) =>
-                          setLoginForm("password", e.currentTarget.value)
-                        }
-                        type={"password"}
-                        placeholder={"Password..."}
-                      />
-                    </Form.Group>
+                      <Form.Group class={"mt-3"}>
+                        <Form.Label>Password:</Form.Label>
+                        <Form.Control
+                          oninput={(e) =>
+                            setLoginForm("password", e.currentTarget.value)
+                          }
+                          type={"password"}
+                          placeholder={"Password..."}
+                        />
+                      </Form.Group>
 
-                    <div class={"d-grid mt-3"}>
-                      <Button
-                        class={""}
-                        variant={"primary"}
-                        type={"submit"}
-                        disabled={!isValid()}
-                      >
-                        Login
-                      </Button>
-                    </div>
-                  </Form>
-                )}
-              </Suspense>
+                      <div class={"d-grid mt-3"}>
+                        <Button
+                          class={""}
+                          variant={"primary"}
+                          type={"submit"}
+                          disabled={!isValid()}
+                        >
+                          Login
+                        </Button>
+                      </div>
+                    </Form>
+                  )}
+                </Suspense>
+              </div>
             </div>
           </Col>
           <Col></Col>

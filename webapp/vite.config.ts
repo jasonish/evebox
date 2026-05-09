@@ -3,6 +3,14 @@ import solidPlugin from "vite-plugin-solid";
 
 export default defineConfig({
   plugins: [solidPlugin()],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        quietDeps: true,
+        silenceDeprecations: ["import"],
+      },
+    },
+  },
   server: {
     port: 3636,
     proxy: {

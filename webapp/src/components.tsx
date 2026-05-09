@@ -32,9 +32,9 @@ export function FilterStrip(props: { filters: any; setFilters: any }) {
 
   const buttonClass = (filter: string) => {
     if (filter.startsWith("-")) {
-      return "app-filter-button-out";
+      return "btn-outline-secondary app-filter-button-out";
     } else {
-      return "app-filter-button-for";
+      return "btn-outline-secondary app-filter-button-for";
     }
   };
 

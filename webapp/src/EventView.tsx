@@ -735,7 +735,7 @@ export function EventView() {
           <Row>
             <Col class={"mb-2"} lg={12} xl={6}>
               <div class="card">
-                <div class="card-body" style="padding: 2px;">
+                <div class="card-body app-card-body-compact">
                   <table class="table table-sm table-borderless table-striped table-hover app-detail-table mb-0">
                     <tbody>
                       <For each={commonDetails()}>
@@ -758,7 +758,7 @@ export function EventView() {
             <Show when={eventDetails()}>
               <Col class={"mb-2"} lg={12} xl={6}>
                 <div class="card">
-                  <div class="card-body" style="padding: 2px;">
+                  <div class="card-body app-card-body-compact">
                     <table
                       class={
                         "table table-sm app-detail-table table-borderless table-striped table-hover mb-0"
@@ -794,7 +794,7 @@ export function EventView() {
                         <BiQuestionCircle />
                       </span>
                     </div>
-                    <div class="card-body" style="padding: 2px;">
+                    <div class="card-body app-card-body-compact">
                       <table
                         class={
                           "table table-sm app-detail-table table-borderless table-striped table-hover mb-0"
@@ -928,7 +928,7 @@ export function EventView() {
                                 <For each={col}>
                                   {(o) => (
                                     <>
-                                      <div class="card m-2 event-detail-card">
+                                      <div class="card m-2">
                                         <div class="card-header">{o.title}</div>
                                         <div class="card-body p-0">
                                           <table class="mb-0 table table-sm table-striped table-bordered app-detail-table">
@@ -938,7 +938,7 @@ export function EventView() {
                                                   <>
                                                     <tr>
                                                       <td>{e.key}</td>
-                                                      <td class="app-force-wrap">
+                                                      <td class="app-break-anywhere">
                                                         <Switch
                                                           fallback={
                                                             <SearchLink
@@ -1026,7 +1026,7 @@ export function EventView() {
                                           <th class={""} style={"width: 1%;"}>
                                             {e.key}
                                           </th>
-                                          <td class="app-force-wrap">
+                                          <td class="app-break-anywhere">
                                             <Switch
                                               fallback={
                                                 <SearchLink value={e.val}>
@@ -1125,7 +1125,7 @@ export function EventView() {
                           <>
                             <tr>
                               <td>{e.key}</td>
-                              <td class="app-force-wrap">{e.val}</td>
+                              <td class="app-break-anywhere">{e.val}</td>
                             </tr>
                           </>
                         )}
@@ -1301,7 +1301,7 @@ function PrettyJson(props: any) {
     <>
       <pre
         ref={output}
-        class="json-container app-force-wrap"
+        class="json-container app-break-anywhere app-pre-wrap app-overflow-hidden"
         id={"formatted-json"}
         style={props.style}
       ></pre>
@@ -1327,7 +1327,9 @@ function Base64BufferCard(props: {
           <Col md={12} xl={6} class={"pb-2"}>
             <div class="card">
               <div class="card-body p-2">
-                <pre class={"app-force-wrap"}>{atob(props.buffer)}</pre>
+                <pre class="app-break-anywhere app-pre-wrap app-overflow-hidden">
+                  {atob(props.buffer)}
+                </pre>
               </div>
             </div>
           </Col>
@@ -1339,12 +1341,12 @@ function Base64BufferCard(props: {
                     <For each={toPrettyHex(atob(props.buffer))}>
                       {(e) => (
                         <>
-                          <tr style={"padding: 0; margin: 0;"}>
-                            <td style={"padding: 0; margin: 0;"}>
-                              <pre style={"margin: 0; padding: 0;"}>{e[0]}</pre>
+                          <tr class="app-hex-row">
+                            <td class="app-hex-cell">
+                              <pre class="app-hex-pre">{e[0]}</pre>
                             </td>
-                            <td style={"padding: 0; margin: 0;"}>
-                              <pre style={"margin: 0; padding: 0;"}>{e[1]}</pre>
+                            <td class="app-hex-cell">
+                              <pre class="app-hex-pre">{e[1]}</pre>
                             </td>
                           </tr>
                         </>

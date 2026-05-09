@@ -484,10 +484,9 @@ export function Overview() {
                 <b>Events by Type Over Time</b>
                 <Show when={eventsOverTimeLoading() > 0}>
                   <button
-                    class="btn ms-auto"
+                    class="btn ms-auto app-spinner-button"
                     type="button"
                     disabled
-                    style="border: 0; padding: 0;"
                   >
                     <span
                       class="spinner-border spinner-border-sm"
@@ -501,10 +500,7 @@ export function Overview() {
               </div>
               <div class="card-body p-0">
                 <div>
-                  <canvas
-                    id="histogram"
-                    style="max-height: 180px; height: 180px;"
-                  ></canvas>
+                  <canvas id="histogram" class="app-chart-overview-events"></canvas>
                 </div>
               </div>
             </div>
@@ -518,10 +514,9 @@ export function Overview() {
                 >
                   {/* Loader in a button for placement reason's. */}
                   <button
-                    class="btn ms-auto"
+                    class="btn ms-auto app-spinner-button"
                     type="button"
                     disabled
-                    style="border: 0; padding: 0;"
                   >
                     <span
                       class="spinner-border spinner-border-sm"
@@ -694,12 +689,8 @@ function PieChart(props: { data: any[]; ref?: any }) {
   return (
     <>
       <div>
-        <div style="height: 180px;">
-          <canvas
-            ref={props.ref}
-            id={chartId}
-            style="max-height: 150px; height: 150px;"
-          ></canvas>
+        <div class="app-chart-pie-wrap">
+          <canvas ref={props.ref} id={chartId} class="app-chart-pie"></canvas>
         </div>
       </div>
     </>

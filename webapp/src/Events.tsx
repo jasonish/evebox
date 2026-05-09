@@ -27,6 +27,7 @@ import { AlertDescription } from "./Alerts";
 import { EventsQueryParams } from "./api";
 import { AddressCell, FilterStrip, TimestampCell } from "./components";
 import { SensorSelect } from "./common/SensorSelect";
+import { RefreshButton } from "./common/RefreshButton";
 
 // The list of event types that will be shown in dropdowns.
 export const EVENT_TYPES: { name: string; eventType: string }[] = [
@@ -352,19 +353,7 @@ export function Events() {
       <Container fluid>
         <Row>
           <div class="col-auto mt-2 d-flex flex-wrap align-items-center gap-2">
-            <Show when={!isLoading()}>
-              <button
-                class={"btn btn-primary app-refresh-button"}
-                onclick={loadEvents}
-              >
-                Refresh
-              </button>
-            </Show>
-            <Show when={isLoading()}>
-              <button class={"btn btn-primary app-refresh-button"} disabled>
-                Loading
-              </button>
-            </Show>
+            <RefreshButton loading={isLoading()} refresh={loadEvents} />
             <div class="d-inline-flex">
               <SensorSelect
                 selected={searchParams.sensor}
@@ -573,7 +562,7 @@ export function Events() {
                                     </Match>
                                   </Switch>
                                 </td>
-                                <td class={"app-force-wrap col-auto"}>
+                                <td class={"app-break-anywhere col-auto"}>
                                   <Switch
                                     fallback={
                                       <>

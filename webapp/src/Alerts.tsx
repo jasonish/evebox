@@ -46,6 +46,7 @@ import { IdleTimer } from "./idletimer";
 import { eventStore } from "./eventstore";
 import { Logger } from "./util";
 import { SensorSelect } from "./common/SensorSelect";
+import { RefreshButton } from "./common/RefreshButton";
 import * as bootstrap from "bootstrap";
 import {
   AddressCell,
@@ -171,9 +172,9 @@ export function Alerts() {
         }
       },
       ".": () => {
-        let element = document.getElementsByClassName("app-action-toggle")[
-          cursor()
-        ] as HTMLElement;
+        let element = document.querySelectorAll<HTMLElement>(
+          "[data-app-action-toggle]",
+        )[cursor()];
         if (element) {
           element.click();
           element.focus();
@@ -778,19 +779,7 @@ export function Alerts() {
         </div>
         <Row>
           <Col class="d-flex flex-wrap align-items-center gap-2">
-            <Show when={!isLoading()}>
-              <button
-                class={"btn btn-primary app-refresh-button"}
-                onclick={refresh}
-              >
-                Refresh
-              </button>
-            </Show>
-            <Show when={isLoading()}>
-              <button class={"btn btn-primary app-refresh-button"} disabled>
-                Loading
-              </button>
-            </Show>
+            <RefreshButton loading={isLoading()} refresh={refresh} />
             <Show when={visibleEvents().length > 0 && !isAllSelected()}>
               <button class={"btn btn-secondary"} onclick={selectAll}>
                 Select All
@@ -1084,7 +1073,8 @@ export function Alerts() {
 
                                 <button
                                   type="button"
-                                  class="btn btn-secondary dropdown-toggle app-action-toggle"
+                                  class="btn btn-secondary dropdown-toggle"
+                                  data-app-action-toggle
                                   data-bs-toggle="dropdown"
                                   aria-expanded="false"
                                 ></button>

@@ -304,10 +304,7 @@ export function AlertsDashboard() {
 
         <div class="row">
           <div class="col mt-2">
-            <canvas
-              id="histogram"
-              style="max-height: 250px; height: 300px"
-            ></canvas>
+            <canvas id="histogram" class="app-chart-alerts"></canvas>
           </div>
         </div>
 

@@ -95,10 +95,10 @@ export function CountValueDataTable(props: {
         </Show>
         <Show when={props.rows.length > 0}>
           <div class="card-body p-0">
-            <table class="table" style="margin-bottom: 3px;">
+            <table class="table">
               <thead>
                 <tr>
-                  <th style={"width: 6em;"}>#</th>
+                  <th class="app-count-col">#</th>
                   <th>{props.label}</th>
                 </tr>
               </thead>
@@ -106,8 +106,8 @@ export function CountValueDataTable(props: {
                 <For each={props.rows}>
                   {(row) => (
                     <tr>
-                      <td style={"width: 6em;"}>{row.count}</td>
-                      <td class="app-force-wrap">{searchLink(row.key)}</td>
+                      <td class="app-count-col">{row.count}</td>
+                      <td class="app-break-anywhere">{searchLink(row.key)}</td>
                     </tr>
                   )}
                 </For>

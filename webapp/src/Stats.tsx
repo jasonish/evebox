@@ -425,7 +425,7 @@ export function Stats(): JSX.Element {
             <>
               <Row>
                 <Col>
-                  <div style={"height: 200px; width: 100%"}>
+                  <div class="app-chart-stats">
                     <canvas id={chart.canvasId}></canvas>
                   </div>
                 </Col>
