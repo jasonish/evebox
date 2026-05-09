@@ -11,26 +11,26 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "prettier": "^3.7.1",
-    "sass": "^1.94.2",
-    "typescript": "^5.3.3",
-    "vite": "^7.2.4",
-    "vite-plugin-solid": "^2.11.10"
+    "prettier": "^3.8.3",
+    "sass": "^1.99.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.11",
+    "vite-plugin-solid": "^2.11.12"
   },
   "dependencies": {
-    "@solidjs/router": "^0.15.0",
+    "@solidjs/router": "^0.16.1",
     "@types/bootstrap": "^5.2.10",
-    "axios": "^1.2.1",
-    "bootstrap": "^5.3.2",
-    "chart.js": "^4.2.0",
+    "axios": "^1.16.0",
+    "bootstrap": "^5.3.8",
+    "chart.js": "^4.5.1",
     "chartjs-adapter-dayjs-4": "^1.0.4",
-    "dayjs": "^1.11.7",
+    "dayjs": "^1.11.20",
     "events": "^3.3.0",
-    "pretty-print-json": "^3.0.6",
+    "pretty-print-json": "^3.0.7",
     "queue": "^7.0.0",
-    "solid-bootstrap": "^1.0.19",
-    "solid-js": "^1.9.0",
-    "solid-transition-group": "^0.2.3",
+    "solid-bootstrap": "^1.0.21",
+    "solid-js": "^1.9.12",
+    "solid-transition-group": "^0.3.0",
     "tinykeys": "^3.0.0"
   }
 }
