@@ -27,7 +27,7 @@ axum-extra = { version = "0.12.6", default-features = false, features = ["cookie
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread", "fs"] }
 tower-http = { version = "0.6", features = ["set-header", "trace", "limit"] }
 futures = "0.3.32"
-rustls = { version = "0.23", default-features = false }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-pki-types = { version = "1.14", features = ["alloc", "std"] }
 
 base64 = "0.22.1"
@@ -50,7 +50,7 @@ mime_guess = "2.0.5"
 nom = "8"
 percent-encoding = "2.3.2"
 rand = "0.9.4"
-reqwest = { version = "0.13.3", default-features = false, features = ["json", "rustls", "hickory-dns"] }
+reqwest = { version = "0.13.3", default-features = false, features = ["json", "rustls-no-provider", "hickory-dns"] }
 rust-embed = { version = "8.11.0", features = ["debug-embed"] }
 
 serde = { version = "1.0.228", features = ["derive"] }

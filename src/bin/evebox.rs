@@ -18,6 +18,10 @@ fn get_clap_style() -> clap::builder::Styles {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Multiple dependencies use rustls and can enable different crypto
+    // providers. Select one explicitly before any TLS configuration is built.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     if let Some(command) = std::env::args().nth(1)
         && command == "elastic-import"
     {
