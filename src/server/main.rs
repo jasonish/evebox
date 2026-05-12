@@ -152,6 +152,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     let mut context =
         build_context(server_config.clone(), datastore, configdb, metrics.clone()).await?;
 
+    // Set default time range if provided via CLI or config
+    if let Ok(Some(time_range)) = config.get::<String>("defaults.time-range") {
+        context.defaults.time_range = Some(time_range);
+    }
+
     if server_config.authentication_required && !context.configdb.has_users().await? {
         warn!("Username/password authentication is required, but no users exist, creating a user");
         let (username, password) = create_admin_user(&context).await?;
