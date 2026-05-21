@@ -406,9 +406,19 @@ export namespace API {
     return post(`api/event/${event._id}/de-escalate`);
   }
 
+  export function pcapFilename(event: EventWrapper): string {
+    const source = event._source;
+    const sid = source.alert?.signature_id;
+    if (sid) {
+      return source.app_proto ? `${sid}-${source.app_proto}` : `${sid}`;
+    }
+    return "event";
+  }
+
   export async function eventToPcap(
     event: EventWrapper,
     what: "packet" | "payload",
+    filename?: string,
   ) {
     const form = document.createElement("form") as HTMLFormElement;
     form.setAttribute("method", "post");
@@ -425,6 +435,14 @@ export namespace API {
     eventField.setAttribute("name", "event");
     eventField.setAttribute("value", JSON.stringify(event._source));
     form.appendChild(eventField);
+
+    if (filename) {
+      const filenameField = document.createElement("input") as HTMLElement;
+      filenameField.setAttribute("type", "hidden");
+      filenameField.setAttribute("name", "filename");
+      filenameField.setAttribute("value", filename);
+      form.appendChild(filenameField);
+    }
 
     document.body.appendChild(form);
     form.submit();

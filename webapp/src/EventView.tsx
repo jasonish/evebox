@@ -624,7 +624,13 @@ export function EventView() {
 
   function eventToPcap(what: "packet" | "payload") {
     if (event()) {
-      API.eventToPcap(event()!, what);
+      const filename = window.prompt(
+        "Save PCAP as",
+        `${API.pcapFilename(event()!)}.pcap`,
+      );
+      if (filename !== null) {
+        API.eventToPcap(event()!, what, filename);
+      }
     }
   }
 
