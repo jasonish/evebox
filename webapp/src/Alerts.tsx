@@ -85,12 +85,30 @@ function getRowCount(): number {
 
 export function AlertState(props: any) {
   console.log("***** AlertState *****");
+  const location = useLocation();
 
   onMount(() => {
-    eventStore.reset();
+    const viewPath = getAlertViewPath(location.pathname);
+    const isRestoringEvent =
+      viewPath !== undefined &&
+      eventStore.viewPath === viewPath &&
+      eventStore.active !== null &&
+      location.pathname === `${viewPath}/${eventStore.active._id}`;
+
+    if (!isRestoringEvent) {
+      eventStore.reset();
+    }
   });
 
   return <>{props.children}</>;
+}
+
+function getAlertViewPath(pathname: string): string | undefined {
+  const view = pathname.split("/")[1];
+  if (["inbox", "escalated", "alerts"].includes(view)) {
+    return `/${view}`;
+  }
+  return undefined;
 }
 
 export function Alerts() {
@@ -610,7 +628,7 @@ export function Alerts() {
     // Run in batch so no effects are triggered as we navigate away at the end.
     batch(() => {
       console.log(`Navigating to event ${event._id}`);
-      eventStore.setActive(event);
+      eventStore.setActive(event, location.pathname);
       eventStore.viewOffset = getOffset();
       eventStore.cursor = cursor();
       console.log(`EVENT_STORE.active._id=${eventStore.active?._id}`);
@@ -764,6 +782,7 @@ export function Alerts() {
                   "eventStore.active._id": eventStore.active?._id || null,
                   "cursor()": cursor(),
                   "eventStore.viewOffset": eventStore.viewOffset,
+                  "eventStore.viewPath": eventStore.viewPath,
                   "eventStore.cursor": eventStore.cursor,
                 },
                 null,
