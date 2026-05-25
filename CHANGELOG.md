@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+- Improved refresh button loading state handling.
+
+### Fixed
+- Preserved alert list state when returning from an alert detail page with
+  browser history.
+  - Avoids showing an empty inbox after navigating away from an alert detail and
+    back.
+
 ## 0.24.0 - 2026-03-12
 
 ### Added
