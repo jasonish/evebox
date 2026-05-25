@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.25.0 - 2026-05-25
+
 ### Changed
 - Improved refresh button loading state handling.
 
