@@ -132,16 +132,23 @@ fn parse_line(line: &str) -> Option<(u64, String)> {
 
     let original = &line[offset..];
 
-    match suricatax_rule_parser::parse_rule(original) {
-        Ok(rule) => {
-            for option in &rule.options {
-                if let suricatax_rule_parser::Parsed::Sid(sid) = option.parsed {
+    use suricatax_rule_parser::scanner::{RuleScanEvent, RuleScanner};
+
+    for event in RuleScanner::new(original) {
+        match event {
+            Ok(RuleScanEvent::Option {
+                name,
+                value: Some(value),
+            }) if name == "sid" => {
+                if let Ok(sid) = value.trim().parse::<u64>() {
                     return Some((sid, original.to_string()));
                 }
             }
-        }
-        Err(err) => {
-            debug!("Failed to parse as rule: {:?}: {}", err, line);
+            Ok(_) => {}
+            Err(err) => {
+                debug!("Failed to parse as rule: {:?}: {}", err, line);
+                break;
+            }
         }
     }
 
@@ -185,4 +192,27 @@ pub(crate) fn watch_rules(rulemap: Arc<RuleMap>) {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_line() {
+        let rule = r#"alert tcp any any -> any any (msg:"TEST"; content:"|aa bb cc dd|"; nocase; sid:1; rev:2;)"#;
+        assert_eq!(parse_line(rule), Some((1, rule.to_string())));
+
+        // A commented out rule has its leading '#' stripped, so the
+        // returned rule string excludes it.
+        let commented = format!("#{rule}");
+        assert_eq!(parse_line(&commented), Some((1, rule.to_string())));
+
+        // A rule with no sid option yields nothing.
+        let no_sid = r#"alert tcp any any -> any any (msg:"TEST";)"#;
+        assert_eq!(parse_line(no_sid), None);
+
+        // A non-rule line yields nothing rather than panicking.
+        assert_eq!(parse_line("this is not a rule"), None);
+    }
 }

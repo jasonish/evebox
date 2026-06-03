@@ -57,7 +57,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 serde_yaml = "0.9.34"
 
-suricatax-rule-parser = { git = "https://github.com/jasonish/suricatax-rule-parser-rs", rev = "4b43a70f6e0a892970faa17b08d73d4a3b0b2cba" }
+suricatax-rule-parser = "0.2.0-alpha.1"
 
 # Currently only used for tracing_subscriber based logging.
 time = { version = "0.3.47", features = ["macros"] }
