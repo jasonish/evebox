@@ -1293,7 +1293,10 @@ function PrettyJson(props: any) {
 
   createEffect(() => {
     if (output) {
-      output.innerHTML = prettyPrintJson.toHtml(json);
+      output.innerHTML = prettyPrintJson.toHtml(json, {
+        quoteKeys: true,
+        trailingCommas: false,
+      });
     }
   });
 
