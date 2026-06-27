@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+- Unsupported Elasticsearch and OpenSearch versions now abort startup instead of
+  only logging a warning and continuing.
+  - EveBox requires Elasticsearch 7.10 or newer, or OpenSearch 2.6.0 or newer.
+
 ### Fixed
 - Stopped using deprecated OpenSearch `inline` script fields for tag/history
   updates.
