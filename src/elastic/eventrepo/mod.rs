@@ -180,7 +180,7 @@ impl ElasticEventRepo {
     ) -> Result<u64> {
         let script = json!({
             "lang": "painless",
-            "inline": "
+            "source": "
                 if (params.tags != null) {
                     if (ctx._source.tags == null) {
                         ctx._source.tags = new ArrayList();
@@ -235,7 +235,7 @@ impl ElasticEventRepo {
     ) -> Result<()> {
         let script = json!({
             "lang": "painless",
-            "inline": "
+            "source": "
                 if (ctx._source.tags != null) {
                     for (tag in params.tags) {
                         ctx._source.tags.removeIf(entry -> entry == tag);

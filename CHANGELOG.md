@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+- Stopped using deprecated OpenSearch `inline` script fields for tag/history
+  updates.
+
 ## 0.25.0 - 2026-05-25
 
 ### Changed
