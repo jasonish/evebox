@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Added
+- New `evebox test elastic` command (aliased `evebox test opensearch`) that
+  loads a sample of EVE events into a throwaway index and exercises the queries
+  and mutations EveBox runs in normal operation, to check
+  Elasticsearch/OpenSearch version compatibility.
+  - The throwaway index uses a unique per-run prefix, so its queries,
+    mutations, and cleanup can only ever touch indices it created.
+  - `--existing` runs read-only against an existing datastore (no imports,
+    mutations, or deletions), making it safe against a production cluster.
+  - A container harness for running it across a version matrix lives in
+    `docker/tests/compat/`.
+
 ### Changed
 - Unsupported Elasticsearch and OpenSearch versions now abort startup instead of
   only logging a warning and continuing.

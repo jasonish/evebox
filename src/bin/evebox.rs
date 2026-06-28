@@ -311,6 +311,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(evebox::cli::print::command())
         .subcommand(evebox::cli::elastic::main::main_options())
         .subcommand(evebox::cli::sqlite::command())
+        .subcommand(evebox::cli::test::command())
         .subcommand(evebox::cli::update::args())
         .subcommand(evebox::cli::util::args());
     let matches = parser.clone().get_matches();
@@ -344,6 +345,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("print", args)) => evebox::cli::print::main(args),
         Some(("elastic", args)) => evebox::cli::elastic::main::main(args).await,
         Some(("sqlite", args)) => evebox::cli::sqlite::main(args).await,
+        Some(("test", args)) => evebox::cli::test::main(args).await,
         Some(("update", args)) => evebox::cli::update::main(args).await,
         Some(("util", args)) => evebox::cli::util::main(args).await,
         _ => {
