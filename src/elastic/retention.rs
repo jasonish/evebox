@@ -136,13 +136,41 @@ async fn auto_archive(
 
 pub(crate) fn parse_index_date(name: &str) -> Option<chrono::DateTime<chrono::Utc>> {
     let re = regex::Regex::new(r"(\d{4})\.(\d{2})\.(\d{2})").unwrap();
-    let caps = re.captures(name).unwrap();
-    let year = caps.get(1).unwrap().as_str().parse::<i32>().unwrap();
-    let month = caps.get(2).unwrap().as_str().parse::<u32>().unwrap();
-    let day = caps.get(3).unwrap().as_str().parse::<u32>().unwrap();
+    // Retention scans the broad `{base}*` pattern, which now includes the
+    // separate `{base}-stats-{date}` indices as well as any index that may not
+    // carry a date at all (e.g. date-less mode). Skip anything without a
+    // parseable date rather than panicking.
+    let caps = re.captures(name)?;
+    let year = caps.get(1)?.as_str().parse::<i32>().ok()?;
+    let month = caps.get(2)?.as_str().parse::<u32>().ok()?;
+    let day = caps.get(3)?.as_str().parse::<u32>().ok()?;
     match chrono::Utc.with_ymd_and_hms(year, month, day, 0, 0, 0) {
         chrono::offset::LocalResult::Single(dt) => Some(dt),
         chrono::offset::LocalResult::Ambiguous(_, _) => None,
         chrono::offset::LocalResult::None => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_index_date;
+
+    #[test]
+    fn parses_main_index_date() {
+        let dt = parse_index_date("logstash-2026.06.28").unwrap();
+        assert_eq!(dt.format("%Y.%m.%d").to_string(), "2026.06.28");
+    }
+
+    #[test]
+    fn parses_stats_index_date() {
+        // Stats events live in their own `{base}-stats-{date}` index; retention
+        // must still recognise and age these out.
+        let dt = parse_index_date("logstash-stats-2026.06.28").unwrap();
+        assert_eq!(dt.format("%Y.%m.%d").to_string(), "2026.06.28");
+    }
+
+    #[test]
+    fn returns_none_for_index_without_a_date() {
+        assert!(parse_index_date("logstash").is_none());
     }
 }

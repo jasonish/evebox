@@ -532,10 +532,11 @@ async fn configure_datastore(
             let client = client.build();
 
             let server_info = client.wait_for_info().await;
-            if matches!(
+            let is_opensearch = matches!(
                 server_info.version.distribution.as_deref(),
                 Some("opensearch")
-            ) {
+            );
+            if is_opensearch {
                 info!("Found Opensearch version {}", &server_info.version.number);
                 if let Ok(version) = Version::parse(&server_info.version.number) {
                     if version.major < 2 || (version.major < 3 && version.minor < 6) {
@@ -580,6 +581,7 @@ async fn configure_datastore(
                 index_pattern,
                 client.clone(),
                 server_config.elastic_ecs,
+                is_opensearch,
             );
             eventstore.start_archive_processor();
             debug!("Elasticsearch base index: {}", eventstore.get_base_index());

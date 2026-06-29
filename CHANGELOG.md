@@ -15,6 +15,20 @@
     `docker/tests/compat/`.
 
 ### Changed
+- On OpenSearch, stats events are now indexed into a separate
+  `{index}-stats-YYYY.MM.DD` index instead of the main daily event index.
+  - This keeps the large number of `stats.*` counter fields out of the main
+    event index mapping. Only newly created indices are affected; stats already
+    stored in existing `{index}-YYYY.MM.DD` indices stay where they are and are
+    aged out normally by retention.
+  - Stats queries continue to search the full `{index}-*` pattern, so stats in
+    both the new and the legacy indices remain visible, and index retention
+    covers the new stats indices automatically.
+  - This applies to OpenSearch only; Elasticsearch keeps everything in the
+    single daily index. The split is also skipped in date-less index mode.
+- The admin index management page now groups indices by date (with per-date doc
+  and store-size subtotals and human-readable sizes), and labels the datastore
+  as OpenSearch or Elasticsearch based on the actual backend.
 - Unsupported Elasticsearch and OpenSearch versions now abort startup instead of
   only logging a warning and continuing.
   - EveBox requires Elasticsearch 7.10 or newer, or OpenSearch 2.6.0 or newer.

@@ -407,7 +407,13 @@ async fn run(args: &Args) -> Result<Report> {
 
     // Build the repository over the test index.
     let index_pattern = format!("{base}-*");
-    let repo = ElasticEventRepo::new(base.to_string(), index_pattern, client.clone(), false);
+    let repo = ElasticEventRepo::new(
+        base.to_string(),
+        index_pattern,
+        client.clone(),
+        false,
+        distribution == "opensearch",
+    );
 
     // Import a sample of events (import mode only).
     let imported = if args.existing {

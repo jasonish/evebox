@@ -90,6 +90,9 @@ export interface ConfigResponse {
   };
   "event-services": any[];
   datastore: string;
+  // For Elasticsearch datastores, the concrete distribution: "elasticsearch"
+  // or "opensearch". Null/undefined for other datastores.
+  distribution?: string | null;
 }
 
 export async function getConfig(): Promise<ConfigResponse> {

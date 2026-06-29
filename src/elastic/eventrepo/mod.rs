@@ -40,16 +40,24 @@ pub(crate) struct ElasticEventRepo {
     index_pattern: String,
     client: Client,
     ecs: bool,
+    opensearch: bool,
     auto_archive_tx: Option<UnboundedSender<AlertGroupSpec>>,
 }
 
 impl ElasticEventRepo {
-    pub fn new(base_index: String, index_pattern: String, client: Client, ecs: bool) -> Self {
+    pub fn new(
+        base_index: String,
+        index_pattern: String,
+        client: Client,
+        ecs: bool,
+        opensearch: bool,
+    ) -> Self {
         Self {
             base_index,
             index_pattern,
             client,
             ecs,
+            opensearch,
             auto_archive_tx: None,
         }
     }
@@ -67,6 +75,7 @@ impl ElasticEventRepo {
                 self.client.clone(),
                 &self.base_index,
                 false,
+                self.opensearch,
             ))
         }
     }
@@ -1059,5 +1068,9 @@ impl ElasticEventRepo {
 
     pub fn is_ecs(&self) -> bool {
         self.ecs
+    }
+
+    pub fn is_opensearch(&self) -> bool {
+        self.opensearch
     }
 }

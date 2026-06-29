@@ -18,3 +18,11 @@ export interface EventServiceConfig {
 export function serverConfigSet(config: ConfigResponse) {
   serverConfig = config;
 }
+
+/// The display name of the active Elasticsearch distribution: "OpenSearch" when
+/// the backend really is OpenSearch, otherwise "Elasticsearch".
+export function distributionName(): string {
+  return serverConfig?.distribution === "opensearch"
+    ? "OpenSearch"
+    : "Elasticsearch";
+}

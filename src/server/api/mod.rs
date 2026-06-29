@@ -114,15 +114,26 @@ pub(crate) async fn config(
     context: Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
 ) -> impl IntoResponse {
-    let datastore = match context.datastore {
+    let datastore = match &context.datastore {
         EventRepo::Elastic(_) => "elasticsearch",
         EventRepo::SQLite(_) => "sqlite",
+    };
+    // The concrete Elasticsearch distribution ("elasticsearch" or "opensearch")
+    // so the UI can label things accurately. Null for non-Elastic datastores.
+    let distribution = match &context.datastore {
+        EventRepo::Elastic(elastic) => Some(if elastic.is_opensearch() {
+            "opensearch"
+        } else {
+            "elasticsearch"
+        }),
+        EventRepo::SQLite(_) => None,
     };
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
         "event-services": context.event_services,
         "defaults": &context.defaults,
         "datastore": datastore,
+        "distribution": distribution,
     });
     Json(config)
 }

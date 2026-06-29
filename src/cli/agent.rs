@@ -175,9 +175,22 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         }
         let nodate = config.get_bool("elasticsearch.nodate")?;
         let index = config.get_string("elasticsearch.index").unwrap();
-        info!("Sending events to Elasticsearch: {url}, index={index}, nodate={nodate}");
+        let client = client.build();
+        // Detect OpenSearch so stats events can be split into their own index
+        // (OpenSearch only). Best effort: fall back to Elasticsearch behaviour
+        // if the server can't be reached yet.
+        let opensearch = client
+            .get_info()
+            .await
+            .ok()
+            .and_then(|info| info.version.distribution)
+            .as_deref()
+            == Some("opensearch");
+        info!(
+            "Sending events to Elasticsearch: {url}, index={index}, nodate={nodate}, opensearch={opensearch}"
+        );
         let importer =
-            crate::elastic::importer::ElasticEventSink::new(client.build(), &index, nodate);
+            crate::elastic::importer::ElasticEventSink::new(client, &index, nodate, opensearch);
         EventSink::Elastic(importer)
     } else {
         let client = Client::new(
