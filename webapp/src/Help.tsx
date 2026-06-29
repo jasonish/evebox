@@ -1,12 +1,13 @@
 // SPDX-FileCopyrightText: (C) 2023 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { createSignal, For, Show, Suspense } from "solid-js";
-import { Button, Modal, Tab, Tabs } from "solid-bootstrap";
+import { createSignal, For, Match, Show, Suspense, Switch } from "solid-js";
+import { Button, Modal, Spinner, Tab, Tabs } from "solid-bootstrap";
 import { closeHelp, showHelp } from "./Top";
 
 import { createResource } from "solid-js";
-import { getVersion, SERVER_REVISION } from "./api";
+import { getUpdateManifest, getVersion, SERVER_REVISION } from "./api";
+import { compareVersions, isPrerelease } from "./version";
 import { GIT_REV } from "./gitrev";
 
 export function HelpModal() {
@@ -96,8 +97,38 @@ function Keyboard() {
   );
 }
 
+type UpdateCheck = {
+  status: "idle" | "checking" | "uptodate" | "development" | "update" | "error";
+  latest?: string;
+};
+
 function About() {
   const [version] = createResource(getVersion);
+  const [check, setCheck] = createSignal<UpdateCheck>({ status: "idle" });
+
+  const checkForUpdates = async () => {
+    const current = version()?.version;
+    if (!current) {
+      return;
+    }
+    setCheck({ status: "checking" });
+    try {
+      const manifest = await getUpdateManifest();
+      const latest = manifest.version;
+      const cmp = compareVersions(current, latest);
+      if (cmp === null) {
+        setCheck({ status: "error" });
+      } else if (cmp < 0) {
+        setCheck({ status: "update", latest });
+      } else if (isPrerelease(current)) {
+        setCheck({ status: "development", latest });
+      } else {
+        setCheck({ status: "uptodate", latest });
+      }
+    } catch (_e) {
+      setCheck({ status: "error" });
+    }
+  };
 
   return (
     <>
@@ -116,6 +147,45 @@ function About() {
             Server={SERVER_REVISION()}, Frontend={GIT_REV}.
           </div>
         </Show>
+
+        <p>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={check().status === "checking" || !version()?.version}
+            onClick={checkForUpdates}
+          >
+            <Show
+              when={check().status === "checking"}
+              fallback={"Check for updates"}
+            >
+              <Spinner animation="border" size="sm" /> Checking...
+            </Show>
+          </Button>
+        </p>
+
+        <Switch>
+          <Match when={check().status === "update"}>
+            <div class="alert alert-success">
+              A new EveBox release is available:{" "}
+              <strong>{check().latest}</strong>.
+            </div>
+          </Match>
+          <Match when={check().status === "development"}>
+            <div class="alert alert-info">
+              You are running a development build. The latest stable release is{" "}
+              <strong>{check().latest}</strong>.
+            </div>
+          </Match>
+          <Match when={check().status === "uptodate"}>
+            <div class="alert alert-secondary">EveBox is up to date.</div>
+          </Match>
+          <Match when={check().status === "error"}>
+            <div class="alert alert-warning">
+              Could not reach the update server.
+            </div>
+          </Match>
+        </Switch>
 
         <p>
           Homepage and Documentation:{" "}

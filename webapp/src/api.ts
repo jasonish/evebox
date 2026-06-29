@@ -232,6 +232,29 @@ export async function getVersion(): Promise<{
   return get("api/version").then((response) => response.data);
 }
 
+export interface UpdateManifest {
+  version: string;
+}
+
+// Default URL of the release manifest, served with permissive CORS so the
+// browser can fetch it directly without going through the EveBox server.
+export const UPDATE_MANIFEST_URL =
+  "https://evebox.org/files/release/latest.json";
+
+// Fetch the release manifest directly from the download host. This deliberately
+// does not go through the EveBox server or the axios instance.
+export async function getUpdateManifest(
+  url: string = UPDATE_MANIFEST_URL,
+): Promise<UpdateManifest> {
+  const response = await fetch(url, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
 export interface LoginOptions {
   authentication: {
     required: boolean;
