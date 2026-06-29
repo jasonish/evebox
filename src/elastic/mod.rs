@@ -7,6 +7,7 @@ use serde_json::json;
 use crate::datetime::DateTime;
 
 pub(crate) use client::Version;
+pub(crate) use client::compatibility_warning;
 pub(crate) use client::{Client, ClientBuilder};
 pub(crate) use eventrepo::ElasticEventRepo;
 pub(crate) use importer::ElasticEventSink;

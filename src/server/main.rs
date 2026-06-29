@@ -563,6 +563,16 @@ async fn configure_datastore(
                             &server_info.version.number
                         );
                     }
+                    if let Some(warning) = elastic::compatibility_warning(
+                        server_info
+                            .version
+                            .distribution
+                            .as_deref()
+                            .unwrap_or("elasticsearch"),
+                        &server_info.version.number,
+                    ) {
+                        warn!("{warning}");
+                    }
                 } else {
                     error!(
                         "Failed to parse Elasticsearch version, EveBox likely won't work properly"

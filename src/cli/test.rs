@@ -248,6 +248,8 @@ struct Report {
     mode: &'static str,
     index: String,
     imported: usize,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<String>,
     checks: Vec<Check>,
     passed: usize,
     failed: usize,
@@ -264,6 +266,9 @@ impl Report {
         }
         if !self.supported {
             println!("  WARNING:  this version is below EveBox's supported floor");
+        }
+        for warning in &self.warnings {
+            println!("  WARNING:  {warning}");
         }
         println!("  Mode:     {}", self.mode);
         println!("  Index:    {}", self.index);
@@ -372,12 +377,18 @@ async fn run(args: &Args) -> Result<Report> {
         .unwrap_or_else(|| "elasticsearch".to_string());
     let version = info.version.number.clone();
     let supported = is_supported(&distribution, &version);
+    let warnings: Vec<String> = elastic::compatibility_warning(&distribution, &version)
+        .into_iter()
+        .collect();
     info!("Connected to {} {}", distribution, version);
     if !supported {
         warn!(
             "{} {} is below EveBox's supported floor; testing anyway",
             distribution, version
         );
+    }
+    for warning in &warnings {
+        warn!("{warning}");
     }
 
     let mut checks: Vec<Check> = Vec::new();
@@ -503,6 +514,7 @@ async fn run(args: &Args) -> Result<Report> {
         mode: if args.existing { "existing" } else { "import" },
         index: base.to_string(),
         imported,
+        warnings,
         checks,
         passed,
         failed,

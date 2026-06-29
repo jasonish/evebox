@@ -348,6 +348,35 @@ impl PartialEq for Version {
     }
 }
 
+impl std::fmt::Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
+}
+
+/// Minimum Elasticsearch version EveBox is known to work correctly with.
+/// Older (but still supported) versions get a compatibility warning.
+pub(crate) const RECOMMENDED_ELASTIC_VERSION: Version = Version {
+    major: 8,
+    minor: 19,
+    patch: 0,
+};
+
+/// Returns a compatibility warning when `distribution`/`version` describe an
+/// Elasticsearch release older than [`RECOMMENDED_ELASTIC_VERSION`]. Returns
+/// `None` for OpenSearch, for recommended-or-newer versions, and for versions
+/// that fail to parse.
+pub(crate) fn compatibility_warning(distribution: &str, version: &str) -> Option<String> {
+    let parsed = Version::parse(version).ok()?;
+    if distribution != "opensearch" && parsed < RECOMMENDED_ELASTIC_VERSION {
+        Some(format!(
+            "Elasticsearch version {version} is older than {RECOMMENDED_ELASTIC_VERSION}; EveBox may not work correctly"
+        ))
+    } else {
+        None
+    }
+}
+
 #[derive(Default, Debug)]
 pub(crate) struct ClientBuilder {
     url: String,
@@ -490,5 +519,23 @@ mod test {
         assert!(Version::parse("7.7.0").unwrap() < Version::parse("7.7.1").unwrap());
         assert!(Version::parse("7.7.1").unwrap() <= Version::parse("7.7.1").unwrap());
         assert!(Version::parse("7.7.1").unwrap() == Version::parse("7.7.1").unwrap());
+    }
+
+    #[test]
+    fn elasticsearch_versions_before_8_19_warn() {
+        assert_eq!(
+            compatibility_warning("elasticsearch", "8.18.7"),
+            Some(
+                "Elasticsearch version 8.18.7 is older than 8.19.0; EveBox may not work correctly"
+                    .to_string()
+            )
+        );
+        assert_eq!(compatibility_warning("elasticsearch", "8.19.0"), None);
+        assert_eq!(compatibility_warning("elasticsearch", "8.19.1"), None);
+    }
+
+    #[test]
+    fn opensearch_versions_do_not_get_elasticsearch_warning() {
+        assert_eq!(compatibility_warning("opensearch", "2.18.0"), None);
     }
 }
