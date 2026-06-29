@@ -697,6 +697,7 @@ dependencies = [
  "rust-embed",
  "rustls",
  "rustls-pki-types",
+ "semver",
  "serde",
  "serde_json",
  "serde_yaml",

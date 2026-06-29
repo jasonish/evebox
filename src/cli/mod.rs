@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 pub mod agent;
+pub mod checkupdate;
 pub mod config;
 pub mod elastic;
 pub mod oneshot;

@@ -52,6 +52,7 @@ percent-encoding = "2.3.2"
 rand = "0.9.4"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls-no-provider"] }
 rust-embed = { version = "8.11.0", features = ["debug-embed"] }
+semver = "1"
 
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
