@@ -500,7 +500,10 @@ export function Overview() {
               </div>
               <div class="card-body p-0">
                 <div>
-                  <canvas id="histogram" class="app-chart-overview-events"></canvas>
+                  <canvas
+                    id="histogram"
+                    class="app-chart-overview-events"
+                  ></canvas>
                 </div>
               </div>
             </div>
