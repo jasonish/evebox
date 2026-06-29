@@ -74,9 +74,9 @@ fi
 
 # Build evebox unless a binary was provided.
 if [ -z "${EVEBOX:-}" ]; then
-    echo "Building evebox (release)..."
-    ( cd "$REPO_ROOT" && cargo build --release ) || exit 1
-    EVEBOX="$REPO_ROOT/target/release/evebox"
+    echo "Building evebox..."
+    ( cd "$REPO_ROOT" && cargo build ) || exit 1
+    EVEBOX="$REPO_ROOT/target/debug/evebox"
 fi
 
 echo "Runtime:  $CONTAINER"
