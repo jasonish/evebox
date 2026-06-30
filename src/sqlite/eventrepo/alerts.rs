@@ -29,12 +29,6 @@ impl SqliteEventRepo {
             return self.alerts_with_timeout(options).await;
         }
 
-        if std::env::var("EVEBOX_ALERTS_WITH_TIMEOUT").is_ok() {
-            let mut options = options;
-            options.timeout = Some(3);
-            return self.alerts_with_timeout(options).await;
-        }
-
         // Legacy.
         self.alerts_group_by(options).await
     }
