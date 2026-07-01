@@ -141,6 +141,14 @@ impl SqliteEventRepo {
                             queryparser::QueryValue::Before(dt) => {
                                 builder.timestamp_lt(dt)?;
                             }
+                            queryparser::QueryValue::Archived => {
+                                let value = if el.negated { 0 } else { 1 };
+                                builder.push_where("archived = ?").push_arg(value)?;
+                            }
+                            queryparser::QueryValue::Escalated => {
+                                let value = if el.negated { 0 } else { 1 };
+                                builder.push_where("escalated = ?").push_arg(value)?;
+                            }
                         }
                     }
                 }
@@ -446,6 +454,14 @@ impl SqliteEventRepo {
                             queryparser::QueryValue::Before(ts) => {
                                 filters.push("timestamp < ?".into());
                                 args.push(ts.to_nanos())?;
+                            }
+                            queryparser::QueryValue::Archived => {
+                                filters.push("archived = ?".into());
+                                args.push(if el.negated { 0 } else { 1 })?;
+                            }
+                            queryparser::QueryValue::Escalated => {
+                                filters.push("escalated = ?".into());
+                                args.push(if el.negated { 0 } else { 1 })?;
                             }
                         }
                     }

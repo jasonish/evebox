@@ -360,3 +360,69 @@ impl ElasticEventRepo {
         Ok(response)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::elastic::{AlertQueryOptions, Client, ElasticEventRepo};
+    use serde_json::json;
+
+    fn test_repo() -> ElasticEventRepo {
+        ElasticEventRepo::new(
+            "test".to_string(),
+            "test-*".to_string(),
+            Client::new("http://localhost:9200"),
+            false,
+            false,
+        )
+    }
+
+    fn array_contains(value: &serde_json::Value, needle: &serde_json::Value) -> bool {
+        value
+            .as_array()
+            .map(|a| a.contains(needle))
+            .unwrap_or(false)
+    }
+
+    fn inbox_query(query_string: &str) -> serde_json::Value {
+        test_repo().build_inbox_query(AlertQueryOptions {
+            query_string: Some(query_string.to_string()),
+            ..Default::default()
+        })
+    }
+
+    #[test]
+    fn is_archived_filters_on_tag() {
+        let query = inbox_query("is:archived");
+        assert!(array_contains(
+            &query["query"]["bool"]["filter"],
+            &json!({"term": {"tags": "evebox.archived"}})
+        ));
+    }
+
+    #[test]
+    fn not_archived_uses_must_not() {
+        let query = inbox_query("-is:archived");
+        assert!(array_contains(
+            &query["query"]["bool"]["must_not"],
+            &json!({"term": {"tags": "evebox.archived"}})
+        ));
+    }
+
+    #[test]
+    fn is_escalated_filters_on_tag() {
+        let query = inbox_query("is:escalated");
+        assert!(array_contains(
+            &query["query"]["bool"]["filter"],
+            &json!({"term": {"tags": "evebox.escalated"}})
+        ));
+    }
+
+    #[test]
+    fn not_escalated_uses_must_not() {
+        let query = inbox_query("-is:escalated");
+        assert!(array_contains(
+            &query["query"]["bool"]["must_not"],
+            &json!({"term": {"tags": "evebox.escalated"}})
+        ));
+    }
+}

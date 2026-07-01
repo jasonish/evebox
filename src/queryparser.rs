@@ -76,6 +76,16 @@ pub(crate) enum QueryValue {
 
     // Like to, but less than.
     Before(datetime::DateTime),
+
+    /// `is:archived` - match events in the archived state. This is
+    /// stored as a column in SQLite and as a tag in Elasticsearch, so
+    /// each datastore translates it to its own representation. The
+    /// element's `negated` flag selects the not-archived case.
+    Archived,
+
+    /// `is:escalated` - match events in the escalated state. Like
+    /// [`QueryValue::Archived`], handled per datastore.
+    Escalated,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,10 +143,19 @@ pub(crate) fn parse(
                     });
                 }
                 _ => {
-                    elements.push(QueryElement {
-                        negated,
-                        value: QueryValue::KeyValue(key, token.to_string()),
-                    });
+                    // `is:archived` and `is:escalated` are event-state
+                    // flags. They map to a column in SQLite and a tag in
+                    // Elasticsearch, so they get their own query values.
+                    // Any other `is:` value falls through to a normal
+                    // key/value term.
+                    let value = if key == "is" && token.eq_ignore_ascii_case("archived") {
+                        QueryValue::Archived
+                    } else if key == "is" && token.eq_ignore_ascii_case("escalated") {
+                        QueryValue::Escalated
+                    } else {
+                        QueryValue::KeyValue(key, token.to_string())
+                    };
+                    elements.push(QueryElement { negated, value });
                 }
             }
 
@@ -291,6 +310,55 @@ mod tests {
         let elements = parse(r#"@from:2024-05-16T09:48:44"#, Some("-0600")).unwrap();
         assert_eq!(elements.len(), 1);
         assert!(!elements[0].negated);
+    }
+
+    #[test]
+    fn test_parse_is_state() {
+        // is:archived / is:escalated map to dedicated flag values.
+        let elements = parse("is:archived", None).unwrap();
+        assert_eq!(elements.len(), 1);
+        assert!(!elements[0].negated);
+        assert_eq!(elements[0].value, QueryValue::Archived);
+
+        let elements = parse("is:escalated", None).unwrap();
+        assert_eq!(elements.len(), 1);
+        assert!(!elements[0].negated);
+        assert_eq!(elements[0].value, QueryValue::Escalated);
+
+        // Negation via '-' and '!'.
+        let elements = parse("-is:archived", None).unwrap();
+        assert_eq!(elements.len(), 1);
+        assert!(elements[0].negated);
+        assert_eq!(elements[0].value, QueryValue::Archived);
+
+        let elements = parse("!is:escalated", None).unwrap();
+        assert_eq!(elements.len(), 1);
+        assert!(elements[0].negated);
+        assert_eq!(elements[0].value, QueryValue::Escalated);
+
+        // The state value is case-insensitive.
+        let elements = parse("is:Archived", None).unwrap();
+        assert_eq!(elements[0].value, QueryValue::Archived);
+
+        // Combined with other terms.
+        let elements = parse("is:escalated -is:archived @sid:2100", None).unwrap();
+        assert_eq!(elements.len(), 3);
+        assert_eq!(elements[0].value, QueryValue::Escalated);
+        assert!(!elements[0].negated);
+        assert_eq!(elements[1].value, QueryValue::Archived);
+        assert!(elements[1].negated);
+        assert_eq!(
+            elements[2].value,
+            QueryValue::KeyValue("@sid".to_string(), "2100".to_string())
+        );
+
+        // An unknown is: value falls through to a normal key/value term.
+        let elements = parse("is:something", None).unwrap();
+        assert_eq!(elements.len(), 1);
+        assert_eq!(
+            elements[0].value,
+            QueryValue::KeyValue("is".to_string(), "something".to_string())
+        );
     }
 
     #[test]

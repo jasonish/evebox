@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- Alerts can now be filtered by state from the search box with `is:archived`
+  and `is:escalated`, negatable as `-is:archived` and `-is:escalated`. This
+  works with the SQLite, Elasticsearch, and OpenSearch datastores.
 - New `evebox test elastic` command (aliased `evebox test opensearch`) that
   loads a sample of EVE events into a throwaway index and exercises the queries
   and mutations EveBox runs in normal operation, to check

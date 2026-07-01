@@ -555,6 +555,22 @@ impl ElasticEventRepo {
                 queryparser::QueryValue::Before(td) => {
                     filter.push(request::timestamp_lt_filter(td));
                 }
+                queryparser::QueryValue::Archived => {
+                    let expression = json!({"term": {"tags": TAG_ARCHIVED}});
+                    if el.negated {
+                        must_not.push(expression);
+                    } else {
+                        filter.push(expression);
+                    }
+                }
+                queryparser::QueryValue::Escalated => {
+                    let expression = json!({"term": {"tags": TAG_ESCALATED}});
+                    if el.negated {
+                        must_not.push(expression);
+                    } else {
+                        filter.push(expression);
+                    }
+                }
             }
         }
     }

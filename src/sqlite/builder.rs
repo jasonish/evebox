@@ -172,6 +172,8 @@ impl<'a> EventQueryBuilder<'a> {
                 queryparser::QueryValue::To(_) => {}
                 queryparser::QueryValue::After(_) => {}
                 queryparser::QueryValue::Before(_) => {}
+                queryparser::QueryValue::Archived => {}
+                queryparser::QueryValue::Escalated => {}
             }
         }
         Ok(())
@@ -307,6 +309,14 @@ impl<'a> EventQueryBuilder<'a> {
                 queryparser::QueryValue::Before(ts) => {
                     self.timestamp_lt(ts)?;
                 }
+                queryparser::QueryValue::Archived => {
+                    let value = if e.negated { 0 } else { 1 };
+                    self.push_where("events.archived = ?").push_arg(value)?;
+                }
+                queryparser::QueryValue::Escalated => {
+                    let value = if e.negated { 0 } else { 1 };
+                    self.push_where("events.escalated = ?").push_arg(value)?;
+                }
             }
         }
         Ok(())
@@ -342,6 +352,11 @@ impl<'a> EventQueryBuilder<'a> {
     ) -> Result<&mut Self, sqlx::Error> {
         self.push_where("timestamp < ?").push_arg(ts.to_nanos())?;
         Ok(self)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn wheres(&self) -> &[String] {
+        &self.wheres
     }
 
     pub(crate) fn build(&mut self) -> Result<(String, SqliteArguments<'a>), sqlx::Error> {
@@ -382,5 +397,28 @@ impl<'a> EventQueryBuilder<'a> {
         }
 
         Ok((sql, self.args.clone()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Parse a query string and return the WHERE clauses the builder
+    /// produces for it.
+    fn wheres_for(q: &str) -> Vec<String> {
+        let elements = queryparser::parse(q, None).unwrap();
+        let mut builder = EventQueryBuilder::new(false);
+        builder.from("events");
+        builder.apply_query_string(&elements).unwrap();
+        builder.wheres().to_vec()
+    }
+
+    #[test]
+    fn is_state_maps_to_columns() {
+        assert!(wheres_for("is:archived").contains(&"events.archived = ?".to_string()));
+        assert!(wheres_for("-is:archived").contains(&"events.archived = ?".to_string()));
+        assert!(wheres_for("is:escalated").contains(&"events.escalated = ?".to_string()));
+        assert!(wheres_for("-is:escalated").contains(&"events.escalated = ?".to_string()));
     }
 }
