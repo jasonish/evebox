@@ -16,6 +16,8 @@
     mutations, or deletions), making it safe against a production cluster.
   - A container harness for running it across a version matrix lives in
     `docker/tests/compat/`.
+  - A companion `evebox test sqlite` command runs equivalent behavioral checks
+    against a throwaway SQLite database.
 - New `evebox check-update` command and a "Check for updates" button in the web
   UI's About dialog that report whether a newer EveBox release is available.
   - The check is always user initiated; EveBox never contacts the update server

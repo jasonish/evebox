@@ -15,15 +15,20 @@
 //!
 //! The companion harness `docker/tests/compat/run.sh` runs this command against
 //! a matrix of container versions.
+//!
+//! `evebox test sqlite` runs equivalent behavioral checks against a throwaway
+//! SQLite database, including the `is:archived` / `is:escalated` alert search
+//! filters exercised over both SQLite alert code paths.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use clap::{Command, CommandFactory, FromArgMatches, Parser, Subcommand};
 use serde::Serialize;
+use tokio::sync::Mutex;
 use tracing::{info, warn};
 
 use crate::datetime::DateTime;
@@ -31,11 +36,16 @@ use crate::elastic::{self, ClientBuilder, ElasticEventRepo};
 use crate::eve::Eve;
 use crate::eve::filters::EveFilterChain;
 use crate::eve::reader::EveReader;
-use crate::eventrepo::{EventQueryParams, StatsAggQueryParams};
+use crate::eventrepo::{AggAlert, AlertsResult, EventQueryParams, StatsAggQueryParams};
+use crate::importer::EventSink;
 use crate::queryparser;
 use crate::server::api::AlertGroupSpec;
 use crate::server::autoarchive::AutoArchive;
+use crate::server::metrics::Metrics;
 use crate::server::session::Session;
+use crate::sqlite::ConnectionBuilder;
+use crate::sqlite::connection::{init_event_db, open_pool};
+use crate::sqlite::eventrepo::SqliteEventRepo;
 
 #[derive(Parser, Debug)]
 #[command(name = "test", about = "Test datastore compatibility")]
@@ -49,6 +59,9 @@ enum TestCommand {
     /// Test Elasticsearch/OpenSearch compatibility against a corpus of EVE events
     #[command(visible_alias = "opensearch")]
     Elastic(Args),
+
+    /// Test SQLite compatibility against a corpus of EVE events
+    Sqlite(SqliteArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -113,6 +126,27 @@ pub(crate) struct Args {
     inputs: Vec<PathBuf>,
 }
 
+#[derive(Parser, Debug)]
+pub(crate) struct SqliteArgs {
+    /// Maximum number of events to import
+    #[clap(long, default_value_t = 20000)]
+    limit: usize,
+
+    /// Database file to use instead of a throwaway temporary database. When
+    /// given, it is created if needed and kept after the run.
+    #[clap(long)]
+    database: Option<PathBuf>,
+
+    /// Emit results as JSON
+    #[clap(long)]
+    json: bool,
+
+    /// EVE files or directories to sample events from (directories are searched
+    /// recursively for *.json files).
+    #[clap(value_name = "INPUT", required = true)]
+    inputs: Vec<PathBuf>,
+}
+
 /// Default index prefix for import mode (a unique per-run suffix is appended).
 const DEFAULT_IMPORT_INDEX: &str = "evebox-compat-test";
 
@@ -127,6 +161,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     let args = TestArgs::from_arg_matches(args)?;
     match args.command {
         TestCommand::Elastic(args) => run_elastic(&args).await,
+        TestCommand::Sqlite(args) => run_sqlite(&args).await,
     }
 }
 
@@ -441,24 +476,34 @@ async fn run(args: &Args) -> Result<Report> {
             files.len()
         );
         let import_start = Instant::now();
-        match import_events(&repo, &files, args.limit).await {
-            Ok((count, types)) => {
-                let summary = types
-                    .iter()
-                    .map(|(k, v)| format!("{k}={v}"))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                checks.push(Check::pass(
+        match repo.get_importer() {
+            None => {
+                checks.push(Check::fail(
                     "import",
                     import_start,
-                    Some(format!("events={count} [{summary}]")),
+                    "event importer unavailable (ECS mode is not supported)".to_string(),
                 ));
-                count
-            }
-            Err(err) => {
-                checks.push(Check::fail("import", import_start, err.to_string()));
                 0
             }
+            Some(sink) => match import_events(EventSink::Elastic(sink), &files, args.limit).await {
+                Ok((count, types)) => {
+                    let summary = types
+                        .iter()
+                        .map(|(k, v)| format!("{k}={v}"))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    checks.push(Check::pass(
+                        "import",
+                        import_start,
+                        Some(format!("events={count} [{summary}]")),
+                    ));
+                    count
+                }
+                Err(err) => {
+                    checks.push(Check::fail("import", import_start, err.to_string()));
+                    0
+                }
+            },
         }
     };
 
@@ -515,6 +560,303 @@ async fn run(args: &Args) -> Result<Report> {
         index: base.to_string(),
         imported,
         warnings,
+        checks,
+        passed,
+        failed,
+        known,
+        skipped,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// SQLite
+// ---------------------------------------------------------------------------
+
+async fn run_sqlite(args: &SqliteArgs) -> Result<()> {
+    let report = run_sqlite_report(args).await?;
+    if args.json {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        report.print_human();
+    }
+    if report.failed > 0 {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+/// Build a SQLite event repository backed by `db_path`, creating the schema.
+/// Returns the repository and the reported SQLite library version.
+async fn build_sqlite_repo(db_path: &Path) -> Result<(SqliteEventRepo, String)> {
+    let builder = ConnectionBuilder::filename(Some(db_path));
+    let mut writer = builder.open_connection(true).await?;
+    init_event_db(&mut writer).await?;
+    let version: String = sqlx::query_scalar("SELECT sqlite_version()")
+        .fetch_one(&mut writer)
+        .await
+        .unwrap_or_default();
+    let pool = open_pool(Some(db_path), false).await?;
+    let writer = Arc::new(Mutex::new(writer));
+    let repo = SqliteEventRepo::new(writer, pool, Arc::new(Metrics::default()));
+    Ok((repo, version))
+}
+
+fn alert_opts(query: Option<&str>, timeout: Option<u64>) -> elastic::AlertQueryOptions {
+    elastic::AlertQueryOptions {
+        query_string: query.map(|s| s.to_string()),
+        timeout,
+        ..Default::default()
+    }
+}
+
+/// Find an alert group by its (signature_id, src_ip, dest_ip) key.
+fn find_group<'a>(
+    result: &'a AlertsResult,
+    sig: u64,
+    src: &str,
+    dest: &str,
+) -> Option<&'a AggAlert> {
+    result.events.iter().find(|a| {
+        a.source["alert"]["signature_id"].as_u64() == Some(sig)
+            && a.source["src_ip"].as_str().unwrap_or("") == src
+            && a.source["dest_ip"].as_str().unwrap_or("") == dest
+    })
+}
+
+/// Behavioral check of the `is:archived` / `is:escalated` alert search filters
+/// against one of the SQLite alert code paths, selected by `timeout`
+/// (Some(>0) -> alerts_with_timeout, None -> alerts_group_by).
+///
+/// Picks a known non-archived alert group, escalates one of its events and
+/// archives the whole group, and confirms the group enters and leaves the
+/// filtered result sets for is:escalated, is:archived, their negations, and
+/// the composition is:escalated -is:archived.
+async fn check_sqlite_state_filter(
+    repo: &SqliteEventRepo,
+    timeout: Option<u64>,
+) -> Result<Option<String>> {
+    // Pick a clean, non-archived alert group as the ground truth.
+    let base = repo
+        .alerts(alert_opts(Some("-is:archived"), timeout))
+        .await?;
+    let group = base
+        .events
+        .first()
+        .ok_or_else(|| anyhow!("no non-archived alert groups to test"))?;
+    let sig = group.source["alert"]["signature_id"]
+        .as_u64()
+        .ok_or_else(|| anyhow!("alert group missing signature_id"))?;
+    let src = group.source["src_ip"].as_str().unwrap_or("").to_string();
+    let dest = group.source["dest_ip"].as_str().unwrap_or("").to_string();
+    let id = group.id.clone();
+    let spec = AlertGroupSpec {
+        signature_id: sig,
+        src_ip: group.source["src_ip"].as_str().map(String::from),
+        dest_ip: group.source["dest_ip"].as_str().map(String::from),
+        sensor: group.source["host"].as_str().map(String::from),
+        min_timestamp: group.metadata.min_timestamp.to_rfc3339_utc(),
+        max_timestamp: group.metadata.max_timestamp.to_rfc3339_utc(),
+    };
+
+    // Nothing is escalated yet.
+    if find_group(
+        &repo
+            .alerts(alert_opts(Some("is:escalated"), timeout))
+            .await?,
+        sig,
+        &src,
+        &dest,
+    )
+    .is_some()
+    {
+        bail!("group is escalated before escalation");
+    }
+
+    // Escalate one event in the group.
+    repo.escalate_event_by_id(&id).await?;
+
+    let escalated = repo
+        .alerts(alert_opts(Some("is:escalated"), timeout))
+        .await?;
+    let hit = find_group(&escalated, sig, &src, &dest)
+        .ok_or_else(|| anyhow!("is:escalated did not include the escalated group"))?;
+    if hit.metadata.escalated_count < 1 {
+        bail!("escalated_count not set on escalated group");
+    }
+    if find_group(
+        &repo
+            .alerts(alert_opts(Some("is:escalated -is:archived"), timeout))
+            .await?,
+        sig,
+        &src,
+        &dest,
+    )
+    .is_none()
+    {
+        bail!("is:escalated -is:archived excluded the escalated, non-archived group");
+    }
+
+    // Archive the whole group.
+    repo.archive_by_alert_group(spec).await?;
+
+    if find_group(
+        &repo
+            .alerts(alert_opts(Some("is:archived"), timeout))
+            .await?,
+        sig,
+        &src,
+        &dest,
+    )
+    .is_none()
+    {
+        bail!("is:archived did not include the archived group");
+    }
+    if find_group(
+        &repo
+            .alerts(alert_opts(Some("-is:archived"), timeout))
+            .await?,
+        sig,
+        &src,
+        &dest,
+    )
+    .is_some()
+    {
+        bail!("-is:archived included the fully archived group");
+    }
+    if find_group(
+        &repo
+            .alerts(alert_opts(Some("is:escalated -is:archived"), timeout))
+            .await?,
+        sig,
+        &src,
+        &dest,
+    )
+    .is_some()
+    {
+        bail!("is:escalated -is:archived included the now-archived group");
+    }
+    if find_group(
+        &repo
+            .alerts(alert_opts(Some("is:escalated"), timeout))
+            .await?,
+        sig,
+        &src,
+        &dest,
+    )
+    .is_none()
+    {
+        bail!("is:escalated dropped the escalated (archived) group");
+    }
+
+    Ok(Some(format!("sig={sig} src={src} dest={dest}")))
+}
+
+/// Data-dependent SQLite checks, used to emit skips when nothing was imported.
+const SQLITE_QUERY_CHECK_NAMES: &[&str] = &[
+    "alerts",
+    "events",
+    "is_state_filter_timeout",
+    "is_state_filter_group_by",
+];
+
+async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
+    // Use the provided database file, or a throwaway temporary directory that
+    // is removed when the run completes. `tmp` is declared before `repo` so the
+    // repository (and its connection pool) is dropped before the directory is
+    // removed.
+    let tmp = if args.database.is_none() {
+        Some(tempfile::TempDir::new()?)
+    } else {
+        None
+    };
+    let db_path = match (&args.database, &tmp) {
+        (Some(path), _) => path.clone(),
+        (None, Some(tmp)) => tmp.path().join("events.sqlite"),
+        (None, None) => unreachable!(),
+    };
+
+    info!("Using SQLite database {}", db_path.display());
+    let (repo, version) = build_sqlite_repo(&db_path).await?;
+
+    let files = collect_inputs(&args.inputs)?;
+    if files.is_empty() {
+        return Err(anyhow!("no input files found in {:?}", args.inputs));
+    }
+    info!(
+        "Importing up to {} events from {} files",
+        args.limit,
+        files.len()
+    );
+
+    let mut checks: Vec<Check> = Vec::new();
+
+    let import_start = Instant::now();
+    let imported =
+        match import_events(EventSink::SQLite(repo.get_importer()), &files, args.limit).await {
+            Ok((count, types)) => {
+                let summary = types
+                    .iter()
+                    .map(|(k, v)| format!("{k}={v}"))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                checks.push(Check::pass(
+                    "import",
+                    import_start,
+                    Some(format!("events={count} [{summary}]")),
+                ));
+                count
+            }
+            Err(err) => {
+                checks.push(Check::fail("import", import_start, err.to_string()));
+                0
+            }
+        };
+
+    if imported > 0 {
+        check!(checks, "alerts", {
+            let result = repo.alerts(alert_opts(None, Some(3))).await?;
+            Ok(Some(format!("alert_groups={}", result.events.len())))
+        });
+        check!(checks, "events", {
+            let value = repo
+                .events(EventQueryParams {
+                    size: Some(10),
+                    ..Default::default()
+                })
+                .await?;
+            let count = value["events"].as_array().map(|a| a.len()).unwrap_or(0);
+            Ok(Some(format!("events={count}")))
+        });
+        check!(checks, "is_state_filter_timeout", {
+            check_sqlite_state_filter(&repo, Some(3)).await
+        });
+        check!(checks, "is_state_filter_group_by", {
+            check_sqlite_state_filter(&repo, None).await
+        });
+    } else {
+        for name in SQLITE_QUERY_CHECK_NAMES {
+            checks.push(Check::skip(name, "no events imported"));
+        }
+    }
+
+    if let Some(path) = &args.database {
+        info!("Keeping SQLite database {}", path.display());
+    }
+
+    let passed = checks.iter().filter(|c| c.status == Status::Pass).count();
+    let failed = checks.iter().filter(|c| c.status == Status::Fail).count();
+    let known = checks.iter().filter(|c| c.status == Status::Known).count();
+    let skipped = checks.iter().filter(|c| c.status == Status::Skip).count();
+
+    Ok(Report {
+        distribution: "sqlite".to_string(),
+        version,
+        tagline: None,
+        supported: true,
+        mode: "import",
+        index: db_path.display().to_string(),
+        imported,
+        warnings: Vec::new(),
         checks,
         passed,
         failed,
@@ -832,15 +1174,11 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
 /// Import up to `limit` events, reading from `files` round-robin so the sample
 /// gets a mix of event types rather than all of one type from a single file.
 async fn import_events(
-    repo: &ElasticEventRepo,
+    mut sink: EventSink,
     files: &[PathBuf],
     limit: usize,
 ) -> Result<(usize, BTreeMap<String, usize>)> {
     let chain = EveFilterChain::with_defaults();
-    let mut sink = repo
-        .get_importer()
-        .ok_or_else(|| anyhow!("event importer unavailable (ECS mode is not supported)"))?;
-
     let mut readers: Vec<EveReader> = files.iter().map(|f| EveReader::new(f.clone())).collect();
     let mut exhausted = vec![false; readers.len()];
     let mut remaining = readers.len();
