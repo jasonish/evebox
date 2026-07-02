@@ -3,10 +3,12 @@
 # SPDX-FileCopyrightText: (C) 2026 Jason Ish <jason@codemonkey.net>
 # SPDX-License-Identifier: MIT
 #
-# Run the built-in `evebox test elastic` compatibility test against a matrix
-# of Elasticsearch and OpenSearch container versions.
+# One-shot datastore integration test: run the built-in `evebox test`
+# compatibility tests against SQLite and a matrix of Elasticsearch and
+# OpenSearch container versions.
 #
-# For each version this script:
+# The "sqlite" matrix entry runs `evebox test sqlite` directly (no container).
+# For each es/os version this script:
 #   1. starts a single-node, security-disabled container on :9200,
 #   2. waits for it to become healthy,
 #   3. runs `evebox test elastic` against it,
@@ -38,10 +40,12 @@ ES_IMAGE="docker.elastic.co/elasticsearch/elasticsearch"
 OS_IMAGE="docker.io/opensearchproject/opensearch"
 
 # The version matrix. Each entry is "engine|version"; engine is "es" or "os".
-# Edit freely — image tags must exist in the respective registries. The matrix
-# can also be overridden on the command line, e.g.:
-#   ./run.sh os|2.6.0 es|7.10.2
+# The bare entry "sqlite" tests the built-in SQLite datastore (no container
+# needed). Edit freely — image tags must exist in the respective registries.
+# The matrix can also be overridden on the command line, e.g.:
+#   ./run.sh sqlite os|2.6.0 es|7.10.2
 VERSIONS=(
+    "sqlite"
     "es|7.10.2"
     "es|7.17.28"
     "es|8.19.0"
@@ -58,13 +62,22 @@ if [ "$#" -gt 0 ]; then
     VERSIONS=("$@")
 fi
 
-if [ -z "$CONTAINER" ]; then
-    echo "error: no container runtime found (install podman or docker)" >&2
-    exit 1
-fi
-if ! command -v curl >/dev/null 2>&1; then
-    echo "error: curl is required" >&2
-    exit 1
+# A container runtime is only needed for the es/os entries; a sqlite-only run
+# (./run.sh sqlite) has no container dependency.
+needs_container=0
+for entry in "${VERSIONS[@]}"; do
+    [ "$entry" = "sqlite" ] || needs_container=1
+done
+
+if [ "$needs_container" = "1" ]; then
+    if [ -z "$CONTAINER" ]; then
+        echo "error: no container runtime found (install podman or docker)" >&2
+        exit 1
+    fi
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "error: curl is required" >&2
+        exit 1
+    fi
 fi
 if [ ! -d "$EVE_DIR" ]; then
     echo "error: EVE_DIR does not exist: $EVE_DIR" >&2
@@ -79,7 +92,7 @@ if [ -z "${EVEBOX:-}" ]; then
     EVEBOX="$REPO_ROOT/target/debug/evebox"
 fi
 
-echo "Runtime:  $CONTAINER"
+echo "Runtime:  ${CONTAINER:-(none)}"
 echo "EveBox:   $EVEBOX"
 echo "EVE dir:  $EVE_DIR"
 echo "Limit:    $LIMIT events"
@@ -106,9 +119,44 @@ pull_image() {
 
 results=()
 
+# Run an `evebox test ...` command and record a summary line for it under $1
+# (the label). The JSON report is saved to a file, not echoed; on failure it
+# is printed along with the evebox stderr tail.
+run_and_record() {
+    label="$1"
+    shift
+    report="/tmp/evebox-compat-$(printf '%s' "$label" | tr ' ' '-').json"
+    out="$("$@" 2>/tmp/evebox-compat.log)"
+    rc=$?
+    printf '%s\n' "$out" >"$report"
+    summary="$(printf '%s' "$out" |
+        grep -oE '"(passed|failed|known|skipped)": *[0-9]+' |
+        sed 's/"//g; s/: */=/' | tr '\n' ' ')"
+    if [ "$rc" = "0" ]; then
+        echo "    OK  ${summary}(report: $report)"
+        results+=("$label|OK|$summary")
+    else
+        echo "    FAIL($rc)  $summary"
+        echo "$out"
+        echo "--- evebox stderr ---"
+        tail -n 20 /tmp/evebox-compat.log
+        results+=("$label|FAIL($rc)|$summary")
+    fi
+}
+
 for entry in "${VERSIONS[@]}"; do
     engine="${entry%%|*}"
     version="${entry##*|}"
+
+    if [ "$engine" = "sqlite" ]; then
+        echo "=============================================================="
+        echo ">>> sqlite"
+        echo "=============================================================="
+        run_and_record "sqlite" \
+            "$EVEBOX" test sqlite --limit "$LIMIT" --json "$EVE_DIR"
+        echo
+        continue
+    fi
 
     if [ "$engine" = "es" ]; then
         image="$ES_IMAGE:$version"
@@ -131,12 +179,16 @@ for entry in "${VERSIONS[@]}"; do
 
     stop_container
 
-    # Pull first (with retries) so transient registry failures are distinct
-    # from container start failures.
-    if ! pull_image "$image"; then
-        echo "    failed to pull $image after retries"
-        results+=("$label|PULL-FAIL|")
-        continue
+    # Pull only if the image is not already local — these tags are effectively
+    # immutable, so a local copy never needs refreshing. When a pull is needed
+    # it is done first (with retries) so transient registry failures are
+    # distinct from container start failures.
+    if ! "$CONTAINER" image inspect "$image" >/dev/null 2>&1; then
+        if ! pull_image "$image"; then
+            echo "    failed to pull $image after retries"
+            results+=("$label|PULL-FAIL|")
+            continue
+        fi
     fi
 
     # Not --rm: keep the container around on failure so we can read its logs.
@@ -169,19 +221,9 @@ for entry in "${VERSIONS[@]}"; do
     fi
 
     # Run the compatibility test.
-    out="$("$EVEBOX" test elastic -e "http://localhost:$PORT" \
-        --limit "$LIMIT" --json "$EVE_DIR" 2>/tmp/evebox-compat.log)"
-    rc=$?
-    echo "$out"
-
-    summary="$(printf '%s' "$out" | grep -oE '"(passed|failed|known|skipped)": *[0-9]+' | tr '\n' ' ')"
-    if [ "$rc" = "0" ]; then
-        results+=("$label|OK|$summary")
-    else
-        results+=("$label|FAIL($rc)|$summary")
-        echo "--- evebox stderr ---"
-        tail -n 20 /tmp/evebox-compat.log
-    fi
+    run_and_record "$label" \
+        "$EVEBOX" test elastic -e "http://localhost:$PORT" \
+        --limit "$LIMIT" --json "$EVE_DIR"
 
     stop_container
     echo

@@ -13,8 +13,9 @@
 //! Elasticsearch and OpenSearch speak the same wire protocol here, so
 //! `evebox test opensearch` is an alias for `evebox test elastic`.
 //!
-//! The companion harness `docker/tests/compat/run.sh` runs this command against
-//! a matrix of container versions.
+//! The companion harness `docker/tests/compat/run.sh` is the one-shot
+//! integration test: it runs `evebox test sqlite` and then this command
+//! against a matrix of container versions.
 //!
 //! `evebox test sqlite` runs equivalent behavioral checks against a throwaway
 //! SQLite database, including the `is:archived` / `is:escalated` alert search
@@ -751,12 +752,203 @@ async fn check_sqlite_state_filter(
     Ok(Some(format!("sig={sig} src={src} dest={dest}")))
 }
 
+/// (object, field) pairs where a MAC address may appear in an EVE event.
+/// Suricata logs Ethernet MACs under `ether` (as `src_mac`/`dest_mac`, or the
+/// `src_macs`/`dest_macs` arrays when several are observed); DHCP and ARP expose
+/// their own MAC fields. `ethernet` is kept for any non-Suricata producers.
+const MAC_FIELDS: &[(&str, &str)] = &[
+    ("ether", "src_mac"),
+    ("ether", "dest_mac"),
+    ("ether", "src_macs"),
+    ("ether", "dest_macs"),
+    ("ethernet", "src_mac"),
+    ("ethernet", "dest_mac"),
+    ("dhcp", "client_mac"),
+    ("arp", "src_mac"),
+    ("arp", "dest_mac"),
+];
+
+/// First MAC address in a JSON value that is a string or an array of strings.
+fn value_first_mac(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Array(a) => a.iter().find_map(|v| v.as_str()).map(String::from),
+        _ => None,
+    }
+}
+
+/// Whether a JSON value (string or array of strings) contains `mac`.
+fn value_has_mac(value: &serde_json::Value, mac: &str) -> bool {
+    match value {
+        serde_json::Value::String(s) => s == mac,
+        serde_json::Value::Array(a) => a.iter().any(|v| v.as_str() == Some(mac)),
+        _ => false,
+    }
+}
+
+/// Wrap a value in double quotes for use in a query string, escaping any
+/// embedded backslashes and quotes so values containing `:` (such as MAC
+/// addresses) survive parsing intact.
+fn quote_value(v: &str) -> String {
+    let escaped = v.replace('\\', "\\\\").replace('"', "\\\"");
+    format!("\"{escaped}\"")
+}
+
+/// Return the first MAC address found in the `_source` of an `events()` result.
+fn sample_event_mac(value: &serde_json::Value) -> Option<String> {
+    for event in value["events"].as_array()? {
+        let source = &event["_source"];
+        for (obj, key) in MAC_FIELDS {
+            if let Some(mac) = value_first_mac(&source[obj][key]) {
+                return Some(mac);
+            }
+        }
+    }
+    None
+}
+
+/// Whether any event in an `events()` result carries `mac` in a MAC field.
+fn event_has_mac(value: &serde_json::Value, mac: &str) -> bool {
+    value["events"].as_array().is_some_and(|events| {
+        events.iter().any(|event| {
+            let source = &event["_source"];
+            MAC_FIELDS
+                .iter()
+                .any(|(obj, key)| value_has_mac(&source[obj][key], mac))
+        })
+    })
+}
+
+/// Number of events to scan when sampling for a MAC address.
+const MAC_SAMPLE_SIZE: u64 = 1000;
+
+/// Locate a MAC address in the imported events by probing the event types that
+/// carry one, newest first. `dhcp` (`dhcp.client_mac`) is the most widely
+/// available source; `arp` and `ethernet` (which can be attached to any event
+/// type) are also checked. Probing by type avoids missing MACs that fall
+/// outside a recent-events window dominated by flow records.
+async fn sample_sqlite_event_mac(repo: &SqliteEventRepo) -> Result<Option<String>> {
+    for event_type in [Some("dhcp"), Some("arp"), None] {
+        let value = repo
+            .events(EventQueryParams {
+                event_type: event_type.map(str::to_string),
+                size: Some(MAC_SAMPLE_SIZE),
+                ..Default::default()
+            })
+            .await?;
+        if let Some(mac) = sample_event_mac(&value) {
+            return Ok(Some(mac));
+        }
+    }
+    Ok(None)
+}
+
+/// Sample a MAC address from an alert event, along with the alert group key
+/// (signature_id, src_ip, dest_ip) needed to locate the aggregated group.
+fn sample_alert_event_mac(value: &serde_json::Value) -> Option<(String, u64, String, String)> {
+    for event in value["events"].as_array()? {
+        let source = &event["_source"];
+        let Some(sig) = source["alert"]["signature_id"].as_u64() else {
+            continue;
+        };
+        for (obj, key) in MAC_FIELDS {
+            if let Some(mac) = value_first_mac(&source[obj][key]) {
+                let src = source["src_ip"].as_str().unwrap_or("").to_string();
+                let dest = source["dest_ip"].as_str().unwrap_or("").to_string();
+                return Some((mac, sig, src, dest));
+            }
+        }
+    }
+    None
+}
+
+/// Check the `@mac` operator against the SQLite event search path, which matches
+/// on the raw event source. Samples a real MAC address, queries for it, and
+/// confirms a matching event is returned.
+async fn check_sqlite_event_mac(name: &str, repo: &SqliteEventRepo) -> Check {
+    let start = Instant::now();
+    let mac = match sample_sqlite_event_mac(repo).await {
+        Ok(Some(mac)) => mac,
+        Ok(None) => return Check::skip(name, "no events expose a MAC field"),
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    let query_string = match queryparser::parse(&format!("@mac:{}", quote_value(&mac)), None) {
+        Ok(q) => q,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    let result = match repo
+        .events(EventQueryParams {
+            size: Some(100),
+            query_string,
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(v) => v,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    if event_has_mac(&result, &mac) {
+        Check::pass(name, start, Some(format!("mac={mac}")))
+    } else {
+        Check::fail(
+            name,
+            start,
+            format!("@mac:{mac} returned no matching event in the event search path"),
+        )
+    }
+}
+
+/// Check the `@mac` operator against a SQLite alert search code path, selected
+/// by `timeout` (Some(>0) -> alerts_with_timeout, None -> alerts_group_by).
+///
+/// `@mac` must be honored in the alert search path just as in the event search
+/// path. Samples a MAC from a real alert event, then queries for it: PASSES if
+/// that alert is returned and FAILS otherwise. Skips only when no alert event
+/// exposes a MAC field, since there is then no ground truth to assert against.
+async fn check_sqlite_alert_mac(name: &str, repo: &SqliteEventRepo, timeout: Option<u64>) -> Check {
+    let start = Instant::now();
+    let sample = match repo
+        .events(EventQueryParams {
+            event_type: Some("alert".to_string()),
+            size: Some(MAC_SAMPLE_SIZE),
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(v) => v,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    let Some((mac, sig, src, dest)) = sample_alert_event_mac(&sample) else {
+        return Check::skip(name, "no alert events expose a MAC field");
+    };
+    let query = format!("@mac:{}", quote_value(&mac));
+    let result = match repo.alerts(alert_opts(Some(&query), timeout)).await {
+        Ok(r) => r,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    if find_group(&result, sig, &src, &dest).is_some() {
+        Check::pass(name, start, Some(format!("mac={mac}")))
+    } else {
+        Check::fail(
+            name,
+            start,
+            format!(
+                "@mac:{mac} matched no alert, but an alert with this MAC exists: \
+                 @mac is not applied in the SQLite alert search path"
+            ),
+        )
+    }
+}
+
 /// Data-dependent SQLite checks, used to emit skips when nothing was imported.
 const SQLITE_QUERY_CHECK_NAMES: &[&str] = &[
     "alerts",
     "events",
     "is_state_filter_timeout",
     "is_state_filter_group_by",
+    "events_query_mac",
+    "alerts_timeout_query_mac",
+    "alerts_group_by_query_mac",
 ];
 
 async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
@@ -833,6 +1025,11 @@ async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
         check!(checks, "is_state_filter_group_by", {
             check_sqlite_state_filter(&repo, None).await
         });
+        // The `@mac` operator must be honored in the event search path and in
+        // both alert search paths.
+        checks.push(check_sqlite_event_mac("events_query_mac", &repo).await);
+        checks.push(check_sqlite_alert_mac("alerts_timeout_query_mac", &repo, Some(3)).await);
+        checks.push(check_sqlite_alert_mac("alerts_group_by_query_mac", &repo, None).await);
     } else {
         for name in SQLITE_QUERY_CHECK_NAMES {
             checks.push(Check::skip(name, "no events imported"));

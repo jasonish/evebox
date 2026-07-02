@@ -1,9 +1,10 @@
 # Datastore compatibility tests
 
-These tools verify that EveBox works against the Elasticsearch and OpenSearch
-versions it claims to support (Elasticsearch >= 7.10, OpenSearch >= 2.6.0).
+These tools verify that EveBox works against its supported datastores: SQLite,
+and the Elasticsearch and OpenSearch versions it claims to support
+(Elasticsearch >= 7.10, OpenSearch >= 2.6.0).
 
-There are two pieces:
+There are three pieces:
 
 1. **`evebox test elastic`** — a built-in subcommand that loads a sample of
    real EVE events into a throwaway index and then exercises the *actual*
@@ -15,8 +16,14 @@ There are two pieces:
    read-only against an existing/production datastore (`--existing`) — see
    [Two modes](#two-modes).
 
-2. **`run.sh`** — a harness that starts ES/OpenSearch containers across a
-   version matrix and runs `evebox test elastic` against each.
+2. **`evebox test sqlite`** — the SQLite equivalent: imports a sample of events
+   into a throwaway database (removed afterwards, or use `--database` to keep
+   one) and runs behavioral checks over both SQLite alert code paths, including
+   the `is:archived`/`is:escalated` filters and the `@mac` search operator.
+
+3. **`run.sh`** — the one-shot harness: runs `evebox test sqlite`, then starts
+   ES/OpenSearch containers across a version matrix and runs
+   `evebox test elastic` against each, printing a combined summary.
 
 The goal is query/API compatibility, not data correctness: a query that the
 server accepts and returns (even with zero results) counts as a pass.
@@ -76,8 +83,19 @@ Both modes exit non-zero if any check fails.
 
 ## Running the matrix
 
+One command tests everything — SQLite plus every ES/OpenSearch version in the
+matrix — and exits non-zero if anything failed:
+
 ```sh
 ./run.sh
+```
+
+Individual entries can be selected on the command line (`sqlite` needs no
+container runtime):
+
+```sh
+./run.sh sqlite                  # SQLite only
+./run.sh sqlite "es|8.19.0"      # SQLite + one Elasticsearch version
 ```
 
 Environment overrides:
@@ -93,7 +111,8 @@ Environment overrides:
 
 Edit the `VERSIONS` array at the top of `run.sh` to change which versions are
 tested. Each entry is `engine|version` where engine is `es` or `os`; the image
-tags must exist in their registries.
+tags must exist in their registries. The bare entry `sqlite` runs
+`evebox test sqlite` instead of a container.
 
 ## Notes / limitations
 
@@ -104,8 +123,9 @@ tags must exist in their registries.
   problems on the host, not EveBox results. On `UNHEALTHY` the harness prints the
   container's last log lines. Two we hit in practice:
   - **Docker Hub pull failures** (`unable to retrieve auth token`) are usually
-    transient rate-limiting; the harness retries pulls. If it persists, run
-    `podman login docker.io` (or clear stale credentials).
+    transient rate-limiting; images are only pulled when not already present
+    locally (the tags are effectively immutable), and pulls are retried. If it
+    persists, run `podman login docker.io` (or clear stale credentials).
   - **Elasticsearch 7.17.0** (and other early 7.17.x) bundle a JDK that crashes
     on **cgroup v2** hosts (`CgroupV2Subsystem` NPE) before ES starts — use a
     recent 7.17.x (the matrix uses 7.17.28).
