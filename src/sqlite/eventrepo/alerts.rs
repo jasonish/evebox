@@ -35,7 +35,8 @@ impl SqliteEventRepo {
 
     #[instrument(skip_all)]
     pub async fn alerts_with_timeout(&self, options: AlertQueryOptions) -> Result<AlertsResult> {
-        let mut builder = EventQueryBuilder::new(self.fts().await);
+        let fts = self.fts().await;
+        let mut builder = EventQueryBuilder::new(fts);
         builder
             .select("rowid")
             .select("timestamp")
@@ -112,6 +113,24 @@ impl SqliteEventRepo {
                                     builder
                                         .push_where("events.source LIKE ?")
                                         .push_arg(format!("%{s}%"))?;
+                                }
+                            }
+                            // @ip and @mac are not stored in a single column,
+                            // so match against the whole event source, mirroring
+                            // the event search path (see sqlite::builder).
+                            queryparser::QueryValue::KeyValue(k, v)
+                                if matches!(k.as_str(), "@ip" | "@mac") =>
+                            {
+                                if el.negated {
+                                    builder
+                                        .push_where("events.source NOT LIKE ?")
+                                        .push_arg(format!("%{v}%"))?;
+                                } else if fts {
+                                    builder.push_fts(v);
+                                } else {
+                                    builder
+                                        .push_where("events.source LIKE ?")
+                                        .push_arg(format!("%{v}%"))?;
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {
@@ -358,6 +377,7 @@ impl SqliteEventRepo {
                a.timestamp = b.maxts
              ORDER BY timestamp DESC"#;
 
+        let fts = self.fts().await;
         let mut from: Vec<&str> = Vec::new();
         let mut filters: Vec<String> = Vec::new();
         let mut args = SqliteArguments::default();
@@ -418,6 +438,26 @@ impl SqliteEventRepo {
                                 } else {
                                     filters.push("events.source LIKE ?".into());
                                     args.push(format!("%{s}%"))?;
+                                }
+                            }
+                            // @ip and @mac are not stored in a single column,
+                            // so match against the whole event source, mirroring
+                            // the event search path (see sqlite::builder).
+                            queryparser::QueryValue::KeyValue(k, v)
+                                if matches!(k.as_str(), "@ip" | "@mac") =>
+                            {
+                                if el.negated {
+                                    filters.push("events.source NOT LIKE ?".into());
+                                    args.push(format!("%{v}%"))?;
+                                } else if fts {
+                                    filters.push(
+                                        "events.rowid in (select rowid from fts where fts match ?)"
+                                            .into(),
+                                    );
+                                    args.push(format!("\"{v}\""))?;
+                                } else {
+                                    filters.push("events.source LIKE ?".into());
+                                    args.push(format!("%{v}%"))?;
                                 }
                             }
                             queryparser::QueryValue::KeyValue(k, v) => {

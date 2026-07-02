@@ -48,6 +48,9 @@
   EveBox may not work correctly.
 
 ### Fixed
+- The `@ip` and `@mac` search filters now work in the SQLite alert search, not
+  just the event search. Previously they silently matched nothing on the alerts
+  view.
 - Stopped using deprecated OpenSearch `inline` script fields for tag/history
   updates.
 
