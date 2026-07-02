@@ -1,6 +1,6 @@
-# Datastore compatibility tests
+# Backend tests
 
-These tools verify that EveBox works against its supported datastores: SQLite,
+These tools verify that EveBox works against every supported backend: SQLite,
 and the Elasticsearch and OpenSearch versions it claims to support
 (Elasticsearch >= 7.10, OpenSearch >= 2.6.0).
 
@@ -13,7 +13,7 @@ There are three pieces:
    reports, the stats `derivative` pipeline aggregations, `_update_by_query`
    painless tag/comment operations, etc.), reporting pass/fail per operation.
    `evebox test opensearch` is an alias for the same command. It can also run
-   read-only against an existing/production datastore (`--existing`) — see
+   read-only against an existing/production backend (`--existing`) — see
    [Two modes](#two-modes).
 
 2. **`evebox test sqlite`** — the SQLite equivalent: imports a sample of events
@@ -25,7 +25,7 @@ There are three pieces:
    ES/OpenSearch containers across a version matrix and runs
    `evebox test elastic` against each, printing a combined summary.
 
-The goal is query/API compatibility, not data correctness: a query that the
+The goal is backend behavior coverage, not data correctness: a query that the
 server accepts and returns (even with zero results) counts as a pass.
 
 ## Event corpus
@@ -63,19 +63,19 @@ evebox test elastic -e http://localhost:9200 --json ../eve
 **Import mode (default)** imports a sample of events into a *throwaway* index
 and runs the full suite, including the data-modifying checks (escalate, archive,
 comment, alert-group archive). The index uses a unique per-run prefix
-(`evebox-compat-test-<id>`), so its query pattern, mutations, and cleanup can
+(`evebox-backend-test-<id>`), so its query pattern, mutations, and cleanup can
 only ever touch indices created by that run — even if `--index` is pointed at a
 real prefix. It is deleted afterwards (use `--keep` to retain it). The base
-prefix can be changed with `--index` (default `evebox-compat-test`).
+prefix can be changed with `--index` (default `evebox-backend-test`).
 
 **Existing mode (`--existing`)** runs only read queries against an existing
-datastore: it imports nothing, performs no mutations, and deletes nothing, so it
+backend: it imports nothing, performs no mutations, and deletes nothing, so it
 is safe to run against a production cluster. Select the index prefix to query
 with `--index` (default `logstash`). The import and data-modifying checks report
 `SKIP`.
 
 ```sh
-# Read-only check against a production datastore (no writes of any kind):
+# Read-only check against a production backend (no writes of any kind):
 evebox test elastic -e http://localhost:9200 --existing --index logstash
 ```
 

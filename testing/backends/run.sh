@@ -3,9 +3,8 @@
 # SPDX-FileCopyrightText: (C) 2026 Jason Ish <jason@codemonkey.net>
 # SPDX-License-Identifier: MIT
 #
-# One-shot datastore integration test: run the built-in `evebox test`
-# compatibility tests against SQLite and a matrix of Elasticsearch and
-# OpenSearch container versions.
+# One-shot backend test: run the built-in `evebox test` checks against SQLite
+# and a matrix of Elasticsearch and OpenSearch container versions.
 #
 # The "sqlite" matrix entry runs `evebox test sqlite` directly (no container).
 # For each es/os version this script:
@@ -27,13 +26,13 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 CONTAINER="${CONTAINER:-$(command -v podman || command -v docker || true)}"
 EVE_DIR="${EVE_DIR:-$REPO_ROOT/../eve}"
 LIMIT="${LIMIT:-20000}"
 PORT="${PORT:-9200}"
-NAME="evebox-compat"
+NAME="evebox-backend-test"
 
 # Fully-qualified image names so podman (which has no default registry) works.
 ES_IMAGE="docker.elastic.co/elasticsearch/elasticsearch"
@@ -125,8 +124,8 @@ results=()
 run_and_record() {
     label="$1"
     shift
-    report="/tmp/evebox-compat-$(printf '%s' "$label" | tr ' ' '-').json"
-    out="$("$@" 2>/tmp/evebox-compat.log)"
+    report="/tmp/evebox-backend-$(printf '%s' "$label" | tr ' ' '-').json"
+    out="$("$@" 2>/tmp/evebox-backend.log)"
     rc=$?
     printf '%s\n' "$out" >"$report"
     summary="$(printf '%s' "$out" |
@@ -139,7 +138,7 @@ run_and_record() {
         echo "    FAIL($rc)  $summary"
         echo "$out"
         echo "--- evebox stderr ---"
-        tail -n 20 /tmp/evebox-compat.log
+        tail -n 20 /tmp/evebox-backend.log
         results+=("$label|FAIL($rc)|$summary")
     fi
 }
@@ -220,7 +219,7 @@ for entry in "${VERSIONS[@]}"; do
         continue
     fi
 
-    # Run the compatibility test.
+    # Run the backend test.
     run_and_record "$label" \
         "$EVEBOX" test elastic -e "http://localhost:$PORT" \
         --limit "$LIMIT" --json "$EVE_DIR"

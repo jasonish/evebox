@@ -8,14 +8,14 @@
   works with the SQLite, Elasticsearch, and OpenSearch datastores.
 - New `evebox test elastic` command (aliased `evebox test opensearch`) that
   loads a sample of EVE events into a throwaway index and exercises the queries
-  and mutations EveBox runs in normal operation, to check
-  Elasticsearch/OpenSearch version compatibility.
+  and mutations EveBox runs in normal operation, to check supported
+  Elasticsearch/OpenSearch backend behavior.
   - The throwaway index uses a unique per-run prefix, so its queries,
     mutations, and cleanup can only ever touch indices it created.
-  - `--existing` runs read-only against an existing datastore (no imports,
+  - `--existing` runs read-only against an existing backend (no imports,
     mutations, or deletions), making it safe against a production cluster.
-  - A container harness for running it across a version matrix lives in
-    `docker/tests/compat/`.
+  - A backend test harness for SQLite and containerized
+    Elasticsearch/OpenSearch versions lives in `testing/backends/`.
   - A companion `evebox test sqlite` command runs equivalent behavioral checks
     against a throwaway SQLite database.
 - New `evebox check-update` command and a "Check for updates" button in the web

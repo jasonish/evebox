@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2026 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-//! `evebox test elastic` — Elasticsearch/OpenSearch compatibility test.
+//! `evebox test elastic` — Elasticsearch/OpenSearch backend test.
 //!
 //! Loads a bounded sample of real EVE events into a throwaway index and then
 //! exercises the *actual* [`ElasticEventRepo`] query and mutation code paths
@@ -13,7 +13,7 @@
 //! Elasticsearch and OpenSearch speak the same wire protocol here, so
 //! `evebox test opensearch` is an alias for `evebox test elastic`.
 //!
-//! The companion harness `docker/tests/compat/run.sh` is the one-shot
+//! The companion harness `testing/backends/run.sh` is the one-shot
 //! integration test: it runs `evebox test sqlite` and then this command
 //! against a matrix of container versions.
 //!
@@ -49,7 +49,7 @@ use crate::sqlite::connection::{init_event_db, open_pool};
 use crate::sqlite::eventrepo::SqliteEventRepo;
 
 #[derive(Parser, Debug)]
-#[command(name = "test", about = "Test datastore compatibility")]
+#[command(name = "test", about = "Test supported backends")]
 pub(crate) struct TestArgs {
     #[command(subcommand)]
     command: TestCommand,
@@ -57,11 +57,11 @@ pub(crate) struct TestArgs {
 
 #[derive(Subcommand, Debug)]
 enum TestCommand {
-    /// Test Elasticsearch/OpenSearch compatibility against a corpus of EVE events
+    /// Test the Elasticsearch/OpenSearch backend against a corpus of EVE events
     #[command(visible_alias = "opensearch")]
     Elastic(Args),
 
-    /// Test SQLite compatibility against a corpus of EVE events
+    /// Test the SQLite backend against a corpus of EVE events
     Sqlite(SqliteArgs),
 }
 
@@ -94,7 +94,7 @@ pub(crate) struct Args {
     no_check_certificate: bool,
 
     /// Index prefix. In import mode a unique per-run suffix is appended and the
-    /// index is created and deleted by the test (default: evebox-compat-test).
+    /// index is created and deleted by the test (default: evebox-backend-test).
     /// With --existing this selects the existing index prefix to query
     /// (default: logstash).
     #[clap(long)]
@@ -149,7 +149,7 @@ pub(crate) struct SqliteArgs {
 }
 
 /// Default index prefix for import mode (a unique per-run suffix is appended).
-const DEFAULT_IMPORT_INDEX: &str = "evebox-compat-test";
+const DEFAULT_IMPORT_INDEX: &str = "evebox-backend-test";
 
 /// Default existing-index prefix for --existing mode (EveBox's own default).
 const DEFAULT_EXISTING_INDEX: &str = "logstash";
@@ -295,7 +295,7 @@ struct Report {
 
 impl Report {
     fn print_human(&self) {
-        println!("EveBox datastore compatibility test");
+        println!("EveBox backend test");
         println!("  Server:   {} {}", self.distribution, self.version);
         if let Some(tagline) = &self.tagline {
             println!("  Tagline:  {tagline}");
@@ -1674,9 +1674,9 @@ async fn run_common_mutation_checks(
                 repo.archive_event_by_id(id).await?;
                 Ok(None)
             });
-            let session = Arc::new(Session::anonymous(Some("compat-test".to_string())));
+            let session = Arc::new(Session::anonymous(Some("backend-test".to_string())));
             check!(checks, "comment_event_by_id", {
-                repo.comment_event_by_id(id, "compat test".to_string(), session.clone())
+                repo.comment_event_by_id(id, "backend test".to_string(), session.clone())
                     .await?;
                 Ok(None)
             });
