@@ -481,15 +481,17 @@ impl SqliteEventRepo {
                                     args.push(format!("%{v}%"))?;
                                 }
                             }
-                            queryparser::QueryValue::From(_) => {
-                                warn!("QueryValue::From not supported here");
+                            queryparser::QueryValue::From(ts) => {
+                                filters.push("timestamp >= ?".into());
+                                args.push(ts.to_nanos())?;
                             }
                             queryparser::QueryValue::To(ts) => {
                                 filters.push("timestamp <= ?".into());
                                 args.push(ts.to_nanos())?;
                             }
-                            queryparser::QueryValue::After(_) => {
-                                warn!("QueryValue::After not supported here");
+                            queryparser::QueryValue::After(ts) => {
+                                filters.push("timestamp > ?".into());
+                                args.push(ts.to_nanos())?;
                             }
                             queryparser::QueryValue::Before(ts) => {
                                 filters.push("timestamp < ?".into());
