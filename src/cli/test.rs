@@ -37,7 +37,7 @@ use crate::elastic::{self, ClientBuilder, ElasticEventRepo};
 use crate::eve::Eve;
 use crate::eve::filters::EveFilterChain;
 use crate::eve::reader::EveReader;
-use crate::eventrepo::{AggAlert, AlertsResult, EventQueryParams, StatsAggQueryParams};
+use crate::eventrepo::{AggAlert, AlertsResult, EventQueryParams, EventRepo, StatsAggQueryParams};
 use crate::importer::EventSink;
 use crate::queryparser;
 use crate::server::api::AlertGroupSpec;
@@ -526,9 +526,11 @@ async fn run(args: &Args) -> Result<Report> {
     // just imported. `mutate` gates the data-modifying checks: in --existing mode
     // they are skipped so we never touch real data.
     if args.existing || imported > 0 {
-        run_query_checks(&repo, &mut checks, !args.existing).await;
+        let datastore = EventRepo::Elastic(repo.clone());
+        let samples = run_common_read_query_checks(&datastore, &mut checks).await;
+        run_common_mutation_checks(&datastore, &mut checks, !args.existing, samples).await;
     } else {
-        for name in QUERY_CHECK_NAMES {
+        for name in COMMON_QUERY_CHECK_NAMES {
             checks.push(Check::skip(name, "no events imported"));
         }
     }
@@ -624,6 +626,52 @@ fn find_group<'a>(
     })
 }
 
+async fn reset_sqlite_alert_group_state(
+    repo: &SqliteEventRepo,
+    spec: &AlertGroupSpec,
+) -> Result<()> {
+    let mut query = sqlx::QueryBuilder::new(
+        "UPDATE events SET archived = 0, escalated = 0 \
+         WHERE json_extract(events.source, '$.event_type') = 'alert' \
+         AND json_extract(events.source, '$.alert.signature_id') = ",
+    );
+    query.push_bind(spec.signature_id as i64);
+
+    match spec.src_ip.as_deref().unwrap_or("") {
+        "" => {
+            query.push(
+                " AND (json_extract(events.source, '$.src_ip') IS NULL \
+                 OR json_extract(events.source, '$.src_ip') = '')",
+            );
+        }
+        src_ip => {
+            query.push(" AND json_extract(events.source, '$.src_ip') = ");
+            query.push_bind(src_ip);
+        }
+    };
+
+    match spec.dest_ip.as_deref().unwrap_or("") {
+        "" => {
+            query.push(
+                " AND (json_extract(events.source, '$.dest_ip') IS NULL \
+                 OR json_extract(events.source, '$.dest_ip') = '')",
+            );
+        }
+        dest_ip => {
+            query.push(" AND json_extract(events.source, '$.dest_ip') = ");
+            query.push_bind(dest_ip);
+        }
+    };
+
+    query.push(" AND timestamp >= ");
+    query.push_bind(crate::datetime::parse(&spec.min_timestamp, None)?.to_nanos());
+    query.push(" AND timestamp <= ");
+    query.push_bind(crate::datetime::parse(&spec.max_timestamp, None)?.to_nanos());
+
+    query.build().execute(repo.get_pool()).await?;
+    Ok(())
+}
+
 /// Behavioral check of the `is:archived` / `is:escalated` alert search filters
 /// against one of the SQLite alert code paths, selected by `timeout`
 /// (Some(>0) -> alerts_with_timeout, None -> alerts_group_by).
@@ -698,7 +746,7 @@ async fn check_sqlite_state_filter(
     }
 
     // Archive the whole group.
-    repo.archive_by_alert_group(spec).await?;
+    repo.archive_by_alert_group(spec.clone()).await?;
 
     if find_group(
         &repo
@@ -748,6 +796,8 @@ async fn check_sqlite_state_filter(
     {
         bail!("is:escalated dropped the escalated (archived) group");
     }
+
+    reset_sqlite_alert_group_state(repo, &spec).await?;
 
     Ok(Some(format!("sig={sig} src={src} dest={dest}")))
 }
@@ -817,6 +867,111 @@ fn event_has_mac(value: &serde_json::Value, mac: &str) -> bool {
                 .any(|(obj, key)| value_has_mac(&source[obj][key], mac))
         })
     })
+}
+
+fn event_count(value: &serde_json::Value) -> usize {
+    value["events"].as_array().map(|a| a.len()).unwrap_or(0)
+}
+
+fn event_id(value: &serde_json::Value) -> Option<String> {
+    value
+        .as_str()
+        .map(String::from)
+        .or_else(|| value.as_i64().map(|v| v.to_string()))
+        .or_else(|| value.as_u64().map(|v| v.to_string()))
+}
+
+fn sample_event_id_and_timestamp(value: &serde_json::Value) -> Result<Option<(String, DateTime)>> {
+    let Some(event) = value["events"].as_array().and_then(|events| events.first()) else {
+        return Ok(None);
+    };
+    let id = event_id(&event["_id"]).ok_or_else(|| anyhow!("sample event is missing _id"))?;
+    let source = &event["_source"];
+    let timestamp = source["timestamp"]
+        .as_str()
+        .or_else(|| source["@timestamp"].as_str())
+        .ok_or_else(|| anyhow!("sample event is missing timestamp"))?;
+    let timestamp = crate::datetime::parse(timestamp, None)?;
+    Ok(Some((id, timestamp)))
+}
+
+fn event_result_has_id(value: &serde_json::Value, id: &str) -> bool {
+    value["events"].as_array().is_some_and(|events| {
+        events
+            .iter()
+            .any(|event| event_id(&event["_id"]).as_deref() == Some(id))
+    })
+}
+
+fn inclusive_date_shortcut_query(ts: &DateTime) -> String {
+    let from: DateTime = (ts.datetime - chrono::Duration::seconds(1)).into();
+    let to: DateTime = (ts.datetime + chrono::Duration::seconds(1)).into();
+    format!(
+        "@from:{} @to:{}",
+        quote_value(&from.to_rfc3339_utc()),
+        quote_value(&to.to_rfc3339_utc())
+    )
+}
+
+fn exclusive_date_shortcut_query(ts: &DateTime) -> String {
+    let ts = quote_value(&ts.to_rfc3339_utc());
+    format!("@after:{ts} @before:{ts}")
+}
+
+fn verify_date_shortcut_results(
+    name: &str,
+    start: Instant,
+    id: &str,
+    ts: &DateTime,
+    inclusive: serde_json::Value,
+    exclusive: serde_json::Value,
+) -> Check {
+    if !event_result_has_id(&inclusive, id) {
+        return Check::fail(
+            name,
+            start,
+            format!("@from/@to did not include sample event id={id}"),
+        );
+    }
+    let exclusive_count = event_count(&exclusive);
+    if exclusive_count != 0 {
+        return Check::fail(
+            name,
+            start,
+            format!("@after/@before same-bound query returned {exclusive_count} events"),
+        );
+    }
+    Check::pass(
+        name,
+        start,
+        Some(format!("id={id} ts={}", ts.to_rfc3339_utc())),
+    )
+}
+
+#[derive(Clone)]
+struct AlertSample {
+    signature_id: u64,
+    src_ip: String,
+    dest_ip: String,
+    timestamp: DateTime,
+}
+
+fn sample_alert_group(result: &AlertsResult) -> Result<Option<AlertSample>> {
+    let Some(alert) = result.events.first() else {
+        return Ok(None);
+    };
+    Ok(Some(AlertSample {
+        signature_id: alert.source["alert"]["signature_id"]
+            .as_u64()
+            .ok_or_else(|| anyhow!("sample alert is missing signature_id"))?,
+        src_ip: alert.source["src_ip"].as_str().unwrap_or("").to_string(),
+        dest_ip: alert.source["dest_ip"].as_str().unwrap_or("").to_string(),
+        timestamp: alert.metadata.max_timestamp.clone(),
+    }))
+}
+
+fn alert_result_has_group(result: &AlertsResult, sample: &AlertSample) -> bool {
+    find_group(result, sample.signature_id, &sample.src_ip, &sample.dest_ip).is_some()
 }
 
 /// Number of events to scan when sampling for a MAC address.
@@ -898,6 +1053,130 @@ async fn check_sqlite_event_mac(name: &str, repo: &SqliteEventRepo) -> Check {
     }
 }
 
+async fn check_event_date_shortcuts<F, Fut>(name: &str, mut events: F) -> Check
+where
+    F: FnMut(EventQueryParams) -> Fut,
+    Fut: std::future::Future<Output = Result<serde_json::Value>>,
+{
+    let start = Instant::now();
+    let sample = match events(EventQueryParams {
+        size: Some(1),
+        ..Default::default()
+    })
+    .await
+    {
+        Ok(v) => v,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    let (id, ts) = match sample_event_id_and_timestamp(&sample) {
+        Ok(Some(sample)) => sample,
+        Ok(None) => return Check::skip(name, "no events to sample"),
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+
+    let inclusive_query = match queryparser::parse(&inclusive_date_shortcut_query(&ts), None) {
+        Ok(q) => q,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    let exclusive_query = match queryparser::parse(&exclusive_date_shortcut_query(&ts), None) {
+        Ok(q) => q,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+
+    let inclusive = match events(EventQueryParams {
+        size: Some(100),
+        query_string: inclusive_query,
+        ..Default::default()
+    })
+    .await
+    {
+        Ok(v) => v,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    let exclusive = match events(EventQueryParams {
+        size: Some(1),
+        query_string: exclusive_query,
+        ..Default::default()
+    })
+    .await
+    {
+        Ok(v) => v,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+
+    verify_date_shortcut_results(name, start, &id, &ts, inclusive, exclusive)
+}
+
+async fn check_alert_date_shortcuts<F, Fut>(name: &str, mut alerts: F) -> Check
+where
+    F: FnMut(Option<String>) -> Fut,
+    Fut: std::future::Future<Output = Result<AlertsResult>>,
+{
+    let start = Instant::now();
+    let sample_result = match alerts(None).await {
+        Ok(result) => result,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    let sample = match sample_alert_group(&sample_result) {
+        Ok(Some(sample)) => sample,
+        Ok(None) => return Check::skip(name, "no alert groups to sample"),
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+
+    let inclusive = match alerts(Some(inclusive_date_shortcut_query(&sample.timestamp))).await {
+        Ok(result) => result,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    if !alert_result_has_group(&inclusive, &sample) {
+        return Check::fail(
+            name,
+            start,
+            format!(
+                "@from/@to did not include sample alert group sig={} src={} dest={}",
+                sample.signature_id, sample.src_ip, sample.dest_ip
+            ),
+        );
+    }
+
+    let exclusive = match alerts(Some(exclusive_date_shortcut_query(&sample.timestamp))).await {
+        Ok(result) => result,
+        Err(err) => return Check::fail(name, start, err.to_string()),
+    };
+    if !exclusive.events.is_empty() {
+        return Check::fail(
+            name,
+            start,
+            format!(
+                "@after/@before same-bound query returned {} alert groups",
+                exclusive.events.len()
+            ),
+        );
+    }
+
+    Check::pass(
+        name,
+        start,
+        Some(format!(
+            "sig={} src={} dest={} ts={}",
+            sample.signature_id,
+            sample.src_ip,
+            sample.dest_ip,
+            sample.timestamp.to_rfc3339_utc()
+        )),
+    )
+}
+
+async fn check_sqlite_alert_date_shortcuts(
+    name: &str,
+    repo: &SqliteEventRepo,
+    timeout: Option<u64>,
+) -> Check {
+    check_alert_date_shortcuts(name, |query| {
+        repo.alerts(alert_opts(query.as_deref(), timeout))
+    })
+    .await
+}
+
 /// Check the `@mac` operator against a SQLite alert search code path, selected
 /// by `timeout` (Some(>0) -> alerts_with_timeout, None -> alerts_group_by).
 ///
@@ -940,15 +1219,52 @@ async fn check_sqlite_alert_mac(name: &str, repo: &SqliteEventRepo, timeout: Opt
     }
 }
 
-/// Data-dependent SQLite checks, used to emit skips when nothing was imported.
-const SQLITE_QUERY_CHECK_NAMES: &[&str] = &[
-    "alerts",
+#[derive(Default)]
+struct CommonSamples {
+    sample_id: Option<String>,
+    alert_spec: Option<AlertGroupSpec>,
+}
+
+/// Data-dependent checks shared by Elasticsearch/OpenSearch and SQLite.
+const COMMON_QUERY_CHECK_NAMES: &[&str] = &[
+    "earliest_timestamp",
+    "get_event_types",
+    "get_sensors",
+    "histogram_time",
     "events",
+    "events_event_type_filter",
+    "events_query_string",
+    "events_query_date_shortcuts",
+    "alerts_query_date_shortcuts",
+    "agg_terms",
+    "agg_rare_terms",
+    "agg_dns_script",
+    "alerts",
+    "dhcp_request",
+    "dhcp_ack",
+    "dns_reverse_lookup",
+    "stats_agg",
+    "stats_agg_diff",
+    "stats_agg_by_sensor",
+    "stats_agg_diff_by_sensor",
+    "get_event_by_id",
+    "escalate_event_by_id",
+    "deescalate_event_by_id",
+    "archive_event_by_id",
+    "comment_event_by_id",
+    "archive_by_alert_group",
+];
+
+/// SQLite-only checks. These cover SQLite's two alert implementations and
+/// SQLite-specific regressions that the single shared datastore path would not
+/// distinguish.
+const SQLITE_SPECIFIC_QUERY_CHECK_NAMES: &[&str] = &[
     "is_state_filter_timeout",
     "is_state_filter_group_by",
     "events_query_mac",
     "alerts_timeout_query_mac",
     "alerts_group_by_query_mac",
+    "alerts_timeout_query_date_shortcuts",
 ];
 
 async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
@@ -1005,33 +1321,38 @@ async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
         };
 
     if imported > 0 {
-        check!(checks, "alerts", {
-            let result = repo.alerts(alert_opts(None, Some(3))).await?;
-            Ok(Some(format!("alert_groups={}", result.events.len())))
-        });
-        check!(checks, "events", {
-            let value = repo
-                .events(EventQueryParams {
-                    size: Some(10),
-                    ..Default::default()
-                })
-                .await?;
-            let count = value["events"].as_array().map(|a| a.len()).unwrap_or(0);
-            Ok(Some(format!("events={count}")))
-        });
+        let datastore = EventRepo::SQLite(repo);
+        let sqlite_repo = match &datastore {
+            EventRepo::SQLite(repo) => repo,
+            EventRepo::Elastic(_) => unreachable!(),
+        };
+
+        let samples = run_common_read_query_checks(&datastore, &mut checks).await;
         check!(checks, "is_state_filter_timeout", {
-            check_sqlite_state_filter(&repo, Some(3)).await
+            check_sqlite_state_filter(sqlite_repo, Some(3)).await
         });
         check!(checks, "is_state_filter_group_by", {
-            check_sqlite_state_filter(&repo, None).await
+            check_sqlite_state_filter(sqlite_repo, None).await
         });
         // The `@mac` operator must be honored in the event search path and in
         // both alert search paths.
-        checks.push(check_sqlite_event_mac("events_query_mac", &repo).await);
-        checks.push(check_sqlite_alert_mac("alerts_timeout_query_mac", &repo, Some(3)).await);
-        checks.push(check_sqlite_alert_mac("alerts_group_by_query_mac", &repo, None).await);
+        checks.push(check_sqlite_event_mac("events_query_mac", sqlite_repo).await);
+        checks.push(check_sqlite_alert_mac("alerts_timeout_query_mac", sqlite_repo, Some(3)).await);
+        checks.push(check_sqlite_alert_mac("alerts_group_by_query_mac", sqlite_repo, None).await);
+        checks.push(
+            check_sqlite_alert_date_shortcuts(
+                "alerts_timeout_query_date_shortcuts",
+                sqlite_repo,
+                Some(3),
+            )
+            .await,
+        );
+        run_common_mutation_checks(&datastore, &mut checks, true, samples).await;
     } else {
-        for name in SQLITE_QUERY_CHECK_NAMES {
+        for name in COMMON_QUERY_CHECK_NAMES {
+            checks.push(Check::skip(name, "no events imported"));
+        }
+        for name in SQLITE_SPECIFIC_QUERY_CHECK_NAMES {
             checks.push(Check::skip(name, "no events imported"));
         }
     }
@@ -1062,35 +1383,6 @@ async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
     })
 }
 
-/// Names of the data-dependent checks, used to emit skips when nothing was
-/// imported. Kept in sync with [`run_query_checks`].
-const QUERY_CHECK_NAMES: &[&str] = &[
-    "earliest_timestamp",
-    "get_event_types",
-    "get_sensors",
-    "histogram_time",
-    "events",
-    "events_event_type_filter",
-    "events_query_string",
-    "agg_terms",
-    "agg_rare_terms",
-    "agg_dns_script",
-    "alerts",
-    "dhcp_request",
-    "dhcp_ack",
-    "dns_reverse_lookup",
-    "stats_agg",
-    "stats_agg_diff",
-    "stats_agg_by_sensor",
-    "stats_agg_diff_by_sensor",
-    "get_event_by_id",
-    "escalate_event_by_id",
-    "deescalate_event_by_id",
-    "archive_event_by_id",
-    "comment_event_by_id",
-    "archive_by_alert_group",
-];
-
 /// Names of the data-modifying checks, skipped in read-only (`--existing`) mode.
 const MUTATION_CHECK_NAMES: &[&str] = &[
     "escalate_event_by_id",
@@ -1100,10 +1392,11 @@ const MUTATION_CHECK_NAMES: &[&str] = &[
     "archive_by_alert_group",
 ];
 
-/// Run every data-dependent check against the populated index. When `mutate` is
-/// false (read-only `--existing` mode) the data-modifying checks are skipped so
-/// existing data is never touched.
-async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, mutate: bool) {
+/// Run read-only datastore checks shared by Elasticsearch/OpenSearch and
+/// SQLite. Returns sampled identifiers needed by the later mutation checks.
+async fn run_common_read_query_checks(repo: &EventRepo, checks: &mut Vec<Check>) -> CommonSamples {
+    let mut samples = CommonSamples::default();
+
     // earliest_timestamp — also reused for the stats time range.
     let earliest = {
         let start = Instant::now();
@@ -1123,17 +1416,26 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
     };
 
     check!(checks, "get_event_types", {
-        let types = repo.get_event_types().await?;
+        let types = match repo {
+            EventRepo::Elastic(repo) => repo.get_event_types().await?,
+            EventRepo::SQLite(repo) => repo.get_event_types(Vec::new()).await?,
+        };
         Ok(Some(format!("types={}", types.len())))
     });
 
     check!(checks, "get_sensors", {
-        let sensors = repo.get_sensors().await?;
+        let sensors = match repo {
+            EventRepo::Elastic(repo) => repo.get_sensors().await?,
+            EventRepo::SQLite(repo) => repo.get_sensors().await?,
+        };
         Ok(Some(format!("sensors={}", sensors.len())))
     });
 
     check!(checks, "histogram_time", {
-        let buckets = repo.histogram_time(None, &[]).await?;
+        let buckets = match repo {
+            EventRepo::Elastic(repo) => repo.histogram_time(None, &[]).await?,
+            EventRepo::SQLite(repo) => repo.histogram_time(None, &[]).await?,
+        };
         Ok(Some(format!("buckets={}", buckets.len())))
     });
 
@@ -1147,7 +1449,10 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
         match repo.events(params).await {
             Ok(value) => {
                 let count = value["events"].as_array().map(|a| a.len()).unwrap_or(0);
-                let id = value["events"][0]["_id"].as_str().map(String::from);
+                let id = value["events"]
+                    .as_array()
+                    .and_then(|events| events.first())
+                    .and_then(|event| event_id(&event["_id"]));
                 checks.push(Check::pass(
                     "events",
                     start,
@@ -1197,6 +1502,24 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
         ));
     }
 
+    checks.push(
+        check_event_date_shortcuts("events_query_date_shortcuts", |params| repo.events(params))
+            .await,
+    );
+    let auto_archive = Arc::new(RwLock::new(AutoArchive::default()));
+    checks.push(
+        check_alert_date_shortcuts("alerts_query_date_shortcuts", |query| {
+            repo.alerts(
+                elastic::AlertQueryOptions {
+                    query_string: query,
+                    ..Default::default()
+                },
+                auto_archive.clone(),
+            )
+        })
+        .await,
+    );
+
     check!(checks, "agg_terms", {
         let rows = repo.agg("src_ip", 10, "desc", vec![]).await?;
         Ok(Some(format!("rows={}", rows.len())))
@@ -1207,14 +1530,14 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
         Ok(Some(format!("rows={}", rows.len())))
     });
 
-    // dns.rrname maps to a painless script source on the elastic side.
+    // dns.rrname exercises datastore-specific nested DNS name handling.
     check!(checks, "agg_dns_script", {
         let rows = repo.agg("dns.rrname", 10, "desc", vec![]).await?;
         Ok(Some(format!("rows={}", rows.len())))
     });
 
     // alerts — the big nested aggregation; also captures an alert group.
-    let alert_spec = {
+    {
         let start = Instant::now();
         let auto_archive = Arc::new(RwLock::new(AutoArchive::default()));
         match repo
@@ -1235,29 +1558,41 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
                     start,
                     Some(format!("alert_groups={}", result.events.len())),
                 ));
-                spec
+                samples.alert_spec = spec;
             }
             Err(err) => {
                 checks.push(Check::fail("alerts", start, err.to_string()));
-                None
             }
         }
     };
 
     check!(checks, "dhcp_request", {
-        let rows = repo.dhcp_request(None, None).await?;
+        let rows = match repo {
+            EventRepo::Elastic(repo) => repo.dhcp_request(None, None).await?,
+            EventRepo::SQLite(repo) => repo.dhcp_request(None, None).await?,
+        };
         Ok(Some(format!("rows={}", rows.len())))
     });
 
     check!(checks, "dhcp_ack", {
-        let rows = repo.dhcp_ack(None, None).await?;
+        let rows = match repo {
+            EventRepo::Elastic(repo) => repo.dhcp_ack(None, None).await?,
+            EventRepo::SQLite(repo) => repo.dhcp_ack(None, None).await?,
+        };
         Ok(Some(format!("rows={}", rows.len())))
     });
 
     check!(checks, "dns_reverse_lookup", {
-        let value = repo
-            .dns_reverse_lookup(None, None, "10.0.0.1".to_string(), "10.0.0.2".to_string())
-            .await?;
+        let value = match repo {
+            EventRepo::Elastic(repo) => {
+                repo.dns_reverse_lookup(None, None, "10.0.0.1".to_string(), "10.0.0.2".to_string())
+                    .await?
+            }
+            EventRepo::SQLite(repo) => {
+                repo.dns_reverse_lookup(None, None, "10.0.0.1".to_string(), "10.0.0.2".to_string())
+                    .await?
+            }
+        };
         let _ = value;
         Ok(None)
     });
@@ -1303,6 +1638,18 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
         None => checks.push(Check::skip("get_event_by_id", "no sample event id")),
     }
 
+    samples.sample_id = sample_id;
+    samples
+}
+
+/// Run shared data-modifying checks. When `mutate` is false (read-only
+/// `--existing` mode) the checks are skipped so existing data is never touched.
+async fn run_common_mutation_checks(
+    repo: &EventRepo,
+    checks: &mut Vec<Check>,
+    mutate: bool,
+    samples: CommonSamples,
+) {
     // Data-modifying checks (_update_by_query painless). Skipped entirely in
     // read-only mode so existing data is never modified.
     if !mutate {
@@ -1313,26 +1660,25 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
     }
 
     // Id-based mutation checks.
-    match &sample_id {
+    match &samples.sample_id {
         Some(id) => {
             check!(checks, "escalate_event_by_id", {
-                let n = repo.escalate_event_by_id(id).await?;
-                Ok(Some(format!("updated={n}")))
+                repo.escalate_event_by_id(id).await?;
+                Ok(None)
             });
             check!(checks, "deescalate_event_by_id", {
                 repo.deescalate_event_by_id(id).await?;
                 Ok(None)
             });
             check!(checks, "archive_event_by_id", {
-                let n = repo.archive_event_by_id(id).await?;
-                Ok(Some(format!("updated={n}")))
+                repo.archive_event_by_id(id).await?;
+                Ok(None)
             });
             let session = Arc::new(Session::anonymous(Some("compat-test".to_string())));
             check!(checks, "comment_event_by_id", {
-                let n = repo
-                    .comment_event_by_id(id, "compat test".to_string(), session.clone())
+                repo.comment_event_by_id(id, "compat test".to_string(), session.clone())
                     .await?;
-                Ok(Some(format!("updated={n}")))
+                Ok(None)
             });
         }
         None => {
@@ -1348,7 +1694,7 @@ async fn run_query_checks(repo: &ElasticEventRepo, checks: &mut Vec<Check>, muta
     }
 
     // Alert-group mutation (build_alert_group_filter + _update_by_query).
-    match alert_spec {
+    match samples.alert_spec {
         Some(spec) => {
             let start = Instant::now();
             match repo.archive_by_alert_group(spec).await {
