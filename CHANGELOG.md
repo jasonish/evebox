@@ -41,6 +41,10 @@
 - The admin index management page now groups indices by date (with per-date doc
   and store-size subtotals and human-readable sizes), and labels the datastore
   as OpenSearch or Elasticsearch based on the actual backend.
+  - Deletion now operates on whole days: a single "Delete Day" button removes
+    all of a day's indices (events and stats) together, replacing the
+    per-index delete buttons. Indices without a date in their name keep
+    individual delete buttons.
 - Unsupported Elasticsearch and OpenSearch versions now abort startup instead of
   only logging a warning and continuing.
   - EveBox requires Elasticsearch 7.10 or newer, or OpenSearch 2.6.0 or newer.

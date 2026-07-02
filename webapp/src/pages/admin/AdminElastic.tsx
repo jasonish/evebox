@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2025 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { For, Suspense, createResource } from "solid-js";
+import { For, Show, Suspense, createResource } from "solid-js";
 import { API } from "../../api";
 import { Top } from "../../Top";
 import { addError, addNotification } from "../../Notifications";
@@ -93,6 +93,25 @@ export function AdminElastic() {
       });
   };
 
+  // Delete every index in the group with one request. Elasticsearch and
+  // OpenSearch accept a comma-separated index list, and delete nothing if any
+  // named index is missing.
+  const deleteGroup = (group: IndexGroup) => {
+    const names = group.indices.map((index) => index.name);
+    API.doDelete(`api/admin/elastic/index/${names.join(",")}`)
+      .then(() => {
+        addNotification(
+          `Deleted ${names.length} ${
+            names.length === 1 ? "index" : "indices"
+          } for ${group.date}.`,
+        );
+        refetchIndices();
+      })
+      .catch((error: any) => {
+        addError(`error: ${error}`);
+      });
+  };
+
   return (
     <>
       <Top />
@@ -113,12 +132,26 @@ export function AdminElastic() {
                 {(group) => (
                   <>
                     <tr class="table-secondary">
-                      <th>{group.label}</th>
-                      <th class="text-end">
+                      <th class="align-middle">{group.label}</th>
+                      <th class="align-middle text-end">
                         {group.docCount.toLocaleString()}
                       </th>
-                      <th class="text-end">{formatBytes(group.storeSize)}</th>
-                      <th></th>
+                      <th class="align-middle text-end">
+                        {formatBytes(group.storeSize)}
+                      </th>
+                      <th class="align-middle text-end">
+                        <Show when={group.date !== ""}>
+                          <button
+                            class="btn btn-danger btn-sm"
+                            title={`Delete all indices for ${group.date}`}
+                            onClick={() => {
+                              deleteGroup(group);
+                            }}
+                          >
+                            Delete Day
+                          </button>
+                        </Show>
+                      </th>
                     </tr>
                     <For each={group.indices}>
                       {(e) => (
@@ -131,14 +164,16 @@ export function AdminElastic() {
                             {formatBytes(e.store_size)}
                           </td>
                           <td class="align-middle text-end">
-                            <button
-                              class="btn btn-danger btn-sm"
-                              onClick={() => {
-                                deleteIndex(e.name);
-                              }}
-                            >
-                              Delete
-                            </button>
+                            <Show when={group.date === ""}>
+                              <button
+                                class="btn btn-danger btn-sm"
+                                onClick={() => {
+                                  deleteIndex(e.name);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </Show>
                           </td>
                         </tr>
                       )}
