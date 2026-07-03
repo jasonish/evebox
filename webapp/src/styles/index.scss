@@ -76,6 +76,23 @@ $evebox-success-color-dark: #2f4741;
   z-index: 3;
 }
 
+.app-query-help-modal {
+  padding-top: 1rem;
+
+  h6 {
+    margin-top: 1rem;
+  }
+
+  code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  table {
+    margin-bottom: 0.75rem;
+  }
+}
+
 .app-event-table {
   .app-col-timestamp {
     white-space: nowrap;

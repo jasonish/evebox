@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { createSignal, For, Match, Show, Suspense, Switch } from "solid-js";
-import { Button, Modal, Spinner, Tab, Tabs } from "solid-bootstrap";
+import { Button, Modal, Spinner, Tab, Table, Tabs } from "solid-bootstrap";
 import { closeHelp, showHelp } from "./Top";
 
 import { createResource } from "solid-js";
@@ -13,11 +13,14 @@ import { GIT_REV } from "./gitrev";
 export function HelpModal() {
   const [tab, setTab] = createSignal("keyboard");
   return (
-    <Modal show={showHelp()} onHide={closeHelp} size={"lg"}>
+    <Modal show={showHelp()} onHide={closeHelp} size={"lg"} scrollable>
       <Modal.Body>
         <Tabs activeKey={tab()} onSelect={setTab}>
           <Tab eventKey="keyboard" title="Keyboard Shortcuts">
             <Keyboard />
+          </Tab>
+          <Tab eventKey="query" title="Search Queries">
+            <QueryHelp />
           </Tab>
           <Tab eventKey="about" title="About">
             <About />
@@ -30,6 +33,125 @@ export function HelpModal() {
         </Button>
       </Modal.Footer>
     </Modal>
+  );
+}
+
+function QueryExample(props: { query: string; description: string }) {
+  return (
+    <tr>
+      <td class="font-monospace text-nowrap">{props.query}</td>
+      <td>{props.description}</td>
+    </tr>
+  );
+}
+
+function QueryHelp() {
+  return (
+    <div class="app-query-help-modal">
+      <p>
+        Search terms are separated by spaces. Add more terms to narrow the
+        result set. Use quotes when a value contains spaces.
+      </p>
+
+      <h6>Common Examples</h6>
+      <Table bordered hover responsive size="sm">
+        <tbody>
+          <QueryExample
+            query="dns"
+            description="Find events containing the text dns."
+          />
+          <QueryExample
+            query='"ET POLICY"'
+            description="Find an exact quoted phrase."
+          />
+          <QueryExample
+            query='dns -"et info"'
+            description="Find dns events, excluding events containing et info."
+          />
+          <QueryExample
+            query="src_ip:10.16.2.90"
+            description="Match a specific field value."
+          />
+          <QueryExample
+            query="event_type:alert app_proto:tls"
+            description="Combine field filters."
+          />
+        </tbody>
+      </Table>
+
+      <h6>Shorthand Fields</h6>
+      <Table bordered hover responsive size="sm">
+        <tbody>
+          <QueryExample
+            query="@ip:10.16.1.10"
+            description="Match source, destination, and known protocol IP fields."
+          />
+          <QueryExample
+            query="@mac:00:11:22:33:44:55"
+            description="Search known MAC-address content."
+          />
+          <QueryExample
+            query="@sid:2030386"
+            description="Match alert.signature_id."
+          />
+          <QueryExample
+            query='@sig:"SURICATA STREAM"'
+            description="Match alert.signature."
+          />
+        </tbody>
+      </Table>
+
+      <h6>Time Filters</h6>
+      <Table bordered hover responsive size="sm">
+        <tbody>
+          <QueryExample
+            query="@from:2026-07-02T18:00:00"
+            description="Include events at or after this timestamp."
+          />
+          <QueryExample
+            query="@to:2026-07-02T19:00:00"
+            description="Include events at or before this timestamp."
+          />
+          <QueryExample
+            query="@after:2026-07-02T18:00:00"
+            description="Include events after this timestamp."
+          />
+          <QueryExample
+            query="@before:2026-07-02T19:00:00"
+            description="Include events before this timestamp."
+          />
+        </tbody>
+      </Table>
+
+      <h6>Alert State</h6>
+      <Table bordered hover responsive size="sm">
+        <tbody>
+          <QueryExample
+            query="is:archived"
+            description="Show archived alerts."
+          />
+          <QueryExample
+            query="-is:archived"
+            description="Show alerts that are not archived."
+          />
+          <QueryExample
+            query="is:escalated"
+            description="Show escalated alerts."
+          />
+          <QueryExample
+            query="-is:escalated"
+            description="Show alerts that are not escalated."
+          />
+        </tbody>
+      </Table>
+
+      <h6>Negation</h6>
+      <p>
+        Prefix a term with <code>-</code> or <code>!</code> to exclude it.
+        Negation works with free text, quoted phrases, field filters, shorthand
+        fields, and alert-state filters.
+      </p>
+    </div>
   );
 }
 
