@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.26.0 - 2026-07-03
 
 ### Added
 - Alerts can now be filtered by state from the search box with `is:archived`
@@ -25,6 +25,9 @@
   - The web UI fetches a small release manifest
     (`https://evebox.org/files/release/latest.json`) directly, without going
     through the EveBox server.
+- The Help dialog now includes a "Search Queries" tab with examples for common
+  search terms, shorthand fields, time filters, alert-state filters, and
+  negation.
 
 ### Changed
 - On OpenSearch, stats events are now indexed into a separate
@@ -55,8 +58,18 @@
 - The `@ip` and `@mac` search filters now work in the SQLite alert search, not
   just the event search. Previously they silently matched nothing on the alerts
   view.
+- SQLite alert searches now support `@from` and `@after` time filters,
+  matching the existing `@to` and `@before` support.
+- The event JSON view now renders valid JSON, with quoted field names and no
+  trailing commas.
 - Stopped using deprecated OpenSearch `inline` script fields for tag/history
   updates.
+
+### Technical Updates
+- Updated Rust dependencies.
+- Updated Suricata rule parsing to use the published
+  `suricatax-rule-parser` scanner API.
+- Dropped the unused `hickory-dns` feature from `reqwest`.
 
 ## 0.25.0 - 2026-05-25
 
