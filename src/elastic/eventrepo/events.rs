@@ -81,10 +81,10 @@ impl ElasticEventRepo {
             // just use the body, but its full of new line feeds, etc.
             let error = match serde_json::to_string(&response) {
                 Ok(error) => error,
-                Err(_) => format!("{:?}", &response),
+                Err(_) => format!("{:?}", response),
             };
 
-            return Err(anyhow::anyhow!(
+            Err(anyhow::anyhow!(
                 "Elasticsearch returned error on event query: error={}",
                 error
             ))?;

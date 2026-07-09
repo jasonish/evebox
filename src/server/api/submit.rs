@@ -61,7 +61,7 @@ pub(crate) async fn handler(
                 }
             }
         }
-        line.truncate(0);
+        line.clear();
     }
 
     // I've seen an issue in the Go agent where it sent 0 events, return early if we have

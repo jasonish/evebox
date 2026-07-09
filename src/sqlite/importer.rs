@@ -215,7 +215,7 @@ impl SqliteEventSink {
             trace!("{}: {}", msg, metrics.to_string());
         }
 
-        self.queue.truncate(0);
+        self.queue.clear();
         Ok(n)
     }
 

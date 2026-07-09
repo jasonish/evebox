@@ -150,7 +150,7 @@ impl SqliteEventRepo {
 
     async fn get_stats(&self, qp: &StatsAggQueryParams) -> Result<Vec<(i64, i64)>> {
         let qp = qp.clone();
-        let field = format!("$.{}", &qp.field);
+        let field = format!("$.{}", qp.field);
         let start_time = qp.start_time.to_nanos();
         let end_time = qp.end_time.to_nanos();
         let range = (qp.end_time.datetime - qp.start_time.datetime).num_seconds();
@@ -256,7 +256,7 @@ impl SqliteEventRepo {
         &self,
         params: &StatsAggQueryParams,
     ) -> anyhow::Result<serde_json::Value> {
-        let field = format!("$.{}", &params.field);
+        let field = format!("$.{}", params.field);
         let start_time = params.start_time.to_nanos();
         let end_time = params.end_time.to_nanos();
         let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
@@ -326,7 +326,7 @@ impl SqliteEventRepo {
         &self,
         params: &StatsAggQueryParams,
     ) -> anyhow::Result<serde_json::Value> {
-        let field = format!("$.{}", &params.field);
+        let field = format!("$.{}", params.field);
         let start_time = params.start_time.to_nanos();
         let end_time = params.end_time.to_nanos();
         let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();

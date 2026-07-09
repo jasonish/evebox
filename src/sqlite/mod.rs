@@ -30,7 +30,7 @@ pub(crate) async fn has_table<'a>(
 #[instrument(skip_all)]
 async fn log_query_plan<'a>(pool: &SqlitePool, sql: &str, args: &SqliteArguments<'a>) {
     let rows: Result<Vec<(i64, i64, i64, String)>, sqlx::Error> =
-        sqlx::query_as_with(&format!("explain query plan {}", &sql), args.clone())
+        sqlx::query_as_with(&format!("explain query plan {}", sql), args.clone())
             .fetch_all(pool)
             .await;
     match rows {
@@ -49,7 +49,7 @@ async fn log_query_plan<'a>(pool: &SqlitePool, sql: &str, args: &SqliteArguments
 #[instrument(skip_all)]
 async fn log_query_plan2<'a>(pool: &mut SqliteConnection, sql: &str, args: &SqliteArguments<'a>) {
     let rows: Result<Vec<(i64, i64, i64, String)>, sqlx::Error> =
-        sqlx::query_as_with(&format!("explain query plan {}", &sql), args.clone())
+        sqlx::query_as_with(&format!("explain query plan {}", sql), args.clone())
             .fetch_all(pool)
             .await;
     match rows {

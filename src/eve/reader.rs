@@ -107,7 +107,7 @@ impl EveReader {
     }
 
     fn next_line(&mut self) -> Result<Option<&str>, EveReaderError> {
-        self.line.truncate(0);
+        self.line.clear();
         if let Some(reader) = &mut self.reader {
             let pos = reader.stream_position()?;
             let n = reader.read_line(&mut self.line)?;

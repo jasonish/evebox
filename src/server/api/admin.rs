@@ -52,8 +52,8 @@ pub(super) async fn add_filter(
     let key = format!(
         "{},{},{},{}",
         entry.sensor.as_ref().map_or("*", |v| v),
-        &entry.src_ip.as_ref().map_or("*", |v| v),
-        &entry.dest_ip.as_ref().map_or("*", |v| v),
+        entry.src_ip.as_ref().map_or("*", |v| v),
+        entry.dest_ip.as_ref().map_or("*", |v| v),
         entry.signature_id
     );
 

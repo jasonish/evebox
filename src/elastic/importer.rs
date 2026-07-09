@@ -88,7 +88,7 @@ impl ElasticEventSink {
                 return Err(anyhow!("elasticsearch commit error: {}", body_text));
             }
         }
-        self.queue.truncate(0);
+        self.queue.clear();
         Ok(n)
     }
 }

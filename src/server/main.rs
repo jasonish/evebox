@@ -542,7 +542,7 @@ async fn configure_datastore(
                     if version.major < 2 || (version.major < 3 && version.minor < 6) {
                         bail!(
                             "Opensearch version {} is not supported; EveBox requires Opensearch 2.6.0 or newer",
-                            &server_info.version.number
+                            server_info.version.number
                         );
                     }
                 } else {
@@ -560,7 +560,7 @@ async fn configure_datastore(
                     if version.major < 7 || (version.major < 8 && version.minor < 10) {
                         bail!(
                             "Elasticsearch version {} is not supported; EveBox requires Elasticsearch 7.10 or newer",
-                            &server_info.version.number
+                            server_info.version.number
                         );
                     }
                     if let Some(warning) = elastic::compatibility_warning(

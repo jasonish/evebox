@@ -39,7 +39,7 @@ impl EveBoxEventSink {
     }
 
     pub fn truncate(&mut self) {
-        self.queue.truncate(0);
+        self.queue.clear();
         self.size = 0;
     }
 
