@@ -10,6 +10,47 @@ echo "===> Git revision: ${BUILD_REV}"
 echo "===> Git branch: ${GIT_BRANCH}"
 echo "===> Git tag: ${GIT_TAG}"
 
+# Linux release builds use the target-specific messense/rust-musl-cross
+# toolchain images directly. Each image contains a static-only libpcap in the
+# musl sysroot; no cross-rs or nested Docker is involved.
+musl_build_image() {
+    musl_target="$1"
+    tag="$2"
+    ${ECHO} docker build \
+        --build-arg MUSL_TARGET="${musl_target}" \
+        --build-arg REAL_UID="$(id -u)" \
+        --build-arg REAL_GID="$(id -g)" \
+        -t "${tag}" \
+        -f ./docker/builder/Dockerfile.musl .
+}
+
+musl_run() {
+    tag="$1"
+    shift
+    if [ -z "${GITHUB_REPOSITORY}" -a -t 1 ]; then
+        it="-it"
+    else
+        it=""
+    fi
+
+    # The container is removed after each command, so preserve Cargo's
+    # downloaded registry and git sources on the host. Mount only these cache
+    # directories: the image's target-specific Cargo config must remain in
+    # /home/builder/.cargo.
+    host_cargo_home="${EVEBOX_CARGO_CACHE_DIR:-${CARGO_HOME:-${HOME}/.cargo}}"
+    mkdir -p "${host_cargo_home}/registry" "${host_cargo_home}/git"
+
+    ${ECHO} docker run --rm ${it} \
+        -v "$(pwd):/src:z" \
+        -v "${host_cargo_home}/registry:/home/builder/.cargo/registry:z" \
+        -v "${host_cargo_home}/git:/home/builder/.cargo/git:z" \
+        -w /src \
+        -e BUILD_REV="${BUILD_REV}" \
+        -u builder \
+        "${tag}" "$@"
+}
+
+# cross-rs is retained for the Windows build only.
 cross_run() {
     target="$1"
     shift
@@ -42,15 +83,19 @@ cross_run() {
 
 build_linux_x64() {
     echo "===> Building Linux x64 (dist + RPM + Debian)"
-    cross_run x86_64-unknown-linux-musl make dist
-    cross_run x86_64-unknown-linux-musl ./packaging/build-rpm.sh amd64
-    cross_run x86_64-unknown-linux-musl ./packaging/build-deb.sh amd64
+    tag="private/evebox/builder:musl-x86_64"
+    musl_build_image x86_64-musl "${tag}"
+    musl_run "${tag}" make dist TARGET=x86_64-unknown-linux-musl
+    musl_run "${tag}" ./packaging/build-rpm.sh amd64
+    musl_run "${tag}" ./packaging/build-deb.sh amd64
 }
 
 build_linux_arm64() {
     echo "===> Building Linux ARM64 (dist + Debian)"
-    cross_run aarch64-unknown-linux-musl make dist
-    cross_run aarch64-unknown-linux-musl ./packaging/build-deb.sh arm64
+    tag="private/evebox/builder:musl-aarch64"
+    musl_build_image aarch64-musl "${tag}"
+    musl_run "${tag}" make dist TARGET=aarch64-unknown-linux-musl
+    musl_run "${tag}" ./packaging/build-deb.sh arm64
 }
 
 build_windows_x64() {
