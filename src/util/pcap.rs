@@ -292,8 +292,7 @@ pub(crate) fn create_record(ts: DateTime, packet: &[u8]) -> Vec<u8> {
     let mut buf = BytesMut::with_capacity(PCAP_RECORD_HEADER_SIZE + packet.len());
 
     // The record header.
-    // FIXME: Should this really be nanos?
-    buf.put_u32_le(ts.to_nanos() as u32); // ts_sec
+    buf.put_u32_le(ts.to_seconds() as u32); // ts_sec
     buf.put_u32_le(ts.micros_part() as u32); // ts_usec
     buf.put_u32_le(packet.len() as u32); // incl_len (captured length)
     buf.put_u32_le(packet.len() as u32); // orig_len (actual length)
@@ -452,6 +451,19 @@ mod test {
         let packet = builder.build();
         let now = DateTime::now();
         let _pcap_buffer = create(LinkType::Raw as u32, now, &packet);
+    }
+
+    #[test]
+    fn test_record_header_timestamp_fields() {
+        // The record header carries unix seconds and the microsecond
+        // remainder, not any other slicing of the timestamp.
+        let ts = crate::datetime::parse("2020-05-01T08:50:23.297919-0600", None).unwrap();
+        let record = create_record(ts.clone(), &[0u8; 4]);
+        let ts_sec = u32::from_le_bytes(record[0..4].try_into().unwrap());
+        let ts_usec = u32::from_le_bytes(record[4..8].try_into().unwrap());
+        assert_eq!(ts_sec as i64, ts.to_seconds());
+        assert_eq!(ts_sec, 1588344623);
+        assert_eq!(ts_usec, 297919);
     }
 
     #[test]

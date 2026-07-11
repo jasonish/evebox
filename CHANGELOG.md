@@ -1,5 +1,12 @@
 # Change Log
 
+## Unreleased
+
+### Fixed
+- eve2pcap: the seconds field of pcap record headers was written from the
+  wrong timestamp value, giving packets in downloaded pcap files bogus
+  capture times.
+
 ## 0.26.0 - 2026-07-03
 
 ### Added
