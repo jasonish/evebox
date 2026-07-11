@@ -28,6 +28,7 @@ import { Overview } from "./dashboards/Overview";
 import { DHCP } from "./dashboards/DHCP";
 import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 import { Ja4Report } from "./pages/ja4";
+import { PcapDownload } from "./PcapDownload";
 import { Admin } from "./pages/admin/Admin";
 import { AdminFilters } from "./pages/admin/AdminFilters";
 import { AdminElastic } from "./pages/admin/AdminElastic";
@@ -55,6 +56,7 @@ export function AppRouter() {
 
         <Route path={"events"} component={Events} />
         <Route path={"event/:id"} component={EventView} />
+        <Route path={"pcap"} component={PcapDownload} />
         <Route path={"settings"} component={Settings} />
         <Route path={"dashboards/overview"} component={Overview} />
         <Route path={"dashboards/alerts"} component={AlertsDashboard} />
@@ -79,7 +81,7 @@ function App(props: any) {
 }
 
 function RedirectToIndex() {
-  const href = serverConfig?.mode === "oneshot" ? "/events" : "/inbox";
+  const href = serverConfig()?.mode === "oneshot" ? "/events" : "/inbox";
   return <Navigate href={href} />;
 }
 

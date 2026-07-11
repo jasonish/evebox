@@ -264,6 +264,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Default time range"),
         )
         .arg(
+            Arg::new("pcap.directory")
+                .long("pcap-directory")
+                .action(ArgAction::Set)
+                .value_name("DIR")
+                .help("Local pcap spool directory to serve full packet capture from")
+                .env("EVEBOX_PCAP_DIRECTORY")
+                .hide_env(true),
+        )
+        .arg(
+            Arg::new("pcap.prefix")
+                .long("pcap-prefix")
+                .action(ArgAction::Set)
+                .value_name("PREFIX")
+                .help("Only consider pcap files starting with this prefix")
+                .env("EVEBOX_PCAP_PREFIX")
+                .hide_env(true),
+        )
+        .arg(
             Arg::new("input.paths")
                 .value_name("EVE")
                 .num_args(0..)
@@ -282,6 +300,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(evebox::cli::update::args())
         .subcommand(evebox::cli::checkupdate::args())
         .subcommand(evebox::cli::util::args());
+    #[cfg(not(windows))]
+    {
+        parser = parser.subcommand(evebox::cli::pcap::command());
+    }
     let matches = parser.clone().get_matches();
 
     // Initialize logging.
@@ -308,6 +330,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         Some(("oneshot", args)) => evebox::cli::oneshot::main(args).await,
+        #[cfg(not(windows))]
+        Some(("pcap", args)) => evebox::cli::pcap::main(args).await,
         Some(("agent", args)) => evebox::cli::agent::main(args).await,
         Some(("config", args)) => evebox::cli::config::main(args).await,
         Some(("print", args)) => evebox::cli::print::main(args),

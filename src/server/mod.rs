@@ -17,6 +17,8 @@ pub(crate) mod autoarchive;
 pub(crate) mod context;
 pub(crate) mod main;
 pub(super) mod metrics;
+#[cfg(not(windows))]
+pub(crate) mod pcap;
 pub(crate) mod session;
 
 const SUPPORTED_DEFAULT_TIME_RANGES: [&str; 9] =
@@ -58,6 +60,8 @@ pub(crate) struct ServerContext {
     pub auto_archive: Arc<RwLock<AutoArchive>>,
     pub metrics: Arc<Metrics>,
     pub firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
+    #[cfg(not(windows))]
+    pub pcap: Arc<pcap::PcapService>,
 }
 
 impl ServerContext {
@@ -81,6 +85,8 @@ impl ServerContext {
             auto_archive,
             metrics,
             firehose,
+            #[cfg(not(windows))]
+            pcap: Arc::new(pcap::PcapService::default()),
         }
     }
 }

@@ -10,7 +10,7 @@ export function SensorSelect(props: {
   selected: string | undefined;
   onchange: (value: string | undefined) => void;
 }) {
-  if (serverConfig?.mode === "oneshot") {
+  if (serverConfig()?.mode === "oneshot") {
     return null;
   }
 

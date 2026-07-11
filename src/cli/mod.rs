@@ -6,6 +6,8 @@ pub mod checkupdate;
 pub mod config;
 pub mod elastic;
 pub mod oneshot;
+#[cfg(not(windows))]
+pub mod pcap;
 pub mod print;
 pub mod sqlite;
 pub mod test;

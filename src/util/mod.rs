@@ -47,8 +47,12 @@ pub(crate) fn parse_humansize(input: &str) -> anyhow::Result<usize> {
             .ok_or_else(|| anyhow::anyhow!("invalid size"))?
             .as_str();
         match unit {
-            "GB" => Ok(value * 1000000000),
-            "MB" => Ok(value * 1000000),
+            "GB" => value
+                .checked_mul(1000000000)
+                .ok_or_else(|| anyhow::anyhow!("size too large")),
+            "MB" => value
+                .checked_mul(1000000)
+                .ok_or_else(|| anyhow::anyhow!("size too large")),
             _ => {
                 bail!("invalid unit: {unit}")
             }
@@ -73,5 +77,9 @@ mod test {
 
         assert!(parse_humansize("asdf").is_err());
         assert!(parse_humansize("1mb").is_err());
+
+        // A unit multiply that would overflow usize is an error, not a
+        // panic (debug) or silent wraparound (release).
+        assert!(parse_humansize("20000000000GB").is_err());
     }
 }

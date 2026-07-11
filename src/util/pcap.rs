@@ -23,7 +23,7 @@ const VERSION_MINOR: u16 = 4;
 
 pub(crate) const FILE_HEADER_LEN: usize = 24;
 const PACKET_HEADER_LEN: usize = 16;
-const PCAP_RECORD_HEADER_SIZE: usize = 16;
+pub(crate) const PCAP_RECORD_HEADER_SIZE: usize = 16;
 
 /// Link types for PCAP files
 #[repr(C)]
@@ -273,6 +273,11 @@ impl Ip4Builder {
 
 /// Creates a PCAP file header
 pub(crate) fn create_header(linktype: u32) -> Vec<u8> {
+    create_header_with_snaplen(linktype, 0xFFFF_FFFF)
+}
+
+/// Creates a PCAP file header with an explicit snap length.
+pub(crate) fn create_header_with_snaplen(linktype: u32, snaplen: u32) -> Vec<u8> {
     let mut buf = BytesMut::with_capacity(FILE_HEADER_LEN);
 
     // Write out the file header.
@@ -281,7 +286,7 @@ pub(crate) fn create_header(linktype: u32) -> Vec<u8> {
     buf.put_u16_le(VERSION_MINOR);
     buf.put_u32_le(0); // This zone (GMT to local correction)
     buf.put_u32_le(0); // Accuracy of timestamps (sigfigs)
-    buf.put_u32_le(0xFFFF_FFFF); // Snap length (max value)
+    buf.put_u32_le(snaplen); // Snap length
     buf.put_u32_le(linktype); // Data link type
 
     buf.to_vec()
@@ -289,14 +294,25 @@ pub(crate) fn create_header(linktype: u32) -> Vec<u8> {
 
 /// Creates a PCAP packet record (header + data).
 pub(crate) fn create_record(ts: DateTime, packet: &[u8]) -> Vec<u8> {
-    let mut buf = BytesMut::with_capacity(PCAP_RECORD_HEADER_SIZE + packet.len());
+    create_record_raw(
+        ts.to_seconds() as u32,
+        ts.micros_part() as u32,
+        packet.len() as u32,
+        packet,
+    )
+}
+
+/// Creates a PCAP packet record (header + data) from raw header fields.
+/// The captured length is taken from the length of `data`.
+pub(crate) fn create_record_raw(ts_sec: u32, ts_usec: u32, orig_len: u32, data: &[u8]) -> Vec<u8> {
+    let mut buf = BytesMut::with_capacity(PCAP_RECORD_HEADER_SIZE + data.len());
 
     // The record header.
-    buf.put_u32_le(ts.to_seconds() as u32); // ts_sec
-    buf.put_u32_le(ts.micros_part() as u32); // ts_usec
-    buf.put_u32_le(packet.len() as u32); // incl_len (captured length)
-    buf.put_u32_le(packet.len() as u32); // orig_len (actual length)
-    buf.put_slice(packet);
+    buf.put_u32_le(ts_sec);
+    buf.put_u32_le(ts_usec);
+    buf.put_u32_le(data.len() as u32); // incl_len (captured length)
+    buf.put_u32_le(orig_len); // orig_len (actual length)
+    buf.put_slice(data);
 
     buf.to_vec()
 }

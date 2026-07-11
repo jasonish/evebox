@@ -19,15 +19,27 @@ import {
 } from "solid-js";
 import { API, archiveEvent, getEventById, postComment } from "./api";
 import { archiveAggregateAlert } from "./api";
-import { Button, Col, Container, Row, Tab, Tabs, Toast } from "solid-bootstrap";
+import {
+  Button,
+  ButtonGroup,
+  Col,
+  Container,
+  Dropdown,
+  Row,
+  Spinner,
+  Tab,
+  Tabs,
+  Toast,
+} from "solid-bootstrap";
 import { prettyPrintJson } from "pretty-print-json";
 import { AggregateAlert, EcsGeo, EveDns, Event, EventWrapper } from "./types";
 import { parse_timestamp } from "./datetime";
+import { pcapErrorMessage } from "./PcapDownload";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import { tinykeys } from "tinykeys";
 import { eventIsArchived, eventIsEscalated, eventSetArchived } from "./event";
 import { eventStore } from "./eventstore";
-import { addNotification } from "./Notifications";
+import { addError, addNotification } from "./Notifications";
 import { eventNameFromType } from "./Events";
 import { EventServiceConfig, serverConfig } from "./config";
 import { createStore } from "solid-js/store";
@@ -68,6 +80,74 @@ export function EventView() {
 
   const [srcIpDns, setSrcIpDns] = createSignal<null | any>(null);
   const [destIpDns, setDestIpDns] = createSignal<null | any>(null);
+
+  const [pcapPending, setPcapPending] = createSignal(false);
+
+  const hasFlowAddresses = () =>
+    !!(event()?._source.src_ip && event()?._source.dest_ip);
+
+  // Controller for the in-flight pcap download, letting the user (or
+  // navigation away from the view) cancel the server-side extraction.
+  let pcapAbort: AbortController | undefined;
+
+  // Download the pcap for the current event, buffered so limits and
+  // errors surface as toasts.
+  const downloadPcap = async () => {
+    const ev = event();
+    if (!ev) return;
+    const controller = new AbortController();
+    pcapAbort = controller;
+    setPcapPending(true);
+    try {
+      // The quick button buffers the fixed-size capture so truncation
+      // and no-match errors surface here. The custom page handles the
+      // larger native streaming case.
+      const result = await API.fetchPcap(String(ev._id), controller.signal);
+      if (result.truncated) {
+        addNotification("Capture truncated by server size/time limits");
+      }
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        // User cancelled (or navigated away); not an error.
+      } else if (err instanceof API.PcapError) {
+        addError(pcapErrorMessage(err));
+      } else {
+        addError(`PCAP request failed: ${err}`);
+      }
+    } finally {
+      // A stale request cancelled during same-route navigation must not
+      // clear the pending state of a newer event's request.
+      if (pcapAbort === controller) {
+        pcapAbort = undefined;
+        setPcapPending(false);
+      }
+    }
+  };
+
+  // While a download is pending the PCAP button acts as a Cancel
+  // control instead.
+  const onPcapClick = () => {
+    if (pcapPending()) {
+      pcapAbort?.abort();
+    } else {
+      downloadPcap();
+    }
+  };
+
+  // Cancel any in-flight download and reset the button to idle. The
+  // aborted request rejects with an AbortError that downloadPcap's
+  // catch swallows silently. Called on view disposal and when the
+  // viewed event changes on the same route (which reuses this
+  // component instance, so onCleanup does not fire).
+  const cancelPcapDownload = () => {
+    pcapAbort?.abort();
+    pcapAbort = undefined;
+    setPcapPending(false);
+  };
+
+  // Cancel any in-flight download when leaving the view so the
+  // server-side extraction is stopped too.
+  onCleanup(cancelPcapDownload);
 
   console.log(`- EventView: EVENT_STORE.active_id=${eventStore.active?._id}`);
 
@@ -180,6 +260,15 @@ export function EventView() {
 
   createEffect(() => {
     console.log(`EventView.createEffect: Loading event ID: ${eventId()}`);
+
+    // Navigating between events reuses this component instance, so
+    // onCleanup does not run. Cancel any download still in flight for
+    // the previous event before loading the new one, so a stale
+    // download's completion side effects (the truncation toast and file
+    // download) and the Cancel control are not misattributed
+    // to the event now shown. A no-op when nothing is in flight
+    // (including the initial load), so it never aborts spuriously.
+    cancelPcapDownload();
 
     untrack(() => {
       console.log(`-- Requested event ID: ${params.id}`);
@@ -606,7 +695,7 @@ export function EventView() {
 
   function getServiceLinks(event: EventWrapper): any[] {
     let serviceLinks = [];
-    const eventServices = serverConfig?.[
+    const eventServices = serverConfig()?.[
       "event-services"
     ] as EventServiceConfig[];
     if (eventServices) {
@@ -680,15 +769,64 @@ export function EventView() {
                 </Button>
               </Show>
               <Show when={!isEscalated()}>
-                <Button variant={"secondary"} onclick={escalate}>
+                <Button variant={"secondary"} class={"me-2"} onclick={escalate}>
                   Escalate
                 </Button>
               </Show>
               <Show when={isEscalated()}>
-                <Button variant={"secondary"} onclick={deEscalate}>
+                <Button
+                  variant={"secondary"}
+                  class={"me-2"}
+                  onclick={deEscalate}
+                >
                   De-escalate
                 </Button>
               </Show>
+            </Show>
+            <Show when={serverConfig()?.pcap != null && hasFlowAddresses()}>
+              {/* Split button: the primary buffers the fixed-size quick
+                  capture; the custom action moves to the streaming page
+                  with this event as editable starting context. */}
+              <Dropdown as={ButtonGroup} class={"me-2"}>
+                <Button
+                  variant={"secondary"}
+                  onclick={onPcapClick}
+                  title={pcapPending() ? "Cancel PCAP download" : undefined}
+                >
+                  <Show when={pcapPending()} fallback={"PCAP"}>
+                    <Spinner
+                      as="span"
+                      animation="border"
+                      size="sm"
+                      role="status"
+                      aria-hidden="true"
+                    />{" "}
+                    Cancel fetch…
+                  </Show>
+                </Button>
+                <Dropdown.Toggle
+                  split
+                  variant={"secondary"}
+                  id={"pcap-options-dropdown"}
+                  disabled={pcapPending()}
+                >
+                  <span class={"visually-hidden"}>PCAP options</span>
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  <A
+                    class={"dropdown-item"}
+                    href={
+                      event()
+                        ? `/pcap?event_id=${encodeURIComponent(
+                            String(event()!._id),
+                          )}`
+                        : "/pcap"
+                    }
+                  >
+                    Custom PCAP Download…
+                  </A>
+                </Dropdown.Menu>
+              </Dropdown>
             </Show>
           </Col>
           <div class="col mt-2">
@@ -1311,7 +1449,7 @@ function PrettyJson(props: any) {
       <pre
         ref={output}
         class="json-container app-break-anywhere app-pre-wrap app-overflow-hidden"
-        id={"formatted-json"}
+        id={props.id}
         style={props.style}
       ></pre>
     </>

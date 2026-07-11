@@ -197,7 +197,7 @@ export function Events() {
   });
 
   createEffect(() => {
-    if (serverConfig?.mode === "oneshot") {
+    if (serverConfig()?.mode === "oneshot") {
       loadEventTypeCounts();
     }
   });
@@ -212,7 +212,7 @@ export function Events() {
 
   function refreshEvents() {
     loadEvents();
-    if (serverConfig?.mode === "oneshot") {
+    if (serverConfig()?.mode === "oneshot") {
       loadEventTypeCounts();
     }
   }
@@ -392,7 +392,7 @@ export function Events() {
       <Container fluid>
         <Show
           when={
-            serverConfig?.mode === "oneshot" && eventTypeCounts().length > 0
+            serverConfig()?.mode === "oneshot" && eventTypeCounts().length > 0
           }
         >
           <EventTypeSummary

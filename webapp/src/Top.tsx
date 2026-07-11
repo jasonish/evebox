@@ -42,7 +42,7 @@ function isValidTimeRange(range: string): boolean {
 }
 
 function getServerTimeRange(): string | undefined {
-  const serverTimeRange = serverConfig?.defaults?.time_range;
+  const serverTimeRange = serverConfig()?.defaults?.time_range;
   if (serverTimeRange === "all") {
     return "";
   }
@@ -59,7 +59,7 @@ function getInitialTimeRange(): string {
 
   if (firstTimeRangeInitialization) {
     firstTimeRangeInitialization = false;
-    if (serverConfig?.mode === "oneshot") {
+    if (serverConfig()?.mode === "oneshot") {
       const timeRange = serverTimeRange ?? DEFAULT_TIME_RANGE;
       console.log(`Resetting oneshot time range to ${timeRange || "all"}`);
       localStorage.setItem("TIME_RANGE", timeRange);
@@ -297,6 +297,14 @@ export function Top(props: {
                   setToolDropDownOpen(!toolDropDownOpen());
                 }}
               >
+                <Show when={serverConfig()?.pcap != null}>
+                  <>
+                    <A href="/pcap" class="dropdown-item">
+                      PCAP
+                    </A>
+                    <NavDropdown.Divider />
+                  </>
+                </Show>
                 <A href="/settings" class="dropdown-item">
                   Settings
                 </A>

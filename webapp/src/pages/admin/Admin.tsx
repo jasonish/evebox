@@ -179,7 +179,7 @@ export function Admin() {
 
   const links = () => {
     let links = [<>[</>];
-    if (serverConfig?.datastore === "elasticsearch") {
+    if (serverConfig()?.datastore === "elasticsearch") {
       links.push(<a href="/admin/elastic">{distributionName()}</a>);
       links.push(<> | </>);
     }
@@ -297,18 +297,18 @@ export function Admin() {
           <div class="col">
             <div class="card">
               <div class="card-body">
-                <Show when={serverConfig?.datastore === "elasticsearch"}>
+                <Show when={serverConfig()?.datastore === "elasticsearch"}>
                   <div class="row mt-2">
                     <div class="col">
                       Warning: Do not enable if you have {distributionName()}{" "}
-                      {serverConfig?.distribution === "opensearch"
+                      {serverConfig()?.distribution === "opensearch"
                         ? "ISM"
                         : "ILM"}{" "}
                       policies managing your indices.
                     </div>
                   </div>
                 </Show>
-                <Show when={serverConfig?.datastore === "sqlite"}>
+                <Show when={serverConfig()?.datastore === "sqlite"}>
                   <div class="row mt-2">
                     <div class="col">
                       Warning: This setting will not be effective if age
@@ -332,11 +332,11 @@ export function Admin() {
                       />
                       <label class="form-check-label">
                         <Show
-                          when={serverConfig?.datastore === "elasticsearch"}
+                          when={serverConfig()?.datastore === "elasticsearch"}
                         >
                           Delete indices older than:
                         </Show>
-                        <Show when={serverConfig?.datastore === "sqlite"}>
+                        <Show when={serverConfig()?.datastore === "sqlite"}>
                           Delete events older than:
                         </Show>
                       </label>
@@ -385,7 +385,7 @@ export function Admin() {
         </div>
 
         {/* Retention by disk size. */}
-        <Show when={serverConfig?.datastore === "sqlite"}>
+        <Show when={serverConfig()?.datastore === "sqlite"}>
           <div class="row mt-2">
             <div class="col">
               <div class="card">

@@ -31,3 +31,24 @@ export function get_duration(value: number, unit: DurationUnitType = "s") {
 export function get_timezone_offset_str(): string {
   return dayjs().format("ZZ");
 }
+
+// Format a timestamp (or now, when omitted) as the local wall-clock
+// value an <input type="datetime-local"> expects: "YYYY-MM-DDTHH:mm:ss"
+// with no timezone.
+export function to_datetime_local_input(timestamp?: string): string {
+  const d = timestamp ? dayjs(timestamp) : dayjs();
+  return d.format("YYYY-MM-DDTHH:mm:ss");
+}
+
+// Convert a datetime-local input value (local wall-clock, no zone) into
+// an absolute RFC3339/ISO-8601 timestamp for the API.
+export function datetime_local_to_rfc3339(value: string): string {
+  return dayjs(value).toISOString();
+}
+
+// Whether a datetime-local input value is a parseable timestamp. Guards
+// callers of `datetime_local_to_rfc3339`, which throws on an empty or
+// invalid value.
+export function is_valid_datetime_local(value: string): boolean {
+  return value.trim() !== "" && dayjs(value).isValid();
+}

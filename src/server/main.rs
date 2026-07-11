@@ -192,6 +192,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     context.filters = Some(filters.clone());
 
+    #[cfg(not(windows))]
+    {
+        context.pcap = Arc::new(crate::server::pcap::configure(&config));
+    }
+
     if is_input_enabled(&config) {
         let input_patterns = get_input_patterns(&config)?;
         if input_patterns.is_empty() {

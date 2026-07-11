@@ -38,6 +38,8 @@ pub(crate) mod eve2pcap;
 pub(crate) mod firehose;
 pub(crate) mod genericquery;
 pub(crate) mod login;
+#[cfg(not(windows))]
+pub(crate) mod pcap;
 pub(crate) mod prelude;
 pub(crate) mod sqlite;
 pub(crate) mod stats;
@@ -45,7 +47,7 @@ pub(crate) mod submit;
 pub(crate) mod util;
 
 pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
-    axum::Router::new()
+    let router = axum::Router::new()
         .route("/api/login", post(login::post).get(login::options))
         .route("/api/logout", post(login::logout))
         .route("/api/config", get(config))
@@ -97,7 +99,14 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route(
             "/api/stats/agg/diff/by-sensor",
             get(stats::agg_differential_by_sensor),
-        )
+        );
+    // The capture endpoints are compiled out on Windows along with the
+    // extraction library.
+    #[cfg(not(windows))]
+    let router = router
+        .route("/api/pcap", post(pcap::post_pcap).get(pcap::get_pcap))
+        .route("/api/pcap/validate", get(pcap::validate_pcap));
+    router
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -128,6 +137,22 @@ pub(crate) async fn config(
         }),
         EventRepo::SQLite(_) => None,
     };
+    // Non-null only when packet capture is actually available: a spool
+    // is configured (some source is registered) and the feature is
+    // compiled in (not Windows). The value carries the defaults the
+    // download UI pre-fills without a second request, and the webapp
+    // keys the PCAP controls off its presence.
+    #[cfg(not(windows))]
+    let pcap = if context.pcap.has_spool() {
+        let settings = &context.pcap.settings;
+        json!({
+            "max_size_bytes": settings.max_bytes,
+        })
+    } else {
+        serde_json::Value::Null
+    };
+    #[cfg(windows)]
+    let pcap = serde_json::Value::Null;
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
         "event-services": context.event_services,
@@ -135,6 +160,7 @@ pub(crate) async fn config(
         "defaults": &context.defaults,
         "datastore": datastore,
         "distribution": distribution,
+        "pcap": pcap,
     });
     Json(config)
 }

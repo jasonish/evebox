@@ -25,6 +25,8 @@ jobs:
     container: rust:latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install libpcap
+        run: apt-get update && apt-get install -y --no-install-recommends libpcap-dev
       # Needed to we can get the build revision, required by build.rs
       - run: git config --global --add safe.directory /__w/evebox/evebox
       - run: cargo test --all
@@ -34,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install libpcap
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
       - name: Extract MSRV from Cargo.toml
         id: msrv
         run: |
@@ -52,6 +56,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install libpcap
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
         with:
