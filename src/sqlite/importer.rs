@@ -193,7 +193,7 @@ impl SqliteEventSink {
         let in_lock = insert_start.elapsed();
 
         let msg = format!(
-            "Commited {n} events in {elapsed:?}: lock={lock_elapsed:?}, insert={insert_elapsed:?}, commit={commit_elapsed:?}"
+            "Committed {n} events in {elapsed:?}: lock={lock_elapsed:?}, insert={insert_elapsed:?}, commit={commit_elapsed:?}"
         );
 
         let mut metrics = self.metrics.lock().unwrap();

@@ -227,7 +227,7 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
             debug!("Event table indexes OK");
         }
         Ok(true) => {
-            warn!("Event table indexes out of table, please consider updating the indexes");
+            warn!("Event table indexes out of date, please consider updating the indexes");
         }
         Err(err) => {
             warn!("Failed to validate event table indexes: {:?}", err);

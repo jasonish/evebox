@@ -109,7 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .default_value("http://localhost:9200")
                 .env("EVEBOX_ELASTICSEARCH_URL")
                 .hide_env(true)
-                .help("Elastic Search URL"),
+                .help("Elasticsearch URL"),
         )
         .arg(
             clap::Arg::new("database.elasticsearch.username")
@@ -143,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .default_value("logstash")
                 .value_name("INDEX")
                 .env("EVEBOX_ELASTICSEARCH_INDEX")
-                .help("Elastic Search index prefix"),
+                .help("Elasticsearch index prefix"),
         )
         .arg(
             Arg::new("database.elasticsearch.no-index-suffix")

@@ -399,7 +399,7 @@ impl ElasticEventRepo {
 
         // If we get here something in the response was unexpected.
         warn!(
-            "Received unexpected response for get_event_by_id from Elastic Search: {:?}",
+            "Received unexpected response for get_event_by_id from Elasticsearch: {:?}",
             response
         );
         Ok(None)

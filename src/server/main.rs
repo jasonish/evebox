@@ -537,18 +537,18 @@ async fn configure_datastore(
                 Some("opensearch")
             );
             if is_opensearch {
-                info!("Found Opensearch version {}", &server_info.version.number);
+                info!("Found OpenSearch version {}", &server_info.version.number);
                 if let Ok(version) = Version::parse(&server_info.version.number) {
                     if version.major < 2 || (version.major < 3 && version.minor < 6) {
                         bail!(
-                            "Opensearch version {} is not supported; EveBox requires Opensearch 2.6.0 or newer",
+                            "OpenSearch version {} is not supported; EveBox requires OpenSearch 2.6.0 or newer",
                             server_info.version.number
                         );
                     }
                 } else {
-                    error!("Failed to parse Opensearch version, EveBox likely won't work properly");
+                    error!("Failed to parse OpenSearch version, EveBox likely won't work properly");
                 }
-                warn!("Opensearch support is still a work in progress");
+                warn!("OpenSearch support is still a work in progress");
             } else {
                 info!(
                     "Found Elasticsearch version {}; Index={}; ECS={}",

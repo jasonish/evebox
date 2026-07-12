@@ -60,7 +60,7 @@ pub(super) async fn add_filter(
     if let Ok(filters) = context.auto_archive.read()
         && filters.has_key(&key)
     {
-        info!("Arhive filters already contains key {}", &key);
+        info!("Archive filters already contain key {}", &key);
         return Ok(Json(json!({})));
     }
 

@@ -48,7 +48,7 @@ pub(crate) async fn alerts(
     }
 
     if let Some(_ts) = query.max_timestamp {
-        error!("alert_query: max_timeestamp query argument not implemented");
+        error!("alert_query: max_timestamp query argument not implemented");
     }
 
     Ok(Json(

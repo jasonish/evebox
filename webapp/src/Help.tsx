@@ -178,9 +178,9 @@ function Keyboard() {
 
   const shortcuts = [
     [key("?"), "Show help"],
-    [then("g", "i"), "Goto inbox"],
-    [then("g", "s"), "Goto escalated"],
-    [then("g", "a"), "Goto alerts"],
+    [then("g", "i"), "Go to inbox"],
+    [then("g", "s"), "Go to escalated"],
+    [then("g", "a"), "Go to alerts"],
     [key("e"), "Archive selected events, or event at cursor if none selected"],
     [key("F8"), "Archive event at cursor"],
     [plus("Shift", "s"), "Escalate and archive event at cursor"],
@@ -191,8 +191,8 @@ function Keyboard() {
     [key("k"), "Move cursor to previous event"],
     [key("."), "Show action menu for event at cursor"],
     [plus("Control", "\\"), "Clear all filters and search"],
-    [plus("Shift", "h"), "Goto first row"],
-    [plus("Shift", "g"), "Goto last row"],
+    [plus("Shift", "h"), "Go to first row"],
+    [plus("Shift", "g"), "Go to last row"],
     [then("*", "a"), "Select all alerts in view"],
     [then("*", "n"), "Deselect all alerts"],
     [then("*", "1"), "Select all alerts with current SID"],

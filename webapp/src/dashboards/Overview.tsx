@@ -551,7 +551,7 @@ export function Overview() {
           </div>
           <div class="col">
             <CountValueDataTable
-              title="Top DNS Reqeuests"
+              title="Top DNS Requests"
               label="Hostname"
               rows={topDnsRequests.rows}
               loading={topDnsRequests.loading}

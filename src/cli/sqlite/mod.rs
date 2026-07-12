@@ -353,7 +353,7 @@ async fn analyze(filename: &str) -> Result<()> {
 }
 
 async fn enable_auto_vacuum(filename: &str) -> Result<()> {
-    println!("WARNING: Enable auto-vacuum could take a while.");
+    println!("WARNING: Enabling auto-vacuum could take a while.");
     println!("- Database will be unavailable while this operation is in progress.");
     if !confirm("Do you wish to continue") {
         return Ok(());
