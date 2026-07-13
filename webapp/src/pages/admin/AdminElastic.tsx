@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2025 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-import { For, Show, Suspense, createResource } from "solid-js";
+import { For, Show, Suspense, createResource, createSignal } from "solid-js";
 import { API } from "../../api";
 import { Top } from "../../Top";
 import { addError, addNotification } from "../../Notifications";
@@ -79,6 +79,7 @@ function groupByDate(indices: IndexStats[]): IndexGroup[] {
 
 export function AdminElastic() {
   const [indices, { refetch: refetchIndices }] = createResource(fetchIndices);
+  const [pendingDeleteDate, setPendingDeleteDate] = createSignal<string>();
 
   const groups = () => groupByDate(indices() ?? []);
 
@@ -98,6 +99,8 @@ export function AdminElastic() {
   // named index is missing.
   const deleteGroup = (group: IndexGroup) => {
     const names = group.indices.map((index) => index.name);
+    setPendingDeleteDate(undefined);
+
     API.doDelete(`api/admin/elastic/index/${names.join(",")}`)
       .then(() => {
         addNotification(
@@ -118,13 +121,13 @@ export function AdminElastic() {
       <div class="container mt-2">
         <h1>{distributionName()} Index Management</h1>
         <Suspense>
-          <table class="table table-striped">
+          <table class="table table-striped app-index-management-table">
             <thead>
               <tr>
                 <th>Name</th>
                 <th class="text-end">Doc Count</th>
                 <th class="text-end">Store Size</th>
-                <th></th>
+                <th class="app-index-management-actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -139,17 +142,45 @@ export function AdminElastic() {
                       <th class="align-middle text-end">
                         {formatBytes(group.storeSize)}
                       </th>
-                      <th class="align-middle text-end">
+                      <th class="align-middle text-end app-index-management-actions">
                         <Show when={group.date !== ""}>
-                          <button
-                            class="btn btn-danger btn-sm"
-                            title={`Delete all indices for ${group.date}`}
-                            onClick={() => {
-                              deleteGroup(group);
-                            }}
+                          <Show
+                            when={pendingDeleteDate() === group.date}
+                            fallback={
+                              <button
+                                class="btn btn-danger btn-sm"
+                                title={`Delete all indices for ${group.date}`}
+                                onClick={() => {
+                                  setPendingDeleteDate(group.date);
+                                }}
+                              >
+                                Delete Day
+                              </button>
+                            }
                           >
-                            Delete Day
-                          </button>
+                            <div
+                              class="btn-group btn-group-sm"
+                              role="group"
+                              aria-label={`Confirm deleting all indices for ${group.date}`}
+                            >
+                              <button
+                                class="btn btn-secondary"
+                                onClick={() => {
+                                  setPendingDeleteDate(undefined);
+                                }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                class="btn btn-danger"
+                                onClick={() => {
+                                  deleteGroup(group);
+                                }}
+                              >
+                                Confirm
+                              </button>
+                            </div>
+                          </Show>
                         </Show>
                       </th>
                     </tr>
@@ -163,7 +194,7 @@ export function AdminElastic() {
                           <td class="align-middle text-end">
                             {formatBytes(e.store_size)}
                           </td>
-                          <td class="align-middle text-end">
+                          <td class="align-middle text-end app-index-management-actions">
                             <Show when={group.date === ""}>
                               <button
                                 class="btn btn-danger btn-sm"

@@ -137,6 +137,16 @@ $evebox-success-color-dark: #2f4741;
     background-color: $body-tertiary-bg-dark;
   }
 
+  // Bootstrap table variants use their light palette in dark mode. Keep the
+  // index group rows subdued while still distinguishing them from index rows.
+  .app-index-management-table .table-secondary {
+    --bs-table-bg: var(--bs-secondary-bg);
+    --bs-table-color: var(--bs-body-color);
+    --bs-table-border-color: var(--bs-border-color);
+    --bs-table-striped-bg: var(--bs-secondary-bg);
+    --bs-table-striped-color: var(--bs-body-color);
+  }
+
   // Color overrides for event tables.
   .app-event-table {
     tr {
@@ -159,6 +169,11 @@ $evebox-success-color-dark: #2f4741;
       @include app-table-variant-dark($evebox-danger-color-dark);
     }
   }
+}
+
+.app-index-management-actions {
+  width: 9rem;
+  white-space: nowrap;
 }
 
 // Suricata rule highlighting.
