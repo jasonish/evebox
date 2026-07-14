@@ -548,7 +548,6 @@ async fn configure_datastore(
                 } else {
                     error!("Failed to parse OpenSearch version, EveBox likely won't work properly");
                 }
-                warn!("OpenSearch support is still a work in progress");
             } else {
                 info!(
                     "Found Elasticsearch version {}; Index={}; ECS={}",
