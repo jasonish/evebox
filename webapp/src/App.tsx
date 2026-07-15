@@ -8,7 +8,7 @@ import {
   useLocation,
   useNavigate,
 } from "@solidjs/router";
-import { createEffect, createSignal, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { Transition } from "solid-transition-group";
 
 import * as API from "./api";
@@ -90,6 +90,14 @@ function AuthenticationRequired(props: any) {
   const navigate = useNavigate();
   const location = useLocation();
   let mounted = false;
+  let configRefresh: number | undefined;
+
+  onCleanup(() => {
+    mounted = false;
+    if (configRefresh !== undefined) {
+      window.clearInterval(configRefresh);
+    }
+  });
 
   createEffect(() => {
     if (!IS_AUTHENTICATED() && mounted) {
@@ -114,10 +122,23 @@ function AuthenticationRequired(props: any) {
           SET_IS_AUTHENTICATED(true);
         }
         API.getConfig().then((config) => {
+          if (!mounted) return;
           console.log("Got server config:");
           console.log(config);
           serverConfigSet(config);
           setLoading(false);
+          // Agent-backed PCAP capability can change without a server restart.
+          // Refresh the reactive config so navigation and event controls track
+          // agents connecting, disconnecting, or being reaped as unresponsive.
+          configRefresh = window.setInterval(() => {
+            API.getConfig()
+              .then((config) => {
+                if (mounted) serverConfigSet(config);
+              })
+              .catch((error: any) => {
+                console.debug(`Failed to refresh server config: ${error}`);
+              });
+          }, 5_000);
         });
       })
       .catch((error: any) => {

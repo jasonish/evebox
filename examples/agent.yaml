@@ -40,6 +40,27 @@ input:
     - "/var/log/suricata/eve.json"
     - "/var/log/suricata/eve.*.json"
 
+# Keep a persistent control connection to the EveBox server and serve packet
+# capture requests from this host's Suricata pcap-log spool. The initial
+# transport is intentionally unauthenticated; use it only on trusted networks
+# until agent authentication is added. This requires EveBox server output;
+# it is ignored when direct Elasticsearch output above is enabled.
+#
+# The --pcap-directory and --pcap-prefix command line options can be used
+# instead; a directory given on the command line implies enabled.
+pcap:
+  enabled: false
+  directory: /var/log/suricata/pcap
+  # Matches the recommended threaded filename log.%n.%t.pcap.
+  #prefix: log.
+
+# Unique identifier this agent advertises on the control channel (also
+# available as --agent-id). Defaults to the system hostname; it must be set
+# when more than one agent runs on the same host. The identifier is also
+# stamped on each imported event (evebox.agent.id) so packet capture
+# requests for those events route back to this agent.
+#agent-id: firewall-east
+
 # Additional fields that will be added to each event. This is currently limited
 # to strings at this time.
 additional-fields:

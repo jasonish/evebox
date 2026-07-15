@@ -12,12 +12,12 @@ use session::SessionStore;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
+pub(crate) mod agents;
 pub(crate) mod api;
 pub(crate) mod autoarchive;
 pub(crate) mod context;
 pub(crate) mod main;
 pub(super) mod metrics;
-#[cfg(not(windows))]
 pub(crate) mod pcap;
 pub(crate) mod session;
 
@@ -60,7 +60,8 @@ pub(crate) struct ServerContext {
     pub auto_archive: Arc<RwLock<AutoArchive>>,
     pub metrics: Arc<Metrics>,
     pub firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
-    #[cfg(not(windows))]
+    pub(crate) agents: Arc<agents::AgentRegistry>,
+    pub(crate) pcap_tasks: Arc<pcap::tasks::Registry>,
     pub pcap: Arc<pcap::PcapService>,
 }
 
@@ -73,6 +74,8 @@ impl ServerContext {
     ) -> Self {
         let (firehose, _) = tokio::sync::broadcast::channel::<serde_json::Value>(8192);
         let auto_archive: Arc<RwLock<AutoArchive>> = Default::default();
+        let pcap_tasks = Arc::new(pcap::tasks::Registry::default());
+        let agents = Arc::new(agents::AgentRegistry::new(pcap_tasks.clone()));
         Self {
             config,
             mode: ServerMode::default(),
@@ -85,7 +88,8 @@ impl ServerContext {
             auto_archive,
             metrics,
             firehose,
-            #[cfg(not(windows))]
+            agents,
+            pcap_tasks,
             pcap: Arc::new(pcap::PcapService::default()),
         }
     }

@@ -14,6 +14,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
+#[cfg(not(windows))]
+use tracing::error;
 use tracing::{debug, info, warn};
 
 #[derive(Parser, Debug)]
@@ -83,6 +85,18 @@ struct Args {
     #[arg(long, short = 'k', id = "disable-certificate-check", aliases = &["no-certificate-check"])]
     disable_certificate_check: bool,
 
+    /// Unique agent identifier, advertised on the control channel
+    #[arg(long, id = "agent-id", value_name = "ID")]
+    agent_id: Option<String>,
+
+    /// Enable full packet capture from this Suricata pcap-log spool directory
+    #[arg(long, id = "pcap.directory", value_name = "DIR")]
+    pcap_directory: Option<String>,
+
+    /// Filename prefix of the pcap spool files
+    #[arg(long, id = "pcap.prefix", value_name = "PREFIX")]
+    pcap_prefix: Option<String>,
+
     /// Log file names/patterns to process
     filenames: Vec<String>,
 }
@@ -117,10 +131,44 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         .get_bool("disable-certificate-check")
         .unwrap_or(false);
 
+    // One identity for everything this agent does: stamped on imported
+    // events and claimed on the packet-capture control channel, so the
+    // server can route an event's capture request back to this agent.
+    #[cfg(not(windows))]
+    let (agent_id, agent_hostname) = agent_identity(&config);
+    #[cfg(windows)]
+    let (agent_id, _) = agent_identity(&config);
+
+    // The packet-capture channel is optional and deliberately independent of
+    // the EVE importer tasks below. Direct-to-Elasticsearch mode has no
+    // EveBox server connection to carry control messages, so it cannot serve
+    // remote capture requests.
+    #[cfg(not(windows))]
+    let pcap_channel = build_pcap_channel(
+        &config,
+        &server_url,
+        disable_certificate_check,
+        &agent_id,
+        &agent_hostname,
+    )?;
+    #[cfg(windows)]
+    let pcap_channel = {
+        if config.get_bool("pcap.enabled").unwrap_or(false)
+            || pcap_directory_from_command_line(&config)
+        {
+            warn!("Full packet capture is not supported on Windows; ignoring pcap configuration");
+        }
+        None::<()>
+    };
+
     // Collect eve filenames.
     let eve_filenames = get_eve_filenames(&config)?;
     if eve_filenames.is_empty() {
-        bail!("No EVE log files provided. Exiting as there is nothing to do.");
+        if pcap_channel.is_some() {
+            info!("No EVE log files provided; running in pcap-only mode (events are not shipped)");
+        } else {
+            bail!("No EVE log files provided. Exiting as there is nothing to do.");
+        }
     }
 
     let enable_geoip = args_matches
@@ -131,6 +179,7 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
 
     let mut filters = EveFilterChain::with_defaults();
     filters.add_filter(eve::filters::AddAgentHostnameFilter::default());
+    filters.add_filter(eve::filters::AddAgentIdFilter::new(agent_id));
 
     if enable_geoip {
         match crate::geoip::GeoIP::open(None) {
@@ -218,6 +267,15 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         data_directory
     };
 
+    // This forever-retrying task owns its own lifecycle. Keep it outside the
+    // fail-fast EVE processor set so a control-channel reconnect can never
+    // terminate event shipping, and pcap-only mode can have an empty set.
+    #[cfg(not(windows))]
+    if let Some(channel) = pcap_channel {
+        info!("Starting full packet capture control channel");
+        tokio::spawn(crate::agent::channel::run(channel));
+    }
+
     let mut tasks = FuturesUnordered::new();
 
     loop {
@@ -239,11 +297,93 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         }
         tokio::select! {
             _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {}
-            _ = tasks.select_next_some() => {
+            _ = tasks.select_next_some(), if !tasks.is_empty() => {
                 bail!("A log processing task unexpectedly aborted");
             }
         }
     }
+}
+
+/// True when a pcap spool directory was passed on the command line, which
+/// enables packet capture without a `pcap.enabled` configuration value.
+fn pcap_directory_from_command_line(config: &Config) -> bool {
+    matches!(
+        config.args.value_source("pcap.directory"),
+        Some(clap::parser::ValueSource::CommandLine)
+    )
+}
+
+/// The identity this agent presents everywhere: the configured `agent-id`
+/// (or the system hostname when unset) plus the hostname itself.
+fn agent_identity(config: &Config) -> (String, String) {
+    let hostname = gethostname::gethostname().to_string_lossy().to_string();
+    let agent_id = config
+        .get_string("agent-id")
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| hostname.clone());
+    (agent_id, hostname)
+}
+
+/// Build the persistent packet-capture channel configuration, or return
+/// `None` when it is disabled or incompatible with the selected output.
+#[cfg(not(windows))]
+fn build_pcap_channel(
+    config: &Config,
+    server_url: &str,
+    disable_certificate_check: bool,
+    agent_id: &str,
+    hostname: &str,
+) -> anyhow::Result<Option<crate::agent::channel::ChannelConfig>> {
+    // A spool directory on the command line is an explicit runtime request:
+    // it enables the channel without (or in spite of) `pcap.enabled` in the
+    // configuration file.
+    if !pcap_directory_from_command_line(config) {
+        match config.get_bool("pcap.enabled") {
+            Ok(true) => {}
+            Ok(false) => return Ok(None),
+            Err(_) => {
+                let value = config
+                    .get_string("pcap.enabled")
+                    .unwrap_or_else(|| "<non-boolean>".to_string());
+                error!(
+                    "Invalid value {value:?} for pcap.enabled: use true or false \
+                     (YAML reads yes/no as strings, not booleans). Full packet capture is DISABLED."
+                );
+                return Ok(None);
+            }
+        }
+    }
+
+    if config.get_bool("elasticsearch.enabled")? {
+        warn!(
+            "Full packet capture is not supported with direct Elasticsearch output; ignoring pcap configuration"
+        );
+        return Ok(None);
+    }
+
+    let Some(directory) = config
+        .get_string("pcap.directory")
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    else {
+        warn!("pcap is enabled but pcap.directory is missing or blank; pcap disabled");
+        return Ok(None);
+    };
+    let prefix = config
+        .get_string("pcap.prefix")
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let server_url = crate::agent::tls::normalize_server_url(server_url)?;
+    info!("Full packet capture enabled: spool {directory} as agent {agent_id:?}");
+
+    Ok(Some(crate::agent::channel::ChannelConfig {
+        server_url,
+        agent_id: agent_id.to_string(),
+        hostname: hostname.to_string(),
+        spool: crate::pcap::SpoolConfig::new(directory, prefix),
+        disable_certificate_check,
+    }))
 }
 
 fn start_runner(
@@ -405,4 +545,175 @@ fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathB
         }
     }
     None
+}
+
+#[cfg(all(test, not(windows)))]
+mod tests {
+    use super::*;
+
+    fn yaml_config(yaml: &str) -> (tempfile::TempDir, Config) {
+        yaml_config_with_args(yaml, &[])
+    }
+
+    /// Build the channel the way `main()` does: the agent identity is
+    /// resolved from the same configuration.
+    fn channel_from(
+        config: &Config,
+        server_url: &str,
+    ) -> anyhow::Result<Option<crate::agent::channel::ChannelConfig>> {
+        let (agent_id, hostname) = agent_identity(config);
+        build_pcap_channel(config, server_url, false, &agent_id, &hostname)
+    }
+
+    fn yaml_config_with_args(yaml: &str, args: &[&str]) -> (tempfile::TempDir, Config) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("agent.yaml");
+        std::fs::write(&path, yaml).unwrap();
+        let argv: Vec<&str> = std::iter::once("agent")
+            .chain(args.iter().copied())
+            .collect();
+        let matches = Args::command().get_matches_from(argv);
+        let config = Config::new(matches, path.to_str()).unwrap();
+        (dir, config)
+    }
+
+    #[test]
+    fn pcap_channel_reads_spool_and_agent_identity() {
+        let (dir, config) = yaml_config(
+            "elasticsearch:\n  enabled: false\nagent-id: edge-a\npcap:\n  enabled: true\n  directory: /captures\n  prefix: '  log.pcap  '\n",
+        );
+        let channel = channel_from(&config, "https://evebox.test")
+            .unwrap()
+            .unwrap();
+        assert_eq!(channel.agent_id, "edge-a");
+        assert_eq!(channel.server_url, "https://evebox.test");
+        assert_eq!(channel.spool.directory, PathBuf::from("/captures"));
+        assert_eq!(channel.spool.prefix.as_deref(), Some("log.pcap"));
+        drop(dir);
+    }
+
+    #[test]
+    fn command_line_agent_id_overrides_configuration_file() {
+        let (_dir, config) = yaml_config_with_args(
+            "elasticsearch:\n  enabled: false\nagent-id: from-yaml\npcap:\n  enabled: true\n  directory: /captures\n",
+            &["--agent-id", "suri-9"],
+        );
+        let channel = channel_from(&config, "https://evebox.test")
+            .unwrap()
+            .unwrap();
+        assert_eq!(channel.agent_id, "suri-9");
+    }
+
+    #[test]
+    fn blank_directory_disables_channel_and_other_strings_are_normalized() {
+        let (_dir, blank_directory) = yaml_config(
+            "elasticsearch:\n  enabled: false\npcap:\n  enabled: true\n  directory: '   '\n",
+        );
+        assert!(
+            channel_from(&blank_directory, "http://evebox.test")
+                .unwrap()
+                .is_none()
+        );
+
+        let (_dir, blank_agent_id) = yaml_config(
+            "elasticsearch:\n  enabled: false\nagent-id: '   '\npcap:\n  enabled: true\n  directory: '  /captures  '\n  prefix: '   '\n",
+        );
+        let channel = channel_from(
+            &blank_agent_id,
+            "https://evebox.test/base///?ignored=yes#fragment",
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(channel.spool.directory, PathBuf::from("/captures"));
+        assert_eq!(channel.spool.prefix, None);
+        assert_eq!(
+            channel.agent_id,
+            gethostname::gethostname().to_string_lossy()
+        );
+        assert_eq!(channel.server_url, "https://evebox.test/base");
+    }
+
+    #[test]
+    fn invalid_pcap_server_url_fails_channel_configuration() {
+        let (_dir, config) = yaml_config(
+            "elasticsearch:\n  enabled: false\npcap:\n  enabled: true\n  directory: /captures\n",
+        );
+        assert!(channel_from(&config, "ws://evebox.test").is_err());
+        assert!(channel_from(&config, "ftp://evebox.test").is_err());
+    }
+
+    #[test]
+    fn command_line_pcap_directory_implies_enabled() {
+        // No pcap block in the configuration file at all.
+        let (_dir, config) = yaml_config_with_args(
+            "elasticsearch:\n  enabled: false\n",
+            &["--pcap-directory", "/captures", "--pcap-prefix", "log.pcap"],
+        );
+        let channel = channel_from(&config, "https://evebox.test")
+            .unwrap()
+            .unwrap();
+        assert_eq!(channel.spool.directory, PathBuf::from("/captures"));
+        assert_eq!(channel.spool.prefix.as_deref(), Some("log.pcap"));
+    }
+
+    #[test]
+    fn command_line_pcap_directory_overrides_configuration_file() {
+        // The command line wins over both `enabled: false` and the file's
+        // directory, while unrelated file values (the prefix) still apply.
+        let (_dir, config) = yaml_config_with_args(
+            "elasticsearch:\n  enabled: false\npcap:\n  enabled: false\n  directory: /from-yaml\n  prefix: yaml.\n",
+            &["--pcap-directory", "/from-cli"],
+        );
+        let channel = channel_from(&config, "https://evebox.test")
+            .unwrap()
+            .unwrap();
+        assert_eq!(channel.spool.directory, PathBuf::from("/from-cli"));
+        assert_eq!(channel.spool.prefix.as_deref(), Some("yaml."));
+    }
+
+    #[test]
+    fn yaml_directory_without_enabled_does_not_start_channel() {
+        // Only a command line directory implies enabled; a file directory
+        // still requires an explicit `pcap.enabled: true`.
+        let (_dir, config) =
+            yaml_config("elasticsearch:\n  enabled: false\npcap:\n  directory: /captures\n");
+        assert!(
+            channel_from(&config, "http://evebox.test")
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn direct_elasticsearch_and_non_boolean_enable_do_not_start_channel() {
+        let (_dir, direct) = yaml_config(
+            "elasticsearch:\n  enabled: true\npcap:\n  enabled: true\n  directory: /captures\n",
+        );
+        assert!(
+            channel_from(&direct, "http://evebox.test")
+                .unwrap()
+                .is_none()
+        );
+
+        let (_dir, invalid) = yaml_config(
+            "elasticsearch:\n  enabled: false\npcap:\n  enabled: definitely\n  directory: /captures\n",
+        );
+        assert!(
+            channel_from(&invalid, "http://evebox.test")
+                .unwrap()
+                .is_none()
+        );
+
+        // A command line directory implies enabled but does not override the
+        // direct Elasticsearch incompatibility.
+        let (_dir, direct_cli) = yaml_config_with_args(
+            "elasticsearch:\n  enabled: true\n",
+            &["--pcap-directory", "/captures"],
+        );
+        assert!(
+            channel_from(&direct_cli, "http://evebox.test")
+                .unwrap()
+                .is_none()
+        );
+    }
 }

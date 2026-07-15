@@ -34,7 +34,7 @@ import {
 import { prettyPrintJson } from "pretty-print-json";
 import { AggregateAlert, EcsGeo, EveDns, Event, EventWrapper } from "./types";
 import { parse_timestamp } from "./datetime";
-import { pcapErrorMessage } from "./PcapDownload";
+import { automaticPcapSourceAvailable, pcapErrorMessage } from "./PcapDownload";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import { tinykeys } from "tinykeys";
 import { eventIsArchived, eventIsEscalated, eventSetArchived } from "./event";
@@ -82,9 +82,12 @@ export function EventView() {
   const [destIpDns, setDestIpDns] = createSignal<null | any>(null);
 
   const [pcapPending, setPcapPending] = createSignal(false);
+  const [pcapSources, setPcapSources] = createSignal<API.PcapSource[]>();
 
   const hasFlowAddresses = () =>
     !!(event()?._source.src_ip && event()?._source.dest_ip);
+  const quickPcapAvailable = () =>
+    automaticPcapSourceAvailable(event()?._source, pcapSources());
 
   // Controller for the in-flight pcap download, letting the user (or
   // navigation away from the view) cancel the server-side extraction.
@@ -148,6 +151,25 @@ export function EventView() {
   // Cancel any in-flight download when leaving the view so the
   // server-side extraction is stopped too.
   onCleanup(cancelPcapDownload);
+
+  // Refresh the point-in-time source list whenever this component moves to a
+  // different event. Until discovery succeeds, the quick action stays
+  // disabled because it cannot confirm that the event's source is available.
+  createEffect(() => {
+    if (!event() || serverConfig()?.pcap == null) {
+      setPcapSources(undefined);
+      return;
+    }
+
+    setPcapSources(undefined);
+    const controller = new AbortController();
+    API.getPcapSources(controller.signal)
+      .then(setPcapSources)
+      .catch(() => {
+        // Keep the quick action disabled when availability is unknown.
+      });
+    onCleanup(() => controller.abort());
+  });
 
   console.log(`- EventView: EVENT_STORE.active_id=${eventStore.active?._id}`);
 
@@ -791,7 +813,16 @@ export function EventView() {
                 <Button
                   variant={"secondary"}
                   onclick={onPcapClick}
-                  title={pcapPending() ? "Cancel PCAP download" : undefined}
+                  disabled={!pcapPending() && !quickPcapAvailable()}
+                  title={
+                    pcapPending()
+                      ? "Cancel PCAP download"
+                      : !quickPcapAvailable()
+                        ? pcapSources() === undefined
+                          ? "Capture source availability could not be confirmed"
+                          : "This event's agent is not providing packet capture"
+                        : undefined
+                  }
                 >
                   <Show when={pcapPending()} fallback={"PCAP"}>
                     <Spinner

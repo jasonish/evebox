@@ -9,20 +9,28 @@
 //! blocking [`fetch`] entry point is shared by the `evebox pcap
 //! extract` command and the server API.
 
+// The blocking extraction path links libpcap and is compiled out on
+// Windows; the request/filter/spool/timeframe types stay portable so a
+// Windows server can describe fetches dispatched to remote agents.
+#[cfg(not(windows))]
 mod fetch;
 mod filter;
+mod request;
+#[cfg(not(windows))]
 mod spool;
 mod timeframe;
+#[cfg(not(windows))]
 mod writer;
 
-#[cfg(test)]
+#[cfg(all(test, not(windows)))]
 pub(crate) mod testutil;
 
-pub(crate) use fetch::{
-    FetchError, FetchStats, Limits, PcapFilter, PcapRequest, PcapSource, fetch,
-};
+#[cfg(not(windows))]
+pub(crate) use fetch::{FetchError, fetch};
 pub(crate) use filter::FlowSelector;
-pub(crate) use spool::{SpoolConfig, walk_files};
+pub(crate) use request::{FetchStats, Limits, PcapFilter, PcapRequest, PcapSource, SpoolConfig};
+#[cfg(not(windows))]
+pub(crate) use spool::walk_files;
 pub(crate) use timeframe::{
     Window, derive_window, selector_from_event, window_around_event, window_from_start,
 };

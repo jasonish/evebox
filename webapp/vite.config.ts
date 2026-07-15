@@ -14,7 +14,10 @@ export default defineConfig({
   server: {
     port: 3636,
     proxy: {
-      "/api": "http://127.0.0.1:5636",
+      "/api": {
+        target: "http://127.0.0.1:5636",
+        ws: true,
+      },
       "/sse": "http://127.0.0.1:5636",
     },
   },

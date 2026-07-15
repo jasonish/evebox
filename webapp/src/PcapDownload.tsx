@@ -7,6 +7,7 @@ import {
   createUniqueId,
   For,
   onCleanup,
+  onMount,
   Show,
 } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
@@ -59,6 +60,28 @@ function defaultMaxSize(): string {
   return bytes != null ? formatMaxSize(bytes) : "";
 }
 
+// Whether automatic routing has a currently available packet-capture source.
+// Stamped events require their importing agent, while a standalone request can
+// route automatically only when exactly one source exists. Older event formats
+// keep the backend's more detailed sensor/hostname routing behavior.
+export function automaticPcapSourceAvailable(
+  event: EventSource | undefined,
+  sources: API.PcapSource[] | undefined,
+): boolean {
+  if (sources === undefined || sources.length === 0) {
+    return false;
+  }
+
+  const rawAgentId = event?.evebox?.agent?.id;
+  const agentId = typeof rawAgentId === "string" ? rawAgentId.trim() : "";
+  if (agentId) {
+    return sources.some(
+      (source) => source.kind === "agent" && source.name === agentId,
+    );
+  }
+  return event !== undefined || sources.length === 1;
+}
+
 // Map a structured pcap error to a user-facing message. Shared by the
 // event view download button and the standalone page.
 export function pcapErrorMessage(err: any): string {
@@ -74,7 +97,12 @@ export function pcapErrorMessage(err: any): string {
     case "bad-filter":
       return `Invalid capture filter: ${err.message}`;
     case "not-configured":
-      return "Packet capture is not configured.";
+    case "no-source":
+      return "No capture source is available for this request.";
+    case "ambiguous-source":
+      return "Multiple capture sources could serve this request; select a source and try again.";
+    case "source-busy":
+      return "The capture source is busy; try again shortly.";
     default:
       return err.message ?? "PCAP request failed.";
   }
@@ -358,9 +386,31 @@ export function PcapDownload() {
   const [start, setStart] = createSignal(to_datetime_local_input());
   const [duration, setDuration] = createSignal("1m");
   const [maxSize, setMaxSize] = createSignal(defaultMaxSize());
+  const [sources, setSources] = createSignal<API.PcapSource[]>([]);
+  const [sourcesLoaded, setSourcesLoaded] = createSignal(false);
+  const [sourcesFailed, setSourcesFailed] = createSignal(false);
+  const [source, setSource] = createSignal("");
+  const sourceId = createUniqueId();
   let requestedEventId: string | undefined;
 
   const eventId = () => searchParams.event_id?.trim() || undefined;
+
+  // Available sources are point-in-time (agents connect and go away);
+  // fetch on entry and let "Automatic" stay correct regardless.
+  onMount(() => {
+    const controller = new AbortController();
+    API.getPcapSources(controller.signal)
+      .then((available) => {
+        setSources(available);
+        setSourcesLoaded(true);
+      })
+      .catch((err: any) => {
+        if (err?.name !== "AbortError") {
+          setSourcesFailed(true);
+        }
+      });
+    onCleanup(() => controller.abort());
+  });
 
   createEffect(() => {
     const id = eventId();
@@ -399,7 +449,17 @@ export function PcapDownload() {
       });
   });
 
+  const automaticSourceAvailable = () =>
+    automaticPcapSourceAvailable(
+      eventContext(),
+      sourcesLoaded() ? sources() : undefined,
+    );
+
   const download = () => {
+    if (!automaticSourceAvailable() && source() === "") {
+      addError("Select a capture source.");
+      return;
+    }
     if (!is_valid_datetime_local(start())) {
       addError("Enter a valid start time.");
       return;
@@ -417,6 +477,9 @@ export function PcapDownload() {
     }
     if (maxSize().trim() !== "") {
       params.maxSize = maxSize();
+    }
+    if (source() !== "") {
+      params.source = source();
     }
     dl.download(params);
   };
@@ -455,6 +518,55 @@ export function PcapDownload() {
                       {eventId()}.
                     </div>
                   </Show>
+                  <Show when={sourcesFailed()}>
+                    <div class={"alert alert-warning"}>
+                      Could not load the available capture sources.
+                    </div>
+                  </Show>
+                  <Show when={sourcesLoaded() && sources().length === 0}>
+                    <div class={"alert alert-warning"}>
+                      No capture sources are currently available.
+                    </div>
+                  </Show>
+                  <Show when={sources().length > 0}>
+                    <Form.Group class={"mb-3"} controlId={sourceId}>
+                      <Form.Label>Capture source</Form.Label>
+                      <Form.Select
+                        value={source()}
+                        onChange={(e) => setSource(e.currentTarget.value)}
+                      >
+                        <option
+                          value={""}
+                          disabled={!automaticSourceAvailable()}
+                        >
+                          {automaticSourceAvailable()
+                            ? "Automatic (from event or sole source)"
+                            : "Select a capture source"}
+                        </option>
+                        <For each={sources()}>
+                          {(s) => (
+                            <option value={s.name}>
+                              {s.name}
+                              {s.kind === "agent" ? " — agent" : ""}
+                            </option>
+                          )}
+                        </For>
+                      </Form.Select>
+                      <Show when={!automaticSourceAvailable()}>
+                        <Form.Text class={"text-muted"}>
+                          <Show
+                            when={eventContext()}
+                            fallback={
+                              "Multiple capture sources are available; select one."
+                            }
+                          >
+                            This event's agent is not providing packet capture.
+                            Select another source for a custom capture.
+                          </Show>
+                        </Form.Text>
+                      </Show>
+                    </Form.Group>
+                  </Show>
                   <PcapFilterFields
                     filter={filter()}
                     setFilter={setFilter}
@@ -469,7 +581,9 @@ export function PcapDownload() {
                   <PcapDownloadButton
                     pending={dl.pending()}
                     disabled={
-                      eventContextLoading() || !is_valid_datetime_local(start())
+                      eventContextLoading() ||
+                      !is_valid_datetime_local(start()) ||
+                      (!automaticSourceAvailable() && source() === "")
                     }
                     onDownload={download}
                     onCancel={dl.cancel}

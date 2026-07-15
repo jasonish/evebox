@@ -1,6 +1,19 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+/// Build a reqwest client honoring the agent's certificate-check option.
+/// Shared by the event importer and the packet-capture upload channel so the
+/// TLS policy cannot drift between them.
+pub(crate) fn build_reqwest_client(
+    disable_certificate_validation: bool,
+) -> Result<reqwest::Client, reqwest::Error> {
+    let mut builder = reqwest::Client::builder();
+    if disable_certificate_validation {
+        builder = builder.danger_accept_invalid_certs(true);
+    }
+    builder.build()
+}
+
 // EveBox agent client (to EveBox server)
 #[derive(Clone, Debug)]
 pub(crate) struct Client {
@@ -26,11 +39,7 @@ impl Client {
     }
 
     pub fn get_http_client(&self) -> Result<reqwest::Client, reqwest::Error> {
-        let mut builder = reqwest::Client::builder();
-        if self.disable_certificate_validation {
-            builder = builder.danger_accept_invalid_certs(true);
-        }
-        builder.build()
+        build_reqwest_client(self.disable_certificate_validation)
     }
 
     pub fn post(&self, path: &str) -> Result<reqwest::RequestBuilder, reqwest::Error> {

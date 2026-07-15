@@ -116,6 +116,14 @@ geoip:
   # updateing the geo database itself.
   database: /etc/evebox/GeoLite2-City.mmdb
 
+# Optional server-local Suricata pcap-log spool, presented as the pcap source
+# "(server)". It serves events ingested by this server's own input. Remote
+# agents do not require this block; they advertise their own configured spools
+# over the agent control channel.
+#pcap:
+#  directory: /var/log/suricata/pcap
+#  prefix: log.
+
 # Event services: links that will be provided on events to link to additonal
 # services.
 event-services:

@@ -20,7 +20,6 @@ mod file;
 mod geoip;
 mod importer;
 mod path;
-#[cfg(not(windows))]
 mod pcap;
 mod prelude;
 mod queryparser;

@@ -7,6 +7,17 @@ use serde::Serialize;
 
 use crate::sqlite::importer::SqliteEventConsumerMetrics;
 
+/// The `/api/metrics` response: the maintained counters plus gauges that are
+/// computed from live state at read time.
+#[derive(Serialize)]
+pub(crate) struct MetricsSnapshot {
+    #[serde(flatten)]
+    pub metrics: Arc<Metrics>,
+    /// Read directly from the agent registry so same-name replacement and
+    /// generation-safe removal cannot make a maintained gauge drift.
+    pub agents_connected: usize,
+}
+
 #[derive(Debug, Default, Serialize)]
 pub(crate) struct Metrics {
     pub start_time: crate::datetime::DateTime,

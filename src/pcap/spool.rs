@@ -9,7 +9,6 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 // Files grouped by (directory, basename, thread-id). The directory is part
 // of the key as a rotation sequence never spans directories, and the pruning
@@ -19,27 +18,7 @@ pub(crate) type SortedFiles = HashMap<(PathBuf, String, u64), Vec<(u64, PathBuf)
 const MIN_ROTATION_TIMESTAMP: u64 = 946_684_800; // 2000-01-01 00:00:00 UTC
 const MAX_ROTATION_TIMESTAMP: u64 = 4_102_444_800; // 2100-01-01 00:00:00 UTC
 
-/// A directory of PCAP spool files to extract packets from.
-#[derive(Debug, Clone)]
-pub(crate) struct SpoolConfig {
-    pub(crate) directory: PathBuf,
-    /// If set, only files beginning with the prefix will be considered.
-    pub(crate) prefix: Option<String>,
-    /// File-SELECTION slack: widens the [start, end] window used to prune
-    /// candidate files (not the per-packet gate). The CLI uses ZERO to
-    /// preserve its historical behavior; the server will use 60s.
-    pub(crate) margin: Duration,
-}
-
-impl SpoolConfig {
-    pub(crate) fn new(directory: impl Into<PathBuf>, prefix: Option<String>) -> Self {
-        Self {
-            directory: directory.into(),
-            prefix,
-            margin: Duration::from_secs(60),
-        }
-    }
-}
+use super::request::SpoolConfig;
 
 /// Discover spool files grouped by rotation sequence, pruned to the files
 /// that could contain packets in `[start, end]` (unix microseconds, widened
@@ -256,6 +235,7 @@ fn parse_filename(filename: &OsStr) -> Option<(String, u64, u64)> {
 mod test {
     use super::*;
     use std::ffi::OsString;
+    use std::time::Duration;
 
     #[test]
     fn test_parse_filename_with_thread() {

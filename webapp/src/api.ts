@@ -494,6 +494,8 @@ export namespace API {
   //   - maxSize: per-request output cap ("200mb", "1gb", bare bytes, or
   //     "unlimited"/"0"). Native GET may raise or lift the server
   //     default; buffered POST may only keep or lower it.
+  //   - source: explicit local/agent source name. Normally omitted because
+  //     event identity or the sole available source resolves it.
   export interface PcapRequestParams {
     eventId?: string;
     filter?: string;
@@ -502,6 +504,7 @@ export namespace API {
     before?: string;
     after?: string;
     maxSize?: string;
+    source?: string;
   }
 
   // Build the server's snake_case query params from the camelCase
@@ -517,6 +520,7 @@ export namespace API {
     if (params.before !== undefined) q.set("before", params.before);
     if (params.after !== undefined) q.set("after", params.after);
     if (params.maxSize !== undefined) q.set("max_size", params.maxSize);
+    if (params.source !== undefined) q.set("source", params.source);
     return q;
   }
 
@@ -542,6 +546,26 @@ export namespace API {
       }
     }
     return new PcapError(code, message);
+  }
+
+  // A selectable pcap source: the server-local spool (kind "server",
+  // always named "(server)") or a connected agent (kind "agent").
+  export interface PcapSource {
+    name: string;
+    kind: string;
+  }
+
+  // The pcap sources a request's `source` parameter may select right
+  // now. Used to populate the custom download form's source picker.
+  export async function getPcapSources(
+    signal?: AbortSignal,
+  ): Promise<PcapSource[]> {
+    const response = await fetch("api/pcap/sources", { signal: signal });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch pcap sources: ${response.status}`);
+    }
+    const json = await response.json();
+    return json.sources ?? [];
   }
 
   // Pre-flight a pcap request: GET /api/pcap/validate performs structural

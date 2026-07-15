@@ -30,6 +30,7 @@ use self::genericquery::TimeRange;
 use self::util::parse_duration;
 
 pub(crate) mod admin;
+pub(crate) mod agent;
 pub(crate) mod agg;
 pub(crate) mod alerts;
 pub(crate) mod count;
@@ -38,7 +39,6 @@ pub(crate) mod eve2pcap;
 pub(crate) mod firehose;
 pub(crate) mod genericquery;
 pub(crate) mod login;
-#[cfg(not(windows))]
 pub(crate) mod pcap;
 pub(crate) mod prelude;
 pub(crate) mod sqlite;
@@ -53,6 +53,8 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/config", get(config))
         .route("/api/version", get(get_version))
         .route("/api/user", get(get_user))
+        .route("/api/agent/ws", get(agent::websocket))
+        .route("/api/agents", get(agent::get_agents))
         .route("/api/alerts", get(alerts::alerts))
         .route("/api/events", get(events))
         .route("/api/event/{id}", get(get_event_by_id))
@@ -100,13 +102,14 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
             "/api/stats/agg/diff/by-sensor",
             get(stats::agg_differential_by_sensor),
         );
-    // The capture endpoints are compiled out on Windows along with the
-    // extraction library.
-    #[cfg(not(windows))]
-    let router = router
-        .route("/api/pcap", post(pcap::post_pcap).get(pcap::get_pcap))
-        .route("/api/pcap/validate", get(pcap::validate_pcap));
     router
+        .route(
+            crate::agent::protocol::AGENT_PCAP_UPLOAD_ROUTE,
+            post(agent::upload_pcap).layer(agent::upload_body_limit()),
+        )
+        .route("/api/pcap", post(pcap::post_pcap).get(pcap::get_pcap))
+        .route("/api/pcap/validate", get(pcap::validate_pcap))
+        .route("/api/pcap/sources", get(pcap::get_sources))
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -137,13 +140,12 @@ pub(crate) async fn config(
         }),
         EventRepo::SQLite(_) => None,
     };
-    // Non-null only when packet capture is actually available: a source
-    // is registered and the feature is
+    // Non-null only when packet capture is actually available: a local source
+    // is configured or a pcap-capable agent is connected, and the feature is
     // compiled in (not Windows). The value carries the defaults the
     // download UI pre-fills without a second request, and the webapp
     // keys the PCAP controls off its presence.
-    #[cfg(not(windows))]
-    let pcap = if context.pcap.has_source() {
+    let pcap = if context.pcap.has_source() || context.agents.has_pcap() {
         let settings = &context.pcap.settings;
         json!({
             "max_size_bytes": settings.max_bytes,
@@ -151,8 +153,6 @@ pub(crate) async fn config(
     } else {
         serde_json::Value::Null
     };
-    #[cfg(windows)]
-    let pcap = serde_json::Value::Null;
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
         "event-services": context.event_services,
@@ -477,7 +477,10 @@ pub(crate) async fn metrics(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
 ) -> impl IntoResponse {
-    Json(context.metrics.clone())
+    Json(crate::server::metrics::MetricsSnapshot {
+        metrics: context.metrics.clone(),
+        agents_connected: context.agents.connected(),
+    })
 }
 
 pub(crate) async fn events(

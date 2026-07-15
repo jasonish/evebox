@@ -11,92 +11,10 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tokio_util::sync::CancellationToken;
 
-use super::filter::{FlowSelector, vlan_wrapped};
-use super::spool::{self, SpoolConfig};
+use super::filter::vlan_wrapped;
+use super::request::{FetchStats, PcapFilter, PcapRequest, PcapSource};
+use super::spool;
 use super::writer::PcapWriter;
-
-/// The local packet capture input served by the extraction engine.
-#[derive(Debug, Clone)]
-pub(crate) enum PcapSource {
-    /// A directory containing rotating packet capture files.
-    Spool(SpoolConfig),
-    /// Explicit packet capture files, without sibling discovery or
-    /// filename-based time pruning.
-    Files(Vec<PathBuf>),
-}
-
-/// Resource limits for a fetch.
-#[derive(Debug, Clone)]
-pub(crate) struct Limits {
-    /// Maximum number of bytes to write to the output, including the pcap
-    /// file header.
-    pub(crate) max_bytes: u64,
-    /// Cap on SCAN time. Time spent writing or flushing the output —
-    /// including consumer backpressure, e.g. a slow but live download
-    /// client — does not count against it.
-    pub(crate) deadline: Option<Duration>,
-    /// Output is flushed at least this often (in scan time), so
-    /// consumers see early matches promptly even when the output
-    /// buffers below its transport's chunk size.
-    pub(crate) flush_interval: Duration,
-}
-
-impl Default for Limits {
-    fn default() -> Self {
-        Self {
-            max_bytes: u64::MAX,
-            deadline: None,
-            flush_interval: Duration::from_millis(250),
-        }
-    }
-}
-
-/// The packet filter of a [`PcapRequest`].
-#[derive(Debug)]
-pub(crate) enum PcapFilter {
-    /// A user-supplied BPF expression (libpcap syntax), compiled for
-    /// each capture's link type and applied manually per packet so
-    /// cancellation, the deadline and the time gate remain
-    /// interruptible. Files whose link type rejects the expression
-    /// are skipped.
-    Expression(String),
-    /// A flow selector, rendered to BPF per file: the VLAN-wrapped
-    /// expression where the file's link type supports the `vlan`
-    /// keyword, falling back to the unwrapped expression on link
-    /// types without VLAN support (raw IP, loopback, Linux cooked,
-    /// ...). The compiled program is applied manually per packet so
-    /// cancellation and the deadline are observed with per-packet
-    /// granularity.
-    Flow(FlowSelector),
-}
-
-/// A request for packets from a PCAP spool.
-#[derive(Debug, Default)]
-pub(crate) struct PcapRequest {
-    /// The packet filter to apply.
-    pub(crate) filter: Option<PcapFilter>,
-    /// Inclusive start of the time window, unix microseconds.
-    pub(crate) start: Option<u64>,
-    /// Inclusive end of the time window, unix microseconds.
-    pub(crate) end: Option<u64>,
-    pub(crate) limits: Limits,
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct FetchStats {
-    /// Number of packets written to the output.
-    pub(crate) packets: u64,
-    /// Bytes written to the output, including the pcap file header.
-    pub(crate) bytes: u64,
-    /// Files successfully opened.
-    pub(crate) files_scanned: u32,
-    /// Files that failed to open or read (rotation race).
-    pub(crate) files_vanished: u32,
-    /// The fetch was stopped by max_bytes or the deadline.
-    pub(crate) truncated: bool,
-    /// Link type of the first opened file, if any.
-    pub(crate) linktype: Option<pcap::Linktype>,
-}
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum FetchError {
@@ -433,7 +351,7 @@ fn open_group_file(
     stats.files_scanned += 1;
     let linktype = capture.get_datalink();
     if stats.linktype.is_none() {
-        stats.linktype = Some(linktype);
+        stats.linktype = Some(linktype.0);
     }
     // Compile, but do not install, the filter. Applying it manually in
     // refill ensures next_packet() returns every packet, keeping the
@@ -732,6 +650,7 @@ mod test {
         LINKTYPE_RAW, count_packets, ipv4_datagram, ipv4_packet, ports, write_pcap_file,
         write_pcap_file_bytes, write_pcap_file_with_linktype, write_raw_pcap_file,
     };
+    use crate::pcap::{FlowSelector, Limits, SpoolConfig};
     use std::path::Path;
 
     // Sizes of the pcap stream elements for the test UDP packet, used by
@@ -790,7 +709,7 @@ mod test {
         assert_eq!(stats.files_vanished, 0);
         assert!(!stats.truncated);
         assert_eq!(stats.bytes, out.len() as u64);
-        assert_eq!(stats.linktype, Some(pcap::Linktype::ETHERNET));
+        assert_eq!(stats.linktype, Some(pcap::Linktype::ETHERNET.0));
         assert_eq!(count_packets_in(tempdir.path(), &out), 2);
     }
 
@@ -1081,7 +1000,7 @@ mod test {
                 assert_eq!(stats.bytes, 0);
                 assert_eq!(stats.files_scanned, 1);
                 assert!(!stats.truncated);
-                assert_eq!(stats.linktype, Some(pcap::Linktype::ETHERNET));
+                assert_eq!(stats.linktype, Some(pcap::Linktype::ETHERNET.0));
             }
             other => panic!("expected NoMatch, got {:?}", other),
         }
@@ -1147,13 +1066,13 @@ mod test {
         let stats = result.unwrap();
         assert_eq!(stats.packets, 2);
         assert_eq!(stats.files_scanned, 1);
-        assert_ne!(stats.linktype, Some(pcap::Linktype::ETHERNET));
+        assert_ne!(stats.linktype, Some(pcap::Linktype::ETHERNET.0));
 
         // The output keeps the raw-IP link type and is readable.
         let path = tempdir.path().join("fetch-output.pcap");
         std::fs::write(&path, &out).unwrap();
         let capture = pcap::Capture::from_file(&path).unwrap();
-        assert_eq!(Some(capture.get_datalink()), stats.linktype);
+        assert_eq!(Some(capture.get_datalink().0), stats.linktype);
         assert_eq!(count_packets(&path), 2);
     }
 

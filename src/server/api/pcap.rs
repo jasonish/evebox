@@ -2,37 +2,52 @@
 // SPDX-License-Identifier: MIT
 
 //! Full packet capture API: `POST /api/pcap` extracts packets from
-//! the server's configured local pcap source.
+//! a server-local capture source or a connected agent.
 
 use std::collections::VecDeque;
+#[cfg(not(windows))]
 use std::io::Write;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering};
+#[cfg(not(windows))]
+use std::sync::atomic::AtomicU64;
+#[cfg(not(windows))]
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 use axum::body::Body;
 use axum::extract::{ConnectInfo, Extension, Json, Query, State};
 use axum::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
 use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
+use base64::prelude::*;
 use bytes::Bytes;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-#[cfg(test)]
-use crate::pcap::SpoolConfig;
-use crate::pcap::{
-    self, FetchError, FetchStats, FlowSelector, Limits, PcapFilter, PcapRequest, PcapSource,
+use crate::agent::protocol::{
+    CONTROL_MESSAGE_MAX_BYTES, PcapResult, PcapResultCode, PcapUploadStatus, ServerMessage,
+    WireLimits, WirePcapFilter,
 };
+#[cfg(all(test, not(windows)))]
+use crate::pcap::SpoolConfig;
+use crate::pcap::{self, FetchStats, FlowSelector, Limits, PcapFilter, PcapRequest};
+#[cfg(not(windows))]
+use crate::pcap::{FetchError, PcapSource};
 use crate::prelude::*;
 use crate::server::ServerContext;
+use crate::server::agents::AgentEntry;
 use crate::server::main::SessionExtractor;
+use crate::server::pcap::tasks::{self, RemoteOutcome, UploadState};
+use crate::server::pcap::{ResolvedPcapSource, RouteError};
 
 /// Chunk size streamed to the client; the writer buffers extraction
 /// output up to this before pushing a frame.
+#[cfg(not(windows))]
 const CHUNK_SIZE: usize = 64 * 1024;
 
-static PCAP_CONTENT_TYPE: HeaderValue = HeaderValue::from_static("application/vnd.tcpdump.pcap");
+static PCAP_CONTENT_TYPE: HeaderValue =
+    HeaderValue::from_static(crate::agent::protocol::PCAP_CONTENT_TYPE);
 
 /// The `POST /api/pcap` request body. All fields are optional; the
 /// combination present selects the mode (see [`build_request`]). Old
@@ -68,6 +83,11 @@ pub(crate) struct PcapRequestBody {
     /// bounded. Absent keeps the server default.
     #[serde(default)]
     pub max_size: Option<String>,
+    /// Optional pcap source name. Event requests normally route by
+    /// sensor identity; standalone requests use this when more than
+    /// one local/remote source is available.
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 /// `POST /api/pcap`: bounded, buffered quick extraction for an event's flow.
@@ -114,6 +134,43 @@ pub(crate) async fn get_pcap(
     }
 }
 
+/// `GET /api/pcap/sources`: the pcap source names a request's `source`
+/// parameter may select right now — the local source (when configured) and
+/// the connected pcap-capable agents. The webapp's custom download form
+/// offers these in its source picker.
+pub(crate) async fn get_sources(
+    State(context): State<Arc<ServerContext>>,
+    _session: SessionExtractor,
+) -> Response {
+    Json(list_sources(&context)).into_response()
+}
+
+fn list_sources(context: &ServerContext) -> serde_json::Value {
+    #[derive(Serialize)]
+    struct Source {
+        name: String,
+        kind: &'static str,
+    }
+    let mut sources = Vec::new();
+    if context.pcap.has_source() {
+        sources.push(Source {
+            name: crate::server::agents::LOCAL_PCAP_SOURCE_NAME.to_string(),
+            kind: "server",
+        });
+    }
+    sources.extend(
+        context
+            .agents
+            .pcap_agents()
+            .into_iter()
+            .map(|agent| Source {
+                name: agent.name.clone(),
+                kind: "agent",
+            }),
+    );
+    serde_json::json!({ "sources": sources })
+}
+
 /// `GET /api/pcap/validate`: pre-flight for the native download. Runs
 /// the same event load and filter/window/max-size
 /// validation as a real request but takes no permit and extracts
@@ -158,12 +215,11 @@ async fn handle(
     handle_inner(context, body, user, remote, false, native).await
 }
 
-/// Shared request handling. With `dry_run` it stops right after the
-/// request is fully validated (event loaded, local source configured,
-/// filter, window and max-size all checked) and returns a 200 JSON
-/// summary without taking a permit or spawning any extraction — the
-/// pre-flight behind the browser's native download, so a bad request
-/// surfaces as an error before the download begins.
+/// Shared request handling. With `dry_run` it stops after structural
+/// validation (event loaded, capture source resolved, window and max-size
+/// checked) and returns a 200 JSON summary without taking a permit or spawning
+/// extraction. Filter compilation and capture I/O remain on the serving side;
+/// native-download errors are read from the hidden browser frame.
 async fn handle_inner(
     context: &Arc<ServerContext>,
     body: &PcapRequestBody,
@@ -183,6 +239,7 @@ async fn handle_inner(
         mode: "-",
         filter: "-".to_string(),
         window: "-".to_string(),
+        source: "-".to_string(),
         native,
     };
 
@@ -219,19 +276,12 @@ async fn handle_inner(
     };
     let event_source = event.as_ref().map(|event| &event["_source"]);
 
-    let Some(source) = context.pcap.source().cloned() else {
-        return Err(fail(
-            &audit,
-            StatusCode::SERVICE_UNAVAILABLE,
-            "not-configured",
-            "packet capture is not configured",
-        ));
-    };
-
     // WINDOW + FILTER: build the engine filter and time window from
-    // the request mode. Validates a supplied BPF filter up front, so a
-    // bad filter (or a bad time/duration) fails before any permit is
-    // taken or extraction spawned.
+    // the request mode, so a bad time or duration fails before any
+    // permit is taken or extraction spawned. A supplied BPF filter is
+    // passed through unchecked: the compiling side — the local engine
+    // or the serving agent — rejects a malformed expression and that
+    // error propagates through the download result.
     let (filter, window) = match build_request(&mut audit, body, event_source) {
         Ok(pair) => pair,
         Err(err) => return Err(fail(&audit, err.status, err.code, &err.message)),
@@ -269,13 +319,50 @@ async fn handle_inner(
         ));
     }
 
+    // Choose the configured local source or a connected pcap-capable agent only
+    // after the request has been normalized. Both producers receive the exact
+    // same effective filter, bounds, and limits.
+    let source =
+        match context
+            .pcap
+            .resolve_source(&context.agents, event_source, present(&body.source))
+        {
+            Ok(source) => source,
+            Err(RouteError::NoSource(sensor)) => {
+                let message = sensor
+                    .as_deref()
+                    .map(|sensor| format!("no pcap source connected for {sensor}"))
+                    .unwrap_or_else(|| "no pcap source is configured or connected".to_string());
+                return Err(fail(
+                    &audit,
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "no-source",
+                    &message,
+                ));
+            }
+            Err(RouteError::Ambiguous(candidates)) => {
+                let response = serde_json::json!({
+                    "error": {
+                        "code": "ambiguous-source",
+                        "message": "multiple pcap sources could serve this request",
+                        "candidates": candidates,
+                    }
+                });
+                warn!(
+                    "pcap: user={:?} remote={:?} event={:?} outcome=ambiguous-source",
+                    audit.user, audit.remote, audit.event_id
+                );
+                return Err((StatusCode::CONFLICT, Json(response)).into_response());
+            }
+        };
+    audit.source = source.name().to_string();
+
     let filename = filename(event_source, window.start.to_seconds());
 
-    // Pre-flight (native-download probe): the request is fully
-    // validated at this point — event, source, filter, window and
-    // max-size all check out — so report success as JSON without
-    // taking a permit or spawning an extraction. The browser
-    // then fetches the bytes directly via `GET /api/pcap`.
+    // Pre-flight (native-download probe): event, source, window and max-size
+    // are valid, so report success without taking a permit or spawning
+    // extraction. BPF compilation remains on the local engine or serving
+    // agent; a failure is returned as structured JSON to the browser frame.
     if dry_run {
         return Ok(axum::Json(serde_json::json!({
             "ok": true,
@@ -283,21 +370,6 @@ async fn handle_inner(
         }))
         .into_response());
     }
-
-    // A wedged source can accumulate detached extraction threads whose
-    // slot was already released (the 504/abort paths do not wait for
-    // the thread): refuse new work once the backlog doubles the
-    // concurrency backstop, instead of stacking more stuck threads.
-    let backlog = context.pcap.inflight.load(Ordering::SeqCst);
-    if backlog >= settings.max_concurrent.saturating_mul(2).max(2) {
-        return Err(fail(
-            &audit,
-            StatusCode::SERVICE_UNAVAILABLE,
-            "wedged",
-            "pcap extraction backlog; capture source may be unresponsive",
-        ));
-    }
-
     // Concurrency is effectively unbounded, but a single global slot
     // still backstops the shared blocking pool. The slot doubles as
     // the supervisor's release signal when the request settles.
@@ -325,15 +397,61 @@ async fn handle_inner(
         },
     };
 
-    stream_local(
-        context.clone(),
-        source,
-        request,
-        filename,
-        audit,
-        global_permit,
-    )
-    .await
+    let Some(source_permit) = source.try_acquire() else {
+        return Err(fail(
+            &audit,
+            StatusCode::TOO_MANY_REQUESTS,
+            "source-busy",
+            "pcap source is busy",
+        ));
+    };
+
+    match source {
+        // A Windows server cannot register a local spool, so a Local
+        // resolution is unreachable there; extraction is agent-only.
+        #[cfg(windows)]
+        ResolvedPcapSource::Local { .. } => Err(fail(
+            &audit,
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            "server-local pcap capture is not supported on this platform",
+        )),
+        #[cfg(not(windows))]
+        ResolvedPcapSource::Local { source, .. } => {
+            // A wedged local source can accumulate detached extraction threads.
+            let backlog = context.pcap.inflight.load(Ordering::SeqCst);
+            if backlog >= settings.max_concurrent.saturating_mul(2).max(2) {
+                return Err(fail(
+                    &audit,
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "wedged",
+                    "pcap extraction backlog; capture source may be unresponsive",
+                ));
+            }
+            stream_local(
+                context.clone(),
+                source,
+                request,
+                filename,
+                audit,
+                global_permit,
+                source_permit,
+            )
+            .await
+        }
+        ResolvedPcapSource::Agent(entry) => {
+            stream_agent(
+                context.clone(),
+                entry,
+                request,
+                filename,
+                audit,
+                global_permit,
+                source_permit,
+            )
+            .await
+        }
+    }
 }
 
 /// A window bound as unix microseconds for the engine; pre-epoch
@@ -356,6 +474,8 @@ struct AuditContext {
     filter: String,
     /// The effective time window, `start..end`, or "-" before known.
     window: String,
+    /// The resolved local spool or connected agent name.
+    source: String,
     /// The browser native-download form (`GET /api/pcap`): the client
     /// cannot read an error body, so an empty result becomes a valid,
     /// openable empty pcap instead of a JSON error saved as a `.pcap`.
@@ -363,11 +483,16 @@ struct AuditContext {
 }
 
 /// Response headers for a successful pcap download.
-fn pcap_headers(filename: &str) -> HeaderMap {
+fn pcap_headers(audit: &AuditContext, filename: &str) -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, PCAP_CONTENT_TYPE.clone());
     if let Ok(value) = HeaderValue::from_str(&format!("attachment; filename={filename}")) {
         headers.insert(CONTENT_DISPOSITION, value);
+    }
+    if audit.source != "-"
+        && let Ok(value) = HeaderValue::from_str(&audit.source)
+    {
+        headers.insert(HeaderName::from_static("x-evebox-pcap-source"), value);
     }
     headers
 }
@@ -410,8 +535,8 @@ async fn buffer_post_body(response: Response, max_bytes: u64) -> Response {
 /// headers commit (this empty case, single-chunk outputs whose terminal
 /// frame arrived with the data, and buffered POST responses). A native
 /// GET that truncates after streaming starts cannot revise its headers.
-fn empty_truncated_response(filename: &str) -> Response {
-    let mut headers = pcap_headers(filename);
+fn empty_truncated_response(audit: &AuditContext, filename: &str) -> Response {
+    let mut headers = pcap_headers(audit, filename);
     headers.insert(
         HeaderName::from_static("x-evebox-pcap-truncated"),
         HeaderValue::from_static("true"),
@@ -419,6 +544,8 @@ fn empty_truncated_response(filename: &str) -> Response {
     (headers, Body::empty()).into_response()
 }
 
+#[cfg(not(windows))]
+#[allow(clippy::too_many_arguments)]
 async fn stream_local(
     context: Arc<ServerContext>,
     source: PcapSource,
@@ -426,6 +553,7 @@ async fn stream_local(
     filename: String,
     audit: AuditContext,
     global_permit: tokio::sync::OwnedSemaphorePermit,
+    source_permit: tokio::sync::OwnedSemaphorePermit,
 ) -> Result<Response, Response> {
     let settings = &context.pcap.settings;
     // `request_timeout` is the first-frame deadline; once streaming,
@@ -554,7 +682,9 @@ async fn stream_local(
                             audit.user, audit.remote, audit.event_id, stats.bytes
                         );
                     }
-                    CancelCause::None => log_success(&audit, &stats),
+                    CancelCause::None => {
+                        log_success(&audit, &stats);
+                    }
                 },
                 Some(Ok(Err(err))) => {
                     if reason.get() == CancelCause::Timeout {
@@ -618,6 +748,7 @@ async fn stream_local(
             // is given up on), whether or not the browser ever drains
             // the buffered stream tail.
             drop(global_permit);
+            drop(source_permit);
         });
     }
 
@@ -696,7 +827,7 @@ async fn stream_local(
                             ..
                         }
                     );
-                    let mut headers = pcap_headers(&filename);
+                    let mut headers = pcap_headers(&audit, &filename);
                     if truncated {
                         headers.insert(
                             HeaderName::from_static("x-evebox-pcap-truncated"),
@@ -716,7 +847,7 @@ async fn stream_local(
 
     // Streaming: the disconnect guard rides in the body stream state
     // from here — dropping the body mid-stream is the client abort.
-    let headers = pcap_headers(&filename);
+    let headers = pcap_headers(&audit, &filename);
     let completion = (!audit.native).then(PostCompletion::default);
     let guard = DisconnectGuard {
         reason,
@@ -738,8 +869,546 @@ async fn stream_local(
     Ok(response)
 }
 
+/// Removes the server-side task when the request ends, and best-effort
+/// cancels the agent job unless a real terminal result already arrived. A
+/// cancel that cannot be delivered is fine: a job whose connection is gone is
+/// cancelled by the agent itself.
+struct RemoteTaskGuard {
+    tasks: Arc<tasks::Registry>,
+    entry: Arc<AgentEntry>,
+    id: String,
+    token: String,
+    cancel_on_drop: bool,
+}
+
+impl RemoteTaskGuard {
+    fn disarm_cancel(&mut self) {
+        self.cancel_on_drop = false;
+    }
+}
+
+impl Drop for RemoteTaskGuard {
+    fn drop(&mut self) {
+        if self.cancel_on_drop {
+            let _ = self.entry.try_send(ServerMessage::Cancel {
+                id: self.id.clone(),
+                token: self.token.clone(),
+            });
+        }
+        self.tasks.remove(&self.id, &self.token);
+    }
+}
+
+enum RemoteFirst {
+    Data(Bytes),
+    /// A terminal outcome (never `Wait`) plus the result's statistics for
+    /// the audit log.
+    Terminal(RemoteOutcome, Option<crate::agent::protocol::WireStats>),
+    UploadFailed(&'static str),
+    Timeout,
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn stream_agent(
+    context: Arc<ServerContext>,
+    entry: Arc<AgentEntry>,
+    request: PcapRequest,
+    filename: String,
+    audit: AuditContext,
+    global_permit: tokio::sync::OwnedSemaphorePermit,
+    source_permit: tokio::sync::OwnedSemaphorePermit,
+) -> Result<Response, Response> {
+    let request_timeout = context.pcap.settings.request_timeout;
+    let stall_timeout = context.pcap.settings.stall_timeout;
+    let id = uuid::Uuid::new_v4().to_string();
+    let token = generate_job_token();
+    let start_us = request.start.ok_or_else(|| {
+        fail(
+            &audit,
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            "normalized pcap request has no start time",
+        )
+    })?;
+    let end_us = request.end.ok_or_else(|| {
+        fail(
+            &audit,
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            "normalized pcap request has no end time",
+        )
+    })?;
+    let limits = WireLimits::try_from(&request.limits).map_err(|message| {
+        fail(
+            &audit,
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            message,
+        )
+    })?;
+    let message = ServerMessage::PcapRequest {
+        id: id.clone(),
+        token: token.clone(),
+        filter: WirePcapFilter::from(request.filter.as_ref()),
+        start_us,
+        end_us,
+        limits,
+    };
+    let control_bytes = serde_json::to_vec(&message).map_err(|_| {
+        fail(
+            &audit,
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            "could not encode remote pcap request",
+        )
+    })?;
+    if control_bytes.len() > CONTROL_MESSAGE_MAX_BYTES {
+        return Err(fail(
+            &audit,
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "control-message-too-large",
+            "pcap filter is too large for the agent control channel",
+        ));
+    }
+
+    // Register before dispatch so a fast upload cannot race the job map.
+    let tasks::Handles {
+        mut body_rx,
+        mut upload_rx,
+        mut result_rx,
+    } = context
+        .pcap_tasks
+        .register(
+            id.clone(),
+            token.clone(),
+            entry.name.clone(),
+            entry.generation,
+            request.limits.max_bytes,
+        )
+        .map_err(|_| {
+            fail(
+                &audit,
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal",
+                "duplicate remote pcap job id",
+            )
+        })?;
+    let mut task_guard = RemoteTaskGuard {
+        tasks: context.pcap_tasks.clone(),
+        entry: entry.clone(),
+        id: id.clone(),
+        token: token.clone(),
+        cancel_on_drop: true,
+    };
+
+    if context.agents.try_send_current(&entry, message).is_err() {
+        // The request never reached the agent; there is nothing to cancel.
+        task_guard.disarm_cancel();
+        return Err(fail(
+            &audit,
+            StatusCode::SERVICE_UNAVAILABLE,
+            "agent-unavailable",
+            "pcap agent is not accepting requests",
+        ));
+    }
+
+    let cancel = CancellationToken::new();
+    let reason = CancelReason::new();
+    let mut prestream = DisconnectGuard {
+        reason: reason.clone(),
+        cancel: cancel.clone(),
+        done: false,
+    };
+    let mut terminal: Option<PcapResult> = None;
+    let mut body_open = true;
+    let mut result_open = true;
+
+    let first = tokio::time::timeout(request_timeout, async {
+        loop {
+            // Result delivery and upload start are serialized by the job's
+            // body-sender lock. Refresh the watch snapshot before evaluating
+            // a terminal result so a ready result cannot win `select!` and be
+            // validated against the stale Pending value from the prior turn.
+            let upload = upload_rx.borrow().clone();
+            if let UploadState::Failed { reason, .. } = upload {
+                break RemoteFirst::UploadFailed(reason);
+            }
+            if let Some(result) = terminal.as_ref() {
+                match tasks::classify_result(result, &upload, body_open, 0) {
+                    RemoteOutcome::Wait => {}
+                    outcome => break RemoteFirst::Terminal(outcome, result.stats),
+                }
+            }
+
+            tokio::select! {
+                chunk = body_rx.recv(), if body_open => match chunk {
+                    Some(chunk) => break RemoteFirst::Data(chunk),
+                    None => body_open = false,
+                },
+                result = &mut result_rx, if result_open => {
+                    result_open = false;
+                    terminal = Some(result.unwrap_or(PcapResult {
+                        code: PcapResultCode::Error,
+                        upload: PcapUploadStatus::Failed,
+                        message: Some("agent result channel closed".to_string()),
+                        stats: None,
+                    }));
+                },
+                changed = upload_rx.changed() => {
+                    if changed.is_err() {
+                        break RemoteFirst::UploadFailed("upload-state-closed");
+                    }
+                },
+            }
+        }
+    })
+    .await
+    .unwrap_or(RemoteFirst::Timeout);
+
+    match first {
+        RemoteFirst::Timeout => {
+            reason.set(CancelCause::Timeout);
+            cancel.cancel();
+            prestream.disarm();
+            log_remote_failure(
+                &audit,
+                "timeout",
+                "pcap agent did not produce output in time",
+                None,
+            );
+            Err(error(
+                StatusCode::GATEWAY_TIMEOUT,
+                "timeout",
+                "pcap agent did not produce output in time",
+            ))
+        }
+        RemoteFirst::UploadFailed(upload_reason) => {
+            prestream.disarm();
+            log_remote_failure(&audit, "agent-upload", upload_reason, None);
+            Err(error(
+                StatusCode::BAD_GATEWAY,
+                "agent-upload",
+                upload_reason,
+            ))
+        }
+        RemoteFirst::Terminal(outcome, stats) => {
+            // A real terminal result means the agent's job is finished;
+            // there is nothing left to cancel.
+            task_guard.disarm_cancel();
+            prestream.disarm();
+            Err(remote_empty_response(outcome, stats, &audit, &filename))
+        }
+        RemoteFirst::Data(first) => {
+            let audit = Arc::new(audit);
+            let headers = pcap_headers(&audit, &filename);
+            let completion = (!audit.native).then(PostCompletion::default);
+            let (frame_tx, frame_rx) = mpsc::channel::<Frame>(2);
+            let supervisor_cancel = cancel.clone();
+            let supervisor_audit = audit.clone();
+            let first_len = u64::try_from(first.len()).unwrap_or(u64::MAX);
+            let mut upload = upload_rx.borrow().clone();
+
+            tokio::spawn(async move {
+                let mut task_guard = task_guard;
+                // Both concurrency gates stay closed until the remote
+                // producer is finished, not merely until the response ends.
+                let _global_permit = global_permit;
+                let _source_permit = source_permit;
+                let mut bytes = first_len;
+                let mut result = terminal;
+                let mut success_stats: Option<FetchStats> = None;
+                let mut failure = (
+                    "agent-error",
+                    "remote pcap stream ended unexpectedly".to_string(),
+                );
+
+                let producer_end = loop {
+                    if let UploadState::Failed { reason, .. } = &upload {
+                        failure = ("agent-upload-error", (*reason).to_string());
+                        break ProducerEnd::Io;
+                    }
+
+                    if let Some(result) = result.as_ref() {
+                        match tasks::classify_result(result, &upload, body_open, bytes) {
+                            RemoteOutcome::Wait => {}
+                            RemoteOutcome::Complete { stats } => {
+                                success_stats = Some(stats.into());
+                                break ProducerEnd::Complete {
+                                    truncated: stats.truncated,
+                                };
+                            }
+                            // Unreachable with streamed bytes; the classifier
+                            // reports empty results after data as Protocol.
+                            RemoteOutcome::NoCandidateFiles | RemoteOutcome::NoMatch => {
+                                failure = (
+                                    "agent-protocol",
+                                    "empty result arrived after an upload had started".to_string(),
+                                );
+                                break ProducerEnd::Io;
+                            }
+                            RemoteOutcome::Cancelled { message } => {
+                                failure = (
+                                    "agent-cancelled",
+                                    message.unwrap_or_else(|| {
+                                        "pcap agent cancelled the request".to_string()
+                                    }),
+                                );
+                                break ProducerEnd::Io;
+                            }
+                            RemoteOutcome::Error { message } => {
+                                failure = ("agent-error", message);
+                                break ProducerEnd::Io;
+                            }
+                            RemoteOutcome::Protocol { detail } => {
+                                failure = ("agent-protocol", detail);
+                                break ProducerEnd::Io;
+                            }
+                        }
+                    }
+
+                    enum Event {
+                        Data(Option<Bytes>),
+                        Upload(bool),
+                        Result(Option<PcapResult>),
+                        Cancelled,
+                        Idle,
+                    }
+                    let event = tokio::select! {
+                        _ = supervisor_cancel.cancelled() => Event::Cancelled,
+                        chunk = body_rx.recv(), if body_open => Event::Data(chunk),
+                        changed = upload_rx.changed() => Event::Upload(changed.is_ok()),
+                        received = &mut result_rx, if result_open => {
+                            result_open = false;
+                            Event::Result(received.ok())
+                        }
+                        _ = tokio::time::sleep(stall_timeout) => Event::Idle,
+                    };
+
+                    match event {
+                        Event::Data(Some(chunk)) => {
+                            let len = u64::try_from(chunk.len()).unwrap_or(u64::MAX);
+                            let Some(total) = bytes.checked_add(len) else {
+                                failure = (
+                                    "agent-protocol",
+                                    "pcap upload byte count overflowed".to_string(),
+                                );
+                                break ProducerEnd::Io;
+                            };
+                            if total > request.limits.max_bytes {
+                                failure = (
+                                    "agent-protocol",
+                                    "pcap upload exceeded its dispatched byte limit".to_string(),
+                                );
+                                break ProducerEnd::Io;
+                            }
+                            match tokio::time::timeout(
+                                stall_timeout,
+                                frame_tx.send(Frame::Data(chunk)),
+                            )
+                            .await
+                            {
+                                Ok(Ok(())) => bytes = total,
+                                Ok(Err(_)) => {
+                                    failure = (
+                                        "client-closed",
+                                        "browser response body closed".to_string(),
+                                    );
+                                    break ProducerEnd::Io;
+                                }
+                                Err(_) => {
+                                    failure = (
+                                        "client-stalled",
+                                        "browser did not drain pcap output".to_string(),
+                                    );
+                                    break ProducerEnd::Io;
+                                }
+                            }
+                        }
+                        Event::Data(None) => body_open = false,
+                        Event::Upload(true) => upload = upload_rx.borrow().clone(),
+                        Event::Upload(false) => {
+                            upload = UploadState::Failed {
+                                reason: "upload-state-closed",
+                                bytes,
+                            };
+                        }
+                        Event::Result(Some(received)) => result = Some(received),
+                        Event::Result(None) => {
+                            failure = ("agent-error", "agent result channel closed".to_string());
+                            break ProducerEnd::Io;
+                        }
+                        Event::Cancelled => {
+                            failure = (
+                                "client-closed",
+                                "browser cancelled the pcap response".to_string(),
+                            );
+                            break ProducerEnd::Io;
+                        }
+                        Event::Idle => {
+                            failure = if !body_open
+                                && result.is_none()
+                                && matches!(upload, UploadState::Complete { .. })
+                            {
+                                (
+                                    "agent-result-timeout",
+                                    "pcap agent omitted its terminal result after upload EOF"
+                                        .to_string(),
+                                )
+                            } else {
+                                (
+                                    "agent-stalled",
+                                    "pcap agent made no upload or result progress".to_string(),
+                                )
+                            };
+                            break ProducerEnd::Io;
+                        }
+                    }
+                };
+
+                let clean = matches!(producer_end, ProducerEnd::Complete { .. });
+                if clean {
+                    // A verified terminal result means the agent's job is
+                    // finished; there is nothing left to cancel.
+                    task_guard.disarm_cancel();
+                }
+                // Release the task entry and per-source lane before the
+                // browser drains any buffered body tail.
+                drop(task_guard);
+                let _ =
+                    tokio::time::timeout(stall_timeout, frame_tx.send(Frame::Done(producer_end)))
+                        .await;
+                if clean {
+                    // Like the local path, success is the producer completing
+                    // cleanly; delivery of the buffered tail is the browser's
+                    // problem and the disconnect guard's to observe.
+                    if let Some(stats) = success_stats.as_ref() {
+                        log_success(&supervisor_audit, stats);
+                    }
+                    return;
+                }
+                log_remote_failure(
+                    &supervisor_audit,
+                    failure.0,
+                    &failure.1,
+                    result.and_then(|result| result.stats),
+                );
+            });
+
+            let guard = DisconnectGuard {
+                reason,
+                cancel,
+                done: false,
+            };
+            let mut queued = VecDeque::new();
+            queued.push_back(first);
+            let state = BodyState {
+                rx: frame_rx,
+                guard,
+                queued,
+                finished: false,
+                completion: completion.clone(),
+            };
+            prestream.disarm();
+            let mut response = (headers, Body::from_stream(body_stream(state))).into_response();
+            if let Some(completion) = completion {
+                response.extensions_mut().insert(completion);
+            }
+            Ok(response)
+        }
+    }
+}
+
+fn generate_job_token() -> String {
+    use rand::RngCore;
+
+    let mut bytes = [0u8; 32];
+    rand::rng().fill_bytes(&mut bytes);
+    BASE64_URL_SAFE_NO_PAD.encode(bytes)
+}
+
+fn log_remote_failure(
+    audit: &AuditContext,
+    outcome: &str,
+    message: &str,
+    stats: Option<crate::agent::protocol::WireStats>,
+) {
+    let stats = stats.unwrap_or_default();
+    warn!(
+        "pcap: user={:?} remote={:?} event={:?} source={:?} mode={} filter={:?} window={:?} outcome={} message={:?} packets={} bytes={} files_scanned={} files_vanished={} truncated={}",
+        audit.user,
+        audit.remote,
+        audit.event_id,
+        audit.source,
+        audit.mode,
+        audit.filter,
+        audit.window,
+        outcome,
+        message,
+        stats.packets,
+        stats.bytes,
+        stats.files_scanned,
+        stats.files_vanished,
+        stats.truncated,
+    );
+}
+
+/// Map a classified terminal outcome to the empty (no body bytes streamed)
+/// HTTP response, with once-only accounting and one audit line.
+fn remote_empty_response(
+    outcome: RemoteOutcome,
+    result_stats: Option<crate::agent::protocol::WireStats>,
+    audit: &AuditContext,
+    filename: &str,
+) -> Response {
+    match outcome {
+        RemoteOutcome::Wait => unreachable!("Wait is not a terminal outcome"),
+        RemoteOutcome::Complete { stats } => {
+            let truncated = stats.truncated;
+            let stats: FetchStats = stats.into();
+            log_success(audit, &stats);
+            empty_response(ProducerEnd::Complete { truncated }, audit, filename)
+        }
+        RemoteOutcome::NoCandidateFiles => {
+            log_remote_failure(
+                audit,
+                "no-candidate-files",
+                "no pcap files cover the requested time window",
+                result_stats,
+            );
+            empty_response(ProducerEnd::NoCandidateFiles, audit, filename)
+        }
+        RemoteOutcome::NoMatch => {
+            log_remote_failure(
+                audit,
+                "no-match",
+                "no packets matched the requested filter",
+                result_stats,
+            );
+            empty_response(ProducerEnd::NoMatch, audit, filename)
+        }
+        RemoteOutcome::Cancelled { message } => {
+            let message = message.unwrap_or_else(|| "pcap agent cancelled the request".to_string());
+            log_remote_failure(audit, "agent-cancelled", &message, result_stats);
+            error(StatusCode::BAD_GATEWAY, "agent-cancelled", &message)
+        }
+        RemoteOutcome::Error { message } => {
+            log_remote_failure(audit, "agent-error", &message, result_stats);
+            error(StatusCode::BAD_GATEWAY, "agent-error", &message)
+        }
+        RemoteOutcome::Protocol { detail } => {
+            log_remote_failure(audit, "agent-protocol", &detail, result_stats);
+            error(
+                StatusCode::BAD_GATEWAY,
+                "agent-protocol",
+                "pcap agent returned an inconsistent terminal result",
+            )
+        }
+    }
+}
+
 /// The joined producer result the supervisor observes: the inner
 /// `Result` is the fetch outcome, the outer is the join status.
+#[cfg(not(windows))]
 type JoinedFetch = Result<Result<FetchStats, FetchError>, tokio::task::JoinError>;
 
 /// Wait for the producer's outcome under three bounds, returning
@@ -756,6 +1425,7 @@ type JoinedFetch = Result<Result<FetchStats, FetchError>, tokio::task::JoinError
 ///   plus the `last_progress` stamp the writer advances on every frame,
 ///   so a slow-but-live client (whose parked sends keep completing and
 ///   stamping progress) is never reaped here.
+#[cfg(not(windows))]
 async fn await_outcome(
     handle: &mut tokio::task::JoinHandle<Result<FetchStats, FetchError>>,
     cancel: &CancellationToken,
@@ -798,6 +1468,7 @@ async fn await_outcome(
 /// the success is DOWNGRADED to the send's io error: the client's body
 /// ends without a Done and hyper tears it, so the supervisor reports
 /// the torn transfer as client-stalled / client-closed, not outcome=ok.
+#[cfg(not(windows))]
 fn finish_producer(
     result: Result<FetchStats, FetchError>,
     writer: &mut ChannelWriter,
@@ -827,6 +1498,7 @@ fn finish_producer(
 /// The blocking producer body: run the fetch, then push the buffered
 /// tail with a final flush whose error propagates — a client that
 /// stalls at the very tail must not be reported as outcome=ok.
+#[cfg(not(windows))]
 fn run_extraction(
     source: &PcapSource,
     request: &PcapRequest,
@@ -854,6 +1526,9 @@ enum ProducerEnd {
     },
     NoCandidateFiles,
     NoMatch,
+    // Only the local producer constructs `Format`; the shared response
+    // side still matches it on Windows.
+    #[cfg_attr(windows, allow(dead_code))]
     Format(String),
     /// The detail is logged by the supervisor; the response body
     /// stays generic.
@@ -861,6 +1536,7 @@ enum ProducerEnd {
 }
 
 /// Derive the terminal frame from the producer's result.
+#[cfg(not(windows))]
 fn producer_end(result: &Result<FetchStats, FetchError>) -> ProducerEnd {
     match result {
         Ok(stats) => ProducerEnd::Complete {
@@ -902,6 +1578,7 @@ impl CancelReason {
         );
     }
 
+    #[cfg(not(windows))]
     fn get(&self) -> CancelCause {
         match self.0.load(Ordering::SeqCst) {
             value if value == CancelCause::Timeout as u8 => CancelCause::Timeout,
@@ -914,8 +1591,10 @@ impl CancelReason {
 /// Counts the blocking extraction closure in the service's
 /// in-flight gauge for the closure's whole lifetime; the Drop makes
 /// it panic-safe.
+#[cfg(not(windows))]
 struct InflightGuard(Arc<AtomicUsize>);
 
+#[cfg(not(windows))]
 impl InflightGuard {
     fn arm(counter: Arc<AtomicUsize>) -> Self {
         counter.fetch_add(1, Ordering::SeqCst);
@@ -923,6 +1602,7 @@ impl InflightGuard {
     }
 }
 
+#[cfg(not(windows))]
 impl Drop for InflightGuard {
     fn drop(&mut self) {
         self.0.fetch_sub(1, Ordering::SeqCst);
@@ -1065,7 +1745,7 @@ fn empty_response(end: ProducerEnd, audit: &AuditContext, filename: &str) -> Res
             ProducerEnd::Format(message) => error(StatusCode::BAD_GATEWAY, "format", &message),
             ProducerEnd::Io => error(StatusCode::BAD_GATEWAY, "io", "pcap extraction failed"),
             _ => (
-                pcap_headers(filename),
+                pcap_headers(audit, filename),
                 Body::from(empty_pcap_bytes().to_vec()),
             )
                 .into_response(),
@@ -1076,13 +1756,13 @@ fn empty_response(end: ProducerEnd, audit: &AuditContext, filename: &str) -> Res
         // matching packet.
         ProducerEnd::Complete {
             truncated: true, ..
-        } => empty_truncated_response(filename),
+        } => empty_truncated_response(audit, filename),
         // Defensive: a complete fetch with no output and no
         // truncation maps to NoMatch in the engine, but an empty
         // capture is the honest shape if it ever arrives.
         ProducerEnd::Complete {
             truncated: false, ..
-        } => (pcap_headers(filename), Body::empty()).into_response(),
+        } => (pcap_headers(audit, filename), Body::empty()).into_response(),
         ProducerEnd::NoCandidateFiles => error(
             StatusCode::NOT_FOUND,
             "no-candidate-files",
@@ -1100,10 +1780,11 @@ fn empty_response(end: ProducerEnd, audit: &AuditContext, filename: &str) -> Res
 
 fn log_success(audit: &AuditContext, stats: &FetchStats) {
     info!(
-        "pcap: user={:?} remote={:?} event={:?} mode={} filter={:?} window={:?} outcome=ok packets={} bytes={} files_scanned={} files_vanished={} truncated={}",
+        "pcap: user={:?} remote={:?} event={:?} source={:?} mode={} filter={:?} window={:?} outcome=ok packets={} bytes={} files_scanned={} files_vanished={} truncated={}",
         audit.user,
         audit.remote,
         audit.event_id,
+        audit.source,
         audit.mode,
         audit.filter,
         audit.window,
@@ -1126,6 +1807,7 @@ fn log_success(audit: &AuditContext, stats: &FetchStats) {
 /// unpins the blocking thread AND the permits (the deadline in
 /// `fetch` is only checked between packets, never while parked
 /// mid-send).
+#[cfg(not(windows))]
 struct ChannelWriter {
     tx: mpsc::Sender<Frame>,
     buf: Vec<u8>,
@@ -1141,6 +1823,7 @@ struct ChannelWriter {
     last_progress: Arc<AtomicU64>,
 }
 
+#[cfg(not(windows))]
 impl ChannelWriter {
     /// Push the buffered output as a data frame.
     fn push(&mut self) -> std::io::Result<()> {
@@ -1196,6 +1879,7 @@ impl ChannelWriter {
     }
 }
 
+#[cfg(not(windows))]
 impl Write for ChannelWriter {
     fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
         self.buf.extend_from_slice(data);
@@ -1220,8 +1904,16 @@ fn error(status: StatusCode, code: &str, message: &str) -> Response {
 /// and build the error response.
 fn fail(audit: &AuditContext, status: StatusCode, code: &str, message: &str) -> Response {
     warn!(
-        "pcap: user={:?} remote={:?} event={:?} mode={} outcome={} message={:?}",
-        audit.user, audit.remote, audit.event_id, audit.mode, code, message
+        "pcap: user={:?} remote={:?} event={:?} source={:?} mode={} filter={:?} window={:?} outcome={} message={:?}",
+        audit.user,
+        audit.remote,
+        audit.event_id,
+        audit.source,
+        audit.mode,
+        audit.filter,
+        audit.window,
+        code,
+        message
     );
     error(status, code, message)
 }
@@ -1293,25 +1985,6 @@ impl RequestError {
     }
 }
 
-/// Fast up-front syntax gate for a supplied BPF filter: compile it
-/// once against a dead Ethernet capture. A filter valid on Ethernet
-/// may still fail on an exotic link type at extraction time — that is
-/// acceptable; the engine's per-file compile against each file's link
-/// type is the authority there. This only rejects outright-malformed
-/// expressions before any permit is taken or extraction spawned.
-fn validate_filter(expression: &str) -> Result<(), RequestError> {
-    let dead = ::pcap::Capture::dead(::pcap::Linktype::ETHERNET).map_err(|err| {
-        RequestError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal",
-            err.to_string(),
-        )
-    })?;
-    dead.compile(expression, true)
-        .map_err(|err| RequestError::new(StatusCode::BAD_REQUEST, "bad-filter", err.to_string()))?;
-    Ok(())
-}
-
 /// Build the engine filter and time window from the request, per the
 /// mode precedence:
 ///
@@ -1324,8 +1997,9 @@ fn validate_filter(expression: &str) -> Result<(), RequestError> {
 ///    window (unchanged auto behavior).
 /// 4. else → 400: a standalone request needs a start time.
 ///
-/// Sets the audit `mode`/`filter`/`window` fields as it goes, and
-/// validates a supplied BPF filter before returning.
+/// Sets the audit `mode`/`filter`/`window` fields as it goes. A
+/// supplied BPF filter is passed through without validation; the
+/// compiling side rejects malformed expressions.
 fn build_request(
     audit: &mut AuditContext,
     body: &PcapRequestBody,
@@ -1361,7 +2035,6 @@ fn build_request(
         let filter = match present(&body.filter) {
             Some(expression) => {
                 audit.filter = expression.to_string();
-                validate_filter(expression)?;
                 Some(PcapFilter::Expression(expression.to_string()))
             }
             None => Some(PcapFilter::Flow(derive_flow(audit, source)?)),
@@ -1380,8 +2053,8 @@ fn build_request(
     }
 }
 
-/// The free-form filter: the raw BPF expression when non-empty (validated),
-/// else `None` for all packets in the window.
+/// The free-form filter: the raw BPF expression when non-empty, else
+/// `None` for all packets in the window.
 fn build_filter_or_all(
     audit: &mut AuditContext,
     filter: &Option<String>,
@@ -1389,7 +2062,6 @@ fn build_filter_or_all(
     match present(filter) {
         Some(expression) => {
             audit.filter = expression.to_string();
-            validate_filter(expression)?;
             Ok(Some(PcapFilter::Expression(expression.to_string())))
         }
         None => {
@@ -1439,7 +2111,9 @@ fn describe_selector(selector: &FlowSelector) -> String {
     )
 }
 
-#[cfg(test)]
+// The suite drives the local extraction path end to end, so it is
+// compiled out with it on Windows.
+#[cfg(all(test, not(windows)))]
 mod test {
     use super::*;
     use std::path::{Path, PathBuf};
@@ -1550,6 +2224,9 @@ mod test {
             datastore,
             Arc::new(Metrics::default()),
         );
+        // The fixture event carries no EveBox agent stamp, so it routes to
+        // the local source: source routing remains part of every existing API
+        // regression test.
         context.pcap = Arc::new(PcapService::new(settings, source));
         Arc::new(context)
     }
@@ -1803,9 +2480,9 @@ mod test {
     }
 
     #[tokio::test]
-    async fn event_host_does_not_affect_local_spool() {
-        // The configured local spool serves every event; the event's
-        // host metadata does not affect packet extraction.
+    async fn unstamped_event_host_does_not_affect_local_spool() {
+        // An event without an EveBox agent stamp was ingested by this
+        // server, so the local spool serves it whatever its host says.
         let dir = tempfile::tempdir().unwrap();
         let mut event = matching_event();
         event["host"] = json!("some-other-sensor");
@@ -1813,6 +2490,20 @@ mod test {
         let (status, _headers, _body) = run(&context, request("1")).await;
         assert_eq!(status, StatusCode::OK);
         wait_for("supervisor settled", || permits_free(&context)).await;
+    }
+
+    #[tokio::test]
+    async fn stamped_event_does_not_fall_through_to_local_spool() {
+        // An event stamped by an EveBox agent must be served by that agent;
+        // with the agent gone, routing must not silently use the local spool.
+        let dir = tempfile::tempdir().unwrap();
+        let mut event = matching_event();
+        event["evebox"] = json!({ "agent": { "hostname": "gone-host" } });
+        let context = context_with_event(dir.path(), event, PcapSettings::default()).await;
+        let (status, _headers, body) = run(&context, request("1")).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["error"]["code"], "no-source");
     }
 
     #[tokio::test]
@@ -2430,9 +3121,9 @@ mod test {
         };
         // The whole fixture output is far below one chunk, so all of
         // it rides on the final flush.
-        let source = PcapSource::Spool(SpoolConfig::new(testdata("spool"), None));
+        let spool = SpoolConfig::new(testdata("spool"), None);
         let request = PcapRequest::default();
-        let result = run_extraction(&source, &request, &mut writer, &cancel);
+        let result = run_extraction(&PcapSource::Spool(spool), &request, &mut writer, &cancel);
         match result {
             Err(FetchError::Io(err)) => assert_eq!(err.kind(), std::io::ErrorKind::TimedOut),
             other => panic!("expected a TimedOut io error, got {other:?}"),
@@ -2854,7 +3545,9 @@ mod test {
         assert!(permits_free(&context));
     }
 
-    /// A failing pre-flight returns the structured error.
+    /// A failing pre-flight returns the structured error. A BPF filter
+    /// is deliberately NOT validated here — only the compiling side can
+    /// reject one — so the probe uses a bad duration.
     #[tokio::test]
     async fn validate_error_returns_structured_error() {
         let dir = tempfile::tempdir().unwrap();
@@ -2862,14 +3555,14 @@ mod test {
             context_with_event(dir.path(), matching_event(), PcapSettings::default()).await;
         let body = PcapRequestBody {
             event_id: Some("1".to_string()),
-            filter: Some("this is not valid bpf ~~~".to_string()),
             start: Some(FIXTURE_START.to_string()),
+            duration: Some("not-a-duration".to_string()),
             ..Default::default()
         };
         let (status, out) = run_validate(&context, body).await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         let json: serde_json::Value = serde_json::from_slice(&out).unwrap();
-        assert_eq!(json["error"]["code"], "bad-filter");
+        assert_eq!(json["error"]["code"], "bad-request");
     }
 
     /// Standalone free-form (no event_id) with start + duration and no
@@ -2935,8 +3628,40 @@ mod test {
         assert!(permits_free(&context));
     }
 
-    /// Standalone with no event and no local capture source configured returns
-    /// 503 not-configured.
+    /// Standalone with no event and no local or remote source returns
+    /// 503 no-source.
+    #[tokio::test]
+    async fn sources_list_local_spool_and_pcap_agents() {
+        let dir = tempfile::tempdir().unwrap();
+        let context =
+            context_with_event(dir.path(), matching_event(), PcapSettings::default()).await;
+
+        // Local spool only.
+        assert_eq!(
+            list_sources(&context),
+            json!({ "sources": [{ "name": "(server)", "kind": "server" }] })
+        );
+
+        // A connected pcap-capable agent joins the list.
+        let (tx, _rx) = tokio::sync::mpsc::channel(4);
+        context.agents.register(
+            crate::agent::protocol::AgentHandshake {
+                name: "remote".to_string(),
+                hostname: "remote-host".to_string(),
+                version: "test".to_string(),
+                capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],
+            },
+            tx,
+        );
+        assert_eq!(
+            list_sources(&context),
+            json!({ "sources": [
+                { "name": "(server)", "kind": "server" },
+                { "name": "remote", "kind": "agent" },
+            ]})
+        );
+    }
+
     #[tokio::test]
     async fn standalone_without_source_returns_503() {
         let dir = tempfile::tempdir().unwrap();
@@ -2955,7 +3680,7 @@ mod test {
         let (status, _headers, out) = run(&context, body).await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         let json: serde_json::Value = serde_json::from_slice(&out).unwrap();
-        assert_eq!(json["error"]["code"], "not-configured");
+        assert_eq!(json["error"]["code"], "no-source");
     }
 
     /// before/after with no event to anchor the window is a bad request.
@@ -2974,10 +3699,13 @@ mod test {
         assert_eq!(json["error"]["code"], "bad-request");
     }
 
-    /// A malformed BPF filter is rejected up front with 400
-    /// bad-filter, before any permit is taken.
+    /// A malformed BPF filter has no server-side pre-flight — the
+    /// extraction's per-file compile rejects it (an expression that
+    /// compiles on no file is a format error, not a no-match) and the
+    /// libpcap message surfaces through the download result. Permits
+    /// are released like any other failed request.
     #[tokio::test]
-    async fn bad_filter_returns_400() {
+    async fn bad_filter_fails_extraction_with_format_error() {
         let dir = tempfile::tempdir().unwrap();
         let context =
             context_with_event(dir.path(), matching_event(), PcapSettings::default()).await;
@@ -2988,14 +3716,37 @@ mod test {
             ..Default::default()
         };
         let (status, _headers, out) = run(&context, body).await;
-        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
         let json: serde_json::Value = serde_json::from_slice(&out).unwrap();
-        assert_eq!(json["error"]["code"], "bad-filter");
+        assert_eq!(json["error"]["code"], "format");
         assert!(
             json["error"]["message"].as_str().is_some(),
             "the libpcap error is surfaced"
         );
-        assert!(permits_free(&context));
+        wait_for("supervisor settled", || permits_free(&context)).await;
+    }
+
+    /// The native browser transfer keeps extraction faults as structured JSON;
+    /// the hidden same-origin frame can surface this error instead of saving it
+    /// under the capture filename.
+    #[tokio::test]
+    async fn native_bad_filter_returns_structured_format_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let context =
+            context_with_event(dir.path(), matching_event(), PcapSettings::default()).await;
+        let body = PcapRequestBody {
+            filter: Some("notavalidbpftoken".to_string()),
+            start: Some(FIXTURE_START.to_string()),
+            duration: Some("5m".to_string()),
+            ..Default::default()
+        };
+        let (status, headers, out) = run_native(&context, body).await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
+        assert_eq!(headers.get(CONTENT_TYPE).unwrap(), "application/json");
+        assert!(headers.get(CONTENT_DISPOSITION).is_none());
+        let json: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(json["error"]["code"], "format");
+        wait_for("supervisor settled", || permits_free(&context)).await;
     }
 
     /// An unparseable start time is a bad request, not a filter error.
@@ -3012,5 +3763,121 @@ mod test {
         assert_eq!(status, StatusCode::BAD_REQUEST);
         let json: serde_json::Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(json["error"]["code"], "bad-request");
+    }
+
+    fn remote_audit() -> AuditContext {
+        AuditContext {
+            user: "tester".to_string(),
+            remote: "test".to_string(),
+            event_id: "1".to_string(),
+            mode: "default",
+            filter: "all".to_string(),
+            window: "test".to_string(),
+            source: "sensor-a".to_string(),
+            native: false,
+        }
+    }
+
+    #[test]
+    fn remote_terminal_outcomes_map_to_http_responses() {
+        let audit = remote_audit();
+
+        // An empty truncation classifies as Complete and responds 200.
+        let result = PcapResult {
+            code: PcapResultCode::Complete,
+            upload: PcapUploadStatus::None,
+            message: None,
+            stats: Some(crate::agent::protocol::WireStats {
+                truncated: true,
+                ..Default::default()
+            }),
+        };
+        let outcome = tasks::classify_result(&result, &UploadState::Pending, true, 0);
+        let response = remote_empty_response(outcome, result.stats, &audit, "capture.pcap");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let result = PcapResult {
+            code: PcapResultCode::Error,
+            upload: PcapUploadStatus::Failed,
+            message: Some("failed".to_string()),
+            stats: None,
+        };
+        let upload = UploadState::Failed {
+            reason: "agent-error",
+            bytes: 0,
+        };
+        let outcome = tasks::classify_result(&result, &upload, true, 0);
+        let response = remote_empty_response(outcome, result.stats, &audit, "capture.pcap");
+        assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    }
+
+    #[test]
+    fn protocol_outcomes_map_to_bad_gateway() {
+        let audit = remote_audit();
+        let response = remote_empty_response(
+            RemoteOutcome::Protocol {
+                detail: "empty result arrived after an upload had started".to_string(),
+            },
+            None,
+            &audit,
+            "capture.pcap",
+        );
+        assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    }
+
+    #[tokio::test]
+    async fn dropping_the_task_guard_cancels_and_removes_the_job() {
+        use crate::server::agents::AgentRegistry;
+
+        let tasks = Arc::new(tasks::Registry::default());
+        let _handles = tasks
+            .register(
+                "job-1".to_string(),
+                "secret".to_string(),
+                "sensor-a".to_string(),
+                1,
+                1024,
+            )
+            .unwrap();
+        let agents = AgentRegistry::default();
+        let (tx, mut rx) = mpsc::channel(4);
+        let entry = agents.register(
+            crate::agent::protocol::AgentHandshake {
+                name: "sensor-a".to_string(),
+                hostname: "host".to_string(),
+                version: "test".to_string(),
+                capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],
+            },
+            tx,
+        );
+
+        let mut disarmed = RemoteTaskGuard {
+            tasks: tasks.clone(),
+            entry: entry.clone(),
+            id: "job-1".to_string(),
+            token: "wrong".to_string(),
+            cancel_on_drop: true,
+        };
+        disarmed.disarm_cancel();
+        drop(disarmed);
+        // Token-bound removal: the wrong token leaves the task in place.
+        assert_eq!(tasks.len(), 1);
+        assert!(rx.try_recv().is_err());
+
+        drop(RemoteTaskGuard {
+            tasks: tasks.clone(),
+            entry,
+            id: "job-1".to_string(),
+            token: "secret".to_string(),
+            cancel_on_drop: true,
+        });
+        assert_eq!(tasks.len(), 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            ServerMessage::Cancel {
+                id: "job-1".to_string(),
+                token: "secret".to_string(),
+            }
+        );
     }
 }

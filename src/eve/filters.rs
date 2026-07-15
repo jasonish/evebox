@@ -104,6 +104,27 @@ impl EveFilterTrait for AddAgentHostnameFilter {
     }
 }
 
+/// Filter to add the agent identifier, the exact name the agent claims on
+/// the server's control channel. Should be used on the agent only.
+#[derive(Clone, Debug)]
+pub(crate) struct AddAgentIdFilter {
+    agent_id: serde_json::Value,
+}
+
+impl AddAgentIdFilter {
+    pub(crate) fn new(agent_id: String) -> Self {
+        Self {
+            agent_id: agent_id.into(),
+        }
+    }
+}
+
+impl EveFilterTrait for AddAgentIdFilter {
+    fn run(&self, event: &mut serde_json::Value) {
+        event["evebox"]["agent"]["id"] = self.agent_id.clone();
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct AddFieldFilter {
     pub field: String,
@@ -228,5 +249,13 @@ mod test {
         let mut b = a.clone();
         b.add_filter(AddAgentFilenameFilter::new("eve.json".to_string()));
         assert_eq!(a.filters.len(), b.filters.len() - 1);
+    }
+
+    #[test]
+    fn test_add_agent_id_filter() {
+        let filter = AddAgentIdFilter::new("edge-a".to_string());
+        let mut event = serde_json::json!({ "event_type": "alert" });
+        filter.run(&mut event);
+        assert_eq!(event["evebox"]["agent"]["id"], "edge-a");
     }
 }

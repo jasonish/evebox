@@ -20,10 +20,17 @@
 
 use std::net::IpAddr;
 
+// The BPF renderings below feed the libpcap extraction path, which
+// Windows builds omit; the selector itself stays portable for the wire.
+#[cfg(not(windows))]
 const IPPROTO_ICMP: u8 = 1;
+#[cfg(not(windows))]
 const IPPROTO_TCP: u8 = 6;
+#[cfg(not(windows))]
 const IPPROTO_UDP: u8 = 17;
+#[cfg(not(windows))]
 const IPPROTO_ICMPV6: u8 = 58;
+#[cfg(not(windows))]
 const IPPROTO_SCTP: u8 = 132;
 
 /// Direction-symmetric flow filter: `a` and `b` match either way
@@ -41,6 +48,7 @@ pub(crate) struct FlowSelector {
 /// VLAN tag. Only valid on link types with `vlan` keyword support
 /// (Ethernet and friends); on others (raw IP, loopback, Linux
 /// cooked, ...) libpcap refuses to compile the wrapped form.
+#[cfg(not(windows))]
 pub(crate) fn vlan_wrapped(expr: &str) -> String {
     // The untagged copy must come first: the `vlan` keyword shifts
     // the offsets of everything after it in the expression.
@@ -51,6 +59,7 @@ impl FlowSelector {
     /// Render the selector as a BPF filter expression (libpcap
     /// syntax). The rendering does not match VLAN-tagged packets;
     /// wrap it with [`vlan_wrapped`] on link types that support it.
+    #[cfg(not(windows))]
     pub(crate) fn to_bpf(&self) -> String {
         let (a, x) = &self.a;
         let (b, y) = &self.b;
@@ -107,7 +116,7 @@ impl FlowSelector {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(windows)))]
 mod test {
     use super::*;
     use crate::pcap::testutil::{

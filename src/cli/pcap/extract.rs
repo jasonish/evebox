@@ -89,7 +89,12 @@ pub(super) fn main(args: ExtractArgs) -> anyhow::Result<()> {
 /// Write an empty, header-only capture to the output, using the link type
 /// of the first spool file that was opened, if any.
 fn write_empty_output(args: &ExtractArgs, stats: FetchStats) -> Result<()> {
-    let dead = pcap::Capture::dead(stats.linktype.unwrap_or(pcap::Linktype::ETHERNET))?;
+    let dead = pcap::Capture::dead(
+        stats
+            .linktype
+            .map(pcap::Linktype)
+            .unwrap_or(pcap::Linktype::ETHERNET),
+    )?;
     let mut savefile = dead.savefile(output_filename(args))?;
     savefile.flush()?;
     info!("No matching packets found, wrote an empty output capture");
