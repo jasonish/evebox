@@ -41,6 +41,13 @@ fn load_event_services(filename: &str) -> Result<serde_json::Value> {
     Ok(json_value)
 }
 
+fn configured_default_time_range(config: &Config) -> Result<Option<String>> {
+    config
+        .get::<String>("defaults.time-range")?
+        .map(|value| crate::server::parse_default_time_range(&value).map_err(anyhow::Error::msg))
+        .transpose()
+}
+
 #[allow(clippy::field_reassign_with_default)]
 pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     crate::version::log_version();
@@ -151,6 +158,10 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     let mut context =
         build_context(server_config.clone(), datastore, configdb, metrics.clone()).await?;
+
+    if let Some(time_range) = configured_default_time_range(&config)? {
+        context.defaults.time_range = Some(time_range);
+    }
 
     if server_config.authentication_required && !context.configdb.has_users().await? {
         warn!("Username/password authentication is required, but no users exist, creating a user");
@@ -834,4 +845,65 @@ fn test_writable<T: AsRef<Path>>(filename: T) -> anyhow::Result<()> {
         .append(true)
         .open(filename)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Command;
+    use std::io::Write;
+
+    fn matches(args: &[&str]) -> clap::ArgMatches {
+        Command::new("test")
+            .arg(
+                clap::Arg::new("defaults.time-range")
+                    .long("default-time-range")
+                    .action(clap::ArgAction::Set),
+            )
+            .try_get_matches_from(args)
+            .unwrap()
+    }
+
+    #[test]
+    fn default_time_range_from_command_line() {
+        let config = Config::new(matches(&["test", "--default-time-range", "3h"]), None).unwrap();
+        assert_eq!(
+            configured_default_time_range(&config).unwrap(),
+            Some("3h".into())
+        );
+    }
+
+    #[test]
+    fn default_time_range_from_config_file() {
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(file, "defaults:\n  time-range: all").unwrap();
+        let config = Config::new(matches(&["test"]), file.path().to_str()).unwrap();
+        assert_eq!(
+            configured_default_time_range(&config).unwrap(),
+            Some("all".into())
+        );
+    }
+
+    #[test]
+    fn command_line_default_time_range_overrides_config_file() {
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(file, "defaults:\n  time-range: 1h").unwrap();
+        let config = Config::new(
+            matches(&["test", "--default-time-range", "7d"]),
+            file.path().to_str(),
+        )
+        .unwrap();
+        assert_eq!(
+            configured_default_time_range(&config).unwrap(),
+            Some("7d".into())
+        );
+    }
+
+    #[test]
+    fn invalid_configured_default_time_range_is_rejected() {
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(file, "defaults:\n  time-range: 6h").unwrap();
+        let config = Config::new(matches(&["test"]), file.path().to_str()).unwrap();
+        assert!(configured_default_time_range(&config).is_err());
+    }
 }

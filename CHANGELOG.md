@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+- The server's default browser time range can now be configured with
+  `--default-time-range`, `EVEBOX_DEFAULT_TIME_RANGE`, or the
+  `defaults.time-range` configuration key.
+
 ### Fixed
 - Oneshot mode now resets the browser's time range to show all imported events
   when the page is first loaded.

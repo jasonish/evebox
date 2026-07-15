@@ -247,6 +247,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Disable GeoIP"),
         )
         .arg(
+            Arg::new("defaults.time-range")
+                .long("default-time-range")
+                .action(ArgAction::Set)
+                .value_name("RANGE")
+                .env("EVEBOX_DEFAULT_TIME_RANGE")
+                .hide_env(true)
+                .value_parser(["1m", "1h", "3h", "12h", "24h", "1d", "3d", "7d", "all"])
+                .hide_possible_values(true)
+                .help("Default time range"),
+        )
+        .arg(
             Arg::new("input.paths")
                 .value_name("EVE")
                 .num_args(0..)

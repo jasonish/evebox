@@ -21,12 +21,12 @@ export const closeHelp = () => setShowHelp(false);
 const DEFAULT_TIME_RANGE = "24h";
 
 const TIME_RANGE_OPTIONS = [
-  ["60s", "Last Minute"],
+  ["1m", "Last Minute"],
   ["1h", "Last 1 Hour"],
   ["3h", "Last 3 Hours"],
-  ["6h", "Last 6 Hours"],
   ["12h", "Last 12 Hours"],
   ["24h", "Last 24 Hours"],
+  ["1d", "Last Day"],
   ["3d", "Last 3 Days"],
   ["7d", "Last Week"],
   ["", "All"],

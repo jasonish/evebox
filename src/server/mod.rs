@@ -19,6 +19,20 @@ pub(crate) mod main;
 pub(super) mod metrics;
 pub(crate) mod session;
 
+const SUPPORTED_DEFAULT_TIME_RANGES: [&str; 9] =
+    ["1m", "1h", "3h", "12h", "24h", "1d", "3d", "7d", "all"];
+
+pub(crate) fn parse_default_time_range(value: &str) -> Result<String, String> {
+    if SUPPORTED_DEFAULT_TIME_RANGES.contains(&value) {
+        Ok(value.to_string())
+    } else {
+        Err(format!(
+            "unsupported time range '{value}'; expected one of: {}",
+            SUPPORTED_DEFAULT_TIME_RANGES.join(", ")
+        ))
+    }
+}
+
 #[derive(Serialize, Default, Debug)]
 pub(crate) struct Defaults {
     pub time_range: Option<String>,
@@ -92,4 +106,23 @@ pub(crate) struct ServerConfig {
     pub authentication_required: bool,
     pub http_reverse_proxy: bool,
     pub http_request_logging: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn supported_default_time_ranges_are_accepted() {
+        for value in SUPPORTED_DEFAULT_TIME_RANGES {
+            assert_eq!(parse_default_time_range(value), Ok(value.to_string()));
+        }
+    }
+
+    #[test]
+    fn unsupported_default_time_ranges_are_rejected() {
+        for value in ["", "60s", "6h", "30d", "invalid"] {
+            assert!(parse_default_time_range(value).is_err(), "{value}");
+        }
+    }
 }

@@ -1,5 +1,11 @@
 # This is a minimal evebox.yaml for Elasticsearch and SQLite.
 
+# Default browser time range. Command-line and environment equivalents:
+# --default-time-range, EVEBOX_DEFAULT_TIME_RANGE
+# Values: 1m, 1h, 3h, 12h, 24h, 1d, 3d, 7d, all
+#defaults:
+#  time-range: 24h
+
 http:
   ## By default, EveBox binds to localhost. Uncomment this line to open
   ## it up.
