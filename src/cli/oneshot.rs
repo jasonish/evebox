@@ -88,6 +88,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 .await
                 {
                     Ok(mut context) => {
+                        context.mode = crate::server::ServerMode::Oneshot;
                         context.defaults.time_range = Some("all".to_string());
                         Arc::new(context)
                     }

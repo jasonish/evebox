@@ -24,8 +24,17 @@ pub(crate) struct Defaults {
     pub time_range: Option<String>,
 }
 
+#[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ServerMode {
+    #[default]
+    Server,
+    Oneshot,
+}
+
 pub(crate) struct ServerContext {
     pub config: ServerConfig,
+    pub mode: ServerMode,
     pub datastore: EventRepo,
     pub session_store: session::SessionStore,
     pub configdb: Arc<ConfigDb>,
@@ -48,6 +57,7 @@ impl ServerContext {
         let auto_archive: Arc<RwLock<AutoArchive>> = Default::default();
         Self {
             config,
+            mode: ServerMode::default(),
             datastore,
             session_store: SessionStore::new(),
             configdb: config_repo,

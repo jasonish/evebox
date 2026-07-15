@@ -85,6 +85,7 @@ export async function getUser(): Promise<UserResponse> {
 }
 
 export interface ConfigResponse {
+  mode: "server" | "oneshot";
   defaults: {
     time_range?: string;
   };

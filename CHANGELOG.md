@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Fixed
+- Oneshot mode now resets the browser's time range to show all imported events
+  when the page is first loaded.
 - eve2pcap: the seconds field of pcap record headers was written from the
   wrong timestamp value, giving packets in downloaded pcap files bogus
   capture times.

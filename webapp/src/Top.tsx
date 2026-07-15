@@ -41,7 +41,32 @@ function isValidTimeRange(range: string): boolean {
   return false;
 }
 
+function getServerTimeRange(): string | undefined {
+  const serverTimeRange = serverConfig?.defaults?.time_range;
+  if (serverTimeRange === "all") {
+    return "";
+  }
+  if (serverTimeRange && isValidTimeRange(serverTimeRange)) {
+    return serverTimeRange;
+  }
+  return undefined;
+}
+
+let firstTimeRangeInitialization = true;
+
 function getInitialTimeRange(): string {
+  const serverTimeRange = getServerTimeRange();
+
+  if (firstTimeRangeInitialization) {
+    firstTimeRangeInitialization = false;
+    if (serverConfig?.mode === "oneshot") {
+      const timeRange = serverTimeRange ?? DEFAULT_TIME_RANGE;
+      console.log(`Resetting oneshot time range to ${timeRange || "all"}`);
+      localStorage.setItem("TIME_RANGE", timeRange);
+      return timeRange;
+    }
+  }
+
   const localTimeRange = localStorage.getItem("TIME_RANGE");
   console.log(`Time-range from localStorage:`);
   console.log(localTimeRange);
@@ -56,16 +81,11 @@ function getInitialTimeRange(): string {
     return localTimeRange;
   }
 
-  const serverTimeRange = serverConfig?.defaults?.time_range;
-  console.log("serverTimeRange:");
-  console.log(serverTimeRange);
-  if (serverTimeRange && isValidTimeRange(serverTimeRange)) {
-    console.log(`Using server side default time range of ${serverTimeRange}`);
+  if (serverTimeRange !== undefined) {
+    console.log(
+      `Using server side default time range of ${serverTimeRange || "all"}`,
+    );
     return serverTimeRange;
-  } else if (serverTimeRange && serverTimeRange === "all") {
-    // The server time range might be "all" which is invalid in the front-end,
-    // but it does imply that the time-range should be all. Needs to be cleaned up.
-    return "";
   }
 
   console.log(`Using default time range of ${DEFAULT_TIME_RANGE}`);
