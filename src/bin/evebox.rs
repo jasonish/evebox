@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use clap::{Arg, Command};
+use clap::Arg;
 use clap::{ArgAction, value_parser};
 use evebox::logger;
 use evebox::version;
@@ -264,59 +264,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("One or more Suricata EVE/JSON files"),
         );
 
-    let oneshot = Command::new("oneshot")
-        .about("Import a single eve.json and review in EveBox")
-        .arg(
-            // This is here just to hide -D from oneshot mode.
-            Arg::new("data-directory")
-                .long("data-directory")
-                .short('D')
-                .action(ArgAction::Set)
-                .value_name("DIR")
-                .help("Data directory")
-                .hide(true),
-        )
-        .arg(
-            Arg::new("limit")
-                .long("limit")
-                .action(ArgAction::Set)
-                .help("Limit the number of events read"),
-        )
-        .arg(
-            Arg::new("no-open")
-                .long("no-open")
-                .action(ArgAction::SetTrue)
-                .help("Don't open browser"),
-        )
-        .arg(
-            Arg::new("no-wait")
-                .long("no-wait")
-                .action(ArgAction::SetTrue)
-                .help("Don't wait for events to load"),
-        )
-        .arg(
-            Arg::new("database-filename")
-                .long("database-filename")
-                .action(ArgAction::Set)
-                .default_value("./oneshot.sqlite")
-                .value_name("FILENAME")
-                .help("Database filename"),
-        )
-        // --host, but keep th name as http.host to be campatible with the
-        // EVEBOX_HTTP_HOST environment variable.
-        .arg(
-            clap::Arg::new("http.host")
-                .long("host")
-                .value_name("HOSTNAME")
-                .action(ArgAction::Set)
-                .default_value("127.0.0.1")
-                .help("Hostname/IP address to bind to"),
-        )
-        .arg(Arg::new("INPUT").required(true).index(1));
-
     let mut parser = parser
         .subcommand(server)
-        .subcommand(oneshot)
+        .subcommand(evebox::cli::oneshot::command())
         .subcommand(evebox::cli::agent::command())
         .subcommand(evebox::cli::config::config_subcommand())
         .subcommand(evebox::cli::print::command())

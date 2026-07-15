@@ -16,8 +16,12 @@ use tracing::trace;
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum EveReaderError {
-    #[error("failed to parse event")]
-    ParseError(String),
+    #[error("failed to parse event on line {line}: {source}")]
+    ParseError {
+        line: u64,
+        #[source]
+        source: serde_json::Error,
+    },
     #[error("io error: {0}")]
     IoError(std::io::Error),
 }
@@ -72,7 +76,7 @@ impl EveReader {
         }
         let mut count = 0;
         for _i in 0..lineno {
-            if self.next_line()?.is_none() {
+            if self.next_line(false)?.is_none() {
                 break;
             }
             count += 1;
@@ -85,7 +89,7 @@ impl EveReader {
             self.open()?;
         }
         loop {
-            let line = self.next_line()?;
+            let line = self.next_line(false)?;
             if line.is_none() {
                 break;
             }
@@ -106,18 +110,24 @@ impl EveReader {
         0
     }
 
-    fn next_line(&mut self) -> Result<Option<&str>, EveReaderError> {
+    fn next_line(&mut self, accept_unterminated: bool) -> Result<Option<&str>, EveReaderError> {
         self.line.clear();
         if let Some(reader) = &mut self.reader {
             let pos = reader.stream_position()?;
             let n = reader.read_line(&mut self.line)?;
             if n > 0 {
                 if !self.line.ends_with('\n') {
-                    trace!(
-                        "Line does not end with new line character, seeking back to {}",
-                        pos
-                    );
-                    reader.seek(SeekFrom::Start(pos))?;
+                    if accept_unterminated {
+                        self.offset = pos + n as u64;
+                        self.lineno += 1;
+                        return Ok(Some(self.line.trim()));
+                    } else {
+                        trace!(
+                            "Line does not end with new line character, seeking back to {}",
+                            pos
+                        );
+                        reader.seek(SeekFrom::Start(pos))?;
+                    }
                 } else {
                     self.offset = pos + n as u64;
                     self.lineno += 1;
@@ -131,18 +141,32 @@ impl EveReader {
 
     /// Not named next as we don't implement the iterator pattern (yet).
     pub fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
+        self.next_record_inner(false)
+    }
+
+    /// Read a record from a static file, accepting a final line without a
+    /// newline terminator.
+    pub(crate) fn next_file_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
+        self.next_record_inner(true)
+    }
+
+    fn next_record_inner(
+        &mut self,
+        accept_unterminated: bool,
+    ) -> Result<Option<serde_json::Value>, EveReaderError> {
         if self.reader.is_none() {
             self.open()?;
         }
         if self.reader.is_some() {
-            let line = self.next_line()?;
+            let line = self.next_line(accept_unterminated)?;
             if let Some(line) = line
                 && !line.is_empty()
             {
-                let record: serde_json::Value = serde_json::from_str(line).map_err(|err| {
-                    error!("Failed to parse event: {}", err);
-                    EveReaderError::ParseError(line.to_string())
-                })?;
+                let record: serde_json::Value =
+                    serde_json::from_str(line).map_err(|source| EveReaderError::ParseError {
+                        line: self.lineno,
+                        source,
+                    })?;
                 return Ok(Some(record));
             }
         }
