@@ -5,98 +5,79 @@ mod container;
 
 use crate::prelude::*;
 
-use crate::config::Config;
 use crate::eve;
 use crate::geoip;
 use crate::server::main::build_axum_service;
 use crate::server::metrics::Metrics;
 use crate::sqlite;
 use crate::sqlite::configdb;
-use clap::{Arg, ArgAction, Command};
+use clap::{CommandFactory, FromArgMatches, Parser};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use tokio::sync;
 
-pub fn command() -> Command {
-    Command::new("oneshot")
-        .about("Import EVE JSON or process a PCAP and review it in EveBox")
-        .arg(
-            // This is here just to hide -D from oneshot mode.
-            Arg::new("data-directory")
-                .long("data-directory")
-                .short('D')
-                .action(ArgAction::Set)
-                .value_name("DIR")
-                .help("Data directory")
-                .hide(true),
+#[derive(Debug, Parser)]
+#[command(
+    name = "oneshot",
+    about = "Import EVE JSON or process a PCAP and review it in EveBox"
+)]
+struct Args {
+    // Hide the global data-directory option.
+    #[arg(hide = true, global = true, short = 'D', long, name = "data-directory")]
+    data_directory: Option<String>,
+
+    /// Process INPUT as PCAP/PCAPNG with containerized Suricata (Linux only)
+    #[arg(long)]
+    pcap: bool,
+
+    /// Container runtime: auto, podman, or docker (default: auto)
+    #[arg(long, value_name = "RUNTIME", requires = "pcap")]
+    container_runtime: Option<container::ContainerRuntimeChoice>,
+
+    #[arg(
+        long,
+        value_name = "IMAGE",
+        requires = "pcap",
+        help = format!(
+            "Suricata container image (default: {})",
+            container::DEFAULT_SURICATA_IMAGE
         )
-        .arg(
-            Arg::new("pcap")
-                .long("pcap")
-                .action(ArgAction::SetTrue)
-                .help("Process INPUT as PCAP/PCAPNG with containerized Suricata (Linux only)"),
-        )
-        .arg(
-            Arg::new("container-runtime")
-                .long("container-runtime")
-                .action(ArgAction::Set)
-                .value_name("RUNTIME")
-                .value_parser(clap::builder::EnumValueParser::<
-                    container::ContainerRuntimeChoice,
-                >::new())
-                .requires("pcap")
-                .help("Container runtime: auto, podman, or docker (default: auto)"),
-        )
-        .arg(
-            Arg::new("suricata-image")
-                .long("suricata-image")
-                .action(ArgAction::Set)
-                .value_name("IMAGE")
-                .requires("pcap")
-                .help(format!(
-                    "Suricata container image (default: {})",
-                    container::DEFAULT_SURICATA_IMAGE
-                )),
-        )
-        .arg(
-            Arg::new("limit")
-                .long("limit")
-                .action(ArgAction::Set)
-                .help("Limit the number of events read"),
-        )
-        .arg(
-            Arg::new("no-open")
-                .long("no-open")
-                .action(ArgAction::SetTrue)
-                .help("Don't open browser"),
-        )
-        .arg(
-            Arg::new("no-wait")
-                .long("no-wait")
-                .action(ArgAction::SetTrue)
-                .help("Don't wait for events to load"),
-        )
-        .arg(
-            Arg::new("database-filename")
-                .long("database-filename")
-                .action(ArgAction::Set)
-                .default_value("./oneshot.sqlite")
-                .value_name("FILENAME")
-                .help("Database filename"),
-        )
-        // --host, but keep the name as http.host to be compatible with the
-        // EVEBOX_HTTP_HOST environment variable.
-        .arg(
-            Arg::new("http.host")
-                .long("host")
-                .value_name("HOSTNAME")
-                .action(ArgAction::Set)
-                .default_value("127.0.0.1")
-                .help("Hostname/IP address to bind to"),
-        )
-        .arg(Arg::new("INPUT").required(true).index(1))
+    )]
+    suricata_image: Option<String>,
+
+    /// Limit the number of events read
+    #[arg(long, value_name = "limit")]
+    limit: Option<u64>,
+
+    /// Don't open browser
+    #[arg(long)]
+    no_open: bool,
+
+    /// Don't wait for events to load
+    #[arg(long)]
+    no_wait: bool,
+
+    /// Database filename
+    #[arg(long, default_value = "./oneshot.sqlite", value_name = "FILENAME")]
+    database_filename: String,
+
+    /// Hostname/IP address to bind to
+    #[arg(
+        long,
+        id = "http.host",
+        default_value = "127.0.0.1",
+        value_name = "HOSTNAME"
+    )]
+    host: String,
+
+    #[arg(value_name = "INPUT")]
+    input: PathBuf,
+}
+
+pub fn command() -> clap::Command {
+    Args::command()
 }
 
 struct PreparedInput {
@@ -118,13 +99,13 @@ impl PreparedInput {
 }
 
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
-    let config_loader = Config::new(args.clone(), None)?;
-    let limit: u64 = config_loader.get("limit")?.unwrap_or(0);
-    let no_open: bool = config_loader.get_bool("no-open")?;
-    let no_wait: bool = config_loader.get_bool("no-wait")?;
-    let db_filename: String = config_loader.get("database-filename")?.unwrap();
-    let host: String = config_loader.get("http.host")?.unwrap();
-    let prepared_input = prepare_input(args).await?;
+    let args = Args::from_arg_matches(args)?;
+    let limit = args.limit.unwrap_or(0);
+    let no_open = args.no_open;
+    let no_wait = args.no_wait;
+    let db_filename = args.database_filename.clone();
+    let host = args.host.clone();
+    let prepared_input = prepare_input(&args).await?;
     let input = prepared_input.eve_path.display().to_string();
     let generated_cleanup = prepared_input.cleanup_path();
 
@@ -268,9 +249,9 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn prepare_input(args: &clap::ArgMatches) -> Result<PreparedInput> {
-    let input = PathBuf::from(args.get_one::<String>("INPUT").unwrap());
-    if !args.get_flag("pcap") {
+async fn prepare_input(args: &Args) -> Result<PreparedInput> {
+    let input = args.input.clone();
+    if !args.pcap {
         return Ok(PreparedInput::eve(input));
     }
 
@@ -282,13 +263,10 @@ async fn prepare_input(args: &clap::ArgMatches) -> Result<PreparedInput> {
         .context("failed to create private PCAP processing workspace")?;
     let staged_pcap = stage_pcap(&pcap, workspace.path())?;
     let eve_path = workspace.path().join("eve.json");
-    let runtime = args
-        .get_one::<container::ContainerRuntimeChoice>("container-runtime")
-        .copied()
-        .unwrap_or_default();
+    let runtime = args.container_runtime.unwrap_or_default();
     let image = args
-        .get_one::<String>("suricata-image")
-        .map(String::as_str)
+        .suricata_image
+        .as_deref()
         .unwrap_or(container::DEFAULT_SURICATA_IMAGE);
 
     container::generate_eve(&staged_pcap, &eve_path, runtime, image).await?;
@@ -429,15 +407,9 @@ mod tests {
 
     #[test]
     fn pcap_options_default_in_implementation() {
-        let matches = command()
-            .try_get_matches_from(["oneshot", "capture.pcap"])
-            .unwrap();
-        assert!(!matches.get_flag("pcap"));
-        assert!(
-            matches
-                .get_one::<container::ContainerRuntimeChoice>("container-runtime")
-                .is_none()
-        );
+        let args = Args::try_parse_from(["oneshot", "capture.pcap"]).unwrap();
+        assert!(!args.pcap);
+        assert!(args.container_runtime.is_none());
         assert_eq!(
             container::ContainerRuntimeChoice::default(),
             container::ContainerRuntimeChoice::Auto
@@ -459,34 +431,28 @@ mod tests {
                 "eve.json",
             ],
         ] {
-            let err = command().try_get_matches_from(option).unwrap_err();
+            let err = Args::try_parse_from(option).unwrap_err();
             assert_eq!(err.kind(), ErrorKind::MissingRequiredArgument);
         }
     }
 
     #[test]
     fn explicit_runtime_is_parsed() {
-        let matches = command()
-            .try_get_matches_from([
-                "oneshot",
-                "--pcap",
-                "--container-runtime",
-                "docker",
-                "--suricata-image",
-                "example/suricata:8",
-                "capture.pcap",
-            ])
-            .unwrap();
+        let args = Args::try_parse_from([
+            "oneshot",
+            "--pcap",
+            "--container-runtime",
+            "docker",
+            "--suricata-image",
+            "example/suricata:8",
+            "capture.pcap",
+        ])
+        .unwrap();
         assert_eq!(
-            matches.get_one::<container::ContainerRuntimeChoice>("container-runtime"),
-            Some(&container::ContainerRuntimeChoice::Docker)
+            args.container_runtime,
+            Some(container::ContainerRuntimeChoice::Docker)
         );
-        assert_eq!(
-            matches
-                .get_one::<String>("suricata-image")
-                .map(String::as_str),
-            Some("example/suricata:8")
-        );
+        assert_eq!(args.suricata_image.as_deref(), Some("example/suricata:8"));
     }
 
     #[test]
@@ -540,19 +506,18 @@ mod tests {
     #[tokio::test]
     async fn existing_eve_input_needs_no_workspace() {
         let file = tempfile::NamedTempFile::new().unwrap();
-        let matches = command()
-            .try_get_matches_from([
-                "oneshot",
-                file.path().to_str().unwrap(),
-                "--limit",
-                "1",
-                "--no-wait",
-                "--no-open",
-                "--database-filename",
-                "custom.sqlite",
-            ])
-            .unwrap();
-        let prepared = prepare_input(&matches).await.unwrap();
+        let args = Args::try_parse_from([
+            "oneshot",
+            file.path().to_str().unwrap(),
+            "--limit",
+            "1",
+            "--no-wait",
+            "--no-open",
+            "--database-filename",
+            "custom.sqlite",
+        ])
+        .unwrap();
+        let prepared = prepare_input(&args).await.unwrap();
         assert_eq!(prepared.eve_path, file.path());
         assert!(prepared.workspace.is_none());
     }
