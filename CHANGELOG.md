@@ -12,15 +12,16 @@
   rule cache in the user cache directory so back-to-back runs don't
   re-download rules. If a cached image provides Suricata older than 8.0.6,
   interactive runs offer to pull an updated image before processing. PCAP
-  inputs larger than 4 GB are refused unless `--force` is given, as a working
+  inputs larger than 4 GiB are refused unless `--force` is given, as a working
   copy of the PCAP is staged in the temporary directory.
 - Oneshot mode shows compact event-type count cards above the event list for
   quickly reviewing and filtering imported events.
 
 ### Changed
-- Oneshot mode now exits with an error when the input can't be imported, for
-  example an unreadable file or malformed EVE JSON, instead of opening the
-  event viewer with partial or no data.
+- With its default wait behavior, oneshot mode now exits with an error when
+  the input can't be imported, for example an unreadable file or malformed
+  EVE JSON, instead of opening the event viewer with partial or no data.
+  `--no-wait` retains its asynchronous behavior and logs later import failures.
 
 ### Fixed
 - Oneshot mode now resets the browser's time range to show all imported events

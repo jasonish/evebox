@@ -47,7 +47,7 @@ struct Args {
     )]
     suricata_image: Option<String>,
 
-    /// Process PCAP files larger than the 4 GB limit
+    /// Process PCAP files larger than the 4 GiB limit
     #[arg(long, requires = "pcap")]
     force: bool,
 
@@ -342,7 +342,7 @@ fn suricata_data_dir(runtime: &str) -> Result<PathBuf> {
 fn check_pcap_size(size: u64, force: bool) -> Result<()> {
     if !force && size > MAX_PCAP_BYTES {
         anyhow::bail!(
-            "PCAP input is larger than the 4 GB limit (a full copy is staged \
+            "PCAP input is larger than the 4 GiB limit (a full copy is staged \
              in the temporary directory); use --force to process it anyway"
         );
     }
