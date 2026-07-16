@@ -4,11 +4,16 @@
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { API } from "../api";
 import { Button, Spinner } from "solid-bootstrap";
+import { serverConfig } from "../config";
 
 export function SensorSelect(props: {
   selected: string | undefined;
   onchange: (value: string | undefined) => void;
 }) {
+  if (serverConfig?.mode === "oneshot") {
+    return null;
+  }
+
   const [sensors, setSensors] = createSignal<string[]>([]);
   const [loading, setLoading] = createSignal(true);
 
