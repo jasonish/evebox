@@ -244,6 +244,25 @@ export function formatEventDescription(event: Event): string {
           return `${JSON.stringify(sip)}`;
         }
       }
+      case "llmnr": {
+        const llmnr = event._source.llmnr;
+        const parts = [llmnr.type.toUpperCase()];
+        const record =
+          llmnr.type === "request"
+            ? llmnr.queries?.[0]
+            : (llmnr.answers?.[0] ?? llmnr.queries?.[0]);
+
+        if (record?.rrtype) {
+          parts.push(record.rrtype.toUpperCase());
+        }
+        if (record?.rrname) {
+          parts.push(record.rrname);
+        }
+        if (llmnr.type === "response" && record?.rdata) {
+          parts.push("→", record.rdata);
+        }
+        return parts.join(" ");
+      }
       case "mdns": {
         let mdns = event._source.mdns;
         let parts = [mdns.type.toUpperCase()];
