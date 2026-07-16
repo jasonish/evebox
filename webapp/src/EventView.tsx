@@ -199,6 +199,12 @@ export function EventView() {
     const dest_ip = source.dest_ip;
     const host = source.host;
 
+    setSrcIpDns(null);
+    setDestIpDns(null);
+    if (!src_ip || !dest_ip) {
+      return;
+    }
+
     // Use flow start if available, otherwise use the event timestamp.
     const before = source.flow?.start || source.timestamp;
 
@@ -376,19 +382,19 @@ export function EventView() {
       if (stats.uptime) {
         eventDetails.push(["Uptime", stats.uptime]);
       }
-      if (stats.capture.kernel_packets) {
+      if (stats.capture?.kernel_packets) {
         eventDetails.push(["Kernel packets", stats.capture.kernel_packets]);
       }
-      if (stats.capture.kernel_drops) {
+      if (stats.capture?.kernel_drops) {
         eventDetails.push(["Kernel drops", stats.capture.kernel_drops]);
       }
-      if (stats.decoder.pkts) {
+      if (stats.decoder?.pkts) {
         eventDetails.push(["Decoder packets", stats.decoder.pkts]);
       }
-      if (stats.decoder.bytes) {
+      if (stats.decoder?.bytes) {
         eventDetails.push(["Decoder bytes", stats.decoder.bytes]);
       }
-      if (stats.detect.alert) {
+      if (stats.detect?.alert) {
         eventDetails.push(["Alerts", stats.detect.alert]);
       }
       setEventDetails(eventDetails);

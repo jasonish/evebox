@@ -199,7 +199,7 @@ export interface EveHttp {
 
 export interface EveStats {
   uptime: number;
-  capture: {
+  capture?: {
     kernel_drops: number;
     kernel_packets: number;
   };

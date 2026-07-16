@@ -21,7 +21,7 @@ import { EventView } from "./EventView";
 import { Notifications } from "./Notifications";
 import { Events } from "./Events";
 import { Stats } from "./Stats";
-import { serverConfigSet } from "./config";
+import { serverConfig, serverConfigSet } from "./config";
 import { Address } from "./dashboards/Address";
 import { AlertsDashboard } from "./dashboards/Alerts";
 import { Overview } from "./dashboards/Overview";
@@ -79,7 +79,8 @@ function App(props: any) {
 }
 
 function RedirectToIndex() {
-  return <Navigate href="/inbox" />;
+  const href = serverConfig?.mode === "oneshot" ? "/events" : "/inbox";
+  return <Navigate href={href} />;
 }
 
 function AuthenticationRequired(props: any) {

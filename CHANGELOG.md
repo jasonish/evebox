@@ -22,8 +22,10 @@
   the input can't be imported, for example an unreadable file or malformed
   EVE JSON, instead of opening the event viewer with partial or no data.
   `--no-wait` retains its asynchronous behavior and logs later import failures.
+- Oneshot mode now opens the Events view instead of the Inbox by default.
 
 ### Fixed
+- Stats events without capture counters can now be opened in the event view.
 - Oneshot mode now resets the browser's time range to show all imported events
   when the page is first loaded.
 - The oneshot `--limit` option was silently ignored; it now limits the number
