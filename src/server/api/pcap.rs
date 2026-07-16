@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Full packet capture API: `POST /api/pcap` extracts packets from
-//! the server's configured local pcap spool.
+//! the server's configured local pcap source.
 
 use std::collections::VecDeque;
 use std::io::Write;
@@ -19,8 +19,10 @@ use bytes::Bytes;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+#[cfg(test)]
+use crate::pcap::SpoolConfig;
 use crate::pcap::{
-    self, FetchError, FetchStats, FlowSelector, Limits, PcapFilter, PcapRequest, SpoolConfig,
+    self, FetchError, FetchStats, FlowSelector, Limits, PcapFilter, PcapRequest, PcapSource,
 };
 use crate::prelude::*;
 use crate::server::ServerContext;
@@ -157,7 +159,7 @@ async fn handle(
 }
 
 /// Shared request handling. With `dry_run` it stops right after the
-/// request is fully validated (event loaded, local spool configured,
+/// request is fully validated (event loaded, local source configured,
 /// filter, window and max-size all checked) and returns a 200 JSON
 /// summary without taking a permit or spawning any extraction — the
 /// pre-flight behind the browser's native download, so a bad request
@@ -217,7 +219,7 @@ async fn handle_inner(
     };
     let event_source = event.as_ref().map(|event| &event["_source"]);
 
-    let Some(spool) = context.pcap.spool().cloned() else {
+    let Some(source) = context.pcap.source().cloned() else {
         return Err(fail(
             &audit,
             StatusCode::SERVICE_UNAVAILABLE,
@@ -270,7 +272,7 @@ async fn handle_inner(
     let filename = filename(event_source, window.start.to_seconds());
 
     // Pre-flight (native-download probe): the request is fully
-    // validated at this point — event, spool, filter, window and
+    // validated at this point — event, source, filter, window and
     // max-size all check out — so report success as JSON without
     // taking a permit or spawning an extraction. The browser
     // then fetches the bytes directly via `GET /api/pcap`.
@@ -282,7 +284,7 @@ async fn handle_inner(
         .into_response());
     }
 
-    // A wedged spool can accumulate detached extraction threads whose
+    // A wedged source can accumulate detached extraction threads whose
     // slot was already released (the 504/abort paths do not wait for
     // the thread): refuse new work once the backlog doubles the
     // concurrency backstop, instead of stacking more stuck threads.
@@ -292,7 +294,7 @@ async fn handle_inner(
             &audit,
             StatusCode::SERVICE_UNAVAILABLE,
             "wedged",
-            "pcap extraction backlog; spool may be unresponsive",
+            "pcap extraction backlog; capture source may be unresponsive",
         ));
     }
 
@@ -325,7 +327,7 @@ async fn handle_inner(
 
     stream_local(
         context.clone(),
-        spool,
+        source,
         request,
         filename,
         audit,
@@ -419,7 +421,7 @@ fn empty_truncated_response(filename: &str) -> Response {
 
 async fn stream_local(
     context: Arc<ServerContext>,
-    spool: SpoolConfig,
+    source: PcapSource,
     request: PcapRequest,
     filename: String,
     audit: AuditContext,
@@ -462,7 +464,7 @@ async fn stream_local(
             started,
             last_progress: writer_progress,
         };
-        let result = run_extraction(&spool, &request, &mut writer, &fetch_cancel);
+        let result = run_extraction(&source, &request, &mut writer, &fetch_cancel);
         finish_producer(result, &mut writer)
     });
 
@@ -826,12 +828,12 @@ fn finish_producer(
 /// tail with a final flush whose error propagates — a client that
 /// stalls at the very tail must not be reported as outcome=ok.
 fn run_extraction(
-    spool: &SpoolConfig,
+    source: &PcapSource,
     request: &PcapRequest,
     writer: &mut ChannelWriter,
     cancel: &CancellationToken,
 ) -> Result<FetchStats, FetchError> {
-    let result = pcap::fetch(spool, request, writer, cancel);
+    let result = pcap::fetch(source, request, writer, cancel);
     result.and_then(|stats| writer.flush().map(|()| stats).map_err(FetchError::Io))
 }
 
@@ -1495,11 +1497,11 @@ mod test {
         event: serde_json::Value,
         settings: PcapSettings,
     ) -> Arc<ServerContext> {
-        context_with_event_and_optional_spool(
+        context_with_event_and_optional_source(
             dir,
             event,
             settings,
-            Some(SpoolConfig::new(testdata("spool"), None)),
+            Some(PcapSource::Spool(SpoolConfig::new(testdata("spool"), None))),
         )
         .await
     }
@@ -1511,15 +1513,25 @@ mod test {
         settings: PcapSettings,
         spool: SpoolConfig,
     ) -> Arc<ServerContext> {
-        context_with_event_and_optional_spool(dir, event, settings, Some(spool)).await
+        context_with_event_and_source(dir, event, settings, PcapSource::Spool(spool)).await
     }
 
-    /// As [`context_with_event`], but with an optional local spool.
-    async fn context_with_event_and_optional_spool(
+    /// As [`context_with_event`], but serving pcap from an explicit source.
+    async fn context_with_event_and_source(
         dir: &Path,
         event: serde_json::Value,
         settings: PcapSettings,
-        spool: Option<SpoolConfig>,
+        source: PcapSource,
+    ) -> Arc<ServerContext> {
+        context_with_event_and_optional_source(dir, event, settings, Some(source)).await
+    }
+
+    /// As [`context_with_event`], but with an optional local capture source.
+    async fn context_with_event_and_optional_source(
+        dir: &Path,
+        event: serde_json::Value,
+        settings: PcapSettings,
+        source: Option<PcapSource>,
     ) -> Arc<ServerContext> {
         let datastore = build_repo(&dir.join("events.sqlite")).await;
         let mut sink = datastore.get_importer().unwrap();
@@ -1538,7 +1550,7 @@ mod test {
             datastore,
             Arc::new(Metrics::default()),
         );
-        context.pcap = Arc::new(PcapService::new(settings, spool));
+        context.pcap = Arc::new(PcapService::new(settings, source));
         Arc::new(context)
     }
 
@@ -1685,6 +1697,28 @@ mod test {
         assert_eq!(body, expected);
 
         // The supervisor has settled once the permit becomes free.
+        wait_for("supervisor settled", || permits_free(&context)).await;
+    }
+
+    #[tokio::test]
+    async fn explicit_file_source_backs_event_download() {
+        let dir = tempfile::tempdir().unwrap();
+        let capture = testdata("spool/log.pcap.1.1700000000");
+        let context = context_with_event_and_source(
+            dir.path(),
+            matching_event(),
+            PcapSettings::default(),
+            PcapSource::Files(vec![capture]),
+        )
+        .await;
+        let (status, headers, body) = run(&context, request("1")).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            headers.get(CONTENT_TYPE).unwrap(),
+            "application/vnd.tcpdump.pcap"
+        );
+        assert!(!body.is_empty());
         wait_for("supervisor settled", || permits_free(&context)).await;
     }
 
@@ -2396,9 +2430,9 @@ mod test {
         };
         // The whole fixture output is far below one chunk, so all of
         // it rides on the final flush.
-        let spool = SpoolConfig::new(testdata("spool"), None);
+        let source = PcapSource::Spool(SpoolConfig::new(testdata("spool"), None));
         let request = PcapRequest::default();
-        let result = run_extraction(&spool, &request, &mut writer, &cancel);
+        let result = run_extraction(&source, &request, &mut writer, &cancel);
         match result {
             Err(FetchError::Io(err)) => assert_eq!(err.kind(), std::io::ErrorKind::TimedOut),
             other => panic!("expected a TimedOut io error, got {other:?}"),
@@ -2901,12 +2935,12 @@ mod test {
         assert!(permits_free(&context));
     }
 
-    /// Standalone with no event and no local spool configured returns
+    /// Standalone with no event and no local capture source configured returns
     /// 503 not-configured.
     #[tokio::test]
-    async fn standalone_without_spool_returns_503() {
+    async fn standalone_without_source_returns_503() {
         let dir = tempfile::tempdir().unwrap();
-        let context = context_with_event_and_optional_spool(
+        let context = context_with_event_and_optional_source(
             dir.path(),
             matching_event(),
             PcapSettings::default(),

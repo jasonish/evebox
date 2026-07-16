@@ -15,6 +15,16 @@ use super::filter::{FlowSelector, vlan_wrapped};
 use super::spool::{self, SpoolConfig};
 use super::writer::PcapWriter;
 
+/// The local packet capture input served by the extraction engine.
+#[derive(Debug, Clone)]
+pub(crate) enum PcapSource {
+    /// A directory containing rotating packet capture files.
+    Spool(SpoolConfig),
+    /// Explicit packet capture files, without sibling discovery or
+    /// filename-based time pruning.
+    Files(Vec<PathBuf>),
+}
+
 /// Resource limits for a fetch.
 #[derive(Debug, Clone)]
 pub(crate) struct Limits {
@@ -504,7 +514,7 @@ fn fd_exhausted(err: &anyhow::Error) -> bool {
     false
 }
 
-/// Fetch packets matching `request` from the spool, writing them as a
+/// Fetch packets matching `request` from the source, writing them as a
 /// classic pcap stream to `out`.
 ///
 /// In grouped mode (parseable rotation names) the rotation groups —
@@ -521,7 +531,7 @@ fn fd_exhausted(err: &anyhow::Error) -> bool {
 /// `cancel` is checked between packets and between files; on cancellation
 /// the fetch stops writing and returns Ok with the stats so far.
 pub(crate) fn fetch(
-    spool: &SpoolConfig,
+    source: &PcapSource,
     request: &PcapRequest,
     out: &mut dyn Write,
     cancel: &CancellationToken,
@@ -554,25 +564,30 @@ pub(crate) fn fetch(
     // a single cursor, which degenerates the merge to a sequential
     // scan — opening every fallback file at once could exhaust file
     // descriptors on unbounded file counts.
-    let groups: Vec<Vec<PathBuf>> = match spool::load_files(spool, start, end)? {
-        Some(sorted) => {
-            // Sort the groups so the output is deterministic.
-            let mut groups: Vec<_> = sorted.into_iter().collect();
-            groups.sort_by(|a, b| a.0.cmp(&b.0));
-            groups
-                .into_iter()
-                .map(|(_id, files)| files.into_iter().map(|(_ts, path)| path).collect())
-                .collect()
-        }
-        None => {
-            warn!(
-                "Failed to load sorted file list, processing will not be optimized and output may not be time ordered"
-            );
-            vec![spool::walk_files(
-                &spool.directory,
-                spool.prefix.as_deref(),
-            )?]
-        }
+    let groups: Vec<Vec<PathBuf>> = match source {
+        PcapSource::Spool(spool) => match spool::load_files(spool, start, end)? {
+            Some(sorted) => {
+                // Sort the groups so the output is deterministic.
+                let mut groups: Vec<_> = sorted.into_iter().collect();
+                groups.sort_by(|a, b| a.0.cmp(&b.0));
+                groups
+                    .into_iter()
+                    .map(|(_id, files)| files.into_iter().map(|(_ts, path)| path).collect())
+                    .collect()
+            }
+            None => {
+                warn!(
+                    "Failed to load sorted file list, processing will not be optimized and output may not be time ordered"
+                );
+                vec![spool::walk_files(
+                    &spool.directory,
+                    spool.prefix.as_deref(),
+                )?]
+            }
+        },
+        // Give each explicit capture its own cursor so packets from
+        // different inputs are merged in timestamp order.
+        PcapSource::Files(paths) => paths.iter().cloned().map(|path| vec![path]).collect(),
     };
     if groups.iter().all(|files| files.is_empty()) {
         return Err(FetchError::NoCandidateFiles);
@@ -731,7 +746,8 @@ mod test {
     ) -> (Result<FetchStats, FetchError>, Vec<u8>) {
         let mut out = vec![];
         let cancel = CancellationToken::new();
-        let result = fetch(spool, request, &mut out, &cancel);
+        let source = PcapSource::Spool(spool.clone());
+        let result = fetch(&source, request, &mut out, &cancel);
         (result, out)
     }
 
@@ -776,6 +792,47 @@ mod test {
         assert_eq!(stats.bytes, out.len() as u64);
         assert_eq!(stats.linktype, Some(pcap::Linktype::ETHERNET));
         assert_eq!(count_packets_in(tempdir.path(), &out), 2);
+    }
+
+    #[test]
+    fn explicit_files_are_merged_without_scanning_siblings() {
+        let (tempdir, input) = setup();
+        // These selected filenames are deliberately later than the requested
+        // window. Explicit files must not use spool filename pruning.
+        let first = input.join("log.pcap.1.1900000000");
+        let second = input.join("log.pcap.2.1900000000");
+        write_pcap_file(&first, &[(1_700_000_010, 1010), (1_700_000_030, 1030)]);
+        write_pcap_file(&second, &[(1_700_000_020, 1020), (1_700_000_040, 1040)]);
+        // A matching sibling must not be discovered.
+        write_pcap_file(
+            &input.join("log.pcap.3.1700000000"),
+            &[(1_700_000_025, 1025)],
+        );
+
+        let source = PcapSource::Files(vec![first, second]);
+        let request = PcapRequest {
+            start: Some(micros(1_700_000_010)),
+            end: Some(micros(1_700_000_040)),
+            ..Default::default()
+        };
+        let mut out = vec![];
+        let stats = fetch(&source, &request, &mut out, &CancellationToken::new()).unwrap();
+
+        assert_eq!(stats.files_scanned, 2);
+        assert_eq!(stats.packets, 4);
+        assert_eq!(
+            read_timestamps(tempdir.path(), &out),
+            vec![
+                micros(1_700_000_010),
+                micros(1_700_000_020),
+                micros(1_700_000_030),
+                micros(1_700_000_040),
+            ]
+        );
+        assert_eq!(
+            read_dest_ports(tempdir.path(), &out),
+            vec![1010, 1020, 1030, 1040]
+        );
     }
 
     #[test]
@@ -1001,7 +1058,7 @@ mod test {
         let mut out = vec![];
         let cancel = CancellationToken::new();
         cancel.cancel();
-        let stats = fetch(&spool, &request, &mut out, &cancel).unwrap();
+        let stats = fetch(&PcapSource::Spool(spool), &request, &mut out, &cancel).unwrap();
         assert_eq!(stats.packets, 0);
         assert!(!stats.truncated);
         assert!(out.is_empty());
@@ -1450,7 +1507,7 @@ mod test {
             delay: Duration::from_millis(80),
         };
         let cancel = CancellationToken::new();
-        let stats = fetch(&spool, &request, &mut out, &cancel).unwrap();
+        let stats = fetch(&PcapSource::Spool(spool), &request, &mut out, &cancel).unwrap();
         assert!(!stats.truncated, "write time counted against the deadline");
         assert_eq!(stats.packets, 6);
         assert_eq!(stats.bytes, out.out.len() as u64);
@@ -1499,7 +1556,7 @@ mod test {
             flush_lens: vec![],
         };
         let cancel = CancellationToken::new();
-        let stats = fetch(&spool, &request, &mut out, &cancel).unwrap();
+        let stats = fetch(&PcapSource::Spool(spool), &request, &mut out, &cancel).unwrap();
         assert_eq!(stats.packets, 2);
         let one_record = (HEADER_SIZE + RECORD_SIZE) as usize;
         assert!(

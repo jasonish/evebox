@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
-use crate::pcap::SpoolConfig;
+use crate::pcap::{PcapSource, SpoolConfig};
 use crate::prelude::*;
 
 /// Fixed serving limits and timeouts for packet capture requests.
@@ -43,10 +43,11 @@ impl Default for PcapSettings {
     }
 }
 
-/// The one server-local spool together with its extraction limits.
+/// The one server-local packet capture source together with its
+/// extraction limits.
 pub(crate) struct PcapService {
     pub(crate) settings: PcapSettings,
-    spool: Option<SpoolConfig>,
+    source: Option<PcapSource>,
     global: Arc<Semaphore>,
     /// Extraction worker threads currently alive, including detached
     /// ones whose request was already answered.
@@ -60,22 +61,22 @@ impl Default for PcapService {
 }
 
 impl PcapService {
-    pub(crate) fn new(settings: PcapSettings, spool: Option<SpoolConfig>) -> Self {
+    pub(crate) fn new(settings: PcapSettings, source: Option<PcapSource>) -> Self {
         let global = Arc::new(Semaphore::new(settings.max_concurrent));
         Self {
             settings,
-            spool,
+            source,
             global,
             inflight: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         }
     }
 
-    pub(crate) fn spool(&self) -> Option<&SpoolConfig> {
-        self.spool.as_ref()
+    pub(crate) fn source(&self) -> Option<&PcapSource> {
+        self.source.as_ref()
     }
 
-    pub(crate) fn has_spool(&self) -> bool {
-        self.spool.is_some()
+    pub(crate) fn has_source(&self) -> bool {
+        self.source.is_some()
     }
 
     /// One global in-flight slot, or `None` when at capacity.
@@ -124,7 +125,7 @@ pub(crate) fn configure(config: &crate::config::Config) -> PcapService {
         SpoolConfig::new(directory, prefix)
     });
 
-    PcapService::new(PcapSettings::default(), spool)
+    PcapService::new(PcapSettings::default(), spool.map(PcapSource::Spool))
 }
 
 #[cfg(test)]
@@ -145,15 +146,18 @@ mod test {
         let yaml = format!("pcap:\n  directory: {}\n", dir.path().display());
         let config = yaml_config(dir.path(), &yaml);
         let service = configure(&config);
-        assert!(service.has_spool());
+        assert!(service.has_source());
         assert_eq!(service.settings.max_bytes, 8_000_000);
-        assert_eq!(service.spool().unwrap().directory, dir.path());
+        let Some(PcapSource::Spool(spool)) = service.source() else {
+            panic!("expected a spool source");
+        };
+        assert_eq!(spool.directory, dir.path());
     }
 
     #[test]
     fn test_configure_without_spool() {
         let dir = tempfile::tempdir().unwrap();
         let config = yaml_config(dir.path(), "");
-        assert!(!configure(&config).has_spool());
+        assert!(!configure(&config).has_source());
     }
 }

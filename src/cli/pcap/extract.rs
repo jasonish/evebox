@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: (C) 2026 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::pcap::{FetchError, FetchStats, Limits, PcapFilter, PcapRequest, SpoolConfig};
+use crate::pcap::{
+    FetchError, FetchStats, Limits, PcapFilter, PcapRequest, PcapSource, SpoolConfig,
+};
 use crate::prelude::*;
 use chrono::TimeZone;
 use clap::Parser as ClapParser;
@@ -72,7 +74,8 @@ pub(super) fn main(args: ExtractArgs) -> anyhow::Result<()> {
 
     let mut out = LazyOutput::new(output_filename(&args));
     let cancel = CancellationToken::new();
-    match crate::pcap::fetch(&spool, &request, &mut out, &cancel) {
+    let source = PcapSource::Spool(spool);
+    match crate::pcap::fetch(&source, &request, &mut out, &cancel) {
         Ok(_stats) => {
             out.flush()?;
             Ok(())

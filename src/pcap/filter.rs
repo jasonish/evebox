@@ -113,7 +113,7 @@ mod test {
     use crate::pcap::testutil::{
         ipv4_fragment, ipv4_packet, ipv6_packet, ports, vlan_tag, write_raw_pcap_file,
     };
-    use crate::pcap::{FetchError, PcapFilter, PcapRequest, SpoolConfig, fetch};
+    use crate::pcap::{FetchError, PcapFilter, PcapRequest, PcapSource, SpoolConfig, fetch};
 
     fn selector(proto: u8, a: (&str, Option<u16>), b: (&str, Option<u16>)) -> FlowSelector {
         FlowSelector {
@@ -139,7 +139,7 @@ mod test {
         };
         let mut out = vec![];
         let cancel = tokio_util::sync::CancellationToken::new();
-        match fetch(&spool, &request, &mut out, &cancel) {
+        match fetch(&PcapSource::Spool(spool), &request, &mut out, &cancel) {
             Ok(stats) => stats.packets,
             Err(FetchError::NoMatch(_)) => 0,
             Err(err) => panic!("fetch failed: {err:?}"),

@@ -137,13 +137,13 @@ pub(crate) async fn config(
         }),
         EventRepo::SQLite(_) => None,
     };
-    // Non-null only when packet capture is actually available: a spool
-    // is configured (some source is registered) and the feature is
+    // Non-null only when packet capture is actually available: a source
+    // is registered and the feature is
     // compiled in (not Windows). The value carries the defaults the
     // download UI pre-fills without a second request, and the webapp
     // keys the PCAP controls off its presence.
     #[cfg(not(windows))]
-    let pcap = if context.pcap.has_spool() {
+    let pcap = if context.pcap.has_source() {
         let settings = &context.pcap.settings;
         json!({
             "max_size_bytes": settings.max_bytes,
