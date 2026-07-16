@@ -54,6 +54,7 @@ clean:
 
 resources/webapp/index.html: $(WEBAPP_SRCS)
 	cd webapp && $(MAKE)
+	touch src/resource.rs
 webapp: resources/webapp/index.html
 
 # Build's EveBox for the host platform.
