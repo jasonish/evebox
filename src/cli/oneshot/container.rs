@@ -6,7 +6,7 @@ use crate::prelude::*;
 use clap::ValueEnum;
 use std::ffi::OsString;
 use std::io::IsTerminal;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use uuid::Uuid;
 
@@ -172,22 +172,77 @@ pub(super) async fn prepare_runtime(
     Ok(runtime)
 }
 
-pub(super) async fn generate_eve(
+pub(super) struct EveGenerator {
     runtime: ContainerRuntime,
-    image: &str,
-    pcap: &Path,
-    output: &Path,
-    data_dir: &Path,
-) -> Result<()> {
-    let executor = TokioProcessExecutor;
-    let names = JobNames::random();
-    // Give the containers a TTY when we have one so tools like
-    // suricata-update keep their colored output.
-    let tty = std::io::stdout().is_terminal();
-    generate_eve_with(
-        &executor, runtime, image, pcap, output, data_dir, names, tty,
-    )
-    .await
+    image: String,
+    data_dir: PathBuf,
+    tty: bool,
+}
+
+impl EveGenerator {
+    pub(super) async fn prepare(
+        runtime: ContainerRuntime,
+        image: &str,
+        data_dir: &Path,
+    ) -> Result<Self> {
+        let executor = TokioProcessExecutor;
+        // Give the containers a TTY when we have one so tools like
+        // suricata-update keep their colored output.
+        let tty = std::io::stdout().is_terminal();
+        Self::prepare_with(&executor, runtime, image, data_dir, tty).await
+    }
+
+    async fn prepare_with(
+        executor: &dyn ProcessExecutor,
+        runtime: ContainerRuntime,
+        image: &str,
+        data_dir: &Path,
+        tty: bool,
+    ) -> Result<Self> {
+        let generator = Self {
+            runtime,
+            image: image.to_string(),
+            data_dir: data_dir.to_path_buf(),
+            tty,
+        };
+        let mut job = ContainerJob::new(
+            executor,
+            runtime,
+            &generator.image,
+            &generator.data_dir,
+            JobNames::random(),
+            tty,
+        );
+        let result = job.update_rules().await;
+        job.cleanup().await;
+        result?;
+        Ok(generator)
+    }
+
+    pub(super) async fn generate(&self, pcap: &Path, output: &Path) -> Result<()> {
+        self.generate_with(&TokioProcessExecutor, pcap, output)
+            .await
+    }
+
+    async fn generate_with(
+        &self,
+        executor: &dyn ProcessExecutor,
+        pcap: &Path,
+        output: &Path,
+    ) -> Result<()> {
+        let mut job = ContainerJob::new(
+            executor,
+            self.runtime,
+            &self.image,
+            &self.data_dir,
+            JobNames::random(),
+            self.tty,
+        );
+        let result = job.replay(pcap, output).await;
+        job.cleanup().await;
+        result?;
+        validate_eve_output(output)
+    }
 }
 
 trait ImageUpdatePrompt: Send + Sync {
@@ -577,9 +632,13 @@ impl<'a> ContainerJob<'a> {
         args
     }
 
+    #[cfg(test)]
     async fn run(&mut self, pcap: &Path, output: &Path) -> Result<()> {
         self.update_rules().await?;
+        self.replay(pcap, output).await
+    }
 
+    async fn replay(&mut self, pcap: &Path, output: &Path) -> Result<()> {
         info!(
             "Processing {} with Suricata in {}",
             pcap.display(),
@@ -747,6 +806,7 @@ impl<'a> ContainerJob<'a> {
     }
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 async fn generate_eve_with(
     executor: &dyn ProcessExecutor,
@@ -762,7 +822,10 @@ async fn generate_eve_with(
     let result = job.run(pcap, output).await;
     job.cleanup().await;
     result?;
+    validate_eve_output(output)
+}
 
+fn validate_eve_output(output: &Path) -> Result<()> {
     let metadata = std::fs::metadata(output).with_context(|| {
         format!(
             "Suricata completed but did not produce a readable eve.json at {}",
@@ -1195,6 +1258,57 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn generator_updates_rules_once_for_multiple_pcaps() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let data = data_dir(&tempdir);
+        let first_pcap = tempdir.path().join("first.pcap");
+        let second_pcap = tempdir.path().join("second.pcap");
+        std::fs::write(&first_pcap, b"pcap").unwrap();
+        std::fs::write(&second_pcap, b"pcap").unwrap();
+        let executor = FakeExecutor::new(vec![
+            ok(""),
+            ok(""),
+            ok(""),
+            ok(""),
+            ok(""),
+            ok(""),
+            ok(""),
+            ok(""),
+        ])
+        .with_copy_output();
+
+        let generator = EveGenerator::prepare_with(
+            &executor,
+            ContainerRuntime::Podman,
+            "suricata:test",
+            &data,
+            false,
+        )
+        .await
+        .unwrap();
+        generator
+            .generate_with(&executor, &first_pcap, &tempdir.path().join("first.json"))
+            .await
+            .unwrap();
+        generator
+            .generate_with(&executor, &second_pcap, &tempdir.path().join("second.json"))
+            .await
+            .unwrap();
+
+        let calls = executor.calls();
+        assert_eq!(calls.len(), 8);
+        assert!(
+            arg_strings(&calls[0])
+                .last()
+                .unwrap()
+                .starts_with("/usr/bin/suricata-update")
+        );
+        assert_eq!(arg_strings(&calls[1])[0], "rm");
+        assert_eq!(arg_strings(&calls[2])[0], "run");
+        assert_eq!(arg_strings(&calls[5])[0], "run");
+    }
+
+    #[tokio::test]
     async fn builds_secure_replay_command_and_cleans_up_in_order() {
         let tempdir = tempfile::tempdir().unwrap();
         let pcap = tempdir.path().join("capture with spaces.pcap");
@@ -1582,7 +1696,7 @@ mod tests {
             super::super::run_import(
                 Arc::new(tokio::sync::Mutex::new(connection)),
                 0,
-                &eve,
+                std::slice::from_ref(&eve),
                 Arc::new(crate::server::metrics::Metrics::default()),
             )
             .await

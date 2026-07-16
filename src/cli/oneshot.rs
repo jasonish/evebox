@@ -76,9 +76,9 @@ struct Args {
     )]
     host: String,
 
-    /// EVE JSON file to import, or a PCAP file with --pcap
-    #[arg(value_name = "INPUT")]
-    input: PathBuf,
+    /// EVE JSON file to import, or one or more PCAP files with --pcap
+    #[arg(value_name = "INPUT", required = true, num_args = 1..)]
+    inputs: Vec<PathBuf>,
 }
 
 /// PCAPs over this size are refused without --force as a full copy is
@@ -89,15 +89,16 @@ pub fn command() -> clap::Command {
     Args::command()
 }
 
+#[derive(Debug)]
 struct PreparedInput {
-    eve_path: PathBuf,
+    eve_paths: Vec<PathBuf>,
     workspace: Option<TempDir>,
 }
 
 impl PreparedInput {
     fn eve(eve_path: PathBuf) -> Self {
         Self {
-            eve_path,
+            eve_paths: vec![eve_path],
             workspace: None,
         }
     }
@@ -115,7 +116,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let db_filename = args.database_filename.clone();
     let host = args.host.clone();
     let prepared_input = prepare_input(&args).await?;
-    let input = prepared_input.eve_path.clone();
+    let inputs = prepared_input.eve_paths.clone();
     let generated_cleanup = prepared_input.cleanup_path();
 
     info!("Using database filename {}", &db_filename);
@@ -134,7 +135,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let mut import_task = {
         let metrics = metrics.clone();
         tokio::spawn(async move {
-            let result = run_import(db, limit, &input, metrics).await;
+            let result = run_import(db, limit, &inputs, metrics).await;
             if let Err(err) = &result {
                 error!("Import failure: {:#}", err);
             }
@@ -264,14 +265,23 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 }
 
 async fn prepare_input(args: &Args) -> Result<PreparedInput> {
-    let input = args.input.clone();
     if !args.pcap {
-        return Ok(PreparedInput::eve(input));
+        if args.inputs.len() > 1 {
+            anyhow::bail!("multiple inputs are only supported with --pcap");
+        }
+        return Ok(PreparedInput::eve(args.inputs[0].clone()));
     }
 
     ensure_pcap_supported(std::env::consts::OS)?;
-    let pcap = validate_pcap(&input)?;
-    check_pcap_size(std::fs::metadata(&pcap)?.len(), args.force)?;
+    let pcaps = args
+        .inputs
+        .iter()
+        .map(|input| {
+            let pcap = validate_pcap(input)?;
+            check_pcap_size(std::fs::metadata(&pcap)?.len(), args.force)?;
+            Ok(pcap)
+        })
+        .collect::<Result<Vec<_>>>()?;
     // Get the container runtime and image ready before staging the PCAP
     // so we fail fast, before copying a potentially large file.
     let choice = args.container_runtime.unwrap_or_default();
@@ -284,6 +294,7 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
     let data_dir = suricata_data_dir(runtime.program())?;
     crate::path::ensure_exists(&data_dir)
         .with_context(|| format!("failed to create rules cache {}", data_dir.display()))?;
+    let generator = container::EveGenerator::prepare(runtime, image, &data_dir).await?;
 
     let workspace = tempfile::Builder::new()
         .prefix("evebox-oneshot-pcap-")
@@ -296,19 +307,36 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
             workspace.path().display()
         );
     }
-    let staged_pcap = stage_pcap(&pcap, workspace.path())?;
-    let eve_path = workspace.path().join("eve.json");
-
-    container::generate_eve(runtime, image, &staged_pcap, &eve_path, &data_dir).await?;
-    if let Err(err) = std::fs::remove_file(&staged_pcap) {
-        warn!(
-            "Failed to remove staged PCAP {}: {}",
-            staged_pcap.display(),
-            err
+    let mut eve_paths = Vec::with_capacity(pcaps.len());
+    for (index, pcap) in pcaps.iter().enumerate() {
+        info!(
+            "Processing PCAP {} of {}: {}",
+            index + 1,
+            pcaps.len(),
+            pcap.display()
         );
+        let input_workspace = workspace.path().join(format!("input-{index}"));
+        std::fs::create_dir(&input_workspace).with_context(|| {
+            format!(
+                "failed to create PCAP processing directory {}",
+                input_workspace.display()
+            )
+        })?;
+        let staged_pcap = stage_pcap(pcap, &input_workspace)?;
+        let eve_path = input_workspace.join("eve.json");
+
+        generator.generate(&staged_pcap, &eve_path).await?;
+        if let Err(err) = std::fs::remove_file(&staged_pcap) {
+            warn!(
+                "Failed to remove staged PCAP {}: {}",
+                staged_pcap.display(),
+                err
+            );
+        }
+        eve_paths.push(eve_path);
     }
     Ok(PreparedInput {
-        eve_path,
+        eve_paths,
         workspace: Some(workspace),
     })
 }
@@ -408,38 +436,40 @@ fn cleanup_generated(path: &Option<PathBuf>) {
 async fn run_import(
     sqlx: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     limit: u64,
-    input: &Path,
+    inputs: &[PathBuf],
     metrics: Arc<crate::server::metrics::Metrics>,
 ) -> anyhow::Result<()> {
     let geoipdb = geoip::GeoIP::open(None).ok();
     let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, metrics);
-    let mut reader = eve::reader::EveReader::new(input.to_path_buf());
-    info!("Reading {} ({} bytes)", input.display(), reader.file_size());
-    let mut last_percent = 0;
     let mut count = 0;
     let start = std::time::Instant::now();
-    while let Some(mut next) = reader.next_file_record()? {
-        if let Some(geoipdb) = &geoipdb {
-            geoipdb.add_geoip_to_eve(&mut next);
-        }
-        indexer.submit(next).await?;
-        count += 1;
-        let size = reader.file_size();
-        let offset = reader.offset();
-        let pct = if size == 0 {
-            100
-        } else {
-            ((offset as f64 / size as f64) * 100.0) as u64
-        };
-        if pct != last_percent {
-            info!("{}: {} events ({}%)", input.display(), count, pct);
-            last_percent = pct;
-        }
-        if indexer.pending() > 300 {
-            indexer.commit().await?;
-        }
-        if limit > 0 && count == limit {
-            break;
+    'inputs: for input in inputs {
+        let mut reader = eve::reader::EveReader::new(input.clone());
+        info!("Reading {} ({} bytes)", input.display(), reader.file_size());
+        let mut last_percent = 0;
+        while let Some(mut next) = reader.next_file_record()? {
+            if let Some(geoipdb) = &geoipdb {
+                geoipdb.add_geoip_to_eve(&mut next);
+            }
+            indexer.submit(next).await?;
+            count += 1;
+            let size = reader.file_size();
+            let offset = reader.offset();
+            let pct = if size == 0 {
+                100
+            } else {
+                ((offset as f64 / size as f64) * 100.0) as u64
+            };
+            if pct != last_percent {
+                info!("{}: {} events ({}%)", input.display(), count, pct);
+                last_percent = pct;
+            }
+            if indexer.pending() > 300 {
+                indexer.commit().await?;
+            }
+            if limit > 0 && count == limit {
+                break 'inputs;
+            }
         }
     }
     indexer.commit().await?;
@@ -467,6 +497,23 @@ mod tests {
             container::DEFAULT_SURICATA_IMAGE,
             "docker.io/jasonish/suricata:8.0"
         );
+    }
+
+    #[test]
+    fn accepts_multiple_inputs_in_pcap_mode() {
+        let args =
+            Args::try_parse_from(["oneshot", "--pcap", "first.pcap", "second.pcap"]).unwrap();
+        assert_eq!(
+            args.inputs,
+            [PathBuf::from("first.pcap"), PathBuf::from("second.pcap")]
+        );
+    }
+
+    #[tokio::test]
+    async fn rejects_multiple_eve_inputs() {
+        let args = Args::try_parse_from(["oneshot", "first.json", "second.json"]).unwrap();
+        let err = prepare_input(&args).await.unwrap_err();
+        assert!(err.to_string().contains("only supported with --pcap"));
     }
 
     #[test]
@@ -577,22 +624,45 @@ mod tests {
         ])
         .unwrap();
         let prepared = prepare_input(&args).await.unwrap();
-        assert_eq!(prepared.eve_path, file.path());
+        assert_eq!(prepared.eve_paths, [file.path()]);
         assert!(prepared.workspace.is_none());
     }
 
-    async fn import_file(input: &Path) -> Result<()> {
+    async fn import_files(inputs: &[PathBuf], limit: u64) -> Result<i64> {
         let directory = tempfile::tempdir().unwrap();
         let database = directory.path().join("events.sqlite");
         let mut connection = sqlite::connection::open_connection(Some(&database), true).await?;
         sqlite::connection::init_event_db(&mut connection).await?;
+        let connection = Arc::new(tokio::sync::Mutex::new(connection));
         run_import(
-            Arc::new(tokio::sync::Mutex::new(connection)),
-            0,
-            input,
+            connection.clone(),
+            limit,
+            inputs,
             Arc::new(Metrics::default()),
         )
-        .await
+        .await?;
+        let mut connection = connection.lock().await;
+        Ok(sqlx::query_scalar("SELECT count(*) FROM events")
+            .fetch_one(&mut *connection)
+            .await?)
+    }
+
+    async fn import_file(input: &Path) -> Result<()> {
+        import_files(&[input.to_path_buf()], 0).await.map(|_| ())
+    }
+
+    #[tokio::test]
+    async fn imports_multiple_files_with_a_global_limit() {
+        let first = tempfile::NamedTempFile::new().unwrap();
+        let second = tempfile::NamedTempFile::new().unwrap();
+        let event =
+            b"{\"timestamp\":\"2026-07-15T12:00:00.000000+0000\",\"event_type\":\"stats\"}\n";
+        std::fs::write(first.path(), event).unwrap();
+        std::fs::write(second.path(), event).unwrap();
+        let inputs = [first.path().to_path_buf(), second.path().to_path_buf()];
+
+        assert_eq!(import_files(&inputs, 0).await.unwrap(), 2);
+        assert_eq!(import_files(&inputs, 1).await.unwrap(), 1);
     }
 
     #[tokio::test]

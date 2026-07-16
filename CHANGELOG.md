@@ -6,9 +6,9 @@
 - The server's default browser time range can now be configured with
   `--default-time-range`, `EVEBOX_DEFAULT_TIME_RANGE`, or the
   `defaults.time-range` configuration key.
-- `evebox oneshot --pcap` can process a local PCAP or PCAPNG with
-  containerized Suricata before loading the generated EVE events. On Linux it
-  uses local Podman or Docker with ET/Open rules, keeping suricata-update's
+- `evebox oneshot --pcap` can process one or more local PCAP or PCAPNG files
+  with containerized Suricata before loading the generated EVE events. On Linux
+  it uses local Podman or Docker with ET/Open rules, keeping suricata-update's
   rule cache in the user cache directory so back-to-back runs don't
   re-download rules. If a cached image provides Suricata older than 8.0.6,
   interactive runs offer to pull an updated image before processing. PCAP
