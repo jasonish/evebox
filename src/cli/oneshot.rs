@@ -47,8 +47,12 @@ struct Args {
     )]
     suricata_image: Option<String>,
 
+    /// Process PCAP files larger than the 4 GB limit
+    #[arg(long, requires = "pcap")]
+    force: bool,
+
     /// Limit the number of events read
-    #[arg(long, value_name = "limit")]
+    #[arg(long)]
     limit: Option<u64>,
 
     /// Don't open browser
@@ -72,9 +76,14 @@ struct Args {
     )]
     host: String,
 
+    /// EVE JSON file to import, or a PCAP file with --pcap
     #[arg(value_name = "INPUT")]
     input: PathBuf,
 }
+
+/// PCAPs over this size are refused without --force as a full copy is
+/// staged in the temporary directory.
+const MAX_PCAP_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
 pub fn command() -> clap::Command {
     Args::command()
@@ -106,7 +115,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let db_filename = args.database_filename.clone();
     let host = args.host.clone();
     let prepared_input = prepare_input(&args).await?;
-    let input = prepared_input.eve_path.display().to_string();
+    let input = prepared_input.eve_path.clone();
     let generated_cleanup = prepared_input.cleanup_path();
 
     info!("Using database filename {}", &db_filename);
@@ -140,7 +149,10 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                 info!("Got CTRL-C, will start server now. Hit CTRL-C again to exit");
             }
             result = &mut import_task => {
-                result.context("oneshot import task failed")??;
+                if let Err(err) = result.context("oneshot import task failed").and_then(|r| r) {
+                    cleanup_database(&db_filename);
+                    return Err(err);
+                }
             }
         }
     }
@@ -150,6 +162,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let config_repo = configdb::open(None).await?;
 
     let server_cleanup = generated_cleanup.clone();
+    let server_db_filename = db_filename.clone();
     let server = {
         let host = host.clone();
         let metrics = metrics.clone();
@@ -187,6 +200,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                     }
                     Err(err) => {
                         error!("Failed to build server context: {}", err);
+                        cleanup_database(&server_db_filename);
                         cleanup_generated(&server_cleanup);
                         std::process::exit(1);
                     }
@@ -257,19 +271,35 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
 
     ensure_pcap_supported(std::env::consts::OS)?;
     let pcap = validate_pcap(&input)?;
-    let workspace = tempfile::Builder::new()
-        .prefix("evebox-oneshot-pcap-")
-        .tempdir()
-        .context("failed to create private PCAP processing workspace")?;
-    let staged_pcap = stage_pcap(&pcap, workspace.path())?;
-    let eve_path = workspace.path().join("eve.json");
-    let runtime = args.container_runtime.unwrap_or_default();
+    check_pcap_size(std::fs::metadata(&pcap)?.len(), args.force)?;
+    // Get the container runtime and image ready before staging the PCAP
+    // so we fail fast, before copying a potentially large file.
+    let choice = args.container_runtime.unwrap_or_default();
     let image = args
         .suricata_image
         .as_deref()
         .unwrap_or(container::DEFAULT_SURICATA_IMAGE);
+    let runtime = container::prepare_runtime(choice, image).await?;
 
-    container::generate_eve(&staged_pcap, &eve_path, runtime, image).await?;
+    let data_dir = suricata_data_dir(runtime.program())?;
+    crate::path::ensure_exists(&data_dir)
+        .with_context(|| format!("failed to create rules cache {}", data_dir.display()))?;
+
+    let workspace = tempfile::Builder::new()
+        .prefix("evebox-oneshot-pcap-")
+        .tempdir()
+        .context("failed to create private PCAP processing workspace")?;
+    if workspace.path().to_string_lossy().contains(',') {
+        anyhow::bail!(
+            "temporary directory {} contains a comma, which container mount \
+             options cannot express; set TMPDIR to a path without commas",
+            workspace.path().display()
+        );
+    }
+    let staged_pcap = stage_pcap(&pcap, workspace.path())?;
+    let eve_path = workspace.path().join("eve.json");
+
+    container::generate_eve(runtime, image, &staged_pcap, &eve_path, &data_dir).await?;
     if let Err(err) = std::fs::remove_file(&staged_pcap) {
         warn!(
             "Failed to remove staged PCAP {}: {}",
@@ -298,6 +328,25 @@ fn stage_pcap(pcap: &Path, workspace: &Path) -> Result<PathBuf> {
             .context("failed to make the staged PCAP read-only")?;
     }
     Ok(staged_pcap)
+}
+
+/// A persistent Suricata data directory for the containers, letting
+/// suricata-update cache rule downloads between oneshot PCAP runs. Kept
+/// per-runtime as rootful and rootless engines write as different users.
+fn suricata_data_dir(runtime: &str) -> Result<PathBuf> {
+    let dirs = directories::ProjectDirs::from("org", "evebox", "evebox")
+        .context("failed to determine a cache directory for Suricata rules")?;
+    Ok(dirs.cache_dir().join("oneshot-suricata").join(runtime))
+}
+
+fn check_pcap_size(size: u64, force: bool) -> Result<()> {
+    if !force && size > MAX_PCAP_BYTES {
+        anyhow::bail!(
+            "PCAP input is larger than the 4 GB limit (a full copy is staged \
+             in the temporary directory); use --force to process it anyway"
+        );
+    }
+    Ok(())
 }
 
 fn ensure_pcap_supported(platform: &str) -> Result<()> {
@@ -359,13 +408,13 @@ fn cleanup_generated(path: &Option<PathBuf>) {
 async fn run_import(
     sqlx: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     limit: u64,
-    input: &str,
+    input: &Path,
     metrics: Arc<crate::server::metrics::Metrics>,
 ) -> anyhow::Result<()> {
     let geoipdb = geoip::GeoIP::open(None).ok();
     let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, metrics);
-    let mut reader = eve::reader::EveReader::new(input.into());
-    info!("Reading {} ({} bytes)", input, reader.file_size());
+    let mut reader = eve::reader::EveReader::new(input.to_path_buf());
+    info!("Reading {} ({} bytes)", input.display(), reader.file_size());
     let mut last_percent = 0;
     let mut count = 0;
     let start = std::time::Instant::now();
@@ -383,7 +432,7 @@ async fn run_import(
             ((offset as f64 / size as f64) * 100.0) as u64
         };
         if pct != last_percent {
-            info!("{}: {} events ({}%)", input, count, pct);
+            info!("{}: {} events ({}%)", input.display(), count, pct);
             last_percent = pct;
         }
         if indexer.pending() > 300 {
@@ -434,6 +483,16 @@ mod tests {
             let err = Args::try_parse_from(option).unwrap_err();
             assert_eq!(err.kind(), ErrorKind::MissingRequiredArgument);
         }
+        let err = Args::try_parse_from(["oneshot", "--force", "eve.json"]).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::MissingRequiredArgument);
+    }
+
+    #[test]
+    fn enforces_pcap_size_limit() {
+        check_pcap_size(MAX_PCAP_BYTES, false).unwrap();
+        let err = check_pcap_size(MAX_PCAP_BYTES + 1, false).unwrap_err();
+        assert!(err.to_string().contains("--force"));
+        check_pcap_size(MAX_PCAP_BYTES + 1, true).unwrap();
     }
 
     #[test]
@@ -530,7 +589,7 @@ mod tests {
         run_import(
             Arc::new(tokio::sync::Mutex::new(connection)),
             0,
-            input.to_str().unwrap(),
+            input,
             Arc::new(Metrics::default()),
         )
         .await
@@ -554,9 +613,20 @@ mod tests {
     #[tokio::test]
     async fn import_propagates_malformed_json() {
         let file = tempfile::NamedTempFile::new().unwrap();
-        std::fs::write(file.path(), b"{not-json}").unwrap();
+        std::fs::write(file.path(), b"{not-json}\n").unwrap();
         let err = import_file(file.path()).await.unwrap_err();
         assert!(err.to_string().contains("failed to parse event on line 1"));
+    }
+
+    #[tokio::test]
+    async fn import_tolerates_a_truncated_final_line() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(
+            file.path(),
+            b"{\"timestamp\":\"2026-07-15T12:00:00.000000+0000\",\"event_type\":\"stats\"}\n{\"trunc",
+        )
+        .unwrap();
+        import_file(file.path()).await.unwrap();
     }
 
     #[tokio::test]

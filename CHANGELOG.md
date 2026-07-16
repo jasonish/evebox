@@ -8,13 +8,26 @@
   `defaults.time-range` configuration key.
 - `evebox oneshot --pcap` can process a local PCAP or PCAPNG with
   containerized Suricata before loading the generated EVE events. On Linux it
-  uses local Podman or Docker and downloads fresh ET/Open rules for each run.
-  If a cached image provides Suricata older than 8.0.6, interactive runs offer
-  to pull an updated image before processing.
+  uses local Podman or Docker with ET/Open rules, keeping suricata-update's
+  rule cache in the user cache directory so back-to-back runs don't
+  re-download rules. If a cached image provides Suricata older than 8.0.6,
+  interactive runs offer to pull an updated image before processing. PCAP
+  inputs larger than 4 GB are refused unless `--force` is given, as a working
+  copy of the PCAP is staged in the temporary directory.
+
+### Changed
+- Oneshot mode now exits with an error when the input can't be imported, for
+  example an unreadable file or malformed EVE JSON, instead of opening the
+  event viewer with partial or no data.
 
 ### Fixed
 - Oneshot mode now resets the browser's time range to show all imported events
   when the page is first loaded.
+- The oneshot `--limit` option was silently ignored; it now limits the number
+  of events imported as documented.
+- Oneshot mode no longer silently stops the import at a blank line, and no
+  longer drops the final event of an EVE file without a trailing newline. A
+  truncated final line is skipped with a warning.
 - eve2pcap: the seconds field of pcap record headers was written from the
   wrong timestamp value, giving packets in downloaded pcap files bogus
   capture times.

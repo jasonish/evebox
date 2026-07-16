@@ -13,10 +13,11 @@ use std::path::PathBuf;
 use tracing::debug;
 use tracing::error;
 use tracing::trace;
+use tracing::warn;
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum EveReaderError {
-    #[error("failed to parse event on line {line}: {source}")]
+    #[error("failed to parse event on line {line}")]
     ParseError {
         line: u64,
         #[source]
@@ -38,6 +39,7 @@ pub(crate) struct EveReader {
     reader: Option<BufReader<std::fs::File>>,
     lineno: u64,
     offset: u64,
+    unterminated: bool,
 }
 
 impl EveReader {
@@ -48,6 +50,7 @@ impl EveReader {
             reader: None,
             lineno: 0,
             offset: 0,
+            unterminated: false,
         }
     }
 
@@ -112,6 +115,7 @@ impl EveReader {
 
     fn next_line(&mut self, accept_unterminated: bool) -> Result<Option<&str>, EveReaderError> {
         self.line.clear();
+        self.unterminated = false;
         if let Some(reader) = &mut self.reader {
             let pos = reader.stream_position()?;
             let n = reader.read_line(&mut self.line)?;
@@ -120,6 +124,7 @@ impl EveReader {
                     if accept_unterminated {
                         self.offset = pos + n as u64;
                         self.lineno += 1;
+                        self.unterminated = true;
                         return Ok(Some(self.line.trim()));
                     } else {
                         trace!(
@@ -158,16 +163,28 @@ impl EveReader {
             self.open()?;
         }
         if self.reader.is_some() {
-            let line = self.next_line(accept_unterminated)?;
-            if let Some(line) = line
-                && !line.is_empty()
-            {
-                let record: serde_json::Value =
-                    serde_json::from_str(line).map_err(|source| EveReaderError::ParseError {
-                        line: self.lineno,
-                        source,
-                    })?;
-                return Ok(Some(record));
+            loop {
+                let line = match self.next_line(accept_unterminated)? {
+                    None => break,
+                    Some("") => continue,
+                    Some(line) => line,
+                };
+                match serde_json::from_str(line) {
+                    Ok(record) => return Ok(Some(record)),
+                    Err(source) => {
+                        if self.unterminated {
+                            warn!(
+                                "Ignoring unparseable, unterminated line {} (truncated file?)",
+                                self.lineno
+                            );
+                            break;
+                        }
+                        return Err(EveReaderError::ParseError {
+                            line: self.lineno,
+                            source,
+                        });
+                    }
+                }
             }
         }
         Ok(None)
@@ -282,4 +299,66 @@ pub(crate) struct Metadata {
     pub lineno: u64,
     pub size: u64,
     pub inode: Option<u64>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    const RECORD: &str = r#"{"timestamp":"2026-07-15T12:00:00.000000+0000","event_type":"stats"}"#;
+
+    fn reader_for(contents: &[u8]) -> (tempfile::TempDir, EveReader) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("eve.json");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(contents).unwrap();
+        (dir, EveReader::new(path))
+    }
+
+    #[test]
+    fn blank_lines_are_skipped() {
+        let contents = format!("{RECORD}\n\n{RECORD}\n");
+        let (_dir, mut reader) = reader_for(contents.as_bytes());
+        assert!(reader.next_file_record().unwrap().is_some());
+        assert!(reader.next_file_record().unwrap().is_some());
+        assert!(reader.next_file_record().unwrap().is_none());
+    }
+
+    #[test]
+    fn unterminated_final_record_is_accepted() {
+        let contents = format!("{RECORD}\n{RECORD}");
+        let (_dir, mut reader) = reader_for(contents.as_bytes());
+        assert!(reader.next_file_record().unwrap().is_some());
+        assert!(reader.next_file_record().unwrap().is_some());
+        assert!(reader.next_file_record().unwrap().is_none());
+    }
+
+    #[test]
+    fn truncated_final_line_is_ignored() {
+        let contents = format!("{RECORD}\n{}", &RECORD[..RECORD.len() - 10]);
+        let (_dir, mut reader) = reader_for(contents.as_bytes());
+        assert!(reader.next_file_record().unwrap().is_some());
+        assert!(reader.next_file_record().unwrap().is_none());
+    }
+
+    #[test]
+    fn malformed_terminated_line_is_an_error() {
+        let contents = format!("{RECORD}\n{{not-json}}\n{RECORD}\n");
+        let (_dir, mut reader) = reader_for(contents.as_bytes());
+        assert!(reader.next_file_record().unwrap().is_some());
+        let err = reader.next_file_record().unwrap_err();
+        assert!(matches!(err, EveReaderError::ParseError { line: 2, .. }));
+    }
+
+    #[test]
+    fn tailing_reader_waits_for_unterminated_lines() {
+        let contents = format!("{RECORD}\n{RECORD}");
+        let (_dir, mut reader) = reader_for(contents.as_bytes());
+        assert!(reader.next_record().unwrap().is_some());
+        // The tailing reader must not consume the unterminated line, it
+        // may still be written to.
+        assert!(reader.next_record().unwrap().is_none());
+        assert!(reader.next_record().unwrap().is_none());
+    }
 }

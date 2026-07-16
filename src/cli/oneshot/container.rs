@@ -22,16 +22,24 @@ pub(super) enum ContainerRuntimeChoice {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ContainerRuntime {
+pub(super) enum ContainerRuntime {
     Podman,
     Docker,
 }
 
 impl ContainerRuntime {
-    fn program(self) -> &'static str {
+    pub(super) fn program(self) -> &'static str {
         match self {
             Self::Podman => "podman",
             Self::Docker => "docker",
+        }
+    }
+
+    /// The runtime name for display in messages.
+    fn name(self) -> &'static str {
+        match self {
+            Self::Podman => "Podman",
+            Self::Docker => "Docker",
         }
     }
 }
@@ -71,8 +79,10 @@ impl CommandSpec {
 
 #[derive(Clone, Copy, Debug)]
 enum ExecutionMode {
+    /// Capture output, keeping podman/docker chatter such as created and
+    /// removed resource names out of the user's terminal.
     Capture,
-    Inherit,
+    /// Show live output, for the containers doing real, visible work.
     Interruptible,
 }
 
@@ -114,7 +124,14 @@ impl ProcessExecutor for TokioProcessExecutor {
         process.args(&command.args).stdin(Stdio::null());
 
         if matches!(mode, ExecutionMode::Capture) {
-            let output = process.output().await?;
+            process.kill_on_drop(true);
+            let output = tokio::select! {
+                output = process.output() => output?,
+                signal = tokio::signal::ctrl_c() => {
+                    signal?;
+                    return Err(ExecuteError::Interrupted);
+                }
+            };
             return Ok(CommandResult {
                 success: output.status.success(),
                 code: output.status.code(),
@@ -125,17 +142,13 @@ impl ProcessExecutor for TokioProcessExecutor {
 
         process.stdout(Stdio::inherit()).stderr(Stdio::inherit());
         let mut child = process.kill_on_drop(true).spawn()?;
-        let status = if matches!(mode, ExecutionMode::Interruptible) {
-            tokio::select! {
-                status = child.wait() => status?,
-                signal = tokio::signal::ctrl_c() => {
-                    signal?;
-                    let _ = child.kill().await;
-                    return Err(ExecuteError::Interrupted);
-                }
+        let status = tokio::select! {
+            status = child.wait() => status?,
+            signal = tokio::signal::ctrl_c() => {
+                signal?;
+                let _ = child.kill().await;
+                return Err(ExecuteError::Interrupted);
             }
-        } else {
-            child.wait().await?
         };
 
         Ok(CommandResult {
@@ -147,17 +160,34 @@ impl ProcessExecutor for TokioProcessExecutor {
     }
 }
 
-pub(super) async fn generate_eve(
-    pcap: &Path,
-    output: &Path,
+/// Resolve the container runtime and make sure the Suricata image is
+/// present and current, before any real processing starts.
+pub(super) async fn prepare_runtime(
     choice: ContainerRuntimeChoice,
     image: &str,
-) -> Result<()> {
+) -> Result<ContainerRuntime> {
     let executor = TokioProcessExecutor;
     let runtime = resolve_runtime(choice, &executor).await?;
     ensure_image_is_current(&executor, runtime, image, &TerminalImageUpdatePrompt).await?;
+    Ok(runtime)
+}
+
+pub(super) async fn generate_eve(
+    runtime: ContainerRuntime,
+    image: &str,
+    pcap: &Path,
+    output: &Path,
+    data_dir: &Path,
+) -> Result<()> {
+    let executor = TokioProcessExecutor;
     let names = JobNames::random();
-    generate_eve_with(&executor, runtime, image, pcap, output, names).await
+    // Give the containers a TTY when we have one so tools like
+    // suricata-update keep their colored output.
+    let tty = std::io::stdout().is_terminal();
+    generate_eve_with(
+        &executor, runtime, image, pcap, output, data_dir, names, tty,
+    )
+    .await
 }
 
 trait ImageUpdatePrompt: Send + Sync {
@@ -166,7 +196,7 @@ trait ImageUpdatePrompt: Send + Sync {
         runtime: ContainerRuntime,
         image: &str,
         version: &semver::Version,
-    ) -> bool;
+    ) -> Result<bool>;
 }
 
 struct TerminalImageUpdatePrompt;
@@ -177,7 +207,7 @@ impl ImageUpdatePrompt for TerminalImageUpdatePrompt {
         runtime: ContainerRuntime,
         image: &str,
         version: &semver::Version,
-    ) -> bool {
+    ) -> Result<bool> {
         if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
             warn!(
                 "Suricata image {image} provides version {version}, older than the recommended \
@@ -185,17 +215,20 @@ impl ImageUpdatePrompt for TerminalImageUpdatePrompt {
                  Run `{} pull {image}` to update it",
                 runtime.program()
             );
-            return false;
+            return Ok(false);
         }
 
         let question = format!(
             "Suricata image {image} provides version {version}, older than the recommended \
              {MINIMUM_SURICATA_VERSION}. Pull an updated image now?"
         );
-        inquire::Confirm::new(&question)
-            .with_default(true)
-            .prompt()
-            .unwrap_or(false)
+        match inquire::Confirm::new(&question).with_default(true).prompt() {
+            Ok(answer) => Ok(answer),
+            Err(inquire::InquireError::OperationInterrupted) => {
+                anyhow::bail!("interrupted at the image update prompt")
+            }
+            Err(_) => Ok(false),
+        }
     }
 }
 
@@ -205,13 +238,36 @@ async fn ensure_image_is_current(
     image: &str,
     prompt: &dyn ImageUpdatePrompt,
 ) -> Result<semver::Version> {
+    let mut just_pulled = false;
+    if !image_exists(executor, runtime, image).await? {
+        info!("Downloading Suricata image {image}, this may take a few minutes");
+        execute_checked(
+            executor,
+            "downloading the Suricata image",
+            CommandSpec::runtime(runtime, ["pull", image]),
+            ExecutionMode::Interruptible,
+        )
+        .await?;
+        just_pulled = true;
+    }
+
     let minimum = semver::Version::parse(MINIMUM_SURICATA_VERSION).unwrap();
     let mut version = inspect_suricata_version(executor, runtime, image).await?;
     if version >= minimum {
         return Ok(version);
     }
 
-    if !prompt.should_pull(runtime, image, &version) {
+    // A freshly pulled image can't get any newer by pulling again, so
+    // don't offer to.
+    if just_pulled {
+        warn!(
+            "Freshly pulled image {image} only provides Suricata {version}; version \
+             {MINIMUM_SURICATA_VERSION} or newer is recommended"
+        );
+        return Ok(version);
+    }
+
+    if !prompt.should_pull(runtime, image, &version)? {
         warn!(
             "Continuing with Suricata {version}; version {MINIMUM_SURICATA_VERSION} or newer is \
              recommended"
@@ -237,6 +293,19 @@ async fn ensure_image_is_current(
         info!("Using updated Suricata {version}");
     }
     Ok(version)
+}
+
+async fn image_exists(
+    executor: &dyn ProcessExecutor,
+    runtime: ContainerRuntime,
+    image: &str,
+) -> Result<bool> {
+    let command = CommandSpec::runtime(runtime, ["image", "inspect", "--format", "{{.Id}}", image]);
+    let result = executor
+        .execute(&command, ExecutionMode::Capture)
+        .await
+        .with_context(|| format!("failed to check for a local copy of image {image}"))?;
+    Ok(result.success)
 }
 
 async fn inspect_suricata_version(
@@ -355,7 +424,10 @@ async fn probe_runtime(
             }
         }
         ContainerRuntime::Docker => {
-            let endpoint = if let Some(host) = &environment.docker_host {
+            // An empty DOCKER_HOST is treated as unset, like the Docker
+            // CLI does.
+            let docker_host = environment.docker_host.as_ref().filter(|v| !v.is_empty());
+            let endpoint = if let Some(host) = docker_host {
                 host.to_string_lossy().into_owned()
             } else {
                 run_probe(
@@ -408,6 +480,10 @@ async fn execute_checked(
         Err(ExecuteError::Interrupted) => anyhow::bail!("{phase} was interrupted"),
         Err(err) => anyhow::bail!("failed while {phase}: {err}"),
         Ok(result) if !result.success => {
+            let detail = result.stderr.trim();
+            if !detail.is_empty() {
+                anyhow::bail!("{phase} failed: {detail}");
+            }
             if let Some(code) = result.code {
                 anyhow::bail!("{phase} failed: container runtime exited with status {code}");
             }
@@ -419,7 +495,6 @@ async fn execute_checked(
 
 #[derive(Clone, Debug)]
 struct JobNames {
-    rules_volume: String,
     update_container: String,
     replay_container: String,
 }
@@ -431,19 +506,36 @@ impl JobNames {
 
     fn with_suffix(suffix: &str) -> Self {
         Self {
-            rules_volume: format!("evebox-oneshot-rules-{suffix}"),
             update_container: format!("evebox-oneshot-update-{suffix}"),
             replay_container: format!("evebox-oneshot-replay-{suffix}"),
         }
     }
 }
 
+/// Build a bind mount option, refusing paths a mount option can't express.
+fn bind_mount(src: &Path, dst: &str, read_only: bool) -> Result<OsString> {
+    if src.to_string_lossy().contains(',') {
+        anyhow::bail!(
+            "path {} contains a comma, which container mount options cannot express",
+            src.display()
+        );
+    }
+    let mut spec = OsString::from("type=bind,src=");
+    spec.push(src.as_os_str());
+    spec.push(format!(",dst={dst}"));
+    if read_only {
+        spec.push(",ro");
+    }
+    Ok(spec)
+}
+
 struct ContainerJob<'a> {
     executor: &'a dyn ProcessExecutor,
     runtime: ContainerRuntime,
     image: &'a str,
+    data_dir: &'a Path,
     names: JobNames,
-    rules_active: bool,
+    tty: bool,
     update_active: bool,
     replay_active: bool,
 }
@@ -453,104 +545,81 @@ impl<'a> ContainerJob<'a> {
         executor: &'a dyn ProcessExecutor,
         runtime: ContainerRuntime,
         image: &'a str,
+        data_dir: &'a Path,
         names: JobNames,
+        tty: bool,
     ) -> Self {
         Self {
             executor,
             runtime,
             image,
+            data_dir,
             names,
-            rules_active: false,
+            tty,
             update_active: false,
             replay_active: false,
         }
     }
 
+    /// Common `run` arguments for the containers whose output is shown to
+    /// the user, allocating a TTY when we are attached to one so container
+    /// tools keep their colored output.
+    fn run_args(&self, name: &str) -> Vec<OsString> {
+        let mut args = vec![
+            OsString::from("run"),
+            OsString::from("--name"),
+            OsString::from(name),
+            OsString::from("--pull=missing"),
+        ];
+        if self.tty {
+            args.push(OsString::from("--tty"));
+        }
+        args
+    }
+
     async fn run(&mut self, pcap: &Path, output: &Path) -> Result<()> {
-        self.rules_active = true;
-        self.run_checked(
-            "creating the temporary rules volume",
-            CommandSpec::runtime(
-                self.runtime,
-                ["volume", "create", self.names.rules_volume.as_str()],
-            ),
-        )
-        .await?;
+        self.update_rules().await?;
 
         info!(
-            "Downloading fresh ET/Open rules with {}",
-            self.runtime.program()
+            "Processing {} with Suricata in {}",
+            pcap.display(),
+            self.runtime.name()
         );
-        self.update_active = true;
-        let update_mount = format!(
-            "type=volume,src={},dst=/var/lib/suricata/rules",
-            self.names.rules_volume
-        );
-        self.run_checked(
-            "downloading ET/Open rules",
-            CommandSpec::runtime(
-                self.runtime,
-                [
-                    OsString::from("run"),
-                    OsString::from("--name"),
-                    OsString::from(&self.names.update_container),
-                    OsString::from("--pull=missing"),
-                    OsString::from("--security-opt=no-new-privileges"),
-                    OsString::from("--mount"),
-                    OsString::from(update_mount),
-                    OsString::from(self.image),
-                    OsString::from("/usr/bin/suricata-update"),
-                    OsString::from("--etopen"),
-                    OsString::from("--no-reload"),
-                    OsString::from("--fail"),
-                ],
-            ),
-        )
-        .await?;
-        self.remove_update_container().await;
-
-        info!("Processing {} with containerized Suricata", pcap.display());
         self.replay_active = true;
-        let mut pcap_mount = OsString::from("type=bind,src=");
-        pcap_mount.push(pcap.as_os_str());
-        pcap_mount.push(",dst=/input/capture.pcap,ro");
-        let rules_mount = format!(
-            "type=volume,src={},dst=/var/lib/suricata/rules,ro",
-            self.names.rules_volume
-        );
+        let pcap_mount = bind_mount(pcap, "/input/capture.pcap", true)?;
+        let rules_mount = bind_mount(
+            &self.data_dir.join("rules"),
+            "/var/lib/suricata/rules",
+            true,
+        )?;
+        let mut replay_args = self.run_args(&self.names.replay_container);
+        replay_args.extend([
+            OsString::from("--user=suricata"),
+            OsString::from("--network=none"),
+            OsString::from("--cap-drop=ALL"),
+            OsString::from("--security-opt=no-new-privileges"),
+            OsString::from("--security-opt=label=disable"),
+            OsString::from("--mount"),
+            pcap_mount,
+            OsString::from("--mount"),
+            rules_mount,
+            OsString::from(self.image),
+            OsString::from("/usr/bin/suricata"),
+            OsString::from("--runmode"),
+            OsString::from("single"),
+            OsString::from("-r"),
+            OsString::from("/input/capture.pcap"),
+            OsString::from("-S"),
+            OsString::from("/var/lib/suricata/rules/suricata.rules"),
+            OsString::from("-k"),
+            OsString::from("none"),
+            OsString::from("-l"),
+            OsString::from("/var/log/suricata"),
+            OsString::from("--init-errors-fatal"),
+        ]);
         self.run_checked(
             "running Suricata against the PCAP",
-            CommandSpec::runtime(
-                self.runtime,
-                [
-                    OsString::from("run"),
-                    OsString::from("--name"),
-                    OsString::from(&self.names.replay_container),
-                    OsString::from("--pull=missing"),
-                    OsString::from("--user=suricata"),
-                    OsString::from("--network=none"),
-                    OsString::from("--cap-drop=ALL"),
-                    OsString::from("--security-opt=no-new-privileges"),
-                    OsString::from("--security-opt=label=disable"),
-                    OsString::from("--mount"),
-                    pcap_mount,
-                    OsString::from("--mount"),
-                    OsString::from(rules_mount),
-                    OsString::from(self.image),
-                    OsString::from("/usr/bin/suricata"),
-                    OsString::from("--runmode"),
-                    OsString::from("single"),
-                    OsString::from("-r"),
-                    OsString::from("/input/capture.pcap"),
-                    OsString::from("-S"),
-                    OsString::from("/var/lib/suricata/rules/suricata.rules"),
-                    OsString::from("-k"),
-                    OsString::from("none"),
-                    OsString::from("-l"),
-                    OsString::from("/var/log/suricata"),
-                    OsString::from("--init-errors-fatal"),
-                ],
-            ),
+            CommandSpec::runtime(self.runtime, replay_args),
         )
         .await?;
 
@@ -569,6 +638,40 @@ impl<'a> ContainerJob<'a> {
         )
         .await?;
 
+        Ok(())
+    }
+
+    /// Run suricata-update with a persistent data directory so its own
+    /// caching avoids re-downloading recently fetched rules.
+    ///
+    /// suricata-update runs as container root and creates directories the
+    /// unprivileged replay user can't read, so read permissions are opened
+    /// up after the update. The shell is invoked directly as the image
+    /// entrypoint word-splits a `sh -c` command.
+    async fn update_rules(&mut self) -> Result<()> {
+        const UPDATE_COMMAND: &str = "/usr/bin/suricata-update --etopen --no-test --no-reload \
+                                      --fail && chmod -R a+rX /var/lib/suricata";
+        info!("Updating ET/Open rules with {}", self.runtime.name());
+        self.update_active = true;
+        let update_mount = bind_mount(self.data_dir, "/var/lib/suricata", false)?;
+        let mut update_args = self.run_args(&self.names.update_container);
+        update_args.extend([
+            OsString::from("--security-opt=no-new-privileges"),
+            OsString::from("--security-opt=label=disable"),
+            OsString::from("--entrypoint"),
+            OsString::from("/bin/sh"),
+            OsString::from("--mount"),
+            update_mount,
+            OsString::from(self.image),
+            OsString::from("-c"),
+            OsString::from(UPDATE_COMMAND),
+        ]);
+        self.run_checked(
+            "downloading ET/Open rules",
+            CommandSpec::runtime(self.runtime, update_args),
+        )
+        .await?;
+        self.remove_update_container().await;
         Ok(())
     }
 
@@ -617,31 +720,23 @@ impl<'a> ContainerJob<'a> {
             self.replay_active = false;
         }
         self.remove_update_container().await;
-        if self.rules_active
-            && self
-                .cleanup_command(
-                    "rules volume",
-                    CommandSpec::runtime(
-                        self.runtime,
-                        ["volume", "rm", "--force", self.names.rules_volume.as_str()],
-                    ),
-                )
-                .await
-        {
-            self.rules_active = false;
-        }
     }
 
     async fn cleanup_command(&self, resource: &str, command: CommandSpec) -> bool {
         debug!("Running cleanup command: {}", command.display());
         match self
             .executor
-            .execute(&command, ExecutionMode::Inherit)
+            .execute(&command, ExecutionMode::Capture)
             .await
         {
             Ok(result) if result.success => true,
-            Ok(_) => {
-                warn!("Failed to remove oneshot PCAP {resource}");
+            Ok(result) => {
+                let detail = result.stderr.trim();
+                if detail.is_empty() {
+                    warn!("Failed to remove oneshot PCAP {resource}");
+                } else {
+                    warn!("Failed to remove oneshot PCAP {resource}: {detail}");
+                }
                 false
             }
             Err(err) => {
@@ -652,15 +747,18 @@ impl<'a> ContainerJob<'a> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn generate_eve_with(
     executor: &dyn ProcessExecutor,
     runtime: ContainerRuntime,
     image: &str,
     pcap: &Path,
     output: &Path,
+    data_dir: &Path,
     names: JobNames,
+    tty: bool,
 ) -> Result<()> {
-    let mut job = ContainerJob::new(executor, runtime, image, names);
+    let mut job = ContainerJob::new(executor, runtime, image, data_dir, names, tty);
     let result = job.run(pcap, output).await;
     job.cleanup().await;
     result?;
@@ -771,8 +869,10 @@ mod tests {
         })
     }
 
+    // One response per command of a full run with no cached rules:
+    // update run, update rm, replay run, cp, replay rm.
     fn happy_responses() -> Vec<FakeResponse> {
-        vec![ok(""), ok(""), ok(""), ok(""), ok(""), ok(""), ok("")]
+        vec![ok(""), ok(""), ok(""), ok(""), ok("")]
     }
 
     fn arg_strings(command: &CommandSpec) -> Vec<String> {
@@ -807,9 +907,9 @@ mod tests {
             _runtime: ContainerRuntime,
             _image: &str,
             _version: &semver::Version,
-        ) -> bool {
+        ) -> Result<bool> {
             *self.calls.lock().unwrap() += 1;
-            self.answer
+            Ok(self.answer)
         }
     }
 
@@ -826,7 +926,10 @@ mod tests {
 
     #[tokio::test]
     async fn current_image_does_not_prompt_or_pull() {
-        let executor = FakeExecutor::new(vec![ok("This is Suricata version 8.0.6 RELEASE\n")]);
+        let executor = FakeExecutor::new(vec![
+            ok("sha256:test\n"),
+            ok("This is Suricata version 8.0.6 RELEASE\n"),
+        ]);
         let prompt = FakePrompt::new(true);
         let version = ensure_image_is_current(
             &executor,
@@ -839,9 +942,19 @@ mod tests {
         assert_eq!(version, semver::Version::new(8, 0, 6));
         assert_eq!(prompt.call_count(), 0);
         let calls = executor.calls();
-        assert_eq!(calls.len(), 1);
+        assert_eq!(calls.len(), 2);
         assert_eq!(
             arg_strings(&calls[0]),
+            [
+                "image",
+                "inspect",
+                "--format",
+                "{{.Id}}",
+                DEFAULT_SURICATA_IMAGE,
+            ]
+        );
+        assert_eq!(
+            arg_strings(&calls[1]),
             [
                 "run",
                 "--rm",
@@ -855,8 +968,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn missing_image_is_pulled_before_inspection() {
+        let executor = FakeExecutor::new(vec![
+            failed(),
+            ok(""),
+            ok("This is Suricata version 8.0.6 RELEASE\n"),
+        ]);
+        let prompt = FakePrompt::new(false);
+        let version = ensure_image_is_current(
+            &executor,
+            ContainerRuntime::Podman,
+            DEFAULT_SURICATA_IMAGE,
+            &prompt,
+        )
+        .await
+        .unwrap();
+        assert_eq!(version, semver::Version::new(8, 0, 6));
+        assert_eq!(prompt.call_count(), 0);
+        let calls = executor.calls();
+        assert_eq!(calls.len(), 3);
+        assert_eq!(arg_strings(&calls[1]), ["pull", DEFAULT_SURICATA_IMAGE]);
+    }
+
+    #[tokio::test]
+    async fn freshly_pulled_old_image_does_not_prompt() {
+        let executor = FakeExecutor::new(vec![
+            failed(),
+            ok(""),
+            ok("This is Suricata version 8.0.2 RELEASE\n"),
+        ]);
+        let prompt = FakePrompt::new(true);
+        let version = ensure_image_is_current(
+            &executor,
+            ContainerRuntime::Podman,
+            DEFAULT_SURICATA_IMAGE,
+            &prompt,
+        )
+        .await
+        .unwrap();
+        assert_eq!(version, semver::Version::new(8, 0, 2));
+        assert_eq!(prompt.call_count(), 0);
+        assert_eq!(executor.calls().len(), 3);
+    }
+
+    #[tokio::test]
     async fn outdated_image_is_pulled_when_confirmed() {
         let executor = FakeExecutor::new(vec![
+            ok("sha256:test\n"),
             ok("This is Suricata version 8.0.2 RELEASE\n"),
             ok(""),
             ok("This is Suricata version 8.0.6 RELEASE\n"),
@@ -873,13 +1031,16 @@ mod tests {
         assert_eq!(version, semver::Version::new(8, 0, 6));
         assert_eq!(prompt.call_count(), 1);
         let calls = executor.calls();
-        assert_eq!(arg_strings(&calls[1]), ["pull", DEFAULT_SURICATA_IMAGE]);
-        assert_eq!(calls.len(), 3);
+        assert_eq!(arg_strings(&calls[2]), ["pull", DEFAULT_SURICATA_IMAGE]);
+        assert_eq!(calls.len(), 4);
     }
 
     #[tokio::test]
     async fn outdated_image_continues_when_update_is_declined() {
-        let executor = FakeExecutor::new(vec![ok("This is Suricata version 8.0.2 RELEASE\n")]);
+        let executor = FakeExecutor::new(vec![
+            ok("sha256:test\n"),
+            ok("This is Suricata version 8.0.2 RELEASE\n"),
+        ]);
         let prompt = FakePrompt::new(false);
         let version = ensure_image_is_current(
             &executor,
@@ -891,12 +1052,13 @@ mod tests {
         .unwrap();
         assert_eq!(version, semver::Version::new(8, 0, 2));
         assert_eq!(prompt.call_count(), 1);
-        assert_eq!(executor.calls().len(), 1);
+        assert_eq!(executor.calls().len(), 2);
     }
 
     #[tokio::test]
     async fn confirmed_pull_failure_is_reported() {
         let executor = FakeExecutor::new(vec![
+            ok("sha256:test\n"),
             ok("This is Suricata version 8.0.2 RELEASE\n"),
             failed(),
         ]);
@@ -1005,6 +1167,34 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn empty_docker_host_is_treated_as_unset() {
+        let executor = FakeExecutor::new(vec![ok("unix:///var/run/docker.sock\n"), ok("")]);
+        let environment = RuntimeEnvironment {
+            docker_host: Some(OsString::new()),
+        };
+        let runtime = resolve_runtime_with_environment(
+            ContainerRuntimeChoice::Docker,
+            &executor,
+            &environment,
+        )
+        .await
+        .unwrap();
+        assert_eq!(runtime, ContainerRuntime::Docker);
+        // The endpoint must come from `docker context inspect`, not the
+        // empty environment variable.
+        assert_eq!(
+            arg_strings(&executor.calls()[0])[..2],
+            ["context", "inspect"]
+        );
+    }
+
+    fn data_dir(tempdir: &tempfile::TempDir) -> PathBuf {
+        let dir = tempdir.path().join("suricata-data");
+        std::fs::create_dir(&dir).unwrap();
+        dir
+    }
+
+    #[tokio::test]
     async fn builds_secure_replay_command_and_cleans_up_in_order() {
         let tempdir = tempfile::tempdir().unwrap();
         let pcap = tempdir.path().join("capture with spaces.pcap");
@@ -1012,6 +1202,7 @@ mod tests {
         std::fs::create_dir(&output_directory).unwrap();
         let output = output_directory.join("eve.json");
         std::fs::write(&pcap, b"pcap").unwrap();
+        let data = data_dir(&tempdir);
         let executor = FakeExecutor::new(happy_responses()).with_copy_output();
 
         generate_eve_with(
@@ -1020,14 +1211,35 @@ mod tests {
             "suricata:test",
             &pcap,
             &output,
+            &data,
             JobNames::with_suffix("test"),
+            false,
         )
         .await
         .unwrap();
 
         let calls = executor.calls();
-        let replay = arg_strings(&calls[3]);
+
+        let update = arg_strings(&calls[0]);
+        assert_eq!(update[0], "run");
+        assert!(update.contains(&"--security-opt=no-new-privileges".to_string()));
+        assert!(update.contains(&"--security-opt=label=disable".to_string()));
+        assert!(update.contains(&"--entrypoint".to_string()));
+        assert!(update.contains(&format!(
+            "type=bind,src={},dst=/var/lib/suricata",
+            data.display()
+        )));
+        let update_command = update.last().unwrap();
+        assert!(update_command.starts_with("/usr/bin/suricata-update"));
+        for option in ["--etopen", "--no-test", "--no-reload", "--fail"] {
+            assert!(update_command.contains(option));
+        }
+        assert!(update_command.contains("chmod -R a+rX /var/lib/suricata"));
+        assert_eq!(arg_strings(&calls[1])[0], "rm");
+
+        let replay = arg_strings(&calls[2]);
         assert_eq!(replay[0], "run");
+        assert!(!replay.contains(&"--tty".to_string()));
         assert!(replay.contains(&"--pull=missing".to_string()));
         assert!(replay.contains(&"--user=suricata".to_string()));
         assert!(replay.contains(&"--network=none".to_string()));
@@ -1038,9 +1250,10 @@ mod tests {
             "type=bind,src={},dst=/input/capture.pcap,ro",
             pcap.display()
         )));
-        assert!(replay.contains(
-            &"type=volume,src=evebox-oneshot-rules-test,dst=/var/lib/suricata/rules,ro".to_string()
-        ));
+        assert!(replay.contains(&format!(
+            "type=bind,src={},dst=/var/lib/suricata/rules,ro",
+            data.join("rules").display()
+        )));
         assert!(replay.ends_with(&[
             "-S".to_string(),
             "/var/lib/suricata/rules/suricata.rules".to_string(),
@@ -1052,108 +1265,135 @@ mod tests {
         ]));
 
         assert_eq!(
-            arg_strings(&calls[4]),
+            arg_strings(&calls[3]),
             [
                 "cp",
                 "evebox-oneshot-replay-test:/var/log/suricata/eve.json",
                 output.to_str().unwrap(),
             ]
         );
-        assert_eq!(arg_strings(&calls[5])[0], "rm");
-        assert_eq!(arg_strings(&calls[6])[..3], ["volume", "rm", "--force"]);
+        assert_eq!(arg_strings(&calls[4])[0], "rm");
+        assert_eq!(calls.len(), 5);
+    }
+
+    #[tokio::test]
+    async fn tty_runs_allocate_a_container_tty() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let output = tempdir.path().join("eve.json");
+        let data = data_dir(&tempdir);
+        let executor = FakeExecutor::new(happy_responses()).with_copy_output();
+        generate_eve_with(
+            &executor,
+            ContainerRuntime::Podman,
+            "suricata:test",
+            &tempdir.path().join("capture.pcap"),
+            &output,
+            &data,
+            JobNames::with_suffix("test"),
+            true,
+        )
+        .await
+        .unwrap();
+        let calls = executor.calls();
+        let update = arg_strings(&calls[0]);
+        let replay = arg_strings(&calls[2]);
+        assert!(update.contains(&"--tty".to_string()));
+        assert!(replay.contains(&"--tty".to_string()));
+        // The copy command must not get the TTY option.
+        assert_eq!(arg_strings(&calls[3])[0], "cp");
     }
 
     #[tokio::test]
     async fn failed_rule_download_cleans_up_without_replay() {
         let tempdir = tempfile::tempdir().unwrap();
-        let executor = FakeExecutor::new(vec![ok(""), failed(), ok(""), ok("")]);
+        let data = data_dir(&tempdir);
+        let executor = FakeExecutor::new(vec![failed(), ok("")]);
         let err = generate_eve_with(
             &executor,
             ContainerRuntime::Podman,
             "suricata:test",
             &tempdir.path().join("capture.pcap"),
             &tempdir.path().join("eve.json"),
+            &data,
             JobNames::with_suffix("test"),
+            false,
         )
         .await
         .unwrap_err();
         assert!(err.to_string().contains("downloading ET/Open rules failed"));
         let calls = executor.calls();
-        assert_eq!(arg_strings(&calls[2])[0], "rm");
-        assert_eq!(arg_strings(&calls[3])[0], "volume");
-        assert_eq!(calls.len(), 4);
+        assert_eq!(arg_strings(&calls[1])[0], "rm");
+        assert_eq!(calls.len(), 2);
     }
 
     #[tokio::test]
     async fn interruption_cleans_up_active_resources() {
         let tempdir = tempfile::tempdir().unwrap();
-        let executor = FakeExecutor::new(vec![
-            ok(""),
-            FakeResponse::Error(ExecuteError::Interrupted),
-            ok(""),
-            ok(""),
-        ]);
+        let data = data_dir(&tempdir);
+        let executor =
+            FakeExecutor::new(vec![FakeResponse::Error(ExecuteError::Interrupted), ok("")]);
         let err = generate_eve_with(
             &executor,
             ContainerRuntime::Podman,
             "suricata:test",
             &tempdir.path().join("capture.pcap"),
             &tempdir.path().join("eve.json"),
+            &data,
             JobNames::with_suffix("test"),
+            false,
         )
         .await
         .unwrap_err();
         assert!(err.to_string().contains("interrupted"));
-        assert_eq!(executor.calls().len(), 4);
+        assert_eq!(executor.calls().len(), 2);
     }
 
     #[tokio::test]
     async fn failed_replay_is_reported_and_cleaned_up() {
         let tempdir = tempfile::tempdir().unwrap();
-        let executor = FakeExecutor::new(vec![ok(""), ok(""), ok(""), failed(), ok(""), ok("")]);
+        let data = data_dir(&tempdir);
+        let executor = FakeExecutor::new(vec![ok(""), ok(""), failed(), ok("")]);
         let err = generate_eve_with(
             &executor,
             ContainerRuntime::Docker,
             "suricata:test",
             &tempdir.path().join("capture.pcap"),
             &tempdir.path().join("eve.json"),
+            &data,
             JobNames::with_suffix("test"),
+            false,
         )
         .await
         .unwrap_err();
         assert!(err.to_string().contains("running Suricata"));
-        assert_eq!(executor.calls().len(), 6);
+        assert_eq!(executor.calls().len(), 4);
     }
 
     #[tokio::test]
     async fn failed_copy_is_reported_and_cleaned_up() {
         let tempdir = tempfile::tempdir().unwrap();
-        let executor = FakeExecutor::new(vec![
-            ok(""),
-            ok(""),
-            ok(""),
-            ok(""),
-            failed(),
-            ok(""),
-            ok(""),
-        ]);
+        let data = data_dir(&tempdir);
+        let executor = FakeExecutor::new(vec![ok(""), ok(""), ok(""), failed(), ok("")]);
         let err = generate_eve_with(
             &executor,
             ContainerRuntime::Docker,
             "suricata:test",
             &tempdir.path().join("capture.pcap"),
             &tempdir.path().join("eve.json"),
+            &data,
             JobNames::with_suffix("test"),
+            false,
         )
         .await
         .unwrap_err();
         assert!(err.to_string().contains("copying generated eve.json"));
-        assert_eq!(executor.calls().len(), 7);
+        assert_eq!(executor.calls().len(), 5);
     }
 
     #[tokio::test]
     async fn missing_eve_after_successful_copy_is_rejected() {
         let tempdir = tempfile::tempdir().unwrap();
+        let data = data_dir(&tempdir);
         let executor = FakeExecutor::new(happy_responses());
         let err = generate_eve_with(
             &executor,
@@ -1161,7 +1401,9 @@ mod tests {
             "suricata:test",
             &tempdir.path().join("capture.pcap"),
             &tempdir.path().join("eve.json"),
+            &data,
             JobNames::with_suffix("test"),
+            false,
         )
         .await
         .unwrap_err();
@@ -1175,23 +1417,18 @@ mod tests {
     async fn cleanup_failures_do_not_hide_successful_output() {
         let tempdir = tempfile::tempdir().unwrap();
         let output = tempdir.path().join("eve.json");
-        let executor = FakeExecutor::new(vec![
-            ok(""),
-            ok(""),
-            ok(""),
-            ok(""),
-            ok(""),
-            failed(),
-            failed(),
-        ])
-        .with_copy_output();
+        let data = data_dir(&tempdir);
+        let executor =
+            FakeExecutor::new(vec![ok(""), ok(""), ok(""), ok(""), failed()]).with_copy_output();
         generate_eve_with(
             &executor,
             ContainerRuntime::Podman,
             "suricata:test",
             &tempdir.path().join("capture.pcap"),
             &output,
+            &data,
             JobNames::with_suffix("test"),
+            false,
         )
         .await
         .unwrap();
@@ -1299,6 +1536,7 @@ mod tests {
             let tempdir = tempfile::tempdir().unwrap();
             let pcap = tempdir.path().join("et-open-alert.pcap");
             let eve = tempdir.path().join("eve.json");
+            let data = data_dir(&tempdir);
             write_et_open_alert_pcap(&pcap);
             ensure_image_is_current(
                 &executor,
@@ -1314,7 +1552,9 @@ mod tests {
                 DEFAULT_SURICATA_IMAGE,
                 &pcap,
                 &eve,
+                &data,
                 JobNames::random(),
+                std::io::stdout().is_terminal(),
             )
             .await
             .unwrap();
@@ -1342,7 +1582,7 @@ mod tests {
             super::super::run_import(
                 Arc::new(tokio::sync::Mutex::new(connection)),
                 0,
-                eve.to_str().unwrap(),
+                &eve,
                 Arc::new(crate::server::metrics::Metrics::default()),
             )
             .await
