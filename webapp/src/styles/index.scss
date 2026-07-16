@@ -93,6 +93,30 @@ $evebox-success-color-dark: #2f4741;
   }
 }
 
+.app-event-summary-card {
+  --bs-btn-color: var(--bs-body-color);
+  --bs-btn-bg: var(--bs-tertiary-bg);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-color: var(--bs-body-color);
+  --bs-btn-hover-bg: var(--bs-secondary-bg);
+  --bs-btn-hover-border-color: var(--bs-secondary-color);
+  --bs-btn-active-color: var(--bs-body-color);
+  --bs-btn-active-bg: var(--bs-tertiary-bg);
+  --bs-btn-active-border-color: var(--bs-primary);
+
+  flex: 1 0 8rem;
+  min-height: 3.75rem;
+
+  &.active {
+    box-shadow: inset 0 0 0 1px var(--bs-primary);
+  }
+}
+
+.app-event-summary-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
 .app-event-table {
   .app-col-timestamp {
     white-space: nowrap;

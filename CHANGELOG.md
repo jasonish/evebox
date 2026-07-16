@@ -14,6 +14,8 @@
   interactive runs offer to pull an updated image before processing. PCAP
   inputs larger than 4 GB are refused unless `--force` is given, as a working
   copy of the PCAP is staged in the temporary directory.
+- Oneshot mode shows compact event-type count cards above the event list for
+  quickly reviewing and filtering imported events.
 
 ### Changed
 - Oneshot mode now exits with an error when the input can't be imported, for

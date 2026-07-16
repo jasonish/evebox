@@ -28,6 +28,7 @@ import { EventsQueryParams } from "./api";
 import { AddressCell, FilterStrip, TimestampCell } from "./components";
 import { SensorSelect } from "./common/SensorSelect";
 import { RefreshButton } from "./common/RefreshButton";
+import { serverConfig } from "./config";
 
 // The list of event types that will be shown in dropdowns.
 export const EVENT_TYPES: { name: string; eventType: string }[] = [
@@ -117,6 +118,9 @@ export function Events() {
       return false;
     },
   });
+  const [eventTypeCounts, setEventTypeCounts] = createSignal<
+    API.AggResponseRow[]
+  >([]);
   const [searchParams, setSearchParams] = useSearchParams<{
     q?: string;
     order?: "asc";
@@ -153,7 +157,7 @@ export function Events() {
       },
       r: () => {
         setEvents([]);
-        loadEvents();
+        refreshEvents();
       },
       e: () => {
         archive(cursor());
@@ -191,12 +195,46 @@ export function Events() {
     loadEvents();
   });
 
+  createEffect(() => {
+    if (serverConfig?.mode === "oneshot") {
+      loadEventTypeCounts();
+    }
+  });
+
   function openEventById(id: string) {
     navigate(`/event/${id}`, {
       state: {
         referer: location.pathname,
       },
     });
+  }
+
+  function refreshEvents() {
+    loadEvents();
+    if (serverConfig?.mode === "oneshot") {
+      loadEventTypeCounts();
+    }
+  }
+
+  function loadEventTypeCounts() {
+    const sensorFilter = searchParams.sensor
+      ? `host:${searchParams.sensor}`
+      : undefined;
+    const query = [searchParams.q, sensorFilter, ...filters()]
+      .filter((part) => part && part.length > 0)
+      .join(" ");
+
+    API.fetchAgg({
+      field: "event_type",
+      time_range: "all",
+      size: 100,
+      q: query || undefined,
+    })
+      .then((response) => setEventTypeCounts(response.rows))
+      .catch((error) => {
+        console.error("Failed to load event type counts", error);
+        setEventTypeCounts([]);
+      });
   }
 
   function loadEvents() {
@@ -351,9 +389,23 @@ export function Events() {
     <>
       <Top disableRange />
       <Container fluid>
+        <Show
+          when={
+            serverConfig?.mode === "oneshot" && eventTypeCounts().length > 0
+          }
+        >
+          <EventTypeSummary
+            rows={eventTypeCounts()}
+            selected={searchParams.event_type}
+            select={(eventType) => {
+              setSearchParams({ event_type: eventType });
+            }}
+          />
+        </Show>
+
         <Row>
           <div class="col-auto mt-2 d-flex flex-wrap align-items-center gap-2">
-            <RefreshButton loading={isLoading()} refresh={loadEvents} />
+            <RefreshButton loading={isLoading()} refresh={refreshEvents} />
             <div class="d-inline-flex">
               <SensorSelect
                 selected={searchParams.sensor}
@@ -611,6 +663,71 @@ export function Events() {
         </Row>
       </Container>
     </>
+  );
+}
+
+function EventTypeSummary(props: {
+  rows: API.AggResponseRow[];
+  selected: string | undefined;
+  select: (eventType: string | undefined) => void;
+}) {
+  const rows = createMemo(() => {
+    const order = new Map(
+      EVENT_TYPES.map((eventType, index) => [eventType.eventType, index]),
+    );
+    return [...props.rows].sort((a, b) => {
+      const aOrder = order.get(String(a.key)) ?? EVENT_TYPES.length;
+      const bOrder = order.get(String(b.key)) ?? EVENT_TYPES.length;
+      return aOrder - bOrder || String(a.key).localeCompare(String(b.key));
+    });
+  });
+  const total = createMemo(() =>
+    props.rows.reduce((sum, row) => sum + row.count, 0),
+  );
+
+  function label(eventType: string): string {
+    if (eventType === "fileinfo") {
+      return "File Info";
+    }
+    return eventNameFromType(eventType) || eventType;
+  }
+
+  return (
+    <div
+      class="app-event-summary d-flex gap-2 mt-2 overflow-x-auto pb-1"
+      aria-label="Event summary"
+    >
+      <button
+        type="button"
+        class="btn app-event-summary-card d-flex flex-column align-items-center justify-content-center px-3 py-2"
+        classList={{ active: !props.selected }}
+        aria-pressed={!props.selected}
+        onClick={() => props.select(undefined)}
+      >
+        <span class="fs-5 fw-semibold lh-sm">{total().toLocaleString()}</span>
+        <span class="app-event-summary-label mt-1 text-body-secondary fw-medium lh-sm text-uppercase">
+          All Events
+        </span>
+      </button>
+      <For each={rows()}>
+        {(row) => (
+          <button
+            type="button"
+            class="btn app-event-summary-card d-flex flex-column align-items-center justify-content-center px-3 py-2"
+            classList={{ active: props.selected === row.key }}
+            aria-pressed={props.selected === row.key}
+            onClick={() => props.select(String(row.key))}
+          >
+            <span class="fs-5 fw-semibold lh-sm">
+              {row.count.toLocaleString()}
+            </span>
+            <span class="app-event-summary-label mt-1 text-body-secondary fw-medium lh-sm text-uppercase">
+              {label(String(row.key))}
+            </span>
+          </button>
+        )}
+      </For>
+    </div>
   );
 }
 
