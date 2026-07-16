@@ -4,6 +4,7 @@
 use crate::cli::prelude::*;
 
 mod extract;
+mod purge;
 
 #[derive(Debug, Parser)]
 #[command(name = "pcap", about = "Full packet capture tools")]
@@ -20,6 +21,9 @@ pub struct Args {
 enum Commands {
     /// Extract packets from PCAP spool files
     Extract(extract::ExtractArgs),
+
+    /// Purge old PCAP files from a spool directory
+    Purge(purge::PurgeArgs),
 }
 
 pub fn command() -> Command {
@@ -31,5 +35,6 @@ pub async fn main(args: &ArgMatches) -> Result<()> {
 
     match args.command {
         Commands::Extract(args) => extract::main(args),
+        Commands::Purge(args) => purge::main(args).await,
     }
 }
