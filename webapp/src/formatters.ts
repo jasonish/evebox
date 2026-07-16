@@ -4,6 +4,30 @@
 import { Event } from "./types";
 import { get_duration } from "./datetime";
 
+const MQTT_PROTOCOL_VERSIONS: Record<number, string> = {
+  3: "3.1",
+  4: "3.1.1",
+  5: "5.0",
+};
+
+const MQTT_MESSAGE_TYPES = [
+  "connect",
+  "connack",
+  "publish",
+  "puback",
+  "pubrec",
+  "pubrel",
+  "pubcomp",
+  "subscribe",
+  "suback",
+  "unsubscribe",
+  "unsuback",
+  "pingreq",
+  "pingresp",
+  "auth",
+  "disconnect",
+];
+
 const IKE_EXCHANGE_TYPES: Record<number, Record<number, string>> = {
   1: {
     0: "None",
@@ -29,6 +53,15 @@ const IKE_EXCHANGE_TYPES: Record<number, Record<number, string>> = {
     44: "IKE_FOLLOWUP_KE",
   },
 };
+
+function formatMqttTopics(topics: any[] | undefined): string | undefined {
+  if (!topics || topics.length === 0) {
+    return undefined;
+  }
+
+  const topic = typeof topics[0] === "string" ? topics[0] : topics[0].topic;
+  return topics.length > 1 ? `${topic} (+${topics.length - 1} more)` : topic;
+}
 
 export function formatEventDescription(event: Event): string {
   try {
@@ -169,6 +202,132 @@ export function formatEventDescription(event: Event): string {
           `Bytes=${bytes}`,
         ];
         return parts.join(" ");
+      }
+      case "mqtt": {
+        const mqtt = event._source.mqtt;
+
+        if (mqtt.publish) {
+          const publish = mqtt.publish;
+          const details = [];
+
+          if (publish.qos !== undefined) {
+            details.push(`QoS ${publish.qos}`);
+          }
+          if (publish.message_id !== undefined) {
+            details.push(`msg ${publish.message_id}`);
+          }
+          if (publish.retain) {
+            details.push("retained");
+          }
+          if (publish.dup) {
+            details.push("duplicate");
+          }
+          for (const acknowledgement of [
+            "puback",
+            "pubrec",
+            "pubrel",
+            "pubcomp",
+          ]) {
+            if (mqtt[acknowledgement]) {
+              details.push(acknowledgement.toUpperCase());
+            }
+          }
+
+          const description = ["PUBLISH", publish.topic]
+            .filter(Boolean)
+            .join(" ");
+          return details.length > 0
+            ? `${description} — ${details.join(", ")}`
+            : description;
+        }
+
+        if (mqtt.connect) {
+          const connect = mqtt.connect;
+          const protocol = connect.protocol_string || "MQTT";
+          const version =
+            MQTT_PROTOCOL_VERSIONS[connect.protocol_version] ||
+            connect.protocol_version;
+          const description = ["CONNECT", protocol, version]
+            .filter((part) => part !== undefined)
+            .join(" ");
+          const details = [];
+
+          if (connect.client_id) {
+            details.push(`client ${connect.client_id}`);
+          }
+          if (mqtt.connack?.return_code === 0) {
+            details.push("accepted");
+          } else if (mqtt.connack?.return_code !== undefined) {
+            details.push(`CONNACK code ${mqtt.connack.return_code}`);
+          }
+
+          return details.length > 0
+            ? `${description} — ${details.join(", ")}`
+            : description;
+        }
+
+        if (mqtt.subscribe) {
+          const subscribe = mqtt.subscribe;
+          const description = ["SUBSCRIBE", formatMqttTopics(subscribe.topics)]
+            .filter(Boolean)
+            .join(" ");
+          const details = [];
+          const requestedQos = subscribe.topics
+            ?.map((topic: any) => topic.qos)
+            .filter((qos: any) => qos !== undefined);
+
+          if (requestedQos?.length) {
+            details.push(`requested QoS ${requestedQos.join(", ")}`);
+          }
+          if (mqtt.suback?.qos_granted?.length) {
+            const grantedQos = mqtt.suback.qos_granted;
+            if (grantedQos.every((qos: number) => qos >= 0 && qos <= 2)) {
+              details.push(`granted QoS ${grantedQos.join(", ")}`);
+            } else {
+              details.push(`SUBACK codes ${grantedQos.join(", ")}`);
+            }
+          }
+          return details.length > 0
+            ? `${description} — ${details.join(", ")}`
+            : description;
+        }
+
+        if (mqtt.unsubscribe) {
+          const description = [
+            "UNSUBSCRIBE",
+            formatMqttTopics(mqtt.unsubscribe.topics),
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return mqtt.unsuback ? `${description} — UNSUBACK` : description;
+        }
+
+        const messageTypes = MQTT_MESSAGE_TYPES.filter((type) => mqtt[type]);
+        if (messageTypes.length === 0) {
+          messageTypes.push(
+            ...Object.keys(mqtt).filter(
+              (type) => type !== "type" && typeof mqtt[type] === "object",
+            ),
+          );
+        }
+        const message = mqtt[messageTypes[0]];
+        const details = [];
+
+        if (message?.message_id !== undefined) {
+          details.push(`msg ${message.message_id}`);
+        }
+        if (message?.reason_code !== undefined) {
+          details.push(`reason ${message.reason_code}`);
+        }
+        if (message?.truncated) {
+          details.push("truncated");
+        }
+
+        const description =
+          messageTypes.map((type) => type.toUpperCase()).join("/") || "MQTT";
+        return details.length > 0
+          ? `${description} — ${details.join(", ")}`
+          : description;
       }
       case "netflow": {
         const netflow = event._source.netflow!;
