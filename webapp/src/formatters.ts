@@ -4,6 +4,32 @@
 import { Event } from "./types";
 import { get_duration } from "./datetime";
 
+const IKE_EXCHANGE_TYPES: Record<number, Record<number, string>> = {
+  1: {
+    0: "None",
+    1: "Base",
+    2: "Main Mode",
+    3: "Authentication Only",
+    4: "Aggressive",
+    5: "Informational",
+    6: "Transaction",
+    32: "Quick Mode",
+    33: "New Group Mode",
+  },
+  2: {
+    34: "IKE_SA_INIT",
+    35: "IKE_AUTH",
+    36: "CREATE_CHILD_SA",
+    37: "INFORMATIONAL",
+    38: "IKE_SESSION_RESUME",
+    39: "GSA_AUTH",
+    40: "GSA_REGISTRATION",
+    41: "GSA_REKEY",
+    43: "IKE_INTERMEDIATE",
+    44: "IKE_FOLLOWUP_KE",
+  },
+};
+
 export function formatEventDescription(event: Event): string {
   try {
     const source = event._source;
@@ -193,6 +219,33 @@ export function formatEventDescription(event: Event): string {
           parts.push(http.url);
         }
         return parts.join(" ");
+      }
+      case "ike": {
+        const ike = event._source.ike;
+        const version = ike.version_minor
+          ? `IKEv${ike.version_major}.${ike.version_minor}`
+          : `IKEv${ike.version_major}`;
+        const exchange =
+          ike.exchange_type_verbose ||
+          IKE_EXCHANGE_TYPES[ike.version_major]?.[ike.exchange_type] ||
+          `exchange ${ike.exchange_type}`;
+        const details = [];
+
+        if (ike.role) {
+          details.push(ike.role);
+        }
+        if (ike.message_id !== undefined) {
+          details.push(`msg ${ike.message_id}`);
+        }
+        if (ike.ikev2?.errors) {
+          const suffix = ike.ikev2.errors === 1 ? "" : "s";
+          details.push(`${ike.ikev2.errors} error${suffix}`);
+        }
+
+        const description = [version, exchange].join(" ");
+        return details.length > 0
+          ? `${description} — ${details.join(", ")}`
+          : description;
       }
       case "smb": {
         const smb = event._source.smb;
