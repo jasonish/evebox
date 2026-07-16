@@ -63,6 +63,32 @@ function formatMqttTopics(topics: any[] | undefined): string | undefined {
   return topics.length > 1 ? `${topic} (+${topics.length - 1} more)` : topic;
 }
 
+function formatSmtpValue(value: unknown, maxLength = 100): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text) {
+    return undefined;
+  }
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+function formatSmtpRecipients(value: unknown): string | undefined {
+  const values = Array.isArray(value) ? value : [value];
+  const recipients = values
+    .map((recipient) => formatSmtpValue(recipient))
+    .filter((recipient): recipient is string => recipient !== undefined);
+
+  if (recipients.length === 0) {
+    return undefined;
+  }
+  return recipients.length > 1
+    ? `${recipients[0]} (+${recipients.length - 1} more)`
+    : recipients[0];
+}
+
 export function formatEventDescription(event: Event): string {
   try {
     const source = event._source;
@@ -409,6 +435,37 @@ export function formatEventDescription(event: Event): string {
       case "smb": {
         const smb = event._source.smb;
         return `${smb?.command} - ${smb?.status} (${smb?.dialect})`;
+      }
+      case "smtp": {
+        const smtp = event._source.smtp || {};
+        const sender = formatSmtpValue(smtp.mail_from);
+        const recipients = formatSmtpRecipients(smtp.rcpt_to);
+        const helo = formatSmtpValue(smtp.helo);
+        const subject = formatSmtpValue(event._source.email?.subject);
+        let description;
+
+        if (sender && recipients) {
+          description = `MAIL FROM ${sender} → RCPT TO ${recipients}`;
+        } else if (sender) {
+          description = `MAIL FROM ${sender}`;
+        } else if (recipients) {
+          description = `RCPT TO ${recipients}`;
+        } else if (helo) {
+          return `HELO ${helo}`;
+        } else {
+          return "SMTP transaction";
+        }
+
+        const details = [];
+        if (subject) {
+          details.push(`subject “${subject}”`);
+        }
+        if (helo) {
+          details.push(`HELO ${helo}`);
+        }
+        return details.length > 0
+          ? `${description} — ${details.join(", ")}`
+          : description;
       }
       case "ssh": {
         const ssh = event._source.ssh;
