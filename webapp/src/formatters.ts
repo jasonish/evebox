@@ -4,6 +4,36 @@
 import { Event } from "./types";
 import { get_duration } from "./datetime";
 
+const FTP_SENSITIVE_COMMANDS = new Set(["PASS", "ACCT", "ADAT"]);
+
+const RDP_PROTOCOLS: Record<string, string> = {
+  rdp: "RDP Security",
+  ssl: "TLS",
+  hybrid: "CredSSP",
+  rdstls: "RDSTLS",
+  hybrid_ex: "CredSSP (HYBRID_EX)",
+};
+
+const RDP_CAPABILITIES: Record<string, string> = {
+  extended_client_data: "extended client data",
+  dynvc_gfx: "dynamic graphics channels",
+  restricted_admin: "Restricted Admin",
+  redirected_authentication: "redirected authentication",
+};
+
+const SNMP_PDU_TYPES: Record<string, string> = {
+  get_request: "GET request",
+  get_next_request: "GET-NEXT request",
+  get_bulk_request: "GET-BULK request",
+  set_request: "SET request",
+  response: "Response",
+  trap_v1: "Trap",
+  trap_v2: "Trap v2",
+  inform_request: "Inform request",
+  report: "Report",
+  encrypted: "Encrypted PDU",
+};
+
 const MQTT_PROTOCOL_VERSIONS: Record<number, string> = {
   3: "3.1",
   4: "3.1.1",
@@ -87,6 +117,46 @@ function formatSmtpRecipients(value: unknown): string | undefined {
   return recipients.length > 1
     ? `${recipients[0]} (+${recipients.length - 1} more)`
     : recipients[0];
+}
+
+function formatProtocolText(
+  value: unknown,
+  maxLength = 120,
+): string | undefined {
+  if (
+    typeof value !== "string" ||
+    /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\ufffd]/.test(value)
+  ) {
+    return undefined;
+  }
+
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text) {
+    return undefined;
+  }
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+function formatFtpReply(value: unknown): string | undefined {
+  const values = Array.isArray(value) ? value : [value];
+  const replies = values
+    .map((reply) => formatProtocolText(reply))
+    .filter((reply): reply is string => reply !== undefined);
+
+  if (replies.length === 0) {
+    return undefined;
+  }
+  return replies.length > 1
+    ? `${replies[0]} (+${replies.length - 1} more)`
+    : replies[0];
+}
+
+function formatFtpCodes(value: unknown): string | undefined {
+  const values = Array.isArray(value) ? value : [value];
+  const codes = values
+    .filter((code) => typeof code === "string" || typeof code === "number")
+    .map(String);
+  return codes.length > 0 ? codes.join("/") : undefined;
 }
 
 export function formatEventDescription(event: Event): string {
@@ -202,6 +272,42 @@ export function formatEventDescription(event: Event): string {
           }
         }
         return parts.join(" ");
+      }
+      case "ftp": {
+        const ftp = event._source.ftp || {};
+        const command = formatProtocolText(ftp.command)?.toUpperCase();
+        const code = formatFtpCodes(ftp.completion_code);
+        const reply = formatFtpReply(ftp.reply);
+        let description;
+
+        if (command) {
+          const commandData = FTP_SENSITIVE_COMMANDS.has(command)
+            ? ftp.command_data
+              ? "[data hidden]"
+              : undefined
+            : formatProtocolText(ftp.command_data);
+          description = [command, commandData].filter(Boolean).join(" ");
+          if (ftp.command_truncated) {
+            description += "…";
+          }
+        } else if (code || reply) {
+          return [code, reply].filter(Boolean).join(" ");
+        } else if (ftp.reply) {
+          return "FTP response (non-text payload)";
+        } else {
+          return "FTP transaction";
+        }
+
+        const response = [code, reply].filter(Boolean).join(" ");
+        return response ? `${description} — ${response}` : description;
+      }
+      case "ftp_data": {
+        const ftpData = event._source.ftp_data || {};
+        const command = formatProtocolText(ftpData.command)?.toUpperCase();
+        const filename = formatProtocolText(ftpData.filename);
+        return (
+          [command, filename].filter(Boolean).join(" ") || "FTP data transfer"
+        );
       }
       case "flow": {
         const packets =
@@ -375,6 +481,16 @@ export function formatEventDescription(event: Event): string {
         ];
         return parts.join(" ");
       }
+      case "tftp": {
+        const tftp = event._source.tftp || {};
+        const packet = formatProtocolText(tftp.packet)?.toUpperCase();
+        const filename = formatProtocolText(tftp.file);
+        const mode = formatProtocolText(tftp.mode);
+        const description = [packet, filename].filter(Boolean).join(" ");
+        return mode
+          ? `${description || "TFTP transfer"} — ${mode} mode`
+          : description || "TFTP transfer";
+      }
       case "tls": {
         const tls = source.tls!;
         let parts = [];
@@ -436,6 +552,26 @@ export function formatEventDescription(event: Event): string {
         const smb = event._source.smb;
         return `${smb?.command} - ${smb?.status} (${smb?.dialect})`;
       }
+      case "snmp": {
+        const snmp = event._source.snmp || {};
+        const version =
+          snmp.version === 2
+            ? "SNMPv2c"
+            : snmp.version !== undefined
+              ? `SNMPv${snmp.version}`
+              : "SNMP";
+        const pduType = snmp.pdu_type
+          ? SNMP_PDU_TYPES[snmp.pdu_type] || snmp.pdu_type.replace(/_/g, " ")
+          : undefined;
+        const vars = snmp.vars || [];
+        const variable = formatProtocolText(vars[0]);
+        const variableSuffix =
+          vars.length > 1 ? ` (+${vars.length - 1} more)` : "";
+        const description = [version, pduType].filter(Boolean).join(" ");
+        return variable
+          ? `${description} — ${variable}${variableSuffix}`
+          : description;
+      }
       case "smtp": {
         const smtp = event._source.smtp || {};
         const sender = formatSmtpValue(smtp.mail_from);
@@ -491,6 +627,53 @@ export function formatEventDescription(event: Event): string {
           parts.push(`Uptime: ${get_duration(stats.uptime).humanize()}`);
         }
         return parts.join(" ");
+      }
+      case "rdp": {
+        const rdp = event._source.rdp || {};
+
+        if (rdp.event_type === "initial_request") {
+          const cookie = formatProtocolText(rdp.cookie);
+          return cookie
+            ? `Initial request — cookie ${cookie}`
+            : "Initial request";
+        }
+
+        if (rdp.event_type === "initial_response") {
+          const protocol = rdp.protocol
+            ? RDP_PROTOCOLS[rdp.protocol] || rdp.protocol.toUpperCase()
+            : undefined;
+          const capabilities = rdp.server_supports
+            ?.map(
+              (capability: string) =>
+                RDP_CAPABILITIES[capability] || capability.replace(/_/g, " "),
+            )
+            .join(", ");
+          const details = [
+            protocol ? `protocol ${protocol}` : undefined,
+            capabilities ? `supports ${capabilities}` : undefined,
+          ].filter(Boolean);
+          return details.length > 0
+            ? `Initial response — ${details.join("; ")}`
+            : "Initial response";
+        }
+
+        if (rdp.event_type === "tls_handshake") {
+          const serials = rdp.x509_serials || [];
+          const certificate = serials[0]
+            ? `certificate serial ${serials[0]}`
+            : undefined;
+          const suffix =
+            serials.length > 1 ? ` (+${serials.length - 1} more)` : "";
+          return certificate
+            ? `TLS handshake — ${certificate}${suffix}`
+            : "TLS handshake";
+        }
+
+        const eventType = formatProtocolText(rdp.event_type)?.replace(
+          /_/g,
+          " ",
+        );
+        return eventType ? `RDP ${eventType}` : "RDP transaction";
       }
       case "quic": {
         let quic = event._source.quic;

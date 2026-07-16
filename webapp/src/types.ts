@@ -49,6 +49,11 @@ export interface EventSource {
   netflow?: EveNetflow;
   dns?: EveDns;
   http?: EveHttp;
+  ftp?: EveFtp;
+  ftp_data?: EveFtpData;
+  rdp?: EveRdp;
+  snmp?: EveSnmp;
+  tftp?: EveTftp;
   app_proto?: string;
   stats?: EveStats;
   smb?: EveSmb;
@@ -195,6 +200,46 @@ export interface EveHttp {
   status: number;
   url: string;
   http_content_type: string;
+}
+
+export interface EveFtp {
+  command?: string;
+  command_data?: string;
+  command_truncated?: boolean;
+  completion_code?: (string | number)[];
+  reply?: string[];
+  reply_received?: string;
+  reply_truncated?: boolean;
+  dynamic_port?: number;
+  mode?: string;
+}
+
+export interface EveFtpData {
+  command?: string;
+  filename?: string;
+}
+
+export interface EveRdp {
+  event_type?: string;
+  tx_id?: number;
+  cookie?: string;
+  protocol?: string;
+  server_supports?: string[];
+  x509_serials?: string[];
+}
+
+export interface EveSnmp {
+  version?: number;
+  pdu_type?: string;
+  vars?: string[];
+  community?: string;
+  usm?: string;
+}
+
+export interface EveTftp {
+  packet?: string;
+  file?: string;
+  mode?: string;
 }
 
 export interface EveStats {
