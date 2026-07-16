@@ -247,6 +247,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Disable GeoIP"),
         )
         .arg(
+            Arg::new("database.retention.disabled")
+                .action(ArgAction::SetTrue)
+                .long("disable-retention")
+                .help("Disable automatic database retention"),
+        )
+        .arg(
             Arg::new("defaults.time-range")
                 .long("default-time-range")
                 .action(ArgAction::Set)

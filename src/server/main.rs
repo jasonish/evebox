@@ -77,6 +77,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     server_config.data_directory = config.get("data-directory")?;
     server_config.config_directory = config.get("config-directory")?;
+    server_config.retention_disabled = config.get_bool("database.retention.disabled")?;
 
     server_config.port = config.get("http.port")?.unwrap();
     server_config.host = config.get("http.host")?.unwrap();
@@ -611,7 +612,11 @@ async fn configure_datastore(
             );
             debug!("Elasticsearch ECS mode: {}", eventstore.is_ecs());
 
-            crate::elastic::retention::start(metrics, configdb, eventstore.clone());
+            if server_config.retention_disabled {
+                info!("Elasticsearch retention disabled");
+            } else {
+                crate::elastic::retention::start(metrics, configdb, eventstore.clone());
+            }
 
             elastic::util::check_and_set_field_limit(&client, eventstore.get_base_index()).await;
 
@@ -642,9 +647,14 @@ async fn configure_datastore(
                 config.clone(),
                 writer.clone(),
                 db_filename,
+                !server_config.retention_disabled,
             )
             .await?;
-            info!("Retention task started");
+            if server_config.retention_disabled {
+                info!("SQLite retention disabled");
+            } else {
+                info!("Retention task started");
+            }
 
             Ok(EventRepo::SQLite(eventstore))
         }

@@ -91,6 +91,7 @@ pub(crate) struct ServerConfig {
     pub port: u16,
     pub no_check_certificate: bool,
     pub datastore: String,
+    pub retention_disabled: bool,
     pub tls_enabled: bool,
     pub tls_cert_filename: Option<PathBuf>,
     pub tls_key_filename: Option<PathBuf>,

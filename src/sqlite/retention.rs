@@ -99,9 +99,10 @@ pub(crate) async fn start_retention_task(
     config: Config,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     filename: PathBuf,
+    retention_enabled: bool,
 ) -> anyhow::Result<()> {
     tokio::spawn(async move {
-        retention_task(metrics, config, configdb, conn, filename).await;
+        retention_task(metrics, config, configdb, conn, filename, retention_enabled).await;
     });
     Ok(())
 }
@@ -141,8 +142,9 @@ async fn retention_task(
     configdb: ConfigDb,
     conn: Arc<tokio::sync::Mutex<SqliteConnection>>,
     filename: PathBuf,
+    retention_enabled: bool,
 ) {
-    let size_enabled = size_enabled(conn.clone()).await;
+    let size_enabled = retention_enabled && size_enabled(conn.clone()).await;
     let default_delay = Duration::from_secs(INTERVAL);
     let report_interval = Duration::from_secs(60);
 
@@ -155,7 +157,7 @@ async fn retention_task(
     loop {
         let mut delay = default_delay;
 
-        if !size_enabled {
+        if retention_enabled && !size_enabled {
             debug!("Size based database retention not available.");
         }
         if size_enabled {
@@ -187,7 +189,8 @@ async fn retention_task(
             }
         }
 
-        if let Ok(Some(days)) = get_days(&configdb, &config).await
+        if retention_enabled
+            && let Ok(Some(days)) = get_days(&configdb, &config).await
             && days > 0
         {
             match delete_older_than(conn.clone(), days as u64, LIMIT as u64).await {

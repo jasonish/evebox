@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- Automatic database retention can now be disabled for the server with
+  `--disable-retention`, allowing older imported events to remain available for
+  inspection.
 - The server's default browser time range can now be configured with
   `--default-time-range`, `EVEBOX_DEFAULT_TIME_RANGE`, or the
   `defaults.time-range` configuration key.
