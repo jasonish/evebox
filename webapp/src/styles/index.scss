@@ -93,6 +93,10 @@ $evebox-success-color-dark: #2f4741;
   }
 }
 
+.app-event-summary {
+  display: grid;
+}
+
 .app-event-summary-card {
   --bs-btn-color: var(--bs-body-color);
   --bs-btn-bg: var(--bs-tertiary-bg);
@@ -104,7 +108,6 @@ $evebox-success-color-dark: #2f4741;
   --bs-btn-active-bg: var(--bs-tertiary-bg);
   --bs-btn-active-border-color: var(--bs-primary);
 
-  flex: 1 0 8rem;
   min-height: 3.75rem;
 
   &.active {

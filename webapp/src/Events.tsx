@@ -685,6 +685,42 @@ function EventTypeSummary(props: {
   const total = createMemo(() =>
     props.rows.reduce((sum, row) => sum + row.count, 0),
   );
+  const [columnCount, setColumnCount] = createSignal(1);
+  let summaryElement: HTMLDivElement | undefined;
+
+  function updateColumnCount() {
+    if (!summaryElement) {
+      return;
+    }
+
+    const itemCount = rows().length + 1;
+    const rootFontSize = Number.parseFloat(
+      getComputedStyle(document.documentElement).fontSize,
+    );
+    const gap = Number.parseFloat(getComputedStyle(summaryElement).columnGap);
+    const minimumCardWidth = 8 * rootFontSize;
+    const maximumColumns = Math.max(
+      1,
+      Math.floor((summaryElement.clientWidth + gap) / (minimumCardWidth + gap)),
+    );
+    const rowCount = Math.ceil(itemCount / maximumColumns);
+
+    setColumnCount(Math.ceil(itemCount / rowCount));
+  }
+
+  createEffect(() => {
+    rows().length;
+    updateColumnCount();
+  });
+
+  onMount(() => {
+    const observer = new ResizeObserver(updateColumnCount);
+    if (summaryElement) {
+      observer.observe(summaryElement);
+      updateColumnCount();
+    }
+    onCleanup(() => observer.disconnect());
+  });
 
   function label(eventType: string): string {
     if (eventType === "fileinfo") {
@@ -695,7 +731,11 @@ function EventTypeSummary(props: {
 
   return (
     <div
-      class="app-event-summary d-flex gap-2 mt-2 overflow-x-auto pb-1"
+      ref={summaryElement}
+      class="app-event-summary gap-2 mt-2"
+      style={{
+        "grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
+      }}
       aria-label="Event summary"
     >
       <button
