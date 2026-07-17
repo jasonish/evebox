@@ -374,6 +374,10 @@ fn build_pcap_channel(
         .get_string("pcap.prefix")
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
+    let server_key = config
+        .get_string("server.key")
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
     let server_url = crate::agent::tls::normalize_server_url(server_url)?;
     info!("Full packet capture enabled: spool {directory} as agent {agent_id:?}");
 
@@ -381,6 +385,7 @@ fn build_pcap_channel(
         server_url,
         agent_id: agent_id.to_string(),
         hostname: hostname.to_string(),
+        server_key,
         spool: crate::pcap::SpoolConfig::new(directory, prefix),
         disable_certificate_check,
     }))

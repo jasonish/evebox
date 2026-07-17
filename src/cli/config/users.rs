@@ -83,7 +83,7 @@ pub(crate) async fn main(args: &clap::ArgMatches) -> Result<()> {
     }
 }
 
-async fn open_config_repo<P: AsRef<Path>>(
+pub(super) async fn open_config_repo<P: AsRef<Path>>(
     config_directory: Option<P>,
     data_directory: Option<P>,
 ) -> Result<ConfigDb> {

@@ -46,8 +46,8 @@ pub(crate) fn agent_pcap_upload_path(id: &str) -> String {
 
 /// Metadata asserted by an agent during the WebSocket upgrade.
 ///
-/// Authentication and identity binding are intentionally deferred. Unknown
-/// fields are ignored for forward compatibility.
+/// The claimed identity; the agent key on the upgrade is what authenticates
+/// it. Unknown fields are ignored for forward compatibility.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct AgentHandshake {
     pub(crate) name: String,

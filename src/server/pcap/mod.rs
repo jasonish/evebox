@@ -342,15 +342,19 @@ mod test {
 
     fn register_agent(registry: &AgentRegistry, name: &str, hostname: &str) -> Arc<AgentEntry> {
         let (tx, _rx) = tokio::sync::mpsc::channel(4);
-        registry.register(
-            AgentHandshake {
-                name: name.to_string(),
-                hostname: hostname.to_string(),
-                version: "test".to_string(),
-                capabilities: vec![CAPABILITY_PCAP.to_string()],
-            },
-            tx,
-        )
+        registry
+            .register(
+                AgentHandshake {
+                    name: name.to_string(),
+                    hostname: hostname.to_string(),
+                    version: "test".to_string(),
+                    capabilities: vec![CAPABILITY_PCAP.to_string()],
+                },
+                None,
+                "127.0.0.1:0".parse().unwrap(),
+                tx,
+            )
+            .unwrap()
     }
 
     /// A Config backed only by a YAML file (no CLI arguments).

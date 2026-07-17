@@ -28,12 +28,6 @@ http:
     # env: EVEBOX_HTTP_TLS_KEY
     #key: /path/to/key.pem
 
-  # If behind a reverse proxy set to true so the proper IP address of
-  # clients can be logged.
-  # Default: false
-  # env: EVEBOX_HTTP_REVERSE_PROXY
-  #reverse-proxy: true
-
   # Enable HTTP request logging. This can be very verbose.
   # Default: false
   # env: EVEBOX_HTTP_REQUEST_LOGGING
@@ -123,6 +117,16 @@ geoip:
 #pcap:
 #  directory: /var/log/suricata/pcap
 #  prefix: log.
+
+# Remote agent control channel. Connecting agents must present an agent key
+# regardless of authentication.required, which only governs browser access.
+# Manage keys with `evebox config agents add|list|rm`; set each agent's
+# key as server.key in its agent.yaml. Keys are stored as-is in the
+# configuration database, so keep that file's permissions restrictive.
+#agents:
+#  # Lab escape hatch: accept agents without a key. A presented key is
+#  # still verified.
+#  allow-unauthenticated: false
 
 # Event services: links that will be provided on events to link to additonal
 # services.

@@ -24,6 +24,14 @@ pub(crate) enum ConfigDbError {
     NoUser(String),
     #[error("sql error: {0}")]
     SqlxError(#[from] sqlx::Error),
+    #[error("an agent key named {0:?} already exists, remove it first")]
+    AgentKeyNameInUse(String),
+    #[error("agent name {0:?} is reserved for the server-local PCAP spool")]
+    AgentNameReserved(String),
+    #[error("agent name must not be empty")]
+    EmptyAgentName,
+    #[error("agent name is limited to {0} bytes")]
+    AgentNameTooLong(usize),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, FromRow)]
@@ -57,6 +65,34 @@ pub(crate) struct FilterEntry {
 pub(crate) struct User {
     pub uuid: String,
     pub username: String,
+}
+
+/// Prefix on every agent key, making a leaked key greppable and
+/// identifiable.
+pub(crate) const AGENT_KEY_PREFIX: &str = "eba_";
+
+/// A long-lived agent credential.
+///
+/// Keys are high-entropy random bearer tokens stored as-is, not hashed, so
+/// an operator can re-show a key when re-provisioning a sensor. A leaked key
+/// grants agent impersonation on the control channel, not access to stored
+/// data or the browser UI. Protect the configuration database file like
+/// agent.yaml.
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub(crate) struct AgentKey {
+    pub id: i64,
+    pub name: String,
+    pub key: String,
+    pub created_at: crate::datetime::ChronoDateTime,
+    pub last_seen: Option<crate::datetime::ChronoDateTime>,
+}
+
+fn generate_agent_key() -> String {
+    use base64::prelude::*;
+    use rand::RngCore;
+    let mut buf = [0u8; 32];
+    rand::rng().fill_bytes(&mut buf);
+    format!("{AGENT_KEY_PREFIX}{}", BASE64_URL_SAFE_NO_PAD.encode(buf))
 }
 
 #[derive(Debug, Deserialize)]
@@ -284,6 +320,81 @@ impl ConfigDb {
             .await?;
         Ok(())
     }
+
+    /// Create an agent key. The generated key is returned in the row and
+    /// remains re-showable through `list_agent_keys`. One key per name;
+    /// replace a key by removing it and adding a new one.
+    pub(crate) async fn add_agent_key(&self, name: &str) -> Result<AgentKey, ConfigDbError> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(ConfigDbError::EmptyAgentName);
+        }
+        if name.len() > crate::server::agents::MAX_AGENT_NAME_BYTES {
+            return Err(ConfigDbError::AgentNameTooLong(
+                crate::server::agents::MAX_AGENT_NAME_BYTES,
+            ));
+        }
+        if name == crate::server::agents::LOCAL_PCAP_SOURCE_NAME {
+            return Err(ConfigDbError::AgentNameReserved(name.to_string()));
+        }
+        let key = generate_agent_key();
+        let result = sqlx::query("INSERT INTO agent_keys (name, key) VALUES (?, ?)")
+            .bind(name)
+            .bind(&key)
+            .execute(&self.pool)
+            .await;
+        if let Err(sqlx::Error::Database(err)) = &result
+            && err.is_unique_violation()
+        {
+            return Err(ConfigDbError::AgentKeyNameInUse(name.to_string()));
+        }
+        result?;
+        let row = sqlx::query_as("SELECT * FROM agent_keys WHERE key = ?")
+            .bind(&key)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(row)
+    }
+
+    /// Look up an agent key by its presented value.
+    pub(crate) async fn verify_agent_key(
+        &self,
+        key: &str,
+    ) -> Result<Option<AgentKey>, ConfigDbError> {
+        if !key.starts_with(AGENT_KEY_PREFIX) {
+            return Ok(None);
+        }
+        let row = sqlx::query_as("SELECT * FROM agent_keys WHERE key = ?")
+            .bind(key)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(row)
+    }
+
+    pub(crate) async fn list_agent_keys(&self) -> Result<Vec<AgentKey>, ConfigDbError> {
+        let rows = sqlx::query_as("SELECT * FROM agent_keys ORDER BY name, id")
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(rows)
+    }
+
+    /// Delete the key with this name, returning false when no key has the
+    /// name.
+    pub(crate) async fn remove_agent_key(&self, name: &str) -> Result<bool, ConfigDbError> {
+        let result = sqlx::query("DELETE FROM agent_keys WHERE name = ?")
+            .bind(name)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    pub(crate) async fn touch_agent_key(&self, id: i64) -> Result<(), ConfigDbError> {
+        sqlx::query("UPDATE agent_keys SET last_seen = CURRENT_TIMESTAMP WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
 }
 
 async fn get_legacy_version(conn: &mut SqliteConnection) -> Option<u8> {
@@ -368,4 +479,102 @@ pub(crate) async fn open_connection_in_directory(
     let mut conn = crate::sqlite::connection::open_connection(Some(&filename), true).await?;
     init_db(&mut conn).await?;
     Ok(conn)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // In-memory SQLite connections share a process-global cache, so every
+    // test gets its own database file.
+    async fn test_db() -> (tempfile::TempDir, ConfigDb) {
+        let dir = tempfile::tempdir().unwrap();
+        let db = open(Some(&dir.path().join("config.sqlite"))).await.unwrap();
+        (dir, db)
+    }
+
+    #[tokio::test]
+    async fn agent_keys_verify_and_touch() {
+        let (_dir, db) = test_db().await;
+        let added = db.add_agent_key("sensor-a").await.unwrap();
+        assert!(added.key.starts_with(AGENT_KEY_PREFIX));
+        assert!(added.last_seen.is_none());
+
+        let found = db.verify_agent_key(&added.key).await.unwrap().unwrap();
+        assert_eq!(found.id, added.id);
+        assert_eq!(found.name, "sensor-a");
+
+        db.touch_agent_key(added.id).await.unwrap();
+        let touched = db.verify_agent_key(&added.key).await.unwrap().unwrap();
+        assert!(touched.last_seen.is_some());
+
+        // Unknown keys and non-agent-key bearer values are rejected.
+        assert!(
+            db.verify_agent_key("eba_underivable")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            db.verify_agent_key("xyz_wrongprefix")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(db.verify_agent_key("").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn removed_agent_keys_are_rejected() {
+        let (_dir, db) = test_db().await;
+        let added = db.add_agent_key("sensor-a").await.unwrap();
+        assert!(db.remove_agent_key("sensor-a").await.unwrap());
+        assert!(db.verify_agent_key(&added.key).await.unwrap().is_none());
+        // Nothing is left to remove.
+        assert!(!db.remove_agent_key("sensor-a").await.unwrap());
+        assert!(!db.remove_agent_key("never-existed").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn agent_key_names_are_unique() {
+        let (_dir, db) = test_db().await;
+        let first = db.add_agent_key("sensor-a").await.unwrap();
+        assert!(matches!(
+            db.add_agent_key("sensor-a").await,
+            Err(ConfigDbError::AgentKeyNameInUse(_))
+        ));
+
+        // Removal frees the name for a replacement key.
+        assert!(db.remove_agent_key("sensor-a").await.unwrap());
+        let second = db.add_agent_key("sensor-a").await.unwrap();
+        assert_ne!(first.key, second.key);
+
+        let rows = db.list_agent_keys().await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].key, second.key);
+    }
+
+    #[tokio::test]
+    async fn agent_key_names_are_validated() {
+        let (_dir, db) = test_db().await;
+        assert!(matches!(
+            db.add_agent_key("  ").await,
+            Err(ConfigDbError::EmptyAgentName)
+        ));
+        assert!(matches!(
+            db.add_agent_key(crate::server::agents::LOCAL_PCAP_SOURCE_NAME)
+                .await,
+            Err(ConfigDbError::AgentNameReserved(_))
+        ));
+        assert!(
+            db.add_agent_key(&"a".repeat(crate::server::agents::MAX_AGENT_NAME_BYTES))
+                .await
+                .is_ok()
+        );
+        assert!(matches!(
+            db.add_agent_key(&"b".repeat(crate::server::agents::MAX_AGENT_NAME_BYTES + 1))
+                .await,
+            Err(ConfigDbError::AgentNameTooLong(_))
+        ));
+    }
 }

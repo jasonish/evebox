@@ -10,6 +10,7 @@
 //! future capabilities can share the same connection and lifecycle.
 
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
@@ -46,6 +47,20 @@ pub(crate) struct AgentConnectionId {
     pub(crate) generation: u64,
 }
 
+/// The agent key a connection authenticated with. `None` only under
+/// `agents.allow-unauthenticated`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct AgentKeyIdentity {
+    pub(crate) id: i64,
+    pub(crate) name: String,
+}
+
+/// A registration that was refused because the claimed name is held by a
+/// connection authenticated with a different key. The registry has already
+/// logged the details.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct NameHeldByOtherKey;
+
 /// Consumer of messages and lifecycle events received on the general agent
 /// channel.
 ///
@@ -78,6 +93,8 @@ pub(crate) struct AgentEntry {
     pub(crate) capabilities: Vec<String>,
     pub(crate) connected_at: DateTime,
     pub(crate) generation: u64,
+    pub(crate) key: Option<AgentKeyIdentity>,
+    pub(crate) remote: SocketAddr,
     pub(crate) outbound: mpsc::Sender<ServerMessage>,
     /// One server-side in-flight PCAP slot for this claimed source name.
     ///
@@ -171,14 +188,34 @@ impl AgentRegistry {
     }
 
     /// Register a connection, replacing any older connection with the same
-    /// claimed name. The old task is explicitly stopped; generation checks
-    /// keep its eventual cleanup from removing the replacement.
+    /// claimed name and key identity. The old task is explicitly stopped;
+    /// generation checks keep its eventual cleanup from removing the
+    /// replacement.
+    ///
+    /// A held name is only replaceable by the same key identity (the
+    /// half-open-TCP-after-restart case); a different key claiming it is
+    /// refused so one credentialed sensor cannot evict another. Without
+    /// identities to compare (`agents.allow-unauthenticated`) this falls
+    /// back to replace-with-warn.
     pub(crate) fn register(
         &self,
         handshake: AgentHandshake,
+        key: Option<AgentKeyIdentity>,
+        remote: SocketAddr,
         outbound: mpsc::Sender<ServerMessage>,
-    ) -> Arc<AgentEntry> {
+    ) -> Result<Arc<AgentEntry>, NameHeldByOtherKey> {
         let mut state = self.state.write().unwrap();
+
+        if let Some(previous) = state.agents.get(&handshake.name)
+            && let (Some(held), Some(claimed)) = (&previous.key, &key)
+            && held.id != claimed.id
+        {
+            warn!(
+                "REFUSING agent {:?} from {remote} using key {:?}: the name is held by a connection from {} authenticated with key {:?}",
+                handshake.name, claimed.name, previous.remote, held.name
+            );
+            return Err(NameHeldByOtherKey);
+        }
 
         // Carry the PCAP slot over from any entry being replaced so a
         // reconnect cannot open a second lane around an extraction that is
@@ -197,6 +234,8 @@ impl AgentRegistry {
             capabilities: handshake.capabilities,
             connected_at: now.clone(),
             generation: self.next_generation.fetch_add(1, Ordering::Relaxed),
+            key,
+            remote,
             outbound,
             pcap_busy,
             last_seen: RwLock::new(now),
@@ -219,7 +258,7 @@ impl AgentRegistry {
             );
         }
 
-        entry
+        Ok(entry)
     }
 
     /// Remove this generation only. Returns false when a replacement already
@@ -346,9 +385,31 @@ mod tests {
         }
     }
 
+    fn remote() -> SocketAddr {
+        "127.0.0.1:0".parse().unwrap()
+    }
+
+    fn key(id: i64) -> Option<AgentKeyIdentity> {
+        Some(AgentKeyIdentity {
+            id,
+            name: format!("key-{id}"),
+        })
+    }
+
     fn register(registry: &AgentRegistry, name: &str, capabilities: &[&str]) -> Arc<AgentEntry> {
         let (tx, _rx) = mpsc::channel(OUTBOUND_CAPACITY);
-        registry.register(handshake(name, capabilities), tx)
+        registry
+            .register(handshake(name, capabilities), None, remote(), tx)
+            .unwrap()
+    }
+
+    fn register_with_key(
+        registry: &AgentRegistry,
+        name: &str,
+        key: Option<AgentKeyIdentity>,
+    ) -> Result<Arc<AgentEntry>, NameHeldByOtherKey> {
+        let (tx, _rx) = mpsc::channel(OUTBOUND_CAPACITY);
+        registry.register(handshake(name, &[CAPABILITY_PCAP]), key, remote(), tx)
     }
 
     #[test]
@@ -432,7 +493,9 @@ mod tests {
     fn outbound_queue_is_bounded_and_nonblocking() {
         let registry = AgentRegistry::default();
         let (tx, _rx) = mpsc::channel(1);
-        let entry = registry.register(handshake("sensor-a", &[]), tx);
+        let entry = registry
+            .register(handshake("sensor-a", &[]), None, remote(), tx)
+            .unwrap();
 
         entry.try_send(ServerMessage::Unknown).unwrap();
         assert!(matches!(
@@ -442,12 +505,73 @@ mod tests {
     }
 
     #[test]
+    fn same_key_replaces_but_a_different_key_is_refused() {
+        let registry = AgentRegistry::default();
+        let first = register_with_key(&registry, "sensor-a", key(1)).unwrap();
+
+        // A different key cannot evict the held name.
+        assert_eq!(
+            register_with_key(&registry, "sensor-a", key(2)).err(),
+            Some(NameHeldByOtherKey)
+        );
+        assert!(!first.is_cancelled());
+        assert_eq!(
+            registry.get("sensor-a").unwrap().generation,
+            first.generation
+        );
+
+        // The same key identity replaces its own stale connection.
+        let second = register_with_key(&registry, "sensor-a", key(1)).unwrap();
+        assert!(first.is_cancelled());
+        assert_eq!(
+            registry.get("sensor-a").unwrap().generation,
+            second.generation
+        );
+
+        // A different key is free to claim a different name.
+        register_with_key(&registry, "sensor-b", key(2)).unwrap();
+        assert_eq!(registry.connected(), 2);
+    }
+
+    #[test]
+    fn without_identities_replacement_falls_back_to_last_writer() {
+        let registry = AgentRegistry::default();
+
+        // Both unauthenticated: no identities to compare.
+        let first = register_with_key(&registry, "sensor-a", None).unwrap();
+        let second = register_with_key(&registry, "sensor-a", None).unwrap();
+        assert!(first.is_cancelled());
+
+        // A keyed claim over an unauthenticated holder (or the reverse)
+        // also has nothing to compare and replaces.
+        let third = register_with_key(&registry, "sensor-a", key(1)).unwrap();
+        assert!(second.is_cancelled());
+        let fourth = register_with_key(&registry, "sensor-a", None).unwrap();
+        assert!(third.is_cancelled());
+        assert!(!fourth.is_cancelled());
+    }
+
+    #[test]
     fn stale_generation_cannot_accept_new_requests() {
         let registry = AgentRegistry::default();
         let (first_tx, mut first_rx) = mpsc::channel(OUTBOUND_CAPACITY);
-        let first = registry.register(handshake("sensor-a", &[CAPABILITY_PCAP]), first_tx);
+        let first = registry
+            .register(
+                handshake("sensor-a", &[CAPABILITY_PCAP]),
+                None,
+                remote(),
+                first_tx,
+            )
+            .unwrap();
         let (second_tx, _second_rx) = mpsc::channel(OUTBOUND_CAPACITY);
-        registry.register(handshake("sensor-a", &[CAPABILITY_PCAP]), second_tx);
+        registry
+            .register(
+                handshake("sensor-a", &[CAPABILITY_PCAP]),
+                None,
+                remote(),
+                second_tx,
+            )
+            .unwrap();
 
         assert!(matches!(
             registry.try_send_current(&first, ServerMessage::Unknown),

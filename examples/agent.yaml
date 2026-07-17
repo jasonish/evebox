@@ -4,13 +4,12 @@
 server:
   url: http://127.0.0.1:5636
 
-  # Username and password. Note that at this time even with
-  # authentication enabled on the EveBox server, agents can still
-  # submit events without authenticating. You will need to supply and
-  # username and password if running behind a reverse proxy
-  # implementing authentication.
-  #username: username
-  #password: password
+  # Agent key, required for the packet-capture control channel (see the
+  # pcap section below). Create one on the server with:
+  #     evebox config agents add <name>
+  # Also available as the EVEBOX_SERVER_KEY environment variable. Keep
+  # this file's permissions restrictive when a key is set.
+  #key: eba_...
 
 # Enable output to Elasticsearch. If enabled, the above server section
 # will not be used.
@@ -41,9 +40,9 @@ input:
     - "/var/log/suricata/eve.*.json"
 
 # Keep a persistent control connection to the EveBox server and serve packet
-# capture requests from this host's Suricata pcap-log spool. The initial
-# transport is intentionally unauthenticated; use it only on trusted networks
-# until agent authentication is added. This requires EveBox server output;
+# capture requests from this host's Suricata pcap-log spool. The control
+# channel requires an agent key (server.key above) unless the server sets
+# agents.allow-unauthenticated. This requires EveBox server output;
 # it is ignored when direct Elasticsearch output above is enabled.
 #
 # The --pcap-directory and --pcap-prefix command line options can be used

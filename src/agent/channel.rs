@@ -55,6 +55,9 @@ pub(crate) struct ChannelConfig {
     /// events whose sensor identity matches it to this agent.
     pub(crate) agent_id: String,
     pub(crate) hostname: String,
+    /// Agent key (`server.key` / `EVEBOX_SERVER_KEY`) presented as a bearer
+    /// token on the WebSocket upgrade.
+    pub(crate) server_key: Option<String>,
     pub(crate) spool: SpoolConfig,
     pub(crate) disable_certificate_check: bool,
 }
@@ -64,6 +67,14 @@ enum ConnectionOutcome {
     Disconnected { connected_for: Duration },
     ConnectFailed,
     ServerTooOld,
+    Unauthorized,
+}
+
+/// Loud-once connect diagnostics, reset by a successful connection.
+#[derive(Debug, Default)]
+struct ConnectWarnings {
+    too_old: bool,
+    unauthorized: bool,
 }
 
 fn next_backoff(backoff: Duration, connected_for: Duration) -> (Duration, Duration) {
@@ -102,10 +113,10 @@ pub(crate) async fn run(config: ChannelConfig) {
         }
     };
     let mut backoff = MIN_BACKOFF;
-    let mut warned_too_old = false;
+    let mut warned = ConnectWarnings::default();
 
     loop {
-        let outcome = connect_and_run(&config, &client, &extraction, &mut warned_too_old).await;
+        let outcome = connect_and_run(&config, &client, &extraction, &mut warned).await;
 
         let delay = match outcome {
             ConnectionOutcome::Disconnected { connected_for } => {
@@ -118,7 +129,7 @@ pub(crate) async fn run(config: ChannelConfig) {
                 backoff = next;
                 delay
             }
-            ConnectionOutcome::ServerTooOld => MAX_BACKOFF,
+            ConnectionOutcome::ServerTooOld | ConnectionOutcome::Unauthorized => MAX_BACKOFF,
         };
         tokio::time::sleep(delay + jitter(delay)).await;
     }
@@ -128,7 +139,7 @@ async fn connect_and_run(
     config: &Arc<ChannelConfig>,
     client: &reqwest::Client,
     extraction: &Arc<Semaphore>,
-    warned_too_old: &mut bool,
+    warned: &mut ConnectWarnings,
 ) -> ConnectionOutcome {
     let handshake = AgentHandshake {
         name: config.agent_id.clone(),
@@ -160,9 +171,12 @@ async fn connect_and_run(
             return ConnectionOutcome::ConnectFailed;
         }
     };
-    let request = ClientRequestBuilder::new(uri)
+    let mut request = ClientRequestBuilder::new(uri)
         .with_sub_protocol(SUBPROTOCOL)
         .with_header(AGENT_HEADER, handshake);
+    if let Some(key) = &config.server_key {
+        request = request.with_header("authorization", format!("Bearer {key}"));
+    }
     let ws_config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default()
         .max_message_size(Some(CONTROL_MESSAGE_MAX_BYTES))
         .max_frame_size(Some(CONTROL_MESSAGE_MAX_BYTES));
@@ -182,7 +196,7 @@ async fn connect_and_run(
                 let _ = ws.close(None).await;
                 return ConnectionOutcome::ConnectFailed;
             }
-            *warned_too_old = false;
+            *warned = ConnectWarnings::default();
             info!(
                 "agent channel: connected to {} as {:?}",
                 config.server_url, config.agent_id
@@ -194,15 +208,48 @@ async fn connect_and_run(
             }
         }
         Ok(Err(WsError::Http(response))) if response.status() == 404 => {
-            if !*warned_too_old {
+            if !warned.too_old {
                 warn!(
                     "agent channel: server at {} does not support {}; upgrade EveBox to enable remote PCAP",
                     config.server_url,
                     crate::agent::protocol::AGENT_WS_PATH
                 );
-                *warned_too_old = true;
+                warned.too_old = true;
             }
             ConnectionOutcome::ServerTooOld
+        }
+        Ok(Err(WsError::Http(response))) if response.status() == 401 => {
+            if !warned.unauthorized {
+                if config.server_key.is_some() {
+                    error!(
+                        "agent channel: the server at {} rejected the configured agent key \
+                         (unknown or removed); issue a new one with `evebox config agents add {:?}` \
+                         on the server and update server.key",
+                        config.server_url, config.agent_id
+                    );
+                } else {
+                    error!(
+                        "agent channel: the server at {} requires an agent key; on the server run \
+                         `evebox config agents add {:?}` and set the printed key as server.key in \
+                         agent.yaml (or EVEBOX_SERVER_KEY)",
+                        config.server_url, config.agent_id
+                    );
+                }
+                warned.unauthorized = true;
+            }
+            ConnectionOutcome::Unauthorized
+        }
+        Ok(Err(WsError::Http(response))) if response.status() == 403 => {
+            if !warned.unauthorized {
+                error!(
+                    "agent channel: the server at {} says the configured agent key was issued \
+                     for a different agent name; issue a key for {:?} with \
+                     `evebox config agents add {:?}` or set agent-id to the key's name",
+                    config.server_url, config.agent_id, config.agent_id
+                );
+                warned.unauthorized = true;
+            }
+            ConnectionOutcome::Unauthorized
         }
         Ok(Err(err)) => {
             warn!(
@@ -1444,6 +1491,7 @@ mod tests {
             server_url: format!("http://{address}"),
             agent_id: "sensor".to_string(),
             hostname: "host".to_string(),
+            server_key: None,
             spool: SpoolConfig::new(directory.path(), None),
             disable_certificate_check: false,
         };
@@ -1508,6 +1556,7 @@ mod tests {
             server_url: format!("http://{address}"),
             agent_id: "sensor".to_string(),
             hostname: "host".to_string(),
+            server_key: None,
             spool: SpoolConfig::new(directory.path(), None),
             disable_certificate_check: false,
         };
@@ -1567,6 +1616,7 @@ mod tests {
             server_url: format!("http://{address}"),
             agent_id: "sensor".to_string(),
             hostname: "host".to_string(),
+            server_key: None,
             spool: SpoolConfig::new(directory.path(), None),
             disable_certificate_check: false,
         };

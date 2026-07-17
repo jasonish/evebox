@@ -117,6 +117,10 @@ pub(crate) struct ServerConfig {
     pub authentication_required: bool,
     pub http_reverse_proxy: bool,
     pub http_request_logging: bool,
+    /// Accept agent control-channel connections without an agent key. A lab
+    /// escape hatch: agent keys are otherwise required regardless of
+    /// `authentication.required`, which only governs browser access.
+    pub agents_allow_unauthenticated: bool,
 }
 
 #[cfg(test)]

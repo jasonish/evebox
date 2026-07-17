@@ -5,8 +5,10 @@
 //!
 //! The HTTP request is upgraded once to a WebSocket. After that handshake the
 //! socket carries bounded JSON text frames using the `evebox-agent-v1`
-//! subprotocol. Agent authentication is intentionally deferred; accepting an
-//! unauthenticated connection is therefore logged prominently.
+//! subprotocol. The upgrade requires a valid agent key — independent of
+//! `authentication.required`, which only governs browser access — unless
+//! `agents.allow-unauthenticated` is set, in which case accepting a keyless
+//! connection is logged prominently.
 
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -32,7 +34,7 @@ use crate::agent::protocol::{CAPABILITY_PCAP, PCAP_CONTENT_TYPE};
 use crate::prelude::*;
 use crate::server::ServerContext;
 use crate::server::agents::{
-    AgentConnectionId, AgentRegistry, MAX_AGENT_NAME_BYTES, OUTBOUND_CAPACITY,
+    AgentConnectionId, AgentKeyIdentity, AgentRegistry, MAX_AGENT_NAME_BYTES, OUTBOUND_CAPACITY,
 };
 use crate::server::main::SessionExtractor;
 use crate::server::pcap::tasks::{UploadSendError, UploadSink};
@@ -95,6 +97,11 @@ pub(crate) async fn websocket(
     Extension(ConnectInfo(remote)): Extension<ConnectInfo<SocketAddr>>,
     headers: HeaderMap,
 ) -> Response {
+    let key = match authenticate_agent(&context, &headers, remote).await {
+        Ok(key) => key,
+        Err(response) => return response,
+    };
+
     if !offers_subprotocol(&headers) {
         return (
             StatusCode::BAD_REQUEST,
@@ -108,10 +115,35 @@ pub(crate) async fn websocket(
         Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
     };
 
-    warn!(
-        "Accepting UNAUTHENTICATED agent {:?} from {}; agent authentication is deferred",
-        handshake.name, remote
-    );
+    match &key {
+        // The key IS the authorization for a name: without this check any
+        // valid key could claim a disconnected agent's name and receive its
+        // extraction requests or future control commands.
+        Some(key) if key.name != handshake.name => {
+            warn!(
+                "Refusing agent {:?} from {remote}: its agent key was issued for {:?}",
+                handshake.name, key.name
+            );
+            return agent_key_error(
+                StatusCode::FORBIDDEN,
+                "agent-key-name-mismatch",
+                &format!(
+                    "the presented agent key was issued for {:?} and cannot claim agent name {:?}: \
+                     issue a key for this agent with `evebox config agents add {:?}` or set \
+                     agent-id to match the key",
+                    key.name, handshake.name, handshake.name
+                ),
+            );
+        }
+        Some(key) => debug!(
+            "Agent {:?} from {remote} authenticated with agent key {:?}",
+            handshake.name, key.name
+        ),
+        None => warn!(
+            "Accepting UNAUTHENTICATED agent {:?} from {remote}: agents.allow-unauthenticated is enabled",
+            handshake.name
+        ),
+    }
 
     // Control messages should stay small. Keep the limits far below
     // tungstenite's defaults so an unauthenticated peer cannot make the
@@ -119,7 +151,71 @@ pub(crate) async fn websocket(
     ws.protocols([SUBPROTOCOL])
         .max_message_size(CONTROL_MESSAGE_MAX_BYTES)
         .max_frame_size(CONTROL_MESSAGE_MAX_BYTES)
-        .on_upgrade(move |socket| connection(socket, context.agents.clone(), handshake, remote))
+        .on_upgrade(move |socket| {
+            connection(socket, context.agents.clone(), handshake, key, remote)
+        })
+}
+
+/// Resolve the agent key on a control-channel upgrade.
+///
+/// A presented key must be valid even under `agents.allow-unauthenticated`:
+/// presented-but-wrong always fails closed. `Ok(None)` is the keyless
+/// allow-unauthenticated case.
+async fn authenticate_agent(
+    context: &ServerContext,
+    headers: &HeaderMap,
+    remote: SocketAddr,
+) -> Result<Option<AgentKeyIdentity>, Response> {
+    let Some(bearer) = headers.typed_get::<Authorization<Bearer>>() else {
+        if context.config.agents_allow_unauthenticated {
+            return Ok(None);
+        }
+        debug!("Refusing agent connection from {remote}: no agent key presented");
+        return Err(agent_key_error(
+            StatusCode::UNAUTHORIZED,
+            "agent-key-required",
+            "this server requires an agent key: create one with `evebox config agents add <name>` \
+             and set it as server.key in agent.yaml (or EVEBOX_SERVER_KEY)",
+        ));
+    };
+    match context.configdb.verify_agent_key(bearer.token()).await {
+        Ok(Some(key)) => {
+            if let Err(err) = context.configdb.touch_agent_key(key.id).await {
+                warn!(
+                    "Failed to update agent key last-seen for {:?}: {err}",
+                    key.name
+                );
+            }
+            Ok(Some(AgentKeyIdentity {
+                id: key.id,
+                name: key.name,
+            }))
+        }
+        Ok(None) => {
+            warn!("Refusing agent connection from {remote}: unknown agent key");
+            Err(agent_key_error(
+                StatusCode::UNAUTHORIZED,
+                "agent-key-rejected",
+                "unknown agent key: issue a new one with `evebox config agents add <name>`",
+            ))
+        }
+        Err(err) => {
+            error!("Agent key verification failed: {err}");
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "agent key verification failed",
+            )
+                .into_response())
+        }
+    }
+}
+
+fn agent_key_error(status: StatusCode, code: &str, message: &str) -> Response {
+    (
+        status,
+        Json(json!({"error": {"code": code, "message": message}})),
+    )
+        .into_response()
 }
 
 /// `GET /api/agents`: the general connected-agent read model.
@@ -326,6 +422,7 @@ async fn connection(
     socket: WebSocket,
     agents: Arc<AgentRegistry>,
     handshake: AgentHandshake,
+    key: Option<AgentKeyIdentity>,
     remote: SocketAddr,
 ) {
     let (mut sink, mut stream) = socket.split();
@@ -344,7 +441,12 @@ async fn connection(
     }
 
     let (outbound, mut outbound_rx) = mpsc::channel::<ServerMessage>(OUTBOUND_CAPACITY);
-    let entry = agents.register(handshake, outbound);
+    // The registry has already logged the refusal; the agent sees a close
+    // and stays in its reconnect loop until the operator fixes the fleet.
+    let Ok(entry) = agents.register(handshake, key, remote, outbound) else {
+        let _ = sink.close().await;
+        return;
+    };
     let connection_id = entry.connection_id();
     info!(
         "Agent {name:?} connected from {remote} (generation {})",
@@ -885,6 +987,18 @@ mod tests {
         Arc<ServerContext>,
         tempfile::TempDir,
     ) {
+        serve_test_server_with_config(settings, ServerConfig::default()).await
+    }
+
+    async fn serve_test_server_with_config(
+        settings: PcapSettings,
+        server_config: ServerConfig,
+    ) -> (
+        std::net::SocketAddr,
+        tokio::task::JoinHandle<()>,
+        Arc<ServerContext>,
+        tempfile::TempDir,
+    ) {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let dir = tempfile::tempdir().unwrap();
         let datastore = build_repo(&dir.path().join("events.sqlite")).await;
@@ -895,7 +1009,7 @@ mod tests {
             .await
             .unwrap();
         let mut context = ServerContext::new(
-            ServerConfig::default(),
+            server_config,
             Arc::new(configdb),
             datastore,
             Arc::new(Metrics::default()),
@@ -911,6 +1025,10 @@ mod tests {
         (address, server, context, dir)
     }
 
+    async fn add_test_key(context: &ServerContext, name: &str) -> String {
+        context.configdb.add_agent_key(name).await.unwrap().key
+    }
+
     async fn serve_remote_test() -> (
         std::net::SocketAddr,
         tokio::task::JoinHandle<()>,
@@ -919,10 +1037,12 @@ mod tests {
         tempfile::TempDir,
     ) {
         let (address, server, context, dir) = serve_test_server(PcapSettings::default()).await;
+        let key = add_test_key(&context, "test-sensor").await;
         let agent = tokio::spawn(channel::run(ChannelConfig {
             server_url: format!("http://{address}"),
             agent_id: "test-sensor".to_string(),
             hostname: "test-host".to_string(),
+            server_key: Some(key),
             spool: SpoolConfig::new(testdata("spool"), None),
             disable_certificate_check: false,
         }));
@@ -950,7 +1070,10 @@ mod tests {
         tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
     >;
 
-    async fn connect_test_agent(address: std::net::SocketAddr) -> TestAgentSocket {
+    async fn connect_test_agent(
+        address: std::net::SocketAddr,
+        key: Option<&str>,
+    ) -> TestAgentSocket {
         let uri: Uri = format!("ws://{address}/api/agent/ws").parse().unwrap();
         let handshake = serde_json::to_string(&AgentHandshake {
             name: "test-sensor".to_string(),
@@ -959,9 +1082,12 @@ mod tests {
             capabilities: vec![CAPABILITY_PCAP.to_string()],
         })
         .unwrap();
-        let request = ClientRequestBuilder::new(uri)
+        let mut request = ClientRequestBuilder::new(uri)
             .with_sub_protocol(SUBPROTOCOL)
             .with_header(AGENT_HEADER, handshake);
+        if let Some(key) = key {
+            request = request.with_header("authorization", format!("Bearer {key}"));
+        }
         let (mut socket, response) = tokio_tungstenite::connect_async(request).await.unwrap();
         assert_eq!(
             response.headers().get("sec-websocket-protocol").unwrap(),
@@ -977,11 +1103,16 @@ mod tests {
     async fn assert_upgrade_rejected(
         address: std::net::SocketAddr,
         context: &ServerContext,
+        key: Option<&str>,
         subprotocol: Option<&str>,
         handshake: Option<&str>,
+        expected: StatusCode,
     ) {
         let uri: Uri = format!("ws://{address}/api/agent/ws").parse().unwrap();
         let mut request = ClientRequestBuilder::new(uri);
+        if let Some(key) = key {
+            request = request.with_header("authorization", format!("Bearer {key}"));
+        }
         if let Some(subprotocol) = subprotocol {
             request = request.with_sub_protocol(subprotocol);
         }
@@ -989,19 +1120,22 @@ mod tests {
             request = request.with_header(AGENT_HEADER, handshake);
         }
 
+        let connected_before = context.agents.connected();
         let err = tokio_tungstenite::connect_async(request)
             .await
             .expect_err("invalid agent upgrade must be rejected");
         let tokio_tungstenite::tungstenite::Error::Http(response) = err else {
             panic!("expected an HTTP upgrade rejection, got {err}");
         };
-        assert_eq!(response.status().as_u16(), StatusCode::BAD_REQUEST.as_u16());
-        assert_eq!(context.agents.connected(), 0);
+        assert_eq!(response.status().as_u16(), expected.as_u16());
+        assert_eq!(context.agents.connected(), connected_before);
     }
 
     #[tokio::test]
     async fn invalid_agent_upgrades_are_rejected_without_registration() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        let key = add_test_key(&context, "test-sensor").await;
+        let key = Some(key.as_str());
         let valid_handshake = serde_json::to_string(&AgentHandshake {
             name: "test-sensor".to_string(),
             hostname: "test-host".to_string(),
@@ -1010,22 +1144,204 @@ mod tests {
         })
         .unwrap();
 
-        assert_upgrade_rejected(address, &context, None, Some(&valid_handshake)).await;
+        let bad = StatusCode::BAD_REQUEST;
+        assert_upgrade_rejected(address, &context, key, None, Some(&valid_handshake), bad).await;
         assert_upgrade_rejected(
             address,
             &context,
+            key,
             Some("unsupported-v1"),
             Some(&valid_handshake),
+            bad,
         )
         .await;
-        assert_upgrade_rejected(address, &context, Some(SUBPROTOCOL), None).await;
-        assert_upgrade_rejected(address, &context, Some(SUBPROTOCOL), Some("not-json")).await;
-        assert_upgrade_rejected(address, &context, Some(SUBPROTOCOL), Some("")).await;
+        assert_upgrade_rejected(address, &context, key, Some(SUBPROTOCOL), None, bad).await;
         assert_upgrade_rejected(
             address,
             &context,
+            key,
+            Some(SUBPROTOCOL),
+            Some("not-json"),
+            bad,
+        )
+        .await;
+        assert_upgrade_rejected(address, &context, key, Some(SUBPROTOCOL), Some(""), bad).await;
+        assert_upgrade_rejected(
+            address,
+            &context,
+            key,
             Some(SUBPROTOCOL),
             Some(r#"{"name":"","hostname":"host","version":"test"}"#),
+            bad,
+        )
+        .await;
+
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn agent_upgrades_require_a_valid_key() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        let handshake = serde_json::to_string(&AgentHandshake {
+            name: "test-sensor".to_string(),
+            hostname: "test-host".to_string(),
+            version: "test".to_string(),
+            capabilities: vec![CAPABILITY_PCAP.to_string()],
+        })
+        .unwrap();
+
+        let removed = add_test_key(&context, "removed-sensor").await;
+        assert!(
+            context
+                .configdb
+                .remove_agent_key("removed-sensor")
+                .await
+                .unwrap()
+        );
+
+        let unauthorized = StatusCode::UNAUTHORIZED;
+        for key in [
+            None,
+            Some("eba_unknown"),
+            Some("no-prefix"),
+            Some(removed.as_str()),
+        ] {
+            assert_upgrade_rejected(
+                address,
+                &context,
+                key,
+                Some(SUBPROTOCOL),
+                Some(&handshake),
+                unauthorized,
+            )
+            .await;
+        }
+
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn allow_unauthenticated_accepts_keyless_but_not_wrong_keys() {
+        let config = ServerConfig {
+            agents_allow_unauthenticated: true,
+            ..ServerConfig::default()
+        };
+        let (address, server, context, _dir) =
+            serve_test_server_with_config(PcapSettings::default(), config).await;
+        let handshake = serde_json::to_string(&AgentHandshake {
+            name: "test-sensor".to_string(),
+            hostname: "test-host".to_string(),
+            version: "test".to_string(),
+            capabilities: vec![CAPABILITY_PCAP.to_string()],
+        })
+        .unwrap();
+
+        // A presented key must still be valid: presented-but-wrong fails
+        // closed even in the lab escape hatch.
+        assert_upgrade_rejected(
+            address,
+            &context,
+            Some("eba_wrong"),
+            Some(SUBPROTOCOL),
+            Some(&handshake),
+            StatusCode::UNAUTHORIZED,
+        )
+        .await;
+
+        // No key at all is accepted in this mode.
+        let _socket = connect_test_agent(address, None).await;
+        wait_until(|| context.agents.connected() == 1).await;
+
+        server.abort();
+    }
+
+    async fn wait_until<F: Fn() -> bool>(condition: F) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !condition() {
+            assert!(Instant::now() < deadline, "condition not met in time");
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
+
+    /// The key is the authorization for a name: a key issued for one agent
+    /// cannot claim another agent's name, even while that agent is offline.
+    #[tokio::test]
+    async fn a_key_cannot_claim_another_agents_name() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        let other = add_test_key(&context, "other-sensor").await;
+        let handshake = serde_json::to_string(&AgentHandshake {
+            name: "test-sensor".to_string(),
+            hostname: "test-host".to_string(),
+            version: "test".to_string(),
+            capabilities: vec![CAPABILITY_PCAP.to_string()],
+        })
+        .unwrap();
+
+        assert_upgrade_rejected(
+            address,
+            &context,
+            Some(&other),
+            Some(SUBPROTOCOL),
+            Some(&handshake),
+            StatusCode::FORBIDDEN,
+        )
+        .await;
+
+        server.abort();
+    }
+
+    /// Direct configuration-database removal (the CLI path) cannot notify a
+    /// running server, so it applies when an agent next connects. The admin
+    /// API separately bumps a live connection after removing its key.
+    #[tokio::test]
+    async fn cli_style_key_removal_applies_at_connect_time() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        let old_key = add_test_key(&context, "test-sensor").await;
+        let first = connect_test_agent(address, Some(&old_key)).await;
+        wait_until(|| context.agents.connected() == 1).await;
+        let held = context.agents.get("test-sensor").unwrap().generation;
+
+        assert!(
+            context
+                .configdb
+                .remove_agent_key("test-sensor")
+                .await
+                .unwrap()
+        );
+        let new_key = add_test_key(&context, "test-sensor").await;
+
+        // The replacement key authenticates, but is refused post-hello while
+        // the removed key's connection still owns the name.
+        let mut refused = connect_test_agent(address, Some(&new_key)).await;
+        match refused.next().await {
+            None | Some(Ok(TungsteniteMessage::Close(_))) | Some(Err(_)) => {}
+            other => panic!("expected the refused connection to close, got {other:?}"),
+        }
+        assert_eq!(context.agents.connected(), 1);
+        assert_eq!(context.agents.get("test-sensor").unwrap().generation, held);
+
+        // Once that connection ends (e.g. a restart), the replacement takes
+        // the name.
+        drop(first);
+        wait_until(|| context.agents.connected() == 0).await;
+        let _replacement = connect_test_agent(address, Some(&new_key)).await;
+        wait_until(|| context.agents.connected() == 1).await;
+
+        // The removed key can no longer authenticate at all.
+        let handshake = serde_json::to_string(&AgentHandshake {
+            name: "test-sensor".to_string(),
+            hostname: "test-host".to_string(),
+            version: "test".to_string(),
+            capabilities: vec![CAPABILITY_PCAP.to_string()],
+        })
+        .unwrap();
+        assert_upgrade_rejected(
+            address,
+            &context,
+            Some(&old_key),
+            Some(SUBPROTOCOL),
+            Some(&handshake),
+            StatusCode::UNAUTHORIZED,
         )
         .await;
 
@@ -1171,7 +1487,8 @@ mod tests {
         };
         let (address, server, context, _dir) = serve_test_server(settings).await;
         let client = reqwest::Client::new();
-        let mut socket = connect_test_agent(address).await;
+        let key = add_test_key(&context, "test-sensor").await;
+        let mut socket = connect_test_agent(address, Some(&key)).await;
         wait_for_agent(&client, address).await;
 
         let request_client = client.clone();
@@ -1204,7 +1521,8 @@ mod tests {
         };
         let (address, server, context, _dir) = serve_test_server(settings).await;
         let client = reqwest::Client::new();
-        let mut socket = connect_test_agent(address).await;
+        let key = add_test_key(&context, "test-sensor").await;
+        let mut socket = connect_test_agent(address, Some(&key)).await;
         wait_for_agent(&client, address).await;
 
         let request_client = client.clone();
@@ -1273,7 +1591,8 @@ mod tests {
         };
         let (address, server, context, _dir) = serve_test_server(settings).await;
         let client = reqwest::Client::new();
-        let mut socket = connect_test_agent(address).await;
+        let key = add_test_key(&context, "test-sensor").await;
+        let mut socket = connect_test_agent(address, Some(&key)).await;
         wait_for_agent(&client, address).await;
 
         let request_client = client.clone();
@@ -1353,7 +1672,8 @@ mod tests {
     async fn channel_replacement_fails_the_in_flight_request() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let client = reqwest::Client::new();
-        let mut first_socket = connect_test_agent(address).await;
+        let key = add_test_key(&context, "test-sensor").await;
+        let mut first_socket = connect_test_agent(address, Some(&key)).await;
         wait_for_agent(&client, address).await;
 
         let request_client = client.clone();
@@ -1397,7 +1717,7 @@ mod tests {
         .expect("upload did not start");
 
         drop(first_socket);
-        let mut replacement = connect_test_agent(address).await;
+        let mut replacement = connect_test_agent(address, Some(&key)).await;
 
         // The browser stream is torn down rather than ended cleanly.
         tokio::time::timeout(Duration::from_secs(2), response.bytes())
@@ -1445,7 +1765,8 @@ mod tests {
     async fn browser_disconnect_reaches_agent_and_followup_request_works() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let client = reqwest::Client::new();
-        let mut socket = connect_test_agent(address).await;
+        let key = add_test_key(&context, "test-sensor").await;
+        let mut socket = connect_test_agent(address, Some(&key)).await;
         wait_for_agent(&client, address).await;
 
         let request_client = client.clone();

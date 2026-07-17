@@ -3644,15 +3644,20 @@ mod test {
 
         // A connected pcap-capable agent joins the list.
         let (tx, _rx) = tokio::sync::mpsc::channel(4);
-        context.agents.register(
-            crate::agent::protocol::AgentHandshake {
-                name: "remote".to_string(),
-                hostname: "remote-host".to_string(),
-                version: "test".to_string(),
-                capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],
-            },
-            tx,
-        );
+        context
+            .agents
+            .register(
+                crate::agent::protocol::AgentHandshake {
+                    name: "remote".to_string(),
+                    hostname: "remote-host".to_string(),
+                    version: "test".to_string(),
+                    capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],
+                },
+                None,
+                "127.0.0.1:0".parse().unwrap(),
+                tx,
+            )
+            .unwrap();
         assert_eq!(
             list_sources(&context),
             json!({ "sources": [
@@ -3841,15 +3846,19 @@ mod test {
             .unwrap();
         let agents = AgentRegistry::default();
         let (tx, mut rx) = mpsc::channel(4);
-        let entry = agents.register(
-            crate::agent::protocol::AgentHandshake {
-                name: "sensor-a".to_string(),
-                hostname: "host".to_string(),
-                version: "test".to_string(),
-                capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],
-            },
-            tx,
-        );
+        let entry = agents
+            .register(
+                crate::agent::protocol::AgentHandshake {
+                    name: "sensor-a".to_string(),
+                    hostname: "host".to_string(),
+                    version: "test".to_string(),
+                    capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],
+                },
+                None,
+                "127.0.0.1:0".parse().unwrap(),
+                tx,
+            )
+            .unwrap();
 
         let mut disarmed = RemoteTaskGuard {
             tasks: tasks.clone(),

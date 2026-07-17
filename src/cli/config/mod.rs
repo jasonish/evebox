@@ -3,8 +3,10 @@
 
 use clap::{CommandFactory, Parser, Subcommand};
 
+use self::agents::AgentsCommand;
 use self::users::UsersCommand;
 
+pub(crate) mod agents;
 pub(crate) mod users;
 
 #[derive(Parser, Debug)]
@@ -17,6 +19,7 @@ pub(crate) struct Args {
 #[derive(Debug, Subcommand)]
 enum ConfigCommands {
     Users(UsersCommand),
+    Agents(AgentsCommand),
 }
 
 pub fn config_subcommand() -> clap::Command {
@@ -26,6 +29,7 @@ pub fn config_subcommand() -> clap::Command {
 pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     match args.subcommand() {
         Some(("users", args)) => users::main(args).await,
+        Some(("agents", args)) => agents::main(args).await,
         _ => Err(anyhow!("no subcommand provided")),
     }
 }

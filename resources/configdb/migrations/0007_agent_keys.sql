@@ -1,0 +1,6 @@
+CREATE TABLE agent_keys (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       name TEXT UNIQUE NOT NULL,
+       key TEXT UNIQUE NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       last_seen TIMESTAMP);

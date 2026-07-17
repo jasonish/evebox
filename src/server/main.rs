@@ -97,6 +97,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         || config.get_bool("no-check-certificate")?;
     server_config.http_request_logging = config.get_bool("http.request-logging")?;
     server_config.http_reverse_proxy = config.get_bool("http.reverse-proxy")?;
+    server_config.agents_allow_unauthenticated = config.get_bool("agents.allow-unauthenticated")?;
 
     debug!(
         "Certificate checks disabled: {}",

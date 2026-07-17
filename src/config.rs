@@ -68,6 +68,7 @@ impl Config {
         // line parsing.
         let environment_value = match name {
             "authentication.required" => Some("EVEBOX_AUTHENTICATION_REQUIRED"),
+            "server.key" => Some("EVEBOX_SERVER_KEY"),
             _ => None,
         };
         if let Some(environment_value) = environment_value
