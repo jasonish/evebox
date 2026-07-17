@@ -96,10 +96,14 @@ export function EventView() {
   let pcapAbort: AbortController | undefined;
 
   // Download the pcap for the current event, buffered so limits and
-  // errors surface as toasts.
-  const downloadPcap = async () => {
+  // errors surface as toasts. An explicit source (from the dropdown
+  // menu) bypasses the server's routing.
+  const downloadPcap = async (source?: string) => {
     const ev = event();
-    if (!ev) return;
+    // Do not rely on the button's disabled attribute as the only guard for
+    // automatic downloads. Explicit dropdown selections intentionally bypass
+    // this check so an operator can choose a different capture source.
+    if (!ev || (source === undefined && !quickPcapAvailable())) return;
     const controller = new AbortController();
     pcapAbort = controller;
     setPcapPending(true);
@@ -107,7 +111,11 @@ export function EventView() {
       // The quick button buffers the fixed-size capture so truncation
       // and no-match errors surface here. The custom page handles the
       // larger native streaming case.
-      const result = await API.fetchPcap(String(ev._id), controller.signal);
+      const result = await API.fetchPcap(
+        String(ev._id),
+        controller.signal,
+        source,
+      );
       if (result.truncated) {
         addNotification("Capture truncated by server size/time limits");
       }
@@ -847,6 +855,23 @@ export function EventView() {
                   <span class={"visually-hidden"}>PCAP options</span>
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
+                  {/* Escape hatch: download from a specific source,
+                      bypassing the server's routing. */}
+                  <For each={pcapSources()}>
+                    {(source) => (
+                      <Dropdown.Item onClick={() => downloadPcap(source.name)}>
+                        <Show
+                          when={source.kind === "agent"}
+                          fallback={"Download from EveBox server"}
+                        >
+                          Download from agent: {source.name}
+                        </Show>
+                      </Dropdown.Item>
+                    )}
+                  </For>
+                  <Show when={pcapSources()?.length}>
+                    <Dropdown.Divider />
+                  </Show>
                   <A
                     class={"dropdown-item"}
                     href={

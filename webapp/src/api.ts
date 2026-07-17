@@ -712,15 +712,18 @@ export namespace API {
   // browser download. Unlike the native streaming download this reads
   // the response, so truncation and structured errors (no-match, ...)
   // surface to the caller. Throws PcapError on a structured API error;
-  // an abort via `signal` rejects with the original AbortError.
+  // an abort via `signal` rejects with the original AbortError. An
+  // explicit `source` overrides the server's routing.
   export async function fetchPcap(
     eventId: string,
     signal?: AbortSignal,
+    source?: string,
   ): Promise<PcapResult> {
     const response = await fetch("api/pcap", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_id: eventId }),
+      // JSON.stringify drops an undefined source.
+      body: JSON.stringify({ event_id: eventId, source: source }),
       signal: signal,
     });
     if (!response.ok) {
