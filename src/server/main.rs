@@ -195,6 +195,18 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     context.pcap = Arc::new(crate::server::pcap::configure(&config));
 
+    // Apply the persisted operator pcap routing table, if any, after
+    // the configured service replaces the context's default one.
+    match context
+        .configdb
+        .kv_get_config_as_t::<crate::server::pcap::PcapRouting>("config.pcap.routing")
+        .await
+    {
+        Ok(Some(routing)) => context.pcap.set_routing(routing),
+        Ok(None) => {}
+        Err(err) => error!("Failed to load the pcap routing table: {err}"),
+    }
+
     if is_input_enabled(&config) {
         let input_patterns = get_input_patterns(&config)?;
         if input_patterns.is_empty() {

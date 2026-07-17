@@ -9,14 +9,23 @@ import {
   createSignal,
   onCleanup,
 } from "solid-js";
+import { createStore } from "solid-js/store";
 import { Top } from "../../Top";
 import { API } from "../../api";
 import { parse_timestamp } from "../../datetime";
+import { BiCaretDownFill, BiCaretUpFill, BiDashCircle } from "../../icons";
 
 // An agent is stale when nothing has been seen from it for this many
 // seconds. The server pings agents every 30 seconds, dropping them
 // after 2 missed pings, so 90 seconds means something is wrong.
 const STALE_SECONDS = 90;
+
+// Hover help for the routing table's sensor column: what value a rule
+// matches against.
+const SENSOR_TOOLTIP =
+  'The event\'s sensor identity, matched exactly: the EVE "host" field ' +
+  "(Suricata's sensor-name setting), or agent.name / host.name for ECS " +
+  "events. The sensor filter on the events view lists the known names.";
 
 // One display row: an agent — connected, key-only, or both, merged by
 // name since a key's name is the agent identity it authorizes — or the
@@ -222,10 +231,151 @@ export function AdminAgents() {
     },
   );
 
+  // The routing table under edit: a deep clone of the loaded table,
+  // compared against it to enable Save/Reset.
+  const [localRouting, setLocalRouting] = createStore<API.PcapRouting>({
+    rules: [],
+    default: null,
+  });
+
+  // The operator routing table: fetched once, retried on the poll
+  // timer until it loads. A 404 means this build has no pcap routes,
+  // so the editor is not shown at all; any other failure keeps
+  // retrying under a warning.
+  const [routingError, setRoutingError] = createSignal<string | null>(null);
+  const [routingUnavailable, setRoutingUnavailable] = createSignal(false);
+  const [routing, { refetch: refetchRouting, mutate: mutateRouting }] =
+    createResource<API.PcapRouting | undefined>(async (_k, info) => {
+      try {
+        const table = await API.getPcapRouting();
+        setRoutingError(null);
+        // First successful load: seed the editor, which is not
+        // rendered before this, so no edits can be lost. Saves adopt
+        // their payload via mutate instead of refetching, so once
+        // loaded this fetcher never runs again.
+        if (info.value === undefined) {
+          setLocalRouting(JSON.parse(JSON.stringify(table)));
+        }
+        return table;
+      } catch (e: any) {
+        if (e?.status === 404) {
+          setRoutingUnavailable(true);
+        } else {
+          setRoutingError(
+            "Failed to load the routing table, will keep trying.",
+          );
+        }
+        // Keep any previously loaded table so a transient failure
+        // cannot unmount the editor or discard its baseline.
+        return info.value;
+      }
+    });
+
   const timer = setInterval(() => {
     refetch();
+    // Retry the routing table only while it has never loaded: once
+    // loaded it is not re-polled, as that would clobber in-progress
+    // edits.
+    if (
+      !routingUnavailable() &&
+      routing.latest === undefined &&
+      !routing.loading
+    ) {
+      refetchRouting();
+    }
   }, 5000);
   onCleanup(() => clearInterval(timer));
+
+  const routingModified = createMemo(() => {
+    if (!routing.latest) {
+      return false;
+    }
+    return JSON.stringify(localRouting) != JSON.stringify(routing.latest);
+  });
+
+  // Source choices for routing rules and the default: the server-local
+  // spool, connected pcap-capable agents, and known (keyed) agents that
+  // are currently offline — a rule may target an agent before it
+  // connects.
+  const sourceOptions = createMemo(() => {
+    const names = (agents.latest ?? [])
+      .filter(
+        (row) =>
+          row.kind === "server" ||
+          (row.connected
+            ? row.capabilities.includes("pcap")
+            : row.key !== undefined),
+      )
+      .map((row) => row.name);
+    names.sort(compareText);
+    return names;
+  });
+
+  const addRule = () => {
+    setLocalRouting("rules", localRouting.rules.length, {
+      sensor: "",
+      source: "",
+    });
+  };
+
+  const removeRule = (index: number) => {
+    setLocalRouting(
+      "rules",
+      localRouting.rules
+        .filter((_rule, i) => i !== index)
+        .map((rule) => ({ ...rule })),
+    );
+  };
+
+  const moveRule = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= localRouting.rules.length) {
+      return;
+    }
+    const rules = localRouting.rules.map((rule) => ({ ...rule }));
+    [rules[index], rules[target]] = [rules[target], rules[index]];
+    setLocalRouting("rules", rules);
+  };
+
+  const saveRouting = async () => {
+    const payload: API.PcapRouting = {
+      rules: localRouting.rules.map((rule) => ({
+        sensor: rule.sensor.trim(),
+        source: rule.source.trim(),
+      })),
+      default: localRouting.default?.trim()
+        ? localRouting.default.trim()
+        : null,
+    };
+    if (payload.rules.some((rule) => !rule.sensor || !rule.source)) {
+      setRoutingError("Every rule requires a sensor and a source.");
+      return;
+    }
+    const atSave = JSON.stringify(localRouting);
+    try {
+      await API.savePcapRouting(payload);
+      setRoutingError(null);
+      // The server now holds exactly `payload`: adopt it as the new
+      // baseline directly rather than refetching, so a slow round trip
+      // can neither clobber edits made meanwhile nor lose the editor
+      // to a failed reload. Snap the editor to the canonical trimmed
+      // table only when the operator hasn't kept editing during the
+      // save.
+      mutateRouting(payload);
+      if (JSON.stringify(localRouting) === atSave) {
+        setLocalRouting(JSON.parse(JSON.stringify(payload)));
+      }
+    } catch (e: any) {
+      setRoutingError(`Failed to save the routing table: ${e.message ?? e}`);
+    }
+  };
+
+  const resetRouting = () => {
+    setRoutingError(null);
+    if (routing.latest) {
+      setLocalRouting(JSON.parse(JSON.stringify(routing.latest)));
+    }
+  };
 
   const [sortColumn, setSortColumn] = createSignal<SortColumn>("name");
   const [sortAsc, setSortAsc] = createSignal(true);
@@ -550,6 +700,212 @@ export function AdminAgents() {
               </div>
             </div>
           </Show>
+        </Show>
+
+        {/* Operator-controlled pcap routing table. */}
+        <Show when={!routingUnavailable()}>
+          <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span>PCAP Routing</span>
+              <Show when={routingModified()}>
+                <span>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-success me-2"
+                    onClick={saveRouting}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-danger"
+                    onClick={resetRouting}
+                  >
+                    Reset
+                  </button>
+                </span>
+              </Show>
+            </div>
+            <div class="card-body">
+              <p class="text-body-secondary">
+                Explicitly route events to packet capture sources by sensor
+                name. When any rule or a default source is set, this table fully
+                controls routing: the first matching rule wins, unmatched events
+                go to the default source, and without a default they are
+                refused. Leave the table empty to route automatically.
+              </p>
+              <Show when={routingError()}>
+                <div class="alert alert-warning">{routingError()}</div>
+              </Show>
+              {/* No editor until the table has loaded: edits made
+                  against unknown server state could hide real rules
+                  and can never be saved. The agents list must be
+                  loaded too — before it, every saved source would
+                  flash "(unavailable)" against an empty option set. */}
+              <Show when={routing.latest && agents.latest}>
+                <Show when={localRouting.rules.length > 0}>
+                  <table class="table mb-2">
+                    <thead>
+                      <tr>
+                        <th style="width: 45%;" title={SENSOR_TOOLTIP}>
+                          Sensor
+                        </th>
+                        <th style="width: 45%;">Source</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={localRouting.rules}>
+                        {(rule, index) => (
+                          <tr>
+                            <td>
+                              <input
+                                type="text"
+                                class="form-control form-control-sm"
+                                placeholder="Sensor name"
+                                title={SENSOR_TOOLTIP}
+                                value={rule.sensor}
+                                onInput={(e) =>
+                                  setLocalRouting(
+                                    "rules",
+                                    index(),
+                                    "sensor",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              {/* A saved source that is no longer a
+                                  known agent stays selectable so the
+                                  select shows the truth and a save
+                                  does not silently rewrite the rule. */}
+                              <select
+                                class="form-select form-select-sm"
+                                onChange={(e) =>
+                                  setLocalRouting(
+                                    "rules",
+                                    index(),
+                                    "source",
+                                    e.currentTarget.value,
+                                  )
+                                }
+                              >
+                                <option
+                                  value=""
+                                  disabled
+                                  selected={rule.source === ""}
+                                >
+                                  Select a source…
+                                </option>
+                                <Show
+                                  when={
+                                    rule.source !== "" &&
+                                    !sourceOptions().includes(rule.source)
+                                  }
+                                >
+                                  <option value={rule.source} selected>
+                                    {rule.source} (unavailable)
+                                  </option>
+                                </Show>
+                                <For each={sourceOptions()}>
+                                  {(name) => (
+                                    <option
+                                      value={name}
+                                      selected={name === rule.source}
+                                    >
+                                      {name}
+                                    </option>
+                                  )}
+                                </For>
+                              </select>
+                            </td>
+                            <td class="text-end text-nowrap">
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary me-1"
+                                title="Move up"
+                                disabled={index() === 0}
+                                onClick={() => moveRule(index(), -1)}
+                              >
+                                <BiCaretUpFill />
+                              </button>
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary me-1"
+                                title="Move down"
+                                disabled={
+                                  index() === localRouting.rules.length - 1
+                                }
+                                onClick={() => moveRule(index(), 1)}
+                              >
+                                <BiCaretDownFill />
+                              </button>
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-outline-danger"
+                                title="Remove rule"
+                                onClick={() => removeRule(index())}
+                              >
+                                <BiDashCircle />
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
+                </Show>
+                <div class="d-flex align-items-center">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary me-4"
+                    onClick={addRule}
+                  >
+                    Add Rule
+                  </button>
+                  <label class="col-form-label col-form-label-sm me-2">
+                    Default source:
+                  </label>
+                  <select
+                    class="form-select form-select-sm w-auto"
+                    onChange={(e) =>
+                      setLocalRouting(
+                        "default",
+                        e.currentTarget.value === ""
+                          ? null
+                          : e.currentTarget.value,
+                      )
+                    }
+                  >
+                    <option value="" selected={localRouting.default == null}>
+                      None
+                    </option>
+                    <Show
+                      when={
+                        localRouting.default != null &&
+                        !sourceOptions().includes(localRouting.default)
+                      }
+                    >
+                      <option value={localRouting.default!} selected>
+                        {localRouting.default} (unavailable)
+                      </option>
+                    </Show>
+                    <For each={sourceOptions()}>
+                      {(name) => (
+                        <option
+                          value={name}
+                          selected={name === localRouting.default}
+                        >
+                          {name}
+                        </option>
+                      )}
+                    </For>
+                  </select>
+                </div>
+              </Show>
+            </div>
+          </div>
         </Show>
       </div>
     </>

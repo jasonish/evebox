@@ -234,6 +234,15 @@ pub(super) async fn kv_set_config(
     Path(key): Path<String>,
     Json(value): Json<serde_json::Value>,
 ) -> Result<impl IntoResponse, AppError> {
+    // The pcap routing table shares this kv namespace but has its own
+    // endpoint that validates the table, applies it to the live
+    // service, and serializes saves; a raw write here would bypass all
+    // three and silently diverge the stored and live tables.
+    if key == "config.pcap.routing" {
+        return Err(AppError::BadRequest(
+            "use /api/pcap/routing to modify the pcap routing table".to_string(),
+        ));
+    }
     context.configdb.kv_set_config(&key, &value).await?;
     Ok(())
 }
@@ -444,6 +453,128 @@ mod tests {
         );
         assert_eq!(client.get(&item).send().await.unwrap().status(), 401);
         assert_eq!(client.delete(&item).send().await.unwrap().status(), 401);
+
+        server.abort();
+    }
+
+    /// The pcap routing endpoints: a save validates, trims, persists,
+    /// and applies the table live — the GET reads the running service,
+    /// not the database — and the kv row survives for the next server
+    /// start.
+    #[tokio::test]
+    async fn pcap_routing_endpoints_roundtrip() {
+        let (address, server, dir, _context) = serve_test_server().await;
+        let client = reqwest::Client::new();
+        let url = format!("http://{address}/api/pcap/routing");
+
+        // Absent table: empty rules, no default.
+        let table: Value = client.get(&url).send().await.unwrap().json().await.unwrap();
+        assert_eq!(table, json!({"rules": [], "default": null}));
+
+        let response = client
+            .post(&url)
+            .json(&json!({
+                "rules": [{"sensor": " sensor-1 ", "source": " fw-east "}],
+                "default": " (server) ",
+            }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let table: Value = client.get(&url).send().await.unwrap().json().await.unwrap();
+        assert_eq!(
+            table,
+            json!({
+                "rules": [{"sensor": "sensor-1", "source": "fw-east"}],
+                "default": "(server)",
+            })
+        );
+
+        // The table reached the configdb, not just the live service.
+        let configdb = crate::sqlite::configdb::open(Some(&dir.path().join("config.sqlite")))
+            .await
+            .unwrap();
+        let persisted: crate::server::pcap::PcapRouting = configdb
+            .kv_get_config_as_t("config.pcap.routing")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(persisted.default.as_deref(), Some("(server)"));
+        assert_eq!(persisted.rules.len(), 1);
+
+        // Invalid tables are refused and change nothing: empty names,
+        // and tables over the rule-count or name-length caps.
+        let many: Vec<Value> = (0..257)
+            .map(|i| json!({"sensor": format!("s-{i}"), "source": "x"}))
+            .collect();
+        for bad in [
+            json!({"rules": [{"sensor": "", "source": "fw-east"}], "default": null}),
+            json!({"rules": [{"sensor": "sensor-1", "source": " "}], "default": null}),
+            json!({"rules": [], "default": "  "}),
+            json!({"rules": many, "default": null}),
+            json!({"rules": [{"sensor": "x".repeat(crate::server::agents::MAX_AGENT_NAME_BYTES + 1), "source": "fw-east"}], "default": null}),
+            json!({"rules": [], "default": "x".repeat(crate::server::agents::MAX_AGENT_NAME_BYTES + 1)}),
+        ] {
+            let response = client.post(&url).json(&bad).send().await.unwrap();
+            assert_eq!(response.status(), 400, "expected 400 for {bad}");
+        }
+        let table: Value = client.get(&url).send().await.unwrap().json().await.unwrap();
+        assert_eq!(table["rules"][0]["sensor"], "sensor-1");
+
+        server.abort();
+    }
+
+    /// A raw kv write to the routing key would bypass validation, the
+    /// live apply, and the save lock, so the generic config endpoint
+    /// refuses it while other keys keep working.
+    #[tokio::test]
+    async fn kv_config_endpoint_refuses_the_pcap_routing_key() {
+        let (address, server, _dir, _context) = serve_test_server().await;
+        let client = reqwest::Client::new();
+        let response = client
+            .post(format!(
+                "http://{address}/api/admin/kv/config/config.pcap.routing"
+            ))
+            .json(&json!({"rules": "x"}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 400);
+        let response = client
+            .post(format!(
+                "http://{address}/api/admin/kv/config/config.retention"
+            ))
+            .json(&json!({"days": 7}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        server.abort();
+    }
+
+    /// The routing table controls which source serves packet captures,
+    /// so pin its auth posture like the key endpoints above.
+    #[tokio::test]
+    async fn pcap_routing_endpoints_require_authentication() {
+        let config = ServerConfig {
+            authentication_required: true,
+            ..ServerConfig::default()
+        };
+        let (address, server, _dir, _context) = serve_test_server_with_config(config).await;
+        let client = reqwest::Client::new();
+        let url = format!("http://{address}/api/pcap/routing");
+
+        assert_eq!(client.get(&url).send().await.unwrap().status(), 401);
+        assert_eq!(
+            client
+                .post(&url)
+                .json(&json!({"rules": [], "default": "fw-east"}))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            401
+        );
 
         server.abort();
     }

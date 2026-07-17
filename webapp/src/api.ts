@@ -549,10 +549,12 @@ export namespace API {
   }
 
   // A selectable pcap source: the server-local spool (kind "server",
-  // always named "(server)") or a connected agent (kind "agent").
+  // always named "(server)") or a connected agent (kind "agent"). Agent
+  // hostnames let the event view mirror legacy event routing.
   export interface PcapSource {
     name: string;
     kind: string;
+    hostname?: string;
   }
 
   // The pcap sources a request's `source` parameter may select right
@@ -572,6 +574,46 @@ export namespace API {
     }
     const json = await response.json();
     return json.sources ?? [];
+  }
+
+  export interface PcapRoutingRule {
+    sensor: string;
+    source: string;
+  }
+
+  // The operator-controlled pcap routing table: ordered sensor to
+  // source rules (first match wins) with an optional default source.
+  export interface PcapRouting {
+    rules: PcapRoutingRule[];
+    default: string | null;
+  }
+
+  // Failures carry the HTTP status so callers can tell a missing
+  // route (404, builds without pcap support) from a real error.
+  export async function getPcapRouting(
+    signal?: AbortSignal,
+  ): Promise<PcapRouting> {
+    const response = await fetch("api/pcap/routing", { signal: signal });
+    if (!response.ok) {
+      const error: any = new Error(
+        `Failed to fetch pcap routing: ${response.status}`,
+      );
+      error.status = response.status;
+      throw error;
+    }
+    return await response.json();
+  }
+
+  // Save the routing table; it takes effect immediately.
+  export async function savePcapRouting(routing: PcapRouting): Promise<void> {
+    const response = await fetch("api/pcap/routing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(routing),
+    });
+    if (!response.ok) {
+      throw await jsonError(response);
+    }
   }
 
   // One row from GET /api/agents: a connected remote agent. The
@@ -837,8 +879,9 @@ export namespace API {
     key: string;
   }
 
-  // The agent key endpoints report failures as {"error": "message"}.
-  async function agentKeyError(response: Response): Promise<Error> {
+  // The agent key and pcap routing endpoints report failures as
+  // {"error": "message"}.
+  async function jsonError(response: Response): Promise<Error> {
     let message = `Request failed (${response.status})`;
     try {
       const json = await response.json();
@@ -854,7 +897,7 @@ export namespace API {
   export async function getAgentKeys(): Promise<AgentKeyInfo[]> {
     const response = await fetch("api/agents/keys");
     if (!response.ok) {
-      throw await agentKeyError(response);
+      throw await jsonError(response);
     }
     return await response.json();
   }
@@ -868,7 +911,7 @@ export namespace API {
       body: JSON.stringify({ name: name }),
     });
     if (!response.ok) {
-      throw await agentKeyError(response);
+      throw await jsonError(response);
     }
     return await response.json();
   }
@@ -878,7 +921,7 @@ export namespace API {
   ): Promise<AgentKeyWithSecret> {
     const response = await fetch(`api/agents/keys/${id}`);
     if (!response.ok) {
-      throw await agentKeyError(response);
+      throw await jsonError(response);
     }
     return await response.json();
   }
@@ -888,7 +931,7 @@ export namespace API {
       method: "DELETE",
     });
     if (!response.ok) {
-      throw await agentKeyError(response);
+      throw await jsonError(response);
     }
   }
 }

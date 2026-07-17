@@ -118,6 +118,10 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/pcap", post(pcap::post_pcap).get(pcap::get_pcap))
         .route("/api/pcap/validate", get(pcap::validate_pcap))
         .route("/api/pcap/sources", get(pcap::get_sources))
+        .route(
+            "/api/pcap/routing",
+            get(pcap::get_routing).post(pcap::post_routing),
+        )
 }
 
 #[derive(Deserialize, Debug, Clone)]

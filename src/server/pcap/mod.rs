@@ -49,6 +49,42 @@ impl ResolvedPcapSource {
 pub(crate) enum RouteError {
     NoSource(Option<String>),
     Ambiguous(Vec<String>),
+    /// The operator routing table is in force but no rule matched the
+    /// event's sensor identity (carried when it had one) and no
+    /// default source is set. Distinct from `NoSource`: the remedy is
+    /// a rule or default, not connecting a source by this name.
+    NoRule(Option<String>),
+}
+
+/// The operator-controlled routing table: ordered sensor to source
+/// rules with an optional default source. Persisted in the configdb kv
+/// table under `config.pcap.routing`. When present (at least one rule
+/// or a default), routing is fully operator-controlled and the
+/// implicit heuristics never run — including the agent identifier
+/// stamp, which routes to the *importing* agent while the whole point
+/// of a rule is to say some other source holds the sensor's packets.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub(crate) struct PcapRouting {
+    pub(crate) rules: Vec<PcapRoutingRule>,
+    pub(crate) default: Option<String>,
+}
+
+/// One routing rule: an exact-match sensor identity mapped to a source
+/// name. First match wins.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub(crate) struct PcapRoutingRule {
+    pub(crate) sensor: String,
+    pub(crate) source: String,
+}
+
+impl PcapRouting {
+    /// A table with no rules and no default is absent: the implicit
+    /// routing heuristics apply.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.rules.is_empty() && self.default.is_none()
+    }
 }
 
 /// Fixed serving limits and timeouts for packet capture requests.
@@ -89,6 +125,11 @@ impl Default for PcapSettings {
 pub(crate) struct PcapService {
     pub(crate) settings: PcapSettings,
     source: Option<PcapSource>,
+    routing: std::sync::RwLock<PcapRouting>,
+    /// Held across a routing-table save (configdb write then
+    /// `set_routing`) so concurrent saves cannot interleave and leave
+    /// the persisted and live tables silently diverged.
+    pub(crate) routing_save: tokio::sync::Mutex<()>,
     global: Arc<Semaphore>,
     local_busy: Arc<Semaphore>,
     /// Extraction worker threads currently alive, including detached
@@ -110,10 +151,22 @@ impl PcapService {
         Self {
             settings,
             source,
+            routing: std::sync::RwLock::new(PcapRouting::default()),
+            routing_save: tokio::sync::Mutex::new(()),
             global,
             local_busy: Arc::new(Semaphore::new(1)),
             inflight: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         }
+    }
+
+    /// Replace the operator routing table.
+    pub(crate) fn set_routing(&self, routing: PcapRouting) {
+        *self.routing.write().unwrap() = routing;
+    }
+
+    /// The current operator routing table.
+    pub(crate) fn get_routing(&self) -> PcapRouting {
+        self.routing.read().unwrap().clone()
     }
 
     #[cfg(test)]
@@ -141,8 +194,25 @@ impl PcapService {
         })
     }
 
+    /// The source a name selects right now: the reserved `(server)`
+    /// name is the local spool, anything else a live agent advertising
+    /// the `pcap` capability.
+    fn source_by_name(&self, agents: &AgentRegistry, name: &str) -> Option<ResolvedPcapSource> {
+        if name == LOCAL_PCAP_SOURCE_NAME {
+            self.local_source()
+        } else {
+            agents.pcap_agent(name).map(ResolvedPcapSource::Agent)
+        }
+    }
+
     /// Resolve a request across the optional server-local spool and live
     /// agents advertising the `pcap` capability.
+    ///
+    /// An explicit source name always wins. Otherwise, when the operator
+    /// routing table is present it is fully in control: the first rule
+    /// whose sensor equals the event's identity, else the default
+    /// source, else no source. Without a table the implicit heuristics
+    /// apply:
     ///
     /// Agents are matched by the event's sensor identity, then its EveBox
     /// agent identifier stamp, then the older hostname stamp. The local
@@ -159,18 +229,33 @@ impl PcapService {
         explicit: Option<&str>,
     ) -> Result<ResolvedPcapSource, RouteError> {
         if let Some(name) = explicit {
-            if name == LOCAL_PCAP_SOURCE_NAME {
-                return self
-                    .local_source()
-                    .ok_or_else(|| RouteError::NoSource(Some(name.to_string())));
-            }
-            return agents
-                .pcap_agent(name)
-                .map(ResolvedPcapSource::Agent)
+            return self
+                .source_by_name(agents, name)
                 .ok_or_else(|| RouteError::NoSource(Some(name.to_string())));
         }
 
         let identity = event.and_then(sensor_identity);
+
+        {
+            let routing = self.routing.read().unwrap();
+            if !routing.is_empty() {
+                let target = routing
+                    .rules
+                    .iter()
+                    .find(|rule| identity == Some(rule.sensor.as_str()))
+                    .map(|rule| rule.source.as_str())
+                    .or(routing.default.as_deref());
+                return match target {
+                    // A disconnected target carries the SOURCE name so
+                    // the error can say which configured source is
+                    // down, not just which sensor went unmatched.
+                    Some(name) => self
+                        .source_by_name(agents, name)
+                        .ok_or_else(|| RouteError::NoSource(Some(name.to_string()))),
+                    None => Err(RouteError::NoRule(identity.map(str::to_string))),
+                };
+            }
+        }
         if let Some(name) = identity
             && let Some(entry) = agents.pcap_agent(name)
         {
@@ -595,6 +680,227 @@ mod test {
             service.resolve_source(&agents, None, None),
             Err(RouteError::Ambiguous(candidates))
                 if candidates == [LOCAL_PCAP_SOURCE_NAME.to_string(), "remote".to_string()]
+        ));
+    }
+
+    fn rule(sensor: &str, source: &str) -> PcapRoutingRule {
+        PcapRoutingRule {
+            sensor: sensor.to_string(),
+            source: source.to_string(),
+        }
+    }
+
+    fn routing(rules: Vec<PcapRoutingRule>, default: Option<&str>) -> PcapRouting {
+        PcapRouting {
+            rules,
+            default: default.map(str::to_string),
+        }
+    }
+
+    fn spooled_service(dir: &std::path::Path) -> PcapService {
+        PcapService::new(
+            PcapSettings::default(),
+            Some(PcapSource::Spool(SpoolConfig::new(dir, None))),
+        )
+    }
+
+    #[test]
+    fn routing_rule_hit() {
+        let service = PcapService::default();
+        let agents = AgentRegistry::default();
+        register_agent(&agents, "fw-east", "host-a");
+        register_agent(&agents, "fw-west", "host-b");
+        service.set_routing(routing(vec![rule("sensor-1", "fw-west")], None));
+        let event = serde_json::json!({ "host": "sensor-1" });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None).unwrap(),
+            ResolvedPcapSource::Agent(entry) if entry.name == "fw-west"
+        ));
+    }
+
+    #[test]
+    fn routing_rule_order_first_wins() {
+        let service = PcapService::default();
+        let agents = AgentRegistry::default();
+        register_agent(&agents, "fw-east", "host-a");
+        register_agent(&agents, "fw-west", "host-b");
+        service.set_routing(routing(
+            vec![rule("sensor-1", "fw-east"), rule("sensor-1", "fw-west")],
+            None,
+        ));
+        let event = serde_json::json!({ "host": "sensor-1" });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None).unwrap(),
+            ResolvedPcapSource::Agent(entry) if entry.name == "fw-east"
+        ));
+    }
+
+    #[test]
+    fn routing_rule_disconnected_source() {
+        // A rule targeting a disconnected source fails with the SOURCE
+        // name so the error can say which configured source is down.
+        let service = PcapService::default();
+        let agents = AgentRegistry::default();
+        register_agent(&agents, "fw-east", "host-a");
+        service.set_routing(routing(vec![rule("sensor-1", "fw-agent")], None));
+        let event = serde_json::json!({ "host": "sensor-1" });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None),
+            Err(RouteError::NoSource(Some(name))) if name == "fw-agent"
+        ));
+    }
+
+    #[test]
+    fn routing_default() {
+        // An identity with no matching rule, an event with no identity
+        // at all, and a standalone request all route to the default.
+        let service = PcapService::default();
+        let agents = AgentRegistry::default();
+        register_agent(&agents, "fw-east", "host-a");
+        register_agent(&agents, "fw-west", "host-b");
+        service.set_routing(routing(vec![rule("sensor-1", "fw-west")], Some("fw-east")));
+        for event in [
+            Some(serde_json::json!({ "host": "unknown-sensor" })),
+            Some(serde_json::json!({ "src_ip": "10.1.1.1" })),
+            None,
+        ] {
+            assert!(matches!(
+                service.resolve_source(&agents, event.as_ref(), None).unwrap(),
+                ResolvedPcapSource::Agent(entry) if entry.name == "fw-east"
+            ));
+        }
+    }
+
+    #[test]
+    fn routing_disconnected_default() {
+        let service = PcapService::default();
+        let agents = AgentRegistry::default();
+        register_agent(&agents, "fw-east", "host-a");
+        service.set_routing(routing(vec![], Some("fw-agent")));
+        let event = serde_json::json!({ "host": "unknown-sensor" });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None),
+            Err(RouteError::NoSource(Some(name))) if name == "fw-agent"
+        ));
+    }
+
+    #[test]
+    fn routing_no_match_no_default() {
+        // With a table present routing is fully operator-controlled:
+        // unmatched events must NOT fall through to the implicit
+        // heuristics, even with a single connected source or a local
+        // spool that would otherwise serve them.
+        let dir = tempfile::tempdir().unwrap();
+        let service = spooled_service(dir.path());
+        let agents = AgentRegistry::default();
+        register_agent(&agents, "fw-east", "host-a");
+        service.set_routing(routing(vec![rule("sensor-1", "fw-east")], None));
+
+        // The no-rule error carries the sensor distinctly from
+        // NoSource: connecting a source named "sensor-2" would not
+        // help while the table is in force.
+        let event = serde_json::json!({ "host": "sensor-2" });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None),
+            Err(RouteError::NoRule(Some(name))) if name == "sensor-2"
+        ));
+
+        // A no-identity event would implicitly ride the local spool,
+        // and a standalone request a sole source; with a table and no
+        // default they must not.
+        let event = serde_json::json!({ "src_ip": "10.1.1.1" });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None),
+            Err(RouteError::NoRule(None))
+        ));
+        assert!(matches!(
+            service.resolve_source(&agents, None, None),
+            Err(RouteError::NoRule(None))
+        ));
+    }
+
+    #[test]
+    fn routing_explicit_overrides_table() {
+        let dir = tempfile::tempdir().unwrap();
+        let service = spooled_service(dir.path());
+        let agents = AgentRegistry::default();
+        register_agent(&agents, "fw-east", "host-a");
+        register_agent(&agents, "fw-west", "host-b");
+        service.set_routing(routing(vec![rule("sensor-1", "fw-east")], None));
+        let event = serde_json::json!({ "host": "sensor-1" });
+        assert!(matches!(
+            service
+                .resolve_source(&agents, Some(&event), Some("fw-west"))
+                .unwrap(),
+            ResolvedPcapSource::Agent(entry) if entry.name == "fw-west"
+        ));
+        assert!(matches!(
+            service
+                .resolve_source(&agents, Some(&event), Some(LOCAL_PCAP_SOURCE_NAME))
+                .unwrap(),
+            ResolvedPcapSource::Local { name, .. } if name == LOCAL_PCAP_SOURCE_NAME
+        ));
+    }
+
+    #[test]
+    fn routing_overrides_agent_id_stamp() {
+        // The canonical routing-table use case: a central agent
+        // imports the events (and stamps them) while another source
+        // holds the sensor's packets. The table must beat the stamp.
+        let service = PcapService::default();
+        let agents = AgentRegistry::default();
+        register_agent(&agents, "importer", "host-a");
+        register_agent(&agents, "fw-west", "host-b");
+        service.set_routing(routing(vec![rule("sensor-1", "fw-west")], None));
+        let event = serde_json::json!({
+            "host": "sensor-1",
+            "evebox": { "agent": { "id": "importer", "hostname": "host-a" } }
+        });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None).unwrap(),
+            ResolvedPcapSource::Agent(entry) if entry.name == "fw-west"
+        ));
+    }
+
+    #[test]
+    fn routing_local_spool_target() {
+        // The reserved local-spool name works as a rule target, and a
+        // rule naming it without a configured spool reports it down.
+        let dir = tempfile::tempdir().unwrap();
+        let service = spooled_service(dir.path());
+        let agents = AgentRegistry::default();
+        service.set_routing(routing(
+            vec![rule("sensor-1", LOCAL_PCAP_SOURCE_NAME)],
+            None,
+        ));
+        let event = serde_json::json!({ "host": "sensor-1" });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None).unwrap(),
+            ResolvedPcapSource::Local { name, .. } if name == LOCAL_PCAP_SOURCE_NAME
+        ));
+
+        let unspooled = PcapService::default();
+        unspooled.set_routing(routing(
+            vec![rule("sensor-1", LOCAL_PCAP_SOURCE_NAME)],
+            None,
+        ));
+        assert!(matches!(
+            unspooled.resolve_source(&agents, Some(&event), None),
+            Err(RouteError::NoSource(Some(name))) if name == LOCAL_PCAP_SOURCE_NAME
+        ));
+    }
+
+    #[test]
+    fn routing_empty_table_is_absent() {
+        // An empty table is absent: the implicit heuristics apply.
+        let dir = tempfile::tempdir().unwrap();
+        let service = spooled_service(dir.path());
+        let agents = AgentRegistry::default();
+        service.set_routing(PcapRouting::default());
+        let event = serde_json::json!({ "src_ip": "10.1.1.1" });
+        assert!(matches!(
+            service.resolve_source(&agents, Some(&event), None).unwrap(),
+            ResolvedPcapSource::Local { name, .. } if name == LOCAL_PCAP_SOURCE_NAME
         ));
     }
 }

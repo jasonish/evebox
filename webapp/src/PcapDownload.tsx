@@ -60,26 +60,147 @@ function defaultMaxSize(): string {
   return bytes != null ? formatMaxSize(bytes) : "";
 }
 
-// Whether automatic routing has a currently available packet-capture source.
-// Stamped events require their importing agent, while a standalone request can
-// route automatically only when exactly one source exists. Older event formats
-// keep the backend's more detailed sensor/hostname routing behavior.
-export function automaticPcapSourceAvailable(
+// The event's sensor identity, mirroring the server's normalization:
+// plain EVE carries `host` as a string, while ECS carries it as an
+// object where `agent.name` is the sensor identity and `host.name`
+// only a fallback.
+function pcapSensorIdentity(
+  event: EventSource | undefined,
+): string | undefined {
+  if (typeof event?.host === "string") {
+    return event.host;
+  }
+  const agentName = (event as any)?.agent?.name;
+  if (typeof agentName === "string") {
+    return agentName;
+  }
+  const hostName = event?.host?.name;
+  if (typeof hostName === "string") {
+    return hostName;
+  }
+  return undefined;
+}
+
+// Whether automatic routing has a currently available packet-capture
+// source, and if not, why. Best effort — the server is authoritative.
+// With an operator routing table the table is fully in control: the
+// first matching rule, else the default source, else no source.
+// Without one (or while it is still unloaded), match the backend's
+// implicit routing order: sensor identity, importing agent identifier,
+// then the older importing-agent hostname stamp. Only truly anonymous
+// events and standalone requests may use the single-source fallback.
+export function automaticPcapSource(
   event: EventSource | undefined,
   sources: API.PcapSource[] | undefined,
-): boolean {
-  if (sources === undefined || sources.length === 0) {
-    return false;
+  routing: API.PcapRouting | undefined,
+): { ok: boolean; reason?: string } {
+  if (sources === undefined) {
+    return {
+      ok: false,
+      reason: "Capture source availability could not be confirmed.",
+    };
+  }
+  if (sources.length === 0) {
+    return { ok: false, reason: "No capture source is connected." };
+  }
+
+  // Present mirrors the server's is_empty(): any rule, or a non-null
+  // default.
+  if (routing && (routing.rules.length > 0 || routing.default != null)) {
+    const sensor = pcapSensorIdentity(event);
+    const rule =
+      sensor !== undefined
+        ? routing.rules.find((r) => r.sensor === sensor)
+        : undefined;
+    const target = rule?.source ?? routing.default;
+    if (target == null) {
+      // A standalone request has no event to match rules against; the
+      // only thing that could route it is a default source.
+      if (sensor !== undefined) {
+        return {
+          ok: false,
+          reason: `No routing rule matches sensor "${sensor}".`,
+        };
+      }
+      return {
+        ok: false,
+        reason:
+          event !== undefined
+            ? "No routing rule matches this event."
+            : "The routing table has no default source.",
+      };
+    }
+    if (sources.some((s) => s.name === target)) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      reason: `Capture source "${target}" is not connected.`,
+    };
+  }
+
+  const sensor = pcapSensorIdentity(event);
+  if (
+    sensor !== undefined &&
+    sources.some((source) => source.kind === "agent" && source.name === sensor)
+  ) {
+    return { ok: true };
   }
 
   const rawAgentId = event?.evebox?.agent?.id;
   const agentId = typeof rawAgentId === "string" ? rawAgentId.trim() : "";
   if (agentId) {
-    return sources.some(
-      (source) => source.kind === "agent" && source.name === agentId,
-    );
+    if (
+      sources.some(
+        (source) => source.kind === "agent" && source.name === agentId,
+      )
+    ) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      reason: "This event's agent is not providing packet capture.",
+    };
   }
-  return event !== undefined || sources.length === 1;
+
+  const rawAgentHostname = event?.evebox?.agent?.hostname;
+  const agentHostname =
+    typeof rawAgentHostname === "string" ? rawAgentHostname.trim() : "";
+  if (agentHostname) {
+    const matches = sources.filter(
+      (source) => source.kind === "agent" && source.hostname === agentHostname,
+    );
+    if (matches.length === 1) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      reason:
+        matches.length === 0
+          ? "This event's agent is not providing packet capture."
+          : "Multiple capture sources match this event's agent.",
+    };
+  }
+
+  if (event !== undefined) {
+    if (sources.some((source) => source.kind === "server")) {
+      return { ok: true };
+    }
+    if (sensor !== undefined) {
+      return {
+        ok: false,
+        reason: `No capture source is available for sensor "${sensor}".`,
+      };
+    }
+  }
+
+  if (sources.length === 1) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    reason: "Multiple capture sources are available.",
+  };
 }
 
 // Map a structured pcap error to a user-facing message. Shared by the
@@ -389,6 +510,7 @@ export function PcapDownload() {
   const [sources, setSources] = createSignal<API.PcapSource[]>([]);
   const [sourcesLoaded, setSourcesLoaded] = createSignal(false);
   const [sourcesFailed, setSourcesFailed] = createSignal(false);
+  const [routing, setRouting] = createSignal<API.PcapRouting>();
   const [source, setSource] = createSignal("");
   const sourceId = createUniqueId();
   let requestedEventId: string | undefined;
@@ -409,6 +531,11 @@ export function PcapDownload() {
           setSourcesFailed(true);
         }
       });
+    // A failed routing fetch leaves the implicit mirror in place; the
+    // server is authoritative either way.
+    API.getPcapRouting(controller.signal)
+      .then(setRouting)
+      .catch(() => {});
     onCleanup(() => controller.abort());
   });
 
@@ -449,11 +576,13 @@ export function PcapDownload() {
       });
   });
 
-  const automaticSourceAvailable = () =>
-    automaticPcapSourceAvailable(
+  const automaticSource = () =>
+    automaticPcapSource(
       eventContext(),
       sourcesLoaded() ? sources() : undefined,
+      routing(),
     );
+  const automaticSourceAvailable = () => automaticSource().ok;
 
   const download = () => {
     if (!automaticSourceAvailable() && source() === "") {
@@ -554,15 +683,8 @@ export function PcapDownload() {
                       </Form.Select>
                       <Show when={!automaticSourceAvailable()}>
                         <Form.Text class={"text-muted"}>
-                          <Show
-                            when={eventContext()}
-                            fallback={
-                              "Multiple capture sources are available; select one."
-                            }
-                          >
-                            This event's agent is not providing packet capture.
-                            Select another source for a custom capture.
-                          </Show>
+                          {automaticSource().reason} Select a source for a
+                          custom capture.
                         </Form.Text>
                       </Show>
                     </Form.Group>

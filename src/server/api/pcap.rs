@@ -39,7 +39,7 @@ use crate::server::ServerContext;
 use crate::server::agents::AgentEntry;
 use crate::server::main::SessionExtractor;
 use crate::server::pcap::tasks::{self, RemoteOutcome, UploadState};
-use crate::server::pcap::{ResolvedPcapSource, RouteError};
+use crate::server::pcap::{PcapRouting, ResolvedPcapSource, RouteError};
 
 /// Chunk size streamed to the client; the writer buffers extraction
 /// output up to this before pushing a frame.
@@ -150,12 +150,15 @@ fn list_sources(context: &ServerContext) -> serde_json::Value {
     struct Source {
         name: String,
         kind: &'static str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        hostname: Option<String>,
     }
     let mut sources = Vec::new();
     if context.pcap.has_source() {
         sources.push(Source {
             name: crate::server::agents::LOCAL_PCAP_SOURCE_NAME.to_string(),
             kind: "server",
+            hostname: None,
         });
     }
     sources.extend(
@@ -166,9 +169,78 @@ fn list_sources(context: &ServerContext) -> serde_json::Value {
             .map(|agent| Source {
                 name: agent.name.clone(),
                 kind: "agent",
+                hostname: Some(agent.hostname.clone()),
             }),
     );
     serde_json::json!({ "sources": sources })
+}
+
+/// `GET /api/pcap/routing`: the operator pcap routing table. Same
+/// sensitivity as `GET /api/pcap/sources` — the event view mirrors it
+/// to grey the PCAP button.
+pub(crate) async fn get_routing(
+    _session: SessionExtractor,
+    State(context): State<Arc<ServerContext>>,
+) -> impl IntoResponse {
+    Json(context.pcap.get_routing())
+}
+
+/// Generous bounds on the routing table: the table is cloned per lookup-free
+/// GET, fetched by the event view, and scanned per pcap request. Rule count is
+/// bounded for that reason; names share the deliberately loose agent limit.
+const ROUTING_MAX_RULES: usize = 256;
+const ROUTING_MAX_NAME: usize = crate::server::agents::MAX_AGENT_NAME_BYTES;
+
+/// `POST /api/pcap/routing`: validate, persist, and apply the operator
+/// pcap routing table, taking effect without a restart.
+pub(crate) async fn post_routing(
+    _session: SessionExtractor,
+    State(context): State<Arc<ServerContext>>,
+    Json(mut routing): Json<PcapRouting>,
+) -> Result<impl IntoResponse, AppError> {
+    if routing.rules.len() > ROUTING_MAX_RULES {
+        return Err(AppError::BadRequest(format!(
+            "the routing table is limited to {ROUTING_MAX_RULES} rules"
+        )));
+    }
+    for rule in &mut routing.rules {
+        rule.sensor = rule.sensor.trim().to_string();
+        rule.source = rule.source.trim().to_string();
+        if rule.sensor.is_empty() || rule.source.is_empty() {
+            return Err(AppError::BadRequest(
+                "every routing rule requires a sensor and a source".to_string(),
+            ));
+        }
+        if rule.sensor.len() > ROUTING_MAX_NAME || rule.source.len() > ROUTING_MAX_NAME {
+            return Err(AppError::BadRequest(format!(
+                "sensor and source names are limited to {ROUTING_MAX_NAME} bytes"
+            )));
+        }
+    }
+    if let Some(default) = &routing.default {
+        let default = default.trim();
+        if default.is_empty() {
+            return Err(AppError::BadRequest(
+                "the default source must not be empty".to_string(),
+            ));
+        }
+        if default.len() > ROUTING_MAX_NAME {
+            return Err(AppError::BadRequest(format!(
+                "sensor and source names are limited to {ROUTING_MAX_NAME} bytes"
+            )));
+        }
+        routing.default = Some(default.to_string());
+    }
+    // Persist and apply under one lock: concurrent saves could
+    // otherwise interleave, leaving the configdb with one table and
+    // the live service with another until the next save or restart.
+    let _lock = context.pcap.routing_save.lock().await;
+    context
+        .configdb
+        .kv_set_config("config.pcap.routing", &serde_json::to_value(&routing)?)
+        .await?;
+    context.pcap.set_routing(routing);
+    Ok(Json(serde_json::json!({})))
 }
 
 /// `GET /api/pcap/validate`: pre-flight for the native download. Runs
@@ -333,6 +405,24 @@ async fn handle_inner(
                     .as_deref()
                     .map(|sensor| format!("no pcap source connected for {sensor}"))
                     .unwrap_or_else(|| "no pcap source is configured or connected".to_string());
+                return Err(fail(
+                    &audit,
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "no-source",
+                    &message,
+                ));
+            }
+            Err(RouteError::NoRule(sensor)) => {
+                // Distinct from NoSource: naming the sensor as a
+                // "source" would send the operator connecting an agent
+                // by that name, which the table would still ignore.
+                let message = sensor
+                    .as_deref()
+                    .map(|sensor| format!("no pcap routing rule matches sensor {sensor}"))
+                    .unwrap_or_else(|| {
+                        "no pcap routing rule matches this request and no default source is set"
+                            .to_string()
+                    });
                 return Err(fail(
                     &audit,
                     StatusCode::SERVICE_UNAVAILABLE,
@@ -3662,7 +3752,7 @@ mod test {
             list_sources(&context),
             json!({ "sources": [
                 { "name": "(server)", "kind": "server" },
-                { "name": "remote", "kind": "agent" },
+                { "name": "remote", "kind": "agent", "hostname": "remote-host" },
             ]})
         );
     }

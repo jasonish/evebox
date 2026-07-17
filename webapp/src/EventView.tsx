@@ -34,7 +34,7 @@ import {
 import { prettyPrintJson } from "pretty-print-json";
 import { AggregateAlert, EcsGeo, EveDns, Event, EventWrapper } from "./types";
 import { parse_timestamp } from "./datetime";
-import { automaticPcapSourceAvailable, pcapErrorMessage } from "./PcapDownload";
+import { automaticPcapSource, pcapErrorMessage } from "./PcapDownload";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import { tinykeys } from "tinykeys";
 import { eventIsArchived, eventIsEscalated, eventSetArchived } from "./event";
@@ -83,11 +83,13 @@ export function EventView() {
 
   const [pcapPending, setPcapPending] = createSignal(false);
   const [pcapSources, setPcapSources] = createSignal<API.PcapSource[]>();
+  const [pcapRouting, setPcapRouting] = createSignal<API.PcapRouting>();
 
   const hasFlowAddresses = () =>
     !!(event()?._source.src_ip && event()?._source.dest_ip);
-  const quickPcapAvailable = () =>
-    automaticPcapSourceAvailable(event()?._source, pcapSources());
+  const pcapAvailability = () =>
+    automaticPcapSource(event()?._source, pcapSources(), pcapRouting());
+  const quickPcapAvailable = () => pcapAvailability().ok;
 
   // Controller for the in-flight pcap download, letting the user (or
   // navigation away from the view) cancel the server-side extraction.
@@ -168,6 +170,11 @@ export function EventView() {
       .catch(() => {
         // Keep the quick action disabled when availability is unknown.
       });
+    // A failed routing fetch leaves the implicit mirror in place; the
+    // server is authoritative either way.
+    API.getPcapRouting(controller.signal)
+      .then(setPcapRouting)
+      .catch(() => {});
     onCleanup(() => controller.abort());
   });
 
@@ -817,11 +824,7 @@ export function EventView() {
                   title={
                     pcapPending()
                       ? "Cancel PCAP download"
-                      : !quickPcapAvailable()
-                        ? pcapSources() === undefined
-                          ? "Capture source availability could not be confirmed"
-                          : "This event's agent is not providing packet capture"
-                        : undefined
+                      : (pcapAvailability().reason ?? undefined)
                   }
                 >
                   <Show when={pcapPending()} fallback={"PCAP"}>
