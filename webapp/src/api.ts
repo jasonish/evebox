@@ -557,15 +557,42 @@ export namespace API {
 
   // The pcap sources a request's `source` parameter may select right
   // now. Used to populate the custom download form's source picker.
+  // Failures carry the HTTP status so callers can tell a missing route
+  // (404, builds without pcap support) from a real error.
   export async function getPcapSources(
     signal?: AbortSignal,
   ): Promise<PcapSource[]> {
     const response = await fetch("api/pcap/sources", { signal: signal });
     if (!response.ok) {
-      throw new Error(`Failed to fetch pcap sources: ${response.status}`);
+      const error: any = new Error(
+        `Failed to fetch pcap sources: ${response.status}`,
+      );
+      error.status = response.status;
+      throw error;
     }
     const json = await response.json();
     return json.sources ?? [];
+  }
+
+  // One row from GET /api/agents: a connected remote agent. The
+  // server-local pcap spool is not an agent and does not appear here;
+  // getPcapSources() is what knows whether one is configured.
+  export interface AgentInfo {
+    name: string;
+    hostname: string;
+    version: string;
+    capabilities: string[];
+    connected_at: string;
+    last_seen: string;
+    rtt_ms?: number;
+  }
+
+  export async function getAgents(): Promise<AgentInfo[]> {
+    const response = await fetch("api/agents");
+    if (!response.ok) {
+      throw new Error(`Failed to fetch agents: ${response.status}`);
+    }
+    return await response.json();
   }
 
   // Pre-flight a pcap request: GET /api/pcap/validate performs structural
@@ -795,5 +822,73 @@ export namespace API {
 
   export async function deleteFilter(id: number): Promise<any> {
     return doDelete(`api/admin/filter/${id}`);
+  }
+
+  // One row from GET /api/agents/keys. The key value itself is only
+  // carried by the create and reveal responses.
+  export interface AgentKeyInfo {
+    id: number;
+    name: string;
+    created_at: string;
+    last_seen: string | null;
+  }
+
+  export interface AgentKeyWithSecret extends AgentKeyInfo {
+    key: string;
+  }
+
+  // The agent key endpoints report failures as {"error": "message"}.
+  async function agentKeyError(response: Response): Promise<Error> {
+    let message = `Request failed (${response.status})`;
+    try {
+      const json = await response.json();
+      if (typeof json?.error === "string") {
+        message = json.error;
+      }
+    } catch (_e) {
+      // Keep the status-based message.
+    }
+    return new Error(message);
+  }
+
+  export async function getAgentKeys(): Promise<AgentKeyInfo[]> {
+    const response = await fetch("api/agents/keys");
+    if (!response.ok) {
+      throw await agentKeyError(response);
+    }
+    return await response.json();
+  }
+
+  export async function addAgentKey(name: string): Promise<AgentKeyWithSecret> {
+    const response = await fetch("api/agents/keys", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: name }),
+    });
+    if (!response.ok) {
+      throw await agentKeyError(response);
+    }
+    return await response.json();
+  }
+
+  export async function revealAgentKey(
+    id: number,
+  ): Promise<AgentKeyWithSecret> {
+    const response = await fetch(`api/agents/keys/${id}`);
+    if (!response.ok) {
+      throw await agentKeyError(response);
+    }
+    return await response.json();
+  }
+
+  export async function deleteAgentKey(id: number): Promise<void> {
+    const response = await fetch(`api/agents/keys/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      throw await agentKeyError(response);
+    }
   }
 }

@@ -183,6 +183,8 @@ export function Admin() {
       links.push(<a href="/admin/elastic">{distributionName()}</a>);
       links.push(<> | </>);
     }
+    links.push(<a href="/admin/agents">Agents</a>);
+    links.push(<> | </>);
     links.push(<a href="/admin/filters">Filters</a>);
     links.push(<>]</>);
     return links;

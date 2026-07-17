@@ -32,6 +32,7 @@ import { PcapDownload } from "./PcapDownload";
 import { Admin } from "./pages/admin/Admin";
 import { AdminFilters } from "./pages/admin/AdminFilters";
 import { AdminElastic } from "./pages/admin/AdminElastic";
+import { AdminAgents } from "./pages/admin/AdminAgents";
 
 export function AppRouter() {
   return (
@@ -68,6 +69,7 @@ export function AppRouter() {
         <Route path="admin" component={Admin} />
         <Route path="admin/filters" component={AdminFilters} />
         <Route path="admin/elastic" component={AdminElastic} />
+        <Route path="admin/agents" component={AdminAgents} />
 
         <Route path="*" component={RedirectToIndex} />
       </Route>
