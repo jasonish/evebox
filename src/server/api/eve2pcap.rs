@@ -30,7 +30,7 @@ pub(crate) async fn handler(
     let mut hmap = HeaderMap::new();
     hmap.insert(
         CONTENT_TYPE,
-        "application/vnc.tcpdump.pcap".parse().unwrap(),
+        "application/vnd.tcpdump.pcap".parse().unwrap(),
     );
 
     let event: serde_json::Value = serde_json::from_str(&form.event)
