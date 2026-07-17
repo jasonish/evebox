@@ -378,11 +378,33 @@ impl ConfigDb {
         Ok(rows)
     }
 
+    /// Look up an agent key row by its row id.
+    pub(crate) async fn get_agent_key_by_id(
+        &self,
+        id: i64,
+    ) -> Result<Option<AgentKey>, ConfigDbError> {
+        let row = sqlx::query_as("SELECT * FROM agent_keys WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(row)
+    }
+
     /// Delete the key with this name, returning false when no key has the
     /// name.
     pub(crate) async fn remove_agent_key(&self, name: &str) -> Result<bool, ConfigDbError> {
         let result = sqlx::query("DELETE FROM agent_keys WHERE name = ?")
             .bind(name)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Delete the key with this row id, returning false when no key has
+    /// the id.
+    pub(crate) async fn remove_agent_key_by_id(&self, id: i64) -> Result<bool, ConfigDbError> {
+        let result = sqlx::query("DELETE FROM agent_keys WHERE id = ?")
+            .bind(id)
             .execute(&self.pool)
             .await?;
         Ok(result.rows_affected() > 0)
@@ -552,6 +574,28 @@ mod tests {
         let rows = db.list_agent_keys().await.unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].key, second.key);
+    }
+
+    #[tokio::test]
+    async fn agent_keys_by_id() {
+        let (_dir, db) = test_db().await;
+        let added = db.add_agent_key("sensor-a").await.unwrap();
+
+        let found = db.get_agent_key_by_id(added.id).await.unwrap().unwrap();
+        assert_eq!(found.name, "sensor-a");
+        assert_eq!(found.key, added.key);
+        assert!(
+            db.get_agent_key_by_id(added.id + 1)
+                .await
+                .unwrap()
+                .is_none()
+        );
+
+        assert!(db.remove_agent_key_by_id(added.id).await.unwrap());
+        assert!(db.get_agent_key_by_id(added.id).await.unwrap().is_none());
+        assert!(db.verify_agent_key(&added.key).await.unwrap().is_none());
+        // Nothing is left to remove.
+        assert!(!db.remove_agent_key_by_id(added.id).await.unwrap());
     }
 
     #[tokio::test]

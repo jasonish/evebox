@@ -44,6 +44,19 @@ impl From<anyhow::Error> for AppError {
     }
 }
 
+impl From<crate::sqlite::configdb::ConfigDbError> for AppError {
+    fn from(value: crate::sqlite::configdb::ConfigDbError) -> Self {
+        use crate::sqlite::configdb::ConfigDbError;
+        match value {
+            ConfigDbError::AgentKeyNameInUse(_)
+            | ConfigDbError::AgentNameReserved(_)
+            | ConfigDbError::EmptyAgentName
+            | ConfigDbError::AgentNameTooLong(_) => Self::BadRequest(value.to_string()),
+            _ => Self::StringError(value.to_string()),
+        }
+    }
+}
+
 impl From<QueryStringParseError> for AppError {
     fn from(value: QueryStringParseError) -> Self {
         Self::BadRequest(format!("failed to parse query string: {value}"))

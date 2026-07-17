@@ -38,6 +38,7 @@ use crate::server::agents::{
 };
 use crate::server::main::SessionExtractor;
 use crate::server::pcap::tasks::{UploadSendError, UploadSink};
+use crate::sqlite::configdb::ConfigDb;
 
 // JSON escapes can make a maximum-sized agent name several times larger on
 // the wire, so leave ample room for it plus the other handshake fields.
@@ -152,7 +153,14 @@ pub(crate) async fn websocket(
         .max_message_size(CONTROL_MESSAGE_MAX_BYTES)
         .max_frame_size(CONTROL_MESSAGE_MAX_BYTES)
         .on_upgrade(move |socket| {
-            connection(socket, context.agents.clone(), handshake, key, remote)
+            connection(
+                socket,
+                context.agents.clone(),
+                context.configdb.clone(),
+                handshake,
+                key,
+                remote,
+            )
         })
 }
 
@@ -421,6 +429,7 @@ fn parse_handshake(headers: &HeaderMap) -> Result<AgentHandshake, &'static str> 
 async fn connection(
     socket: WebSocket,
     agents: Arc<AgentRegistry>,
+    configdb: Arc<ConfigDb>,
     handshake: AgentHandshake,
     key: Option<AgentKeyIdentity>,
     remote: SocketAddr,
@@ -462,7 +471,7 @@ async fn connection(
     loop {
         tokio::select! {
             _ = entry.cancelled() => {
-                debug!("Agent {name:?} connection was replaced");
+                debug!("Agent {name:?} was asked to disconnect");
                 break;
             }
             outbound = outbound_rx.recv() => {
@@ -546,6 +555,18 @@ async fn connection(
         "Agent {name:?} from {remote} disconnected (generation {})",
         connection_id.generation
     );
+
+    // Stamp the disconnect on the agent's key so its stored last-seen
+    // records last contact rather than connect time; the admin page
+    // shows it for agents that are offline.
+    if let Some(key) = &entry.key
+        && let Err(err) = configdb.touch_agent_key(key.id).await
+    {
+        warn!(
+            "Failed to update agent key last-seen for {:?}: {err}",
+            key.name
+        );
+    }
 }
 
 fn server_capabilities() -> Vec<String> {
@@ -1345,6 +1366,46 @@ mod tests {
         )
         .await;
 
+        server.abort();
+    }
+
+    /// A disconnect stamps the key's stored last-seen, so offline agents
+    /// report last contact rather than connect time.
+    #[tokio::test]
+    async fn disconnect_updates_key_last_seen() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        let key = add_test_key(&context, "test-sensor").await;
+        let socket = connect_test_agent(address, Some(&key)).await;
+        wait_until(|| context.agents.connected() == 1).await;
+
+        // Clear the connect-time stamp so the disconnect's write is
+        // observable (CURRENT_TIMESTAMP only has second granularity).
+        sqlx::query("UPDATE agent_keys SET last_seen = NULL")
+            .execute(&context.configdb.pool)
+            .await
+            .unwrap();
+
+        drop(socket);
+        wait_until(|| context.agents.connected() == 0).await;
+
+        // The stamp lands after the registry removal; poll for it.
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            let row = context
+                .configdb
+                .verify_agent_key(&key)
+                .await
+                .unwrap()
+                .unwrap();
+            if row.last_seen.is_some() {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "disconnect did not update the key's last-seen"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
         server.abort();
     }
 

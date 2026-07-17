@@ -55,6 +55,14 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/user", get(get_user))
         .route("/api/agent/ws", get(agent::websocket))
         .route("/api/agents", get(agent::get_agents))
+        .route(
+            "/api/agents/keys",
+            get(admin::get_agent_keys).post(admin::add_agent_key),
+        )
+        .route(
+            "/api/agents/keys/{id}",
+            get(admin::get_agent_key).delete(admin::delete_agent_key),
+        )
         .route("/api/alerts", get(alerts::alerts))
         .route("/api/events", get(events))
         .route("/api/event/{id}", get(get_event_by_id))

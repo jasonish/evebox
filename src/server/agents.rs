@@ -9,7 +9,7 @@
 //! than packet-capture sources. Packet capture is its first consumer, but
 //! future capabilities can share the same connection and lifecycle.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
@@ -55,11 +55,12 @@ pub(crate) struct AgentKeyIdentity {
     pub(crate) name: String,
 }
 
-/// A registration that was refused because the claimed name is held by a
-/// connection authenticated with a different key. The registry has already
-/// logged the details.
+/// A registration refusal already logged by the registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct NameHeldByOtherKey;
+pub(crate) enum RegistrationRefused {
+    NameHeldByOtherKey,
+    RevokedKey,
+}
 
 /// Consumer of messages and lifecycle events received on the general agent
 /// channel.
@@ -163,6 +164,10 @@ pub(crate) struct AgentInfo {
 #[derive(Default)]
 struct RegistryState {
     agents: HashMap<String, Arc<AgentEntry>>,
+    /// Key IDs deleted through the in-process admin API. Keeping them here
+    /// closes the race where an upgrade authenticated just before deletion but
+    /// reaches registration just after the live connection was bumped.
+    revoked_key_ids: HashSet<i64>,
 }
 
 /// Live connected agents, keyed by their claimed name.
@@ -203,8 +208,18 @@ impl AgentRegistry {
         key: Option<AgentKeyIdentity>,
         remote: SocketAddr,
         outbound: mpsc::Sender<ServerMessage>,
-    ) -> Result<Arc<AgentEntry>, NameHeldByOtherKey> {
+    ) -> Result<Arc<AgentEntry>, RegistrationRefused> {
         let mut state = self.state.write().unwrap();
+
+        if let Some(key) = &key
+            && state.revoked_key_ids.contains(&key.id)
+        {
+            warn!(
+                "REFUSING agent {:?} from {remote}: key {:?} was revoked",
+                handshake.name, key.name
+            );
+            return Err(RegistrationRefused::RevokedKey);
+        }
 
         if let Some(previous) = state.agents.get(&handshake.name)
             && let (Some(held), Some(claimed)) = (&previous.key, &key)
@@ -214,7 +229,7 @@ impl AgentRegistry {
                 "REFUSING agent {:?} from {remote} using key {:?}: the name is held by a connection from {} authenticated with key {:?}",
                 handshake.name, claimed.name, previous.remote, held.name
             );
-            return Err(NameHeldByOtherKey);
+            return Err(RegistrationRefused::NameHeldByOtherKey);
         }
 
         // Carry the PCAP slot over from any entry being replaced so a
@@ -277,6 +292,26 @@ impl AgentRegistry {
 
     pub(crate) fn get(&self, name: &str) -> Option<Arc<AgentEntry>> {
         self.state.read().unwrap().agents.get(name).cloned()
+    }
+
+    /// Revoke `key_id` in the running registry and ask its connection, if any,
+    /// to disconnect. The in-memory revocation closes the narrow race with an
+    /// upgrade that authenticated immediately before the database deletion.
+    pub(crate) fn revoke_key(&self, key_id: i64) -> bool {
+        let mut state = self.state.write().unwrap();
+        state.revoked_key_ids.insert(key_id);
+        let entry = state
+            .agents
+            .values()
+            .find(|entry| entry.key.as_ref().is_some_and(|key| key.id == key_id))
+            .cloned();
+        drop(state);
+        if let Some(entry) = entry {
+            entry.shutdown.cancel();
+            true
+        } else {
+            false
+        }
     }
 
     /// Dispatch only while this exact generation is still the registry's
@@ -407,7 +442,7 @@ mod tests {
         registry: &AgentRegistry,
         name: &str,
         key: Option<AgentKeyIdentity>,
-    ) -> Result<Arc<AgentEntry>, NameHeldByOtherKey> {
+    ) -> Result<Arc<AgentEntry>, RegistrationRefused> {
         let (tx, _rx) = mpsc::channel(OUTBOUND_CAPACITY);
         registry.register(handshake(name, &[CAPABILITY_PCAP]), key, remote(), tx)
     }
@@ -512,7 +547,7 @@ mod tests {
         // A different key cannot evict the held name.
         assert_eq!(
             register_with_key(&registry, "sensor-a", key(2)).err(),
-            Some(NameHeldByOtherKey)
+            Some(RegistrationRefused::NameHeldByOtherKey)
         );
         assert!(!first.is_cancelled());
         assert_eq!(
@@ -531,6 +566,24 @@ mod tests {
         // A different key is free to claim a different name.
         register_with_key(&registry, "sensor-b", key(2)).unwrap();
         assert_eq!(registry.connected(), 2);
+    }
+
+    #[test]
+    fn revoking_a_key_cancels_its_connection_and_refuses_racing_registration() {
+        let registry = AgentRegistry::default();
+        let first = register_with_key(&registry, "sensor-a", key(1)).unwrap();
+        let second = register_with_key(&registry, "sensor-b", key(2)).unwrap();
+        let unauthenticated = register_with_key(&registry, "sensor-c", None).unwrap();
+
+        assert!(registry.revoke_key(1));
+        assert!(first.is_cancelled());
+        assert!(!second.is_cancelled());
+        assert!(!unauthenticated.is_cancelled());
+        assert_eq!(
+            register_with_key(&registry, "sensor-a", key(1)).err(),
+            Some(RegistrationRefused::RevokedKey)
+        );
+        assert!(!registry.revoke_key(99));
     }
 
     #[test]
