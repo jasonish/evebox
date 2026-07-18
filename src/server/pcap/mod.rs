@@ -100,6 +100,9 @@ pub(crate) struct PcapSettings {
     /// Once a response is streaming, stop if the client does not drain
     /// output within this interval.
     pub(crate) stall_timeout: Duration,
+    /// How long the pre-dispatch liveness probe waits for a remote agent
+    /// to answer a WebSocket ping before the request is refused.
+    pub(crate) liveness_timeout: Duration,
     /// Backstop for extractions using the shared blocking pool.
     pub(crate) max_concurrent: usize,
     /// Grace period for a cancelled extraction to acknowledge the
@@ -115,6 +118,7 @@ impl Default for PcapSettings {
             max_bytes: 8_000_000,
             request_timeout: Duration::from_secs(60),
             stall_timeout: Duration::from_secs(60),
+            liveness_timeout: Duration::from_secs(2),
             max_concurrent: 16,
             wedge_grace: Duration::from_secs(5),
         }

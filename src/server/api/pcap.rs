@@ -1010,6 +1010,23 @@ async fn stream_agent(
 ) -> Result<Response, Response> {
     let request_timeout = context.pcap.settings.request_timeout;
     let stall_timeout = context.pcap.settings.stall_timeout;
+
+    // A half-open connection (the agent host vanished without closing the
+    // socket) looks live until the periodic ping cycle reaps it. Confirm
+    // the agent answers a ping now instead of committing this request to
+    // a first-byte wait that cannot succeed.
+    if !entry
+        .probe_liveness(context.pcap.settings.liveness_timeout)
+        .await
+    {
+        return Err(fail(
+            &audit,
+            StatusCode::SERVICE_UNAVAILABLE,
+            "agent-unresponsive",
+            "pcap agent is not responding; it may have disconnected",
+        ));
+    }
+
     let id = uuid::Uuid::new_v4().to_string();
     let token = generate_job_token();
     let start_us = request.start.ok_or_else(|| {

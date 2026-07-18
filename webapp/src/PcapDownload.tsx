@@ -224,6 +224,8 @@ export function pcapErrorMessage(err: any): string {
       return "Multiple capture sources could serve this request; select a source and try again.";
     case "source-busy":
       return "The capture source is busy; try again shortly.";
+    case "agent-unresponsive":
+      return "The capture agent is not responding; try again shortly.";
     default:
       return err.message ?? "PCAP request failed.";
   }

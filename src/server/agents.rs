@@ -13,8 +13,9 @@ use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
-use tokio::sync::{Semaphore, mpsc};
+use tokio::sync::{Notify, Semaphore, mpsc, watch};
 use tokio_util::sync::CancellationToken;
 
 use crate::agent::protocol::{AgentHandshake, AgentMessage, CAPABILITY_PCAP, ServerMessage};
@@ -106,6 +107,11 @@ pub(crate) struct AgentEntry {
     last_seen: RwLock<DateTime>,
     /// `u64::MAX` means no ping round-trip has been observed yet.
     rtt_ms: AtomicU64,
+    /// Asks the connection loop to send a WebSocket ping now, outside its
+    /// periodic ping schedule. Requests coalesce; one pong answers all.
+    ping_request: Notify,
+    /// Pong counter; liveness probes wait for the next increment.
+    pongs: watch::Sender<u64>,
     shutdown: CancellationToken,
 }
 
@@ -136,6 +142,34 @@ impl AgentEntry {
         message: ServerMessage,
     ) -> Result<(), mpsc::error::TrySendError<ServerMessage>> {
         self.outbound.try_send(message)
+    }
+
+    /// Record a pong, waking any liveness probe in flight.
+    pub(crate) fn pong_received(&self) {
+        self.pongs
+            .send_modify(|count| *count = count.wrapping_add(1));
+    }
+
+    /// Resolves when a liveness probe wants a ping sent. Awaited by the
+    /// connection loop; a request arriving while the loop is busy is held
+    /// until the next await.
+    pub(crate) async fn ping_requested(&self) {
+        self.ping_request.notified().await;
+    }
+
+    /// Confirm the connection answers a WebSocket ping within `timeout`.
+    ///
+    /// A half-open connection (the agent host vanished without closing the
+    /// socket) looks live until the periodic ping cycle reaps it. Probing
+    /// lets a capture request fail fast instead of committing its full
+    /// first-byte window to a peer that will never answer. Any pong counts,
+    /// including one owed to a periodic ping already in flight.
+    pub(crate) async fn probe_liveness(&self, timeout: Duration) -> bool {
+        let mut pongs = self.pongs.subscribe();
+        self.ping_request.notify_one();
+        tokio::time::timeout(timeout, pongs.changed())
+            .await
+            .is_ok_and(|changed| changed.is_ok())
     }
 
     pub(crate) async fn cancelled(&self) {
@@ -255,6 +289,8 @@ impl AgentRegistry {
             pcap_busy,
             last_seen: RwLock::new(now),
             rtt_ms: AtomicU64::new(u64::MAX),
+            ping_request: Notify::new(),
+            pongs: watch::Sender::new(0),
             shutdown: CancellationToken::new(),
         });
 
@@ -602,6 +638,32 @@ mod tests {
         let fourth = register_with_key(&registry, "sensor-a", None).unwrap();
         assert!(third.is_cancelled());
         assert!(!fourth.is_cancelled());
+    }
+
+    #[tokio::test]
+    async fn liveness_probe_times_out_without_a_pong() {
+        let registry = AgentRegistry::default();
+        let entry = register(&registry, "sensor-a", &[CAPABILITY_PCAP]);
+        assert!(!entry.probe_liveness(Duration::from_millis(20)).await);
+    }
+
+    #[tokio::test]
+    async fn liveness_probe_succeeds_on_pong() {
+        let registry = AgentRegistry::default();
+        let entry = register(&registry, "sensor-a", &[CAPABILITY_PCAP]);
+
+        // Stand in for the connection loop: answer the probe's ping
+        // request with a pong.
+        let responder = {
+            let entry = entry.clone();
+            tokio::spawn(async move {
+                entry.ping_requested().await;
+                entry.pong_received();
+            })
+        };
+
+        assert!(entry.probe_liveness(Duration::from_secs(10)).await);
+        responder.await.unwrap();
     }
 
     #[test]

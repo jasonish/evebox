@@ -507,6 +507,7 @@ async fn connection(
                     }
                     Some(Ok(Message::Pong(_))) => {
                         entry.touch();
+                        entry.pong_received();
                         missed_pongs = 0;
                         if let Some(sent) = last_ping.take() {
                             let elapsed = sent.elapsed().as_millis();
@@ -538,6 +539,15 @@ async fn connection(
                 }
                 missed_pongs += 1;
                 last_ping = Some(Instant::now());
+                if let Err(err) = send_websocket_message(&mut sink, Message::Ping(Bytes::new())).await {
+                    warn!("Could not ping agent {name:?}: {err}");
+                    break;
+                }
+            }
+            // An on-demand ping for a liveness probe. It rides outside the
+            // periodic schedule: no missed-pong or RTT accounting, its only
+            // job is to elicit a pong for the waiting probe.
+            _ = entry.ping_requested() => {
                 if let Err(err) = send_websocket_message(&mut sink, Message::Ping(Bytes::new())).await {
                     warn!("Could not ping agent {name:?}: {err}");
                     break;
@@ -1536,6 +1546,39 @@ mod tests {
         assert_eq!(upload("secret").send().await.unwrap().status(), 410);
 
         context.pcap_tasks.remove("job-token-test", "secret");
+        server.abort();
+    }
+
+    /// A half-open agent connection (socket open, peer no longer reading,
+    /// so pings go unanswered) fails a capture request fast with a 503
+    /// instead of tying up the full first-byte window.
+    #[tokio::test]
+    async fn unresponsive_agent_fails_fast_before_dispatch() {
+        let settings = PcapSettings {
+            liveness_timeout: Duration::from_millis(100),
+            ..Default::default()
+        };
+        let (address, server, context, _dir) = serve_test_server(settings).await;
+        let client = reqwest::Client::new();
+        let key = add_test_key(&context, "test-sensor").await;
+        // Hold the socket open but never read from it again: the probe's
+        // ping is never seen, so no pong comes back.
+        let _socket = connect_test_agent(address, Some(&key)).await;
+        wait_for_agent(&client, address).await;
+
+        let response = client
+            .post(format!("http://{address}/api/pcap"))
+            .json(&json!({ "event_id": "1" }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let body: Value = response.json().await.unwrap();
+        assert_eq!(body["error"]["code"], "agent-unresponsive");
+
+        // The refusal happened before the job was registered; permits are
+        // already back.
+        wait_for_remote_cleanup(&context).await;
         server.abort();
     }
 
