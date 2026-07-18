@@ -821,7 +821,7 @@ export function Alerts() {
             </Show>
             <div class="d-inline-flex">
               <SensorSelect
-                selected={"asdf"}
+                selected={searchParams.sensor}
                 onchange={(sensor) => {
                   setSearchParams({ sensor: sensor });
                 }}
