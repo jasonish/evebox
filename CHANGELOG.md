@@ -19,6 +19,23 @@
   copy of the PCAP is staged in the temporary directory.
 - Oneshot mode shows compact event-type count cards above the event list for
   quickly reviewing and filtering imported events.
+- Event and custom packet captures can now be downloaded from a Suricata
+  pcap-log spool directory on the EveBox server.
+- New `evebox pcap extract` command extracts packets from capture spools by
+  time range and libpcap filter expression.
+- New `evebox pcap purge` command removes old capture files by retained file
+  count or total size, with dry-run and periodic operation support.
+- EveBox agents can serve packet captures from remote Suricata pcap-log
+  spool directories, even when the EveBox server runs on Windows. Requests
+  routed to an unresponsive agent fail quickly.
+- Per-agent keys can authenticate persistent agent connections and be managed
+  through the CLI or Agents administration page.
+- New Agents administration page lists connected agents and manages agent
+  keys and packet capture routing.
+- Packet capture routing rules map sensors to local or remote capture sources,
+  with support for an optional default source.
+- The event PCAP menu can download from a specific capture source, bypassing
+  automatic source selection.
 
 ### Changed
 - With its default wait behavior, oneshot mode now exits with an error when
@@ -26,6 +43,9 @@
   EVE JSON, instead of opening the event viewer with partial or no data.
   `--no-wait` retains its asynchronous behavior and logs later import failures.
 - Oneshot mode now opens the Events view instead of the Inbox by default.
+- Building from source now requires libpcap development headers on
+  non-Windows platforms for the packet capture features. Linux release
+  binaries remain fully static and bundle a static libpcap.
 
 ### Fixed
 - Stats events without capture counters can now be opened in the event view.
@@ -39,6 +59,9 @@
 - eve2pcap: the seconds field of pcap record headers was written from the
   wrong timestamp value, giving packets in downloaded pcap files bogus
   capture times.
+- eve2pcap: downloads were served with a misspelled Content-Type of
+  `application/vnc.tcpdump.pcap`; it is now the correct
+  `application/vnd.tcpdump.pcap`.
 
 ## 0.26.0 - 2026-07-03
 
