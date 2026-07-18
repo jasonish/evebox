@@ -90,6 +90,15 @@ build_linux_x64() {
     musl_run "${tag}" ./packaging/build-deb.sh amd64
 }
 
+# Build only the artifact needed as input to the x86_64 container image.
+# Unlike linux-x64, this skips RPM and Debian package generation.
+build_linux_x64_container() {
+    echo "===> Building Linux x64 (container input)"
+    tag="private/evebox/builder:musl-x86_64"
+    musl_build_image x86_64-musl "${tag}"
+    musl_run "${tag}" make dist TARGET=x86_64-unknown-linux-musl
+}
+
 build_linux_arm64() {
     echo "===> Building Linux ARM64 (dist + Debian)"
     tag="private/evebox/builder:musl-aarch64"
@@ -116,6 +125,9 @@ else
             linux-x64)
                 build_linux_x64
                 ;;
+            linux-x64-container)
+                build_linux_x64_container
+                ;;
             linux-arm64)
                 build_linux_arm64
                 ;;
@@ -124,7 +136,7 @@ else
                 ;;
             *)
                 echo "Unknown target: $target"
-                echo "Valid targets: linux-x64, linux-arm64, windows-x64"
+                echo "Valid targets: linux-x64, linux-x64-container, linux-arm64, windows-x64"
                 exit 1
                 ;;
         esac
