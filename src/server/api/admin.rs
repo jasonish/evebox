@@ -85,7 +85,7 @@ pub(super) async fn add_filter(
 }
 
 pub(super) async fn get_filters(
-    _sesssion: SessionExtractor,
+    _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
 ) -> Result<impl IntoResponse, AppError> {
     let rows = context.configdb.get_filters().await?;
@@ -221,7 +221,7 @@ pub(super) async fn delete_agent_key(
 }
 
 pub(super) async fn kv_get_config(
-    _sesssion: SessionExtractor,
+    _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
 ) -> Result<impl IntoResponse, AppError> {
     let rows = context.configdb.kv_get_config().await?;
@@ -229,7 +229,7 @@ pub(super) async fn kv_get_config(
 }
 
 pub(super) async fn kv_set_config(
-    _sesssion: SessionExtractor,
+    _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Path(key): Path<String>,
     Json(value): Json<serde_json::Value>,

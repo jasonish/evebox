@@ -26,7 +26,7 @@ elasticsearch:
 
 # Directory to store data and state information required by the agent. This
 # isn't always required. If the agent has write access to the log directory it
-# can store bookmark information along side the eve log files.
+# can store bookmark information alongside the eve log files.
 #data-directory: "/var/lib/evebox"
 
 # If the EveBox server is running behind TLS and the certificate is
@@ -61,7 +61,7 @@ pcap:
 #agent-id: firewall-east
 
 # Additional fields that will be added to each event. This is currently limited
-# to strings at this time.
+# to strings.
 additional-fields:
   #sensor-name: "my super secret sensor"
 

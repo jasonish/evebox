@@ -306,7 +306,7 @@ export function Events() {
   }
 
   function gotoNewer() {
-    // Removing "-" and ":" are for URL tidyness, but don't matter.
+    // Removing "-" and ":" are for URL tidiness, but don't matter.
     const timestamp = events()[0]
       ._source["@timestamp"].replace(/(\d{4})-(\d{2})-(\d{2})/, "$1$2$3")
       .replaceAll(":", "");
@@ -318,7 +318,7 @@ export function Events() {
   }
 
   function gotoOlder() {
-    // Removing "-" and ":" are for URL tidyness, but don't matter.
+    // Removing "-" and ":" are for URL tidiness, but don't matter.
     const timestamp = events()
       [events().length - 1]._source["@timestamp"].replace(
         /(\d{4})-(\d{2})-(\d{2})/,

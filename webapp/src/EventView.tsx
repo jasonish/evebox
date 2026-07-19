@@ -1601,7 +1601,7 @@ function HighlightedRule(props: { rule: string }) {
       `$1<span class="app-rule-keyword">$2</span>`,
     );
 
-    // Replace referece URLs with the URL.
+    // Replace reference URLs with the URL.
     html = html.replace(/url,(.*?)([;<])/g, `url,<a href="http://$1">$1</a>$2`);
 
     html = html.replace(/%___lt___%/g, "&lt;");

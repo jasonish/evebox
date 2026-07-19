@@ -568,7 +568,7 @@ export function PcapDownload() {
       })
       .catch((err: any) => {
         if (requestedEventId !== id) return;
-        console.log(`Failed to load event context for PCAP download: ${err}`);
+        console.error(`Failed to load event context for PCAP download: ${err}`);
         setEventContextFailed(true);
       })
       .finally(() => {

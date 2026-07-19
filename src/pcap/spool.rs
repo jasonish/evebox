@@ -62,8 +62,8 @@ pub(crate) fn load_files(
             if let Some(next) = pit.peek()
                 && next.0.saturating_mul(1_000_000) < start_time
             {
-                // The next file in our sorted list has a creating time less than our start
-                // time, we can remove this file.
+                // The next file in our sorted list has a creation time less than our start
+                // time, so we can remove this file.
                 debug!("Removing {}, it ends before our start time", e.1.display());
                 return false;
             }

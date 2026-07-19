@@ -301,7 +301,7 @@
 - [webapp] Attempt to resolve IP addresses to hostnames using DNS
   records. This is still a work in progress.
 - [fix] [opensearch] Fixes for OpenSearch as features only available in
-  Elasticsearch were being used. This increases compatiblity with
+  Elasticsearch were being used. This increases compatibility with
   OpenSearch as its used by ClearNDR (formerly SELKS).
 - [eve2pcap] Use SID as filename when available.
 - [webapp] Allow user to choose local time or UTC time:
@@ -737,7 +737,7 @@
   configuration data in the future.
 - TLS support. The server can be provided with a certificate and key
   to enable TLS. The "gencert" subcommand has been added to help
-  generate self signed certificates. Or, if the server is publically
+  generate self signed certificates. Or, if the server is publicly
   accessible, Letsencrypt can be used.
 
 **Breaking Changes**

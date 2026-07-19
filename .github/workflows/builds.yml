@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install libpcap
         run: apt-get update && apt-get install -y --no-install-recommends libpcap-dev
-      # Needed to we can get the build revision, required by build.rs
+      # Needed so we can get the build revision, required by build.rs
       - run: git config --global --add safe.directory /__w/evebox/evebox
       - run: cargo test --all
 

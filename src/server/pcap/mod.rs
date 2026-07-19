@@ -405,7 +405,7 @@ pub(crate) fn configure(config: &crate::config::Config) -> PcapService {
         let directory = PathBuf::from(directory);
         if !directory.is_dir() {
             warn!(
-                "Pcap spool directory {} does not exist (yet)",
+                "PCAP spool directory {} does not exist (yet)",
                 directory.display()
             );
         }

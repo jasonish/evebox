@@ -538,7 +538,7 @@ export function AdminAgents() {
               <div class="card mt-2">
                 <div class="card-body">
                   No agents yet. Connected agents, issued agent keys, and the
-                  server-local pcap spool will appear here.
+                  server-local PCAP spool will appear here.
                 </div>
               </div>
             }
