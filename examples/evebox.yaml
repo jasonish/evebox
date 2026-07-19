@@ -107,7 +107,7 @@ geoip:
   # File must be ungzipped.
   #
   # This is temporary, EveBox will eventually support downloading and
-  # updateing the geo database itself.
+  # updating the geo database itself.
   database: /etc/evebox/GeoLite2-City.mmdb
 
 # Optional server-local Suricata pcap-log spool, presented as the pcap source
@@ -128,7 +128,7 @@ geoip:
 #  # still verified.
 #  allow-unauthenticated: false
 
-# Event services: links that will be provided on events to link to additonal
+# Event services: links that will be provided on events to link to additional
 # services.
 event-services:
 

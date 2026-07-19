@@ -58,7 +58,7 @@ fn ethernet(ethertype: u16) -> Vec<u8> {
     frame
 }
 
-/// An 8 byte generic layer 4 header carrying just the ports, layed
+/// An 8 byte generic layer 4 header carrying just the ports, laid
 /// out as TCP, UDP and SCTP all do: source port at offset 0,
 /// destination port at offset 2.
 pub(crate) fn ports(source_port: u16, destination_port: u16) -> Vec<u8> {

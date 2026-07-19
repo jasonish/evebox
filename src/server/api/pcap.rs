@@ -333,7 +333,7 @@ async fn handle_inner(
             }
             Err(err) => {
                 error!(
-                    "Pcap request failed to load event {:?}: {}",
+                    "PCAP request failed to load event {:?}: {}",
                     body.event_id, err
                 );
                 return Err(fail(
@@ -380,7 +380,7 @@ async fn handle_inner(
     // POST is the buffered quick-download API. Keep its aggregation
     // bounded by the fixed server default; callers that need a larger
     // or unlimited response must use the native GET path, which streams
-    // directly to the browser. The dry-run preflight remains permissive
+    // directly to the browser. The dry-run pre-flight remains permissive
     // because it validates requests for that GET path.
     if !dry_run && !native && max_bytes > settings.max_bytes {
         return Err(fail(
@@ -740,7 +740,7 @@ async fn stream_local(
                         audit.user, audit.remote, audit.event_id
                     );
                     warn!(
-                        "Pcap extraction for event {:?} did not stop (no output progress for {:?}); its thread is still running detached, releasing its slots anyway",
+                        "PCAP extraction for event {:?} did not stop (no output progress for {:?}); its thread is still running detached, releasing its slots anyway",
                         audit.event_id, idle_bound
                     );
                 }
