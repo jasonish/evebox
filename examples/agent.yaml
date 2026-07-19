@@ -40,18 +40,18 @@ input:
     - "/var/log/suricata/eve.*.json"
 
 # Keep a persistent control connection to the EveBox server and serve packet
-# capture requests from this host's Suricata pcap-log spool. The control
-# channel requires an agent key (server.key above) unless the server sets
+# capture requests from this host's Suricata pcap-log spool. Setting a
+# directory enables packet capture. The control channel requires an agent
+# key (server.key above) unless the server sets
 # agents.allow-unauthenticated. This requires EveBox server output;
 # it is ignored when direct Elasticsearch output above is enabled.
 #
 # The --pcap-directory and --pcap-prefix command line options can be used
-# instead; a directory given on the command line implies enabled.
-pcap:
-  enabled: false
-  directory: /var/log/suricata/pcap
-  # Matches the recommended threaded filename log.%n.%t.pcap.
-  #prefix: log.
+# instead.
+#pcap:
+#  directory: /var/log/suricata/pcap
+#  # Matches the recommended threaded filename log.%n.%t.pcap.
+#  prefix: log.
 
 # Unique identifier this agent advertises on the control channel (also
 # available as --agent-id). Defaults to the system hostname; it must be set
