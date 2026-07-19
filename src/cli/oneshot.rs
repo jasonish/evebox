@@ -28,7 +28,7 @@ struct Args {
     #[arg(hide = true, global = true, short = 'D', long, name = "data-directory")]
     data_directory: Option<String>,
 
-    /// Process INPUT as PCAP/PCAPNG with containerized Suricata (Linux only)
+    /// Process INPUT as PCAP with containerized Suricata (Linux only)
     #[arg(long)]
     pcap: bool,
 
@@ -396,18 +396,14 @@ fn validate_pcap(path: &Path) -> Result<PathBuf> {
     let mut magic = [0_u8; 4];
     file.read_exact(&mut magic)
         .with_context(|| format!("failed to read PCAP input {}", path.display()))?;
-    const PCAP_MAGICS: [[u8; 4]; 5] = [
+    const PCAP_MAGICS: [[u8; 4]; 4] = [
         [0xd4, 0xc3, 0xb2, 0xa1],
         [0xa1, 0xb2, 0xc3, 0xd4],
         [0x4d, 0x3c, 0xb2, 0xa1],
         [0xa1, 0xb2, 0x3c, 0x4d],
-        [0x0a, 0x0d, 0x0d, 0x0a],
     ];
     if !PCAP_MAGICS.contains(&magic) {
-        anyhow::bail!(
-            "input is not an uncompressed PCAP or PCAPNG file: {}",
-            path.display()
-        );
+        anyhow::bail!("input is not an uncompressed PCAP file: {}", path.display());
     }
 
     path.canonicalize()
@@ -568,8 +564,8 @@ mod tests {
     }
 
     #[test]
-    fn validates_pcap_and_pcapng_magic() {
-        for magic in [[0xd4, 0xc3, 0xb2, 0xa1], [0x0a, 0x0d, 0x0d, 0x0a]] {
+    fn validates_pcap_magic() {
+        for magic in [[0xd4, 0xc3, 0xb2, 0xa1], [0xa1, 0xb2, 0xc3, 0xd4]] {
             let dir = tempfile::tempdir().unwrap();
             let path = dir.path().join("capture file");
             let mut file = File::create(&path).unwrap();
