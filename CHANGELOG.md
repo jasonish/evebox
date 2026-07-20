@@ -8,6 +8,11 @@
   Events are imported as they arrive rather than waiting for end of input.
   https://github.com/jasonish/evebox/issues/374
 
+### Changed
+- In oneshot mode, `CTRL-C` while events are still being imported now stops
+  the import, keeping the events read so far for review. A further `CTRL-C`
+  exits.
+
 ## 0.27.0 - 2026-07-19
 
 ### Added

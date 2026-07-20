@@ -18,6 +18,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use tokio::sync;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -146,10 +147,12 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
 
     let metrics = Arc::new(Metrics::default());
 
+    let cancel_import = CancellationToken::new();
     let mut import_task = {
         let metrics = metrics.clone();
+        let cancel_import = cancel_import.clone();
         tokio::spawn(async move {
-            let result = run_import(db, limit, &inputs, metrics).await;
+            let result = run_import(db, limit, &inputs, metrics, cancel_import).await;
             if let Err(err) = &result {
                 error!("Import failure: {:#}", err);
             }
@@ -161,7 +164,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     if !no_wait {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
-                info!("Got CTRL-C, will start server now. Hit CTRL-C again to exit");
+                info!("Got CTRL-C, will start server now. Hit CTRL-C again to stop the import");
             }
             result = &mut import_task => {
                 if let Err(err) = result.context("oneshot import task failed").and_then(|r| r) {
@@ -269,13 +272,20 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     }
 
     tokio::spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Failed to register CTRL-C handler");
-        info!("Got CTRL-C, exiting");
-        cleanup_database(&db_filename);
-        cleanup_generated(&generated_cleanup);
-        std::process::exit(0);
+        loop {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to register CTRL-C handler");
+            if !import_task.is_finished() && !cancel_import.is_cancelled() {
+                info!("Got CTRL-C, stopping import. Hit CTRL-C again to exit");
+                cancel_import.cancel();
+            } else {
+                info!("Got CTRL-C, exiting");
+                cleanup_database(&db_filename);
+                cleanup_generated(&generated_cleanup);
+                std::process::exit(0);
+            }
+        }
     });
 
     server.await?;
@@ -517,6 +527,7 @@ async fn run_import(
     limit: u64,
     inputs: &[EveInput],
     metrics: Arc<crate::server::metrics::Metrics>,
+    cancel: CancellationToken,
 ) -> anyhow::Result<()> {
     let geoipdb = geoip::GeoIP::open(None).ok();
     let mut indexer = sqlite::importer::SqliteEventSink::new(sqlx, metrics);
@@ -535,7 +546,15 @@ async fn run_import(
             }
         };
         let mut last_percent = 0;
-        while let Some(mut next) = stream.next().await? {
+        loop {
+            let next = tokio::select! {
+                biased;
+                _ = cancel.cancelled() => break 'inputs,
+                next = stream.next() => next?,
+            };
+            let Some(mut next) = next else {
+                break;
+            };
             if let Some(geoipdb) = &geoipdb {
                 geoipdb.add_geoip_to_eve(&mut next);
             }
@@ -791,7 +810,11 @@ mod tests {
         assert_eq!(source_paths, &paths);
     }
 
-    async fn import_files(inputs: &[PathBuf], limit: u64) -> Result<i64> {
+    async fn import_files_with_cancel(
+        inputs: &[PathBuf],
+        limit: u64,
+        cancel: CancellationToken,
+    ) -> Result<i64> {
         let inputs: Vec<EveInput> = inputs.iter().cloned().map(EveInput::File).collect();
         let directory = tempfile::tempdir().unwrap();
         let database = directory.path().join("events.sqlite");
@@ -803,6 +826,7 @@ mod tests {
             limit,
             &inputs,
             Arc::new(Metrics::default()),
+            cancel,
         )
         .await?;
         let mut connection = connection.lock().await;
@@ -811,8 +835,28 @@ mod tests {
             .await?)
     }
 
+    async fn import_files(inputs: &[PathBuf], limit: u64) -> Result<i64> {
+        import_files_with_cancel(inputs, limit, CancellationToken::new()).await
+    }
+
     async fn import_file(input: &Path) -> Result<()> {
         import_files(&[input.to_path_buf()], 0).await.map(|_| ())
+    }
+
+    #[tokio::test]
+    async fn cancellation_stops_the_import() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(
+            file.path(),
+            b"{\"timestamp\":\"2026-07-15T12:00:00.000000+0000\",\"event_type\":\"stats\"}\n",
+        )
+        .unwrap();
+        let cancel = CancellationToken::new();
+        cancel.cancel();
+        let count = import_files_with_cancel(&[file.path().to_path_buf()], 0, cancel)
+            .await
+            .unwrap();
+        assert_eq!(count, 0);
     }
 
     #[tokio::test]

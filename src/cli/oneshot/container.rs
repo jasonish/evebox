@@ -1719,6 +1719,7 @@ mod tests {
                 0,
                 &[super::super::EveInput::File(eve.clone())],
                 Arc::new(crate::server::metrics::Metrics::default()),
+                tokio_util::sync::CancellationToken::new(),
             )
             .await
             .unwrap();
