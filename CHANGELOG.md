@@ -11,7 +11,8 @@
   `defaults.time-range` configuration key.
 - `evebox oneshot --pcap` can process one or more local PCAP files with
   containerized Suricata before loading the generated EVE events. On Linux
-  it uses local Podman or Docker with ET/Open rules.
+  it uses local Podman or Docker with ET/Open, PawPatRules, and The Hunters
+  Ledger rules.
 - Oneshot mode shows compact event-type count cards above the event list for
   quickly reviewing and filtering imported events.
 - Event and custom packet captures can now be downloaded from a Suricata

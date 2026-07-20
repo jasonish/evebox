@@ -708,9 +708,18 @@ impl<'a> ContainerJob<'a> {
     /// up after the update. The shell is invoked directly as the image
     /// entrypoint word-splits a `sh -c` command.
     async fn update_rules(&mut self) -> Result<()> {
-        const UPDATE_COMMAND: &str = "/usr/bin/suricata-update --etopen --no-test --no-reload \
-                                      --fail && chmod -R a+rX /var/lib/suricata";
-        info!("Updating ET/Open rules with {}", self.runtime.name());
+        const UPDATE_COMMAND: &str = concat!(
+            "/usr/bin/suricata-update update-sources && ",
+            "/usr/bin/suricata-update enable-source et/open && ",
+            "/usr/bin/suricata-update enable-source pawpatrules && ",
+            "/usr/bin/suricata-update enable-source the-hunters-ledger/open && ",
+            "/usr/bin/suricata-update --no-test --no-reload --fail && ",
+            "chmod -R a+rX /var/lib/suricata",
+        );
+        info!(
+            "Updating ET/Open, PawPatRules, and The Hunters Ledger rules with {}",
+            self.runtime.name()
+        );
         self.update_active = true;
         let update_mount = bind_mount(self.data_dir, "/var/lib/suricata", false)?;
         let mut update_args = self.run_args(&self.names.update_container);
@@ -726,7 +735,7 @@ impl<'a> ContainerJob<'a> {
             OsString::from(UPDATE_COMMAND),
         ]);
         self.run_checked(
-            "downloading ET/Open rules",
+            "downloading Suricata rules",
             CommandSpec::runtime(self.runtime, update_args),
         )
         .await?;
@@ -1345,7 +1354,16 @@ mod tests {
         )));
         let update_command = update.last().unwrap();
         assert!(update_command.starts_with("/usr/bin/suricata-update"));
-        for option in ["--etopen", "--no-test", "--no-reload", "--fail"] {
+        for command in [
+            "/usr/bin/suricata-update update-sources",
+            "/usr/bin/suricata-update enable-source et/open",
+            "/usr/bin/suricata-update enable-source pawpatrules",
+            "/usr/bin/suricata-update enable-source the-hunters-ledger/open",
+        ] {
+            assert!(update_command.contains(command));
+        }
+        assert!(!update_command.contains("--etopen"));
+        for option in ["--no-test", "--no-reload", "--fail"] {
             assert!(update_command.contains(option));
         }
         assert!(update_command.contains("chmod -R a+rX /var/lib/suricata"));
@@ -1434,7 +1452,10 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(err.to_string().contains("downloading ET/Open rules failed"));
+        assert!(
+            err.to_string()
+                .contains("downloading Suricata rules failed")
+        );
         let calls = executor.calls();
         assert_eq!(arg_strings(&calls[1])[0], "rm");
         assert_eq!(calls.len(), 2);
