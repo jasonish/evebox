@@ -43,6 +43,12 @@ Then visit http://localhost:5636 with your browser.
 Available downloads including RPM and Debian package repositories can be found
 at [https://evebox.org/#downloads](https://evebox.org/#downloads).
 
+On Linux, the latest release can also be installed with:
+
+```
+curl -sSf https://evebox.org/install.sh | sh
+```
+
 ### EveCtl
 
 EveCtl (https://evebox.org/evectl) is an easy way to get started with
@@ -102,6 +108,23 @@ support reporting.
 ```
 evebox server -D . --datastore sqlite --input /var/log/suricata/eve.json
 ```
+
+### Oneshot Mode
+
+To quickly inspect a Suricata EVE file, load it directly in oneshot mode:
+
+```
+evebox oneshot /path/to/eve.json
+```
+
+On Linux, oneshot mode can also process a PCAP with containerized Suricata and
+load the generated EVE events:
+
+```
+evebox oneshot --pcap /path/to/capture.pcap
+```
+
+PCAP processing requires network access and a local Podman or Docker engine.
 
 More documentation can be found at http://evebox.readthedocs.io/en/latest/.
 
