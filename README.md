@@ -119,14 +119,14 @@ First checkout EveBox:
 git clone https://github.com/jasonish/evebox.git ~/projects/evebox
 ```
 
-Then to build the binary:
+Then build the binary:
 ```
 make
 ```
 
-Or to build a release package:
+Release artifacts are built separately using Docker:
 ```
-make dist
+./packaging/build-dist.sh
 ```
 
 ### Possible Issues
