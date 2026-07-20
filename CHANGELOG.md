@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.27.0 - 2026-07-19
 
 ### Added
 - Automatic database retention can now be disabled for the server with
@@ -35,6 +35,8 @@
   automatic source selection.
 
 ### Changed
+- Event descriptions now show more useful protocol-specific details for FTP,
+  RDP, SNMP, TFTP, SMTP, MQTT, IKE, and LLMNR events.
 - With its default wait behavior, oneshot mode now exits with an error when
   the input can't be imported, for example an unreadable file or malformed
   EVE JSON, instead of opening the event viewer with partial or no data.
@@ -45,6 +47,8 @@
   binaries remain fully static and bundle a static libpcap.
 
 ### Fixed
+- The Inbox sensor selector now stays synchronized with the sensor in the URL
+  when opening direct links or using browser back navigation.
 - Stats events without capture counters can now be opened in the event view.
 - Oneshot mode now resets the browser's time range to show all imported events
   when the page is first loaded.
