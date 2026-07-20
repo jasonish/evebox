@@ -117,6 +117,13 @@ To quickly inspect a Suricata EVE file, load it directly in oneshot mode:
 evebox oneshot /path/to/eve.json
 ```
 
+EVE events can also be read from stdin by using `-` as the input, for
+example:
+
+```
+curl https://example.com/eve.json | evebox oneshot -
+```
+
 On Linux, oneshot mode can also process a PCAP with containerized Suricata and
 load the generated EVE events:
 

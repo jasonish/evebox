@@ -6,6 +6,7 @@ mod container;
 use crate::prelude::*;
 
 use crate::eve;
+use crate::eve::reader::EveReaderError;
 use crate::geoip;
 use crate::server::main::build_axum_service;
 use crate::server::metrics::Metrics;
@@ -76,7 +77,7 @@ struct Args {
     )]
     host: String,
 
-    /// EVE JSON file to import, or one or more PCAP files with --pcap
+    /// EVE JSON file to import ("-" for stdin), or one or more PCAP files with --pcap
     #[arg(value_name = "INPUT", required = true, num_args = 1..)]
     inputs: Vec<PathBuf>,
 }
@@ -89,18 +90,25 @@ pub fn command() -> clap::Command {
     Args::command()
 }
 
+/// A source of EVE events to import.
+#[derive(Debug, Clone, PartialEq)]
+enum EveInput {
+    Stdin,
+    File(PathBuf),
+}
+
 #[derive(Debug)]
 struct PreparedInput {
-    eve_paths: Vec<PathBuf>,
+    eve_inputs: Vec<EveInput>,
     #[cfg(not(windows))]
     pcap_paths: Option<Vec<PathBuf>>,
     workspace: Option<TempDir>,
 }
 
 impl PreparedInput {
-    fn eve(eve_path: PathBuf) -> Self {
+    fn eve(input: EveInput) -> Self {
         Self {
-            eve_paths: vec![eve_path],
+            eve_inputs: vec![input],
             #[cfg(not(windows))]
             pcap_paths: None,
             workspace: None,
@@ -120,7 +128,7 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let db_filename = args.database_filename.clone();
     let host = args.host.clone();
     let prepared_input = prepare_input(&args).await?;
-    let inputs = prepared_input.eve_paths.clone();
+    let inputs = prepared_input.eve_inputs.clone();
     #[cfg(not(windows))]
     let pcap_paths = prepared_input.pcap_paths.clone();
     let generated_cleanup = prepared_input.cleanup_path();
@@ -279,9 +287,15 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
         if args.inputs.len() > 1 {
             anyhow::bail!("multiple inputs are only supported with --pcap");
         }
-        return Ok(PreparedInput::eve(args.inputs[0].clone()));
+        if args.inputs[0].as_os_str() == "-" {
+            return Ok(PreparedInput::eve(EveInput::Stdin));
+        }
+        return Ok(PreparedInput::eve(EveInput::File(args.inputs[0].clone())));
     }
 
+    if args.inputs.iter().any(|input| input.as_os_str() == "-") {
+        anyhow::bail!("PCAP input from stdin is not supported");
+    }
     ensure_pcap_supported(std::env::consts::OS)?;
     let pcaps = args
         .inputs
@@ -317,7 +331,7 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
             workspace.path().display()
         );
     }
-    let mut eve_paths = Vec::with_capacity(pcaps.len());
+    let mut eve_inputs = Vec::with_capacity(pcaps.len());
     for (index, pcap) in pcaps.iter().enumerate() {
         info!(
             "Processing PCAP {} of {}: {}",
@@ -343,10 +357,10 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
                 err
             );
         }
-        eve_paths.push(eve_path);
+        eve_inputs.push(EveInput::File(eve_path));
     }
     Ok(PreparedInput {
-        eve_paths,
+        eve_inputs,
         #[cfg(not(windows))]
         pcap_paths: Some(pcaps),
         workspace: Some(workspace),
@@ -359,6 +373,40 @@ fn oneshot_pcap_service(pcap_paths: Vec<PathBuf>) -> crate::server::pcap::PcapSe
         crate::server::pcap::PcapSettings::default(),
         Some(crate::pcap::PcapSource::Files(pcap_paths)),
     )
+}
+
+/// Stream EVE records from stdin over a bounded channel. A plain OS
+/// thread does the reading so a blocked stdin never ties up an async
+/// worker thread or delays process exit.
+fn stdin_records() -> sync::mpsc::Receiver<Result<serde_json::Value, EveReaderError>> {
+    let (tx, rx) = sync::mpsc::channel(256);
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin();
+        forward_records(eve::reader::EveStreamReader::new(stdin.lock()), tx);
+    });
+    rx
+}
+
+fn forward_records<R: std::io::BufRead>(
+    mut reader: eve::reader::EveStreamReader<R>,
+    tx: sync::mpsc::Sender<Result<serde_json::Value, EveReaderError>>,
+) {
+    loop {
+        match reader.next_record() {
+            Ok(Some(record)) => {
+                // A send error means the importer is done with us, for
+                // example after reaching --limit.
+                if tx.blocking_send(Ok(record)).is_err() {
+                    return;
+                }
+            }
+            Ok(None) => return,
+            Err(err) => {
+                let _ = tx.blocking_send(Err(err));
+                return;
+            }
+        }
+    }
 }
 
 fn stage_pcap(pcap: &Path, workspace: &Path) -> Result<PathBuf> {
@@ -449,10 +497,25 @@ fn cleanup_generated(path: &Option<PathBuf>) {
     }
 }
 
+/// The record sources run_import can read from.
+enum RecordStream {
+    File(eve::reader::EveReader),
+    Stdin(sync::mpsc::Receiver<Result<serde_json::Value, EveReaderError>>),
+}
+
+impl RecordStream {
+    async fn next(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
+        match self {
+            Self::File(reader) => reader.next_file_record(),
+            Self::Stdin(rx) => rx.recv().await.transpose(),
+        }
+    }
+}
+
 async fn run_import(
     sqlx: Arc<tokio::sync::Mutex<sqlx::SqliteConnection>>,
     limit: u64,
-    inputs: &[PathBuf],
+    inputs: &[EveInput],
     metrics: Arc<crate::server::metrics::Metrics>,
 ) -> anyhow::Result<()> {
     let geoipdb = geoip::GeoIP::open(None).ok();
@@ -460,27 +523,49 @@ async fn run_import(
     let mut count = 0;
     let start = std::time::Instant::now();
     'inputs: for input in inputs {
-        let mut reader = eve::reader::EveReader::new(input.clone());
-        info!("Reading {} ({} bytes)", input.display(), reader.file_size());
+        let mut stream = match input {
+            EveInput::Stdin => {
+                info!("Reading EVE events from stdin");
+                RecordStream::Stdin(stdin_records())
+            }
+            EveInput::File(path) => {
+                let reader = eve::reader::EveReader::new(path.clone());
+                info!("Reading {} ({} bytes)", path.display(), reader.file_size());
+                RecordStream::File(reader)
+            }
+        };
         let mut last_percent = 0;
-        while let Some(mut next) = reader.next_file_record()? {
+        while let Some(mut next) = stream.next().await? {
             if let Some(geoipdb) = &geoipdb {
                 geoipdb.add_geoip_to_eve(&mut next);
             }
             indexer.submit(next).await?;
             count += 1;
-            let size = reader.file_size();
-            let offset = reader.offset();
-            let pct = if size == 0 {
-                100
-            } else {
-                ((offset as f64 / size as f64) * 100.0) as u64
+            let caught_up = match &mut stream {
+                RecordStream::File(reader) => {
+                    let size = reader.file_size();
+                    let offset = reader.offset();
+                    let pct = if size == 0 {
+                        100
+                    } else {
+                        ((offset as f64 / size as f64) * 100.0) as u64
+                    };
+                    if pct != last_percent {
+                        info!("{}: {} events ({}%)", reader.filename.display(), count, pct);
+                        last_percent = pct;
+                    }
+                    false
+                }
+                RecordStream::Stdin(rx) => {
+                    if count % 1000 == 0 {
+                        info!("stdin: {} events", count);
+                    }
+                    // Commit when caught up with a slow sender so events
+                    // don't linger unseen while waiting on the batch size.
+                    rx.is_empty()
+                }
             };
-            if pct != last_percent {
-                info!("{}: {} events ({}%)", input.display(), count, pct);
-                last_percent = pct;
-            }
-            if indexer.pending() > 300 {
+            if indexer.pending() > 300 || (caught_up && indexer.pending() > 0) {
                 indexer.commit().await?;
             }
             if limit > 0 && count == limit {
@@ -530,6 +615,49 @@ mod tests {
         let args = Args::try_parse_from(["oneshot", "first.json", "second.json"]).unwrap();
         let err = prepare_input(&args).await.unwrap_err();
         assert!(err.to_string().contains("only supported with --pcap"));
+    }
+
+    #[tokio::test]
+    async fn stdin_input_needs_no_staging() {
+        let args = Args::try_parse_from(["oneshot", "-"]).unwrap();
+        let prepared = prepare_input(&args).await.unwrap();
+        assert_eq!(prepared.eve_inputs, [EveInput::Stdin]);
+        assert!(prepared.workspace.is_none());
+    }
+
+    fn forwarded(
+        contents: String,
+    ) -> sync::mpsc::Receiver<Result<serde_json::Value, EveReaderError>> {
+        let (tx, rx) = sync::mpsc::channel(256);
+        std::thread::spawn(move || {
+            let reader = eve::reader::EveStreamReader::new(std::io::Cursor::new(contents));
+            forward_records(reader, tx);
+        });
+        rx
+    }
+
+    #[tokio::test]
+    async fn streamed_records_are_forwarded_until_eof() {
+        let event = r#"{"timestamp":"2026-07-15T12:00:00.000000+0000","event_type":"stats"}"#;
+        let mut rx = forwarded(format!("{event}\n{event}"));
+        assert!(rx.recv().await.unwrap().is_ok());
+        assert!(rx.recv().await.unwrap().is_ok());
+        assert!(rx.recv().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn streamed_parse_errors_are_forwarded() {
+        let mut rx = forwarded("{not-json}\n".to_string());
+        let err = rx.recv().await.unwrap().unwrap_err();
+        assert!(err.to_string().contains("line 1"));
+        assert!(rx.recv().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn pcap_mode_rejects_stdin_input() {
+        let args = Args::try_parse_from(["oneshot", "--pcap", "capture.pcap", "-"]).unwrap();
+        let err = prepare_input(&args).await.unwrap_err();
+        assert!(err.to_string().contains("stdin"));
     }
 
     #[test]
@@ -640,7 +768,10 @@ mod tests {
         ])
         .unwrap();
         let prepared = prepare_input(&args).await.unwrap();
-        assert_eq!(prepared.eve_paths, [file.path()]);
+        assert_eq!(
+            prepared.eve_inputs,
+            [EveInput::File(file.path().to_path_buf())]
+        );
         #[cfg(not(windows))]
         assert!(prepared.pcap_paths.is_none());
         assert!(prepared.workspace.is_none());
@@ -661,6 +792,7 @@ mod tests {
     }
 
     async fn import_files(inputs: &[PathBuf], limit: u64) -> Result<i64> {
+        let inputs: Vec<EveInput> = inputs.iter().cloned().map(EveInput::File).collect();
         let directory = tempfile::tempdir().unwrap();
         let database = directory.path().join("events.sqlite");
         let mut connection = sqlite::connection::open_connection(Some(&database), true).await?;
@@ -669,7 +801,7 @@ mod tests {
         run_import(
             connection.clone(),
             limit,
-            inputs,
+            &inputs,
             Arc::new(Metrics::default()),
         )
         .await?;

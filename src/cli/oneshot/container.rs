@@ -1717,7 +1717,7 @@ mod tests {
             super::super::run_import(
                 Arc::new(tokio::sync::Mutex::new(connection)),
                 0,
-                std::slice::from_ref(&eve),
+                &[super::super::EveInput::File(eve.clone())],
                 Arc::new(crate::server::metrics::Metrics::default()),
             )
             .await

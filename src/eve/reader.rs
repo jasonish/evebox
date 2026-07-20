@@ -293,6 +293,59 @@ impl EveReader {
     }
 }
 
+/// EVE record reader over a non-seekable stream such as stdin.
+///
+/// Follows the same rules as [`EveReader::next_file_record`]: blank lines
+/// are skipped, an unterminated final line is accepted, and an
+/// unparseable, unterminated final line is ignored as truncated input.
+pub(crate) struct EveStreamReader<R: BufRead> {
+    reader: R,
+    line: String,
+    lineno: u64,
+}
+
+impl<R: BufRead> EveStreamReader<R> {
+    pub(crate) fn new(reader: R) -> Self {
+        Self {
+            reader,
+            line: String::new(),
+            lineno: 0,
+        }
+    }
+
+    pub(crate) fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
+        loop {
+            self.line.clear();
+            let n = self.reader.read_line(&mut self.line)?;
+            if n == 0 {
+                return Ok(None);
+            }
+            let terminated = self.line.ends_with('\n');
+            self.lineno += 1;
+            let line = self.line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            match serde_json::from_str(line) {
+                Ok(record) => return Ok(Some(record)),
+                Err(source) => {
+                    if !terminated {
+                        warn!(
+                            "Ignoring unparseable, unterminated line {} (truncated input?)",
+                            self.lineno
+                        );
+                        return Ok(None);
+                    }
+                    return Err(EveReaderError::ParseError {
+                        line: self.lineno,
+                        source,
+                    });
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Metadata {
     pub filename: String,
@@ -348,6 +401,32 @@ mod tests {
         let (_dir, mut reader) = reader_for(contents.as_bytes());
         assert!(reader.next_file_record().unwrap().is_some());
         let err = reader.next_file_record().unwrap_err();
+        assert!(matches!(err, EveReaderError::ParseError { line: 2, .. }));
+    }
+
+    #[test]
+    fn stream_reader_accepts_unterminated_final_record() {
+        let contents = format!("{RECORD}\n\n{RECORD}");
+        let mut reader = EveStreamReader::new(std::io::Cursor::new(contents));
+        assert!(reader.next_record().unwrap().is_some());
+        assert!(reader.next_record().unwrap().is_some());
+        assert!(reader.next_record().unwrap().is_none());
+    }
+
+    #[test]
+    fn stream_reader_ignores_truncated_final_line() {
+        let contents = format!("{RECORD}\n{}", &RECORD[..RECORD.len() - 10]);
+        let mut reader = EveStreamReader::new(std::io::Cursor::new(contents));
+        assert!(reader.next_record().unwrap().is_some());
+        assert!(reader.next_record().unwrap().is_none());
+    }
+
+    #[test]
+    fn stream_reader_errors_on_malformed_terminated_line() {
+        let contents = format!("{RECORD}\n{{not-json}}\n");
+        let mut reader = EveStreamReader::new(std::io::Cursor::new(contents));
+        assert!(reader.next_record().unwrap().is_some());
+        let err = reader.next_record().unwrap_err();
         assert!(matches!(err, EveReaderError::ParseError { line: 2, .. }));
     }
 

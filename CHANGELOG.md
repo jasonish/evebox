@@ -1,5 +1,13 @@
 # Change Log
 
+## Unreleased
+
+### Added
+- Oneshot mode can now read EVE events from stdin by using `-` as the
+  input, for example: `curl https://example.com/eve.json | evebox oneshot -`.
+  Events are imported as they arrive rather than waiting for end of input.
+  https://github.com/jasonish/evebox/issues/374
+
 ## 0.27.0 - 2026-07-19
 
 ### Added
