@@ -212,7 +212,10 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
         .unwrap();
 
     if fresh_install {
-        update_indexes(&mut tx).await?;
+        // A fresh database runs the historical migrations first, which creates
+        // indexes that are obsolete in the current schema. Do not report their
+        // expected removal as if this were an upgrade.
+        update_indexes(&mut tx, false).await?;
     }
 
     if fresh_install {
@@ -239,7 +242,10 @@ pub(crate) async fn init_event_db(conn: &mut SqliteConnection) -> anyhow::Result
     Ok(())
 }
 
-pub(crate) async fn update_indexes(conn: &mut SqliteConnection) -> anyhow::Result<()> {
+pub(crate) async fn update_indexes(
+    conn: &mut SqliteConnection,
+    report_obsolete_indexes: bool,
+) -> anyhow::Result<()> {
     if let Some(indexes) = crate::resource::get_string("sqlite/Indexes.sql") {
         // The indexes that exist in the database.
         let current_indexes = get_current_indexes(conn).await?;
@@ -249,7 +255,9 @@ pub(crate) async fn update_indexes(conn: &mut SqliteConnection) -> anyhow::Resul
 
         for index in &current_indexes {
             if !known_indexes.contains(index) {
-                info!("Removing obsolete index {index}");
+                if report_obsolete_indexes {
+                    info!("Removing obsolete index {index}");
+                }
                 if let Err(err) = drop_index(conn, index).await {
                     error!("Failed to drop index {}: {:?}", index, err);
                 }

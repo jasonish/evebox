@@ -406,7 +406,7 @@ async fn reindex(args: &ReindexArgs) -> Result<()> {
     }
 
     info!("Rebuilding indexes.");
-    crate::sqlite::connection::update_indexes(&mut conn).await?;
+    crate::sqlite::connection::update_indexes(&mut conn, true).await?;
 
     Ok(())
 }
