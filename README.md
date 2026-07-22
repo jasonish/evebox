@@ -124,14 +124,17 @@ example:
 curl https://example.com/eve.json | evebox oneshot -
 ```
 
-On Linux, oneshot mode can also process a PCAP with containerized Suricata and
-load the generated EVE events:
+Oneshot mode can also process a PCAP with Suricata and load the generated EVE
+events:
 
 ```
 evebox oneshot --pcap /path/to/capture.pcap
 ```
 
-PCAP processing requires network access and a local Podman or Docker engine.
+On Linux this defaults to containerized Suricata with Podman or Docker. A
+locally installed Suricata (8.0.0 or newer) can be selected with
+`--suricata-backend local` and is the default on Windows and macOS. Rule
+updates require network access.
 
 More documentation can be found at http://evebox.readthedocs.io/en/latest/.
 
