@@ -31,6 +31,17 @@ jobs:
       - run: git config --global --add safe.directory /__w/evebox/evebox
       - run: cargo test --all
 
+  windows-test:
+    name: Native Windows Tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo test --all
+
   msrv-check:
     name: Check MSRV
     runs-on: ubuntu-latest

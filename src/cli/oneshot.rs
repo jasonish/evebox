@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 mod container;
+mod local;
+mod process;
 
 use crate::prelude::*;
 
@@ -12,7 +14,7 @@ use crate::server::main::build_axum_service;
 use crate::server::metrics::Metrics;
 use crate::sqlite;
 use crate::sqlite::configdb;
-use clap::{CommandFactory, FromArgMatches, Parser};
+use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -30,18 +32,30 @@ struct Args {
     #[arg(hide = true, global = true, short = 'D', long, name = "data-directory")]
     data_directory: Option<String>,
 
-    /// Process INPUT as PCAP with containerized Suricata (Linux only)
+    /// Process INPUT as PCAP with Suricata
     #[arg(long)]
     pcap: bool,
 
+    /// Suricata backend: auto, local, or container
+    #[arg(long, value_name = "BACKEND", requires = "pcap", hide = cfg!(windows))]
+    suricata_backend: Option<SuricataBackend>,
+
     /// Container runtime: auto, podman, or docker (default: auto)
-    #[arg(long, value_name = "RUNTIME", requires = "pcap")]
+    #[arg(
+        long,
+        value_name = "RUNTIME",
+        requires = "pcap",
+        conflicts_with_all = ["suricata", "suricata_update"],
+        hide = cfg!(windows)
+    )]
     container_runtime: Option<container::ContainerRuntimeChoice>,
 
     #[arg(
         long,
         value_name = "IMAGE",
         requires = "pcap",
+        conflicts_with_all = ["suricata", "suricata_update"],
+        hide = cfg!(windows),
         help = format!(
             "Suricata container image (default: {})",
             container::DEFAULT_SURICATA_IMAGE
@@ -49,8 +63,27 @@ struct Args {
     )]
     suricata_image: Option<String>,
 
-    /// Process PCAP files larger than the 4 GiB limit
-    #[arg(long, requires = "pcap")]
+    /// User-installed Suricata executable (selects the local backend)
+    #[arg(
+        long,
+        value_name = "PATH",
+        requires = "pcap",
+        conflicts_with_all = ["container_runtime", "suricata_image"]
+    )]
+    suricata: Option<PathBuf>,
+
+    /// Optional suricata-update executable; direct rule downloads are used if absent
+    #[arg(
+        long,
+        value_name = "PATH",
+        requires = "pcap",
+        conflicts_with_all = ["container_runtime", "suricata_image"],
+        hide = cfg!(windows)
+    )]
+    suricata_update: Option<PathBuf>,
+
+    /// Process PCAP files larger than the container backend's 4 GiB limit
+    #[arg(long, requires = "pcap", hide = cfg!(windows))]
     force: bool,
 
     /// Limit the number of events read
@@ -65,9 +98,9 @@ struct Args {
     #[arg(long)]
     no_wait: bool,
 
-    /// Database filename
-    #[arg(long, default_value = "./oneshot.sqlite", value_name = "FILENAME")]
-    database_filename: String,
+    /// Database filename (default: oneshot.sqlite in the EveBox cache directory)
+    #[arg(long, value_name = "FILENAME")]
+    database_filename: Option<PathBuf>,
 
     /// Hostname/IP address to bind to
     #[arg(
@@ -83,8 +116,17 @@ struct Args {
     inputs: Vec<PathBuf>,
 }
 
-/// PCAPs over this size are refused without --force as a full copy is
-/// staged in the temporary directory.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, ValueEnum)]
+enum SuricataBackend {
+    #[default]
+    Auto,
+    Local,
+    Container,
+}
+
+/// Container-backend PCAPs over this size are refused without --force as
+/// a full copy is staged in the temporary directory. The local backend
+/// reads PCAPs in place and has no size limit.
 const MAX_PCAP_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
 pub fn command() -> clap::Command {
@@ -104,6 +146,34 @@ struct PreparedInput {
     #[cfg(not(windows))]
     pcap_paths: Option<Vec<PathBuf>>,
     workspace: Option<TempDir>,
+}
+
+enum PreparedPcapBackend {
+    Container {
+        runtime: container::ContainerRuntime,
+        image: String,
+    },
+    Local(local::Programs),
+}
+
+impl PreparedPcapBackend {
+    fn is_container(&self) -> bool {
+        matches!(self, Self::Container { .. })
+    }
+}
+
+enum PcapEveGenerator {
+    Container(container::EveGenerator),
+    Local(Box<local::EveGenerator>),
+}
+
+impl PcapEveGenerator {
+    async fn generate(&self, pcap: &Path, output: &Path) -> Result<()> {
+        match self {
+            Self::Container(generator) => generator.generate(pcap, output).await,
+            Self::Local(generator) => generator.generate(pcap, output).await,
+        }
+    }
 }
 
 impl PreparedInput {
@@ -126,7 +196,10 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let limit = args.limit.unwrap_or(0);
     let no_open = args.no_open;
     let no_wait = args.no_wait;
-    let db_filename = args.database_filename.clone();
+    let db_filename = match args.database_filename.clone() {
+        Some(filename) => filename,
+        None => default_database_filename()?,
+    };
     let host = args.host.clone();
     let prepared_input = prepare_input(&args).await?;
     let inputs = prepared_input.eve_inputs.clone();
@@ -134,11 +207,10 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let pcap_paths = prepared_input.pcap_paths.clone();
     let generated_cleanup = prepared_input.cleanup_path();
 
-    info!("Using database filename {}", &db_filename);
+    info!("Using database filename {}", db_filename.display());
+    remove_stale_database(&db_filename)?;
 
-    let db_connection_builder = Arc::new(sqlite::ConnectionBuilder::filename(Some(
-        &PathBuf::from(&db_filename),
-    )));
+    let db_connection_builder = Arc::new(sqlite::ConnectionBuilder::filename(Some(&db_filename)));
     let mut conn = db_connection_builder.open_connection(true).await?;
     sqlite::connection::init_event_db(&mut conn).await?;
     let pool = sqlite::connection::open_pool(Some(&db_filename), false).await?;
@@ -306,41 +378,47 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
     if args.inputs.iter().any(|input| input.as_os_str() == "-") {
         anyhow::bail!("PCAP input from stdin is not supported");
     }
-    ensure_pcap_supported(std::env::consts::OS)?;
     let pcaps = args
         .inputs
         .iter()
-        .map(|input| {
-            let pcap = validate_pcap(input)?;
-            check_pcap_size(std::fs::metadata(&pcap)?.len(), args.force)?;
-            Ok(pcap)
-        })
+        .map(|input| validate_pcap(input))
         .collect::<Result<Vec<_>>>()?;
-    // Get the container runtime and image ready before staging the PCAP
-    // so we fail fast, before copying a potentially large file.
-    let choice = args.container_runtime.unwrap_or_default();
-    let image = args
-        .suricata_image
-        .as_deref()
-        .unwrap_or(container::DEFAULT_SURICATA_IMAGE);
-    let runtime = container::prepare_runtime(choice, image).await?;
-
-    let data_dir = suricata_data_dir(runtime.program())?;
-    crate::path::ensure_exists(&data_dir)
-        .with_context(|| format!("failed to create rules cache {}", data_dir.display()))?;
-    let generator = container::EveGenerator::prepare(runtime, image, &data_dir).await?;
+    // Resolve and validate all user-managed prerequisites before staging a
+    // potentially large PCAP.
+    let backend = prepare_pcap_backend(args, std::env::consts::OS).await?;
+    // Only the container backend stages a copy, so only it carries the
+    // size limit.
+    let stage_inputs = backend.is_container();
+    if stage_inputs {
+        for pcap in &pcaps {
+            check_pcap_size(std::fs::metadata(pcap)?.len(), args.force)?;
+        }
+    }
 
     let workspace = tempfile::Builder::new()
         .prefix("evebox-oneshot-pcap-")
         .tempdir()
         .context("failed to create private PCAP processing workspace")?;
-    if workspace.path().to_string_lossy().contains(',') {
+    if backend.is_container() && workspace.path().to_string_lossy().contains(',') {
         anyhow::bail!(
             "temporary directory {} contains a comma, which container mount \
              options cannot express; set TMPDIR to a path without commas",
             workspace.path().display()
         );
     }
+    let generator = match backend {
+        PreparedPcapBackend::Container { runtime, image } => {
+            let data_dir = suricata_data_dir(runtime.program())?;
+            crate::path::ensure_exists(&data_dir)
+                .with_context(|| format!("failed to create rules cache {}", data_dir.display()))?;
+            PcapEveGenerator::Container(
+                container::EveGenerator::prepare(runtime, &image, &data_dir).await?,
+            )
+        }
+        PreparedPcapBackend::Local(programs) => PcapEveGenerator::Local(Box::new(
+            local::EveGenerator::prepare(programs, workspace.path()).await?,
+        )),
+    };
     let mut eve_inputs = Vec::with_capacity(pcaps.len());
     for (index, pcap) in pcaps.iter().enumerate() {
         info!(
@@ -356,16 +434,21 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
                 input_workspace.display()
             )
         })?;
-        let staged_pcap = stage_pcap(pcap, &input_workspace)?;
         let eve_path = input_workspace.join("eve.json");
-
-        generator.generate(&staged_pcap, &eve_path).await?;
-        if let Err(err) = std::fs::remove_file(&staged_pcap) {
-            warn!(
-                "Failed to remove staged PCAP {}: {}",
-                staged_pcap.display(),
-                err
-            );
+        if stage_inputs {
+            // A staged copy keeps the user's original capture out of the
+            // container mounts.
+            let staged_pcap = stage_pcap(pcap, &input_workspace)?;
+            generator.generate(&staged_pcap, &eve_path).await?;
+            if let Err(err) = std::fs::remove_file(&staged_pcap) {
+                warn!(
+                    "Failed to remove staged PCAP {}: {}",
+                    staged_pcap.display(),
+                    err
+                );
+            }
+        } else {
+            generator.generate(pcap, &eve_path).await?;
         }
         eve_inputs.push(EveInput::File(eve_path));
     }
@@ -374,6 +457,91 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
         #[cfg(not(windows))]
         pcap_paths: Some(pcaps),
         workspace: Some(workspace),
+    })
+}
+
+async fn prepare_pcap_backend(args: &Args, platform: &str) -> Result<PreparedPcapBackend> {
+    match selected_backend(args, platform)? {
+        SuricataBackend::Local => prepare_local_backend(args).await,
+        SuricataBackend::Container if allows_local_fallback(args) => {
+            match container::resolve_runtime(args.container_runtime.unwrap_or_default()).await {
+                Ok(runtime) => prepare_container_backend_with_runtime(args, runtime).await,
+                Err(runtime_error) => {
+                    warn!(
+                        "No usable container runtime was found: {runtime_error:#}; trying local Suricata"
+                    );
+                    prepare_local_backend(args).await.with_context(|| {
+                        format!(
+                            "no usable container runtime was found ({runtime_error:#}) and \
+                             the local Suricata backend could not be prepared"
+                        )
+                    })
+                }
+            }
+        }
+        SuricataBackend::Container => prepare_container_backend(args, platform).await,
+        SuricataBackend::Auto => unreachable!("auto backend must be resolved before preparation"),
+    }
+}
+
+fn allows_local_fallback(args: &Args) -> bool {
+    args.suricata_backend.unwrap_or_default() == SuricataBackend::Auto
+        && args.container_runtime.is_none()
+        && args.suricata_image.is_none()
+}
+
+fn selected_backend(args: &Args, platform: &str) -> Result<SuricataBackend> {
+    let requested = args.suricata_backend.unwrap_or_default();
+    let has_local_options = args.suricata.is_some() || args.suricata_update.is_some();
+    let has_container_options = args.container_runtime.is_some() || args.suricata_image.is_some();
+
+    if requested == SuricataBackend::Local && has_container_options {
+        anyhow::bail!(
+            "--suricata-backend local cannot be combined with container runtime or image options"
+        );
+    }
+    if requested == SuricataBackend::Container && has_local_options {
+        anyhow::bail!(
+            "--suricata-backend container cannot be combined with local executable options"
+        );
+    }
+
+    Ok(match requested {
+        SuricataBackend::Auto if has_local_options => SuricataBackend::Local,
+        SuricataBackend::Auto if has_container_options => SuricataBackend::Container,
+        SuricataBackend::Auto if platform != "linux" => SuricataBackend::Local,
+        SuricataBackend::Auto => SuricataBackend::Container,
+        other => other,
+    })
+}
+
+async fn prepare_local_backend(args: &Args) -> Result<PreparedPcapBackend> {
+    let programs =
+        local::Programs::discover(args.suricata.as_deref(), args.suricata_update.as_deref())
+            .await?;
+    Ok(PreparedPcapBackend::Local(programs))
+}
+
+async fn prepare_container_backend(args: &Args, platform: &str) -> Result<PreparedPcapBackend> {
+    if platform != "linux" {
+        anyhow::bail!("the container Suricata backend is currently supported on Linux only");
+    }
+    let runtime = container::resolve_runtime(args.container_runtime.unwrap_or_default()).await?;
+    prepare_container_backend_with_runtime(args, runtime).await
+}
+
+async fn prepare_container_backend_with_runtime(
+    args: &Args,
+    runtime: container::ContainerRuntime,
+) -> Result<PreparedPcapBackend> {
+    let image = args
+        .suricata_image
+        .as_deref()
+        .unwrap_or(container::DEFAULT_SURICATA_IMAGE);
+    container::prepare_runtime(runtime, image).await?;
+    Ok(PreparedPcapBackend::Container {
+        runtime,
+        image: image.to_string(),
     })
 }
 
@@ -455,13 +623,6 @@ fn check_pcap_size(size: u64, force: bool) -> Result<()> {
     Ok(())
 }
 
-fn ensure_pcap_supported(platform: &str) -> Result<()> {
-    if platform != "linux" {
-        anyhow::bail!("oneshot PCAP processing is currently supported on Linux only");
-    }
-    Ok(())
-}
-
 fn validate_pcap(path: &Path) -> Result<PathBuf> {
     let metadata = std::fs::metadata(path)
         .with_context(|| format!("failed to access PCAP input {}", path.display()))?;
@@ -484,14 +645,63 @@ fn validate_pcap(path: &Path) -> Result<PathBuf> {
         anyhow::bail!("input is not an uncompressed PCAP file: {}", path.display());
     }
 
-    path.canonicalize()
-        .with_context(|| format!("failed to resolve PCAP input {}", path.display()))
+    // On Windows canonicalize returns \\?\-prefixed extended-length
+    // paths, which Suricata is not expected to handle when reading the
+    // PCAP in place, so settle for an absolute path there.
+    #[cfg(windows)]
+    let resolved = std::path::absolute(path);
+    #[cfg(not(windows))]
+    let resolved = path.canonicalize();
+    resolved.with_context(|| format!("failed to resolve PCAP input {}", path.display()))
 }
 
-fn cleanup_database(filename: &str) {
-    let _ = std::fs::remove_file(filename);
-    let _ = std::fs::remove_file(format!("{}-shm", filename));
-    let _ = std::fs::remove_file(format!("{}-wal", filename));
+/// The default database lives in the EveBox cache directory rather than
+/// the current directory so any leftovers never land in a user's working
+/// directory.
+fn default_database_filename() -> Result<PathBuf> {
+    let dirs = directories::ProjectDirs::from("org", "evebox", "evebox")
+        .context("failed to determine a cache directory for the oneshot database")?;
+    let cache_dir = dirs.cache_dir();
+    crate::path::ensure_exists(cache_dir)
+        .with_context(|| format!("failed to create cache directory {}", cache_dir.display()))?;
+    Ok(cache_dir.join("oneshot.sqlite"))
+}
+
+/// Remove database files left over from a previous run: Windows cannot
+/// remove them at exit while SQLite still holds them open, and importing
+/// into a leftover database would mix in the previous run's events.
+fn remove_stale_database(filename: &Path) -> Result<()> {
+    for path in database_files(filename) {
+        match std::fs::remove_file(&path) {
+            Ok(()) => info!("Removed stale database file {}", path.display()),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => {
+                return Err(err).with_context(|| {
+                    format!(
+                        "failed to remove stale database file {}, is another \
+                         oneshot instance running?",
+                        path.display()
+                    )
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn database_files(filename: &Path) -> [PathBuf; 3] {
+    let suffixed = |suffix: &str| {
+        let mut path = filename.as_os_str().to_owned();
+        path.push(suffix);
+        PathBuf::from(path)
+    };
+    [filename.to_path_buf(), suffixed("-shm"), suffixed("-wal")]
+}
+
+fn cleanup_database(filename: &Path) {
+    for path in database_files(filename) {
+        let _ = std::fs::remove_file(path);
+    }
 }
 
 fn cleanup_generated(path: &Option<PathBuf>) {
@@ -680,7 +890,7 @@ mod tests {
     }
 
     #[test]
-    fn container_options_require_pcap_mode() {
+    fn pcap_backend_options_require_pcap_mode() {
         for option in [
             ["oneshot", "--container-runtime", "docker", "eve.json"],
             [
@@ -689,6 +899,14 @@ mod tests {
                 "example/suricata",
                 "eve.json",
             ],
+            ["oneshot", "--suricata", "/usr/bin/suricata", "eve.json"],
+            [
+                "oneshot",
+                "--suricata-update",
+                "/usr/bin/suricata-update",
+                "eve.json",
+            ],
+            ["oneshot", "--suricata-backend", "local", "eve.json"],
         ] {
             let err = Args::try_parse_from(option).unwrap_err();
             assert_eq!(err.kind(), ErrorKind::MissingRequiredArgument);
@@ -725,19 +943,19 @@ mod tests {
     }
 
     #[test]
-    fn pcap_mode_rejects_non_linux_platforms() {
-        let err = ensure_pcap_supported("windows").unwrap_err();
-        assert!(err.to_string().contains("Linux only"));
-    }
-
-    #[test]
     fn validates_pcap_magic() {
         for magic in [[0xd4, 0xc3, 0xb2, 0xa1], [0xa1, 0xb2, 0xc3, 0xd4]] {
             let dir = tempfile::tempdir().unwrap();
             let path = dir.path().join("capture file");
             let mut file = File::create(&path).unwrap();
             file.write_all(&magic).unwrap();
-            assert_eq!(validate_pcap(&path).unwrap(), path.canonicalize().unwrap());
+            // Windows resolves to an absolute path without the \\?\
+            // prefix canonicalize would add.
+            #[cfg(windows)]
+            let expected = std::path::absolute(&path).unwrap();
+            #[cfg(not(windows))]
+            let expected = path.canonicalize().unwrap();
+            assert_eq!(validate_pcap(&path).unwrap(), expected);
         }
     }
 

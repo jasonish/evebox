@@ -173,7 +173,7 @@ impl PcapService {
         self.routing.read().unwrap().clone()
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, not(windows)))]
     pub(crate) fn source(&self) -> Option<&PcapSource> {
         self.source.as_ref()
     }
@@ -454,7 +454,10 @@ mod test {
         crate::config::Config::new(args, path.to_str()).unwrap()
     }
 
+    /// Server-local spool sources are not supported on Windows, where
+    /// configure() ignores pcap.directory.
     #[test]
+    #[cfg(not(windows))]
     fn test_configure_local_spool() {
         let dir = tempfile::tempdir().unwrap();
         let yaml = format!("pcap:\n  directory: {}\n", dir.path().display());
@@ -476,6 +479,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn test_configure_normalizes_blank_and_padded_strings() {
         let dir = tempfile::tempdir().unwrap();
         let config = yaml_config(

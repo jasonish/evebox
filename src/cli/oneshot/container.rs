@@ -3,11 +3,17 @@
 
 use crate::prelude::*;
 
+#[cfg(test)]
+use super::process::CommandResult;
+use super::process::{
+    CommandSpec, ExecuteError, ExecutionMode, ProcessExecutor, TokioProcessExecutor,
+    validate_eve_output,
+};
+
 use clap::ValueEnum;
 use std::ffi::OsString;
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use uuid::Uuid;
 
 pub(super) const DEFAULT_SURICATA_IMAGE: &str = "docker.io/jasonish/suricata:8.0";
@@ -44,132 +50,26 @@ impl ContainerRuntime {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct CommandSpec {
-    program: OsString,
-    args: Vec<OsString>,
-}
-
 impl CommandSpec {
-    fn new(
-        program: impl Into<OsString>,
-        args: impl IntoIterator<Item = impl Into<OsString>>,
-    ) -> Self {
-        Self {
-            program: program.into(),
-            args: args.into_iter().map(Into::into).collect(),
-        }
-    }
-
     fn runtime(
         runtime: ContainerRuntime,
         args: impl IntoIterator<Item = impl Into<OsString>>,
     ) -> Self {
         Self::new(runtime.program(), args)
     }
-
-    fn display(&self) -> String {
-        std::iter::once(&self.program)
-            .chain(self.args.iter())
-            .map(|arg| arg.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum ExecutionMode {
-    /// Capture output, keeping podman/docker chatter such as created and
-    /// removed resource names out of the user's terminal.
-    Capture,
-    /// Show live output, for the containers doing real, visible work.
-    Interruptible,
-}
-
-#[derive(Debug)]
-struct CommandResult {
-    success: bool,
-    code: Option<i32>,
-    stdout: String,
-    stderr: String,
-}
-
-#[derive(Debug, thiserror::Error)]
-enum ExecuteError {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[error("interrupted")]
-    Interrupted,
-}
-
-#[async_trait::async_trait]
-trait ProcessExecutor: Send + Sync {
-    async fn execute(
-        &self,
-        command: &CommandSpec,
-        mode: ExecutionMode,
-    ) -> Result<CommandResult, ExecuteError>;
-}
-
-struct TokioProcessExecutor;
-
-#[async_trait::async_trait]
-impl ProcessExecutor for TokioProcessExecutor {
-    async fn execute(
-        &self,
-        command: &CommandSpec,
-        mode: ExecutionMode,
-    ) -> Result<CommandResult, ExecuteError> {
-        let mut process = tokio::process::Command::new(&command.program);
-        process.args(&command.args).stdin(Stdio::null());
-
-        if matches!(mode, ExecutionMode::Capture) {
-            process.kill_on_drop(true);
-            let output = tokio::select! {
-                output = process.output() => output?,
-                signal = tokio::signal::ctrl_c() => {
-                    signal?;
-                    return Err(ExecuteError::Interrupted);
-                }
-            };
-            return Ok(CommandResult {
-                success: output.status.success(),
-                code: output.status.code(),
-                stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-                stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-            });
-        }
-
-        process.stdout(Stdio::inherit()).stderr(Stdio::inherit());
-        let mut child = process.kill_on_drop(true).spawn()?;
-        let status = tokio::select! {
-            status = child.wait() => status?,
-            signal = tokio::signal::ctrl_c() => {
-                signal?;
-                let _ = child.kill().await;
-                return Err(ExecuteError::Interrupted);
-            }
-        };
-
-        Ok(CommandResult {
-            success: status.success(),
-            code: status.code(),
-            stdout: String::new(),
-            stderr: String::new(),
-        })
-    }
-}
-
-/// Resolve the container runtime and make sure the Suricata image is
-/// present and current, before any real processing starts.
-pub(super) async fn prepare_runtime(
-    choice: ContainerRuntimeChoice,
-    image: &str,
-) -> Result<ContainerRuntime> {
-    let executor = TokioProcessExecutor;
-    let runtime = resolve_runtime(choice, &executor).await?;
-    ensure_image_is_current(&executor, runtime, image, &TerminalImageUpdatePrompt).await?;
-    Ok(runtime)
+/// Make sure the Suricata image is present and current before any real
+/// processing starts.
+pub(super) async fn prepare_runtime(runtime: ContainerRuntime, image: &str) -> Result<()> {
+    ensure_image_is_current(
+        &TokioProcessExecutor,
+        runtime,
+        image,
+        &TerminalImageUpdatePrompt,
+    )
+    .await?;
+    Ok(())
 }
 
 pub(super) struct EveGenerator {
@@ -403,7 +303,11 @@ fn parse_suricata_version(output: &str) -> Result<semver::Version> {
         .context("Suricata version output did not contain a semantic version")
 }
 
-async fn resolve_runtime(
+pub(super) async fn resolve_runtime(choice: ContainerRuntimeChoice) -> Result<ContainerRuntime> {
+    resolve_runtime_with_executor(choice, &TokioProcessExecutor).await
+}
+
+async fn resolve_runtime_with_executor(
     choice: ContainerRuntimeChoice,
     executor: &dyn ProcessExecutor,
 ) -> Result<ContainerRuntime> {
@@ -674,7 +578,6 @@ impl<'a> ContainerJob<'a> {
             OsString::from("none"),
             OsString::from("-l"),
             OsString::from("/var/log/suricata"),
-            OsString::from("--init-errors-fatal"),
         ]);
         self.run_checked(
             "running Suricata against the PCAP",
@@ -717,7 +620,7 @@ impl<'a> ContainerJob<'a> {
             "chmod -R a+rX /var/lib/suricata",
         );
         info!(
-            "Updating ET/Open, PawPatRules, and The Hunters Ledger rules with {}",
+            "Updating ET/Open, PAW Patrules, and The Hunters Ledger rules with {}",
             self.runtime.name()
         );
         self.update_active = true;
@@ -832,28 +735,6 @@ async fn generate_eve_with(
     job.cleanup().await;
     result?;
     validate_eve_output(output)
-}
-
-fn validate_eve_output(output: &Path) -> Result<()> {
-    let metadata = std::fs::metadata(output).with_context(|| {
-        format!(
-            "Suricata completed but did not produce a readable eve.json at {}",
-            output.display()
-        )
-    })?;
-    if !metadata.is_file() {
-        anyhow::bail!(
-            "Suricata output is not a regular eve.json file: {}",
-            output.display()
-        );
-    }
-    std::fs::File::open(output).with_context(|| {
-        format!(
-            "Suricata produced an unreadable eve.json at {}",
-            output.display()
-        )
-    })?;
-    Ok(())
 }
 
 #[cfg(test)]
@@ -1393,7 +1274,6 @@ mod tests {
             "none".to_string(),
             "-l".to_string(),
             "/var/log/suricata".to_string(),
-            "--init-errors-fatal".to_string(),
         ]));
 
         assert_eq!(
@@ -1665,7 +1545,7 @@ mod tests {
             ContainerRuntimeChoice::Podman,
             ContainerRuntimeChoice::Docker,
         ] {
-            let Ok(runtime) = resolve_runtime(choice, &executor).await else {
+            let Ok(runtime) = resolve_runtime_with_executor(choice, &executor).await else {
                 continue;
             };
             let tempdir = tempfile::tempdir().unwrap();
