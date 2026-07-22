@@ -114,7 +114,7 @@ cross_run() {
     fi
     dockerfile="./docker/builder/Dockerfile.cross"
     tag="private/evebox/builder:cross"
-    if [ -z "${GITHUB_REPOSITORY}" -a -t ]; then
+    if [ -z "${GITHUB_REPOSITORY}" -a -t 1 ]; then
         it="-it"
     else
         it=""
