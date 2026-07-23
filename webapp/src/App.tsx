@@ -27,6 +27,7 @@ import { AlertsDashboard } from "./dashboards/Alerts";
 import { Overview } from "./dashboards/Overview";
 import { DHCP } from "./dashboards/DHCP";
 import { DnsDashboard } from "./dashboards/DNS";
+import { AnomaliesDashboard } from "./dashboards/Anomalies";
 import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 import { Ja4Report } from "./pages/ja4";
 import { PcapDownload } from "./PcapDownload";
@@ -64,6 +65,7 @@ export function AppRouter() {
         <Route path={"dashboards/alerts"} component={AlertsDashboard} />
         <Route path={"dashboards/dhcp"} component={DHCP} />
         <Route path={"dashboards/dns"} component={DnsDashboard} />
+        <Route path={"dashboards/anomalies"} component={AnomaliesDashboard} />
         <Route path={"dashboards/address/:address"} component={Address} />
         <Route path="ja4/:ja4" component={Ja4Report} />
         <Route path={"stats"} component={Stats} />

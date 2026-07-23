@@ -138,6 +138,10 @@ impl ElasticEventRepo {
             match name {
                 "alert.category" => "alert.category.keyword",
                 "alert.signature" => "alert.signature.keyword",
+                "anomaly.app_proto" => "anomaly.app_proto.keyword",
+                "anomaly.event" => "anomaly.event.keyword",
+                "anomaly.layer" => "anomaly.layer.keyword",
+                "anomaly.type" => "anomaly.type.keyword",
                 "app_proto" => "app_proto.keyword",
                 "community_id" => "community_id.keyword",
                 "dest_ip" => "dest_ip.keyword",
