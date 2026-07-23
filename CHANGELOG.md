@@ -28,6 +28,8 @@
 - The Alerts dashboard adds summary cards for alert volume, counts by
   severity, and distinct signatures seen, plus alert categories and
   alerting protocols tables.
+- The Overview dashboard adds summary cards for event volume, alert
+  count and share, and the distinct event types and sensors seen.
 - New Anomalies dashboard for Suricata protocol parser and decoder
   anomalies, with summary cards, anomaly activity over time, and
   breakdowns by anomaly event, affected application protocol, type,

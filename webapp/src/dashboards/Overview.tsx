@@ -8,7 +8,7 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
-import { API, AggRequest } from "../api";
+import { API, AggRequest, fetchAgg } from "../api";
 import { TIME_RANGE, Top } from "../Top";
 import { Chart, ChartConfiguration } from "chart.js";
 import { RefreshButton } from "../common/RefreshButton";
@@ -18,6 +18,7 @@ import { Colors } from "../common/colors";
 import { getChartCanvasElement, loadingTracker } from "../util";
 import { createStore } from "solid-js/store";
 import { CountValueDataTable } from "../components/CountValueDataTable";
+import { StatCard } from "../components/StatCard";
 import dayjs from "dayjs";
 
 interface AggResults {
@@ -34,6 +35,28 @@ function defaultAggResults(): AggResults {
   };
 }
 
+interface Stats {
+  events: number | null;
+  alerts: number | null;
+  eventTypes: number | null;
+  sensors: number | null;
+  sensorsCapped: boolean;
+}
+
+function defaultStats(): Stats {
+  return {
+    events: null,
+    alerts: null,
+    eventTypes: null,
+    sensors: null,
+    sensorsCapped: false,
+  };
+}
+
+// The distinct sensor count is exact until this aggregation row limit
+// is hit, then shown as a lower bound.
+const SENSOR_LIMIT = 100;
+
 export function Overview() {
   const [version, setVersion] = createSignal(0);
   const [loading, setLoading] = createSignal(0);
@@ -47,6 +70,8 @@ export function Overview() {
   const [searchParams, setSearchParams] = useSearchParams<{
     sensor?: string;
   }>();
+
+  const [stats, setStats] = createStore<Stats>(defaultStats());
 
   const [topAlerts, setTopAlerts] =
     createStore<AggResults>(defaultAggResults());
@@ -102,6 +127,28 @@ export function Overview() {
     if (searchParams.sensor) {
       q += `host:${searchParams.sensor}`;
     }
+
+    // Stat cards. The event type aggregation provides the total, the
+    // alert count, and the distinct types seen.
+    setStats(defaultStats());
+    loadingTracker(setLoading, async () => {
+      const request = {
+        order: "desc" as const,
+        time_range: TIME_RANGE(),
+        q: q.trim() === "" ? undefined : q,
+      };
+      const [types, sensors] = await Promise.all([
+        fetchAgg({ ...request, size: 100, field: "event_type" }),
+        fetchAgg({ ...request, size: SENSOR_LIMIT, field: "host" }),
+      ]);
+      setStats({
+        events: types.rows.reduce((acc, row) => acc + row.count, 0),
+        alerts: types.rows.find((row) => row.key === "alert")?.count || 0,
+        eventTypes: types.rows.length,
+        sensors: sensors.rows.length,
+        sensorsCapped: sensors.rows.length >= SENSOR_LIMIT,
+      });
+    });
 
     loadingTracker(setLoading, async () => {
       let request: AggRequest = {
@@ -474,6 +521,52 @@ export function Overview() {
                 />
               </div>
             </form>
+          </div>
+        </div>
+
+        <div class="row mt-2 g-2">
+          <div class="col-6 col-lg">
+            <StatCard
+              value={
+                stats.events === null ? null : stats.events.toLocaleString()
+              }
+              label="Events"
+            />
+          </div>
+          <div class="col-6 col-lg">
+            <StatCard
+              value={
+                stats.alerts === null ? null : stats.alerts.toLocaleString()
+              }
+              label="Alerts"
+              sub={
+                stats.alerts !== null && stats.events
+                  ? `${((stats.alerts / stats.events) * 100).toFixed(1)}% of events`
+                  : undefined
+              }
+            />
+          </div>
+          <div class="col-6 col-lg">
+            <StatCard
+              value={
+                stats.eventTypes === null
+                  ? null
+                  : stats.eventTypes.toLocaleString()
+              }
+              label="Event Types"
+            />
+          </div>
+          <div class="col-6 col-lg">
+            <StatCard
+              value={
+                stats.sensorsCapped
+                  ? `${stats.sensors}+`
+                  : stats.sensors === null
+                    ? null
+                    : stats.sensors.toLocaleString()
+              }
+              label="Sensors"
+            />
           </div>
         </div>
 
