@@ -25,6 +25,9 @@
   SERVFAIL rates, and distinct clients and servers seen, plus DNS
   activity over time, the most and least requested names, top clients
   and servers, and top NXDOMAIN names and clients.
+- The Alerts dashboard adds summary cards for alert volume, counts by
+  severity, and distinct signatures seen, plus an alert categories
+  table.
 
 ### Changed
 - Oneshot PCAP processing no longer aborts when individual rules fail to

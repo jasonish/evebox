@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { TIME_RANGE, Top } from "../Top";
-import { Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 import { API, fetchAgg } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
@@ -10,6 +10,7 @@ import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { loadingTracker } from "../util";
 import { CountValueDataTable } from "../components/CountValueDataTable";
+import { StatCard } from "../components/StatCard";
 import { Colors } from "../common/colors";
 import { createStore } from "solid-js/store";
 import type { SetStoreFunction } from "solid-js/store";
@@ -32,26 +33,6 @@ function defaultModel(): Model {
     loading: false,
     timestamp: null,
   };
-}
-
-function StatCard(props: {
-  value: string | null;
-  label: string;
-  sub?: string;
-}) {
-  return (
-    <div class="card h-100">
-      <div class="card-body d-flex flex-column align-items-center justify-content-center px-3 py-2 text-center">
-        <span class="fs-4 fw-semibold lh-sm">{props.value ?? "-"}</span>
-        <span class="app-event-summary-label mt-1 text-body-secondary fw-medium lh-sm text-uppercase">
-          {props.label}
-        </span>
-        <Show when={props.sub}>
-          <span class="text-body-secondary small lh-sm">{props.sub}</span>
-        </Show>
-      </div>
-    </div>
-  );
 }
 
 interface Stats {

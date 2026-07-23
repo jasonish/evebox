@@ -3,13 +3,14 @@
 
 import { TIME_RANGE, Top } from "../Top";
 import { createEffect, createSignal, onCleanup } from "solid-js";
-import { API } from "../api";
+import { API, fetchAgg } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
 import { useSearchParams } from "@solidjs/router";
 import { SensorSelect } from "../common/SensorSelect";
 import { loadingTracker } from "../util";
 import { CountValueDataTable } from "../components/CountValueDataTable";
+import { StatCard } from "../components/StatCard";
 import { Colors } from "../common/colors";
 import { createStore } from "solid-js/store";
 import type { SetStoreFunction } from "solid-js/store";
@@ -33,6 +34,30 @@ function defaultModel(): Model {
     timestamp: null,
   };
 }
+
+interface Stats {
+  alerts: number | null;
+  high: number | null;
+  medium: number | null;
+  low: number | null;
+  signatures: number | null;
+  signaturesCapped: boolean;
+}
+
+function defaultStats(): Stats {
+  return {
+    alerts: null,
+    high: null,
+    medium: null,
+    low: null,
+    signatures: null,
+    signaturesCapped: false,
+  };
+}
+
+// The distinct signature count is exact until this aggregation row
+// limit is hit, then shown as a lower bound.
+const SIGNATURE_LIMIT = 500;
 
 export function AlertsDashboard() {
   const [version, setVersion] = createSignal(0);
@@ -59,6 +84,10 @@ export function AlertsDashboard() {
 
   const [leastAlertingDest, setLeastAlertingDest] =
     createStore<Model>(defaultModel());
+
+  const [categories, setCategories] = createStore<Model>(defaultModel());
+
+  const [stats, setStats] = createStore<Stats>(defaultStats());
 
   let histogram: any = undefined;
 
@@ -89,13 +118,8 @@ export function AlertsDashboard() {
         datasets: [
           {
             data: dataValues,
-
-            backgroundColor: dataValues.map(
-              (_, index) => Colors[index % Colors.length],
-            ),
-            borderColor: dataValues.map(
-              (_, index) => Colors[index % Colors.length],
-            ),
+            backgroundColor: Colors[0],
+            borderColor: Colors[0],
           },
         ],
       },
@@ -147,6 +171,39 @@ export function AlertsDashboard() {
       buildChart(response);
     });
 
+    // Stat cards: alert counts by severity and distinct signatures.
+    setStats(defaultStats());
+    loadingTracker(setLoading, async () => {
+      const request = {
+        order: "desc" as const,
+        time_range: timeRange,
+      };
+      const [severities, signatures] = await Promise.all([
+        fetchAgg({
+          ...request,
+          size: 100,
+          field: "alert.severity",
+          q: [...queryString, "event_type:alert"].join(" "),
+        }),
+        fetchAgg({
+          ...request,
+          size: SIGNATURE_LIMIT,
+          field: "alert.signature",
+          q: [...queryString, "event_type:alert"].join(" "),
+        }),
+      ]);
+      const severityCount = (severity: string) =>
+        severities.rows.find((row) => String(row.key) === severity)?.count || 0;
+      setStats({
+        alerts: severities.rows.reduce((acc, row) => acc + row.count, 0),
+        high: severityCount("1"),
+        medium: severityCount("2"),
+        low: severityCount("3"),
+        signatures: signatures.rows.length,
+        signaturesCapped: signatures.rows.length >= SIGNATURE_LIMIT,
+      });
+    });
+
     let loaders: {
       field: string;
       q: string;
@@ -195,6 +252,13 @@ export function AlertsDashboard() {
         order: "asc",
         setter: setLeastAlertingDest,
       },
+      // Alert categories.
+      {
+        field: "alert.category",
+        q: "event_type:alert",
+        order: "desc",
+        setter: setCategories,
+      },
     ];
 
     for (const loader of loaders) {
@@ -234,6 +298,16 @@ export function AlertsDashboard() {
       return `since ${timestamp.fromNow()}`;
     }
     return undefined;
+  };
+
+  const formatCount = (count: number | null) =>
+    count === null ? null : count.toLocaleString();
+
+  const percentOfAlerts = (count: number | null) => {
+    if (count === null || !stats.alerts) {
+      return undefined;
+    }
+    return `${((count / stats.alerts) * 100).toFixed(1)}% of alerts`;
   };
 
   return (
@@ -302,6 +376,43 @@ export function AlertsDashboard() {
           </div>
         </div>
 
+        <div class="row mt-2 g-2">
+          <div class="col-6 col-lg">
+            <StatCard value={formatCount(stats.alerts)} label="Alerts" />
+          </div>
+          <div class="col-6 col-lg">
+            <StatCard
+              value={formatCount(stats.high)}
+              label="High (1)"
+              sub={percentOfAlerts(stats.high)}
+            />
+          </div>
+          <div class="col-6 col-lg">
+            <StatCard
+              value={formatCount(stats.medium)}
+              label="Medium (2)"
+              sub={percentOfAlerts(stats.medium)}
+            />
+          </div>
+          <div class="col-6 col-lg">
+            <StatCard
+              value={formatCount(stats.low)}
+              label="Low (3)"
+              sub={percentOfAlerts(stats.low)}
+            />
+          </div>
+          <div class="col-6 col-lg">
+            <StatCard
+              value={
+                stats.signaturesCapped
+                  ? `${stats.signatures}+`
+                  : formatCount(stats.signatures)
+              }
+              label="Signatures"
+            />
+          </div>
+        </div>
+
         <div class="row">
           <div class="col mt-2">
             <canvas id="histogram" class="app-chart-alerts"></canvas>
@@ -328,6 +439,19 @@ export function AlertsDashboard() {
               rows={leastAlerting.rows}
               loading={leastAlerting.loading}
               suffix={formatSuffix(leastAlerting.timestamp)}
+            />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6 mt-2">
+            <CountValueDataTable
+              title={"Alert Categories"}
+              label={"Category"}
+              searchField="alert.category"
+              rows={categories.rows}
+              loading={categories.loading}
+              suffix={formatSuffix(categories.timestamp)}
             />
           </div>
         </div>
