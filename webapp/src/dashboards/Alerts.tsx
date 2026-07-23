@@ -87,6 +87,8 @@ export function AlertsDashboard() {
 
   const [categories, setCategories] = createStore<Model>(defaultModel());
 
+  const [appProtos, setAppProtos] = createStore<Model>(defaultModel());
+
   const [stats, setStats] = createStore<Stats>(defaultStats());
 
   let histogram: any = undefined;
@@ -258,6 +260,13 @@ export function AlertsDashboard() {
         q: "event_type:alert",
         order: "desc",
         setter: setCategories,
+      },
+      // Application protocols of alerting traffic.
+      {
+        field: "app_proto",
+        q: "event_type:alert",
+        order: "desc",
+        setter: setAppProtos,
       },
     ];
 
@@ -444,7 +453,7 @@ export function AlertsDashboard() {
         </div>
 
         <div class="row">
-          <div class="col-lg-6 mt-2">
+          <div class="col mt-2">
             <CountValueDataTable
               title={"Alert Categories"}
               label={"Category"}
@@ -452,6 +461,19 @@ export function AlertsDashboard() {
               rows={categories.rows}
               loading={categories.loading}
               suffix={formatSuffix(categories.timestamp)}
+            />
+          </div>
+          <div class="col mt-2">
+            <CountValueDataTable
+              title={"Alerting Protocols"}
+              label={"Protocol"}
+              searchField="app_proto"
+              tooltip={
+                "Application protocol of the alerting traffic. A value of failed means the protocol could not be identified."
+              }
+              rows={appProtos.rows}
+              loading={appProtos.loading}
+              suffix={formatSuffix(appProtos.timestamp)}
             />
           </div>
         </div>
