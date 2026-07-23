@@ -239,6 +239,9 @@ export function Top(props: {
                 <A href={"/dashboards/dhcp"} class={"dropdown-item"}>
                   DHCP
                 </A>
+                <A href={"/dashboards/dns"} class={"dropdown-item"}>
+                  DNS
+                </A>
               </NavDropdown>
             </Nav>
             <Nav>

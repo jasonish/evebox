@@ -21,6 +21,10 @@
   input, for example: `curl https://example.com/eve.json | evebox oneshot -`.
   Events are imported as they arrive rather than waiting for end of input.
   https://github.com/jasonish/evebox/issues/374
+- New DNS dashboard with summary cards for query volume, NXDOMAIN and
+  SERVFAIL rates, and distinct clients and servers seen, plus DNS
+  activity over time, the most and least requested names, top clients
+  and servers, and top NXDOMAIN names and clients.
 
 ### Changed
 - Oneshot PCAP processing no longer aborts when individual rules fail to
