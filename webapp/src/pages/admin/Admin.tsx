@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { createStore } from "solid-js/store";
-import { Top } from "../../Top";
 import * as api from "../../api";
 import { Show, createEffect, createMemo, createResource } from "solid-js";
 import { distributionName, serverConfig } from "../../config";
+import { AdminPageHeader } from "./AdminLayout";
 
 interface AutoArchiveSettings {
   enabled: boolean;
@@ -177,76 +177,227 @@ export function Admin() {
     }
   };
 
-  const links = () => {
-    let links = [<>[</>];
-    if (serverConfig()?.datastore === "elasticsearch") {
-      links.push(<a href="/admin/elastic">{distributionName()}</a>);
-      links.push(<> | </>);
-    }
-    links.push(<a href="/admin/agents">Agents</a>);
-    links.push(<> | </>);
-    links.push(<a href="/admin/filters">Filters</a>);
-    links.push(<>]</>);
-    return links;
-  };
-
   return (
     <>
-      <Top />
-      <div class="container mt-2">
-        <div class="row">
-          <div class="col">
-            <span class="float-end">{links()}</span>
+      <AdminPageHeader
+        title="General"
+        subtitle="Server maintenance and event retention."
+      />
+
+      <div class="row">
+        <div class="col">
+          <div class="card">
+            <form class="card-body d-flex justify-content-between align-items-center">
+              Update JA4db:
+              <div>
+                <Show when={state.ja4.updating}>
+                  <div class="badge text-bg-primary me-2">Updating</div>
+                </Show>
+                <Show when={state.ja4.success}>
+                  <div class="badge text-bg-success me-2">
+                    Update successful
+                  </div>
+                </Show>
+                <Show when={state.ja4.failed}>
+                  <div class="badge text-bg-danger me-2">Update failed</div>
+                </Show>
+                <button class="btn btn-primary" onClick={updateJa4Db}>
+                  Update
+                </button>
+              </div>
+            </form>
           </div>
         </div>
+      </div>
 
-        <div class="row mt-2">
-          <div class="col">
-            <div class="card">
-              <form class="card-body d-flex justify-content-between align-items-center">
-                Update JA4db:
-                <div>
-                  <Show when={state.ja4.updating}>
-                    <div class="badge text-bg-primary me-2">Updating</div>
-                  </Show>
-                  <Show when={state.ja4.success}>
-                    <div class="badge text-bg-success me-2">
-                      Update successful
-                    </div>
-                  </Show>
-                  <Show when={state.ja4.failed}>
-                    <div class="badge text-bg-danger me-2">Update failed</div>
-                  </Show>
-                  <button class="btn btn-primary" onClick={updateJa4Db}>
-                    Update
-                  </button>
+      {/* Auto archive. */}
+      <div class="row mt-2">
+        <div class="col">
+          <div class="card">
+            <div class="card-body">
+              <div class="row">
+                <label class="col col-form-label">
+                  <div class="form-check form-switch">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                      checked={localAutoArchiveSettings.enabled}
+                      onChange={(e) => {
+                        setLocalAutoArchiveSettings({
+                          enabled: e.target.checked,
+                        });
+                      }}
+                    />
+                    <label class="form-check-label">
+                      Auto-archive events older than:
+                    </label>
+                  </div>
+                </label>
+                <div class="col">
+                  <div class="input-group">
+                    <input
+                      type="number"
+                      class="form-control"
+                      value={localAutoArchiveSettings.value}
+                      onInput={(e) => {
+                        setLocalAutoArchiveSettings("value", +e.target.value);
+                      }}
+                      onChange={(e) => {
+                        setLocalAutoArchiveSettings("value", +e.target.value);
+                      }}
+                    />
+                    <span class="input-group-text">Days</span>
+                  </div>
                 </div>
-              </form>
+                <div class="col text-end">
+                  <Show when={archiveSettingsModified()}>
+                    <button
+                      class="btn btn-success me-2"
+                      onClick={() => {
+                        saveAutoArchiveSettings();
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      class="btn btn-danger"
+                      onClick={() => {
+                        setLocalAutoArchiveSettings(
+                          autoArchiveSettings.latest!,
+                        );
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </Show>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Auto archive. */}
+      {/* Retention by age. */}
+      <div class="row mt-2">
+        <div class="col">
+          <div class="card">
+            <div class="card-body">
+              <Show when={serverConfig()?.datastore === "elasticsearch"}>
+                <div class="row mt-2">
+                  <div class="col">
+                    Warning: Do not enable if you have {distributionName()}{" "}
+                    {serverConfig()?.distribution === "opensearch"
+                      ? "ISM"
+                      : "ILM"}{" "}
+                    policies managing your indices.
+                  </div>
+                </div>
+              </Show>
+              <Show when={serverConfig()?.datastore === "sqlite"}>
+                <div class="row mt-2">
+                  <div class="col">
+                    Warning: This setting will not be effective if age retention
+                    is set in the configuration file.
+                  </div>
+                </div>
+              </Show>
+              <div class="row mt-2">
+                <label class="col col-form-label">
+                  <div class="form-check form-switch">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                      checked={localRetentionSettings.enabled}
+                      onChange={(e) => {
+                        setLocalRetentionSettings({
+                          enabled: e.target.checked,
+                        });
+                      }}
+                    />
+                    <label class="form-check-label">
+                      <Show
+                        when={serverConfig()?.datastore === "elasticsearch"}
+                      >
+                        Delete indices older than:
+                      </Show>
+                      <Show when={serverConfig()?.datastore === "sqlite"}>
+                        Delete events older than:
+                      </Show>
+                    </label>
+                  </div>
+                </label>
+                <div class="col">
+                  <div class="input-group">
+                    <input
+                      type="number"
+                      class="form-control"
+                      value={localRetentionSettings.value}
+                      onInput={(e) => {
+                        setLocalRetentionSettings("value", +e.target.value);
+                      }}
+                      onChange={(e) => {
+                        setLocalRetentionSettings("value", +e.target.value);
+                      }}
+                    />
+                    <span class="input-group-text">Days</span>
+                  </div>
+                </div>
+                <div class="col text-end">
+                  <Show when={retentionSettingsModified()}>
+                    <button
+                      class="btn btn-success me-2"
+                      onClick={() => {
+                        saveRetentionSettings();
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      class="btn btn-danger"
+                      onClick={() => {
+                        setLocalRetentionSettings(retentionSettings.latest!);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </Show>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Retention by disk size. */}
+      <Show when={serverConfig()?.datastore === "sqlite"}>
         <div class="row mt-2">
           <div class="col">
             <div class="card">
               <div class="card-body">
-                <div class="row">
+                <div class="row mt-2">
+                  <div class="col">
+                    Warning: This setting will not be effective if size
+                    retention is set in the configuration file.
+                  </div>
+                </div>
+                <div class="row mt-2">
                   <label class="col col-form-label">
                     <div class="form-check form-switch">
                       <input
                         class="form-check-input"
                         type="checkbox"
                         role="switch"
-                        checked={localAutoArchiveSettings.enabled}
+                        checked={localRetentionSizeSettings.enabled}
                         onChange={(e) => {
-                          setLocalAutoArchiveSettings({
+                          setLocalRetentionSizeSettings({
                             enabled: e.target.checked,
                           });
                         }}
                       />
                       <label class="form-check-label">
-                        Auto-archive events older than:
+                        Limit event database to size:
                       </label>
                     </div>
                   </label>
@@ -255,23 +406,29 @@ export function Admin() {
                       <input
                         type="number"
                         class="form-control"
-                        value={localAutoArchiveSettings.value}
+                        value={localRetentionSizeSettings.value}
                         onInput={(e) => {
-                          setLocalAutoArchiveSettings("value", +e.target.value);
+                          setLocalRetentionSizeSettings(
+                            "value",
+                            +e.target.value,
+                          );
                         }}
                         onChange={(e) => {
-                          setLocalAutoArchiveSettings("value", +e.target.value);
+                          setLocalRetentionSizeSettings(
+                            "value",
+                            +e.target.value,
+                          );
                         }}
                       />
-                      <span class="input-group-text">Days</span>
+                      <span class="input-group-text">Gigabytes</span>
                     </div>
                   </div>
                   <div class="col text-end">
-                    <Show when={archiveSettingsModified()}>
+                    <Show when={retentionSizeSettingsModified()}>
                       <button
                         class="btn btn-success me-2"
                         onClick={() => {
-                          saveAutoArchiveSettings();
+                          saveRetentionSizeSettings();
                         }}
                       >
                         Save
@@ -279,8 +436,8 @@ export function Admin() {
                       <button
                         class="btn btn-danger"
                         onClick={() => {
-                          setLocalAutoArchiveSettings(
-                            autoArchiveSettings.latest!,
+                          setLocalRetentionSizeSettings(
+                            retentionSizeSettings.latest!,
                           );
                         }}
                       >
@@ -293,181 +450,7 @@ export function Admin() {
             </div>
           </div>
         </div>
-
-        {/* Retention by age. */}
-        <div class="row mt-2">
-          <div class="col">
-            <div class="card">
-              <div class="card-body">
-                <Show when={serverConfig()?.datastore === "elasticsearch"}>
-                  <div class="row mt-2">
-                    <div class="col">
-                      Warning: Do not enable if you have {distributionName()}{" "}
-                      {serverConfig()?.distribution === "opensearch"
-                        ? "ISM"
-                        : "ILM"}{" "}
-                      policies managing your indices.
-                    </div>
-                  </div>
-                </Show>
-                <Show when={serverConfig()?.datastore === "sqlite"}>
-                  <div class="row mt-2">
-                    <div class="col">
-                      Warning: This setting will not be effective if age
-                      retention is set in the configuration file.
-                    </div>
-                  </div>
-                </Show>
-                <div class="row mt-2">
-                  <label class="col col-form-label">
-                    <div class="form-check form-switch">
-                      <input
-                        class="form-check-input"
-                        type="checkbox"
-                        role="switch"
-                        checked={localRetentionSettings.enabled}
-                        onChange={(e) => {
-                          setLocalRetentionSettings({
-                            enabled: e.target.checked,
-                          });
-                        }}
-                      />
-                      <label class="form-check-label">
-                        <Show
-                          when={serverConfig()?.datastore === "elasticsearch"}
-                        >
-                          Delete indices older than:
-                        </Show>
-                        <Show when={serverConfig()?.datastore === "sqlite"}>
-                          Delete events older than:
-                        </Show>
-                      </label>
-                    </div>
-                  </label>
-                  <div class="col">
-                    <div class="input-group">
-                      <input
-                        type="number"
-                        class="form-control"
-                        value={localRetentionSettings.value}
-                        onInput={(e) => {
-                          setLocalRetentionSettings("value", +e.target.value);
-                        }}
-                        onChange={(e) => {
-                          setLocalRetentionSettings("value", +e.target.value);
-                        }}
-                      />
-                      <span class="input-group-text">Days</span>
-                    </div>
-                  </div>
-                  <div class="col text-end">
-                    <Show when={retentionSettingsModified()}>
-                      <button
-                        class="btn btn-success me-2"
-                        onClick={() => {
-                          saveRetentionSettings();
-                        }}
-                      >
-                        Save
-                      </button>
-                      <button
-                        class="btn btn-danger"
-                        onClick={() => {
-                          setLocalRetentionSettings(retentionSettings.latest!);
-                        }}
-                      >
-                        Reset
-                      </button>
-                    </Show>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Retention by disk size. */}
-        <Show when={serverConfig()?.datastore === "sqlite"}>
-          <div class="row mt-2">
-            <div class="col">
-              <div class="card">
-                <div class="card-body">
-                  <div class="row mt-2">
-                    <div class="col">
-                      Warning: This setting will not be effective if size
-                      retention is set in the configuration file.
-                    </div>
-                  </div>
-                  <div class="row mt-2">
-                    <label class="col col-form-label">
-                      <div class="form-check form-switch">
-                        <input
-                          class="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          checked={localRetentionSizeSettings.enabled}
-                          onChange={(e) => {
-                            setLocalRetentionSizeSettings({
-                              enabled: e.target.checked,
-                            });
-                          }}
-                        />
-                        <label class="form-check-label">
-                          Limit event database to size:
-                        </label>
-                      </div>
-                    </label>
-                    <div class="col">
-                      <div class="input-group">
-                        <input
-                          type="number"
-                          class="form-control"
-                          value={localRetentionSizeSettings.value}
-                          onInput={(e) => {
-                            setLocalRetentionSizeSettings(
-                              "value",
-                              +e.target.value,
-                            );
-                          }}
-                          onChange={(e) => {
-                            setLocalRetentionSizeSettings(
-                              "value",
-                              +e.target.value,
-                            );
-                          }}
-                        />
-                        <span class="input-group-text">Gigabytes</span>
-                      </div>
-                    </div>
-                    <div class="col text-end">
-                      <Show when={retentionSizeSettingsModified()}>
-                        <button
-                          class="btn btn-success me-2"
-                          onClick={() => {
-                            saveRetentionSizeSettings();
-                          }}
-                        >
-                          Save
-                        </button>
-                        <button
-                          class="btn btn-danger"
-                          onClick={() => {
-                            setLocalRetentionSizeSettings(
-                              retentionSizeSettings.latest!,
-                            );
-                          }}
-                        >
-                          Reset
-                        </button>
-                      </Show>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Show>
-      </div>
+      </Show>
     </>
   );
 }

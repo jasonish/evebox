@@ -3,9 +3,9 @@
 
 import { For, Show, Suspense, createResource, createSignal } from "solid-js";
 import { API } from "../../api";
-import { Top } from "../../Top";
 import { addError, addNotification } from "../../Notifications";
 import { distributionName } from "../../config";
+import { AdminPageHeader } from "./AdminLayout";
 
 interface IndexStats {
   name: string;
@@ -117,105 +117,105 @@ export function AdminElastic() {
 
   return (
     <>
-      <Top />
-      <div class="container mt-2">
-        <h1>{distributionName()} Index Management</h1>
-        <Suspense>
-          <table class="table table-striped app-index-management-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th class="text-end">Doc Count</th>
-                <th class="text-end">Store Size</th>
-                <th class="app-index-management-actions"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={groups()}>
-                {(group) => (
-                  <>
-                    <tr class="table-secondary">
-                      <th class="align-middle">{group.label}</th>
-                      <th class="align-middle text-end">
-                        {group.docCount.toLocaleString()}
-                      </th>
-                      <th class="align-middle text-end">
-                        {formatBytes(group.storeSize)}
-                      </th>
-                      <th class="align-middle text-end app-index-management-actions">
-                        <Show when={group.date !== ""}>
-                          <Show
-                            when={pendingDeleteDate() === group.date}
-                            fallback={
-                              <button
-                                class="btn btn-danger btn-sm"
-                                title={`Delete all indices for ${group.date}`}
-                                onClick={() => {
-                                  setPendingDeleteDate(group.date);
-                                }}
-                              >
-                                Delete Day
-                              </button>
-                            }
-                          >
-                            <div
-                              class="btn-group btn-group-sm"
-                              role="group"
-                              aria-label={`Confirm deleting all indices for ${group.date}`}
+      <AdminPageHeader
+        title={`${distributionName()} Index Management`}
+        subtitle="Per-day event indices, document counts, and disk usage."
+      />
+      <Suspense>
+        <table class="table table-striped app-index-management-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th class="text-end">Doc Count</th>
+              <th class="text-end">Store Size</th>
+              <th class="app-index-management-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={groups()}>
+              {(group) => (
+                <>
+                  <tr class="table-secondary">
+                    <th class="align-middle">{group.label}</th>
+                    <th class="align-middle text-end">
+                      {group.docCount.toLocaleString()}
+                    </th>
+                    <th class="align-middle text-end">
+                      {formatBytes(group.storeSize)}
+                    </th>
+                    <th class="align-middle text-end app-index-management-actions">
+                      <Show when={group.date !== ""}>
+                        <Show
+                          when={pendingDeleteDate() === group.date}
+                          fallback={
+                            <button
+                              class="btn btn-danger btn-sm"
+                              title={`Delete all indices for ${group.date}`}
+                              onClick={() => {
+                                setPendingDeleteDate(group.date);
+                              }}
                             >
-                              <button
-                                class="btn btn-secondary"
-                                onClick={() => {
-                                  setPendingDeleteDate(undefined);
-                                }}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                class="btn btn-danger"
-                                onClick={() => {
-                                  deleteGroup(group);
-                                }}
-                              >
-                                Confirm
-                              </button>
-                            </div>
-                          </Show>
+                              Delete Day
+                            </button>
+                          }
+                        >
+                          <div
+                            class="btn-group btn-group-sm"
+                            role="group"
+                            aria-label={`Confirm deleting all indices for ${group.date}`}
+                          >
+                            <button
+                              class="btn btn-secondary"
+                              onClick={() => {
+                                setPendingDeleteDate(undefined);
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              class="btn btn-danger"
+                              onClick={() => {
+                                deleteGroup(group);
+                              }}
+                            >
+                              Confirm
+                            </button>
+                          </div>
                         </Show>
-                      </th>
-                    </tr>
-                    <For each={group.indices}>
-                      {(e) => (
-                        <tr>
-                          <td class="align-middle ps-4">{e.name}</td>
-                          <td class="align-middle text-end">
-                            {e.doc_count.toLocaleString()}
-                          </td>
-                          <td class="align-middle text-end">
-                            {formatBytes(e.store_size)}
-                          </td>
-                          <td class="align-middle text-end app-index-management-actions">
-                            <Show when={group.date === ""}>
-                              <button
-                                class="btn btn-danger btn-sm"
-                                onClick={() => {
-                                  deleteIndex(e.name);
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </Show>
-                          </td>
-                        </tr>
-                      )}
-                    </For>
-                  </>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </Suspense>
-      </div>
+                      </Show>
+                    </th>
+                  </tr>
+                  <For each={group.indices}>
+                    {(e) => (
+                      <tr>
+                        <td class="align-middle ps-4">{e.name}</td>
+                        <td class="align-middle text-end">
+                          {e.doc_count.toLocaleString()}
+                        </td>
+                        <td class="align-middle text-end">
+                          {formatBytes(e.store_size)}
+                        </td>
+                        <td class="align-middle text-end app-index-management-actions">
+                          <Show when={group.date === ""}>
+                            <button
+                              class="btn btn-danger btn-sm"
+                              onClick={() => {
+                                deleteIndex(e.name);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </Show>
+                        </td>
+                      </tr>
+                    )}
+                  </For>
+                </>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </Suspense>
     </>
   );
 }

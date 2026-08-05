@@ -36,6 +36,10 @@
   layer, and top sources and destinations.
 
 ### Changed
+- The admin pages now share a common layout with sidebar navigation
+  between the admin sections (General, Elasticsearch/OpenSearch index
+  management, Agents, and Filters), replacing the previous ad-hoc links,
+  and each page has a consistent header describing the section.
 - Oneshot PCAP processing no longer aborts when individual rules fail to
   load. Suricata now logs and skips such rules, and processing continues
   with the rules that did load.

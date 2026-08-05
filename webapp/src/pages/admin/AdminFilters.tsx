@@ -9,8 +9,8 @@ import {
   createResource,
   createSignal,
 } from "solid-js";
-import { Top } from "../../Top";
 import { API } from "../../api";
+import { AdminPageHeader } from "./AdminLayout";
 
 export function AdminFilters() {
   const [filters0, setFilters] = createSignal<any[]>([]);
@@ -43,70 +43,65 @@ export function AdminFilters() {
 
   return (
     <>
-      <Top />
-      <div class="container mt-2">
-        <div class="row">
-          <div class="col">
-            <h2>Auto Archive Filters</h2>
-          </div>
-          <div class="col">
-            <input
-              ref={filterRef}
-              type="text"
-              class="form-control"
-              placeholder="Filter..."
-              oninput={onFilterChange}
-            />
-          </div>
-        </div>
-        <Suspense>
-          <div class="card">
-            <div class="card-body">
-              <div class="row">
-                <div class="col fw-bold">Sensor</div>
-                <div class="col fw-bold">Source IP</div>
-                <div class="col fw-bold">Destination IP</div>
-                <div class="col fw-bold">Signature ID</div>
-                <div class="col fw-bold"></div>
-              </div>
+      <AdminPageHeader
+        title="Auto-Archive Filters"
+        subtitle="Matching alerts are archived automatically as they arrive."
+      >
+        <input
+          ref={filterRef}
+          type="text"
+          class="form-control w-auto"
+          placeholder="Filter..."
+          oninput={onFilterChange}
+        />
+      </AdminPageHeader>
+      <Suspense>
+        <div class="card">
+          <div class="card-body">
+            <div class="row">
+              <div class="col fw-bold">Sensor</div>
+              <div class="col fw-bold">Source IP</div>
+              <div class="col fw-bold">Destination IP</div>
+              <div class="col fw-bold">Signature ID</div>
+              <div class="col fw-bold"></div>
             </div>
           </div>
-          <For each={filters0()}>
-            {(filter) => {
-              return (
-                <>
-                  <div class="card mt-1">
-                    <div class="card">
-                      <div class="card-body">
-                        <div class="row">
-                          <div class="col">{filter.filter.sensor || "*"}</div>
-                          <div class="col">{filter.filter.src_ip || "*"}</div>
-                          <div class="col">{filter.filter.dest_ip || "*"}</div>
-                          <div class="col">{filter.filter.signature_id}</div>
-                          <div class="col text-end">
-                            <button
-                              class="btn btn-warning"
-                              onClick={() => deleteFilter(filter.id)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                          <Show when={filter.comment}>
-                            <div class="col-12">
-                              <span class="fw-bold">Comment: </span>
-                              {filter.comment}
-                            </div>
-                          </Show>
+        </div>
+        <For each={filters0()}>
+          {(filter) => {
+            return (
+              <>
+                <div class="card mt-1">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="row">
+                        <div class="col">{filter.filter.sensor || "*"}</div>
+                        <div class="col">{filter.filter.src_ip || "*"}</div>
+                        <div class="col">{filter.filter.dest_ip || "*"}</div>
+                        <div class="col">{filter.filter.signature_id}</div>
+                        <div class="col text-end">
+                          <button
+                            class="btn btn-warning"
+                            onClick={() => deleteFilter(filter.id)}
+                          >
+                            Delete
+                          </button>
                         </div>
+                        <Show when={filter.comment}>
+                          <div class="col-12">
+                            <span class="fw-bold">Comment: </span>
+                            {filter.comment}
+                          </div>
+                        </Show>
                       </div>
                     </div>
                   </div>
-                </>
-              );
-            }}
-          </For>
-        </Suspense>
-      </div>
+                </div>
+              </>
+            );
+          }}
+        </For>
+      </Suspense>
     </>
   );
 }

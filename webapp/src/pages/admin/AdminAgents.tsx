@@ -10,10 +10,10 @@ import {
   onCleanup,
 } from "solid-js";
 import { createStore } from "solid-js/store";
-import { Top } from "../../Top";
 import { API } from "../../api";
 import { parse_timestamp } from "../../datetime";
 import { BiCaretDownFill, BiCaretUpFill, BiDashCircle } from "../../icons";
+import { AdminPageHeader } from "./AdminLayout";
 
 // An agent is stale when nothing has been seen from it for this many
 // seconds. The server pings agents every 30 seconds, dropping them
@@ -474,440 +474,430 @@ export function AdminAgents() {
 
   return (
     <>
-      <Top />
-      <div class="container mt-2">
-        <div class="row">
-          <div class="col">
-            <h2>Agents</h2>
+      <AdminPageHeader
+        title="Agents"
+        subtitle="Remote EveBox agents, their authentication keys, and PCAP routing."
+      />
+
+      <Show when={fetchError()}>
+        <div class="alert alert-warning">
+          Failed to load agents, will keep trying.
+        </div>
+      </Show>
+
+      <Show when={actionError()}>
+        <div class="alert alert-danger">{actionError()}</div>
+      </Show>
+
+      <div class="card">
+        <form class="card-body" onSubmit={submitCreate}>
+          <div class="input-group">
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Agent ID (name)"
+              value={name()}
+              onInput={(e) => setName(e.currentTarget.value)}
+            />
+            <button
+              class="btn btn-primary"
+              type="submit"
+              disabled={creating() || name().trim().length === 0}
+            >
+              Add Agent
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <Show when={added()}>
+        <div class="alert alert-success mt-2 mb-0">
+          <div>
+            Agent key added for <b>{added()!.name}</b>:
+          </div>
+          <div class="d-flex align-items-center mt-1">
+            <code class="me-2 text-break user-select-all">{added()!.key}</code>
+            <CopyButton text={added()!.key} />
+          </div>
+          <div class="mt-1">
+            Set this as <code>server.key</code> in the agent's{" "}
+            <code>agent.yaml</code> (or <code>EVEBOX_SERVER_KEY</code>).
           </div>
         </div>
+      </Show>
 
-        <Show when={fetchError()}>
-          <div class="alert alert-warning">
-            Failed to load agents, will keep trying.
-          </div>
-        </Show>
-
-        <Show when={actionError()}>
-          <div class="alert alert-danger">{actionError()}</div>
-        </Show>
-
-        <div class="card">
-          <form class="card-body" onSubmit={submitCreate}>
-            <div class="input-group">
-              <input
-                type="text"
-                class="form-control"
-                placeholder="Agent ID (name)"
-                value={name()}
-                onInput={(e) => setName(e.currentTarget.value)}
-              />
-              <button
-                class="btn btn-primary"
-                type="submit"
-                disabled={creating() || name().trim().length === 0}
-              >
-                Add Agent
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <Show when={added()}>
-          <div class="alert alert-success mt-2 mb-0">
-            <div>
-              Agent key added for <b>{added()!.name}</b>:
-            </div>
-            <div class="d-flex align-items-center mt-1">
-              <code class="me-2 text-break user-select-all">
-                {added()!.key}
-              </code>
-              <CopyButton text={added()!.key} />
-            </div>
-            <div class="mt-1">
-              Set this as <code>server.key</code> in the agent's{" "}
-              <code>agent.yaml</code> (or <code>EVEBOX_SERVER_KEY</code>).
-            </div>
-          </div>
-        </Show>
-
-        <Show when={agents.latest}>
-          <Show
-            when={sorted().length > 0}
-            fallback={
-              <div class="card mt-2">
-                <div class="card-body">
-                  No agents yet. Connected agents, issued agent keys, and the
-                  server-local PCAP spool will appear here.
-                </div>
-              </div>
-            }
-          >
+      <Show when={agents.latest}>
+        <Show
+          when={sorted().length > 0}
+          fallback={
             <div class="card mt-2">
               <div class="card-body">
-                <table class="table table-striped mb-0">
+                No agents yet. Connected agents, issued agent keys, and the
+                server-local PCAP spool will appear here.
+              </div>
+            </div>
+          }
+        >
+          <div class="card mt-2">
+            <div class="card-body">
+              <table class="table table-striped mb-0">
+                <thead>
+                  <tr>
+                    <th role="button" onClick={() => setSort("name")}>
+                      Name{sortIndicator("name")}
+                    </th>
+                    <th>Type</th>
+                    <th role="button" onClick={() => setSort("hostname")}>
+                      Hostname{sortIndicator("hostname")}
+                    </th>
+                    <th role="button" onClick={() => setSort("version")}>
+                      Version{sortIndicator("version")}
+                    </th>
+                    <th>Capabilities</th>
+                    <th role="button" onClick={() => setSort("last_seen")}>
+                      Last Seen{sortIndicator("last_seen")}
+                    </th>
+                    <th class="text-end">RTT</th>
+                    <th class="text-end">Status</th>
+                    <th>Key</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={sorted()}>
+                    {(row) => (
+                      <tr>
+                        <td class="align-middle">{row.name}</td>
+                        <td class="align-middle">
+                          <Show
+                            when={row.kind === "agent"}
+                            fallback={
+                              <span class="badge text-bg-secondary">
+                                Server-local
+                              </span>
+                            }
+                          >
+                            <span class="badge text-bg-primary">Agent</span>
+                          </Show>
+                        </td>
+                        <td class="align-middle">{row.hostname ?? "—"}</td>
+                        <td class="align-middle">{row.version ?? "—"}</td>
+                        <td class="align-middle">
+                          <For each={row.capabilities}>
+                            {(capability) => (
+                              <span class="badge text-bg-secondary me-1">
+                                {capability}
+                              </span>
+                            )}
+                          </For>
+                        </td>
+                        <td class="align-middle">
+                          {row.kind === "server"
+                            ? "—"
+                            : row.last_seen === undefined
+                              ? "Never"
+                              : parse_timestamp(row.last_seen).fromNow()}
+                        </td>
+                        <td class="align-middle text-end">
+                          {row.rtt_ms === undefined ? "—" : `${row.rtt_ms} ms`}
+                        </td>
+                        <td class="align-middle text-end">
+                          <Show
+                            when={rowStatus(row) === "live"}
+                            fallback={
+                              <Show
+                                when={rowStatus(row) === "stale"}
+                                fallback={
+                                  <span class="badge text-bg-secondary">
+                                    Offline
+                                  </span>
+                                }
+                              >
+                                <span class="badge text-bg-warning">Stale</span>
+                              </Show>
+                            }
+                          >
+                            <span class="badge text-bg-success">Live</span>
+                          </Show>
+                        </td>
+                        <td class="align-middle text-nowrap">
+                          <Show
+                            when={row.key}
+                            fallback={
+                              <Show
+                                when={row.kind === "agent"}
+                                fallback={<span>—</span>}
+                              >
+                                <button
+                                  type="button"
+                                  class="btn btn-sm btn-outline-primary"
+                                  disabled={creating()}
+                                  onClick={() => createKey(row.name)}
+                                >
+                                  Add Key
+                                </button>
+                              </Show>
+                            }
+                          >
+                            <Show
+                              when={revealed()[row.key!.id] !== undefined}
+                              fallback={
+                                <>
+                                  <button
+                                    type="button"
+                                    class="btn btn-sm btn-secondary me-2"
+                                    title={`Created ${parse_timestamp(
+                                      row.key!.created_at,
+                                    ).format("YYYY-MM-DD HH:mm")}`}
+                                    onClick={() => toggleReveal(row.key!)}
+                                  >
+                                    Reveal
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="btn btn-sm btn-danger"
+                                    onClick={() => deleteKey(row.key!)}
+                                  >
+                                    Delete
+                                  </button>
+                                </>
+                              }
+                            >
+                              <code class="me-2 text-break user-select-all">
+                                {revealed()[row.key!.id]}
+                              </code>
+                              <CopyButton text={revealed()[row.key!.id]} />
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-secondary ms-2 me-2"
+                                onClick={() => toggleReveal(row.key!)}
+                              >
+                                Hide
+                              </button>
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-danger"
+                                onClick={() => deleteKey(row.key!)}
+                              >
+                                Delete
+                              </button>
+                            </Show>
+                          </Show>
+                        </td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Show>
+      </Show>
+
+      {/* Operator-controlled pcap routing table. */}
+      <Show when={!routingUnavailable()}>
+        <div class="card mt-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>PCAP Routing</span>
+            <Show when={routingModified()}>
+              <span>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-success me-2"
+                  onClick={saveRouting}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-danger"
+                  onClick={resetRouting}
+                >
+                  Reset
+                </button>
+              </span>
+            </Show>
+          </div>
+          <div class="card-body">
+            <p class="text-body-secondary">
+              Explicitly route events to packet capture sources by sensor name.
+              When any rule or a default source is set, this table fully
+              controls routing: the first matching rule wins, unmatched events
+              go to the default source, and without a default they are refused.
+              Leave the table empty to route automatically.
+            </p>
+            <Show when={routingError()}>
+              <div class="alert alert-warning">{routingError()}</div>
+            </Show>
+            {/* No editor until the table has loaded: edits made
+                  against unknown server state could hide real rules
+                  and can never be saved. The agents list must be
+                  loaded too — before it, every saved source would
+                  flash "(unavailable)" against an empty option set. */}
+            <Show when={routing.latest && agents.latest}>
+              <Show when={localRouting.rules.length > 0}>
+                <table class="table mb-2">
                   <thead>
                     <tr>
-                      <th role="button" onClick={() => setSort("name")}>
-                        Name{sortIndicator("name")}
+                      <th style="width: 45%;" title={SENSOR_TOOLTIP}>
+                        Sensor
                       </th>
-                      <th>Type</th>
-                      <th role="button" onClick={() => setSort("hostname")}>
-                        Hostname{sortIndicator("hostname")}
-                      </th>
-                      <th role="button" onClick={() => setSort("version")}>
-                        Version{sortIndicator("version")}
-                      </th>
-                      <th>Capabilities</th>
-                      <th role="button" onClick={() => setSort("last_seen")}>
-                        Last Seen{sortIndicator("last_seen")}
-                      </th>
-                      <th class="text-end">RTT</th>
-                      <th class="text-end">Status</th>
-                      <th>Key</th>
+                      <th style="width: 45%;">Source</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    <For each={sorted()}>
-                      {(row) => (
+                    <For each={localRouting.rules}>
+                      {(rule, index) => (
                         <tr>
-                          <td class="align-middle">{row.name}</td>
-                          <td class="align-middle">
-                            <Show
-                              when={row.kind === "agent"}
-                              fallback={
-                                <span class="badge text-bg-secondary">
-                                  Server-local
-                                </span>
+                          <td>
+                            <input
+                              type="text"
+                              class="form-control form-control-sm"
+                              placeholder="Sensor name"
+                              title={SENSOR_TOOLTIP}
+                              value={rule.sensor}
+                              onInput={(e) =>
+                                setLocalRouting(
+                                  "rules",
+                                  index(),
+                                  "sensor",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </td>
+                          <td>
+                            {/* A saved source that is no longer a
+                                  known agent stays selectable so the
+                                  select shows the truth and a save
+                                  does not silently rewrite the rule. */}
+                            <select
+                              class="form-select form-select-sm"
+                              onChange={(e) =>
+                                setLocalRouting(
+                                  "rules",
+                                  index(),
+                                  "source",
+                                  e.currentTarget.value,
+                                )
                               }
                             >
-                              <span class="badge text-bg-primary">Agent</span>
-                            </Show>
-                          </td>
-                          <td class="align-middle">{row.hostname ?? "—"}</td>
-                          <td class="align-middle">{row.version ?? "—"}</td>
-                          <td class="align-middle">
-                            <For each={row.capabilities}>
-                              {(capability) => (
-                                <span class="badge text-bg-secondary me-1">
-                                  {capability}
-                                </span>
-                              )}
-                            </For>
-                          </td>
-                          <td class="align-middle">
-                            {row.kind === "server"
-                              ? "—"
-                              : row.last_seen === undefined
-                                ? "Never"
-                                : parse_timestamp(row.last_seen).fromNow()}
-                          </td>
-                          <td class="align-middle text-end">
-                            {row.rtt_ms === undefined
-                              ? "—"
-                              : `${row.rtt_ms} ms`}
-                          </td>
-                          <td class="align-middle text-end">
-                            <Show
-                              when={rowStatus(row) === "live"}
-                              fallback={
-                                <Show
-                                  when={rowStatus(row) === "stale"}
-                                  fallback={
-                                    <span class="badge text-bg-secondary">
-                                      Offline
-                                    </span>
-                                  }
-                                >
-                                  <span class="badge text-bg-warning">
-                                    Stale
-                                  </span>
-                                </Show>
-                              }
-                            >
-                              <span class="badge text-bg-success">Live</span>
-                            </Show>
-                          </td>
-                          <td class="align-middle text-nowrap">
-                            <Show
-                              when={row.key}
-                              fallback={
-                                <Show
-                                  when={row.kind === "agent"}
-                                  fallback={<span>—</span>}
-                                >
-                                  <button
-                                    type="button"
-                                    class="btn btn-sm btn-outline-primary"
-                                    disabled={creating()}
-                                    onClick={() => createKey(row.name)}
-                                  >
-                                    Add Key
-                                  </button>
-                                </Show>
-                              }
-                            >
+                              <option
+                                value=""
+                                disabled
+                                selected={rule.source === ""}
+                              >
+                                Select a source…
+                              </option>
                               <Show
-                                when={revealed()[row.key!.id] !== undefined}
-                                fallback={
-                                  <>
-                                    <button
-                                      type="button"
-                                      class="btn btn-sm btn-secondary me-2"
-                                      title={`Created ${parse_timestamp(
-                                        row.key!.created_at,
-                                      ).format("YYYY-MM-DD HH:mm")}`}
-                                      onClick={() => toggleReveal(row.key!)}
-                                    >
-                                      Reveal
-                                    </button>
-                                    <button
-                                      type="button"
-                                      class="btn btn-sm btn-danger"
-                                      onClick={() => deleteKey(row.key!)}
-                                    >
-                                      Delete
-                                    </button>
-                                  </>
+                                when={
+                                  rule.source !== "" &&
+                                  !sourceOptions().includes(rule.source)
                                 }
                               >
-                                <code class="me-2 text-break user-select-all">
-                                  {revealed()[row.key!.id]}
-                                </code>
-                                <CopyButton text={revealed()[row.key!.id]} />
-                                <button
-                                  type="button"
-                                  class="btn btn-sm btn-secondary ms-2 me-2"
-                                  onClick={() => toggleReveal(row.key!)}
-                                >
-                                  Hide
-                                </button>
-                                <button
-                                  type="button"
-                                  class="btn btn-sm btn-danger"
-                                  onClick={() => deleteKey(row.key!)}
-                                >
-                                  Delete
-                                </button>
+                                <option value={rule.source} selected>
+                                  {rule.source} (unavailable)
+                                </option>
                               </Show>
-                            </Show>
+                              <For each={sourceOptions()}>
+                                {(name) => (
+                                  <option
+                                    value={name}
+                                    selected={name === rule.source}
+                                  >
+                                    {name}
+                                  </option>
+                                )}
+                              </For>
+                            </select>
+                          </td>
+                          <td class="text-end text-nowrap">
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-outline-secondary me-1"
+                              title="Move up"
+                              disabled={index() === 0}
+                              onClick={() => moveRule(index(), -1)}
+                            >
+                              <BiCaretUpFill />
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-outline-secondary me-1"
+                              title="Move down"
+                              disabled={
+                                index() === localRouting.rules.length - 1
+                              }
+                              onClick={() => moveRule(index(), 1)}
+                            >
+                              <BiCaretDownFill />
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-outline-danger"
+                              title="Remove rule"
+                              onClick={() => removeRule(index())}
+                            >
+                              <BiDashCircle />
+                            </button>
                           </td>
                         </tr>
                       )}
                     </For>
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </Show>
-        </Show>
-
-        {/* Operator-controlled pcap routing table. */}
-        <Show when={!routingUnavailable()}>
-          <div class="card mt-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <span>PCAP Routing</span>
-              <Show when={routingModified()}>
-                <span>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-success me-2"
-                    onClick={saveRouting}
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-danger"
-                    onClick={resetRouting}
-                  >
-                    Reset
-                  </button>
-                </span>
               </Show>
-            </div>
-            <div class="card-body">
-              <p class="text-body-secondary">
-                Explicitly route events to packet capture sources by sensor
-                name. When any rule or a default source is set, this table fully
-                controls routing: the first matching rule wins, unmatched events
-                go to the default source, and without a default they are
-                refused. Leave the table empty to route automatically.
-              </p>
-              <Show when={routingError()}>
-                <div class="alert alert-warning">{routingError()}</div>
-              </Show>
-              {/* No editor until the table has loaded: edits made
-                  against unknown server state could hide real rules
-                  and can never be saved. The agents list must be
-                  loaded too — before it, every saved source would
-                  flash "(unavailable)" against an empty option set. */}
-              <Show when={routing.latest && agents.latest}>
-                <Show when={localRouting.rules.length > 0}>
-                  <table class="table mb-2">
-                    <thead>
-                      <tr>
-                        <th style="width: 45%;" title={SENSOR_TOOLTIP}>
-                          Sensor
-                        </th>
-                        <th style="width: 45%;">Source</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={localRouting.rules}>
-                        {(rule, index) => (
-                          <tr>
-                            <td>
-                              <input
-                                type="text"
-                                class="form-control form-control-sm"
-                                placeholder="Sensor name"
-                                title={SENSOR_TOOLTIP}
-                                value={rule.sensor}
-                                onInput={(e) =>
-                                  setLocalRouting(
-                                    "rules",
-                                    index(),
-                                    "sensor",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </td>
-                            <td>
-                              {/* A saved source that is no longer a
-                                  known agent stays selectable so the
-                                  select shows the truth and a save
-                                  does not silently rewrite the rule. */}
-                              <select
-                                class="form-select form-select-sm"
-                                onChange={(e) =>
-                                  setLocalRouting(
-                                    "rules",
-                                    index(),
-                                    "source",
-                                    e.currentTarget.value,
-                                  )
-                                }
-                              >
-                                <option
-                                  value=""
-                                  disabled
-                                  selected={rule.source === ""}
-                                >
-                                  Select a source…
-                                </option>
-                                <Show
-                                  when={
-                                    rule.source !== "" &&
-                                    !sourceOptions().includes(rule.source)
-                                  }
-                                >
-                                  <option value={rule.source} selected>
-                                    {rule.source} (unavailable)
-                                  </option>
-                                </Show>
-                                <For each={sourceOptions()}>
-                                  {(name) => (
-                                    <option
-                                      value={name}
-                                      selected={name === rule.source}
-                                    >
-                                      {name}
-                                    </option>
-                                  )}
-                                </For>
-                              </select>
-                            </td>
-                            <td class="text-end text-nowrap">
-                              <button
-                                type="button"
-                                class="btn btn-sm btn-outline-secondary me-1"
-                                title="Move up"
-                                disabled={index() === 0}
-                                onClick={() => moveRule(index(), -1)}
-                              >
-                                <BiCaretUpFill />
-                              </button>
-                              <button
-                                type="button"
-                                class="btn btn-sm btn-outline-secondary me-1"
-                                title="Move down"
-                                disabled={
-                                  index() === localRouting.rules.length - 1
-                                }
-                                onClick={() => moveRule(index(), 1)}
-                              >
-                                <BiCaretDownFill />
-                              </button>
-                              <button
-                                type="button"
-                                class="btn btn-sm btn-outline-danger"
-                                title="Remove rule"
-                                onClick={() => removeRule(index())}
-                              >
-                                <BiDashCircle />
-                              </button>
-                            </td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </table>
-                </Show>
-                <div class="d-flex align-items-center">
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-primary me-4"
-                    onClick={addRule}
-                  >
-                    Add Rule
-                  </button>
-                  <label class="col-form-label col-form-label-sm me-2">
-                    Default source:
-                  </label>
-                  <select
-                    class="form-select form-select-sm w-auto"
-                    onChange={(e) =>
-                      setLocalRouting(
-                        "default",
-                        e.currentTarget.value === ""
-                          ? null
-                          : e.currentTarget.value,
-                      )
+              <div class="d-flex align-items-center">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-primary me-4"
+                  onClick={addRule}
+                >
+                  Add Rule
+                </button>
+                <label class="col-form-label col-form-label-sm me-2">
+                  Default source:
+                </label>
+                <select
+                  class="form-select form-select-sm w-auto"
+                  onChange={(e) =>
+                    setLocalRouting(
+                      "default",
+                      e.currentTarget.value === ""
+                        ? null
+                        : e.currentTarget.value,
+                    )
+                  }
+                >
+                  <option value="" selected={localRouting.default == null}>
+                    None
+                  </option>
+                  <Show
+                    when={
+                      localRouting.default != null &&
+                      !sourceOptions().includes(localRouting.default)
                     }
                   >
-                    <option value="" selected={localRouting.default == null}>
-                      None
+                    <option value={localRouting.default!} selected>
+                      {localRouting.default} (unavailable)
                     </option>
-                    <Show
-                      when={
-                        localRouting.default != null &&
-                        !sourceOptions().includes(localRouting.default)
-                      }
-                    >
-                      <option value={localRouting.default!} selected>
-                        {localRouting.default} (unavailable)
+                  </Show>
+                  <For each={sourceOptions()}>
+                    {(name) => (
+                      <option
+                        value={name}
+                        selected={name === localRouting.default}
+                      >
+                        {name}
                       </option>
-                    </Show>
-                    <For each={sourceOptions()}>
-                      {(name) => (
-                        <option
-                          value={name}
-                          selected={name === localRouting.default}
-                        >
-                          {name}
-                        </option>
-                      )}
-                    </For>
-                  </select>
-                </div>
-              </Show>
-            </div>
+                    )}
+                  </For>
+                </select>
+              </div>
+            </Show>
           </div>
-        </Show>
-      </div>
+        </div>
+      </Show>
     </>
   );
 }

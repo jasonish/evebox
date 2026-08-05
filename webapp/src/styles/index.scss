@@ -58,6 +58,12 @@ $evebox-success-color-dark: #2f4741;
 @import "bootstrap/scss/utilities/api";
 @import "../../node_modules/pretty-print-json/dist/css/pretty-print-json.css";
 
+// Always reserve space for the scrollbar so centered layouts do not
+// shift horizontally when navigating between short and long pages.
+html {
+  scrollbar-gutter: stable;
+}
+
 // App specific style to force the width of an element to 1em.
 .app-w-1 {
   width: 1em !important;
@@ -201,6 +207,29 @@ $evebox-success-color-dark: #2f4741;
 .app-index-management-actions {
   width: 9rem;
   white-space: nowrap;
+}
+
+// Cap the admin layout narrower than the default container so the
+// settings-style pages stay composed on large displays.
+.app-admin-container {
+  max-width: 1140px;
+}
+
+// Admin section sidebar navigation.
+.app-admin-nav-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.app-admin-nav {
+  .nav-link {
+    color: var(--bs-body-color);
+
+    &:hover:not(.active),
+    &:focus-visible:not(.active) {
+      background-color: var(--bs-tertiary-bg);
+    }
+  }
 }
 
 // Suricata rule highlighting.
