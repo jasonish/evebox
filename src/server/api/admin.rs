@@ -7,8 +7,9 @@ use axum::Form;
 use axum::response::IntoResponse;
 use axum::{Extension, Json, extract::Path};
 
+use crate::server::autoarchive::AutoArchive;
 use crate::server::{ServerContext, main::SessionExtractor};
-use crate::sqlite::configdb::{AgentKey, FilterEntry, FilterRow};
+use crate::sqlite::configdb::{AgentKey, EventFilter, FilterEntry, FilterRow};
 
 pub(super) async fn update_ja4db(
     Extension(context): Extension<Arc<ServerContext>>,
@@ -47,15 +48,10 @@ pub(super) async fn add_filter(
     Form(mut entry): Form<FilterEntry>,
 ) -> Result<impl IntoResponse, AppError> {
     let comment = entry.comment.take();
+    let filter = EventFilter::from(&entry);
     let mut tx = context.configdb.pool.begin().await?;
 
-    let key = format!(
-        "{},{},{},{}",
-        entry.sensor.as_ref().map_or("*", |v| v),
-        entry.src_ip.as_ref().map_or("*", |v| v),
-        entry.dest_ip.as_ref().map_or("*", |v| v),
-        entry.signature_id
-    );
+    let key = AutoArchive::key(&filter).unwrap();
 
     if let Ok(filters) = context.auto_archive.read()
         && filters.has_key(&key)
@@ -67,18 +63,18 @@ pub(super) async fn add_filter(
     let sql = "INSERT INTO filters (user_id, filter, comment) VALUES (?, ?, ?)";
     sqlx::query(sql)
         .bind(0)
-        .bind(serde_json::to_value(&entry).unwrap())
+        .bind(sqlx::types::Json(&filter))
         .bind(&comment)
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
 
     let mut ingest = context.auto_archive.write().unwrap();
-    ingest.add(&entry);
+    ingest.add(&filter);
 
     info!(
         "New auto-archive filter added {:?} with comment: {:?}",
-        &entry, &comment
+        &filter, &comment
     );
 
     Ok(Json(json!({})))

@@ -11,7 +11,8 @@ There are three pieces:
    queries and mutations EveBox runs during normal operation (the alerts inbox
    aggregation, event histogram, group-by/rare-terms aggregations, DHCP/DNS
    reports, the stats `derivative` pipeline aggregations, `_update_by_query`
-   painless tag/comment operations, etc.), reporting pass/fail per operation.
+   painless tag/comment operations, and auto-archiving an alert indexed by an
+   external process), reporting pass/fail per operation.
    `evebox test opensearch` is an alias for the same command. It can also run
    read-only against an existing/production backend (`--existing`) — see
    [Two modes](#two-modes).

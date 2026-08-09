@@ -248,7 +248,7 @@ pub(crate) trait EveFilterTrait: std::fmt::Debug {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sqlite::configdb::FilterEntry;
+    use crate::sqlite::configdb::{EventFilter, FilterEntry};
 
     fn assert_auto_archived_by(event: &serde_json::Value, cause: &str) {
         assert!(event.has_tag("evebox.archived"));
@@ -297,13 +297,13 @@ mod test {
     #[test]
     fn server_filter_auto_archive_records_cause() {
         let mut auto_archive = AutoArchive::default();
-        auto_archive.add(&FilterEntry {
+        auto_archive.add(&EventFilter::from(&FilterEntry {
             sensor: None,
             src_ip: None,
             dest_ip: None,
             signature_id: 3301003,
             comment: None,
-        });
+        }));
 
         let metrics = Arc::new(Metrics::default());
         let filter = AutoArchiveFilter::new(Arc::new(RwLock::new(auto_archive)), metrics);

@@ -41,6 +41,12 @@ export function AdminFilters() {
     });
   };
 
+  const conditionValue = (filter: any, field: string) => {
+    return filter.filter.conditions.find(
+      (condition: any) => condition.field === field,
+    )?.value;
+  };
+
   return (
     <>
       <AdminPageHeader
@@ -75,10 +81,18 @@ export function AdminFilters() {
                   <div class="card">
                     <div class="card-body">
                       <div class="row">
-                        <div class="col">{filter.filter.sensor || "*"}</div>
-                        <div class="col">{filter.filter.src_ip || "*"}</div>
-                        <div class="col">{filter.filter.dest_ip || "*"}</div>
-                        <div class="col">{filter.filter.signature_id}</div>
+                        <div class="col">
+                          {conditionValue(filter, "host") || "*"}
+                        </div>
+                        <div class="col">
+                          {conditionValue(filter, "src_ip") || "*"}
+                        </div>
+                        <div class="col">
+                          {conditionValue(filter, "dest_ip") || "*"}
+                        </div>
+                        <div class="col">
+                          {conditionValue(filter, "alert.signature_id")}
+                        </div>
                         <div class="col text-end">
                           <button
                             class="btn btn-warning"

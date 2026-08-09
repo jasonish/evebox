@@ -33,7 +33,7 @@ use tokio::sync::Mutex;
 use tracing::{info, warn};
 
 use crate::datetime::DateTime;
-use crate::elastic::{self, ClientBuilder, ElasticEventRepo};
+use crate::elastic::{self, ClientBuilder, ElasticEventRepo, TAG_ARCHIVED, TAG_AUTO_ARCHIVED};
 use crate::eve::Eve;
 use crate::eve::filters::EveFilterChain;
 use crate::eve::reader::EveReader;
@@ -45,6 +45,7 @@ use crate::server::autoarchive::AutoArchive;
 use crate::server::metrics::Metrics;
 use crate::server::session::Session;
 use crate::sqlite::ConnectionBuilder;
+use crate::sqlite::configdb::{EventFilter, FilterEntry};
 use crate::sqlite::connection::{init_event_db, open_pool};
 use crate::sqlite::eventrepo::SqliteEventRepo;
 
@@ -535,6 +536,17 @@ async fn run(args: &Args) -> Result<Report> {
         }
     }
 
+    if args.existing {
+        checks.push(Check::skip(
+            "external_auto_archive",
+            "read-only mode (existing data)",
+        ));
+    } else {
+        check!(checks, "external_auto_archive", {
+            check_external_auto_archive(&client, &repo, base).await
+        });
+    }
+
     // Cleanup. Never in --existing mode (we created nothing); the unique per-run
     // prefix means import-mode cleanup can only delete this run's indices.
     if args.existing {
@@ -569,6 +581,85 @@ async fn run(args: &Args) -> Result<Report> {
         known,
         skipped,
     })
+}
+
+/// Insert an alert directly into Elasticsearch/OpenSearch, bypassing EveBox's
+/// ingest filters, then exercise the alert-query auto-archive path used when
+/// events arrive through Logstash, Filebeat, or another external indexer.
+async fn check_external_auto_archive(
+    client: &elastic::Client,
+    repo: &ElasticEventRepo,
+    base: &str,
+) -> Result<Option<String>> {
+    const SIGNATURE_ID: i64 = 9_999_999;
+    const SENSOR: &str = "evebox-backend-test";
+    const SRC_IP: &str = "192.0.2.10";
+    const DEST_IP: &str = "198.51.100.20";
+
+    let id = ulid::Ulid::new().to_string();
+    let index = format!("{base}-external-auto-archive");
+    let now = DateTime::now();
+    let event = serde_json::json!({
+        "timestamp": now.to_eve(),
+        "@timestamp": now.to_elastic(),
+        "event_type": "alert",
+        "host": SENSOR,
+        "src_ip": SRC_IP,
+        "dest_ip": DEST_IP,
+        "alert": {
+            "signature_id": SIGNATURE_ID,
+            "signature": "EveBox external auto-archive integration test",
+        },
+    });
+    client
+        .put(&format!("{index}/_doc/{id}?refresh=true"))?
+        .json(&event)
+        .send()
+        .await?
+        .error_for_status()?;
+
+    let entry = FilterEntry {
+        sensor: Some(SENSOR.to_string()),
+        src_ip: Some(SRC_IP.to_string()),
+        dest_ip: Some(DEST_IP.to_string()),
+        signature_id: SIGNATURE_ID,
+        comment: None,
+    };
+    let mut auto_archive = AutoArchive::default();
+    auto_archive.add(&EventFilter::from(&entry));
+
+    let mut repo = repo.clone();
+    repo.start_archive_processor();
+    repo.alerts(
+        elastic::AlertQueryOptions {
+            query_string: Some(format!("@sid:{SIGNATURE_ID}")),
+            ..Default::default()
+        },
+        Arc::new(RwLock::new(auto_archive)),
+    )
+    .await?;
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let document = repo
+            .get_event_by_id(id.clone())
+            .await?
+            .ok_or_else(|| anyhow!("externally indexed test alert disappeared"))?;
+        let tags = document["_source"]["tags"].as_array();
+        let archived = tags
+            .map(|tags| tags.iter().any(|tag| tag == TAG_ARCHIVED))
+            .unwrap_or(false);
+        let auto_archived = tags
+            .map(|tags| tags.iter().any(|tag| tag == TAG_AUTO_ARCHIVED))
+            .unwrap_or(false);
+        if archived && auto_archived {
+            return Ok(Some(format!("document={id}")));
+        }
+        if Instant::now() >= deadline {
+            bail!("externally indexed alert was not auto-archived; tags={tags:?}");
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
 }
 
 // ---------------------------------------------------------------------------

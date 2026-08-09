@@ -37,12 +37,37 @@ pub(crate) enum ConfigDbError {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, FromRow)]
 pub(crate) struct FilterRow {
     pub id: i64,
-    pub filter: sqlx::types::Json<FilterEntry>,
+    pub filter: sqlx::types::Json<EventFilter>,
     pub user_id: i64,
     pub enabled: bool,
     pub created_at: crate::datetime::ChronoDateTime,
     pub updated_at: crate::datetime::ChronoDateTime,
     pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum FilterAction {
+    Archive,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum FilterOperator {
+    Eq,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+pub(crate) struct FilterCondition {
+    pub field: String,
+    pub op: FilterOperator,
+    pub value: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+pub(crate) struct EventFilter {
+    pub action: FilterAction,
+    pub conditions: Vec<FilterCondition>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
@@ -59,6 +84,33 @@ pub(crate) struct FilterEntry {
     // own field in the database.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+}
+
+impl From<&FilterEntry> for EventFilter {
+    fn from(entry: &FilterEntry) -> Self {
+        let mut conditions = Vec::new();
+        let mut push_string = |field: &str, value: &Option<String>| {
+            if let Some(value) = value {
+                conditions.push(FilterCondition {
+                    field: field.to_string(),
+                    op: FilterOperator::Eq,
+                    value: value.clone().into(),
+                });
+            }
+        };
+        push_string("host", &entry.sensor);
+        push_string("src_ip", &entry.src_ip);
+        push_string("dest_ip", &entry.dest_ip);
+        conditions.push(FilterCondition {
+            field: "alert.signature_id".to_string(),
+            op: FilterOperator::Eq,
+            value: entry.signature_id.into(),
+        });
+        Self {
+            action: FilterAction::Archive,
+            conditions,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -513,6 +565,71 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let db = open(Some(&dir.path().join("config.sqlite"))).await.unwrap();
         (dir, db)
+    }
+
+    #[test]
+    fn condition_format_represents_future_filter_shapes() {
+        let src_ip: EventFilter = serde_json::from_value(json!({
+            "action": "archive",
+            "conditions": [
+                {"field": "src_ip", "op": "eq", "value": "192.0.2.10"},
+            ],
+        }))
+        .unwrap();
+        assert_eq!(src_ip.conditions.len(), 1);
+
+        let dns: EventFilter = serde_json::from_value(json!({
+            "action": "archive",
+            "conditions": [
+                {"field": "alert.signature_id", "op": "eq", "value": 3301003},
+                {"field": "dns.queries.rrname", "op": "eq", "value": "example.com"},
+            ],
+        }))
+        .unwrap();
+        assert_eq!(dns.conditions.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn legacy_filters_are_migrated() {
+        let (_dir, db) = test_db().await;
+        sqlx::query("INSERT INTO filters (user_id, filter) VALUES (0, ?)")
+            .bind(
+                r#"{"sensor":"fw-east","src_ip":"10.1.1.1","signature_id":3301003,"comment":"legacy"}"#,
+            )
+            .execute(&db.pool)
+            .await
+            .unwrap();
+
+        sqlx::raw_sql(include_str!(
+            "../../resources/configdb/migrations/0008_flexible_filters.sql"
+        ))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+
+        let rows = db.get_filters().await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].comment.as_deref(), Some("legacy"));
+        assert_eq!(
+            rows[0].filter.conditions,
+            vec![
+                FilterCondition {
+                    field: "host".to_string(),
+                    op: FilterOperator::Eq,
+                    value: "fw-east".into(),
+                },
+                FilterCondition {
+                    field: "src_ip".to_string(),
+                    op: FilterOperator::Eq,
+                    value: "10.1.1.1".into(),
+                },
+                FilterCondition {
+                    field: "alert.signature_id".to_string(),
+                    op: FilterOperator::Eq,
+                    value: 3301003.into(),
+                },
+            ]
+        );
     }
 
     #[tokio::test]
