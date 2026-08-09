@@ -264,6 +264,8 @@ fn reformat_timestamp(ts: &str) -> String {
 /// - `payload_printable` and `http.http_response_body_printable`: These contain
 ///   decoded binary data that often produces noisy, non-meaningful tokens.
 ///   Only alphanumeric words of 2+ characters are extracted.
+/// - `evebox.history`: History is stored separately and is not event content
+///   that should be included in full text search.
 pub(crate) fn extract_values(input: &serde_json::Value) -> String {
     fn push_word(output: &mut String, bytes: &[u8]) {
         if bytes.len() < 2 {
@@ -331,8 +333,10 @@ pub(crate) fn extract_values(input: &serde_json::Value) -> String {
                         "rule" => {}
                         _ => {
                             path.push(k);
-                            // Skip base64 encoded field.
-                            if path != &["http", "http_response_body"] {
+                            // Skip base64 encoded fields and EveBox history.
+                            if path != &["http", "http_response_body"]
+                                && path != &["evebox", "history"]
+                            {
                                 inner(v, output, path);
                             }
                             path.pop();
@@ -352,6 +356,39 @@ pub(crate) fn extract_values(input: &serde_json::Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extract_values_excludes_evebox_history() {
+        let flattened = extract_values(&serde_json::json!({
+            "host": "sensor-a",
+            "src_ip": "192.0.2.10",
+            "alert": {
+                "signature": "Normal event content",
+            },
+            "evebox": {
+                "history": [{
+                    "timestamp": "2099-01-02T03:04:05Z",
+                    "action": "auto-archived",
+                    "cause": "filter",
+                    "username": "history-user-marker",
+                    "comment": "history-comment-marker",
+                }],
+            },
+        }));
+
+        for expected in ["sensor-a", "192.0.2.10", "Normal event content"] {
+            assert!(flattened.contains(expected));
+        }
+        for excluded in [
+            "2099-01-02T03:04:05Z",
+            "auto-archived",
+            "filter",
+            "history-user-marker",
+            "history-comment-marker",
+        ] {
+            assert!(!flattened.contains(excluded));
+        }
+    }
 
     #[tokio::test]
     async fn ingestion_history_is_stored_in_history_column() {
@@ -403,5 +440,12 @@ mod tests {
         let history: serde_json::Value = serde_json::from_str(&history).unwrap();
         assert_eq!(history[0]["action"], "auto-archived");
         assert_eq!(history[0]["cause"], "filter");
+
+        let source_values: String = sqlx::query_scalar("SELECT source_values FROM events")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+        assert!(!source_values.contains("auto-archived"));
+        assert!(!source_values.contains("filter"));
     }
 }
