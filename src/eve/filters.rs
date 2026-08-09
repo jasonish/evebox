@@ -3,6 +3,7 @@
 
 use crate::prelude::*;
 
+use crate::elastic::HistoryEntryBuilder;
 use crate::rules::RuleMap;
 use crate::server::autoarchive::AutoArchive;
 use crate::server::metrics::Metrics;
@@ -189,13 +190,7 @@ impl EveFilterTrait for AlertMetadataEveBoxActionFilter {
         if let Some(action) = metadata_evebox_action
             && action.contains(&serde_json::Value::String("archive".into()))
         {
-            let tags = &mut event["tags"]
-                .as_array()
-                .cloned()
-                .unwrap_or_else(std::vec::Vec::new);
-            tags.push("evebox.archived".into());
-            tags.push("evebox.auto-archived".into());
-            event["tags"] = serde_json::Value::Array(tags.clone());
+            mark_auto_archived(event, "metadata");
         }
     }
 }
@@ -223,16 +218,27 @@ impl EveFilterTrait for AutoArchiveFilter {
 
         let processor = self.processor.read().unwrap();
         if processor.is_match(event) {
-            let tags = &mut event["tags"]
-                .as_array()
-                .cloned()
-                .unwrap_or_else(std::vec::Vec::new);
-            tags.push("evebox.archived".into());
-            tags.push("evebox.auto-archived".into());
-            event["tags"] = serde_json::Value::Array(tags.clone());
+            mark_auto_archived(event, "filter");
             self.metrics.incr_autoarchived_by_filter(1)
         }
     }
+}
+
+fn mark_auto_archived(event: &mut serde_json::Value, cause: &str) {
+    super::eve::ensure_has_tags(event);
+    super::eve::ensure_has_evebox(event);
+    super::eve::ensure_has_history(event);
+
+    event["tags"]
+        .as_array_mut()
+        .unwrap()
+        .extend(["evebox.archived".into(), "evebox.auto-archived".into()]);
+
+    let history = HistoryEntryBuilder::new_auto_archived(cause).build();
+    event["evebox"]["history"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!(history));
 }
 
 pub(crate) trait EveFilterTrait: std::fmt::Debug {
@@ -242,6 +248,18 @@ pub(crate) trait EveFilterTrait: std::fmt::Debug {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::sqlite::configdb::FilterEntry;
+
+    fn assert_auto_archived_by(event: &serde_json::Value, cause: &str) {
+        assert!(event.has_tag("evebox.archived"));
+        assert!(event.has_tag("evebox.auto-archived"));
+
+        let history = event["evebox"]["history"].as_array().unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0]["action"], "auto-archived");
+        assert_eq!(history[0]["cause"], cause);
+        assert!(history[0]["timestamp"].is_string());
+    }
 
     #[test]
     fn test_clone() {
@@ -257,5 +275,47 @@ mod test {
         let mut event = serde_json::json!({ "event_type": "alert" });
         filter.run(&mut event);
         assert_eq!(event["evebox"]["agent"]["id"], "edge-a");
+    }
+
+    #[test]
+    fn metadata_auto_archive_records_cause() {
+        let filters = EveFilterChain::with_defaults();
+        let mut event = serde_json::json!({
+            "event_type": "alert",
+            "alert": {
+                "metadata": {
+                    "evebox-action": ["archive"],
+                },
+            },
+        });
+
+        filters.run(&mut event);
+
+        assert_auto_archived_by(&event, "metadata");
+    }
+
+    #[test]
+    fn server_filter_auto_archive_records_cause() {
+        let mut auto_archive = AutoArchive::default();
+        auto_archive.add(&FilterEntry {
+            sensor: None,
+            src_ip: None,
+            dest_ip: None,
+            signature_id: 3301003,
+            comment: None,
+        });
+
+        let metrics = Arc::new(Metrics::default());
+        let filter = AutoArchiveFilter::new(Arc::new(RwLock::new(auto_archive)), metrics);
+        let mut event = serde_json::json!({
+            "event_type": "alert",
+            "alert": {
+                "signature_id": 3301003,
+            },
+        });
+
+        filter.run(&mut event);
+
+        assert_auto_archived_by(&event, "filter");
     }
 }

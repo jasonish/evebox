@@ -64,6 +64,8 @@ pub(crate) struct HistoryEntry {
     pub timestamp: String,
     pub action: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub cause: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
 }
 
@@ -77,6 +79,7 @@ pub(crate) struct HistoryEntryBuilder {
     timestamp: DateTime,
     action: String,
     username: Option<String>,
+    cause: Option<String>,
     comment: Option<String>,
 }
 
@@ -86,6 +89,7 @@ impl HistoryEntryBuilder {
             action: action.to_string(),
             timestamp: DateTime::now(),
             username: None,
+            cause: None,
             comment: None,
         }
     }
@@ -94,8 +98,10 @@ impl HistoryEntryBuilder {
         Self::new(HistoryType::Archived)
     }
 
-    pub(crate) fn new_auto_archived() -> Self {
-        Self::new(HistoryType::AutoArchived)
+    pub(crate) fn new_auto_archived(cause: impl Into<String>) -> Self {
+        let mut builder = Self::new(HistoryType::AutoArchived);
+        builder.cause = Some(cause.into());
+        builder
     }
 
     pub(crate) fn new_escalate() -> Self {
@@ -125,6 +131,7 @@ impl HistoryEntryBuilder {
             username: self.username,
             timestamp: self.timestamp.to_rfc3339_utc(),
             action: self.action,
+            cause: self.cause,
             comment: self.comment,
         }
     }

@@ -233,7 +233,7 @@ async fn auto_archive(
         let now = DateTime::now();
         let then = now.sub(Duration::from_secs(86400 * config.value));
         let mut conn = conn.lock().await;
-        let action = HistoryEntryBuilder::new_auto_archived().build();
+        let action = HistoryEntryBuilder::new_auto_archived("age").build();
         let sql = r#"
                 UPDATE events
                 SET archived = 1,

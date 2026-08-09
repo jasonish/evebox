@@ -125,7 +125,7 @@ async fn auto_archive(
         }
     });
 
-    let action = HistoryEntryBuilder::new_auto_archived().build();
+    let action = HistoryEntryBuilder::new_auto_archived("age").build();
     let tags = &[TAG_AUTO_ARCHIVED, TAG_ARCHIVED];
     let n = repo.add_tags_by_query(query, tags, &action).await?;
     metrics.incr_autoarchived_by_age(n);

@@ -57,6 +57,7 @@ pub(crate) enum IndexError {
 struct PreparedEvent {
     ts: i64,
     archived: u8,
+    history: String,
     source_values: String,
     event: String,
 }
@@ -101,11 +102,16 @@ impl SqliteEventSink {
         } else {
             0
         };
+        let history = event["evebox"]["history"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
         let prepared = PreparedEvent {
             ts: ts.to_nanos(),
             source_values,
             event: event.to_string(),
             archived,
+            history: serde_json::Value::Array(history).to_string(),
         };
         Ok(prepared)
     }
@@ -154,12 +160,13 @@ impl SqliteEventSink {
         for (count, event) in self.queue.iter().enumerate() {
             sqlx::query(
                 r#"
-                INSERT INTO events (timestamp, archived, source, source_values)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO events (timestamp, archived, history, source, source_values)
+                VALUES (?, ?, ?, ?, ?)
             "#,
             )
             .bind(event.ts)
             .bind(event.archived)
+            .bind(&event.history)
             .bind(&event.event)
             .bind(&event.source_values)
             .execute(&mut *tx)
@@ -340,4 +347,61 @@ pub(crate) fn extract_values(input: &serde_json::Value) -> String {
     let mut path = Vec::with_capacity(8);
     inner(input, &mut flattened, &mut path);
     flattened
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn ingestion_history_is_stored_in_history_column() {
+        let dir = tempfile::tempdir().unwrap();
+        let filename = dir.path().join("events.sqlite");
+        let mut conn = crate::sqlite::connection::open_connection(Some(filename), true)
+            .await
+            .unwrap();
+        sqlx::query(
+            r#"
+            CREATE TABLE events (
+                timestamp INTEGER NOT NULL,
+                archived INTEGER DEFAULT 0,
+                history JSON DEFAULT '[]',
+                source JSON,
+                source_values TEXT
+            )
+            "#,
+        )
+        .execute(&mut conn)
+        .await
+        .unwrap();
+
+        let conn = Arc::new(tokio::sync::Mutex::new(conn));
+        let mut sink = SqliteEventSink::new(
+            conn.clone(),
+            Arc::new(crate::server::metrics::Metrics::default()),
+        );
+        sink.submit(serde_json::json!({
+            "timestamp": "2026-08-09T12:00:00.000000+0000",
+            "event_type": "alert",
+            "evebox": {
+                "history": [{
+                    "timestamp": "2026-08-09T12:00:01.000000Z",
+                    "action": "auto-archived",
+                    "cause": "filter",
+                }],
+            },
+        }))
+        .await
+        .unwrap();
+        sink.commit().await.unwrap();
+
+        let mut conn = conn.lock().await;
+        let history: String = sqlx::query_scalar("SELECT history FROM events")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+        let history: serde_json::Value = serde_json::from_str(&history).unwrap();
+        assert_eq!(history[0]["action"], "auto-archived");
+        assert_eq!(history[0]["cause"], "filter");
+    }
 }
