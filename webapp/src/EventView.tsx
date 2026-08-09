@@ -56,6 +56,8 @@ interface HistoryEntry {
   action: string;
   timestamp: string;
   username?: string;
+  cause?: string;
+  comment?: string;
 }
 
 export function EventView() {
@@ -1797,7 +1799,7 @@ function StatsCard(props: { stats: { [key: string]: any } }) {
 
 function History(props: {
   eventId: string | number;
-  history: any[];
+  history: HistoryEntry[];
   onChange: () => void;
   setShowCommentForm: Setter<boolean>;
   showCommentForm: boolean;
@@ -1829,6 +1831,12 @@ function History(props: {
                         {formatTimestamp(entry.timestamp).slice(0, -4)}
                         {" - "}
                         <Switch fallback={entry.action}>
+                          <Match when={entry.action == "archived"}>
+                            Archived
+                          </Match>
+                          <Match when={entry.action == "auto-archived"}>
+                            Auto-archived
+                          </Match>
                           <Match when={entry.action == "escalated"}>
                             Escalated
                           </Match>
@@ -1838,8 +1846,14 @@ function History(props: {
                           <Match when={entry.action == "comment"}>
                             Comment
                           </Match>
-                        </Switch>{" "}
-                        by <i>{entry.username || "null"}</i>
+                        </Switch>
+                        <Show when={entry.username}>
+                          {" by "}
+                          <i>{entry.username}</i>
+                        </Show>
+                        <Show when={!entry.username && entry.cause}>
+                          {` (${historyCauseLabel(entry.cause)})`}
+                        </Show>
                         <Show when={entry.action == "comment"}>
                           <p class="m-0">{entry.comment}</p>
                         </Show>
@@ -1866,6 +1880,19 @@ function History(props: {
       </div>
     </Show>
   );
+}
+
+function historyCauseLabel(cause?: string): string | undefined {
+  switch (cause) {
+    case "filter":
+      return "server filter";
+    case "age":
+      return "age policy";
+    case "metadata":
+      return "alert metadata";
+    default:
+      return cause;
+  }
 }
 
 function CommentEntry(props: {
