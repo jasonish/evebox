@@ -13,6 +13,15 @@ use crate::{
 
 use super::{ElasticEventRepo, MINIMUM_SHOULD_MATCH};
 
+fn record_unique_filter(filters: &mut Vec<EventFilter>, filter: &EventFilter) -> bool {
+    if filters.contains(filter) {
+        false
+    } else {
+        filters.push(filter.clone());
+        true
+    }
+}
+
 impl ElasticEventRepo {
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
         let mut filters = Vec::new();
@@ -202,6 +211,7 @@ impl ElasticEventRepo {
         let mut to = None;
 
         let mut alerts: Vec<AggAlert> = vec![];
+        let mut queued_filters = Vec::new();
         if let Some(aggregrations) = response.aggregations {
             if let serde_json::Value::Array(buckets) = &aggregrations["signatures"]["buckets"] {
                 for bucket in buckets {
@@ -295,7 +305,12 @@ impl ElasticEventRepo {
                                             .matching_filter(&source)
                                             .cloned();
                                         if let Some(filter) = matched_filter {
-                                            if let Some(tx) = &self.auto_archive_tx {
+                                            if let Some(tx) = &self.auto_archive_tx
+                                                && record_unique_filter(
+                                                    &mut queued_filters,
+                                                    &filter,
+                                                )
+                                            {
                                                 let _ = tx.send(filter);
                                             }
                                             continue;
@@ -339,7 +354,10 @@ impl ElasticEventRepo {
 #[cfg(test)]
 mod tests {
     use crate::elastic::{AlertQueryOptions, Client, ElasticEventRepo};
+    use crate::sqlite::configdb::{EventFilter, FilterAction, FilterCondition, FilterOperator};
     use serde_json::json;
+
+    use super::record_unique_filter;
 
     fn test_repo() -> ElasticEventRepo {
         ElasticEventRepo::new(
@@ -363,6 +381,29 @@ mod tests {
             query_string: Some(query_string.to_string()),
             ..Default::default()
         })
+    }
+
+    fn event_filter(value: i64) -> EventFilter {
+        EventFilter {
+            action: FilterAction::Archive,
+            conditions: vec![FilterCondition {
+                field: "alert.signature_id".to_string(),
+                op: FilterOperator::Eq,
+                value: value.into(),
+            }],
+        }
+    }
+
+    #[test]
+    fn records_each_filter_once() {
+        let mut filters = Vec::new();
+        let first = event_filter(1);
+        let second = event_filter(2);
+
+        assert!(record_unique_filter(&mut filters, &first));
+        assert!(!record_unique_filter(&mut filters, &first));
+        assert!(record_unique_filter(&mut filters, &second));
+        assert_eq!(filters, vec![first, second]);
     }
 
     #[test]
