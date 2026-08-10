@@ -652,11 +652,21 @@ async fn check_external_auto_archive(
         let auto_archived = tags
             .map(|tags| tags.iter().any(|tag| tag == TAG_AUTO_ARCHIVED))
             .unwrap_or(false);
-        if archived && auto_archived {
+        let history = document["_source"]["evebox"]["history"].as_array();
+        let filter_query_history = history
+            .map(|history| {
+                history.iter().any(|entry| {
+                    entry["action"] == "auto-archived" && entry["cause"] == "filter-query"
+                })
+            })
+            .unwrap_or(false);
+        if archived && auto_archived && filter_query_history {
             return Ok(Some(format!("document={id}")));
         }
         if Instant::now() >= deadline {
-            bail!("externally indexed alert was not auto-archived; tags={tags:?}");
+            bail!(
+                "externally indexed alert was not auto-archived by query; tags={tags:?}, history={history:?}"
+            );
         }
         tokio::time::sleep(Duration::from_millis(100)).await;
     }

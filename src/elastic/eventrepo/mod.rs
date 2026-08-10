@@ -670,7 +670,7 @@ impl ElasticEventRepo {
         &self,
         alert_group: api::AlertGroupSpec,
     ) -> Result<u64> {
-        let action = HistoryEntryBuilder::new_auto_archived("filter").build();
+        let action = HistoryEntryBuilder::new_auto_archived("filter-query").build();
         self.add_tags_by_alert_group(alert_group, &TAGS_AUTO_ARCHIVED, &action)
             .await
     }

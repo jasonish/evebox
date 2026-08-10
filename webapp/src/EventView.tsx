@@ -1886,6 +1886,8 @@ function historyCauseLabel(cause?: string): string | undefined {
   switch (cause) {
     case "filter":
       return "server filter";
+    case "filter-query":
+      return "server filter applied by query";
     case "age":
       return "age policy";
     case "metadata":
