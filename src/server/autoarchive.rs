@@ -90,6 +90,8 @@ mod tests {
                 sensor: sensor.map(str::to_string),
                 src_ip: src_ip.map(str::to_string),
                 dest_ip: dest_ip.map(str::to_string),
+                dns_rrname: None,
+                tls_sni: None,
                 signature_id: 42,
                 comment: None,
             };

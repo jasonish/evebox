@@ -595,8 +595,10 @@ async fn check_external_auto_archive(
     const SENSOR: &str = "evebox-backend-test";
     const SRC_IP: &str = "192.0.2.10";
     const DEST_IP: &str = "198.51.100.20";
+    const RRNAME: &str = "archive.example";
 
     let id = ulid::Ulid::new().to_string();
+    let nonmatching_id = ulid::Ulid::new().to_string();
     let index = format!("{base}-external-auto-archive");
     let now = DateTime::now();
     let event = serde_json::json!({
@@ -610,6 +612,9 @@ async fn check_external_auto_archive(
             "signature_id": SIGNATURE_ID,
             "signature": "EveBox external auto-archive integration test",
         },
+        "dns": {
+            "queries": [{"rrname": RRNAME, "rrtype": "A"}],
+        },
     });
     client
         .put(&format!("{index}/_doc/{id}?refresh=true"))?
@@ -618,10 +623,35 @@ async fn check_external_auto_archive(
         .await?
         .error_for_status()?;
 
+    let older = now - Duration::from_secs(1);
+    let nonmatching_event = serde_json::json!({
+        "timestamp": older.to_eve(),
+        "@timestamp": older.to_elastic(),
+        "event_type": "alert",
+        "host": SENSOR,
+        "src_ip": SRC_IP,
+        "dest_ip": DEST_IP,
+        "alert": {
+            "signature_id": SIGNATURE_ID,
+            "signature": "EveBox external auto-archive integration test",
+        },
+        "dns": {
+            "queries": [{"rrname": "keep.example", "rrtype": "A"}],
+        },
+    });
+    client
+        .put(&format!("{index}/_doc/{nonmatching_id}?refresh=true"))?
+        .json(&nonmatching_event)
+        .send()
+        .await?
+        .error_for_status()?;
+
     let entry = FilterEntry {
         sensor: Some(SENSOR.to_string()),
         src_ip: Some(SRC_IP.to_string()),
         dest_ip: Some(DEST_IP.to_string()),
+        dns_rrname: Some(RRNAME.to_string()),
+        tls_sni: None,
         signature_id: SIGNATURE_ID,
         comment: None,
     };
@@ -661,6 +691,17 @@ async fn check_external_auto_archive(
             })
             .unwrap_or(false);
         if archived && auto_archived && filter_query_history {
+            let nonmatching = repo
+                .get_event_by_id(nonmatching_id.clone())
+                .await?
+                .ok_or_else(|| anyhow!("nonmatching test alert disappeared"))?;
+            let nonmatching_tags = nonmatching["_source"]["tags"].as_array();
+            if nonmatching_tags
+                .map(|tags| tags.iter().any(|tag| tag == TAG_AUTO_ARCHIVED))
+                .unwrap_or(false)
+            {
+                bail!("nonmatching DNS alert was auto-archived");
+            }
             return Ok(Some(format!("document={id}")));
         }
         if Instant::now() >= deadline {

@@ -748,6 +748,16 @@ export function Alerts() {
 
   const autoArchiveWithParams = (params: API.API.AddAutoArchiveRequest) => {
     API.API.addAutoArchive(params);
+
+    // DNS and TLS fields are not part of an alert group key, so the
+    // aggregate archive endpoint cannot apply these predicates exactly.
+    if (params.dns_rrname || params.tls_sni) {
+      addNotification(
+        "Auto-archive filter successfully added. Matching alerts will be archived by the server.",
+      );
+      return;
+    }
+
     const matchingEvents = eventStore.events.filter((e: EventWrapper) => {
       if (params.sensor && e._source?.host !== params.sensor) {
         return false;

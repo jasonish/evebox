@@ -773,6 +773,16 @@ export function EventView() {
 
   const autoArchiveWithParams = (params: API.AddAutoArchiveRequest) => {
     API.addAutoArchive(params);
+
+    // An aggregate archive cannot preserve DNS or TLS predicates. A
+    // non-aggregate event is still safe to archive by its exact ID.
+    if ((params.dns_rrname || params.tls_sni) && event()?._metadata) {
+      addNotification(
+        "Auto-archive filter successfully added. Matching alerts will be archived by the server.",
+      );
+      return;
+    }
+
     archiveAlert();
   };
 

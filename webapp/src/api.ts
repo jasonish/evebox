@@ -825,6 +825,8 @@ export namespace API {
     sensor?: string;
     src_ip?: string;
     dest_ip?: string;
+    dns_rrname?: string;
+    tls_sni?: string;
     signature_id: number;
     comment?: string;
   }

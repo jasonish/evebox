@@ -78,6 +78,10 @@ pub(crate) struct FilterEntry {
     pub src_ip: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dest_ip: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_rrname: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tls_sni: Option<String>,
     pub signature_id: i64,
 
     // Only here for ease of the API, should be removed as it has its
@@ -101,6 +105,8 @@ impl From<&FilterEntry> for EventFilter {
         push_string("host", &entry.sensor);
         push_string("src_ip", &entry.src_ip);
         push_string("dest_ip", &entry.dest_ip);
+        push_string("dns.queries.rrname", &entry.dns_rrname);
+        push_string("tls.sni", &entry.tls_sni);
         conditions.push(FilterCondition {
             field: "alert.signature_id".to_string(),
             op: FilterOperator::Eq,

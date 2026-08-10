@@ -293,12 +293,12 @@ export function AutoArchiveMenuElements(props: {
   event: any;
   callback: (params: API.AddAutoArchiveRequest) => void;
 }) {
-  const event = props.event;
-  const signature_id = event?._source?.alert?.signature_id!;
-  const src_ip = event?._source?.src_ip!;
-  const dest_ip = event?._source?.dest_ip!;
-  const sensor = event?._source.host!;
-  const comment = `msg: ${event?._source?.alert?.signature}`;
+  const source = props.event?._source;
+  const signature_id = source?.alert?.signature_id!;
+  const src_ip = source?.src_ip!;
+  const dest_ip = source?.dest_ip!;
+  const sensor = source?.host!;
+  const comment = `msg: ${source?.alert?.signature}`;
 
   const autoArchive = (e: any, params: API.AddAutoArchiveRequest) => {
     e.preventDefault();
@@ -363,6 +363,50 @@ export function AutoArchiveMenuElements(props: {
             onclick={(e) => autoArchive(e, { signature_id, sensor })}
           >
             Auto-archive SID {signature_id} from sensor {sensor}
+          </a>
+        </li>
+      </>,
+    );
+  }
+
+  const rrnames = Array.from(
+    new Set<string>(
+      (source?.dns?.queries || [])
+        .map((query: any) => query?.rrname)
+        .filter(
+          (rrname: any) => typeof rrname === "string" && rrname.length > 0,
+        ),
+    ),
+  );
+  for (const rrname of rrnames) {
+    entries.push(
+      <>
+        <li>
+          <a
+            class="dropdown-item"
+            href=""
+            onclick={(e) =>
+              autoArchive(e, { signature_id, dns_rrname: rrname })
+            }
+          >
+            Auto-archive SID {signature_id} with DNS query {rrname}
+          </a>
+        </li>
+      </>,
+    );
+  }
+
+  const tls_sni = source?.tls?.sni;
+  if (tls_sni && tls_sni.length > 0) {
+    entries.push(
+      <>
+        <li>
+          <a
+            class="dropdown-item"
+            href=""
+            onclick={(e) => autoArchive(e, { signature_id, tls_sni })}
+          >
+            Auto-archive SID {signature_id} with TLS SNI {tls_sni}
           </a>
         </li>
       </>,

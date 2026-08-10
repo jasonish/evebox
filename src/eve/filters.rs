@@ -303,6 +303,8 @@ mod test {
             sensor: None,
             src_ip: None,
             dest_ip: None,
+            dns_rrname: None,
+            tls_sni: None,
             signature_id: 3301003,
             comment: None,
         }));
