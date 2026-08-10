@@ -212,7 +212,7 @@ impl AutoArchiveFilter {
 
 impl EveFilterTrait for AutoArchiveFilter {
     fn run(&self, event: &mut serde_json::Value) {
-        if event.has_tag("evebox.archived") {
+        if event["event_type"] != "alert" || event.has_tag("evebox.archived") {
             return;
         }
 
@@ -248,7 +248,9 @@ pub(crate) trait EveFilterTrait: std::fmt::Debug {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sqlite::configdb::{EventFilter, FilterEntry};
+    use crate::sqlite::configdb::{
+        EventFilter, FilterAction, FilterCondition, FilterEntry, FilterOperator,
+    };
 
     fn assert_auto_archived_by(event: &serde_json::Value, cause: &str) {
         assert!(event.has_tag("evebox.archived"));
@@ -317,5 +319,34 @@ mod test {
         filter.run(&mut event);
 
         assert_auto_archived_by(&event, "filter");
+    }
+
+    #[test]
+    fn server_filter_only_auto_archives_alerts() {
+        let mut auto_archive = AutoArchive::default();
+        auto_archive.add(&EventFilter {
+            action: FilterAction::Archive,
+            conditions: vec![FilterCondition {
+                field: "src_ip".to_string(),
+                op: FilterOperator::Eq,
+                value: "10.1.1.1".into(),
+            }],
+        });
+
+        let metrics = Arc::new(Metrics::default());
+        let filter = AutoArchiveFilter::new(Arc::new(RwLock::new(auto_archive)), metrics);
+        let mut flow = serde_json::json!({
+            "event_type": "flow",
+            "src_ip": "10.1.1.1",
+        });
+        filter.run(&mut flow);
+        assert!(!flow.has_tag("evebox.archived"));
+
+        let mut alert = serde_json::json!({
+            "event_type": "alert",
+            "src_ip": "10.1.1.1",
+        });
+        filter.run(&mut alert);
+        assert_auto_archived_by(&alert, "filter");
     }
 }

@@ -7,103 +7,63 @@
 
 use crate::sqlite::configdb::{EventFilter, FilterOperator};
 
-use std::collections::HashSet;
-
 #[derive(Default, Debug)]
 pub(crate) struct AutoArchive {
-    filters: HashSet<String>,
+    filters: Vec<EventFilter>,
 }
 
 impl AutoArchive {
     pub(crate) fn add(&mut self, filter: &EventFilter) {
-        if let Some(key) = Self::key(filter) {
-            self.filters.insert(key);
+        if !filter.conditions.is_empty() && !self.filters.contains(filter) {
+            self.filters.push(filter.clone());
         }
     }
 
     pub(crate) fn is_match(&self, event: &serde_json::Value) -> bool {
-        self.filters.contains(&self.key4(event))
-            || self.filters.contains(&self.key3(event))
-            || self.filters.contains(&self.key1(event))
-            || self.filters.contains(&self.sensor_sid_key(event))
+        self.matching_filter(event).is_some()
     }
 
-    pub(crate) fn key(filter: &EventFilter) -> Option<String> {
-        let mut sensor = None;
-        let mut src_ip = None;
-        let mut dest_ip = None;
-        let mut signature_id = None;
-
-        for condition in &filter.conditions {
-            if condition.op != FilterOperator::Eq {
-                return None;
-            }
-            match condition.field.as_str() {
-                "host" if sensor.is_none() => sensor = Some(condition.value.as_str()?),
-                "src_ip" if src_ip.is_none() => src_ip = Some(condition.value.as_str()?),
-                "dest_ip" if dest_ip.is_none() => dest_ip = Some(condition.value.as_str()?),
-                "alert.signature_id" if signature_id.is_none() => {
-                    signature_id = Some(condition.value.as_i64()?)
-                }
-                _ => return None,
-            }
-        }
-
-        Some(format!(
-            "{},{},{},{}",
-            sensor.unwrap_or("*"),
-            src_ip.unwrap_or("*"),
-            dest_ip.unwrap_or("*"),
-            signature_id?
-        ))
+    pub(crate) fn matching_filter(&self, event: &serde_json::Value) -> Option<&EventFilter> {
+        self.filters.iter().find(|filter| {
+            filter
+                .conditions
+                .iter()
+                .all(|condition| condition_matches(event, condition))
+        })
     }
 
-    pub(crate) fn has_key(&self, key: &str) -> bool {
-        self.filters.contains(key)
+    pub(crate) fn contains(&self, filter: &EventFilter) -> bool {
+        self.filters.contains(filter)
     }
 
     pub(crate) fn remove(&mut self, filter: &EventFilter) {
-        if let Some(key) = Self::key(filter) {
-            self.filters.remove(&key);
-        }
+        self.filters.retain(|candidate| candidate != filter);
     }
+}
 
-    // sensor, src_ip, dest_ip, signature_id
-    fn key4(&self, event: &serde_json::Value) -> String {
-        format!(
-            "{},{},{},{}",
-            event["host"].as_str().unwrap_or("*"),
-            event["src_ip"].as_str().unwrap_or("*"),
-            event["dest_ip"].as_str().unwrap_or("*"),
-            event["alert"]["signature_id"].as_i64().unwrap_or(0)
-        )
+fn condition_matches(
+    event: &serde_json::Value,
+    condition: &crate::sqlite::configdb::FilterCondition,
+) -> bool {
+    match condition.op {
+        FilterOperator::Eq => value_matches(
+            event,
+            &condition.field.split('.').collect::<Vec<_>>(),
+            &condition.value,
+        ),
     }
+}
 
-    // src_ip, dest_ip, signature_id
-    fn key3(&self, event: &serde_json::Value) -> String {
-        format!(
-            "*,{},{},{}",
-            event["src_ip"].as_str().unwrap_or("*"),
-            event["dest_ip"].as_str().unwrap_or("*"),
-            event["alert"]["signature_id"].as_i64().unwrap_or(0)
-        )
-    }
-
-    // signature_id
-    fn key1(&self, event: &serde_json::Value) -> String {
-        format!(
-            "*,*,*,{}",
-            event["alert"]["signature_id"].as_i64().unwrap_or(0)
-        )
-    }
-
-    // sensor, signature_id
-    fn sensor_sid_key(&self, event: &serde_json::Value) -> String {
-        format!(
-            "{},*,*,{}",
-            event["host"].as_str().unwrap_or("*"),
-            event["alert"]["signature_id"].as_i64().unwrap_or(0)
-        )
+fn value_matches(value: &serde_json::Value, path: &[&str], expected: &serde_json::Value) -> bool {
+    match value {
+        serde_json::Value::Array(values) => values
+            .iter()
+            .any(|value| value_matches(value, path, expected)),
+        _ if path.is_empty() => value == expected,
+        serde_json::Value::Object(values) => values
+            .get(path[0])
+            .is_some_and(|value| value_matches(value, &path[1..], expected)),
+        _ => false,
     }
 }
 
@@ -140,8 +100,8 @@ mod tests {
     }
 
     #[test]
-    fn future_filter_shapes_are_not_enabled() {
-        let filter = EventFilter {
+    fn flexible_fields_and_arrays_match() {
+        let src_ip_filter = EventFilter {
             action: FilterAction::Archive,
             conditions: vec![FilterCondition {
                 field: "src_ip".to_string(),
@@ -149,9 +109,11 @@ mod tests {
                 value: "10.1.1.1".into(),
             }],
         };
-        assert!(AutoArchive::key(&filter).is_none());
+        let mut auto_archive = AutoArchive::default();
+        auto_archive.add(&src_ip_filter);
+        assert!(auto_archive.is_match(&json!({"src_ip": "10.1.1.1"})));
 
-        let filter = EventFilter {
+        let dns_filter = EventFilter {
             action: FilterAction::Archive,
             conditions: vec![
                 FilterCondition {
@@ -166,6 +128,34 @@ mod tests {
                 },
             ],
         };
-        assert!(AutoArchive::key(&filter).is_none());
+        let mut auto_archive = AutoArchive::default();
+        auto_archive.add(&dns_filter);
+        let event = json!({
+            "alert": {"signature_id": 42},
+            "dns": {
+                "queries": [
+                    {"rrname": "other.example"},
+                    {"rrname": "example.com"},
+                ],
+            },
+        });
+        assert!(auto_archive.is_match(&event));
+
+        let tls_filter = EventFilter {
+            action: FilterAction::Archive,
+            conditions: vec![FilterCondition {
+                field: "tls.sni".to_string(),
+                op: FilterOperator::Eq,
+                value: "www.example.com".into(),
+            }],
+        };
+        let mut auto_archive = AutoArchive::default();
+        auto_archive.add(&tls_filter);
+        assert!(auto_archive.is_match(&json!({
+            "tls": {"sni": "www.example.com"},
+        })));
+        assert!(!auto_archive.is_match(&json!({
+            "tls": {"sni": "other.example.com"},
+        })));
     }
 }

@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use self::api::AlertGroupSpec;
-
 use super::Client;
 use super::HistoryEntry;
 use super::HistoryEntryBuilder;
@@ -19,6 +17,7 @@ use crate::queryparser::QueryElement;
 use crate::queryparser::QueryParser;
 use crate::server::api;
 use crate::server::session::Session;
+use crate::sqlite::configdb::{EventFilter, FilterOperator};
 use crate::util;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -41,7 +40,7 @@ pub(crate) struct ElasticEventRepo {
     client: Client,
     ecs: bool,
     opensearch: bool,
-    auto_archive_tx: Option<UnboundedSender<AlertGroupSpec>>,
+    auto_archive_tx: Option<UnboundedSender<EventFilter>>,
 }
 
 impl ElasticEventRepo {
@@ -666,12 +665,30 @@ impl ElasticEventRepo {
             .await
     }
 
-    pub async fn auto_archive_by_alert_group(
-        &self,
-        alert_group: api::AlertGroupSpec,
-    ) -> Result<u64> {
+    pub async fn auto_archive_by_filter(&self, filter: &EventFilter) -> Result<u64> {
+        let mut filters = vec![
+            json!({"exists": {"field": self.map_field("event_type")}}),
+            json!({"term": {self.map_field("event_type"): "alert"}}),
+        ];
+        for condition in &filter.conditions {
+            match condition.op {
+                FilterOperator::Eq => filters.push(json!({
+                    "term": {self.map_field(&condition.field): condition.value}
+                })),
+            }
+        }
+        let must_not: Vec<serde_json::Value> = TAGS_AUTO_ARCHIVED
+            .iter()
+            .map(|tag| json!({"term": {"tags": tag}}))
+            .collect();
+        let query = json!({
+            "bool": {
+                "filter": filters,
+                "must_not": must_not,
+            }
+        });
         let action = HistoryEntryBuilder::new_auto_archived("filter-query").build();
-        self.add_tags_by_alert_group(alert_group, &TAGS_AUTO_ARCHIVED, &action)
+        self.add_tags_by_query(query, &TAGS_AUTO_ARCHIVED, &action)
             .await
     }
 

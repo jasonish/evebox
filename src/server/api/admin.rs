@@ -7,7 +7,6 @@ use axum::Form;
 use axum::response::IntoResponse;
 use axum::{Extension, Json, extract::Path};
 
-use crate::server::autoarchive::AutoArchive;
 use crate::server::{ServerContext, main::SessionExtractor};
 use crate::sqlite::configdb::{AgentKey, EventFilter, FilterEntry, FilterRow};
 
@@ -51,12 +50,10 @@ pub(super) async fn add_filter(
     let filter = EventFilter::from(&entry);
     let mut tx = context.configdb.pool.begin().await?;
 
-    let key = AutoArchive::key(&filter).unwrap();
-
     if let Ok(filters) = context.auto_archive.read()
-        && filters.has_key(&key)
+        && filters.contains(&filter)
     {
-        info!("Archive filters already contain key {}", &key);
+        info!("Archive filters already contain {:?}", &filter);
         return Ok(Json(json!({})));
     }
 

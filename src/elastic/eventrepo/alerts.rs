@@ -3,8 +3,8 @@
 
 use crate::prelude::*;
 
-use crate::server::api::AlertGroupSpec;
 use crate::server::autoarchive::AutoArchive;
+use crate::sqlite::configdb::EventFilter;
 use crate::{
     elastic::{AlertQueryOptions, ElasticResponse},
     eventrepo::{AggAlert, AggAlertMetadata, AlertsResult},
@@ -289,39 +289,14 @@ impl ElasticEventRepo {
                                         .unwrap_or(false);
 
                                     if !is_archived {
-                                        let auto_archive = auto_archive.read().unwrap();
-
-                                        if auto_archive.is_match(&source) {
-                                            let sensor =
-                                                &source["host"].as_str().map(|s| s.to_string());
-
-                                            // Chrono to get unix epoch.
-                                            let min =
-                                                chrono::DateTime::<chrono::Utc>::from_timestamp(
-                                                    0, 0,
-                                                )
-                                                .map(crate::datetime::DateTime::from)
-                                                .unwrap()
-                                                .to_elastic();
-                                            let max = crate::datetime::DateTime::now().to_elastic();
-
-                                            let spec = AlertGroupSpec {
-                                                signature_id: source["alert"]["signature_id"]
-                                                    .as_u64()
-                                                    .unwrap_or(0),
-                                                src_ip: source["src_ip"]
-                                                    .as_str()
-                                                    .map(|s| s.to_string()),
-                                                dest_ip: source["dest_ip"]
-                                                    .as_str()
-                                                    .map(|s| s.to_string()),
-                                                sensor: sensor.clone(),
-                                                min_timestamp: min,
-                                                max_timestamp: max,
-                                            };
-
+                                        let matched_filter = auto_archive
+                                            .read()
+                                            .unwrap()
+                                            .matching_filter(&source)
+                                            .cloned();
+                                        if let Some(filter) = matched_filter {
                                             if let Some(tx) = &self.auto_archive_tx {
-                                                let _ = tx.send(spec);
+                                                let _ = tx.send(filter);
                                             }
                                             continue;
                                         }
