@@ -371,4 +371,29 @@ mod test {
         filter.run(&mut alert);
         assert_auto_archived_by(&alert, "filter");
     }
+
+    #[test]
+    fn server_filter_matches_fields_added_earlier_in_the_chain() {
+        let mut auto_archive = AutoArchive::default();
+        auto_archive.add(&EventFilter {
+            action: FilterAction::Archive,
+            conditions: vec![FilterCondition {
+                field: "site".to_string(),
+                op: FilterOperator::Eq,
+                value: "branch-office".into(),
+            }],
+        });
+
+        let mut filters = EveFilterChain::with_defaults();
+        filters.add_filter(AddFieldFilter::new("site", "branch-office".into()));
+        filters.add_filter(AutoArchiveFilter::new(
+            Arc::new(RwLock::new(auto_archive)),
+            Arc::new(Metrics::default()),
+        ));
+        let mut event = serde_json::json!({"event_type": "alert"});
+
+        filters.run(&mut event);
+
+        assert_auto_archived_by(&event, "filter");
+    }
 }

@@ -186,12 +186,12 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     }
 
     let mut filters = EveFilterChain::with_defaults();
-    filters.add_filter(crate::eve::filters::AutoArchiveFilter::new(
+    let mut submitted_event_filters = filters.clone();
+    submitted_event_filters.add_filter(crate::eve::filters::AutoArchiveFilter::new(
         context.auto_archive.clone(),
         metrics.clone(),
     ));
-
-    context.filters = Some(filters.clone());
+    context.filters = Some(submitted_event_filters);
 
     context.pcap = Arc::new(crate::server::pcap::configure(&config));
 
@@ -253,6 +253,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
                 filters.add_filter(filter.clone());
             }
         }
+
+        filters.add_filter(crate::eve::filters::AutoArchiveFilter::new(
+            context.auto_archive.clone(),
+            metrics.clone(),
+        ));
 
         let end = config.get_bool("end")?;
 
