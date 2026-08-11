@@ -13,6 +13,8 @@ use crate::{
 
 use super::{ElasticEventRepo, MINIMUM_SHOULD_MATCH};
 
+const AUTO_ARCHIVE_AGGREGATION: &str = "auto_archive_filters";
+
 fn record_unique_filter(filters: &mut Vec<EventFilter>, filter: &EventFilter) -> bool {
     if filters.contains(filter) {
         false
@@ -23,6 +25,41 @@ fn record_unique_filter(filters: &mut Vec<EventFilter>, filter: &EventFilter) ->
 }
 
 impl ElasticEventRepo {
+    fn add_auto_archive_aggregation(&self, query: &mut serde_json::Value, filters: &[EventFilter]) {
+        if filters.is_empty() {
+            return;
+        }
+
+        let filters = filters
+            .iter()
+            .enumerate()
+            .map(|(index, filter)| (index.to_string(), self.build_auto_archive_query(filter)))
+            .collect::<serde_json::Map<_, _>>();
+
+        query["aggs"][AUTO_ARCHIVE_AGGREGATION] = json!({
+            "filters": {
+                "filters": filters,
+            }
+        });
+    }
+
+    fn matching_auto_archive_filters<'a>(
+        aggregations: &serde_json::Value,
+        filters: &'a [EventFilter],
+    ) -> Vec<&'a EventFilter> {
+        filters
+            .iter()
+            .enumerate()
+            .filter_map(|(index, filter)| {
+                let count = aggregations[AUTO_ARCHIVE_AGGREGATION]["buckets"]
+                    [&index.to_string()]["doc_count"]
+                    .as_u64()
+                    .unwrap_or_default();
+                (count > 0).then_some(filter)
+            })
+            .collect()
+    }
+
     pub fn build_inbox_query(&self, options: AlertQueryOptions) -> serde_json::Value {
         let mut filters = Vec::new();
         let mut should = Vec::new();
@@ -188,6 +225,8 @@ impl ElasticEventRepo {
         auto_archive: Arc<RwLock<AutoArchive>>,
     ) -> Result<AlertsResult> {
         let mut query = self.build_inbox_query(options);
+        let auto_archive_filters = auto_archive.read().unwrap().filters().to_vec();
+        self.add_auto_archive_aggregation(&mut query, &auto_archive_filters);
         query["timeout"] = "3s".into();
         let start = std::time::Instant::now();
         let body = self.search(&query).await?.text().await?;
@@ -213,6 +252,16 @@ impl ElasticEventRepo {
         let mut alerts: Vec<AggAlert> = vec![];
         let mut queued_filters = Vec::new();
         if let Some(aggregrations) = response.aggregations {
+            for filter in Self::matching_auto_archive_filters(&aggregrations, &auto_archive_filters)
+            {
+                if let Some(tx) = &self.auto_archive_tx
+                    && auto_archive.read().unwrap().contains(filter)
+                    && record_unique_filter(&mut queued_filters, filter)
+                {
+                    let _ = tx.send(filter.clone());
+                }
+            }
+
             if let serde_json::Value::Array(buckets) = &aggregrations["signatures"]["buckets"] {
                 for bucket in buckets {
                     if let serde_json::Value::Array(buckets) = &bucket["sources"]["buckets"] {
@@ -293,28 +342,17 @@ impl ElasticEventRepo {
                                         to = Some(max_timestamp.clone());
                                     }
 
+                                    // Queueing is based on the datastore aggregation above. This
+                                    // representative check only avoids returning an alert that is
+                                    // about to be archived while the background update runs.
                                     let is_archived = source["tags"]
                                         .as_array()
                                         .map(|a| a.iter().any(|t| t == "evebox.archived"))
                                         .unwrap_or(false);
-
-                                    if !is_archived {
-                                        let matched_filter = auto_archive
-                                            .read()
-                                            .unwrap()
-                                            .matching_filter(&source)
-                                            .cloned();
-                                        if let Some(filter) = matched_filter {
-                                            if let Some(tx) = &self.auto_archive_tx
-                                                && record_unique_filter(
-                                                    &mut queued_filters,
-                                                    &filter,
-                                                )
-                                            {
-                                                let _ = tx.send(filter);
-                                            }
-                                            continue;
-                                        }
+                                    if !is_archived
+                                        && auto_archive.read().unwrap().is_match(&source)
+                                    {
+                                        continue;
                                     }
 
                                     let alert = AggAlert {
@@ -358,7 +396,7 @@ mod tests {
     use crate::sqlite::configdb::{EventFilter, FilterAction, FilterCondition, FilterOperator};
     use serde_json::json;
 
-    use super::record_unique_filter;
+    use super::{AUTO_ARCHIVE_AGGREGATION, record_unique_filter};
 
     fn test_repo() -> ElasticEventRepo {
         ElasticEventRepo::new(
@@ -405,6 +443,67 @@ mod tests {
         assert!(!record_unique_filter(&mut filters, &first));
         assert!(record_unique_filter(&mut filters, &second));
         assert_eq!(filters, vec![first, second]);
+    }
+
+    #[test]
+    fn auto_archive_filters_are_queried_independently_of_top_hits() {
+        let repo = test_repo();
+        let filter = EventFilter {
+            action: FilterAction::Archive,
+            conditions: vec![
+                FilterCondition {
+                    field: "alert.signature_id".to_string(),
+                    op: FilterOperator::Eq,
+                    value: 42.into(),
+                },
+                FilterCondition {
+                    field: "custom.label".to_string(),
+                    op: FilterOperator::Eq,
+                    value: "archive-me".into(),
+                },
+            ],
+        };
+        let mut query = repo.build_inbox_query(AlertQueryOptions::default());
+
+        repo.add_auto_archive_aggregation(&mut query, std::slice::from_ref(&filter));
+
+        let filter_query = &query["aggs"][AUTO_ARCHIVE_AGGREGATION]["filters"]["filters"]["0"];
+        assert!(array_contains(
+            &filter_query["bool"]["filter"],
+            &json!({"term": {"alert.signature_id": 42}})
+        ));
+        assert!(array_contains(
+            &filter_query["bool"]["filter"],
+            &json!({"term": {"custom.label": "archive-me"}})
+        ));
+    }
+
+    #[test]
+    fn matching_auto_archive_filters_come_from_filter_bucket_counts() {
+        let first = event_filter(1);
+        let second = event_filter(2);
+        let filters = vec![first.clone(), second];
+        let aggregations = json!({
+            "signatures": {
+                "buckets": [{
+                    "newest": {
+                        "hits": {
+                            "hits": [{"_source": {"alert": {"signature_id": 999}}}]
+                        }
+                    }
+                }]
+            },
+            "auto_archive_filters": {
+                "buckets": {
+                    "0": {"doc_count": 1},
+                    "1": {"doc_count": 0},
+                }
+            }
+        });
+
+        let matching = ElasticEventRepo::matching_auto_archive_filters(&aggregations, &filters);
+
+        assert_eq!(matching, vec![&first]);
     }
 
     #[test]

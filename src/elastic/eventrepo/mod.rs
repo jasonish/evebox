@@ -665,7 +665,7 @@ impl ElasticEventRepo {
             .await
     }
 
-    pub async fn auto_archive_by_filter(&self, filter: &EventFilter) -> Result<u64> {
+    fn build_auto_archive_query(&self, filter: &EventFilter) -> serde_json::Value {
         let mut filters = vec![
             json!({"exists": {"field": self.map_field("event_type")}}),
             json!({"term": {self.map_field("event_type"): "alert"}}),
@@ -681,12 +681,16 @@ impl ElasticEventRepo {
             .iter()
             .map(|tag| json!({"term": {"tags": tag}}))
             .collect();
-        let query = json!({
+        json!({
             "bool": {
                 "filter": filters,
                 "must_not": must_not,
             }
-        });
+        })
+    }
+
+    pub async fn auto_archive_by_filter(&self, filter: &EventFilter) -> Result<u64> {
+        let query = self.build_auto_archive_query(filter);
         let action = HistoryEntryBuilder::new_auto_archived("filter-query").build();
         self.add_tags_by_query(query, &TAGS_AUTO_ARCHIVED, &action)
             .await

@@ -32,6 +32,10 @@ impl AutoArchive {
         })
     }
 
+    pub(crate) fn filters(&self) -> &[EventFilter] {
+        &self.filters
+    }
+
     pub(crate) fn contains(&self, filter: &EventFilter) -> bool {
         self.filters.contains(filter)
     }
