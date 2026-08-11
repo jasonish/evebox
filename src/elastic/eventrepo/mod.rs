@@ -941,6 +941,15 @@ impl ElasticEventRepo {
         }
         filter.push(json!({"term": {self.map_field("alert.signature_id"): request.signature_id}}));
 
+        if let Some(rrname) = &request.dns_rrname {
+            filter.push(json!({
+                "term": {self.map_field("dns.queries.rrname"): rrname}
+            }));
+        }
+        if let Some(sni) = &request.tls_sni {
+            filter.push(json!({"term": {self.map_field("tls.sni"): sni}}));
+        }
+
         // If we have a sensor, restrict the query to a sensor.
         if let Some(sensor) = &request.sensor {
             if sensor == "(no-name)" {

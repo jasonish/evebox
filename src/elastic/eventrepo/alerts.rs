@@ -354,6 +354,7 @@ impl ElasticEventRepo {
 #[cfg(test)]
 mod tests {
     use crate::elastic::{AlertQueryOptions, Client, ElasticEventRepo};
+    use crate::server::api::AlertGroupSpec;
     use crate::sqlite::configdb::{EventFilter, FilterAction, FilterCondition, FilterOperator};
     use serde_json::json;
 
@@ -404,6 +405,32 @@ mod tests {
         assert!(!record_unique_filter(&mut filters, &first));
         assert!(record_unique_filter(&mut filters, &second));
         assert_eq!(filters, vec![first, second]);
+    }
+
+    #[test]
+    fn alert_group_filter_includes_exact_dns_and_tls_fields() {
+        let repo = test_repo();
+        let mut must_not = Vec::new();
+        let filters = repo.build_alert_group_filter(
+            &AlertGroupSpec {
+                signature_id: 42,
+                src_ip: Some("192.0.2.1".to_string()),
+                dest_ip: Some("198.51.100.1".to_string()),
+                sensor: None,
+                dns_rrname: Some("discord.com".to_string()),
+                tls_sni: Some("gateway.discord.com".to_string()),
+                min_timestamp: "2026-08-11T00:00:00Z".to_string(),
+                max_timestamp: "2026-08-11T01:00:00Z".to_string(),
+            },
+            &mut must_not,
+        );
+
+        assert!(filters.contains(&json!({
+            "term": {"dns.queries.rrname.keyword": "discord.com"}
+        })));
+        assert!(filters.contains(&json!({
+            "term": {"tls.sni.keyword": "gateway.discord.com"}
+        })));
     }
 
     #[test]

@@ -20,9 +20,9 @@ function queueAdd(func: any): Promise<any> {
   const p = new Promise<any>((resolve, reject) => {
     QUEUE.push((cb: any) => {
       func()
-        .then(() => {
+        .then((response: any) => {
           cb();
-          resolve(null);
+          resolve(response);
         })
         .catch(() => {
           cb();
@@ -182,11 +182,19 @@ export async function getEvents(
   return get("api/events", params).then((response) => response.data);
 }
 
-export async function archiveAggregateAlert(alert: EventWrapper) {
+export async function archiveAggregateAlert(
+  alert: EventWrapper,
+  filter?: {
+    dns_rrname?: string;
+    tls_sni?: string;
+  },
+) {
   const params = {
     signature_id: alert._source.alert!.signature_id,
     src_ip: alert._source.src_ip,
     dest_ip: alert._source.dest_ip,
+    dns_rrname: filter?.dns_rrname,
+    tls_sni: filter?.tls_sni,
     min_timestamp: alert._metadata?.min_timestamp,
     max_timestamp: alert._metadata?.max_timestamp,
   };

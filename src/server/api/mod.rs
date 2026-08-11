@@ -130,6 +130,8 @@ pub(crate) struct AlertGroupSpec {
     pub src_ip: Option<String>,
     pub dest_ip: Option<String>,
     pub sensor: Option<String>,
+    pub dns_rrname: Option<String>,
+    pub tls_sni: Option<String>,
     pub min_timestamp: String,
     pub max_timestamp: String,
 }
@@ -281,11 +283,11 @@ pub(crate) async fn alert_group_archive(
     match context.datastore.archive_by_alert_group(request).await {
         Ok(n) => {
             context.metrics.incr_autoarchived_by_user(n);
-            StatusCode::OK
+            Json(json!({ "updated": n })).into_response()
         }
         Err(err) => {
             error!("Failed to archive by alert group: {:?}", err);
-            StatusCode::INTERNAL_SERVER_ERROR
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
 }

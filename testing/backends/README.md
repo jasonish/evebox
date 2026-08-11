@@ -11,8 +11,9 @@ There are three pieces:
    queries and mutations EveBox runs during normal operation (the alerts inbox
    aggregation, event histogram, group-by/rare-terms aggregations, DHCP/DNS
    reports, the stats `derivative` pipeline aggregations, `_update_by_query`
-   painless tag/comment operations, and auto-archiving an alert indexed by an
-   external process), reporting pass/fail per operation.
+   painless tag/comment operations, exact DNS/SNI alert-group archival, and
+   auto-archiving an alert indexed by an external process), reporting
+   pass/fail per operation.
    `evebox test opensearch` is an alias for the same command. It can also run
    read-only against an existing/production backend (`--existing`) — see
    [Two modes](#two-modes).
@@ -20,7 +21,8 @@ There are three pieces:
 2. **`evebox test sqlite`** — the SQLite equivalent: imports a sample of events
    into a throwaway database (removed afterwards, or use `--database` to keep
    one) and runs behavioral checks over both SQLite alert code paths, including
-   the `is:archived`/`is:escalated` filters and the `@mac` search operator.
+   the `is:archived`/`is:escalated` filters, exact DNS/SNI alert-group archival,
+   and the `@mac` search operator.
 
 3. **`run.sh`** — the one-shot harness: runs `evebox test sqlite`, then starts
    ES/OpenSearch containers across a version matrix and runs

@@ -538,10 +538,17 @@ async fn run(args: &Args) -> Result<Report> {
 
     if args.existing {
         checks.push(Check::skip(
+            "archive_group_exact_fields",
+            "read-only mode (existing data)",
+        ));
+        checks.push(Check::skip(
             "external_auto_archive",
             "read-only mode (existing data)",
         ));
     } else {
+        check!(checks, "archive_group_exact_fields", {
+            check_elastic_alert_group_exact_fields(&client, &repo, base).await
+        });
         check!(checks, "external_auto_archive", {
             check_external_auto_archive(&client, &repo, base).await
         });
@@ -713,6 +720,148 @@ async fn check_external_auto_archive(
     }
 }
 
+async fn check_elastic_alert_group_exact_fields(
+    client: &elastic::Client,
+    repo: &ElasticEventRepo,
+    base: &str,
+) -> Result<Option<String>> {
+    const SENSOR: &str = "evebox-backend-test";
+    const SRC_IP: &str = "192.0.2.30";
+    const DEST_IP: &str = "198.51.100.40";
+    const RRNAME: &str = "discord.com";
+    const SNI: &str = "discord.com";
+    const DNS_SIGNATURE_ID: u64 = 9_999_997;
+    const TLS_SIGNATURE_ID: u64 = 9_999_996;
+
+    let now = DateTime::now();
+    let index = format!("{base}-archive-group-exact-fields");
+    let dns_match_id = ulid::Ulid::new().to_string();
+    let dns_keep_id = ulid::Ulid::new().to_string();
+    let tls_match_id = ulid::Ulid::new().to_string();
+    let tls_keep_id = ulid::Ulid::new().to_string();
+
+    let events = [
+        (
+            &dns_match_id,
+            json!({
+                "timestamp": now.to_eve(),
+                "@timestamp": now.to_elastic(),
+                "event_type": "alert",
+                "host": SENSOR,
+                "src_ip": SRC_IP,
+                "dest_ip": DEST_IP,
+                "alert": {"signature_id": DNS_SIGNATURE_ID, "signature": "Exact DNS archive test"},
+                "dns": {"queries": [
+                    {"rrname": "keep.example", "rrtype": "A"},
+                    {"rrname": RRNAME, "rrtype": "A"},
+                ]},
+            }),
+        ),
+        (
+            &dns_keep_id,
+            json!({
+                "timestamp": now.to_eve(),
+                "@timestamp": now.to_elastic(),
+                "event_type": "alert",
+                "host": SENSOR,
+                "src_ip": SRC_IP,
+                "dest_ip": DEST_IP,
+                "alert": {"signature_id": DNS_SIGNATURE_ID, "signature": "Exact DNS archive test"},
+                "dns": {"queries": [{"rrname": "keep.example", "rrtype": "A"}]},
+            }),
+        ),
+        (
+            &tls_match_id,
+            json!({
+                "timestamp": now.to_eve(),
+                "@timestamp": now.to_elastic(),
+                "event_type": "alert",
+                "host": SENSOR,
+                "src_ip": SRC_IP,
+                "dest_ip": DEST_IP,
+                "alert": {"signature_id": TLS_SIGNATURE_ID, "signature": "Exact TLS archive test"},
+                "tls": {"sni": SNI},
+            }),
+        ),
+        (
+            &tls_keep_id,
+            json!({
+                "timestamp": now.to_eve(),
+                "@timestamp": now.to_elastic(),
+                "event_type": "alert",
+                "host": SENSOR,
+                "src_ip": SRC_IP,
+                "dest_ip": DEST_IP,
+                "alert": {"signature_id": TLS_SIGNATURE_ID, "signature": "Exact TLS archive test"},
+                "tls": {"sni": "keep.example"},
+            }),
+        ),
+    ];
+
+    for (id, event) in events {
+        client
+            .put(&format!("{index}/_doc/{id}?refresh=true"))?
+            .json(&event)
+            .send()
+            .await?
+            .error_for_status()?;
+    }
+
+    let min_timestamp = (now.clone() - Duration::from_secs(1)).to_rfc3339_utc();
+    let max_timestamp = now.to_rfc3339_utc();
+    let updated = repo
+        .archive_by_alert_group(AlertGroupSpec {
+            signature_id: DNS_SIGNATURE_ID,
+            src_ip: Some(SRC_IP.to_string()),
+            dest_ip: Some(DEST_IP.to_string()),
+            sensor: Some(SENSOR.to_string()),
+            dns_rrname: Some(RRNAME.to_string()),
+            tls_sni: None,
+            min_timestamp: min_timestamp.clone(),
+            max_timestamp: max_timestamp.clone(),
+        })
+        .await?;
+    if updated != 1 {
+        bail!("DNS-constrained alert-group archive updated {updated} events instead of 1");
+    }
+
+    let updated = repo
+        .archive_by_alert_group(AlertGroupSpec {
+            signature_id: TLS_SIGNATURE_ID,
+            src_ip: Some(SRC_IP.to_string()),
+            dest_ip: Some(DEST_IP.to_string()),
+            sensor: Some(SENSOR.to_string()),
+            dns_rrname: None,
+            tls_sni: Some(SNI.to_string()),
+            min_timestamp,
+            max_timestamp,
+        })
+        .await?;
+    if updated != 1 {
+        bail!("SNI-constrained alert-group archive updated {updated} events instead of 1");
+    }
+
+    for (id, expected) in [
+        (&dns_match_id, true),
+        (&dns_keep_id, false),
+        (&tls_match_id, true),
+        (&tls_keep_id, false),
+    ] {
+        let event = repo
+            .get_event_by_id(id.to_string())
+            .await?
+            .ok_or_else(|| anyhow!("exact alert-group test event {id} disappeared"))?;
+        let archived = event["_source"]["tags"]
+            .as_array()
+            .is_some_and(|tags| tags.iter().any(|tag| tag == TAG_ARCHIVED));
+        if archived != expected {
+            bail!("exact alert-group test event {id} archived={archived}, expected={expected}");
+        }
+    }
+
+    Ok(Some("dns=1 tls=1".to_string()))
+}
+
 // ---------------------------------------------------------------------------
 // SQLite
 // ---------------------------------------------------------------------------
@@ -814,6 +963,122 @@ async fn reset_sqlite_alert_group_state(
     Ok(())
 }
 
+async fn check_sqlite_alert_group_exact_fields(repo: &SqliteEventRepo) -> Result<Option<String>> {
+    const SENSOR: &str = "evebox-backend-test";
+    const SRC_IP: &str = "192.0.2.30";
+    const DEST_IP: &str = "198.51.100.40";
+    const RRNAME: &str = "discord.com";
+    const SNI: &str = "discord.com";
+    const DNS_SIGNATURE_ID: u64 = 9_999_997;
+    const TLS_SIGNATURE_ID: u64 = 9_999_996;
+
+    let now = DateTime::now();
+    let mut sink = repo.get_importer();
+    for event in [
+        json!({
+            "timestamp": now.to_eve(),
+            "event_type": "alert",
+            "host": SENSOR,
+            "src_ip": SRC_IP,
+            "dest_ip": DEST_IP,
+            "alert": {"signature_id": DNS_SIGNATURE_ID, "signature": "Exact DNS archive test"},
+            "dns": {"queries": [
+                {"rrname": "keep.example", "rrtype": "A"},
+                {"rrname": RRNAME, "rrtype": "A"},
+            ]},
+            "test_case": "dns-match",
+        }),
+        json!({
+            "timestamp": now.to_eve(),
+            "event_type": "alert",
+            "host": SENSOR,
+            "src_ip": SRC_IP,
+            "dest_ip": DEST_IP,
+            "alert": {"signature_id": DNS_SIGNATURE_ID, "signature": "Exact DNS archive test"},
+            "dns": {"queries": [{"rrname": "keep.example", "rrtype": "A"}]},
+            "test_case": "dns-keep",
+        }),
+        json!({
+            "timestamp": now.to_eve(),
+            "event_type": "alert",
+            "host": SENSOR,
+            "src_ip": SRC_IP,
+            "dest_ip": DEST_IP,
+            "alert": {"signature_id": TLS_SIGNATURE_ID, "signature": "Exact TLS archive test"},
+            "tls": {"sni": SNI},
+            "test_case": "tls-match",
+        }),
+        json!({
+            "timestamp": now.to_eve(),
+            "event_type": "alert",
+            "host": SENSOR,
+            "src_ip": SRC_IP,
+            "dest_ip": DEST_IP,
+            "alert": {"signature_id": TLS_SIGNATURE_ID, "signature": "Exact TLS archive test"},
+            "tls": {"sni": "keep.example"},
+            "test_case": "tls-keep",
+        }),
+    ] {
+        sink.submit(event).await?;
+    }
+    sink.commit().await?;
+
+    let min_timestamp = (now.clone() - Duration::from_secs(1)).to_rfc3339_utc();
+    let max_timestamp = now.to_rfc3339_utc();
+    let updated = repo
+        .archive_by_alert_group(AlertGroupSpec {
+            signature_id: DNS_SIGNATURE_ID,
+            src_ip: Some(SRC_IP.to_string()),
+            dest_ip: Some(DEST_IP.to_string()),
+            sensor: Some(SENSOR.to_string()),
+            dns_rrname: Some(RRNAME.to_string()),
+            tls_sni: None,
+            min_timestamp: min_timestamp.clone(),
+            max_timestamp: max_timestamp.clone(),
+        })
+        .await?;
+    if updated != 1 {
+        bail!("DNS-constrained alert-group archive updated {updated} events instead of 1");
+    }
+
+    let updated = repo
+        .archive_by_alert_group(AlertGroupSpec {
+            signature_id: TLS_SIGNATURE_ID,
+            src_ip: Some(SRC_IP.to_string()),
+            dest_ip: Some(DEST_IP.to_string()),
+            sensor: Some(SENSOR.to_string()),
+            dns_rrname: None,
+            tls_sni: Some(SNI.to_string()),
+            min_timestamp,
+            max_timestamp,
+        })
+        .await?;
+    if updated != 1 {
+        bail!("SNI-constrained alert-group archive updated {updated} events instead of 1");
+    }
+
+    for (test_case, expected) in [
+        ("dns-match", 1_i64),
+        ("dns-keep", 0),
+        ("tls-match", 1),
+        ("tls-keep", 0),
+    ] {
+        let archived: i64 = sqlx::query_scalar(
+            "SELECT archived FROM events WHERE json_extract(source, '$.test_case') = ?",
+        )
+        .bind(test_case)
+        .fetch_one(repo.get_pool())
+        .await?;
+        if archived != expected {
+            bail!(
+                "exact alert-group test event {test_case} archived={archived}, expected={expected}"
+            );
+        }
+    }
+
+    Ok(Some("dns=1 tls=1".to_string()))
+}
+
 /// Behavioral check of the `is:archived` / `is:escalated` alert search filters
 /// against one of the SQLite alert code paths, selected by `timeout`
 /// (Some(>0) -> alerts_with_timeout, None -> alerts_group_by).
@@ -845,6 +1110,8 @@ async fn check_sqlite_state_filter(
         src_ip: group.source["src_ip"].as_str().map(String::from),
         dest_ip: group.source["dest_ip"].as_str().map(String::from),
         sensor: group.source["host"].as_str().map(String::from),
+        dns_rrname: None,
+        tls_sni: None,
         min_timestamp: group.metadata.min_timestamp.to_rfc3339_utc(),
         max_timestamp: group.metadata.max_timestamp.to_rfc3339_utc(),
     };
@@ -1401,6 +1668,7 @@ const COMMON_QUERY_CHECK_NAMES: &[&str] = &[
 /// SQLite-specific regressions that the single shared datastore path would not
 /// distinguish.
 const SQLITE_SPECIFIC_QUERY_CHECK_NAMES: &[&str] = &[
+    "archive_group_exact_fields",
     "is_state_filter_timeout",
     "is_state_filter_group_by",
     "events_query_mac",
@@ -1490,6 +1758,9 @@ async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
             .await,
         );
         run_common_mutation_checks(&datastore, &mut checks, true, samples).await;
+        check!(checks, "archive_group_exact_fields", {
+            check_sqlite_alert_group_exact_fields(sqlite_repo).await
+        });
     } else {
         for name in COMMON_QUERY_CHECK_NAMES {
             checks.push(Check::skip(name, "no events imported"));
@@ -1692,6 +1963,8 @@ async fn run_common_read_query_checks(repo: &EventRepo, checks: &mut Vec<Check>)
                     src_ip: alert.source["src_ip"].as_str().map(String::from),
                     dest_ip: alert.source["dest_ip"].as_str().map(String::from),
                     sensor: alert.source["host"].as_str().map(String::from),
+                    dns_rrname: None,
+                    tls_sni: None,
                     min_timestamp: alert.metadata.min_timestamp.to_rfc3339_utc(),
                     max_timestamp: alert.metadata.max_timestamp.to_rfc3339_utc(),
                 });

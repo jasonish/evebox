@@ -55,7 +55,7 @@ import {
   TimestampCell,
 } from "./components";
 import { PREFS } from "./preferences";
-import { addNotification } from "./Notifications";
+import { addError, addNotification } from "./Notifications";
 
 const DEFAULT_SORTBY = "timestamp";
 const DEFAULT_SORTORDER = "desc";
@@ -554,21 +554,28 @@ export function Alerts() {
   }
 
   function archiveByEvent(event: EventWrapper) {
-    const relIndex = visibleEvents().indexOf(event);
-    const absIndex = eventStore.events.indexOf(event);
     let ignore = API.archiveAggregateAlert(event);
     if (view === View.Inbox) {
-      eventStore.events.splice(absIndex, 1);
-      if (relIndex > -1) {
-        if (cursor() > 0 && cursor() > relIndex) {
-          setCursor(cursor() - 1);
-        }
-        if (cursor() > visibleEvents().length - 1) {
-          setCursor(Math.max(0, cursor() - 1));
-        }
-      }
+      removeEventFromView(event);
     } else {
       eventSetArchived(event);
+    }
+  }
+
+  function removeEventFromView(event: EventWrapper) {
+    const relIndex = visibleEvents().indexOf(event);
+    const absIndex = eventStore.events.indexOf(event);
+    if (absIndex < 0) {
+      return;
+    }
+    eventStore.events.splice(absIndex, 1);
+    if (relIndex > -1) {
+      if (cursor() > 0 && cursor() > relIndex) {
+        setCursor(cursor() - 1);
+      }
+      if (cursor() > visibleEvents().length - 1) {
+        setCursor(Math.max(0, cursor() - 1));
+      }
     }
   }
 
@@ -746,17 +753,45 @@ export function Alerts() {
     escalate(index).then(() => archiveByRelIndex(index));
   }
 
-  const autoArchiveWithParams = (params: API.API.AddAutoArchiveRequest) => {
-    API.API.addAutoArchive(params);
-
-    // DNS and TLS fields are not part of an alert group key, so the
-    // aggregate archive endpoint cannot apply these predicates exactly.
+  const autoArchiveWithParams = (
+    selectedEvent: EventWrapper,
+    params: API.API.AddAutoArchiveRequest,
+  ) => {
     if (params.dns_rrname || params.tls_sni) {
-      addNotification(
-        "Auto-archive filter successfully added. Matching alerts will be archived by the server.",
-      );
+      API.API.addAutoArchive(params)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(
+              `Failed to add auto-archive filter: ${response.status}`,
+            );
+          }
+          return API.archiveAggregateAlert(selectedEvent, params);
+        })
+        .then((response) => {
+          const count = selectedEvent._metadata?.count || 0;
+          const updated = response?.data?.updated || 0;
+          const unfiltered =
+            !searchParams.q &&
+            !searchParams.sensor &&
+            getFilters().length === 0;
+          const completeAggregate =
+            !timedOut() &&
+            updated > 0 &&
+            (count === 1 || (unfiltered && updated === count));
+          if (view === View.Inbox && completeAggregate) {
+            removeEventFromView(selectedEvent);
+          } else {
+            refresh();
+          }
+          addNotification(
+            "Auto-archive filter successfully added and matching events archived.",
+          );
+        })
+        .catch((err) => addError(`${err}`));
       return;
     }
+
+    API.API.addAutoArchive(params);
 
     const matchingEvents = eventStore.events.filter((e: EventWrapper) => {
       if (params.sensor && e._source?.host !== params.sensor) {
@@ -1239,7 +1274,9 @@ export function Alerts() {
 
                                     <AutoArchiveMenuElements
                                       event={event}
-                                      callback={autoArchiveWithParams}
+                                      callback={(params) =>
+                                        autoArchiveWithParams(event, params)
+                                      }
                                     />
                                   </Show>
                                 </ul>

@@ -188,6 +188,19 @@ impl SqliteEventRepo {
         filters.push("json_extract(events.source, '$.alert.signature_id') = ?".to_string());
         args.push(alert_group.signature_id as i64)?;
 
+        if let Some(rrname) = alert_group.dns_rrname {
+            filters.push(
+                "EXISTS (SELECT 1 FROM json_each(events.source, '$.dns.queries') AS dns_query WHERE json_extract(dns_query.value, '$.rrname') = ?)"
+                    .to_string(),
+            );
+            args.push(rrname)?;
+        }
+
+        if let Some(sni) = alert_group.tls_sni {
+            filters.push("json_extract(events.source, '$.tls.sni') = ?".to_string());
+            args.push(sni)?;
+        }
+
         let src_ip = alert_group.src_ip.unwrap_or_default();
         if src_ip.is_empty() {
             filters.push("(json_extract(events.source, '$.src_ip') IS NULL OR json_extract(events.source, '$.src_ip') = '')".to_string());
