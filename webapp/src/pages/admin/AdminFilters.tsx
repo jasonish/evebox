@@ -42,12 +42,6 @@ export function AdminFilters() {
     });
   };
 
-  const conditionValue = (filter: any, field: string) => {
-    return filter.filter.conditions.find(
-      (condition: any) => condition.field === field,
-    )?.value;
-  };
-
   return (
     <>
       <AdminPageHeader
@@ -74,17 +68,6 @@ export function AdminFilters() {
         </div>
       </AdminPageHeader>
       <Suspense>
-        <div class="card">
-          <div class="card-body">
-            <div class="row">
-              <div class="col fw-bold">Sensor</div>
-              <div class="col fw-bold">Source IP</div>
-              <div class="col fw-bold">Destination IP</div>
-              <div class="col fw-bold">Signature ID</div>
-              <div class="col fw-bold"></div>
-            </div>
-          </div>
-        </div>
         <For each={filters0()}>
           {(filter) => {
             return (
@@ -94,18 +77,18 @@ export function AdminFilters() {
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
-                          {conditionValue(filter, "host") || "*"}
+                          <div class="fw-bold">Conditions:</div>
+                          <For each={filter.filter.conditions}>
+                            {(condition) => (
+                              <div class="ms-3 app-break-anywhere">
+                                <code>{condition.field}</code>{" "}
+                                {condition.op === "eq" ? "=" : condition.op}{" "}
+                                <code>{JSON.stringify(condition.value)}</code>
+                              </div>
+                            )}
+                          </For>
                         </div>
-                        <div class="col">
-                          {conditionValue(filter, "src_ip") || "*"}
-                        </div>
-                        <div class="col">
-                          {conditionValue(filter, "dest_ip") || "*"}
-                        </div>
-                        <div class="col">
-                          {conditionValue(filter, "alert.signature_id")}
-                        </div>
-                        <div class="col text-end">
+                        <div class="col-auto text-end">
                           <button
                             class="btn btn-warning"
                             onClick={() => deleteFilter(filter.id)}
@@ -114,7 +97,7 @@ export function AdminFilters() {
                           </button>
                         </div>
                         <Show when={filter.comment}>
-                          <div class="col-12">
+                          <div class="col-12 mt-2">
                             <span class="fw-bold">Comment: </span>
                             {filter.comment}
                           </div>
