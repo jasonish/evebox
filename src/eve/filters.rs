@@ -297,6 +297,26 @@ mod test {
     }
 
     #[test]
+    fn metadata_auto_archive_replaces_non_array_history() {
+        let filters = EveFilterChain::with_defaults();
+        let mut event = serde_json::json!({
+            "event_type": "alert",
+            "alert": {
+                "metadata": {
+                    "evebox-action": ["archive"],
+                },
+            },
+            "evebox": {
+                "history": "invalid",
+            },
+        });
+
+        filters.run(&mut event);
+
+        assert_auto_archived_by(&event, "metadata");
+    }
+
+    #[test]
     fn server_filter_auto_archive_records_cause() {
         let mut auto_archive = AutoArchive::default();
         auto_archive.add(&EventFilter::from(&FilterEntry {

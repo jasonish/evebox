@@ -51,10 +51,8 @@ pub(crate) fn has_tag(event: &serde_json::Value, tag: &str) -> bool {
 }
 
 pub(crate) fn ensure_has_history(event: &mut serde_json::Value) {
-    if let serde_json::Value::Null = &event["evebox"] {
-        event["evebox"] = json!({});
-    }
-    if let serde_json::Value::Null = &event["evebox"]["history"] {
-        event["evebox"]["history"] = json!([]);
+    ensure_has_evebox(event);
+    if event["evebox"]["history"].as_array().is_none() {
+        event["evebox"]["history"] = serde_json::Value::Array(vec![]);
     }
 }
