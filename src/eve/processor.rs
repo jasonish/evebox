@@ -50,6 +50,13 @@ impl Processor {
     /// from the bookmark (invalid bookmark, file does not exist...).
     fn init_from_bookmark(&mut self) -> bool {
         if let Some(bookmark_filename) = &self.bookmark_filename {
+            // The bookmark writability check can leave a new, empty file behind.
+            if bookmark_filename
+                .metadata()
+                .is_ok_and(|metadata| metadata.len() == 0)
+            {
+                return false;
+            }
             match bookmark::Bookmark::from_file(bookmark_filename) {
                 Err(err) => {
                     warn!("Fail to load bookmark: {}", err);
