@@ -81,6 +81,10 @@ input:
     - "/var/log/suricata/eve.json"
     - "/var/log/suricata/eve.*.json"
 
+    # Timestamped spools such as eve.json.%s and eve.json.%n.%s. EveBox
+    # automatically uses one processor for each optional thread index.
+    #- "/var/log/suricata/eve.json.[0-9]*"
+
   # Bookmark directory, as with the agent if the server can't write to
   # the directory where the above log file is, you need to provide
   # this.

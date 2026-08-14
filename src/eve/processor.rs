@@ -64,6 +64,10 @@ impl Processor {
                             "Valid bookmark found, jumping to record: {}",
                             bookmark.offset
                         );
+                        if let Err(err) = self.reader.select_bookmark(&bookmark.path) {
+                            warn!("Failed to select bookmarked EVE file: {}", err);
+                            return false;
+                        }
                         if let Err(err) = self.reader.goto_lineno(bookmark.offset) {
                             warn!("Failed to skip to line {}, error={}", bookmark.offset, err);
                             return false;

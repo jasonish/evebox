@@ -4,6 +4,7 @@
 use crate::prelude::*;
 
 use super::filters::EveFilterChain;
+use super::spool::EveInput;
 use super::{EveReader, Processor};
 use crate::eve::filters::AddAgentFilenameFilter;
 use crate::importer::EventSink;
@@ -43,6 +44,7 @@ impl EvePatternWatcher {
     }
 
     pub fn check(&mut self) {
+        let mut paths = Vec::new();
         for pattern in &self.patterns {
             // This is for error reporting to the user, in the case
             // where the parent directory of the log files is not
@@ -56,26 +58,39 @@ impl EvePatternWatcher {
                     err
                 );
             }
-            if let Ok(paths) = crate::path::expand(pattern) {
-                for path in paths {
-                    if !self.filenames.contains(&path) {
-                        info!("Found EVE input file {}", path.display());
-                        self.start_file(&path);
-                        self.filenames.insert(path);
-                    }
+            if let Ok(found) = crate::path::expand(pattern) {
+                paths.extend(found);
+            }
+        }
+
+        for input in EveInput::group(paths, self.end) {
+            let key = input.key().to_path_buf();
+            if !self.filenames.contains(&key) {
+                if input.is_spool() {
+                    info!(
+                        "Found EVE spool {} starting at {}",
+                        key.display(),
+                        input.path().display()
+                    );
+                } else {
+                    info!("Found EVE input file {}", key.display());
                 }
+                self.start_file(&input);
+                self.filenames.insert(key);
             }
         }
     }
 
-    fn start_file(&self, filename: &PathBuf) {
-        let reader = EveReader::new(filename.clone());
+    fn start_file(&self, input: &EveInput) {
+        let filename = input.path();
+        let input_key = input.key();
+        let reader = EveReader::from_input(input);
         let mut processor = Processor::new(reader, self.sink.clone());
         let mut filters = self.filters.clone();
-        filters.add_filter(AddAgentFilenameFilter::new(filename.display().to_string()));
+        filters.add_filter(AddAgentFilenameFilter::new(input_key.display().to_string()));
 
         let bookmark_filename = crate::server::main::get_bookmark_filename(
-            filename,
+            input_key,
             self.bookmark_directory.as_deref(),
             self.data_directory.as_deref(),
         );

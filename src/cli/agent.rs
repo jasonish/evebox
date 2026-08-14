@@ -5,12 +5,13 @@ use crate::agent::client::Client;
 use crate::agent::importer::EveBoxEventSink;
 use crate::config::Config;
 use crate::eve::filters::EveFilterChain;
+use crate::eve::spool::EveInput;
 use crate::importer::EventSink;
 use crate::{bookmark, eve};
 use clap::{CommandFactory, Parser};
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
@@ -210,7 +211,7 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         }
     }
 
-    let mut log_runners: HashMap<String, bool> = HashMap::new();
+    let mut log_runners = HashSet::new();
 
     let importer = if config.get_bool("elasticsearch.enabled")? {
         let url = config.get_string("elasticsearch.url").unwrap();
@@ -279,20 +280,29 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     let mut tasks = FuturesUnordered::new();
 
     loop {
+        let mut paths = Vec::new();
         for path in &eve_filenames {
-            for path in crate::path::expand(path)? {
-                let path = path.display().to_string();
-                if !log_runners.contains_key(&path) {
-                    info!("Found EVE log file {:?}", &path);
-                    log_runners.insert(path.clone(), true);
-                    let task = start_runner(
-                        &path,
-                        importer.clone(),
-                        bookmark_directory.clone(),
-                        filters.clone(),
+            paths.extend(crate::path::expand(path)?);
+        }
+        for input in EveInput::group(paths, false) {
+            let key = input.key().display().to_string();
+            if log_runners.insert(key.clone()) {
+                if input.is_spool() {
+                    info!(
+                        "Found EVE spool {} starting at {}",
+                        key,
+                        input.path().display()
                     );
-                    tasks.push(task);
+                } else {
+                    info!("Found EVE input file {}", key);
                 }
+                let task = start_runner(
+                    &input,
+                    importer.clone(),
+                    bookmark_directory.clone(),
+                    filters.clone(),
+                );
+                tasks.push(task);
             }
         }
         tokio::select! {
@@ -366,14 +376,15 @@ fn build_pcap_channel(
 }
 
 fn start_runner(
-    filename: &str,
+    input: &EveInput,
     importer: EventSink,
     bookmark_directory: Option<String>,
     mut filters: EveFilterChain,
 ) -> JoinHandle<()> {
     let mut end = false;
-    let reader = crate::eve::reader::EveReader::new(filename.into());
-    let bookmark_filename = get_bookmark_filename(filename, bookmark_directory);
+    let reader = crate::eve::reader::EveReader::from_input(input);
+    let input_key = input.key().display().to_string();
+    let bookmark_filename = get_bookmark_filename(&input_key, bookmark_directory);
     if let Some(bookmark_filename) = &bookmark_filename {
         info!("Using bookmark file: {:?}", bookmark_filename);
     } else {
@@ -383,9 +394,7 @@ fn start_runner(
     let mut processor = crate::eve::Processor::new(reader, importer);
     processor.end = end;
 
-    filters.add_filter(eve::filters::AddAgentFilenameFilter::new(
-        filename.to_string(),
-    ));
+    filters.add_filter(eve::filters::AddAgentFilenameFilter::new(input_key));
 
     processor.filter_chain = Some(filters);
     processor.report_interval = std::time::Duration::from_secs(60);

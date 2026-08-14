@@ -6,6 +6,7 @@ pub(crate) mod eve;
 pub(crate) mod filters;
 pub(crate) mod processor;
 pub(crate) mod reader;
+pub(crate) mod spool;
 pub(crate) mod watcher;
 
 pub(crate) use eve::Eve;

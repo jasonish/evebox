@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- EVE inputs now support timestamped Suricata spools named
+  `eve.json.<timestamp>` or `eve.json.<thread>.<timestamp>`, with one processor
+  per logical thread stream.
 - Oneshot PCAP mode can now use a locally installed Suricata instead of a
   container. Rules are downloaded with `suricata-update` when available, or
   directly from the supported rule feeds when it is absent, with downloads

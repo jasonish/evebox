@@ -15,6 +15,8 @@ use tracing::error;
 use tracing::trace;
 use tracing::warn;
 
+use super::spool::{EveInput, SpoolFile};
+
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum EveReaderError {
     #[error("failed to parse event on line {line}")]
@@ -40,6 +42,7 @@ pub(crate) struct EveReader {
     lineno: u64,
     offset: u64,
     unterminated: bool,
+    spool: Option<SpoolFile>,
 }
 
 impl EveReader {
@@ -51,7 +54,14 @@ impl EveReader {
             lineno: 0,
             offset: 0,
             unterminated: false,
+            spool: None,
         }
+    }
+
+    pub(crate) fn from_input(input: &EveInput) -> Self {
+        let mut reader = Self::new(input.path().to_path_buf());
+        reader.spool = input.spool_file().cloned();
+        reader
     }
 
     pub fn open(&mut self) -> Result<(), EveReaderError> {
@@ -88,6 +98,15 @@ impl EveReader {
     }
 
     pub fn goto_end(&mut self) -> Result<u64, EveReaderError> {
+        if let Some(latest) = self
+            .spool
+            .as_ref()
+            .map(SpoolFile::latest)
+            .transpose()?
+            .flatten()
+        {
+            self.switch_spool_file(latest);
+        }
         if self.reader.is_none() {
             self.open()?;
         }
@@ -99,6 +118,28 @@ impl EveReader {
         }
 
         Ok(self.lineno)
+    }
+
+    /// Select the physical file stored in a bookmark for this spool stream.
+    pub(crate) fn select_bookmark(&mut self, filename: &str) -> Result<(), EveReaderError> {
+        let Some(current) = &self.spool else {
+            return Ok(());
+        };
+        let bookmarked = SpoolFile::parse(filename.into()).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "bookmark does not refer to an EVE spool file",
+            )
+        })?;
+        if bookmarked.key() != current.key() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "bookmark refers to a different EVE spool stream",
+            )
+            .into());
+        }
+        self.switch_spool_file(bookmarked);
+        Ok(())
     }
 
     /// Return the current offset the reader is into the file.
@@ -146,7 +187,35 @@ impl EveReader {
 
     /// Not named next as we don't implement the iterator pattern (yet).
     pub fn next_record(&mut self) -> Result<Option<serde_json::Value>, EveReaderError> {
-        self.next_record_inner(false)
+        loop {
+            if let Some(record) = self.next_record_inner(false)? {
+                return Ok(Some(record));
+            }
+            let Some(next) = self
+                .spool
+                .as_ref()
+                .map(SpoolFile::next)
+                .transpose()?
+                .flatten()
+            else {
+                return Ok(None);
+            };
+            debug!(
+                from = %self.filename.display(),
+                to = %next.path().display(),
+                "Advancing EVE spool"
+            );
+            self.switch_spool_file(next);
+        }
+    }
+
+    fn switch_spool_file(&mut self, file: SpoolFile) {
+        self.filename = file.path().to_path_buf();
+        self.reader = None;
+        self.lineno = 0;
+        self.offset = 0;
+        self.unterminated = false;
+        self.spool = Some(file);
     }
 
     /// Read a record from a static file, accepting a final line without a
@@ -369,6 +438,15 @@ mod tests {
         (dir, EveReader::new(path))
     }
 
+    fn spool_reader_for(contents: &[u8], timestamp: u64) -> (tempfile::TempDir, EveReader) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(format!("eve.json.1.{timestamp}"));
+        let mut file = File::create(&path).unwrap();
+        file.write_all(contents).unwrap();
+        let input = EveInput::group([path], false).pop().unwrap();
+        (dir, EveReader::from_input(&input))
+    }
+
     #[test]
     fn blank_lines_are_skipped() {
         let contents = format!("{RECORD}\n\n{RECORD}\n");
@@ -402,6 +480,67 @@ mod tests {
         assert!(reader.next_file_record().unwrap().is_some());
         let err = reader.next_file_record().unwrap_err();
         assert!(matches!(err, EveReaderError::ParseError { line: 2, .. }));
+    }
+
+    #[test]
+    fn spool_reader_advances_to_the_next_timestamp() {
+        let contents = format!("{RECORD}\n");
+        let (dir, mut reader) = spool_reader_for(contents.as_bytes(), 1_700_000_001);
+
+        assert!(reader.next_record().unwrap().is_some());
+        assert!(reader.next_record().unwrap().is_none());
+
+        let next = dir.path().join("eve.json.1.1700000002");
+        std::fs::write(&next, &contents).unwrap();
+        assert!(reader.next_record().unwrap().is_some());
+        assert_eq!(reader.filename, next);
+        assert!(reader.next_record().unwrap().is_none());
+    }
+
+    #[test]
+    fn spool_reader_keeps_existing_malformed_record_behavior() {
+        let contents = format!("{RECORD}\n{{not-json}}\n");
+        let (dir, mut reader) = spool_reader_for(contents.as_bytes(), 1_700_000_001);
+        let next = dir.path().join("eve.json.1.1700000002");
+        std::fs::write(&next, format!("{RECORD}\n")).unwrap();
+
+        assert!(reader.next_record().unwrap().is_some());
+        let err = reader.next_record().unwrap_err();
+        assert!(matches!(err, EveReaderError::ParseError { line: 2, .. }));
+        assert!(reader.next_record().unwrap().is_some());
+        assert_eq!(reader.filename, next);
+    }
+
+    #[test]
+    fn spool_reader_can_select_a_bookmarked_file() {
+        let contents = format!("{RECORD}\n{RECORD}\n");
+        let (dir, mut reader) = spool_reader_for(contents.as_bytes(), 1_700_000_001);
+        let bookmarked = dir.path().join("eve.json.1.1700000002");
+        std::fs::write(&bookmarked, &contents).unwrap();
+
+        reader
+            .select_bookmark(bookmarked.to_str().unwrap())
+            .unwrap();
+        assert_eq!(reader.goto_lineno(1).unwrap(), 1);
+        assert!(reader.next_record().unwrap().is_some());
+        assert_eq!(reader.filename, bookmarked);
+    }
+
+    #[test]
+    fn spool_reader_tails_the_latest_file() {
+        let contents = format!("{RECORD}\n");
+        let (dir, mut reader) = spool_reader_for(contents.as_bytes(), 1_700_000_001);
+        let latest = dir.path().join("eve.json.1.1700000003");
+        std::fs::write(&latest, format!("{RECORD}\n{RECORD}\n")).unwrap();
+        std::fs::write(
+            dir.path().join("eve.json.1.1700000002"),
+            format!("{RECORD}\n"),
+        )
+        .unwrap();
+
+        assert_eq!(reader.goto_end().unwrap(), 2);
+        assert_eq!(reader.filename, latest);
+        assert!(reader.next_record().unwrap().is_none());
     }
 
     #[test]
