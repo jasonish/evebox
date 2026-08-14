@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.28.0 - 2026-08-14
 
 ### Added
 - EVE inputs now support timestamped Suricata spools named
@@ -43,6 +43,11 @@
   layer, and top sources and destinations.
 
 ### Changed
+- Auto-archive filters can now match exact DNS query names and TLS SNI values.
+  Filters are applied after event enrichment and to matching alerts indexed
+  outside EveBox, and alert history identifies the cause of automatic
+  archival. Existing filters are migrated automatically to the new flexible
+  condition format.
 - The admin pages now share a common layout with sidebar navigation
   between the admin sections (General, Elasticsearch/OpenSearch index
   management, Agents, and Filters), replacing the previous ad-hoc links,
@@ -58,6 +63,11 @@
   previous run are removed on startup. Previously, on Windows, the database
   could not be removed on exit and a later run would also show the previous
   run's events.
+
+### Fixed
+- Empty bookmark files left by input startup checks are now ignored instead of
+  being reported as invalid bookmarks.
+- SQLite full-text searches no longer match text found only in alert history.
 
 ## 0.27.0 - 2026-07-19
 
