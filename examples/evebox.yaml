@@ -108,11 +108,17 @@ input:
   #  - /usr/share/suricata/rules/*.rules
   #  - /etc/suricata/rules/*.rules
 
-  # Suricata can write the EVE log to a unix stream socket by specifying
-  # the eve-log filetype attribute as 'unix_stream' instead of 'regular'.
-  # EveBox will create the sockets below and listen for events once connected.
+  # Unix sockets that EveBox creates for Suricata EVE output. Set Suricata's
+  # eve-log filetype and filename to the same type and path. Supported types
+  # are unix_stream and unix_dgram. A plain path is shorthand for unix_stream.
   #sockets:
-  #  - "/var/log/suricata/eve.log.socket"
+  #  - path: /run/evebox/eve.sock
+  #    type: unix_stream
+  #    # Optional octal permissions; ensure Suricata can connect after it
+  #    # drops privileges. The socket remains owned by the EveBox user/group.
+  #    mode: "0660"
+  #  - path: /run/evebox/eve-dgram.sock
+  #    type: unix_dgram
 
 geoip:
   disabled: false

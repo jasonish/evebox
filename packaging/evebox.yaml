@@ -71,3 +71,11 @@ input:
   # Delete timestamped spool files after their events are committed and the
   # bookmark advances to a newer file. Requires a writable bookmark.
   #delete-spool-files: false
+
+  # Unix sockets that EveBox creates for Suricata EVE output. Set Suricata's
+  # eve-log filetype and filename to the same type and path.
+  #sockets:
+  #  - path: /run/evebox/eve.sock
+  #    type: unix_stream
+  #    # Optional octal permissions; arrange group access for Suricata.
+  #    mode: "0660"

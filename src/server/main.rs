@@ -7,6 +7,7 @@ use crate::config::Config;
 use crate::elastic;
 use crate::elastic::Version;
 use crate::eve::filters::{AddFieldFilter, EveFilterChain};
+use crate::eve::socket;
 use crate::eve::watcher::EvePatternWatcher;
 use crate::eventrepo::EventRepo;
 use crate::server::api;
@@ -209,9 +210,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     if is_input_enabled(&config) {
         let input_patterns = get_input_patterns(&config)?;
-        let input_sockets = get_input_sockets(&config)?;
+        let input_sockets = socket::get_inputs(&config)?;
         if input_patterns.is_empty() && input_sockets.is_empty() {
-            bail!("EVE input enabled, but no paths provided");
+            bail!("EVE input enabled, but no paths or sockets provided");
         }
         let sink = context.datastore.get_importer().ok_or(anyhow!(
             "An event importer is not implemented for this datastore"
@@ -265,18 +266,21 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
         let bookmark_directory: Option<String> = config.get_string("input.bookmark-directory");
         let data_directory = server_config.data_directory.clone();
-        let watcher = EvePatternWatcher::new(
-            input_patterns,
-            #[cfg(unix)]
-            input_sockets,
-            sink,
-            filters,
-            end,
-            delete_processed_spool_files,
-            bookmark_directory,
-            data_directory,
-        );
-        watcher.run();
+        for input in input_sockets {
+            std::mem::drop(socket::spawn(input, sink.clone(), filters.clone())?);
+        }
+        if !input_patterns.is_empty() {
+            let watcher = EvePatternWatcher::new(
+                input_patterns,
+                sink,
+                filters,
+                end,
+                delete_processed_spool_files,
+                bookmark_directory,
+                data_directory,
+            );
+            watcher.run();
+        }
     }
 
     let context = Arc::new(context);
@@ -370,21 +374,6 @@ fn get_input_patterns(config: &Config) -> Result<Vec<String>> {
 
     let input_patterns: Vec<String> = input_pattern_set.iter().map(|s| s.to_string()).collect();
     Ok(input_patterns)
-}
-
-fn get_input_sockets(config: &Config) -> Result<Vec<String>> {
-    let mut eve_sockets: Vec<String> = vec![];
-
-    match config.get_value::<Vec<String>>("input.sockets") {
-        Ok(Some(filenames)) => {
-            eve_sockets.extend(filenames);
-        }
-        Ok(None) => {}
-        Err(_) => {
-            bail!("There was an error reading 'input.sockets' from the configuration file");
-        }
-    }
-    Ok(eve_sockets)
 }
 
 pub(crate) fn build_axum_service(

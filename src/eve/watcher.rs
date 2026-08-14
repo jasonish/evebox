@@ -3,11 +3,9 @@
 
 use crate::prelude::*;
 
-#[cfg(unix)]
-use super::EveReaderSocket;
 use super::filters::EveFilterChain;
 use super::spool::EveInput;
-use super::{EveReaderFile, Processor};
+use super::{EveReader, Processor};
 use crate::eve::filters::AddAgentFilenameFilter;
 use crate::importer::EventSink;
 use std::time::Duration;
@@ -17,8 +15,6 @@ use std::{collections::HashSet, path::PathBuf};
 /// pipeline when a new file is found.
 pub(crate) struct EvePatternWatcher {
     patterns: Vec<String>,
-    #[cfg(unix)]
-    sockets: Vec<String>,
     filenames: HashSet<PathBuf>,
     sink: EventSink,
     filters: EveFilterChain,
@@ -31,7 +27,6 @@ pub(crate) struct EvePatternWatcher {
 impl EvePatternWatcher {
     pub fn new(
         patterns: Vec<String>,
-        #[cfg(unix)] sockets: Vec<String>,
         sink: EventSink,
         filters: EveFilterChain,
         end: bool,
@@ -41,8 +36,6 @@ impl EvePatternWatcher {
     ) -> Self {
         Self {
             patterns,
-            #[cfg(unix)]
-            sockets,
             filenames: HashSet::new(),
             sink,
             filters,
@@ -89,22 +82,12 @@ impl EvePatternWatcher {
                 self.filenames.insert(key);
             }
         }
-        #[cfg(unix)]
-        for socket in &self.sockets {
-            let path = PathBuf::from(socket);
-            if !self.filenames.contains(&path) {
-                info!("Starting EVE stream socket {}", path.display());
-                if self.start_socket(path.clone()) {
-                    self.filenames.insert(path);
-                }
-            }
-        }
     }
 
     fn start_file(&self, input: &EveInput) {
         let filename = input.path();
         let input_key = input.key();
-        let reader = EveReaderFile::from_input(input);
+        let reader = EveReader::from_input(input);
         let mut processor = Processor::new(reader, self.sink.clone());
         let mut filters = self.filters.clone();
         filters.add_filter(AddAgentFilenameFilter::new(input_key.display().to_string()));
@@ -141,32 +124,6 @@ impl EvePatternWatcher {
         tokio::spawn(async move {
             processor.run().await;
         });
-    }
-
-    #[cfg(unix)]
-    fn start_socket(&self, filename: PathBuf) -> bool {
-        let reader = match EveReaderSocket::new(filename.clone()) {
-            Ok(socket) => socket,
-            Err(err) => {
-                warn!(
-                    "Could not create socket file {}: {}",
-                    filename.display(),
-                    err
-                );
-                return false;
-            }
-        };
-        let mut processor = Processor::new(reader, self.sink.clone());
-        let mut filters = self.filters.clone();
-        filters.add_filter(AddAgentFilenameFilter::new(filename.display().to_string()));
-
-        processor.filter_chain = Some(filters);
-        processor.report_interval = Duration::from_secs(60);
-        info!("Starting EVE processor for {}", filename.display());
-        tokio::spawn(async move {
-            processor.run().await;
-        });
-        true
     }
 
     pub fn run(mut self) {

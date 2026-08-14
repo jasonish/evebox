@@ -18,8 +18,8 @@ use super::filters::EveFilterChain;
 
 const DEFAULT_BATCH_SIZE: usize = 100;
 
-pub(crate) struct Processor<R: EveReader> {
-    pub reader: R,
+pub(crate) struct Processor {
+    pub reader: EveReader,
     pub importer: EventSink,
     pub filter_chain: Option<EveFilterChain>,
     pub bookmark_filename: Option<PathBuf>,
@@ -33,8 +33,8 @@ pub(crate) struct Processor<R: EveReader> {
     pub oneshot: bool,
 }
 
-impl<R: EveReader> Processor<R> {
-    pub fn new(reader: R, importer: EventSink) -> Self {
+impl Processor {
+    pub fn new(reader: EveReader, importer: EventSink) -> Self {
         Self {
             reader,
             importer,
@@ -111,7 +111,7 @@ impl<R: EveReader> Processor<R> {
             if self.report_interval > Duration::from_secs(0)
                 && last_report.elapsed() > self.report_interval
             {
-                debug!(filename = ?self.reader.get_filename(), "count={}, commits={}, eofs={}", count, commits, eofs);
+                debug!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
                 count = 0;
                 commits = 0;
                 eofs = 0;
@@ -121,7 +121,7 @@ impl<R: EveReader> Processor<R> {
                 Err(err) => {
                     error!(
                         "Failed to read event from {}: {}",
-                        self.reader.get_filename().display(),
+                        self.reader.filename.display(),
                         err
                     );
                     self.sleep_for(1000).await;
@@ -138,13 +138,12 @@ impl<R: EveReader> Processor<R> {
                         if !self.oneshot && self.reader.is_file_changed() {
                             info!(
                                 "File may have been rotated, will reopen: filename={:?}",
-                                self.reader.get_filename()
+                                self.reader.filename
                             );
                             if let Err(err) = self.reader.reopen() {
                                 error!(
                                     "Failed to reopen {:?}, error={}",
-                                    self.reader.get_filename(),
-                                    err
+                                    self.reader.filename, err
                                 );
                             }
                         }
@@ -176,7 +175,7 @@ impl<R: EveReader> Processor<R> {
             // give up some CPU to other tasks.
             tokio::task::yield_now().await;
         }
-        info!(filename = ?self.reader.get_filename(), "count={}, commits={}, eofs={}", count, commits, eofs);
+        info!(filename = ?self.reader.filename, "count={}, commits={}, eofs={}", count, commits, eofs);
     }
 
     async fn sleep_for(&self, millis: u64) {

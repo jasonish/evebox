@@ -7,6 +7,9 @@
   `eve.json.<timestamp>` or `eve.json.<thread>.<timestamp>`, with one processor
   per logical thread stream. Processed spool files can optionally be deleted
   with `input.delete-spool-files`.
+- EveBox server and agent inputs can create Unix stream or datagram sockets
+  for Suricata EVE output, avoiding an intermediate EVE log file. Configure
+  `input.sockets` with a path and a `unix_stream` or `unix_dgram` type.
 - Oneshot PCAP mode can now use a locally installed Suricata instead of a
   container. Rules are downloaded with `suricata-update` when available, or
   directly from the supported rule feeds when it is absent, with downloads

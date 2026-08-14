@@ -6,12 +6,10 @@ pub(crate) mod eve;
 pub(crate) mod filters;
 pub(crate) mod processor;
 pub(crate) mod reader;
+pub(crate) mod socket;
 pub(crate) mod spool;
 pub(crate) mod watcher;
 
 pub(crate) use eve::Eve;
 pub(crate) use processor::Processor;
-pub(crate) use reader::EveReaderError;
-pub(crate) use reader::EveReaderFile;
-#[cfg(unix)]
-pub(crate) use reader::EveReaderSocket;
+pub(crate) use reader::EveReader;
