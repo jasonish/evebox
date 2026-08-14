@@ -43,6 +43,10 @@ input:
     # automatically uses one processor for each optional thread index.
     #- "/var/log/suricata/eve.json.[0-9]*"
 
+  # Delete timestamped spool files after their events are committed and the
+  # bookmark advances to a newer file. Requires a writable bookmark.
+  #delete-spool-files: false
+
 # Keep a persistent control connection to the EveBox server and serve packet
 # capture requests from this host's Suricata pcap-log spool. Setting a
 # directory enables packet capture. The control channel requires an agent

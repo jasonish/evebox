@@ -164,6 +164,7 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
 
     // Collect eve filenames.
     let eve_filenames = get_eve_filenames(&config)?;
+    let delete_processed_spool_files = config.get_bool("input.delete-spool-files")?;
     if eve_filenames.is_empty() {
         if pcap_channel.is_some() {
             info!("No EVE log files provided; running in pcap-only mode (events are not shipped)");
@@ -301,6 +302,7 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
                     importer.clone(),
                     bookmark_directory.clone(),
                     filters.clone(),
+                    delete_processed_spool_files,
                 );
                 tasks.push(task);
             }
@@ -380,6 +382,7 @@ fn start_runner(
     importer: EventSink,
     bookmark_directory: Option<String>,
     mut filters: EveFilterChain,
+    delete_processed_spool_files: bool,
 ) -> JoinHandle<()> {
     let mut end = false;
     let reader = crate::eve::reader::EveReader::from_input(input);
@@ -399,6 +402,16 @@ fn start_runner(
     processor.filter_chain = Some(filters);
     processor.report_interval = std::time::Duration::from_secs(60);
     processor.bookmark_filename = bookmark_filename;
+    if delete_processed_spool_files && input.is_spool() {
+        if processor.bookmark_filename.is_some() {
+            processor.set_delete_processed_spool_files(true);
+        } else {
+            warn!(
+                "Processed spool file deletion requires a bookmark for {}",
+                input.key().display()
+            );
+        }
+    }
     tokio::spawn(async move {
         processor.run().await;
     })

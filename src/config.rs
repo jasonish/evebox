@@ -68,6 +68,7 @@ impl Config {
         // line parsing.
         let environment_value = match name {
             "authentication.required" => Some("EVEBOX_AUTHENTICATION_REQUIRED"),
+            "input.delete-spool-files" => Some("EVEBOX_INPUT_DELETE_SPOOL_FILES"),
             "server.key" => Some("EVEBOX_SERVER_KEY"),
             _ => None,
         };

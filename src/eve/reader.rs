@@ -43,6 +43,8 @@ pub(crate) struct EveReader {
     offset: u64,
     unterminated: bool,
     spool: Option<SpoolFile>,
+    delete_processed_spool_files: bool,
+    completed_spool_files: Vec<PathBuf>,
 }
 
 impl EveReader {
@@ -55,6 +57,8 @@ impl EveReader {
             offset: 0,
             unterminated: false,
             spool: None,
+            delete_processed_spool_files: false,
+            completed_spool_files: Vec::new(),
         }
     }
 
@@ -62,6 +66,10 @@ impl EveReader {
         let mut reader = Self::new(input.path().to_path_buf());
         reader.spool = input.spool_file().cloned();
         reader
+    }
+
+    pub(crate) fn set_delete_processed_spool_files(&mut self, enabled: bool) {
+        self.delete_processed_spool_files = enabled;
     }
 
     pub fn open(&mut self) -> Result<(), EveReaderError> {
@@ -205,7 +213,33 @@ impl EveReader {
                 to = %next.path().display(),
                 "Advancing EVE spool"
             );
+            let completed = self.filename.clone();
             self.switch_spool_file(next);
+            if self.delete_processed_spool_files {
+                self.completed_spool_files.push(completed);
+            }
+        }
+    }
+
+    pub(crate) fn has_completed_spool_files(&self) -> bool {
+        !self.completed_spool_files.is_empty()
+    }
+
+    pub(crate) fn delete_completed_spool_files(&mut self) {
+        for filename in self.completed_spool_files.drain(..) {
+            match std::fs::remove_file(&filename) {
+                Ok(()) => {
+                    debug!("Deleted processed EVE spool file {}", filename.display());
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+                Err(err) => {
+                    error!(
+                        "Failed to delete processed EVE spool file {}: {}",
+                        filename.display(),
+                        err
+                    );
+                }
+            }
         }
     }
 
@@ -486,6 +520,7 @@ mod tests {
     fn spool_reader_advances_to_the_next_timestamp() {
         let contents = format!("{RECORD}\n");
         let (dir, mut reader) = spool_reader_for(contents.as_bytes(), 1_700_000_001);
+        let first = reader.filename.clone();
 
         assert!(reader.next_record().unwrap().is_some());
         assert!(reader.next_record().unwrap().is_none());
@@ -494,7 +529,48 @@ mod tests {
         std::fs::write(&next, &contents).unwrap();
         assert!(reader.next_record().unwrap().is_some());
         assert_eq!(reader.filename, next);
+        assert!(first.exists());
+        assert!(!reader.has_completed_spool_files());
         assert!(reader.next_record().unwrap().is_none());
+    }
+
+    #[test]
+    fn processed_spool_file_waits_for_checkpoint_before_deletion() {
+        let contents = format!("{RECORD}\n");
+        let (dir, mut reader) = spool_reader_for(contents.as_bytes(), 1_700_000_001);
+        let first = reader.filename.clone();
+        let next = dir.path().join("eve.json.1.1700000002");
+        std::fs::write(&next, &contents).unwrap();
+        reader.set_delete_processed_spool_files(true);
+
+        assert!(reader.next_record().unwrap().is_some());
+        assert!(reader.next_record().unwrap().is_some());
+        assert!(first.exists());
+        assert!(reader.has_completed_spool_files());
+
+        reader.delete_completed_spool_files();
+        assert!(!first.exists());
+        assert!(next.exists());
+        assert!(!reader.has_completed_spool_files());
+    }
+
+    #[test]
+    fn failed_spool_file_deletion_is_not_retried() {
+        let contents = format!("{RECORD}\n");
+        let (dir, mut reader) = spool_reader_for(contents.as_bytes(), 1_700_000_001);
+        let first = reader.filename.clone();
+        let next = dir.path().join("eve.json.1.1700000002");
+        std::fs::write(&next, &contents).unwrap();
+        reader.set_delete_processed_spool_files(true);
+
+        assert!(reader.next_record().unwrap().is_some());
+        assert!(reader.next_record().unwrap().is_some());
+        std::fs::remove_file(&first).unwrap();
+        std::fs::create_dir(&first).unwrap();
+
+        reader.delete_completed_spool_files();
+        assert!(first.is_dir());
+        assert!(!reader.has_completed_spool_files());
     }
 
     #[test]

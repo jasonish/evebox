@@ -19,6 +19,7 @@ pub(crate) struct EvePatternWatcher {
     sink: EventSink,
     filters: EveFilterChain,
     end: bool,
+    delete_processed_spool_files: bool,
     bookmark_directory: Option<String>,
     data_directory: Option<String>,
 }
@@ -29,6 +30,7 @@ impl EvePatternWatcher {
         sink: EventSink,
         filters: EveFilterChain,
         end: bool,
+        delete_processed_spool_files: bool,
         bookmark_directory: Option<String>,
         data_directory: Option<String>,
     ) -> Self {
@@ -38,6 +40,7 @@ impl EvePatternWatcher {
             sink,
             filters,
             end,
+            delete_processed_spool_files,
             bookmark_directory,
             data_directory,
         }
@@ -107,6 +110,16 @@ impl EvePatternWatcher {
         }
         processor.report_interval = Duration::from_secs(60);
         processor.bookmark_filename = bookmark_filename;
+        if self.delete_processed_spool_files && input.is_spool() {
+            if processor.bookmark_filename.is_some() {
+                processor.set_delete_processed_spool_files(true);
+            } else {
+                warn!(
+                    "Processed spool file deletion requires a bookmark for {}",
+                    input_key.display()
+                );
+            }
+        }
         info!("Starting EVE processor for {}", filename.display());
         tokio::spawn(async move {
             processor.run().await;

@@ -85,6 +85,10 @@ input:
     # automatically uses one processor for each optional thread index.
     #- "/var/log/suricata/eve.json.[0-9]*"
 
+  # Delete timestamped spool files after their events are committed and the
+  # bookmark advances to a newer file. Requires a writable bookmark.
+  #delete-spool-files: false
+
   # Bookmark directory, as with the agent if the server can't write to
   # the directory where the above log file is, you need to provide
   # this.

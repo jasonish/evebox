@@ -260,6 +260,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         ));
 
         let end = config.get_bool("end")?;
+        let delete_processed_spool_files = config.get_bool("input.delete-spool-files")?;
 
         let bookmark_directory: Option<String> = config.get_string("input.bookmark-directory");
         let data_directory = server_config.data_directory.clone();
@@ -268,6 +269,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             sink,
             filters,
             end,
+            delete_processed_spool_files,
             bookmark_directory,
             data_directory,
         );

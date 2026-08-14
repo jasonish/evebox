@@ -67,3 +67,7 @@ input:
     # Timestamped spools such as eve.json.%s and eve.json.%n.%s. EveBox
     # automatically uses one processor for each optional thread index.
     #- "/var/log/suricata/eve.json.[0-9]*"
+
+  # Delete timestamped spool files after their events are committed and the
+  # bookmark advances to a newer file. Requires a writable bookmark.
+  #delete-spool-files: false

@@ -46,6 +46,10 @@ impl Processor {
         }
     }
 
+    pub(crate) fn set_delete_processed_spool_files(&mut self, enabled: bool) {
+        self.reader.set_delete_processed_spool_files(enabled);
+    }
+
     /// Initialize the reader from a bookmark. Returns false if unable to initalize
     /// from the bookmark (invalid bookmark, file does not exist...).
     fn init_from_bookmark(&mut self) -> bool {
@@ -127,13 +131,21 @@ impl Processor {
                     if self.importer.pending() > 0 {
                         self.commit().await;
                         commits += 1;
-                    } else if !self.oneshot && self.reader.is_file_changed() {
-                        info!(
-                            "File may have been rotated, will reopen: filename={:?}",
-                            self.reader.filename
-                        );
-                        if let Err(err) = self.reader.reopen() {
-                            error!("Failed to reopen {:?}, error={}", self.reader.filename, err);
+                    } else {
+                        if self.reader.has_completed_spool_files() {
+                            self.checkpoint();
+                        }
+                        if !self.oneshot && self.reader.is_file_changed() {
+                            info!(
+                                "File may have been rotated, will reopen: filename={:?}",
+                                self.reader.filename
+                            );
+                            if let Err(err) = self.reader.reopen() {
+                                error!(
+                                    "Failed to reopen {:?}, error={}",
+                                    self.reader.filename, err
+                                );
+                            }
                         }
                     }
 
@@ -175,7 +187,7 @@ impl Processor {
         loop {
             match self.importer.commit().await {
                 Ok(_n) => {
-                    self.write_bookmark();
+                    self.checkpoint();
                     break;
                 }
                 Err(err) => {
@@ -186,18 +198,28 @@ impl Processor {
         }
     }
 
-    fn write_bookmark(&mut self) {
-        if let Some(bookmark_filename) = &self.bookmark_filename
-            && let Some(meta) = self.reader.metadata()
-        {
-            let bookmark = bookmark::Bookmark::from_metadata(&meta);
-            if let Err(err) = bookmark.write(bookmark_filename) {
-                error!(
-                    "Failed to write bookmark: filename={}, err={}",
-                    bookmark_filename.display(),
-                    err
-                );
-            }
+    fn checkpoint(&mut self) {
+        if self.write_bookmark() {
+            self.reader.delete_completed_spool_files();
         }
+    }
+
+    fn write_bookmark(&mut self) -> bool {
+        let Some(bookmark_filename) = &self.bookmark_filename else {
+            return false;
+        };
+        let Some(meta) = self.reader.metadata() else {
+            return false;
+        };
+        let bookmark = bookmark::Bookmark::from_metadata(&meta);
+        if let Err(err) = bookmark.write(bookmark_filename) {
+            error!(
+                "Failed to write bookmark: filename={}, err={}",
+                bookmark_filename.display(),
+                err
+            );
+            return false;
+        }
+        true
     }
 }
