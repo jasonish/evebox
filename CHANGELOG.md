@@ -67,7 +67,9 @@
 ### Removed
 - JA4db integration has been removed because the upstream service is no longer
   available. The update command, admin control, API endpoints, event enrichment,
-  and local JA4db table are removed. JA4 event search and reporting remain.
+  and local JA4db table are removed.
+- The experimental JA4 report has been removed while its design is reconsidered.
+  JA4 values now use the normal event search links.
 
 ### Fixed
 - Empty bookmark files left by input startup checks are now ignored instead of
