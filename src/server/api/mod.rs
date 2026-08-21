@@ -87,7 +87,6 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/sqlite/fts/check", get(sqlite::fts_check))
         .route("/api/sqlite/fts/enable", post(sqlite::fts_enable))
         .route("/api/sqlite/fts/disable", post(sqlite::fts_disable))
-        .route("/api/ja4db/{fingerprint}", get(ja4db))
         .route("/api/find-dns", get(find_dns))
         .route("/api/events/count", get(count::count))
         .route("/api/events/earliest-timestamp", get(earliest_timestamp))
@@ -95,7 +94,6 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/admin/filters", get(admin::get_filters))
         .route("/api/admin/filter/add", post(admin::add_filter))
         .route("/api/admin/filter/{id}", delete(admin::delete_filter))
-        .route("/api/admin/update/ja4db", post(admin::update_ja4db))
         .route("/api/admin/kv/config", get(admin::kv_get_config))
         .route("/api/admin/kv/config/{key}", post(admin::kv_set_config))
         .route("/api/firehose/sse", get(firehose::sse))
@@ -352,22 +350,7 @@ pub(crate) async fn get_event_by_id(
     match context.datastore.get_event_by_id(event_id.clone()).await {
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "not found").into_response(),
-        Ok(Some(mut event)) => {
-            if let Some(ja4) = event["_source"]["tls"]["ja4"].as_str()
-                && let Some(configdb) = crate::server::context::get_configdb()
-            {
-                let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
-                let info: Result<Option<serde_json::Value>, _> = sqlx::query_scalar(sql)
-                    .bind(ja4)
-                    .fetch_optional(&configdb.pool)
-                    .await;
-                if let Ok(Some(info)) = info {
-                    event["_source"]["ja4db"] = info;
-                }
-            }
-
-            Json(event).into_response()
-        }
+        Ok(Some(event)) => Json(event).into_response(),
     }
 }
 
@@ -536,26 +519,6 @@ pub(crate) async fn events(
 
     let results = context.datastore.events(params).await?;
     Ok(Json(results).into_response())
-}
-
-async fn ja4db(
-    _session: SessionExtractor,
-    Extension(context): Extension<Arc<ServerContext>>,
-    Path(fingerprint): axum::extract::Path<String>,
-) -> Result<impl IntoResponse, AppError> {
-    let sql = "SELECT data FROM ja4db WHERE fingerprint = ?";
-    let entry: Option<serde_json::Value> = sqlx::query_scalar(sql)
-        .bind(fingerprint)
-        .fetch_optional(&context.configdb.pool)
-        .await?;
-    if let Some(entry) = entry {
-        Ok(Json(entry).into_response())
-    } else {
-        let response = json!({
-            "message": "fingerprint not found",
-        });
-        Ok((StatusCode::NOT_FOUND, Json(response)).into_response())
-    }
 }
 
 #[derive(Deserialize)]

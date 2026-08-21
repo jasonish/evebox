@@ -114,9 +114,8 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             && server_config.tls_key_filename.is_none()
             && server_config.tls_cert_filename.is_none());
 
-    // TODO: A data directory should always be preferred, even if not
-    // required as we store stuff like the JA4db in the configuration
-    // database.
+    // TODO: A data directory should always be preferred so server
+    // configuration can be persisted in the configuration database.
     if let Some(data_directory) = server_config.data_directory.as_ref() {
         if data_directory_required {
             info!("Using data directory {}", data_directory);
@@ -146,8 +145,6 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         info!("Using temporary in-memory configuration database");
         configdb::open(None).await?
     };
-
-    crate::server::context::set_configdb(configdb.clone());
 
     let metrics = Arc::new(crate::server::metrics::Metrics::default());
 

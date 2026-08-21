@@ -11,7 +11,6 @@ pub mod pcap;
 pub mod print;
 pub mod sqlite;
 pub mod test;
-pub mod update;
 pub mod util;
 
 pub(crate) mod prelude;

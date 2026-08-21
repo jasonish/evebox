@@ -551,16 +551,6 @@ pub(crate) async fn open(filename: Option<&Path>) -> Result<ConfigDb, sqlx::Erro
     Ok(ConfigDb::new(pool))
 }
 
-pub(crate) async fn open_connection_in_directory(
-    directory: &Path,
-) -> Result<sqlx::SqliteConnection, sqlx::Error> {
-    let filename = directory.join("config.sqlite");
-    info!("Opening configuration database file {}", filename.display());
-    let mut conn = crate::sqlite::connection::open_connection(Some(&filename), true).await?;
-    init_db(&mut conn).await?;
-    Ok(conn)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -571,6 +561,18 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let db = open(Some(&dir.path().join("config.sqlite"))).await.unwrap();
         (dir, db)
+    }
+
+    #[tokio::test]
+    async fn obsolete_ja4db_table_is_removed() {
+        let (_dir, db) = test_db().await;
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ja4db')",
+        )
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+        assert!(!exists);
     }
 
     #[test]

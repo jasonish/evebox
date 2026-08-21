@@ -9,7 +9,6 @@ pub mod version;
 mod agent;
 mod bookmark;
 mod cert;
-mod commands;
 mod config;
 mod datetime;
 mod elastic;
