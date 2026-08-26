@@ -209,6 +209,15 @@ html {
   white-space: nowrap;
 }
 
+.app-agent-key-detail {
+  --bs-table-bg: var(--bs-tertiary-bg);
+  --bs-table-color: var(--bs-body-color);
+}
+
+.app-agent-group + .app-agent-group > tr:first-child > * {
+  border-top: 0.5rem solid var(--bs-body-bg);
+}
+
 // Cap the admin layout narrower than the default container so the
 // settings-style pages stay composed on large displays.
 .app-admin-container {

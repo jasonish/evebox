@@ -539,7 +539,7 @@ export function AdminAgents() {
           }
         >
           <div class="card mt-2">
-            <div class="card-body">
+            <div class="card-body table-responsive">
               <table class="table table-striped mb-0">
                 <thead>
                   <tr>
@@ -562,9 +562,9 @@ export function AdminAgents() {
                     <th>Key</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <For each={sorted()}>
-                    {(row) => (
+                <For each={sorted()}>
+                  {(row) => (
+                    <tbody class="app-agent-group">
                       <tr>
                         <td class="align-middle">{row.name}</td>
                         <td class="align-middle">
@@ -638,55 +638,48 @@ export function AdminAgents() {
                               </Show>
                             }
                           >
-                            <Show
-                              when={revealed()[row.key!.id] !== undefined}
-                              fallback={
-                                <>
-                                  <button
-                                    type="button"
-                                    class="btn btn-sm btn-secondary me-2"
-                                    title={`Created ${parse_timestamp(
-                                      row.key!.created_at,
-                                    ).format("YYYY-MM-DD HH:mm")}`}
-                                    onClick={() => toggleReveal(row.key!)}
-                                  >
-                                    Reveal
-                                  </button>
-                                  <button
-                                    type="button"
-                                    class="btn btn-sm btn-danger"
-                                    onClick={() => deleteKey(row.key!)}
-                                  >
-                                    Delete
-                                  </button>
-                                </>
-                              }
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-secondary me-2"
+                              title={`Created ${parse_timestamp(
+                                row.key!.created_at,
+                              ).format("YYYY-MM-DD HH:mm")}`}
+                              onClick={() => toggleReveal(row.key!)}
                             >
-                              <code class="me-2 text-break user-select-all">
-                                {revealed()[row.key!.id]}
-                              </code>
-                              <CopyButton text={revealed()[row.key!.id]} />
-                              <button
-                                type="button"
-                                class="btn btn-sm btn-secondary ms-2 me-2"
-                                onClick={() => toggleReveal(row.key!)}
-                              >
-                                Hide
-                              </button>
-                              <button
-                                type="button"
-                                class="btn btn-sm btn-danger"
-                                onClick={() => deleteKey(row.key!)}
-                              >
-                                Delete
-                              </button>
-                            </Show>
+                              {revealed()[row.key!.id] === undefined
+                                ? "Reveal"
+                                : "Hide"}
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-danger"
+                              onClick={() => deleteKey(row.key!)}
+                            >
+                              Delete
+                            </button>
                           </Show>
                         </td>
                       </tr>
-                    )}
-                  </For>
-                </tbody>
+                      <Show
+                        when={row.key && revealed()[row.key.id] !== undefined}
+                      >
+                        <tr class="app-agent-key-detail">
+                          <td colspan="9">
+                            <div class="d-flex align-items-center flex-wrap gap-2">
+                              <span class="text-body-secondary text-nowrap">
+                                Agent key:
+                              </span>
+                              <code class="app-break-anywhere user-select-all flex-grow-1">
+                                {revealed()[row.key!.id]}
+                              </code>
+                              <CopyButton text={revealed()[row.key!.id]} />
+                            </div>
+                          </td>
+                        </tr>
+                      </Show>
+                    </tbody>
+                  )}
+                </For>
               </table>
             </div>
           </div>
