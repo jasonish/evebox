@@ -1,5 +1,12 @@
 # Change Log
 
+## Unreleased
+
+### Changed
+- Agent identity now comes from the agent key: the key's name is stamped on
+  submitted events (`evebox.agent.id`) and used on the packet capture control
+  channel. The agent `agent-id` option and `--agent-id` flag are removed.
+
 ## 0.28.0 - 2026-08-14
 
 ### Added

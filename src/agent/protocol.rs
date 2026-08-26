@@ -18,6 +18,10 @@ pub(crate) const SUBPROTOCOL: &str = "evebox-agent-v1";
 /// Upgrade-request header containing [`AgentHandshake`] as JSON.
 pub(crate) const AGENT_HEADER: &str = "x-evebox-agent";
 
+/// Agent key header used on event submission requests. A dedicated header
+/// leaves `Authorization` available for legacy HTTP Basic authentication.
+pub(crate) const AGENT_KEY_HEADER: &str = "x-evebox-agent-key";
+
 /// Path of the agent control-channel WebSocket endpoint.
 #[cfg_attr(windows, allow(dead_code))]
 pub(crate) const AGENT_WS_PATH: &str = "/api/agent/ws";
@@ -44,13 +48,12 @@ pub(crate) fn agent_pcap_upload_path(id: &str) -> String {
     format!("/api/agent/pcap/{id}")
 }
 
-/// Metadata asserted by an agent during the WebSocket upgrade.
+/// Metadata advertised by an agent during the WebSocket upgrade.
 ///
-/// The claimed identity; the agent key on the upgrade is what authenticates
-/// it. Unknown fields are ignored for forward compatibility.
+/// The agent key on the upgrade determines its identity. Unknown fields are
+/// ignored for forward compatibility.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct AgentHandshake {
-    pub(crate) name: String,
     pub(crate) hostname: String,
     pub(crate) version: String,
     #[serde(default)]
@@ -320,12 +323,10 @@ mod tests {
 
     #[test]
     fn handshake_defaults_capabilities_and_ignores_unknown_fields() {
-        let handshake: AgentHandshake = serde_json::from_str(
-            r#"{"name":"sensor","hostname":"host","version":"0.27","future":true}"#,
-        )
-        .unwrap();
+        let handshake: AgentHandshake =
+            serde_json::from_str(r#"{"hostname":"host","version":"0.27","future":true}"#).unwrap();
         assert!(handshake.capabilities.is_empty());
-        assert_eq!(handshake.name, "sensor");
+        assert_eq!(handshake.hostname, "host");
     }
 
     #[test]

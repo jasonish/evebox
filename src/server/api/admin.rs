@@ -310,8 +310,8 @@ mod tests {
         let live = context
             .agents
             .register(
+                "sensor-a".to_string(),
                 crate::agent::protocol::AgentHandshake {
-                    name: "sensor-a".to_string(),
                     hostname: "sensor-a.example.test".to_string(),
                     version: "0.27.0-dev".to_string(),
                     capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],

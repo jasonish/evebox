@@ -4,8 +4,9 @@
 server:
   url: http://127.0.0.1:5636
 
-  # Agent key, required for the packet-capture control channel (see the
-  # pcap section below). Create one on the server with:
+  # Agent key. Its server-side name identifies submitted events and the
+  # packet-capture source; it is also required for the packet-capture control
+  # channel (see the pcap section below). Create one on the server with:
   #     evebox config agents add <name>
   # Also available as the EVEBOX_SERVER_KEY environment variable. Keep
   # this file's permissions restrictive when a key is set.
@@ -72,13 +73,6 @@ input:
 #  directory: /var/log/suricata/pcap
 #  # Matches the recommended threaded filename log.%n.%t.pcap.
 #  prefix: log.
-
-# Unique identifier this agent advertises on the control channel (also
-# available as --agent-id). Defaults to the system hostname; it must be set
-# when more than one agent runs on the same host. The identifier is also
-# stamped on each imported event (evebox.agent.id) so packet capture
-# requests for those events route back to this agent.
-#agent-id: firewall-east
 
 # Additional fields that will be added to each event. This is currently limited
 # to strings.

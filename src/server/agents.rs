@@ -40,8 +40,8 @@ pub(crate) const LOCAL_PCAP_SOURCE_NAME: &str = "(server)";
 /// accidental or hostile input from growing without limit.
 pub(crate) const MAX_AGENT_NAME_BYTES: usize = 16 * 1024;
 
-/// Identity of one particular connection, as opposed to the agent's claimed
-/// name which remains the same across reconnects.
+/// Identity of one particular connection, as opposed to the authenticated
+/// agent name which remains the same across reconnects.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AgentConnectionId {
     pub(crate) name: String,
@@ -98,7 +98,7 @@ pub(crate) struct AgentEntry {
     pub(crate) key: Option<AgentKeyIdentity>,
     pub(crate) remote: SocketAddr,
     pub(crate) outbound: mpsc::Sender<ServerMessage>,
-    /// One server-side in-flight PCAP slot for this claimed source name.
+    /// One server-side in-flight PCAP slot for this authenticated source name.
     ///
     /// The registry reuses this semaphore across reconnects while an old job
     /// still holds it. That prevents a reconnect from creating a second lane
@@ -204,7 +204,7 @@ struct RegistryState {
     revoked_key_ids: HashSet<i64>,
 }
 
-/// Live connected agents, keyed by their claimed name.
+/// Live connected agents, keyed by their authenticated name.
 pub(crate) struct AgentRegistry {
     state: RwLock<RegistryState>,
     next_generation: AtomicU64,
@@ -227,7 +227,7 @@ impl AgentRegistry {
     }
 
     /// Register a connection, replacing any older connection with the same
-    /// claimed name and key identity. The old task is explicitly stopped;
+    /// authenticated name and key identity. The old task is explicitly stopped;
     /// generation checks keep its eventual cleanup from removing the
     /// replacement.
     ///
@@ -238,6 +238,7 @@ impl AgentRegistry {
     /// back to replace-with-warn.
     pub(crate) fn register(
         &self,
+        name: String,
         handshake: AgentHandshake,
         key: Option<AgentKeyIdentity>,
         remote: SocketAddr,
@@ -250,18 +251,18 @@ impl AgentRegistry {
         {
             warn!(
                 "REFUSING agent {:?} from {remote}: key {:?} was revoked",
-                handshake.name, key.name
+                name, key.name
             );
             return Err(RegistrationRefused::RevokedKey);
         }
 
-        if let Some(previous) = state.agents.get(&handshake.name)
+        if let Some(previous) = state.agents.get(&name)
             && let (Some(held), Some(claimed)) = (&previous.key, &key)
             && held.id != claimed.id
         {
             warn!(
                 "REFUSING agent {:?} from {remote} using key {:?}: the name is held by a connection from {} authenticated with key {:?}",
-                handshake.name, claimed.name, previous.remote, held.name
+                name, claimed.name, previous.remote, held.name
             );
             return Err(RegistrationRefused::NameHeldByOtherKey);
         }
@@ -271,13 +272,13 @@ impl AgentRegistry {
         // still holding the old one.
         let pcap_busy = state
             .agents
-            .get(&handshake.name)
+            .get(&name)
             .map(|previous| previous.pcap_busy.clone())
             .unwrap_or_else(|| Arc::new(Semaphore::new(1)));
 
         let now = DateTime::now();
         let entry = Arc::new(AgentEntry {
-            name: handshake.name.clone(),
+            name,
             hostname: handshake.hostname,
             version: handshake.version,
             capabilities: handshake.capabilities,
@@ -409,7 +410,7 @@ impl AgentRegistry {
         self.state.read().unwrap().agents.len()
     }
 
-    /// General connected-agent read model, sorted by claimed name.
+    /// General connected-agent read model, sorted by authenticated name.
     pub(crate) fn list(&self) -> Vec<AgentInfo> {
         let mut rows: Vec<AgentInfo> = self
             .state
@@ -449,7 +450,6 @@ mod tests {
 
     fn handshake(name: &str, capabilities: &[&str]) -> AgentHandshake {
         AgentHandshake {
-            name: name.to_string(),
             hostname: format!("{name}.example.test"),
             version: "0.27.0-dev".to_string(),
             capabilities: capabilities.iter().map(|value| value.to_string()).collect(),
@@ -470,7 +470,13 @@ mod tests {
     fn register(registry: &AgentRegistry, name: &str, capabilities: &[&str]) -> Arc<AgentEntry> {
         let (tx, _rx) = mpsc::channel(OUTBOUND_CAPACITY);
         registry
-            .register(handshake(name, capabilities), None, remote(), tx)
+            .register(
+                name.to_string(),
+                handshake(name, capabilities),
+                None,
+                remote(),
+                tx,
+            )
             .unwrap()
     }
 
@@ -480,7 +486,13 @@ mod tests {
         key: Option<AgentKeyIdentity>,
     ) -> Result<Arc<AgentEntry>, RegistrationRefused> {
         let (tx, _rx) = mpsc::channel(OUTBOUND_CAPACITY);
-        registry.register(handshake(name, &[CAPABILITY_PCAP]), key, remote(), tx)
+        registry.register(
+            name.to_string(),
+            handshake(name, &[CAPABILITY_PCAP]),
+            key,
+            remote(),
+            tx,
+        )
     }
 
     #[test]
@@ -565,7 +577,13 @@ mod tests {
         let registry = AgentRegistry::default();
         let (tx, _rx) = mpsc::channel(1);
         let entry = registry
-            .register(handshake("sensor-a", &[]), None, remote(), tx)
+            .register(
+                "sensor-a".to_string(),
+                handshake("sensor-a", &[]),
+                None,
+                remote(),
+                tx,
+            )
             .unwrap();
 
         entry.try_send(ServerMessage::Unknown).unwrap();
@@ -672,6 +690,7 @@ mod tests {
         let (first_tx, mut first_rx) = mpsc::channel(OUTBOUND_CAPACITY);
         let first = registry
             .register(
+                "sensor-a".to_string(),
                 handshake("sensor-a", &[CAPABILITY_PCAP]),
                 None,
                 remote(),
@@ -681,6 +700,7 @@ mod tests {
         let (second_tx, _second_rx) = mpsc::channel(OUTBOUND_CAPACITY);
         registry
             .register(
+                "sensor-a".to_string(),
                 handshake("sensor-a", &[CAPABILITY_PCAP]),
                 None,
                 remote(),

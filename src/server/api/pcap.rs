@@ -3768,8 +3768,8 @@ mod test {
         context
             .agents
             .register(
+                "remote".to_string(),
                 crate::agent::protocol::AgentHandshake {
-                    name: "remote".to_string(),
                     hostname: "remote-host".to_string(),
                     version: "test".to_string(),
                     capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],
@@ -3969,8 +3969,8 @@ mod test {
         let (tx, mut rx) = mpsc::channel(4);
         let entry = agents
             .register(
+                "sensor-a".to_string(),
                 crate::agent::protocol::AgentHandshake {
-                    name: "sensor-a".to_string(),
                     hostname: "host".to_string(),
                     version: "test".to_string(),
                     capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],

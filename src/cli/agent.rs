@@ -84,9 +84,9 @@ struct Args {
     #[arg(long, short = 'k', id = "disable-certificate-check", aliases = &["no-certificate-check"])]
     disable_certificate_check: bool,
 
-    /// Unique agent identifier, advertised on the control channel
-    #[arg(long, id = "agent-id", value_name = "ID")]
-    agent_id: Option<String>,
+    /// Deprecated compatibility option; agent identity comes from server.key.
+    #[arg(long, id = "agent-id", value_name = "ID", hide = true)]
+    _agent_id: Option<String>,
 
     /// Enable full packet capture from this Suricata pcap-log spool directory
     #[arg(long, id = "pcap.directory", value_name = "DIR")]
@@ -129,14 +129,16 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     let disable_certificate_check = config
         .get_bool("disable-certificate-check")
         .unwrap_or(false);
+    let server_key = config
+        .get_string("server.key")
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
 
-    // One identity for everything this agent does: stamped on imported
-    // events and claimed on the packet-capture control channel, so the
-    // server can route an event's capture request back to this agent.
+    // The key determines the agent identity. The hostname remains useful
+    // operational metadata and is the lab-mode fallback when the server
+    // explicitly allows an unauthenticated control channel.
     #[cfg(not(windows))]
-    let (agent_id, agent_hostname) = agent_identity(&config);
-    #[cfg(windows)]
-    let (agent_id, _) = agent_identity(&config);
+    let agent_hostname = gethostname::gethostname().to_string_lossy().to_string();
 
     // The packet-capture channel is optional and deliberately independent of
     // the EVE importer tasks below. Direct-to-Elasticsearch mode has no
@@ -147,8 +149,8 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         &config,
         &server_url,
         disable_certificate_check,
-        &agent_id,
         &agent_hostname,
+        server_key.clone(),
     )?;
     #[cfg(windows)]
     let pcap_channel = {
@@ -182,7 +184,6 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
 
     let mut filters = EveFilterChain::with_defaults();
     filters.add_filter(eve::filters::AddAgentHostnameFilter::default());
-    filters.add_filter(eve::filters::AddAgentIdFilter::new(agent_id));
 
     if enable_geoip {
         match crate::geoip::GeoIP::open(None) {
@@ -249,6 +250,7 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
             &server_url,
             server_username,
             server_password,
+            server_key,
             disable_certificate_check,
         );
         info!("Sending events to EveBox server: {server_url}");
@@ -325,18 +327,6 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     }
 }
 
-/// The identity this agent presents everywhere: the configured `agent-id`
-/// (or the system hostname when unset) plus the hostname itself.
-fn agent_identity(config: &Config) -> (String, String) {
-    let hostname = gethostname::gethostname().to_string_lossy().to_string();
-    let agent_id = config
-        .get_string("agent-id")
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| hostname.clone());
-    (agent_id, hostname)
-}
-
 /// Build the persistent packet-capture channel configuration, or return
 /// `None` when no spool directory is configured or packet capture is
 /// incompatible with the selected output.
@@ -345,8 +335,8 @@ fn build_pcap_channel(
     config: &Config,
     server_url: &str,
     disable_certificate_check: bool,
-    agent_id: &str,
     hostname: &str,
+    server_key: Option<String>,
 ) -> anyhow::Result<Option<crate::agent::channel::ChannelConfig>> {
     // Packet capture is enabled by setting a spool directory, either
     // `pcap.directory` in the configuration file or --pcap-directory on the
@@ -369,16 +359,11 @@ fn build_pcap_channel(
         .get_string("pcap.prefix")
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
-    let server_key = config
-        .get_string("server.key")
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty());
     let server_url = crate::agent::tls::normalize_server_url(server_url)?;
-    info!("Full packet capture enabled: spool {directory} as agent {agent_id:?}");
+    info!("Full packet capture enabled: spool {directory}");
 
     Ok(Some(crate::agent::channel::ChannelConfig {
         server_url,
-        agent_id: agent_id.to_string(),
         hostname: hostname.to_string(),
         server_key,
         spool: crate::pcap::SpoolConfig::new(directory, prefix),
@@ -565,14 +550,17 @@ mod tests {
         yaml_config_with_args(yaml, &[])
     }
 
-    /// Build the channel the way `main()` does: the agent identity is
-    /// resolved from the same configuration.
+    /// Build the channel the way `main()` does.
     fn channel_from(
         config: &Config,
         server_url: &str,
     ) -> anyhow::Result<Option<crate::agent::channel::ChannelConfig>> {
-        let (agent_id, hostname) = agent_identity(config);
-        build_pcap_channel(config, server_url, false, &agent_id, &hostname)
+        let hostname = gethostname::gethostname().to_string_lossy().to_string();
+        let server_key = config
+            .get_string("server.key")
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        build_pcap_channel(config, server_url, false, &hostname, server_key)
     }
 
     fn yaml_config_with_args(yaml: &str, args: &[&str]) -> (tempfile::TempDir, Config) {
@@ -588,14 +576,14 @@ mod tests {
     }
 
     #[test]
-    fn pcap_channel_reads_spool_and_agent_identity() {
+    fn pcap_channel_reads_spool_and_key() {
         let (dir, config) = yaml_config(
-            "elasticsearch:\n  enabled: false\nagent-id: edge-a\npcap:\n  directory: /captures\n  prefix: '  log.pcap  '\n",
+            "elasticsearch:\n  enabled: false\nserver:\n  key: '  eba_test  '\npcap:\n  directory: /captures\n  prefix: '  log.pcap  '\n",
         );
         let channel = channel_from(&config, "https://evebox.test")
             .unwrap()
             .unwrap();
-        assert_eq!(channel.agent_id, "edge-a");
+        assert_eq!(channel.server_key.as_deref(), Some("eba_test"));
         assert_eq!(channel.server_url, "https://evebox.test");
         assert_eq!(channel.spool.directory, PathBuf::from("/captures"));
         assert_eq!(channel.spool.prefix.as_deref(), Some("log.pcap"));
@@ -603,15 +591,15 @@ mod tests {
     }
 
     #[test]
-    fn command_line_agent_id_overrides_configuration_file() {
+    fn legacy_agent_id_option_is_accepted_but_ignored() {
         let (_dir, config) = yaml_config_with_args(
-            "elasticsearch:\n  enabled: false\nagent-id: from-yaml\npcap:\n  directory: /captures\n",
-            &["--agent-id", "suri-9"],
+            "elasticsearch:\n  enabled: false\nserver:\n  key: eba_test\npcap:\n  directory: /captures\n",
+            &["--agent-id", "legacy-id"],
         );
         let channel = channel_from(&config, "https://evebox.test")
             .unwrap()
             .unwrap();
-        assert_eq!(channel.agent_id, "suri-9");
+        assert_eq!(channel.server_key.as_deref(), Some("eba_test"));
     }
 
     #[test]
@@ -624,21 +612,18 @@ mod tests {
                 .is_none()
         );
 
-        let (_dir, blank_agent_id) = yaml_config(
-            "elasticsearch:\n  enabled: false\nagent-id: '   '\npcap:\n  directory: '  /captures  '\n  prefix: '   '\n",
+        let (_dir, normalized) = yaml_config(
+            "elasticsearch:\n  enabled: false\nserver:\n  key: '   '\npcap:\n  directory: '  /captures  '\n  prefix: '   '\n",
         );
         let channel = channel_from(
-            &blank_agent_id,
+            &normalized,
             "https://evebox.test/base///?ignored=yes#fragment",
         )
         .unwrap()
         .unwrap();
         assert_eq!(channel.spool.directory, PathBuf::from("/captures"));
         assert_eq!(channel.spool.prefix, None);
-        assert_eq!(
-            channel.agent_id,
-            gethostname::gethostname().to_string_lossy()
-        );
+        assert_eq!(channel.server_key, None);
         assert_eq!(channel.server_url, "https://evebox.test/base");
     }
 

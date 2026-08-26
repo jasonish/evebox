@@ -19,7 +19,7 @@ pub(crate) struct AgentsCommand {
 enum AgentsCommands {
     /// Add a new agent key
     Add {
-        /// Agent name, normally the agent's `agent-id`
+        /// Name assigned to the agent key
         name: String,
         #[arg(from_global, id = "config-directory")]
         config_directory: Option<String>,
@@ -110,8 +110,9 @@ async fn remove(
     }
     println!("Agent key removed: name={name:?}");
     println!(
-        "Note: keys are checked when an agent connects; restart the EveBox server \
-         to disconnect an agent that is currently connected with this key."
+        "Note: event submissions with this key are rejected immediately, but an agent \
+         currently connected with it keeps its control channel until the server is \
+         restarted or the agent disconnects; reconnect attempts are rejected."
     );
     Ok(())
 }

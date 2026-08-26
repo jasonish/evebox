@@ -51,9 +51,6 @@ const MAX_ACTIVE_JOBS: usize = 16;
 #[derive(Debug, Clone)]
 pub(crate) struct ChannelConfig {
     pub(crate) server_url: String,
-    /// Unique identifier claimed on the control channel; the server routes
-    /// events whose sensor identity matches it to this agent.
-    pub(crate) agent_id: String,
     pub(crate) hostname: String,
     /// Agent key (`server.key` / `EVEBOX_SERVER_KEY`) presented as a bearer
     /// token on the WebSocket upgrade.
@@ -142,13 +139,12 @@ async fn connect_and_run(
     warned: &mut ConnectWarnings,
 ) -> ConnectionOutcome {
     let handshake = AgentHandshake {
-        name: config.agent_id.clone(),
         hostname: config.hostname.clone(),
         version: crate::version::version().to_string(),
         capabilities: vec![CAPABILITY_PCAP.to_string()],
     };
-    let handshake = match serde_json::to_string(&handshake) {
-        Ok(handshake) => ascii_json(&handshake),
+    let handshake = match encode_handshake(&handshake) {
+        Ok(handshake) => handshake,
         Err(err) => {
             error!("agent channel: failed to encode handshake: {err}");
             return ConnectionOutcome::ConnectFailed;
@@ -197,10 +193,7 @@ async fn connect_and_run(
                 return ConnectionOutcome::ConnectFailed;
             }
             *warned = ConnectWarnings::default();
-            info!(
-                "agent channel: connected to {} as {:?}",
-                config.server_url, config.agent_id
-            );
+            info!("agent channel: connected to {}", config.server_url);
             let connected_at = Instant::now();
             run_connection(ws, config, client, extraction).await;
             ConnectionOutcome::Disconnected {
@@ -218,21 +211,32 @@ async fn connect_and_run(
             }
             ConnectionOutcome::ServerTooOld
         }
+        Ok(Err(WsError::Http(response))) if response.status() == 400 => {
+            if !warned.too_old {
+                warn!(
+                    "agent channel: server at {} rejected the agent handshake; the server may be \
+                     older than this agent, upgrade EveBox on the server",
+                    config.server_url
+                );
+                warned.too_old = true;
+            }
+            ConnectionOutcome::ServerTooOld
+        }
         Ok(Err(WsError::Http(response))) if response.status() == 401 => {
             if !warned.unauthorized {
                 if config.server_key.is_some() {
                     error!(
                         "agent channel: the server at {} rejected the configured agent key \
-                         (unknown or removed); issue a new one with `evebox config agents add {:?}` \
+                         (unknown or removed); issue a new one with `evebox config agents add <name>` \
                          on the server and update server.key",
-                        config.server_url, config.agent_id
+                        config.server_url
                     );
                 } else {
                     error!(
                         "agent channel: the server at {} requires an agent key; on the server run \
-                         `evebox config agents add {:?}` and set the printed key as server.key in \
+                         `evebox config agents add <name>` and set the printed key as server.key in \
                          agent.yaml (or EVEBOX_SERVER_KEY)",
-                        config.server_url, config.agent_id
+                        config.server_url
                     );
                 }
                 warned.unauthorized = true;
@@ -241,11 +245,13 @@ async fn connect_and_run(
         }
         Ok(Err(WsError::Http(response))) if response.status() == 403 => {
             if !warned.unauthorized {
+                // Servers through 0.28 required the advertised name to match
+                // the key's name; this agent advertises its hostname.
                 error!(
-                    "agent channel: the server at {} says the configured agent key was issued \
-                     for a different agent name; issue a key for {:?} with \
-                     `evebox config agents add {:?}` or set agent-id to the key's name",
-                    config.server_url, config.agent_id, config.agent_id
+                    "agent channel: the server at {} forbids this agent key; if the server \
+                     is older than this agent, its key must be named {:?} (the hostname) \
+                     or the server upgraded",
+                    config.server_url, config.hostname
                 );
                 warned.unauthorized = true;
             }
@@ -1109,6 +1115,15 @@ fn ascii_json(json: &str) -> String {
     output
 }
 
+/// Encode the handshake header. The `name` field is no longer part of the
+/// protocol, but servers through 0.28 require it, so the hostname is sent
+/// under that name for compatibility; current servers ignore it.
+fn encode_handshake(handshake: &AgentHandshake) -> Result<String, serde_json::Error> {
+    let mut value = serde_json::to_value(handshake)?;
+    value["name"] = handshake.hostname.clone().into();
+    Ok(ascii_json(&serde_json::to_string(&value)?))
+}
+
 fn jitter(delay: Duration) -> Duration {
     use rand::Rng;
 
@@ -1217,17 +1232,19 @@ mod tests {
     #[test]
     fn unicode_handshake_json_is_ascii_and_round_trips() {
         let handshake = AgentHandshake {
-            name: "föö-sensor".to_string(),
             hostname: "höst-🦀".to_string(),
             version: "1".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
         };
-        let encoded = ascii_json(&serde_json::to_string(&handshake).unwrap());
+        let encoded = encode_handshake(&handshake).unwrap();
         assert!(encoded.is_ascii());
         assert_eq!(
             serde_json::from_str::<AgentHandshake>(&encoded).unwrap(),
             handshake
         );
+        // Legacy servers require a name; the hostname stands in for it.
+        let value: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(value["name"], "höst-🦀");
     }
 
     #[test]
@@ -1489,7 +1506,6 @@ mod tests {
         );
         let config = ChannelConfig {
             server_url: format!("http://{address}"),
-            agent_id: "sensor".to_string(),
             hostname: "host".to_string(),
             server_key: None,
             spool: SpoolConfig::new(directory.path(), None),
@@ -1554,7 +1570,6 @@ mod tests {
         );
         let config = ChannelConfig {
             server_url: format!("http://{address}"),
-            agent_id: "sensor".to_string(),
             hostname: "host".to_string(),
             server_key: None,
             spool: SpoolConfig::new(directory.path(), None),
@@ -1614,7 +1629,6 @@ mod tests {
         );
         let config = ChannelConfig {
             server_url: format!("http://{address}"),
-            agent_id: "sensor".to_string(),
             hostname: "host".to_string(),
             server_key: None,
             spool: SpoolConfig::new(directory.path(), None),

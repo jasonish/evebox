@@ -34,7 +34,7 @@ use crate::agent::protocol::{CAPABILITY_PCAP, PCAP_CONTENT_TYPE};
 use crate::prelude::*;
 use crate::server::ServerContext;
 use crate::server::agents::{
-    AgentConnectionId, AgentKeyIdentity, AgentRegistry, MAX_AGENT_NAME_BYTES, OUTBOUND_CAPACITY,
+    AgentConnectionId, AgentKeyIdentity, AgentRegistry, OUTBOUND_CAPACITY,
 };
 use crate::server::main::SessionExtractor;
 use crate::server::pcap::tasks::{UploadSendError, UploadSink};
@@ -116,34 +116,19 @@ pub(crate) async fn websocket(
         Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
     };
 
-    match &key {
-        // The key IS the authorization for a name: without this check any
-        // valid key could claim a disconnected agent's name and receive its
-        // extraction requests or future control commands.
-        Some(key) if key.name != handshake.name => {
-            warn!(
-                "Refusing agent {:?} from {remote}: its agent key was issued for {:?}",
-                handshake.name, key.name
-            );
-            return agent_key_error(
-                StatusCode::FORBIDDEN,
-                "agent-key-name-mismatch",
-                &format!(
-                    "the presented agent key was issued for {:?} and cannot claim agent name {:?}: \
-                     issue a key for this agent with `evebox config agents add {:?}` or set \
-                     agent-id to match the key",
-                    key.name, handshake.name, handshake.name
-                ),
-            );
-        }
-        Some(key) => debug!(
-            "Agent {:?} from {remote} authenticated with agent key {:?}",
-            handshake.name, key.name
-        ),
-        None => warn!(
-            "Accepting UNAUTHENTICATED agent {:?} from {remote}: agents.allow-unauthenticated is enabled",
-            handshake.name
-        ),
+    // A key is both credential and identity. The hostname is only the
+    // fallback name for the explicitly unauthenticated lab mode.
+    let name = key
+        .as_ref()
+        .map(|key| key.name.clone())
+        .unwrap_or_else(|| handshake.hostname.clone());
+    if let Some(key) = &key {
+        debug!("Agent {name:?} from {remote} authenticated with its agent key");
+        debug_assert_eq!(name, key.name);
+    } else {
+        warn!(
+            "Accepting UNAUTHENTICATED agent {name:?} from {remote}: agents.allow-unauthenticated is enabled"
+        );
     }
 
     // Control messages should stay small. Keep the limits far below
@@ -157,6 +142,7 @@ pub(crate) async fn websocket(
                 socket,
                 context.agents.clone(),
                 context.configdb.clone(),
+                name,
                 handshake,
                 key,
                 remote,
@@ -416,14 +402,8 @@ fn parse_handshake(headers: &HeaderMap) -> Result<AgentHandshake, &'static str> 
         .map_err(|_| "x-evebox-agent header is not valid ASCII")?;
     let handshake: AgentHandshake =
         serde_json::from_str(value).map_err(|_| "x-evebox-agent header is not valid JSON")?;
-    if handshake.name.trim().is_empty()
-        || handshake.hostname.trim().is_empty()
-        || handshake.version.trim().is_empty()
-    {
-        return Err("x-evebox-agent name, hostname, and version must not be empty");
-    }
-    if handshake.name.len() > MAX_AGENT_NAME_BYTES {
-        return Err("x-evebox-agent name is too large");
+    if handshake.hostname.trim().is_empty() || handshake.version.trim().is_empty() {
+        return Err("x-evebox-agent hostname and version must not be empty");
     }
     Ok(handshake)
 }
@@ -432,13 +412,12 @@ async fn connection(
     socket: WebSocket,
     agents: Arc<AgentRegistry>,
     configdb: Arc<ConfigDb>,
+    name: String,
     handshake: AgentHandshake,
     key: Option<AgentKeyIdentity>,
     remote: SocketAddr,
 ) {
     let (mut sink, mut stream) = socket.split();
-    let name = handshake.name.clone();
-
     // Guarantee that hello is the first application frame. Registration
     // happens only after this send, so dispatch cannot race ahead of it.
     let hello = ServerMessage::Hello {
@@ -454,7 +433,7 @@ async fn connection(
     let (outbound, mut outbound_rx) = mpsc::channel::<ServerMessage>(OUTBOUND_CAPACITY);
     // The registry has already logged the refusal; the agent sees a close
     // and stays in its reconnect loop until the operator fixes the fleet.
-    let Ok(entry) = agents.register(handshake, key, remote, outbound) else {
+    let Ok(entry) = agents.register(name.clone(), handshake, key, remote, outbound) else {
         let _ = sink.close().await;
         return;
     };
@@ -724,47 +703,22 @@ mod tests {
             ),
         );
         let handshake = parse_handshake(&headers).unwrap();
-        assert_eq!(handshake.name, "sensor-a");
+        assert_eq!(handshake.hostname, "host-a");
         assert_eq!(handshake.capabilities, [CAPABILITY_PCAP]);
 
+        // A legacy agent name is accepted as an unknown field, including
+        // values the current protocol would never use as an identity.
         headers.insert(
             AGENT_HEADER,
             HeaderValue::from_static(r#"{"name":"","hostname":"h","version":"v"}"#),
         );
-        assert!(parse_handshake(&headers).is_err());
-
-        let name = "x".repeat(MAX_AGENT_NAME_BYTES);
-        headers.insert(
-            AGENT_HEADER,
-            serde_json::to_string(&AgentHandshake {
-                name,
-                hostname: "host-a".to_string(),
-                version: "0.27.0".to_string(),
-                capabilities: vec![],
-            })
-            .unwrap()
-            .parse()
-            .unwrap(),
-        );
         assert!(parse_handshake(&headers).is_ok());
 
-        let name = "x".repeat(MAX_AGENT_NAME_BYTES + 1);
         headers.insert(
             AGENT_HEADER,
-            serde_json::to_string(&AgentHandshake {
-                name,
-                hostname: "host-a".to_string(),
-                version: "0.27.0".to_string(),
-                capabilities: vec![],
-            })
-            .unwrap()
-            .parse()
-            .unwrap(),
+            HeaderValue::from_static(r#"{"hostname":"","version":"v"}"#),
         );
-        assert_eq!(
-            parse_handshake(&headers),
-            Err("x-evebox-agent name is too large")
-        );
+        assert!(parse_handshake(&headers).is_err());
     }
 
     #[test]
@@ -1073,7 +1027,6 @@ mod tests {
         let key = add_test_key(&context, "test-sensor").await;
         let agent = tokio::spawn(channel::run(ChannelConfig {
             server_url: format!("http://{address}"),
-            agent_id: "test-sensor".to_string(),
             hostname: "test-host".to_string(),
             server_key: Some(key),
             spool: SpoolConfig::new(testdata("spool"), None),
@@ -1107,14 +1060,25 @@ mod tests {
         address: std::net::SocketAddr,
         key: Option<&str>,
     ) -> TestAgentSocket {
+        connect_test_agent_with_legacy_name(address, key, None).await
+    }
+
+    async fn connect_test_agent_with_legacy_name(
+        address: std::net::SocketAddr,
+        key: Option<&str>,
+        legacy_name: Option<&str>,
+    ) -> TestAgentSocket {
         let uri: Uri = format!("ws://{address}/api/agent/ws").parse().unwrap();
-        let handshake = serde_json::to_string(&AgentHandshake {
-            name: "test-sensor".to_string(),
+        let mut handshake = serde_json::to_value(AgentHandshake {
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
         })
         .unwrap();
+        if let Some(name) = legacy_name {
+            handshake["name"] = name.into();
+        }
+        let handshake = serde_json::to_string(&handshake).unwrap();
         let mut request = ClientRequestBuilder::new(uri)
             .with_sub_protocol(SUBPROTOCOL)
             .with_header(AGENT_HEADER, handshake);
@@ -1170,7 +1134,6 @@ mod tests {
         let key = add_test_key(&context, "test-sensor").await;
         let key = Some(key.as_str());
         let valid_handshake = serde_json::to_string(&AgentHandshake {
-            name: "test-sensor".to_string(),
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
@@ -1204,7 +1167,7 @@ mod tests {
             &context,
             key,
             Some(SUBPROTOCOL),
-            Some(r#"{"name":"","hostname":"host","version":"test"}"#),
+            Some(r#"{"name":"legacy","hostname":"","version":"test"}"#),
             bad,
         )
         .await;
@@ -1216,7 +1179,6 @@ mod tests {
     async fn agent_upgrades_require_a_valid_key() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let handshake = serde_json::to_string(&AgentHandshake {
-            name: "test-sensor".to_string(),
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
@@ -1262,7 +1224,6 @@ mod tests {
         let (address, server, context, _dir) =
             serve_test_server_with_config(PcapSettings::default(), config).await;
         let handshake = serde_json::to_string(&AgentHandshake {
-            name: "test-sensor".to_string(),
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
@@ -1296,29 +1257,80 @@ mod tests {
         }
     }
 
-    /// The key is the authorization for a name: a key issued for one agent
-    /// cannot claim another agent's name, even while that agent is offline.
+    /// Agents through 0.28 sent a separately configured name. Keep accepting
+    /// that field, but let the key determine the connection identity.
     #[tokio::test]
-    async fn a_key_cannot_claim_another_agents_name() {
+    async fn a_legacy_agent_id_is_ignored_in_favor_of_the_key_name() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let other = add_test_key(&context, "other-sensor").await;
-        let handshake = serde_json::to_string(&AgentHandshake {
-            name: "test-sensor".to_string(),
-            hostname: "test-host".to_string(),
-            version: "test".to_string(),
-            capabilities: vec![CAPABILITY_PCAP.to_string()],
-        })
-        .unwrap();
-
-        assert_upgrade_rejected(
+        let _socket = connect_test_agent_with_legacy_name(
             address,
-            &context,
             Some(&other),
-            Some(SUBPROTOCOL),
-            Some(&handshake),
-            StatusCode::FORBIDDEN,
+            Some("legacy-configured-id"),
         )
         .await;
+        wait_until(|| context.agents.connected() == 1).await;
+
+        assert!(context.agents.get("legacy-configured-id").is_none());
+        let entry = context.agents.get("other-sensor").unwrap();
+        assert_eq!(entry.key.as_ref().unwrap().name, "other-sensor");
+
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn an_agent_key_stamps_its_name_on_submitted_events() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        let key = add_test_key(&context, "keyed-sensor").await;
+        let mut events = context.firehose.subscribe();
+        let mut event = matching_event();
+        event["evebox"]["agent"]["id"] = "untrusted-agent-id".into();
+
+        let response = reqwest::Client::new()
+            .post(format!("http://{address}/api/submit"))
+            .header(crate::agent::protocol::AGENT_KEY_HEADER, &key)
+            .body(event.to_string())
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let submitted = events.recv().await.unwrap();
+        assert_eq!(submitted["evebox"]["agent"]["id"], "keyed-sensor");
+
+        // Without a key the stamp is untrusted and removed.
+        let mut event = matching_event();
+        event["evebox"]["agent"]["id"] = "untrusted-agent-id".into();
+        let response = reqwest::Client::new()
+            .post(format!("http://{address}/api/submit"))
+            .body(event.to_string())
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let submitted = events.recv().await.unwrap();
+        assert!(submitted["evebox"]["agent"]["id"].is_null());
+
+        // Stripping must not add empty structure to events without a stamp.
+        let event = matching_event();
+        assert!(event.get("evebox").is_none());
+        let response = reqwest::Client::new()
+            .post(format!("http://{address}/api/submit"))
+            .body(event.to_string())
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let submitted = events.recv().await.unwrap();
+        assert!(submitted.get("evebox").is_none());
+
+        let response = reqwest::Client::new()
+            .post(format!("http://{address}/api/submit"))
+            .header(crate::agent::protocol::AGENT_KEY_HEADER, "eba_unknown")
+            .body(matching_event().to_string())
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
         server.abort();
     }
@@ -1362,7 +1374,6 @@ mod tests {
 
         // The removed key can no longer authenticate at all.
         let handshake = serde_json::to_string(&AgentHandshake {
-            name: "test-sensor".to_string(),
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],

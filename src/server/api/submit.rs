@@ -5,17 +5,52 @@ use crate::server::ServerContext;
 use axum::Json;
 use axum::body::Bytes;
 use axum::extract::Extension;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use serde_json::json;
 use std::io::BufRead;
 use std::sync::Arc;
 use tracing::error;
 
+use crate::agent::protocol::AGENT_KEY_HEADER;
+
 pub(crate) async fn handler(
     Extension(context): Extension<Arc<ServerContext>>,
+    headers: HeaderMap,
     body: Bytes,
 ) -> impl IntoResponse {
+    // Event submission remains open for legacy agents. When an agent key is
+    // presented, however, it is authoritative: validate it and use its name
+    // as the non-secret routing identity stamped into every submitted event.
+    // Without a key no stamp is trusted: `evebox.agent.id` routes packet
+    // capture requests to a named agent's spool, so a client-supplied value
+    // is removed and such events fall back to hostname routing.
+    let presented_key = match headers.get(AGENT_KEY_HEADER) {
+        Some(value) => match value.to_str() {
+            Ok(value) => Some(value.to_string()),
+            Err(_) => return (StatusCode::UNAUTHORIZED, "invalid agent key").into_response(),
+        },
+        None => None,
+    };
+    let agent_name = if let Some(key) = presented_key {
+        match context.configdb.verify_agent_key(&key).await {
+            Ok(Some(key)) => Some(key.name),
+            Ok(None) => {
+                return (StatusCode::UNAUTHORIZED, "unknown agent key").into_response();
+            }
+            Err(err) => {
+                error!("Agent key verification failed during event submission: {err}");
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "agent key verification failed",
+                )
+                    .into_response();
+            }
+        }
+    } else {
+        None
+    };
+
     let mut importer = match context.datastore.get_importer() {
         Some(importer) => importer,
         None => {
@@ -50,6 +85,21 @@ pub(crate) async fn handler(
 
                         if let Some(filters) = &context.filters {
                             filters.run(&mut event);
+                        }
+                        match &agent_name {
+                            Some(agent_name) if event.is_object() => {
+                                event["evebox"]["agent"]["id"] = agent_name.clone().into();
+                            }
+                            Some(_) => {}
+                            None => {
+                                if let Some(agent) = event
+                                    .get_mut("evebox")
+                                    .and_then(|evebox| evebox.get_mut("agent"))
+                                    .and_then(|agent| agent.as_object_mut())
+                                {
+                                    agent.remove("id");
+                                }
+                            }
                         }
 
                         if let Err(err) = importer.submit(event.clone()).await {

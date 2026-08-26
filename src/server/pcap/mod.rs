@@ -433,8 +433,8 @@ mod test {
         let (tx, _rx) = tokio::sync::mpsc::channel(4);
         registry
             .register(
+                name.to_string(),
                 AgentHandshake {
-                    name: name.to_string(),
                     hostname: hostname.to_string(),
                     version: "test".to_string(),
                     capabilities: vec![CAPABILITY_PCAP.to_string()],
