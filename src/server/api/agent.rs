@@ -100,7 +100,7 @@ pub(crate) async fn websocket(
 ) -> Response {
     let key = match authenticate_agent(&context, &headers, remote).await {
         Ok(key) => key,
-        Err(response) => return response,
+        Err(response) => return *response,
     };
 
     if !offers_subprotocol(&headers) {
@@ -173,18 +173,18 @@ async fn authenticate_agent(
     context: &ServerContext,
     headers: &HeaderMap,
     remote: SocketAddr,
-) -> Result<Option<AgentKeyIdentity>, Response> {
+) -> Result<Option<AgentKeyIdentity>, Box<Response>> {
     let Some(bearer) = headers.typed_get::<Authorization<Bearer>>() else {
         if context.config.agents_allow_unauthenticated {
             return Ok(None);
         }
         debug!("Refusing agent connection from {remote}: no agent key presented");
-        return Err(agent_key_error(
+        return Err(Box::new(agent_key_error(
             StatusCode::UNAUTHORIZED,
             "agent-key-required",
             "this server requires an agent key: create one with `evebox config agents add <name>` \
              and set it as server.key in agent.yaml (or EVEBOX_SERVER_KEY)",
-        ));
+        )));
     };
     match context.configdb.verify_agent_key(bearer.token()).await {
         Ok(Some(key)) => {
@@ -201,19 +201,21 @@ async fn authenticate_agent(
         }
         Ok(None) => {
             warn!("Refusing agent connection from {remote}: unknown agent key");
-            Err(agent_key_error(
+            Err(Box::new(agent_key_error(
                 StatusCode::UNAUTHORIZED,
                 "agent-key-rejected",
                 "unknown agent key: issue a new one with `evebox config agents add <name>`",
-            ))
+            )))
         }
         Err(err) => {
             error!("Agent key verification failed: {err}");
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "agent key verification failed",
-            )
-                .into_response())
+            Err(Box::new(
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "agent key verification failed",
+                )
+                    .into_response(),
+            ))
         }
     }
 }

@@ -49,6 +49,8 @@ const CHUNK_SIZE: usize = 64 * 1024;
 static PCAP_CONTENT_TYPE: HeaderValue =
     HeaderValue::from_static(crate::agent::protocol::PCAP_CONTENT_TYPE);
 
+type PcapResponseResult = Result<Response, Box<Response>>;
+
 /// The `POST /api/pcap` request body. All fields are optional; the
 /// combination present selects the mode (see [`build_request`]). Old
 /// clients sending only `{event_id}` keep the default auto-derive
@@ -106,7 +108,8 @@ pub(crate) async fn post_pcap(
     // surface as a message.
     let buffer_limit = context.pcap.settings.max_bytes;
     let response = match handle(&context, &body, &user, remote, false).await {
-        Ok(response) | Err(response) => response,
+        Ok(response) => response,
+        Err(response) => *response,
     };
     buffer_post_body(response, buffer_limit).await
 }
@@ -130,7 +133,8 @@ pub(crate) async fn get_pcap(
     // never reads the response, so an empty result becomes a valid
     // empty pcap rather than a JSON error saved under a `.pcap` name.
     match handle(&context, &body, &user, remote, true).await {
-        Ok(response) | Err(response) => response,
+        Ok(response) => response,
+        Err(response) => *response,
     }
 }
 
@@ -258,7 +262,8 @@ pub(crate) async fn validate_pcap(
     let user = session.username.clone().unwrap_or_else(|| "-".to_string());
     let remote = remote_addr(&context, &headers, remote);
     match handle_inner(&context, &body, &user, remote, true, false).await {
-        Ok(response) | Err(response) => response,
+        Ok(response) => response,
+        Err(response) => *response,
     }
 }
 
@@ -283,7 +288,7 @@ async fn handle(
     user: &str,
     remote: String,
     native: bool,
-) -> Result<Response, Response> {
+) -> PcapResponseResult {
     handle_inner(context, body, user, remote, false, native).await
 }
 
@@ -299,7 +304,7 @@ async fn handle_inner(
     remote: String,
     dry_run: bool,
     native: bool,
-) -> Result<Response, Response> {
+) -> PcapResponseResult {
     // The audit line fields, filled in as the request is understood.
     // Every outcome — success or failure, however early — logs
     // exactly one `pcap:` line built from these. A standalone request
@@ -442,7 +447,9 @@ async fn handle_inner(
                     "pcap: user={:?} remote={:?} event={:?} outcome=ambiguous-source",
                     audit.user, audit.remote, audit.event_id
                 );
-                return Err((StatusCode::CONFLICT, Json(response)).into_response());
+                return Err(Box::new(
+                    (StatusCode::CONFLICT, Json(response)).into_response(),
+                ));
             }
         };
     audit.source = source.name().to_string();
@@ -644,7 +651,7 @@ async fn stream_local(
     audit: AuditContext,
     global_permit: tokio::sync::OwnedSemaphorePermit,
     source_permit: tokio::sync::OwnedSemaphorePermit,
-) -> Result<Response, Response> {
+) -> PcapResponseResult {
     let settings = &context.pcap.settings;
     // `request_timeout` is the first-frame deadline; once streaming,
     // a client that stops reading is bounded by the stall timeout.
@@ -859,27 +866,27 @@ async fn stream_local(
             reason.set(CancelCause::Timeout);
             cancel.cancel();
             prestream.disarm();
-            return Err(error(
+            return Err(Box::new(error(
                 StatusCode::GATEWAY_TIMEOUT,
                 "timeout",
                 "pcap extraction did not produce output in time",
-            ));
+            )));
         }
         Ok(None) => {
             // Producer died without a terminal frame: it panicked.
             // The supervisor logs the join error.
             prestream.disarm();
-            return Err(error(
+            return Err(Box::new(error(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",
                 "pcap extraction failed",
-            ));
+            )));
         }
         Ok(Some(Frame::Done(end))) => {
             // Ended before any output byte: pure response shaping;
             // the supervisor logs the outcome.
             prestream.disarm();
-            return Err(empty_response(end, &audit, &filename));
+            return Err(Box::new(empty_response(end, &audit, &filename)));
         }
         Ok(Some(Frame::Data(first))) => first,
     };
@@ -899,13 +906,13 @@ async fn stream_local(
                 ProducerEnd::Format(message) => {
                     // An honest error beats a 200 with a broken tail:
                     // discard the data, no headers were sent yet.
-                    Err(error(StatusCode::BAD_GATEWAY, "format", &message))
+                    Err(Box::new(error(StatusCode::BAD_GATEWAY, "format", &message)))
                 }
-                ProducerEnd::Io => Err(error(
+                ProducerEnd::Io => Err(Box::new(error(
                     StatusCode::BAD_GATEWAY,
                     "io",
                     "pcap extraction failed",
-                )),
+                ))),
                 end => {
                     // Complete. NoMatch/NoCandidateFiles cannot follow
                     // data; treat them defensively as an untruncated
@@ -1007,7 +1014,7 @@ async fn stream_agent(
     audit: AuditContext,
     global_permit: tokio::sync::OwnedSemaphorePermit,
     source_permit: tokio::sync::OwnedSemaphorePermit,
-) -> Result<Response, Response> {
+) -> PcapResponseResult {
     let request_timeout = context.pcap.settings.request_timeout;
     let stall_timeout = context.pcap.settings.stall_timeout;
 
@@ -1183,27 +1190,29 @@ async fn stream_agent(
                 "pcap agent did not produce output in time",
                 None,
             );
-            Err(error(
+            Err(Box::new(error(
                 StatusCode::GATEWAY_TIMEOUT,
                 "timeout",
                 "pcap agent did not produce output in time",
-            ))
+            )))
         }
         RemoteFirst::UploadFailed(upload_reason) => {
             prestream.disarm();
             log_remote_failure(&audit, "agent-upload", upload_reason, None);
-            Err(error(
+            Err(Box::new(error(
                 StatusCode::BAD_GATEWAY,
                 "agent-upload",
                 upload_reason,
-            ))
+            )))
         }
         RemoteFirst::Terminal(outcome, stats) => {
             // A real terminal result means the agent's job is finished;
             // there is nothing left to cancel.
             task_guard.disarm_cancel();
             prestream.disarm();
-            Err(remote_empty_response(outcome, stats, &audit, &filename))
+            Err(Box::new(remote_empty_response(
+                outcome, stats, &audit, &filename,
+            )))
         }
         RemoteFirst::Data(first) => {
             let audit = Arc::new(audit);
@@ -2009,7 +2018,7 @@ fn error(status: StatusCode, code: &str, message: &str) -> Response {
 
 /// Log the request's audit line with the error code as the outcome,
 /// and build the error response.
-fn fail(audit: &AuditContext, status: StatusCode, code: &str, message: &str) -> Response {
+fn fail(audit: &AuditContext, status: StatusCode, code: &str, message: &str) -> Box<Response> {
     warn!(
         "pcap: user={:?} remote={:?} event={:?} source={:?} mode={} filter={:?} window={:?} outcome={} message={:?}",
         audit.user,
@@ -2022,7 +2031,7 @@ fn fail(audit: &AuditContext, status: StatusCode, code: &str, message: &str) -> 
         code,
         message
     );
-    error(status, code, message)
+    Box::new(error(status, code, message))
 }
 
 /// The present, non-blank value of an optional string field. Blank
@@ -2412,7 +2421,8 @@ mod test {
         native: bool,
     ) -> (StatusCode, HeaderMap, Vec<u8>) {
         let response = match handle(context, &body, "tester", "test".to_string(), native).await {
-            Ok(response) | Err(response) => response,
+            Ok(response) => response,
+            Err(response) => *response,
         };
         let status = response.status();
         let headers = response.headers().clone();
@@ -2429,7 +2439,8 @@ mod test {
     ) -> (StatusCode, Vec<u8>) {
         let response =
             match handle_inner(context, &body, "tester", "test".to_string(), true, false).await {
-                Ok(response) | Err(response) => response,
+                Ok(response) => response,
+                Err(response) => *response,
             };
         let status = response.status();
         let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
@@ -2797,7 +2808,8 @@ mod test {
             loop {
                 if let Poll::Ready(response) = futures::poll!(fut.as_mut()) {
                     let response = match response {
-                        Ok(response) | Err(response) => response,
+                        Ok(response) => response,
+                        Err(response) => *response,
                     };
                     panic!(
                         "handler finished before the disconnect: {}",
@@ -3324,7 +3336,8 @@ mod test {
                 match futures::poll!(fut.as_mut()) {
                     Poll::Ready(response) => {
                         return match response {
-                            Ok(response) | Err(response) => response,
+                            Ok(response) => response,
+                            Err(response) => *response,
                         };
                     }
                     Poll::Pending => panic!("handler still pending after the extraction finished"),
@@ -3332,7 +3345,8 @@ mod test {
             }
             if let Poll::Ready(response) = futures::poll!(fut.as_mut()) {
                 return match response {
-                    Ok(response) | Err(response) => response,
+                    Ok(response) => response,
+                    Err(response) => *response,
                 };
             }
             tokio::time::sleep(std::time::Duration::from_millis(1)).await;

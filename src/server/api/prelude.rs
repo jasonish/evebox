@@ -5,4 +5,4 @@ pub(super) use std::sync::Arc;
 
 pub(super) use axum::{Extension, response::IntoResponse};
 
-pub(super) use super::{AppError, ServerContext, SessionExtractor};
+pub(super) use super::{ServerContext, SessionExtractor};
