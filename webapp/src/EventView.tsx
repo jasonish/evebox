@@ -32,7 +32,15 @@ import {
   Toast,
 } from "solid-bootstrap";
 import { prettyPrintJson } from "pretty-print-json";
-import { AggregateAlert, EcsGeo, EveDns, Event, EventWrapper } from "./types";
+import {
+  AggregateAlert,
+  EcsGeo,
+  EveDns,
+  EveSsh,
+  EveTls,
+  Event,
+  EventWrapper,
+} from "./types";
 import { parse_timestamp } from "./datetime";
 import { automaticPcapSource, pcapErrorMessage } from "./PcapDownload";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
@@ -558,6 +566,14 @@ export function EventView() {
         eventDetails.push(["Extensions", quic.extensions.length]);
       }
       setEventDetails(eventDetails.length ? eventDetails : undefined);
+    } else if (event()?._source.event_type === "dns") {
+      setEventDetails(nonEmpty(dnsDetails(event()!._source.dns!)));
+    } else if (event()?._source.event_type === "tls") {
+      setEventDetails(nonEmpty(tlsDetails(event()!._source.tls!)));
+    } else if (event()?._source.event_type === "ssh") {
+      setEventDetails(nonEmpty(sshDetails(event()!._source.ssh!)));
+    } else if (event()?._source.event_type === "mqtt") {
+      setEventDetails(nonEmpty(mqttDetails(event()!._source.mqtt!)));
     } else if (event()?._source.event_type === "mdns") {
       const mdns = event()!._source.mdns!;
       const eventDetails: any[][] = [];
@@ -1147,12 +1163,6 @@ export function EventView() {
                 </Show>
               </Col>
             </Show>
-
-            <Show when={event()?._source.event_type === "dns"}>
-              <Col class={"mb-2"} lg={12} xl={6}>
-                <DnsInfoCol dns={event()?._source.dns!} />
-              </Col>
-            </Show>
           </Row>
 
           {/* Rule */}
@@ -1712,6 +1722,278 @@ function HighlightedRule(props: { rule: string }) {
   return <div innerHTML={rule()} class={"app-rule"}></div>;
 }
 
+function nonEmpty(rows: any[][]): any[][] | undefined {
+  return rows.length ? rows : undefined;
+}
+
+function dnsDetails(dns: EveDns): any[][] {
+  const rows: any[][] = [];
+  if (dns.type) {
+    rows.push(["Type", dns.type.toUpperCase()]);
+  }
+  // Suricata 8 (v3) puts queries in an array, older versions have
+  // rrname/rrtype at the top level.
+  const queries = dns.queries?.length
+    ? dns.queries
+    : dns.rrname
+      ? [{ rrname: dns.rrname, rrtype: dns.rrtype }]
+      : [];
+  for (const q of queries) {
+    rows.push([
+      "Query",
+      <>
+        {q.rrtype}{" "}
+        <SearchLink field={"dns.queries.rrname"} value={q.rrname}>
+          {q.rrname}
+        </SearchLink>
+      </>,
+    ]);
+  }
+  if (dns.rcode) {
+    rows.push(["RCODE", dns.rcode]);
+  }
+  for (const a of dns.answers || []) {
+    rows.push([
+      "Answer",
+      <>
+        {a.rrtype} <SearchLink value={a.rrname}>{a.rrname}</SearchLink>
+        <Show when={a.rdata !== undefined}>
+          {" \u2192 "}
+          <SearchLink value={a.rdata}>{a.rdata}</SearchLink>
+        </Show>
+        <Show when={a.ttl !== undefined}>
+          <span class="text-muted"> (TTL {a.ttl})</span>
+        </Show>
+      </>,
+    ]);
+  }
+  for (const a of dns.authorities || []) {
+    rows.push([
+      "Authority",
+      <>
+        {a.rrtype} <SearchLink value={a.rrname}>{a.rrname}</SearchLink>
+        <Show when={a.soa}>
+          {" \u2192 "}
+          {a.soa?.mname} ({a.soa?.rname})
+        </Show>
+      </>,
+    ]);
+  }
+  return rows;
+}
+
+function tlsDetails(tls: EveTls): any[][] {
+  const rows: any[][] = [];
+  const t = tls as any;
+  if (tls.sni) {
+    rows.push(["SNI", <SearchLink field={"tls.sni"} value={tls.sni} />]);
+  }
+  if (tls.version) {
+    rows.push([
+      "Version",
+      <SearchLink field={"tls.version"} value={tls.version} />,
+    ]);
+  }
+  if (t.client_alpns?.length) {
+    rows.push(["Client ALPN", t.client_alpns.join(", ")]);
+  }
+  if (t.server_alpns?.length) {
+    rows.push(["Server ALPN", t.server_alpns.join(", ")]);
+  }
+  if (tls.subject) {
+    rows.push([
+      "Subject",
+      <SearchLink field={"tls.subject"} value={tls.subject} />,
+    ]);
+  }
+  if (tls.issuerdn) {
+    rows.push([
+      "Issuer",
+      <SearchLink field={"tls.issuerdn"} value={tls.issuerdn} />,
+    ]);
+  }
+  if (t.subjectaltname?.length) {
+    rows.push(["Subject Alt Names", t.subjectaltname.join(", ")]);
+  }
+  if (tls.serial) {
+    rows.push(["Serial", tls.serial]);
+  }
+  if (tls.fingerprint) {
+    rows.push([
+      "Fingerprint",
+      <SearchLink field={"tls.fingerprint"} value={tls.fingerprint} />,
+    ]);
+  }
+  if (tls.notbefore || tls.notafter) {
+    rows.push([
+      "Validity",
+      `${tls.notbefore ?? "?"} \u2192 ${tls.notafter ?? "?"}`,
+    ]);
+  }
+  if (tls.session_resumed !== undefined) {
+    rows.push(["Session Resumed", tls.session_resumed ? "Yes" : "No"]);
+  }
+  if (t.ja4) {
+    rows.push(["JA4", <SearchLink field={"tls.ja4"} value={t.ja4} />]);
+  }
+  if (tls.ja3?.hash) {
+    rows.push([
+      "JA3",
+      <SearchLink field={"tls.ja3.hash"} value={tls.ja3.hash} />,
+    ]);
+  }
+  if (tls.ja3s?.hash) {
+    rows.push([
+      "JA3S",
+      <SearchLink field={"tls.ja3s.hash"} value={tls.ja3s.hash} />,
+    ]);
+  }
+  return rows;
+}
+
+function sshDetails(ssh: EveSsh): any[][] {
+  const rows: any[][] = [];
+  for (const side of ["client", "server"] as const) {
+    const s = (ssh as any)[side];
+    if (!s) continue;
+    const label = side === "client" ? "Client" : "Server";
+    if (s.software_version) {
+      rows.push([
+        label,
+        <>
+          <SearchLink
+            field={`ssh.${side}.software_version`}
+            value={s.software_version}
+          />
+          <Show when={s.proto_version}>
+            <span class="text-muted"> (protocol {s.proto_version})</span>
+          </Show>
+        </>,
+      ]);
+    }
+    if (s.hassh?.hash) {
+      rows.push([
+        `${label} HASSH`,
+        <SearchLink field={`ssh.${side}.hassh.hash`} value={s.hassh.hash} />,
+      ]);
+    }
+  }
+  return rows;
+}
+
+// MQTT events carry one object per message type in the transaction,
+// keyed by the message type name (connect, publish, subscribe, ...).
+function mqttDetails(mqtt: { [key: string]: any }): any[][] {
+  const rows: any[][] = [];
+  const order = [
+    "connect",
+    "connack",
+    "publish",
+    "puback",
+    "pubrec",
+    "pubrel",
+    "pubcomp",
+    "subscribe",
+    "suback",
+    "unsubscribe",
+    "unsuback",
+    "pingreq",
+    "pingresp",
+    "disconnect",
+    "auth",
+  ];
+  const rank = (k: string) => {
+    const i = order.indexOf(k);
+    return i < 0 ? order.length : i;
+  };
+  const types = Object.keys(mqtt)
+    .filter((k) => mqtt[k] && typeof mqtt[k] === "object")
+    .sort((a, b) => rank(a) - rank(b));
+  if (types.length) {
+    rows.push(["Message", types.map((t) => t.toUpperCase()).join(", ")]);
+  }
+  for (const type of types) {
+    const m = mqtt[type];
+    switch (type) {
+      case "connect":
+        if (m.client_id) {
+          rows.push([
+            "Client ID",
+            <SearchLink field={"mqtt.connect.client_id"} value={m.client_id} />,
+          ]);
+        }
+        if (m.protocol_string || m.protocol_version) {
+          rows.push([
+            "Protocol",
+            `${m.protocol_string ?? "MQTT"} ${m.protocol_version ?? ""}`.trim(),
+          ]);
+        }
+        if (m.username) {
+          rows.push(["Username", m.username]);
+        }
+        if (m.flags) {
+          const flags = Object.entries(m.flags)
+            .filter(([, v]) => v === true)
+            .map(([k]) => k);
+          if (flags.length) {
+            rows.push(["Flags", flags.join(", ")]);
+          }
+        }
+        if (m.will?.topic) {
+          rows.push(["Will Topic", m.will.topic]);
+        }
+        break;
+      case "connack":
+        if (m.return_code !== undefined) {
+          rows.push(["Return Code", m.return_code]);
+        }
+        if (m.session_present !== undefined) {
+          rows.push(["Session Present", m.session_present ? "Yes" : "No"]);
+        }
+        break;
+      case "publish":
+        if (m.topic) {
+          rows.push([
+            "Topic",
+            <SearchLink field={"mqtt.publish.topic"} value={m.topic} />,
+          ]);
+        }
+        if (m.message !== undefined) {
+          rows.push(["Payload", String(m.message)]);
+        }
+        break;
+      case "subscribe":
+      case "unsubscribe":
+        for (const t of m.topics || []) {
+          const topic = typeof t === "string" ? t : t.topic;
+          const qos = typeof t === "object" ? t.qos : undefined;
+          rows.push([
+            type === "subscribe" ? "Subscribe" : "Unsubscribe",
+            <>
+              <SearchLink value={topic}>{topic}</SearchLink>
+              <Show when={qos !== undefined}>
+                <span class="text-muted"> (QoS {qos})</span>
+              </Show>
+            </>,
+          ]);
+        }
+        break;
+      case "suback":
+        if (m.qos_granted) {
+          rows.push(["QoS Granted", m.qos_granted.join(", ")]);
+        }
+        break;
+    }
+    if (type === "publish" && m.qos !== undefined) {
+      const attrs = [`QoS ${m.qos}`];
+      if (m.retain) attrs.push("retain");
+      if (m.dup) attrs.push("dup");
+      rows.push(["Delivery", attrs.join(", ")]);
+    }
+  }
+  return rows;
+}
+
 // Render a single mDNS resource record. Suricata encodes the record
 // data under a key named after the record type (`ptr`, `srv`, `a`,
 // `txt`, ...) rather than a generic `rdata` field.
@@ -1752,96 +2034,6 @@ function MdnsRecord(props: { rr: { [key: string]: any } }) {
         {" \u2192 "}
         {rdata()}
       </Show>
-    </>
-  );
-}
-
-function DnsInfoCol(props: { dns: EveDns }) {
-  interface DataCard {
-    title: string | null;
-    data: DataCardRow[];
-  }
-
-  interface DataCardRow {
-    key: string;
-    val: any;
-  }
-
-  const cards: DataCard[] = [];
-
-  let common = [
-    { key: "Type", val: props.dns.type.toUpperCase() },
-    { key: "Query", val: `${props.dns.rrtype} ${props.dns.rrname}` },
-  ];
-  if (props.dns.rcode) {
-    common.push({ key: "RCODE", val: props.dns.rcode });
-  }
-
-  cards.push({
-    title: null,
-    data: common,
-  });
-
-  if (props.dns.answers) {
-    const rows = props.dns.answers.map((a) => {
-      return {
-        key: `${a.rrtype} ${a.rrname}`,
-        val: a.rdata,
-      };
-    });
-    cards.push({
-      title: "DNS Answers",
-      data: rows,
-    });
-  }
-
-  if (props.dns.authorities) {
-    let rows: DataCardRow[] = [];
-    props.dns.authorities.forEach((a) => {
-      if (a.rrtype === "SOA" && a.soa) {
-        rows.push({
-          key: `${a.rrtype} ${a.rrname}`,
-          val: `${a.soa?.mname} (${a.soa.rname})`,
-        });
-      }
-    });
-    if (rows.length > 0) {
-      cards.push({
-        title: "DNS Authorities",
-        data: rows,
-      });
-    }
-  }
-
-  return (
-    <>
-      <For each={cards}>
-        {(card, i) => (
-          <>
-            <div class="card mb-2">
-              <table class={"table table-striped table-hover mb-0"}>
-                <Show when={card.title}>
-                  <thead>
-                    <tr>
-                      <th colspan={"2"}>{card.title}</th>
-                    </tr>
-                  </thead>
-                </Show>
-                <tbody>
-                  <For each={card.data}>
-                    {(row) => (
-                      <tr>
-                        <th>{row.key}</th>
-                        <td>{row.val}</td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </For>
     </>
   );
 }

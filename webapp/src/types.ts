@@ -58,6 +58,7 @@ export interface EventSource {
   stats?: EveStats;
   smb?: EveSmb;
   ssh?: EveSsh;
+  mqtt?: { [key: string]: any };
   fileinfo?: EveFileinfo;
   http2?: EveHttp2;
   anomaly?: EveAnomaly;
