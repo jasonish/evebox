@@ -35,7 +35,7 @@ export function SearchLink(props: {
   }
   return (
     <A href={`/events?q=${q}`} class={props.class}>
-      {props.children || props.value}
+      {props.children ?? String(props.value)}
     </A>
   );
 }

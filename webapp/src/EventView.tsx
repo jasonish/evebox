@@ -397,23 +397,6 @@ export function EventView() {
       return;
     }
 
-    function SearchLink(props: { children?: any; field?: string; value: any }) {
-      let q;
-      switch (typeof props.value) {
-        case "number":
-          q = encodeURIComponent(
-            `${props.field ? props.field + ":" : ""}${props.value}`,
-          );
-          break;
-        default:
-          q = encodeURIComponent(
-            `${props.field ? props.field + ":" : ""}"${props.value}"`,
-          );
-          break;
-      }
-      return <A href={`/events?q=${q}`}>{props.children || props.value}</A>;
-    }
-
     let commonDetails = [];
 
     if (source.timestamp) {
@@ -560,6 +543,12 @@ export function EventView() {
         eventDetails.push([
           "JA3",
           <SearchLink field={"quic.ja3.hash"} value={quic.ja3.hash} />,
+        ]);
+      }
+      if (quic.ja3s?.hash) {
+        eventDetails.push([
+          "JA3S",
+          <SearchLink field={"quic.ja3s.hash"} value={quic.ja3s.hash} />,
         ]);
       }
       if (quic.extensions?.length) {
@@ -1761,6 +1750,10 @@ function dnsDetails(dns: EveDns): any[][] {
           {" \u2192 "}
           <SearchLink value={a.rdata}>{a.rdata}</SearchLink>
         </Show>
+        <Show when={a.soa}>
+          {" \u2192 "}
+          {a.soa?.mname} ({a.soa?.rname})
+        </Show>
         <Show when={a.ttl !== undefined}>
           <span class="text-muted"> (TTL {a.ttl})</span>
         </Show>
@@ -1999,7 +1992,8 @@ function mqttDetails(mqtt: { [key: string]: any }): any[][] {
 // `txt`, ...) rather than a generic `rdata` field.
 function MdnsRecord(props: { rr: { [key: string]: any } }) {
   const rr = props.rr;
-  const key = Object.keys(rr).find((k) => k !== "rrname");
+  const skip = new Set(["rrname", "rrtype", "ttl", "flags"]);
+  const key = Object.keys(rr).find((k) => !skip.has(k));
   const rrtype = key?.toUpperCase();
   const data = key ? rr[key] : undefined;
 

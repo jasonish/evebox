@@ -175,10 +175,14 @@ export interface EveDns {
   }[];
 
   answers?: {
-    rdata: string;
+    rdata?: string;
     rrname: string;
     rrtype: string;
-    ttl: number;
+    ttl?: number;
+    soa?: {
+      mname: string;
+      rname: string;
+    };
   }[];
 
   authorities?: {
