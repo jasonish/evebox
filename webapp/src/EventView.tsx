@@ -526,8 +526,88 @@ export function EventView() {
         eventDetails.push(["Alerts", stats.detect.alert]);
       }
       setEventDetails(eventDetails);
+    } else if (event()?._source.event_type === "quic") {
+      const quic = event()!._source.quic!;
+      const eventDetails: any[][] = [];
+      if (quic.sni) {
+        eventDetails.push([
+          "SNI",
+          <SearchLink field={"quic.sni"} value={quic.sni} />,
+        ]);
+      }
+      if (quic.version) {
+        eventDetails.push(["Version", quic.version]);
+      }
+      const alpn = quic.extensions?.find((e: any) => e.name === "alpn");
+      if (alpn?.values?.length) {
+        eventDetails.push(["ALPN", alpn.values.join(", ")]);
+      }
+      if (quic.ja4) {
+        eventDetails.push([
+          "JA4",
+          <SearchLink field={"quic.ja4"} value={quic.ja4} />,
+        ]);
+      }
+      if (quic.ja3?.hash) {
+        eventDetails.push([
+          "JA3",
+          <SearchLink field={"quic.ja3.hash"} value={quic.ja3.hash} />,
+        ]);
+      }
+      if (quic.extensions?.length) {
+        eventDetails.push(["Extensions", quic.extensions.length]);
+      }
+      setEventDetails(eventDetails.length ? eventDetails : undefined);
+    } else if (event()?._source.event_type === "mdns") {
+      const mdns = event()!._source.mdns!;
+      const eventDetails: any[][] = [];
+      if (mdns.type) {
+        eventDetails.push(["Type", mdns.type.toUpperCase()]);
+      }
+      if (mdns.flags?.length) {
+        eventDetails.push(["Flags", mdns.flags.join(", ")]);
+      }
+      if (mdns.rcode) {
+        eventDetails.push(["RCODE", mdns.rcode]);
+      }
+      for (const q of mdns.queries || []) {
+        eventDetails.push([
+          "Query",
+          <>
+            {q.rrtype?.toUpperCase()}{" "}
+            <SearchLink value={q.rrname}>{q.rrname}</SearchLink>
+          </>,
+        ]);
+      }
+      for (const [label, records] of [
+        ["Answer", mdns.answers],
+        ["Additional", mdns.additionals],
+      ] as [string, any[] | undefined][]) {
+        for (const rr of records || []) {
+          eventDetails.push([label, <MdnsRecord rr={rr} />]);
+        }
+      }
+      setEventDetails(eventDetails.length ? eventDetails : undefined);
     } else {
-      setEventDetails(undefined);
+      // Generic fallback: show the scalar fields of the object named
+      // after the event type (e.g. `tls`, `http`, `flow`) so the
+      // details panel isn't empty for types without a specific handler.
+      const eventType = event()?._source.event_type;
+      const obj = eventType ? (event()!._source as any)[eventType] : null;
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+        const eventDetails: any[][] = [];
+        for (const [key, value] of Object.entries(obj)) {
+          if (value === null || value === undefined) continue;
+          if (typeof value === "object") continue;
+          eventDetails.push([
+            key,
+            <SearchLink field={`${eventType}.${key}`} value={value} />,
+          ]);
+        }
+        setEventDetails(eventDetails.length ? eventDetails : undefined);
+      } else {
+        setEventDetails(undefined);
+      }
     }
   });
 
@@ -964,6 +1044,7 @@ export function EventView() {
           <Row>
             <Col class={"mb-2"} lg={12} xl={6}>
               <div class="card">
+                <div class="card-header">Event</div>
                 <div class="card-body app-card-body-compact">
                   <table class="table table-sm table-borderless table-striped table-hover app-detail-table mb-0">
                     <tbody>
@@ -984,35 +1065,40 @@ export function EventView() {
                 </div>
               </div>
             </Col>
-            <Show when={eventDetails()}>
+            <Show when={eventDetails() || srcIpDns() || destIpDns()}>
               <Col class={"mb-2"} lg={12} xl={6}>
-                <div class="card">
-                  <div class="card-body app-card-body-compact">
-                    <table
-                      class={
-                        "table table-sm app-detail-table table-borderless table-striped table-hover mb-0"
-                      }
-                    >
-                      <tbody>
-                        <For each={eventDetails()!}>
-                          {(e) => (
-                            <>
-                              <tr>
-                                <td style={"min-width: 8em;"}>
-                                  <b>{e[0]}</b>
-                                </td>
-                                <td>{e[1]}</td>
-                              </tr>
-                            </>
-                          )}
-                        </For>
-                      </tbody>
-                    </table>
+                <Show when={eventDetails()}>
+                  <div class="card">
+                    <div class="card-header">
+                      {event()?._source.event_type?.toUpperCase()}
+                    </div>
+                    <div class="card-body app-card-body-compact">
+                      <table
+                        class={
+                          "table table-sm app-detail-table table-borderless table-striped table-hover mb-0"
+                        }
+                      >
+                        <tbody>
+                          <For each={eventDetails()!}>
+                            {(e) => (
+                              <>
+                                <tr>
+                                  <td style={"min-width: 8em;"}>
+                                    <b>{e[0]}</b>
+                                  </td>
+                                  <td>{e[1]}</td>
+                                </tr>
+                              </>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                </Show>
 
                 <Show when={srcIpDns() || destIpDns()}>
-                  <div class="card mt-2">
+                  <div classList={{ card: true, "mt-2": !!eventDetails() }}>
                     <div class="card-header">
                       DNS Hostnames
                       <span
@@ -1624,6 +1710,50 @@ function HighlightedRule(props: { rule: string }) {
   });
 
   return <div innerHTML={rule()} class={"app-rule"}></div>;
+}
+
+// Render a single mDNS resource record. Suricata encodes the record
+// data under a key named after the record type (`ptr`, `srv`, `a`,
+// `txt`, ...) rather than a generic `rdata` field.
+function MdnsRecord(props: { rr: { [key: string]: any } }) {
+  const rr = props.rr;
+  const key = Object.keys(rr).find((k) => k !== "rrname");
+  const rrtype = key?.toUpperCase();
+  const data = key ? rr[key] : undefined;
+
+  const rdata = () => {
+    if (data === undefined || data === null) {
+      return null;
+    }
+    if (key === "srv" && typeof data === "object") {
+      return (
+        <>
+          <SearchLink value={data.name}>{data.name}</SearchLink>:{data.port}{" "}
+          (priority {data.priority ?? 0}, weight {data.weight ?? 0})
+        </>
+      );
+    }
+    if (Array.isArray(data)) {
+      return <>{data.join(", ")}</>;
+    }
+    if (typeof data === "object") {
+      return <>{JSON.stringify(data)}</>;
+    }
+    if (key === "nsec") {
+      return <>{data}</>;
+    }
+    return <SearchLink value={data}>{data}</SearchLink>;
+  };
+
+  return (
+    <>
+      {rrtype} <SearchLink value={rr.rrname}>{rr.rrname}</SearchLink>
+      <Show when={rdata()}>
+        {" \u2192 "}
+        {rdata()}
+      </Show>
+    </>
+  );
 }
 
 function DnsInfoCol(props: { dns: EveDns }) {
