@@ -9,6 +9,7 @@ import {
   createSignal,
   createUniqueId,
   For,
+  JSX,
   Match,
   onCleanup,
   onMount,
@@ -42,6 +43,7 @@ import {
   EventWrapper,
 } from "./types";
 import { parse_timestamp } from "./datetime";
+import { parseRule, RuleOption, ruleReferences } from "./rule";
 import { automaticPcapSource, pcapErrorMessage } from "./PcapDownload";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import { tinykeys } from "tinykeys";
@@ -494,6 +496,24 @@ export function EventView() {
         ["Generator ID", alert.gid],
         ["Revision", alert.rev],
       ];
+      const references = ruleReferences(
+        alert.rule ? parseRule(alert.rule) : undefined,
+        alert.references || [],
+      ).filter((reference) => reference.url);
+      if (references.length > 0) {
+        eventDetails.push([
+          "References",
+          <For each={references}>
+            {(reference) => (
+              <div>
+                <ExternalLink href={reference.url}>
+                  {reference.value}
+                </ExternalLink>
+              </div>
+            )}
+          </For>,
+        ]);
+      }
       setEventDetails(eventDetails);
     } else if (event()?._source.event_type === "stats") {
       const stats = event()!._source.stats!;
@@ -1668,47 +1688,53 @@ function Base64BufferCard(props: {
 }
 
 function HighlightedRule(props: { rule: string }) {
-  const [rule, setRule] = createSignal("");
+  const parsed = createMemo(() => parseRule(props.rule));
 
-  createEffect(() => {
-    let html = props.rule;
+  return (
+    <Show when={parsed()} fallback={<div class="app-rule">{props.rule}</div>}>
+      <div class="app-rule">
+        <span class="app-rule-header-action">{parsed()!.header[0]}</span>{" "}
+        <span class="app-rule-header-proto">{parsed()!.header[1]}</span>{" "}
+        <span class="app-rule-header-addr">{parsed()!.header[2]}</span>{" "}
+        <span class="app-rule-header-port">{parsed()!.header[3]}</span>{" "}
+        <span class="app-rule-header-direction">{parsed()!.header[4]}</span>{" "}
+        <span class="app-rule-header-addr">{parsed()!.header[5]}</span>{" "}
+        <span class="app-rule-header-port">{parsed()!.header[6]}</span> (
+        <For each={parsed()!.options}>
+          {(option) => <HighlightedRuleOption option={option} />}
+        </For>
+        )
+      </div>
+    </Show>
+  );
+}
 
-    html = html.replace(/</g, "%___lt___%");
-    html = html.replace(/>/g, "%___gt___%");
+function HighlightedRuleOption(props: { option: RuleOption }) {
+  return (
+    <>
+      {props.option.leading}
+      <span class="app-rule-keyword">
+        {props.option.keyword}
+        {props.option.value !== undefined ? ":" : ""}
+      </span>
+      <Show when={props.option.value !== undefined}>
+        <span class="app-rule-keyword-value">{props.option.value}</span>
+      </Show>
+      {props.option.terminator}
+    </>
+  );
+}
 
-    html = html.replace(
-      /^([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/,
-      `<span class="app-rule-header-action">$1</span>
-                 <span class="app-rule-header-proto">$2</span>
-                 <span class="app-rule-header-addr">$3</span>
-                 <span class="app-rule-header-port">$4</span>
-                 <span class="app-rule-header-direction">$5</span>
-                 <span class="app-rule-header-addr">$6</span>
-                 <span class="app-rule-header-port">$7</span> `,
-    );
-
-    html = html.replace(
-      /:([^;]+)/g,
-      `:<span class="app-rule-keyword-value">$1</span>`,
-    );
-    html = html.replace(/(\w+\:)/g, `<span class="app-rule-keyword">$1</span>`);
-
-    // Catch keywords without a value.
-    html = html.replace(
-      /(;\s*)(\w+;)/g,
-      `$1<span class="app-rule-keyword">$2</span>`,
-    );
-
-    // Replace reference URLs with the URL.
-    html = html.replace(/url,(.*?)([;<])/g, `url,<a href="http://$1">$1</a>$2`);
-
-    html = html.replace(/%___lt___%/g, "&lt;");
-    html = html.replace(/%___gt___%/g, "&gt;");
-
-    setRule(html);
-  });
-
-  return <div innerHTML={rule()} class={"app-rule"}></div>;
+// Render a link to an external site, or just the text if there is no
+// URL.
+function ExternalLink(props: { href?: string; children: JSX.Element }) {
+  return (
+    <Show when={props.href} fallback={props.children}>
+      <a href={props.href} target="_blank" rel="noopener noreferrer">
+        {props.children}
+      </a>
+    </Show>
+  );
 }
 
 function nonEmpty(rows: any[][]): any[][] | undefined {

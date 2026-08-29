@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+- Rule references are now shown as links in the alert details of the
+  event view for known reference types such as `url` and `cve`. Suricata 8
+  `alert.references` entries are used when present.
+  https://github.com/jasonish/evebox/issues/296
+
 ### Changed
 - Agent identity now comes from the agent key: the key's name is stamped on
   submitted events (`evebox.agent.id`) and used on the packet capture control

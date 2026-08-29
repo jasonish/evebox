@@ -118,6 +118,9 @@ export interface EveAlert {
   category: string;
   rule: string;
   action: string;
+  // Suricata 8 with eve-log "alert.metadata.rule.reference: true": rule
+  // references joined with the URL prefix from reference.config.
+  references?: string[];
 }
 
 export interface EveTls {
