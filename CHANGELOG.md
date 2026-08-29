@@ -7,6 +7,12 @@
   event view for known reference types such as `url` and `cve`. Suricata 8
   `alert.references` entries are used when present.
   https://github.com/jasonish/evebox/issues/296
+- `evebox sqlite dump` now includes the archived and escalated state as
+  `evebox.archived`/`evebox.escalated` tags, and the EveBox history under
+  `evebox.history`, so that state is restored when the dump is loaded back
+  into SQLite or Elasticsearch. `evebox sqlite load` now restores the
+  escalated state.
+  https://github.com/jasonish/evebox/issues/316
 
 ### Changed
 - Agent identity now comes from the agent key: the key's name is stamped on

@@ -22,7 +22,9 @@ There are three pieces:
    into a throwaway database (removed afterwards, or use `--database` to keep
    one) and runs behavioral checks over both SQLite alert code paths, including
    the `is:archived`/`is:escalated` filters, exact DNS/SNI alert-group archival,
-   and the `@mac` search operator.
+   the `@mac` search operator, and a `sqlite dump`/`sqlite load` round trip
+   that verifies archived, escalated and history state survives export and
+   re-import.
 
 3. **`run.sh`** — the one-shot harness: runs `evebox test sqlite`, then starts
    ES/OpenSearch containers across a version matrix and runs

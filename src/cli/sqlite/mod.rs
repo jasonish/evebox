@@ -3,7 +3,8 @@
 
 use crate::{
     datetime,
-    elastic::AlertQueryOptions,
+    elastic::{AlertQueryOptions, TAG_ARCHIVED, TAG_ESCALATED},
+    eve::eve::{ensure_has_history, ensure_has_tags},
     server::metrics::Metrics,
     sqlite::{
         ConnectionBuilder, connection::init_event_db, eventrepo::SqliteEventRepo, info::Info,
@@ -16,7 +17,7 @@ use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
 use futures::TryStreamExt;
 use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
-use std::{fs::File, sync::Arc};
+use std::{fs::File, io::Write, sync::Arc};
 use tracing::info;
 
 mod fts;
@@ -241,12 +242,65 @@ async fn dump(filename: &str) -> Result<()> {
     let mut conn = ConnectionBuilder::filename(Some(filename))
         .open_connection(false)
         .await?;
-    let mut rows = sqlx::query("SELECT source FROM events").fetch(&mut conn);
+    let stdout = std::io::stdout();
+    let mut out = std::io::BufWriter::new(stdout.lock());
+    dump_events(&mut conn, &mut out).await?;
+    out.flush()?;
+    Ok(())
+}
+
+/// Write every event in the database to `out` as EVE JSON, one per line,
+/// with the EveBox state (archived, escalated, history) merged back in.
+/// Events are written in rowid order.
+pub(crate) async fn dump_events<W: std::io::Write>(
+    conn: &mut sqlx::SqliteConnection,
+    out: &mut W,
+) -> Result<usize> {
+    let mut rows =
+        sqlx::query("SELECT source, archived, escalated, history FROM events ORDER BY rowid")
+            .fetch(conn);
+    let mut count = 0;
     while let Some(row) = rows.try_next().await? {
         let source: String = row.try_get(0)?;
-        println!("{source}");
+        let archived: i8 = row.try_get(1)?;
+        let escalated: i8 = row.try_get(2)?;
+        let history: Option<String> = row.try_get(3)?;
+        let mut event: serde_json::Value = serde_json::from_str(&source)?;
+        let history = history
+            .map(|h| serde_json::from_str::<serde_json::Value>(&h))
+            .transpose()?
+            .and_then(|h| h.as_array().cloned())
+            .unwrap_or_default();
+        restore_event_state(&mut event, archived > 0, escalated > 0, history);
+        writeln!(out, "{event}")?;
+        count += 1;
     }
-    Ok(())
+    Ok(count)
+}
+
+/// Merge the EveBox state columns (archived, escalated, history) back
+/// into the event so it can be restored on load, either into SQLite or
+/// Elasticsearch.
+fn restore_event_state(
+    event: &mut serde_json::Value,
+    archived: bool,
+    escalated: bool,
+    history: Vec<serde_json::Value>,
+) {
+    if archived || escalated {
+        ensure_has_tags(event);
+        if let serde_json::Value::Array(tags) = &mut event["tags"] {
+            for (set, tag) in [(archived, TAG_ARCHIVED), (escalated, TAG_ESCALATED)] {
+                if set && !tags.iter().any(|t| t == tag) {
+                    tags.push(tag.into());
+                }
+            }
+        }
+    }
+    if !history.is_empty() {
+        ensure_has_history(event);
+        event["evebox"]["history"] = serde_json::Value::Array(history);
+    }
 }
 
 async fn load(args: &LoadArgs) -> Result<()> {
@@ -260,11 +314,22 @@ async fn load(args: &LoadArgs) -> Result<()> {
         Box::new(BufReader::new(input))
     };
 
-    let reader = reader.lines();
     let connection_builder = ConnectionBuilder::filename(Some(&args.filename));
     let mut conn = connection_builder.open_connection(true).await?;
     init_event_db(&mut conn).await?;
     info!("Loading events");
+    let count = load_events(reader, conn, args.count).await?;
+    info!("Loaded {count} events");
+    Ok(())
+}
+
+/// Load EVE JSON events, one per line, from `reader` into the database.
+/// Returns the number of events loaded.
+pub(crate) async fn load_events<R: std::io::BufRead>(
+    reader: R,
+    conn: sqlx::SqliteConnection,
+    limit: Option<usize>,
+) -> Result<usize> {
     let mut count = 0;
 
     let conn = Arc::new(tokio::sync::Mutex::new(conn));
@@ -275,12 +340,12 @@ async fn load(args: &LoadArgs) -> Result<()> {
 
     // This could be improved if the importer exposed some more inner
     // details so the caller could control the transaction.
-    for line in reader {
+    for line in reader.lines() {
         let line = line?;
         let eve: serde_json::Value = serde_json::from_str(&line)?;
         importer.submit(eve).await?;
         count += 1;
-        if let Some(limit) = args.count
+        if let Some(limit) = limit
             && count >= limit
         {
             break;
@@ -289,9 +354,8 @@ async fn load(args: &LoadArgs) -> Result<()> {
             importer.commit().await?;
         }
     }
-    info!("Committing {count} events");
     importer.commit().await?;
-    Ok(())
+    Ok(count)
 }
 
 async fn query(filename: &str, sql: &str) -> Result<()> {
@@ -429,4 +493,27 @@ async fn vacuum(filename: &str) -> Result<()> {
 
 fn confirm(msg: &str) -> bool {
     inquire::Confirm::new(msg).prompt().unwrap_or(false)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_restore_event_state() {
+        let mut event = serde_json::json!({"event_type": "alert", "tags": ["evebox.archived"]});
+        let history = vec![serde_json::json!({"action": "archived"})];
+        restore_event_state(&mut event, true, true, history);
+        let tags = event["tags"].as_array().unwrap();
+        assert_eq!(tags.len(), 2);
+        assert!(tags.contains(&"evebox.archived".into()));
+        assert!(tags.contains(&"evebox.escalated".into()));
+        assert_eq!(event["evebox"]["history"][0]["action"], "archived");
+
+        // No state: event is left untouched.
+        let mut event = serde_json::json!({"event_type": "alert"});
+        restore_event_state(&mut event, false, false, vec![]);
+        assert!(event.get("tags").is_none());
+        assert!(event.get("evebox").is_none());
+    }
 }

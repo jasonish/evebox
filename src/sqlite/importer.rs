@@ -57,6 +57,7 @@ pub(crate) enum IndexError {
 struct PreparedEvent {
     ts: i64,
     archived: u8,
+    escalated: u8,
     history: String,
     source_values: String,
     event: String,
@@ -102,15 +103,32 @@ impl SqliteEventSink {
         } else {
             0
         };
-        let history = event["evebox"]["history"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let escalated = if event.has_tag("evebox.escalated") {
+            1
+        } else {
+            0
+        };
+        // History lives in its own column, so drop it from the source
+        // to avoid storing a stale copy.
+        let history = match event.get_mut("evebox").and_then(|v| v.as_object_mut()) {
+            Some(evebox) => {
+                let history = evebox.remove("history");
+                if evebox.is_empty()
+                    && let Some(event) = event.as_object_mut()
+                {
+                    event.remove("evebox");
+                }
+                history.and_then(|h| h.as_array().cloned())
+            }
+            None => None,
+        }
+        .unwrap_or_default();
         let prepared = PreparedEvent {
             ts: ts.to_nanos(),
             source_values,
             event: event.to_string(),
             archived,
+            escalated,
             history: serde_json::Value::Array(history).to_string(),
         };
         Ok(prepared)
@@ -160,12 +178,13 @@ impl SqliteEventSink {
         for (count, event) in self.queue.iter().enumerate() {
             sqlx::query(
                 r#"
-                INSERT INTO events (timestamp, archived, history, source, source_values)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO events (timestamp, archived, escalated, history, source, source_values)
+                VALUES (?, ?, ?, ?, ?, ?)
             "#,
             )
             .bind(event.ts)
             .bind(event.archived)
+            .bind(event.escalated)
             .bind(&event.history)
             .bind(&event.event)
             .bind(&event.source_values)
@@ -402,6 +421,7 @@ mod tests {
             CREATE TABLE events (
                 timestamp INTEGER NOT NULL,
                 archived INTEGER DEFAULT 0,
+                escalated INTEGER DEFAULT 0,
                 history JSON DEFAULT '[]',
                 source JSON,
                 source_values TEXT
@@ -447,5 +467,13 @@ mod tests {
             .unwrap();
         assert!(!source_values.contains("auto-archived"));
         assert!(!source_values.contains("filter"));
+
+        // The history is not duplicated in the source.
+        let source: String = sqlx::query_scalar("SELECT source FROM events")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+        let source: serde_json::Value = serde_json::from_str(&source).unwrap();
+        assert!(source.get("evebox").is_none());
     }
 }

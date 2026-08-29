@@ -22,13 +22,16 @@
 //! filters exercised over both SQLite alert code paths.
 
 use std::collections::BTreeMap;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use anyhow::{Result, anyhow, bail};
 use clap::{Command, CommandFactory, FromArgMatches, Parser, Subcommand};
+use futures::TryStreamExt;
 use serde::Serialize;
+use sqlx::Row;
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 
@@ -1675,7 +1678,128 @@ const SQLITE_SPECIFIC_QUERY_CHECK_NAMES: &[&str] = &[
     "alerts_timeout_query_mac",
     "alerts_group_by_query_mac",
     "alerts_timeout_query_date_shortcuts",
+    "dump_load_roundtrip",
 ];
+
+/// Per-event EveBox state as stored in the SQLite `events` table.
+#[derive(Debug, PartialEq)]
+struct EventState {
+    archived: bool,
+    escalated: bool,
+    history: serde_json::Value,
+}
+
+async fn read_event_states(db_path: &Path) -> Result<Vec<EventState>> {
+    let mut conn = ConnectionBuilder::filename(Some(db_path))
+        .open_connection(false)
+        .await?;
+    let mut rows = sqlx::query("SELECT archived, escalated, history FROM events ORDER BY rowid")
+        .fetch(&mut conn);
+    let mut states = Vec::new();
+    while let Some(row) = rows.try_next().await? {
+        let archived: i8 = row.try_get(0)?;
+        let escalated: i8 = row.try_get(1)?;
+        let history: Option<String> = row.try_get(2)?;
+        let history = history
+            .map(|h| serde_json::from_str::<serde_json::Value>(&h))
+            .transpose()?
+            .unwrap_or_else(|| json!([]));
+        states.push(EventState {
+            archived: archived > 0,
+            escalated: escalated > 0,
+            history,
+        });
+    }
+    Ok(states)
+}
+
+/// Dump the test database with `sqlite dump`, load the dump into a fresh
+/// database with `sqlite load`, and verify the archived, escalated and
+/// history state of every event survived the round trip.
+async fn check_sqlite_dump_load_roundtrip(
+    repo: &SqliteEventRepo,
+    db_path: &Path,
+) -> Result<Option<String>> {
+    // The mutation checks leave archived and commented events behind, but
+    // de-escalate the event they escalated, so escalate one here to make
+    // sure all three pieces of state are exercised.
+    let mut conn = ConnectionBuilder::filename(Some(db_path))
+        .open_connection(false)
+        .await?;
+    let id: Option<i64> =
+        sqlx::query_scalar("SELECT rowid FROM events WHERE escalated = 0 LIMIT 1")
+            .fetch_optional(&mut conn)
+            .await?;
+    if let Some(id) = id {
+        repo.escalate_event_by_id(&id.to_string()).await?;
+    }
+
+    let before = read_event_states(db_path).await?;
+    let archived = before.iter().filter(|s| s.archived).count();
+    let escalated = before.iter().filter(|s| s.escalated).count();
+    let with_history = before
+        .iter()
+        .filter(|s| s.history.as_array().is_some_and(|h| !h.is_empty()))
+        .count();
+    if archived == 0 || escalated == 0 || with_history == 0 {
+        bail!(
+            "no state to round trip: archived={archived} escalated={escalated} history={with_history}"
+        );
+    }
+
+    let tmp = tempfile::TempDir::new()?;
+    let dump_path = tmp.path().join("dump.json");
+    let reload_path = tmp.path().join("reload.sqlite");
+
+    let mut out = std::io::BufWriter::new(std::fs::File::create(&dump_path)?);
+    let dumped = crate::cli::sqlite::dump_events(&mut conn, &mut out).await?;
+    out.flush()?;
+    if dumped != before.len() {
+        bail!("dumped {dumped} events, expected {}", before.len());
+    }
+
+    let mut conn = ConnectionBuilder::filename(Some(&reload_path))
+        .open_connection(true)
+        .await?;
+    init_event_db(&mut conn).await?;
+    let reader = std::io::BufReader::new(std::fs::File::open(&dump_path)?);
+    let loaded = crate::cli::sqlite::load_events(reader, conn, None).await?;
+    if loaded != dumped {
+        bail!("loaded {loaded} events, expected {dumped}");
+    }
+
+    let after = read_event_states(&reload_path).await?;
+    if after.len() != before.len() {
+        bail!("reloaded {} events, expected {}", after.len(), before.len());
+    }
+    for (i, (b, a)) in before.iter().zip(after.iter()).enumerate() {
+        if a != b {
+            bail!(
+                "event {} state mismatch: before={:?} after={:?}",
+                i + 1,
+                b,
+                a
+            );
+        }
+    }
+
+    // The reloaded source must not carry a duplicate copy of the history.
+    let mut conn = ConnectionBuilder::filename(Some(&reload_path))
+        .open_connection(false)
+        .await?;
+    let dups: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM events WHERE json_extract(source, '$.evebox.history') IS NOT NULL",
+    )
+    .fetch_one(&mut conn)
+    .await?;
+    if dups > 0 {
+        bail!("{dups} reloaded events have evebox.history in source");
+    }
+
+    Ok(Some(format!(
+        "events={dumped} archived={archived} escalated={escalated} history={with_history}"
+    )))
+}
 
 async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
     // Use the provided database file, or a throwaway temporary directory that
@@ -1760,6 +1884,10 @@ async fn run_sqlite_report(args: &SqliteArgs) -> Result<Report> {
         run_common_mutation_checks(&datastore, &mut checks, true, samples).await;
         check!(checks, "archive_group_exact_fields", {
             check_sqlite_alert_group_exact_fields(sqlite_repo).await
+        });
+        // Last, as it depends on the state left behind by the mutation checks.
+        check!(checks, "dump_load_roundtrip", {
+            check_sqlite_dump_load_roundtrip(sqlite_repo, &db_path).await
         });
     } else {
         for name in COMMON_QUERY_CHECK_NAMES {
