@@ -846,6 +846,7 @@ mod imp {
                 CREATE TABLE events (
                     timestamp INTEGER NOT NULL,
                     archived INTEGER DEFAULT 0,
+                    escalated INTEGER DEFAULT 0,
                     history JSON DEFAULT '[]',
                     source JSON,
                     source_values TEXT
@@ -911,6 +912,7 @@ mod imp {
                 CREATE TABLE events (
                     timestamp INTEGER NOT NULL,
                     archived INTEGER DEFAULT 0,
+                    escalated INTEGER DEFAULT 0,
                     history JSON DEFAULT '[]',
                     source JSON,
                     source_values TEXT
