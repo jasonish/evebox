@@ -13,11 +13,21 @@
   into SQLite or Elasticsearch. `evebox sqlite load` now restores the
   escalated state.
   https://github.com/jasonish/evebox/issues/316
+- Event details panels for DNS, TLS, SSH, MQTT, QUIC and mDNS events.
 
 ### Changed
 - Agent identity now comes from the agent key: the key's name is stamped on
   submitted events (`evebox.agent.id`) and used on the packet capture control
-  channel. The agent `agent-id` option and `--agent-id` flag are removed.
+  channel. The agent `agent-id` option and `--agent-id` flag are now ignored.
+
+### Removed
+- The experimental JA4 report.
+- The JA4db integration, as the service is no longer available.
+
+### Fixed
+- Boolean values in event details rendered as empty cells.
+- The DNS column in the event view did not understand the Suricata 8 DNS
+  record format.
 
 ## 0.28.0 - 2026-08-14
 
