@@ -202,14 +202,6 @@ pub(crate) async fn event_types(
         value: QueryValue::From(min_timestamp.into()),
     });
 
-    match &context.datastore {
-        crate::eventrepo::EventRepo::Elastic(ds) => {
-            let results = ds.get_event_types().await?;
-            Ok(Json(results))
-        }
-        crate::eventrepo::EventRepo::SQLite(ds) => {
-            let results = ds.get_event_types(query_string).await?;
-            Ok(Json(results))
-        }
-    }
+    let results = context.datastore.get_event_types(&query_string).await?;
+    Ok(Json(results))
 }

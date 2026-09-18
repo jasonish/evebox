@@ -14,8 +14,7 @@ use sqlx::sqlite::{SqliteArguments, SqliteRow};
 
 use super::SqliteEventRepo;
 use crate::datetime::DateTime;
-use crate::elastic::AlertQueryOptions;
-use crate::eventrepo::{AggAlert, AggAlertMetadata, AlertsResult};
+use crate::eventrepo::{AggAlert, AggAlertMetadata, AlertQueryOptions, AlertsResult};
 use crate::sqlite::builder::EventQueryBuilder;
 use crate::sqlite::log_query_plan;
 use crate::{LOG_QUERIES, LOG_QUERY_PLAN, queryparser};

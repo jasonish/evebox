@@ -185,11 +185,11 @@ impl SqliteEventRepo {
         Ok(results)
     }
 
-    pub(crate) async fn get_event_types(&self, query: Vec<QueryElement>) -> Result<Vec<String>> {
+    pub(crate) async fn get_event_types(&self, query: &[QueryElement]) -> Result<Vec<String>> {
         let mut builder = EventQueryBuilder::new(self.fts().await);
         builder.select("distinct json_extract(events.source, '$.event_type')");
         builder.from("events");
-        builder.apply_query_string(&query)?;
+        builder.apply_query_string(query)?;
 
         let (sql, args) = builder.build()?;
 
@@ -198,5 +198,18 @@ impl SqliteEventRepo {
             .await?;
 
         Ok(rows)
+    }
+
+    /// Count the events matching a query string.
+    pub(crate) async fn count(&self, query: &[QueryElement]) -> Result<u64> {
+        let mut builder = EventQueryBuilder::new(self.fts().await);
+        builder.select("count(*)");
+        builder.from("events");
+        builder.apply_query_string(query)?;
+        let (sql, args) = builder.build()?;
+        let total: i64 = sqlx::query_scalar_with(&sql, args)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(total.max(0) as u64)
     }
 }

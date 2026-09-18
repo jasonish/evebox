@@ -48,15 +48,6 @@ impl std::fmt::Display for HistoryType {
     }
 }
 
-#[derive(Default, Debug, Clone)]
-pub(crate) struct AlertQueryOptions {
-    pub timestamp_gte: Option<DateTime>,
-    pub query_string: Option<String>,
-    pub tags: Vec<String>,
-    pub sensor: Option<String>,
-    pub timeout: Option<u64>,
-}
-
 #[derive(Serialize, Debug)]
 pub(crate) struct HistoryEntry {
     #[serde(skip_serializing_if = "Option::is_none")]

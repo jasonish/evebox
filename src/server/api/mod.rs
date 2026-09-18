@@ -3,8 +3,7 @@
 
 use crate::datetime::DateTime;
 use crate::error::AppError;
-use crate::eventrepo::EventQueryParams;
-use crate::eventrepo::EventRepo;
+use crate::eventrepo::{AlertGroupSpec, EventQueryParams, EventRepo};
 use crate::prelude::*;
 use crate::queryparser;
 use crate::queryparser::{QueryElement, QueryValue};
@@ -122,18 +121,6 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         )
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub(crate) struct AlertGroupSpec {
-    pub signature_id: u64,
-    pub src_ip: Option<String>,
-    pub dest_ip: Option<String>,
-    pub sensor: Option<String>,
-    pub dns_rrname: Option<String>,
-    pub tls_sni: Option<String>,
-    pub min_timestamp: String,
-    pub max_timestamp: String,
-}
-
 pub(crate) async fn config(
     context: Extension<Arc<ServerContext>>,
     _session: SessionExtractor,
@@ -209,10 +196,7 @@ pub(crate) async fn dhcp_ack(
         .map(|x| x.parse_time_range_as_min_timestamp())
         .transpose()?;
 
-    let response = match &context.datastore {
-        EventRepo::Elastic(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
-        EventRepo::SQLite(ds) => ds.dhcp_ack(earliest, query.sensor).await?,
-    };
+    let response = context.datastore.dhcp_ack(earliest, query.sensor).await?;
 
     #[rustfmt::skip]
     let response = json!({
@@ -232,10 +216,10 @@ pub(crate) async fn dhcp_request(
         .map(|x| x.parse_time_range_as_min_timestamp())
         .transpose()?;
 
-    let response = match &context.datastore {
-        EventRepo::Elastic(ds) => ds.dhcp_request(earliest, query.sensor).await?,
-        EventRepo::SQLite(ds) => ds.dhcp_request(earliest, query.sensor).await?,
-    };
+    let response = context
+        .datastore
+        .dhcp_request(earliest, query.sensor)
+        .await?;
 
     #[rustfmt::skip]
     let response = json!({
@@ -267,7 +251,7 @@ pub(crate) async fn alert_group_unstar(
     info!("De-escalating alert group: {:?}", request);
     context
         .datastore
-        .deescalate_by_alert_group(session, request)
+        .deescalate_by_alert_group(request, session)
         .await
         .unwrap();
     StatusCode::OK
@@ -330,14 +314,14 @@ pub(crate) async fn histogram_time(
         });
     }
 
-    let results = match &context.datastore {
-        EventRepo::Elastic(ds) => ds.histogram_time(interval, &query_string).await,
-        EventRepo::SQLite(ds) => ds.histogram_time(interval, &query_string).await,
-    }
-    .map_err(|err| {
-        error!("Histogram/time error: params={:?}, error={:?}", &query, err);
-        AppError::InternalServerError
-    })?;
+    let results = context
+        .datastore
+        .histogram_time(interval, &query_string)
+        .await
+        .map_err(|err| {
+            error!("Histogram/time error: params={:?}, error={:?}", &query, err);
+            AppError::InternalServerError
+        })?;
 
     Ok(Json(json!({ "data": results })))
 }
@@ -456,18 +440,11 @@ async fn find_dns(
         })
         .transpose()?;
 
-    match &context.datastore {
-        EventRepo::Elastic(e) => {
-            let response = e.dns_reverse_lookup(before, host, src_ip, dest_ip).await?;
-            Ok(Json(response))
-        }
-        EventRepo::SQLite(s) => {
-            let response = s
-                .dns_reverse_lookup(before.clone(), host, src_ip, dest_ip)
-                .await?;
-            Ok(Json(response))
-        }
-    }
+    let response = context
+        .datastore
+        .dns_reverse_lookup(before, host, src_ip, dest_ip)
+        .await?;
+    Ok(Json(response))
 }
 
 pub(crate) async fn metrics(

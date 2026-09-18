@@ -6,8 +6,8 @@ use crate::prelude::*;
 use crate::server::autoarchive::AutoArchive;
 use crate::sqlite::configdb::EventFilter;
 use crate::{
-    elastic::{AlertQueryOptions, ElasticResponse},
-    eventrepo::{AggAlert, AggAlertMetadata, AlertsResult},
+    elastic::ElasticResponse,
+    eventrepo::{AggAlert, AggAlertMetadata, AlertQueryOptions, AlertsResult},
     queryparser::{self, QueryValue},
 };
 
@@ -391,8 +391,8 @@ impl ElasticEventRepo {
 
 #[cfg(test)]
 mod tests {
-    use crate::elastic::{AlertQueryOptions, Client, ElasticEventRepo};
-    use crate::server::api::AlertGroupSpec;
+    use crate::elastic::{Client, ElasticEventRepo};
+    use crate::eventrepo::{AlertGroupSpec, AlertQueryOptions};
     use crate::sqlite::configdb::{EventFilter, FilterAction, FilterCondition, FilterOperator};
     use serde_json::json;
 

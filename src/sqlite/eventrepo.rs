@@ -7,7 +7,7 @@ use crate::sqlite::prelude::*;
 use crate::datetime::DateTime;
 use crate::elastic::HistoryEntryBuilder;
 use crate::eve::eve::ensure_has_history;
-use crate::server::api::AlertGroupSpec;
+use crate::eventrepo::AlertGroupSpec;
 use crate::server::session::Session;
 use crate::sqlite::log_query_plan;
 use crate::{LOG_QUERIES, LOG_QUERY_PLAN};
@@ -317,8 +317,8 @@ impl SqliteEventRepo {
 
     pub async fn escalate_by_alert_group(
         &self,
-        _session: Arc<Session>,
         alert_group: AlertGroupSpec,
+        _session: Arc<Session>,
     ) -> Result<()> {
         let n = self
             .set_escalation_by_alert_group(alert_group, true)
@@ -329,8 +329,8 @@ impl SqliteEventRepo {
 
     pub async fn deescalate_by_alert_group(
         &self,
-        _session: Arc<Session>,
         alert_group: AlertGroupSpec,
+        _session: Arc<Session>,
     ) -> Result<()> {
         let n = self
             .set_escalation_by_alert_group(alert_group, false)

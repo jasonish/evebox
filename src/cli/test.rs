@@ -40,10 +40,12 @@ use crate::elastic::{self, ClientBuilder, ElasticEventRepo, TAG_ARCHIVED, TAG_AU
 use crate::eve::Eve;
 use crate::eve::filters::EveFilterChain;
 use crate::eve::reader::EveReader;
-use crate::eventrepo::{AggAlert, AlertsResult, EventQueryParams, EventRepo, StatsAggQueryParams};
+use crate::eventrepo::{
+    AggAlert, AlertGroupSpec, AlertQueryOptions, AlertsResult, EventQueryParams, EventRepo,
+    StatsAggQueryParams,
+};
 use crate::importer::EventSink;
 use crate::queryparser;
-use crate::server::api::AlertGroupSpec;
 use crate::server::autoarchive::AutoArchive;
 use crate::server::metrics::Metrics;
 use crate::server::session::Session;
@@ -671,7 +673,7 @@ async fn check_external_auto_archive(
     let mut repo = repo.clone();
     repo.start_archive_processor();
     repo.alerts(
-        elastic::AlertQueryOptions {
+        AlertQueryOptions {
             query_string: Some(format!("@sid:{SIGNATURE_ID}")),
             ..Default::default()
         },
@@ -898,8 +900,8 @@ async fn build_sqlite_repo(db_path: &Path) -> Result<(SqliteEventRepo, String)> 
     Ok((repo, version))
 }
 
-fn alert_opts(query: Option<&str>, timeout: Option<u64>) -> elastic::AlertQueryOptions {
-    elastic::AlertQueryOptions {
+fn alert_opts(query: Option<&str>, timeout: Option<u64>) -> AlertQueryOptions {
+    AlertQueryOptions {
         query_string: query.map(|s| s.to_string()),
         timeout,
         ..Default::default()
@@ -1957,26 +1959,17 @@ async fn run_common_read_query_checks(repo: &EventRepo, checks: &mut Vec<Check>)
     };
 
     check!(checks, "get_event_types", {
-        let types = match repo {
-            EventRepo::Elastic(repo) => repo.get_event_types().await?,
-            EventRepo::SQLite(repo) => repo.get_event_types(Vec::new()).await?,
-        };
+        let types = repo.get_event_types(&[]).await?;
         Ok(Some(format!("types={}", types.len())))
     });
 
     check!(checks, "get_sensors", {
-        let sensors = match repo {
-            EventRepo::Elastic(repo) => repo.get_sensors().await?,
-            EventRepo::SQLite(repo) => repo.get_sensors().await?,
-        };
+        let sensors = repo.get_sensors().await?;
         Ok(Some(format!("sensors={}", sensors.len())))
     });
 
     check!(checks, "histogram_time", {
-        let buckets = match repo {
-            EventRepo::Elastic(repo) => repo.histogram_time(None, &[]).await?,
-            EventRepo::SQLite(repo) => repo.histogram_time(None, &[]).await?,
-        };
+        let buckets = repo.histogram_time(None, &[]).await?;
         Ok(Some(format!("buckets={}", buckets.len())))
     });
 
@@ -2051,7 +2044,7 @@ async fn run_common_read_query_checks(repo: &EventRepo, checks: &mut Vec<Check>)
     checks.push(
         check_alert_date_shortcuts("alerts_query_date_shortcuts", |query| {
             repo.alerts(
-                elastic::AlertQueryOptions {
+                AlertQueryOptions {
                     query_string: query,
                     ..Default::default()
                 },
@@ -2082,7 +2075,7 @@ async fn run_common_read_query_checks(repo: &EventRepo, checks: &mut Vec<Check>)
         let start = Instant::now();
         let auto_archive = Arc::new(RwLock::new(AutoArchive::default()));
         match repo
-            .alerts(elastic::AlertQueryOptions::default(), auto_archive)
+            .alerts(AlertQueryOptions::default(), auto_archive)
             .await
         {
             Ok(result) => {
@@ -2110,32 +2103,19 @@ async fn run_common_read_query_checks(repo: &EventRepo, checks: &mut Vec<Check>)
     };
 
     check!(checks, "dhcp_request", {
-        let rows = match repo {
-            EventRepo::Elastic(repo) => repo.dhcp_request(None, None).await?,
-            EventRepo::SQLite(repo) => repo.dhcp_request(None, None).await?,
-        };
+        let rows = repo.dhcp_request(None, None).await?;
         Ok(Some(format!("rows={}", rows.len())))
     });
 
     check!(checks, "dhcp_ack", {
-        let rows = match repo {
-            EventRepo::Elastic(repo) => repo.dhcp_ack(None, None).await?,
-            EventRepo::SQLite(repo) => repo.dhcp_ack(None, None).await?,
-        };
+        let rows = repo.dhcp_ack(None, None).await?;
         Ok(Some(format!("rows={}", rows.len())))
     });
 
     check!(checks, "dns_reverse_lookup", {
-        let value = match repo {
-            EventRepo::Elastic(repo) => {
-                repo.dns_reverse_lookup(None, None, "10.0.0.1".to_string(), "10.0.0.2".to_string())
-                    .await?
-            }
-            EventRepo::SQLite(repo) => {
-                repo.dns_reverse_lookup(None, None, "10.0.0.1".to_string(), "10.0.0.2".to_string())
-                    .await?
-            }
-        };
+        let value = repo
+            .dns_reverse_lookup(None, None, "10.0.0.1".to_string(), "10.0.0.2".to_string())
+            .await?;
         let _ = value;
         Ok(None)
     });

@@ -3,8 +3,9 @@
 
 use crate::{
     datetime,
-    elastic::{AlertQueryOptions, TAG_ARCHIVED, TAG_ESCALATED},
+    elastic::{TAG_ARCHIVED, TAG_ESCALATED},
     eve::eve::{ensure_has_history, ensure_has_tags},
+    eventrepo::AlertQueryOptions,
     server::metrics::Metrics,
     sqlite::{
         ConnectionBuilder, connection::init_event_db, eventrepo::SqliteEventRepo, info::Info,

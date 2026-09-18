@@ -11,11 +11,11 @@ use crate::datetime;
 use crate::elastic::importer::ElasticEventSink;
 use crate::elastic::request::exists_filter;
 use crate::elastic::{ElasticResponse, TAG_ARCHIVED, TAGS_ARCHIVED, TAGS_ESCALATED, request};
+use crate::eventrepo::AlertGroupSpec;
 use crate::prelude::*;
 use crate::queryparser;
 use crate::queryparser::QueryElement;
 use crate::queryparser::QueryParser;
-use crate::server::api;
 use crate::server::session::Session;
 use crate::sqlite::configdb::{EventFilter, FilterOperator};
 use crate::util;
@@ -277,7 +277,7 @@ impl ElasticEventRepo {
 
     async fn add_tags_by_alert_group(
         &self,
-        alert_group: api::AlertGroupSpec,
+        alert_group: AlertGroupSpec,
         tags: &[&str],
         action: &HistoryEntry,
     ) -> Result<u64> {
@@ -298,7 +298,7 @@ impl ElasticEventRepo {
 
     async fn remove_tags_by_alert_group(
         &self,
-        alert_group: api::AlertGroupSpec,
+        alert_group: AlertGroupSpec,
         tags: &[&str],
         action: &HistoryEntry,
     ) -> Result<()> {
@@ -659,7 +659,7 @@ impl ElasticEventRepo {
         }
     }
 
-    pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<u64> {
+    pub async fn archive_by_alert_group(&self, alert_group: AlertGroupSpec) -> Result<u64> {
         let action = HistoryEntryBuilder::new_archived().build();
         self.add_tags_by_alert_group(alert_group, &TAGS_ARCHIVED, &action)
             .await
@@ -698,7 +698,7 @@ impl ElasticEventRepo {
 
     pub async fn escalate_by_alert_group(
         &self,
-        alert_group: api::AlertGroupSpec,
+        alert_group: AlertGroupSpec,
         session: Arc<Session>,
     ) -> Result<u64> {
         let action = HistoryEntryBuilder::new_escalate()
@@ -708,8 +708,14 @@ impl ElasticEventRepo {
             .await
     }
 
-    pub async fn deescalate_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<()> {
-        let action = HistoryEntryBuilder::new_deescalate().build();
+    pub async fn deescalate_by_alert_group(
+        &self,
+        alert_group: AlertGroupSpec,
+        session: Arc<Session>,
+    ) -> Result<()> {
+        let action = HistoryEntryBuilder::new_deescalate()
+            .username(session.username.clone())
+            .build();
         self.remove_tags_by_alert_group(alert_group, &TAGS_ESCALATED, &action)
             .await
     }
@@ -919,7 +925,7 @@ impl ElasticEventRepo {
 
     fn build_alert_group_filter(
         &self,
-        request: &api::AlertGroupSpec,
+        request: &AlertGroupSpec,
         must_not: &mut Vec<serde_json::Value>,
     ) -> Vec<serde_json::Value> {
         let mut filter = Vec::new();
@@ -1102,6 +1108,30 @@ impl ElasticEventRepo {
         let buckets: Vec<Bucket> = serde_json::from_value(buckets)?;
         let event_types: Vec<String> = buckets.iter().map(|b| b.key.to_string()).collect();
         Ok(event_types)
+    }
+
+    /// Count the events matching a query string.
+    pub(crate) async fn count(&self, query: &[QueryElement]) -> Result<u64> {
+        let mut filter = vec![exists_filter(&self.map_field("event_type"))];
+        let mut should = vec![];
+        let mut must_not = vec![];
+        self.apply_query_string(query, &mut filter, &mut should, &mut must_not);
+
+        let request = json!({
+            "query": {
+                "bool": {
+                    "filter": filter,
+                    "must_not": must_not,
+                }
+            },
+            "size": 0,
+            "track_total_hits": true,
+        });
+
+        let response: serde_json::Value = self.search(&request).await?.json().await?;
+        response["hits"]["total"]
+            .as_u64()
+            .ok_or_else(|| anyhow!("Elasticsearch response had no field hits.total"))
     }
 
     pub fn get_base_index(&self) -> &str {

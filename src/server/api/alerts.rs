@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use crate::{elastic, prelude::*};
+use crate::eventrepo::AlertQueryOptions;
+use crate::prelude::*;
 
 use std::sync::Arc;
 
@@ -15,11 +16,11 @@ pub(crate) async fn alerts(
     Extension(context): Extension<Arc<ServerContext>>,
     Form(query): Form<GenericQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    let mut options = elastic::AlertQueryOptions {
+    let mut options = AlertQueryOptions {
         query_string: query.query_string,
         sensor: query.sensor,
         timeout: query.timeout,
-        ..elastic::AlertQueryOptions::default()
+        ..AlertQueryOptions::default()
     };
 
     if let Some(tags) = query.tags

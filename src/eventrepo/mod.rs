@@ -4,11 +4,11 @@
 use crate::datetime::DateTime;
 use crate::importer::EventSink;
 use crate::prelude::*;
-use crate::server::api;
+use crate::queryparser;
+use crate::queryparser::QueryElement;
 use crate::server::autoarchive::AutoArchive;
 use crate::server::session::Session;
 use crate::sqlite::eventrepo::SqliteEventRepo;
-use crate::{elastic, queryparser};
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -29,6 +29,30 @@ pub(crate) struct EventQueryParams {
 pub(crate) enum EventRepo {
     Elastic(crate::elastic::ElasticEventRepo),
     SQLite(SqliteEventRepo),
+}
+
+/// Options for an alert inbox query.
+#[derive(Default, Debug, Clone)]
+pub(crate) struct AlertQueryOptions {
+    pub timestamp_gte: Option<DateTime>,
+    pub query_string: Option<String>,
+    pub tags: Vec<String>,
+    pub sensor: Option<String>,
+    pub timeout: Option<u64>,
+}
+
+/// Identifies a group of alerts (as aggregated in the inbox) for
+/// bulk archive and escalation operations.
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct AlertGroupSpec {
+    pub signature_id: u64,
+    pub src_ip: Option<String>,
+    pub dest_ip: Option<String>,
+    pub sensor: Option<String>,
+    pub dns_rrname: Option<String>,
+    pub tls_sni: Option<String>,
+    pub min_timestamp: String,
+    pub max_timestamp: String,
 }
 
 #[derive(Clone, Debug)]
@@ -68,7 +92,6 @@ pub(crate) struct AggAlertMetadata {
     pub(crate) max_timestamp: DateTime,
 }
 
-#[allow(unreachable_patterns)]
 impl EventRepo {
     pub(crate) fn get_importer(&self) -> Option<EventSink> {
         match self {
@@ -113,7 +136,7 @@ impl EventRepo {
 
     pub async fn alerts(
         &self,
-        options: elastic::AlertQueryOptions,
+        options: AlertQueryOptions,
         auto_archive: Arc<RwLock<AutoArchive>>,
     ) -> Result<AlertsResult> {
         match self {
@@ -122,7 +145,7 @@ impl EventRepo {
         }
     }
 
-    pub async fn archive_by_alert_group(&self, alert_group: api::AlertGroupSpec) -> Result<u64> {
+    pub async fn archive_by_alert_group(&self, alert_group: AlertGroupSpec) -> Result<u64> {
         match self {
             EventRepo::Elastic(ds) => ds.archive_by_alert_group(alert_group).await,
             EventRepo::SQLite(ds) => ds.archive_by_alert_group(alert_group).await,
@@ -131,7 +154,7 @@ impl EventRepo {
 
     pub async fn escalate_by_alert_group(
         &self,
-        alert_group: api::AlertGroupSpec,
+        alert_group: AlertGroupSpec,
         session: Arc<Session>,
     ) -> Result<()> {
         match self {
@@ -139,18 +162,18 @@ impl EventRepo {
                 ds.escalate_by_alert_group(alert_group, session).await?;
                 Ok(())
             }
-            EventRepo::SQLite(ds) => ds.escalate_by_alert_group(session, alert_group).await,
+            EventRepo::SQLite(ds) => ds.escalate_by_alert_group(alert_group, session).await,
         }
     }
 
     pub async fn deescalate_by_alert_group(
         &self,
+        alert_group: AlertGroupSpec,
         session: Arc<Session>,
-        alert_group: api::AlertGroupSpec,
     ) -> Result<()> {
         match self {
-            EventRepo::Elastic(ds) => ds.deescalate_by_alert_group(alert_group).await,
-            EventRepo::SQLite(ds) => ds.deescalate_by_alert_group(session, alert_group).await,
+            EventRepo::Elastic(ds) => ds.deescalate_by_alert_group(alert_group, session).await,
+            EventRepo::SQLite(ds) => ds.deescalate_by_alert_group(alert_group, session).await,
         }
     }
 
@@ -193,6 +216,84 @@ impl EventRepo {
         match self {
             EventRepo::Elastic(repo) => repo.earliest_timestamp().await,
             EventRepo::SQLite(repo) => repo.earliest_timestamp().await,
+        }
+    }
+
+    /// Count the events matching a query string.
+    pub(crate) async fn count(&self, query: &[QueryElement]) -> Result<u64> {
+        match self {
+            EventRepo::Elastic(repo) => repo.count(query).await,
+            EventRepo::SQLite(repo) => repo.count(query).await,
+        }
+    }
+
+    pub(crate) async fn histogram_time(
+        &self,
+        interval: Option<u64>,
+        query: &[QueryElement],
+    ) -> Result<Vec<serde_json::Value>> {
+        match self {
+            EventRepo::Elastic(repo) => repo.histogram_time(interval, query).await,
+            EventRepo::SQLite(repo) => repo.histogram_time(interval, query).await,
+        }
+    }
+
+    /// The distinct event types matching a query string.
+    ///
+    /// Elasticsearch currently ignores the query and returns every
+    /// event type in the index.
+    pub(crate) async fn get_event_types(&self, query: &[QueryElement]) -> Result<Vec<String>> {
+        match self {
+            EventRepo::Elastic(repo) => repo.get_event_types().await,
+            EventRepo::SQLite(repo) => repo.get_event_types(query).await,
+        }
+    }
+
+    pub(crate) async fn get_sensors(&self) -> Result<Vec<String>> {
+        match self {
+            EventRepo::Elastic(repo) => repo.get_sensors().await,
+            EventRepo::SQLite(repo) => repo.get_sensors().await,
+        }
+    }
+
+    pub(crate) async fn dhcp_ack(
+        &self,
+        earliest: Option<DateTime>,
+        sensor: Option<String>,
+    ) -> Result<Vec<serde_json::Value>> {
+        match self {
+            EventRepo::Elastic(repo) => repo.dhcp_ack(earliest, sensor).await,
+            EventRepo::SQLite(repo) => repo.dhcp_ack(earliest, sensor).await,
+        }
+    }
+
+    pub(crate) async fn dhcp_request(
+        &self,
+        earliest: Option<DateTime>,
+        sensor: Option<String>,
+    ) -> Result<Vec<serde_json::Value>> {
+        match self {
+            EventRepo::Elastic(repo) => repo.dhcp_request(earliest, sensor).await,
+            EventRepo::SQLite(repo) => repo.dhcp_request(earliest, sensor).await,
+        }
+    }
+
+    pub(crate) async fn dns_reverse_lookup(
+        &self,
+        before: Option<DateTime>,
+        sensor: Option<String>,
+        src_ip: String,
+        dest_ip: String,
+    ) -> Result<serde_json::Value> {
+        match self {
+            EventRepo::Elastic(repo) => {
+                repo.dns_reverse_lookup(before, sensor, src_ip, dest_ip)
+                    .await
+            }
+            EventRepo::SQLite(repo) => {
+                repo.dns_reverse_lookup(before, sensor, src_ip, dest_ip)
+                    .await
+            }
         }
     }
 }
