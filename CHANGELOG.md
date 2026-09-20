@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.29.0 - 2026-09-20
+
 ### Added
 - Rule references are now shown as links in the alert details of the
   event view for known reference types such as `url` and `cve`. Suricata 8
