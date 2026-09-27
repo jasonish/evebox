@@ -45,6 +45,7 @@ import {
 import { parse_timestamp } from "./datetime";
 import { parseRule, RuleOption, ruleReferences } from "./rule";
 import { automaticPcapSource, pcapErrorMessage } from "./PcapDownload";
+import { eventFiles, FileDownloadButton } from "./FileDownload";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import { tinykeys } from "tinykeys";
 import { eventIsArchived, eventIsEscalated, eventSetArchived } from "./event";
@@ -58,6 +59,11 @@ import { SearchLink } from "./common/SearchLink";
 import * as api from "./api";
 import { FormattedTimestamp, AutoArchiveMenuElements } from "./components";
 import * as bootstrap from "bootstrap";
+
+// A card-header action sized to sit on the header's text line without
+// growing it.
+const CARD_HEADER_BUTTON_STYLE =
+  "--bs-btn-padding-y: .075rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .8rem;";
 
 const PCAP_BUTTON_STYLE =
   "--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .7rem;";
@@ -96,6 +102,23 @@ export function EventView() {
   const [pcapPending, setPcapPending] = createSignal(false);
   const [pcapSources, setPcapSources] = createSignal<API.PcapSource[]>();
   const [pcapRouting, setPcapRouting] = createSignal<API.PcapRouting>();
+
+  // Files the event references that may be downloadable from a file
+  // store; empty when file retrieval is unavailable.
+  const downloadableFiles = createMemo(() =>
+    serverConfig()?.filestore != null ? eventFiles(event()?._source) : [],
+  );
+
+  // The download action for a file card's header.
+  const fileDownloadAddOn = () => (
+    <Show when={downloadableFiles().length > 0}>
+      <FileDownloadButton
+        eventId={String(event()!._id)}
+        files={downloadableFiles()}
+        style={CARD_HEADER_BUTTON_STYLE}
+      />
+    </Show>
+  );
 
   const hasFlowAddresses = () =>
     !!(event()?._source.src_ip && event()?._source.dest_ip);
@@ -1094,8 +1117,11 @@ export function EventView() {
               <Col class={"mb-2"} lg={12} xl={6}>
                 <Show when={eventDetails()}>
                   <div class="card">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                       {event()?._source.event_type?.toUpperCase()}
+                      <Show when={event()?._source.event_type === "fileinfo"}>
+                        {fileDownloadAddOn()}
+                      </Show>
                     </div>
                     <div class="card-body app-card-body-compact">
                       <table
@@ -1263,7 +1289,20 @@ export function EventView() {
                                   {(o) => (
                                     <>
                                       <div class="card m-2">
-                                        <div class="card-header">{o.title}</div>
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                          {o.title}
+                                          {/* A fileinfo event's download
+                                              sits on its details card. */}
+                                          <Show
+                                            when={
+                                              o.key === "files" ||
+                                              (o.key === "fileinfo" &&
+                                                !eventDetails())
+                                            }
+                                          >
+                                            {fileDownloadAddOn()}
+                                          </Show>
+                                        </div>
                                         <div class="card-body p-0">
                                           <table class="mb-0 table table-sm table-striped table-bordered app-detail-table">
                                             <tbody>

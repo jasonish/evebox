@@ -15,9 +15,11 @@ use std::sync::{Arc, RwLock};
 pub(crate) mod agents;
 pub(crate) mod api;
 pub(crate) mod autoarchive;
+pub(crate) mod filestore;
 pub(crate) mod main;
 pub(super) mod metrics;
 pub(crate) mod pcap;
+pub(crate) mod routing;
 pub(crate) mod session;
 
 const SUPPORTED_DEFAULT_TIME_RANGES: [&str; 9] =
@@ -62,6 +64,7 @@ pub(crate) struct ServerContext {
     pub(crate) agents: Arc<agents::AgentRegistry>,
     pub(crate) pcap_tasks: Arc<pcap::tasks::Registry>,
     pub pcap: Arc<pcap::PcapService>,
+    pub(crate) filestore: Arc<filestore::FilestoreService>,
 }
 
 impl ServerContext {
@@ -90,6 +93,7 @@ impl ServerContext {
             agents,
             pcap_tasks,
             pcap: Arc::new(pcap::PcapService::default()),
+            filestore: Arc::new(filestore::FilestoreService::default()),
         }
     }
 }

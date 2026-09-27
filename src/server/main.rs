@@ -192,6 +192,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     context.filters = Some(submitted_event_filters);
 
     context.pcap = Arc::new(crate::server::pcap::configure(&config));
+    context.filestore = Arc::new(crate::server::filestore::configure(&config));
 
     // Apply the persisted operator pcap routing table, if any, after
     // the configured service replaces the context's default one.

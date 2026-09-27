@@ -35,6 +35,7 @@ pub(crate) mod alerts;
 pub(crate) mod count;
 pub(crate) mod elastic;
 pub(crate) mod eve2pcap;
+pub(crate) mod filestore;
 pub(crate) mod firehose;
 pub(crate) mod genericquery;
 pub(crate) mod login;
@@ -76,6 +77,9 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/dhcp/ack", get(dhcp_ack))
         .route("/api/dhcp/request", get(dhcp_request))
         .route("/api/eve2pcap", post(eve2pcap::handler))
+        .route("/api/filestore", get(filestore::get_file))
+        .route("/api/filestore/validate", get(filestore::validate_file))
+        .route("/api/filestore/sources", get(filestore::get_sources))
         .route("/api/submit", post(submit::handler))
         // Keep this around for older agents.
         .route("/api/1/submit", post(submit::handler))
@@ -152,6 +156,17 @@ pub(crate) async fn config(
     } else {
         serde_json::Value::Null
     };
+    // Non-null when extracted files can be retrieved: a local file store
+    // is configured or a filestore-capable agent is connected.
+    let filestore = if context.filestore.has_local()
+        || context
+            .agents
+            .has_capability(crate::agent::protocol::CAPABILITY_FILESTORE)
+    {
+        json!({})
+    } else {
+        serde_json::Value::Null
+    };
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
         "event-services": context.event_services,
@@ -160,6 +175,7 @@ pub(crate) async fn config(
         "datastore": datastore,
         "distribution": distribution,
         "pcap": pcap,
+        "filestore": filestore,
     });
     Json(config)
 }

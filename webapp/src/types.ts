@@ -287,8 +287,13 @@ export interface EveSsh {
 export interface EveFileinfo {
   filename: string;
   state: string;
-  stored: string;
+  stored: boolean;
   size: number;
+  sha256?: string;
+  md5?: string;
+  sha1?: string;
+  file_id?: number;
+  magic?: string;
 }
 
 export interface EveHttp2 {

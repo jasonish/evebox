@@ -10,9 +10,11 @@ use std::time::Duration;
 
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
+use crate::agent::protocol::CAPABILITY_PCAP;
 use crate::pcap::{PcapSource, SpoolConfig};
 use crate::prelude::*;
 use crate::server::agents::{AgentEntry, AgentRegistry, LOCAL_PCAP_SOURCE_NAME};
+use crate::server::routing::{self, Resolved};
 
 /// A source selected for one normalized capture request.
 pub(crate) enum ResolvedPcapSource {
@@ -45,16 +47,7 @@ impl ResolvedPcapSource {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) enum RouteError {
-    NoSource(Option<String>),
-    Ambiguous(Vec<String>),
-    /// The operator routing table is in force but no rule matched the
-    /// event's sensor identity (carried when it had one) and no
-    /// default source is set. Distinct from `NoSource`: the remedy is
-    /// a rule or default, not connecting a source by this name.
-    NoRule(Option<String>),
-}
+pub(crate) use crate::server::routing::RouteError;
 
 /// The operator-controlled routing table: ordered sensor to source
 /// rules with an optional default source. Persisted in the configdb kv
@@ -198,142 +191,26 @@ impl PcapService {
         })
     }
 
-    /// The source a name selects right now: the reserved `(server)`
-    /// name is the local spool, anything else a live agent advertising
-    /// the `pcap` capability.
-    fn source_by_name(&self, agents: &AgentRegistry, name: &str) -> Option<ResolvedPcapSource> {
-        if name == LOCAL_PCAP_SOURCE_NAME {
-            self.local_source()
-        } else {
-            agents.pcap_agent(name).map(ResolvedPcapSource::Agent)
-        }
-    }
-
     /// Resolve a request across the optional server-local spool and live
-    /// agents advertising the `pcap` capability.
-    ///
-    /// An explicit source name always wins. Otherwise, when the operator
-    /// routing table is present it is fully in control: the first rule
-    /// whose sensor equals the event's identity, else the default
-    /// source, else no source. Without a table the implicit heuristics
-    /// apply:
-    ///
-    /// Agents are matched by the event's sensor identity, then its EveBox
-    /// agent identifier stamp, then the older hostname stamp. The local
-    /// spool has no identity to match: it serves
-    /// explicit `(server)` requests and events with no agent stamp — those
-    /// were ingested by this server's own input, so the local Suricata spool
-    /// holds their packets whatever their sensor identity says. Stamped
-    /// events whose agent is gone are never quietly served from the local
-    /// spool.
+    /// agents advertising the `pcap` capability. See
+    /// [`crate::server::routing::resolve`] for the rules.
     pub(crate) fn resolve_source(
         &self,
         agents: &AgentRegistry,
         event: Option<&serde_json::Value>,
         explicit: Option<&str>,
     ) -> Result<ResolvedPcapSource, RouteError> {
-        if let Some(name) = explicit {
-            return self
-                .source_by_name(agents, name)
-                .ok_or_else(|| RouteError::NoSource(Some(name.to_string())));
-        }
-
-        let identity = event.and_then(sensor_identity);
-
-        {
-            let routing = self.routing.read().unwrap();
-            if !routing.is_empty() {
-                let target = routing
-                    .rules
-                    .iter()
-                    .find(|rule| identity == Some(rule.sensor.as_str()))
-                    .map(|rule| rule.source.as_str())
-                    .or(routing.default.as_deref());
-                return match target {
-                    // A disconnected target carries the SOURCE name so
-                    // the error can say which configured source is
-                    // down, not just which sensor went unmatched.
-                    Some(name) => self
-                        .source_by_name(agents, name)
-                        .ok_or_else(|| RouteError::NoSource(Some(name.to_string()))),
-                    None => Err(RouteError::NoRule(identity.map(str::to_string))),
-                };
-            }
-        }
-        if let Some(name) = identity
-            && let Some(entry) = agents.pcap_agent(name)
-        {
-            return Ok(ResolvedPcapSource::Agent(entry));
-        }
-
-        // The importer stamp is exact: an event carrying `evebox.agent.id`
-        // was imported by that agent, so only its spool can serve the event.
-        // The fuzzier hostname stamp remains for events imported before the
-        // identifier stamp existed.
-        if let Some(id) = event.and_then(stamped_agent_id) {
-            return agents
-                .pcap_agent(id)
-                .map(ResolvedPcapSource::Agent)
-                .ok_or_else(|| RouteError::NoSource(Some(id.to_string())));
-        }
-
-        if let Some(hostname) = event.and_then(agent_hostname) {
-            let mut matches: Vec<ResolvedPcapSource> = agents
-                .pcap_agents()
-                .into_iter()
-                .filter(|entry| entry.hostname == hostname)
-                .map(ResolvedPcapSource::Agent)
-                .collect();
-            return match matches.len() {
-                0 => Err(RouteError::NoSource(
-                    identity.or(Some(hostname)).map(ToOwned::to_owned),
-                )),
-                1 => Ok(matches.pop().expect("one source")),
-                _ => {
-                    let mut names: Vec<String> = matches
-                        .iter()
-                        .map(|source| source.name().to_string())
-                        .collect();
-                    names.sort();
-                    Err(RouteError::Ambiguous(names))
-                }
-            };
-        }
-
-        // An unstamped event came in through this server's own input.
-        if event.is_some() {
-            if let Some(local) = self.local_source() {
-                return Ok(local);
-            }
-            if let Some(name) = identity {
-                return Err(RouteError::NoSource(Some(name.to_string())));
-            }
-        }
-
-        // A standalone request, or an anonymous event with no local spool:
-        // a single available source serves it; more than one must be chosen
-        // explicitly.
-        let mut sources = Vec::new();
-        if let Some(local) = self.local_source() {
-            sources.push(local);
-        }
-        sources.extend(
-            agents
-                .pcap_agents()
-                .into_iter()
-                .map(ResolvedPcapSource::Agent),
-        );
-        match sources.len() {
-            0 => Err(RouteError::NoSource(None)),
-            1 => Ok(sources.pop().expect("one source")),
-            _ => {
-                let mut names: Vec<String> = sources
-                    .iter()
-                    .map(|source| source.name().to_string())
-                    .collect();
-                names.sort();
-                Err(RouteError::Ambiguous(names))
-            }
+        let routing = self.routing.read().unwrap();
+        match routing::resolve(
+            agents,
+            CAPABILITY_PCAP,
+            self.source.is_some(),
+            &routing,
+            event,
+            explicit,
+        )? {
+            Resolved::Local => Ok(self.local_source().expect("local source is configured")),
+            Resolved::Agent(entry) => Ok(ResolvedPcapSource::Agent(entry)),
         }
     }
 
@@ -343,31 +220,6 @@ impl PcapService {
     pub(crate) fn idle(&self) -> bool {
         self.global.available_permits() == self.settings.max_concurrent
     }
-}
-
-/// Normalized sensor identity for plain EVE and ECS-shaped events.
-///
-/// Plain EVE and legacy Elastic carry `host` as a string. ECS carries `host`
-/// as an object, and EveBox keys the sensor on `agent.name` there (mirroring
-/// `map_field("host")` and `get_sensors`), so `agent.name` must win over the
-/// OS hostname in `host.name`; otherwise an ECS event whose `host.name`
-/// differs from `agent.name` never matches its configured source.
-pub(crate) fn sensor_identity(source: &serde_json::Value) -> Option<&str> {
-    source["host"]
-        .as_str()
-        .or_else(|| source["agent"]["name"].as_str())
-        .or_else(|| source["host"]["name"].as_str())
-}
-
-/// Agent identifier stamped by an EveBox agent on an imported event; the
-/// exact name that agent claims on the control channel.
-pub(crate) fn stamped_agent_id(source: &serde_json::Value) -> Option<&str> {
-    source["evebox"]["agent"]["id"].as_str()
-}
-
-/// Hostname stamped by an EveBox agent on an imported event.
-pub(crate) fn agent_hostname(source: &serde_json::Value) -> Option<&str> {
-    source["evebox"]["agent"]["hostname"].as_str()
 }
 
 /// Parse a duration: a humantime string (`60s`, `5m`) or a bare
@@ -428,6 +280,7 @@ pub(crate) fn configure(config: &crate::config::Config) -> PcapService {
 mod test {
     use super::*;
     use crate::agent::protocol::{AgentHandshake, CAPABILITY_PCAP};
+    use crate::server::routing::sensor_identity;
 
     fn register_agent(registry: &AgentRegistry, name: &str, hostname: &str) -> Arc<AgentEntry> {
         let (tx, _rx) = tokio::sync::mpsc::channel(4);

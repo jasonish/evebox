@@ -96,6 +96,10 @@ export interface ConfigResponse {
   distribution?: string | null;
   // Server-side pcap defaults, so the download UI can pre-fill its max
   // size. Null on platforms where pcap is compiled out (Windows).
+  // Non-null when extracted files (Suricata file-store) can be
+  // downloaded: a local file store is configured or a filestore-capable
+  // agent is connected.
+  filestore?: {} | null;
   pcap?: {
     max_size_bytes?: number;
   } | null;
@@ -565,17 +569,19 @@ export namespace API {
     hostname?: string;
   }
 
-  // The pcap sources a request's `source` parameter may select right
-  // now. Used to populate the custom download form's source picker.
-  // Failures carry the HTTP status so callers can tell a missing route
-  // (404, builds without pcap support) from a real error.
-  export async function getPcapSources(
+  // The sources a request's `source` parameter may select right now,
+  // from a feature's `/sources` route. Failures carry the HTTP status so
+  // callers can tell a missing route (404, builds without the feature)
+  // from a real error.
+  async function getSources(
+    url: string,
+    what: string,
     signal?: AbortSignal,
   ): Promise<PcapSource[]> {
-    const response = await fetch("api/pcap/sources", { signal: signal });
+    const response = await fetch(url, { signal: signal });
     if (!response.ok) {
       const error: any = new Error(
-        `Failed to fetch pcap sources: ${response.status}`,
+        `Failed to fetch ${what} sources: ${response.status}`,
       );
       error.status = response.status;
       throw error;
@@ -584,13 +590,30 @@ export namespace API {
     return json.sources ?? [];
   }
 
+  // The pcap sources: the server-local spool and connected pcap-capable
+  // agents. Used to populate the custom download form's source picker.
+  export async function getPcapSources(
+    signal?: AbortSignal,
+  ): Promise<PcapSource[]> {
+    return await getSources("api/pcap/sources", "pcap", signal);
+  }
+
+  // The extracted-file sources: the server-local file store and
+  // connected filestore-capable agents.
+  export async function getFileSources(
+    signal?: AbortSignal,
+  ): Promise<PcapSource[]> {
+    return await getSources("api/filestore/sources", "file", signal);
+  }
+
   export interface PcapRoutingRule {
     sensor: string;
     source: string;
   }
 
-  // The operator-controlled pcap routing table: ordered sensor to
-  // source rules (first match wins) with an optional default source.
+  // The operator-controlled source routing table, shared by packet
+  // capture and extracted files: ordered sensor to source rules (first
+  // match wins) with an optional default source.
   export interface PcapRouting {
     rules: PcapRoutingRule[];
     default: string | null;
@@ -662,43 +685,140 @@ export namespace API {
     return await response.json();
   }
 
-  // Hand the byte transfer to the browser through a same-origin iframe.
+  // Hand a byte transfer to the browser through a same-origin iframe.
   // Successful Content-Disposition responses stream straight to disk with no
   // in-memory buffering. A structured error instead loads in the hidden frame,
   // where it can be turned into the same toast as a pre-flight failure rather
-  // than being saved under a .pcap filename.
-  export function startPcapDownload(
-    params: PcapRequestParams,
-    onError: (error: PcapError) => void,
+  // than being saved under the attachment's filename. `makeError` builds the
+  // caller's error from the structured body, or from undefined when the
+  // response was not one.
+  function startAttachmentDownload<E>(
+    url: string,
+    makeError: (json: any) => E,
+    onError: (error: E) => void,
   ): void {
     const frame = document.createElement("iframe");
     frame.hidden = true;
     frame.setAttribute("aria-hidden", "true");
     frame.addEventListener("load", () => {
-      let error = new PcapError("error", "PCAP request failed.");
+      let json: any = undefined;
       try {
         const text = frame.contentDocument?.body?.textContent;
-        const json = text ? JSON.parse(text) : undefined;
-        if (json?.error) {
-          error = new PcapError(
-            json.error.code ?? "error",
-            json.error.message ?? "PCAP request failed.",
-          );
-        }
+        json = text ? JSON.parse(text) : undefined;
       } catch {
         // A non-JSON response still becomes a generic in-app error rather than
-        // replacing the page or being mislabeled as a packet capture.
+        // replacing the page or being mislabeled as an attachment.
       }
       frame.remove();
-      onError(error);
+      onError(makeError(json));
     });
-    frame.src = `api/pcap?${pcapParams(params)}`;
+    frame.src = url;
     document.body.appendChild(frame);
 
     // Successful attachment navigations do not fire the iframe load event.
     // Keep the frame alive while the browser owns the transfer, then discard
     // the otherwise inert DOM node.
     window.setTimeout(() => frame.remove(), 5 * 60 * 1000);
+  }
+
+  // Native pcap download: an error is reported through onError instead
+  // of being saved under a .pcap filename.
+  export function startPcapDownload(
+    params: PcapRequestParams,
+    onError: (error: PcapError) => void,
+  ): void {
+    startAttachmentDownload(
+      `api/pcap?${pcapParams(params)}`,
+      (json) =>
+        new PcapError(
+          json?.error?.code ?? "error",
+          json?.error?.message ?? "PCAP request failed.",
+        ),
+      onError,
+    );
+  }
+
+  // A structured error from GET /api/filestore ({"error": {...}}).
+  export class FileDownloadError extends Error {
+    code: string;
+    constructor(code: string, message: string) {
+      super(message);
+      this.name = "FileDownloadError";
+      this.code = code;
+    }
+  }
+
+  // Parameters for GET /api/filestore. With an eventId the file must be
+  // one the event references; sha256 may be omitted when there is only
+  // one. Without an eventId, sha256 selects the file by digest alone.
+  export interface FileRequestParams {
+    eventId?: string;
+    sha256?: string;
+    source?: string;
+  }
+
+  // The pre-flight result from GET /api/filestore/validate.
+  export interface FileValidation {
+    ok: boolean;
+    sha256: string;
+    filename: string;
+    size?: number;
+    source: string;
+  }
+
+  function fileParams(params: FileRequestParams): URLSearchParams {
+    const q = new URLSearchParams();
+    if (params.eventId !== undefined) q.set("event_id", params.eventId);
+    if (params.sha256 !== undefined) q.set("sha256", params.sha256);
+    if (params.source !== undefined) q.set("source", params.source);
+    return q;
+  }
+
+  function fileErrorFromJson(json: any, fallback: string): FileDownloadError {
+    return new FileDownloadError(
+      json?.error?.code ?? "error",
+      json?.error?.message ?? fallback,
+    );
+  }
+
+  // Pre-flight a file download: resolves the event, file and source and,
+  // for the server-local store, checks the file exists, without
+  // transferring it.
+  export async function validateFile(
+    params: FileRequestParams,
+    signal?: AbortSignal,
+  ): Promise<FileValidation> {
+    const response = await fetch(
+      `api/filestore/validate?${fileParams(params)}`,
+      { signal: signal },
+    );
+    if (!response.ok) {
+      if (response.status === 401) {
+        SET_IS_AUTHENTICATED(false);
+      }
+      const fallback = `File request failed (${response.status}).`;
+      let json: any = undefined;
+      try {
+        json = await response.json();
+      } catch (e: any) {
+        if (e?.name === "AbortError") throw e;
+      }
+      throw fileErrorFromJson(json, fallback);
+    }
+    return await response.json();
+  }
+
+  // Native extracted-file download: the file streams straight to disk,
+  // and an error response is reported through onError instead.
+  export function startFileDownload(
+    params: FileRequestParams,
+    onError: (error: FileDownloadError) => void,
+  ): void {
+    startAttachmentDownload(
+      `api/filestore?${fileParams(params)}`,
+      (json) => fileErrorFromJson(json, "File request failed."),
+      onError,
+    );
   }
 
   // Markers the server sets on a successful buffered pcap response so

@@ -29,6 +29,9 @@ pub(crate) const AGENT_WS_PATH: &str = "/api/agent/ws";
 /// Packet-capture control-channel capability.
 pub(crate) const CAPABILITY_PCAP: &str = "pcap";
 
+/// Extracted-file (Suricata file-store) retrieval capability.
+pub(crate) const CAPABILITY_FILESTORE: &str = "filestore";
+
 /// Maximum inbound control message or frame size on either peer.
 pub(crate) const CONTROL_MESSAGE_MAX_BYTES: usize = 256 * 1024;
 

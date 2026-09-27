@@ -282,6 +282,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .hide_env(true),
         )
         .arg(
+            Arg::new("filestore.directory")
+                .long("filestore-directory")
+                .action(ArgAction::Set)
+                .value_name("DIR")
+                .help("Local Suricata file-store (v2) directory to serve extracted files from")
+                .env("EVEBOX_FILESTORE_DIRECTORY")
+                .hide_env(true),
+        )
+        .arg(
             Arg::new("input.paths")
                 .value_name("EVE")
                 .num_args(0..)

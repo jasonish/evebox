@@ -37,6 +37,9 @@ use crate::pcap::{FetchError, PcapSource};
 use crate::prelude::*;
 use crate::server::ServerContext;
 use crate::server::agents::AgentEntry;
+// A blank `filter` collapses to the same match-all/derived semantics as
+// an absent one, and a blank time field never selects a mode.
+use crate::server::api::util::{error_response, present};
 use crate::server::main::SessionExtractor;
 use crate::server::pcap::tasks::{self, RemoteOutcome, UploadState};
 use crate::server::pcap::{PcapRouting, ResolvedPcapSource, RouteError};
@@ -269,7 +272,11 @@ pub(crate) async fn validate_pcap(
 
 /// The client address for the audit log: `x-forwarded-for` when
 /// reverse-proxy support is enabled, else the socket peer.
-fn remote_addr(context: &ServerContext, headers: &HeaderMap, remote: SocketAddr) -> String {
+pub(crate) fn remote_addr(
+    context: &ServerContext,
+    headers: &HeaderMap,
+    remote: SocketAddr,
+) -> String {
     if context.config.http_reverse_proxy
         && let Some(forwarded) = headers
             .get("x-forwarded-for")
@@ -604,7 +611,7 @@ async fn buffer_post_body(response: Response, max_bytes: u64) -> Response {
         return response;
     };
     let Ok(limit) = usize::try_from(max_bytes) else {
-        return error(
+        return error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal",
             "pcap buffer limit is too large for this platform",
@@ -622,7 +629,7 @@ async fn buffer_post_body(response: Response, max_bytes: u64) -> Response {
             }
             Response::from_parts(parts, Body::from(bytes))
         }
-        Err(_) => error(StatusCode::BAD_GATEWAY, "io", "pcap extraction failed"),
+        Err(_) => error_response(StatusCode::BAD_GATEWAY, "io", "pcap extraction failed"),
     }
 }
 
@@ -866,7 +873,7 @@ async fn stream_local(
             reason.set(CancelCause::Timeout);
             cancel.cancel();
             prestream.disarm();
-            return Err(Box::new(error(
+            return Err(Box::new(error_response(
                 StatusCode::GATEWAY_TIMEOUT,
                 "timeout",
                 "pcap extraction did not produce output in time",
@@ -876,7 +883,7 @@ async fn stream_local(
             // Producer died without a terminal frame: it panicked.
             // The supervisor logs the join error.
             prestream.disarm();
-            return Err(Box::new(error(
+            return Err(Box::new(error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",
                 "pcap extraction failed",
@@ -906,9 +913,13 @@ async fn stream_local(
                 ProducerEnd::Format(message) => {
                     // An honest error beats a 200 with a broken tail:
                     // discard the data, no headers were sent yet.
-                    Err(Box::new(error(StatusCode::BAD_GATEWAY, "format", &message)))
+                    Err(Box::new(error_response(
+                        StatusCode::BAD_GATEWAY,
+                        "format",
+                        &message,
+                    )))
                 }
-                ProducerEnd::Io => Err(Box::new(error(
+                ProducerEnd::Io => Err(Box::new(error_response(
                     StatusCode::BAD_GATEWAY,
                     "io",
                     "pcap extraction failed",
@@ -1190,7 +1201,7 @@ async fn stream_agent(
                 "pcap agent did not produce output in time",
                 None,
             );
-            Err(Box::new(error(
+            Err(Box::new(error_response(
                 StatusCode::GATEWAY_TIMEOUT,
                 "timeout",
                 "pcap agent did not produce output in time",
@@ -1199,7 +1210,7 @@ async fn stream_agent(
         RemoteFirst::UploadFailed(upload_reason) => {
             prestream.disarm();
             log_remote_failure(&audit, "agent-upload", upload_reason, None);
-            Err(Box::new(error(
+            Err(Box::new(error_response(
                 StatusCode::BAD_GATEWAY,
                 "agent-upload",
                 upload_reason,
@@ -1505,15 +1516,15 @@ fn remote_empty_response(
         RemoteOutcome::Cancelled { message } => {
             let message = message.unwrap_or_else(|| "pcap agent cancelled the request".to_string());
             log_remote_failure(audit, "agent-cancelled", &message, result_stats);
-            error(StatusCode::BAD_GATEWAY, "agent-cancelled", &message)
+            error_response(StatusCode::BAD_GATEWAY, "agent-cancelled", &message)
         }
         RemoteOutcome::Error { message } => {
             log_remote_failure(audit, "agent-error", &message, result_stats);
-            error(StatusCode::BAD_GATEWAY, "agent-error", &message)
+            error_response(StatusCode::BAD_GATEWAY, "agent-error", &message)
         }
         RemoteOutcome::Protocol { detail } => {
             log_remote_failure(audit, "agent-protocol", &detail, result_stats);
-            error(
+            error_response(
                 StatusCode::BAD_GATEWAY,
                 "agent-protocol",
                 "pcap agent returned an inconsistent terminal result",
@@ -1858,8 +1869,12 @@ fn empty_response(end: ProducerEnd, audit: &AuditContext, filename: &str) -> Res
     // same-origin frame reads them and surfaces an in-app notification.
     if audit.native {
         return match end {
-            ProducerEnd::Format(message) => error(StatusCode::BAD_GATEWAY, "format", &message),
-            ProducerEnd::Io => error(StatusCode::BAD_GATEWAY, "io", "pcap extraction failed"),
+            ProducerEnd::Format(message) => {
+                error_response(StatusCode::BAD_GATEWAY, "format", &message)
+            }
+            ProducerEnd::Io => {
+                error_response(StatusCode::BAD_GATEWAY, "io", "pcap extraction failed")
+            }
             _ => (
                 pcap_headers(audit, filename),
                 Body::from(empty_pcap_bytes().to_vec()),
@@ -1879,18 +1894,18 @@ fn empty_response(end: ProducerEnd, audit: &AuditContext, filename: &str) -> Res
         ProducerEnd::Complete {
             truncated: false, ..
         } => (pcap_headers(audit, filename), Body::empty()).into_response(),
-        ProducerEnd::NoCandidateFiles => error(
+        ProducerEnd::NoCandidateFiles => error_response(
             StatusCode::NOT_FOUND,
             "no-candidate-files",
             "no pcap files cover the requested time window",
         ),
-        ProducerEnd::NoMatch => error(
+        ProducerEnd::NoMatch => error_response(
             StatusCode::NOT_FOUND,
             "no-match",
             "no packets matched the event's flow",
         ),
-        ProducerEnd::Format(message) => error(StatusCode::BAD_GATEWAY, "format", &message),
-        ProducerEnd::Io => error(StatusCode::BAD_GATEWAY, "io", "pcap extraction failed"),
+        ProducerEnd::Format(message) => error_response(StatusCode::BAD_GATEWAY, "format", &message),
+        ProducerEnd::Io => error_response(StatusCode::BAD_GATEWAY, "io", "pcap extraction failed"),
     }
 }
 
@@ -2010,12 +2025,6 @@ impl Write for ChannelWriter {
     }
 }
 
-/// `{"error": {"code": ..., "message": ...}}` with a status.
-fn error(status: StatusCode, code: &str, message: &str) -> Response {
-    let body = json!({ "error": { "code": code, "message": message } });
-    (status, Json(body)).into_response()
-}
-
 /// Log the request's audit line with the error code as the outcome,
 /// and build the error response.
 fn fail(audit: &AuditContext, status: StatusCode, code: &str, message: &str) -> Box<Response> {
@@ -2031,15 +2040,7 @@ fn fail(audit: &AuditContext, status: StatusCode, code: &str, message: &str) -> 
         code,
         message
     );
-    Box::new(error(status, code, message))
-}
-
-/// The present, non-blank value of an optional string field. Blank
-/// (empty or whitespace) reads as absent — for `filter` this collapses
-/// "empty" and "absent" to the same match-all/derived semantics, and
-/// for the time fields a blank string never selects a mode.
-fn present(value: &Option<String>) -> Option<&str> {
-    value.as_deref().map(str::trim).filter(|s| !s.is_empty())
+    Box::new(error_response(status, code, message))
 }
 
 /// Parse a `duration`/`before`/`after` span, defaulting to `1m` when

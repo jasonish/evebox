@@ -138,6 +138,13 @@ geoip:
 #  directory: /var/log/suricata/pcap
 #  prefix: log.
 
+# Optional server-local Suricata file-store (version 2) directory, presented
+# as the file source "(server)", for downloading extracted files referenced
+# by fileinfo events and alerts. Like pcap, it serves events ingested by
+# this server's own input.
+#filestore:
+#  directory: /var/log/suricata/filestore
+
 # Agent identity and remote control channel. The server derives an agent's
 # identity from its key when events are submitted or a control connection is
 # established. Connecting agents must present a key regardless of

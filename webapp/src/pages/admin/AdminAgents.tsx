@@ -29,7 +29,7 @@ const SENSOR_TOOLTIP =
 
 // One display row: an agent — connected, key-only, or both, merged by
 // name since a key's name is the agent identity it authorizes — or the
-// server-local pcap source.
+// server-local source (pcap spool and/or file store).
 interface AgentRow {
   name: string;
   kind: "agent" | "server";
@@ -44,14 +44,16 @@ interface AgentRow {
   key?: API.AgentKeyInfo;
 }
 
-// The server-local row comes from GET /api/pcap/sources. A 404 means
-// this build has no pcap routes (e.g. Windows) and so no server-local
-// source; any other failure propagates so the poll keeps the last
-// good data and shows the warning banner instead of rendering a false
-// "no agents" empty state.
-async function fetchServerSources(): Promise<API.PcapSource[]> {
+// Server-local sources from GET /api/pcap/sources or
+// GET /api/filestore/sources. A 404 means this build lacks the route
+// and so has no such server-local source; any other failure propagates
+// so the poll keeps the last good data and shows the warning banner
+// instead of rendering a false "no agents" empty state.
+async function fetchServerSources(
+  fetcher: () => Promise<API.PcapSource[]>,
+): Promise<API.PcapSource[]> {
   try {
-    return await API.getPcapSources();
+    return await fetcher();
   } catch (e: any) {
     if (e?.status === 404) {
       return [];
@@ -60,14 +62,18 @@ async function fetchServerSources(): Promise<API.PcapSource[]> {
   }
 }
 
+const hasServerSource = (sources: API.PcapSource[]) =>
+  sources.some((source) => source.kind === "server");
+
 // Merge connected agents (GET /api/agents) with issued agent keys
-// (GET /api/agents/keys) by name, then append the server-local pcap
-// source when one is configured.
+// (GET /api/agents/keys) by name, then append the server-local source
+// when a local pcap spool or file store is configured.
 async function fetchAgents(): Promise<AgentRow[]> {
-  const [agents, keys, pcapSources] = await Promise.all([
+  const [agents, keys, pcapSources, fileSources] = await Promise.all([
     API.getAgents(),
     API.getAgentKeys(),
-    fetchServerSources(),
+    fetchServerSources(API.getPcapSources),
+    fetchServerSources(API.getFileSources),
   ]);
   const byName = new Map<string, AgentRow>();
   for (const agent of agents) {
@@ -98,15 +104,21 @@ async function fetchAgents(): Promise<AgentRow[]> {
     }
   }
   const rows = Array.from(byName.values());
-  for (const source of pcapSources) {
-    if (source.kind === "server") {
-      rows.push({
-        name: source.name,
-        kind: "server",
-        capabilities: ["pcap"],
-        connected: true,
-      });
-    }
+  // The server-local row carries the reserved name the routing table
+  // accepts, as the server reports it in either sources list.
+  const serverSource = [...pcapSources, ...fileSources].find(
+    (source) => source.kind === "server",
+  );
+  if (serverSource) {
+    rows.push({
+      name: serverSource.name,
+      kind: "server",
+      capabilities: [
+        ...(hasServerSource(pcapSources) ? ["pcap"] : []),
+        ...(hasServerSource(fileSources) ? ["filestore"] : []),
+      ],
+      connected: true,
+    });
   }
   return rows;
 }
@@ -294,16 +306,17 @@ export function AdminAgents() {
   });
 
   // Source choices for routing rules and the default: the server-local
-  // spool, connected pcap-capable agents, and known (keyed) agents that
-  // are currently offline — a rule may target an agent before it
-  // connects.
+  // source, connected pcap- or filestore-capable agents, and known
+  // (keyed) agents that are currently offline — a rule may target an
+  // agent before it connects.
   const sourceOptions = createMemo(() => {
     const names = (agents.latest ?? [])
       .filter(
         (row) =>
           row.kind === "server" ||
           (row.connected
-            ? row.capabilities.includes("pcap")
+            ? row.capabilities.includes("pcap") ||
+              row.capabilities.includes("filestore")
             : row.key !== undefined),
       )
       .map((row) => row.name);
@@ -476,7 +489,7 @@ export function AdminAgents() {
     <>
       <AdminPageHeader
         title="Agents"
-        subtitle="Remote EveBox agents, their authentication keys, and PCAP routing."
+        subtitle="Remote EveBox agents, their authentication keys, and source routing."
       />
 
       <Show when={fetchError()}>
@@ -533,7 +546,7 @@ export function AdminAgents() {
             <div class="card mt-2">
               <div class="card-body">
                 No agents yet. Connected agents, issued agent keys, and the
-                server-local PCAP spool will appear here.
+                server-local PCAP spool or file store will appear here.
               </div>
             </div>
           }
@@ -686,11 +699,11 @@ export function AdminAgents() {
         </Show>
       </Show>
 
-      {/* Operator-controlled pcap routing table. */}
+      {/* Operator-controlled source routing table (pcap and files). */}
       <Show when={!routingUnavailable()}>
         <div class="card mt-3">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <span>PCAP Routing</span>
+            <span>Source Routing</span>
             <Show when={routingModified()}>
               <span>
                 <button
@@ -712,11 +725,12 @@ export function AdminAgents() {
           </div>
           <div class="card-body">
             <p class="text-body-secondary">
-              Explicitly route events to packet capture sources by sensor name.
-              When any rule or a default source is set, this table fully
-              controls routing: the first matching rule wins, unmatched events
-              go to the default source, and without a default they are refused.
-              Leave the table empty to route automatically.
+              Explicitly route events to the sources holding their packet
+              captures and extracted files, by sensor name. When any rule or a
+              default source is set, this table fully controls routing: the
+              first matching rule wins, unmatched events go to the default
+              source, and without a default they are refused. Leave the table
+              empty to route automatically.
             </p>
             <Show when={routingError()}>
               <div class="alert alert-warning">{routingError()}</div>

@@ -647,6 +647,8 @@ impl ElasticEventRepo {
             }
         }
 
+        hoist_file_references(source);
+
         // Merge DNS suricata.eve.dns into top level dns.
         if !source["dns"].is_null() && !source["suricata"]["eve"]["dns"].is_null() {
             let mut dns = source["dns"].clone();
@@ -1152,5 +1154,43 @@ impl ElasticEventRepo {
 
     pub fn is_opensearch(&self) -> bool {
         self.opensearch
+    }
+}
+
+/// Hoist Suricata's file references from `suricata.eve` to directly under
+/// `_source`, where file download expects them, unless already present
+/// (for example from `event.original`).
+fn hoist_file_references(source: &mut serde_json::Value) {
+    for field in ["fileinfo", "files"] {
+        if source[field].is_null() && !source["suricata"]["eve"][field].is_null() {
+            source[field] = source["suricata"]["eve"][field].clone();
+        }
+    }
+}
+
+#[cfg(test)]
+mod file_reference_test {
+    use super::*;
+
+    #[test]
+    fn file_references_are_hoisted_from_suricata_eve() {
+        let mut source = json!({
+            "suricata": { "eve": {
+                "fileinfo": { "sha256": "a".repeat(64) },
+                "files": [ { "sha256": "b".repeat(64) } ],
+            }},
+        });
+        hoist_file_references(&mut source);
+        assert_eq!(source["fileinfo"]["sha256"], "a".repeat(64));
+        assert_eq!(source["files"][0]["sha256"], "b".repeat(64));
+
+        // Fields already present, e.g. from event.original, win.
+        let mut source = json!({
+            "fileinfo": { "sha256": "c".repeat(64) },
+            "suricata": { "eve": { "fileinfo": { "sha256": "a".repeat(64) } } },
+        });
+        hoist_file_references(&mut source);
+        assert_eq!(source["fileinfo"]["sha256"], "c".repeat(64));
+        assert!(source["files"].is_null());
     }
 }

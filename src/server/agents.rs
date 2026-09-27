@@ -372,38 +372,48 @@ impl AgentRegistry {
         entry.try_send(message)
     }
 
-    /// Return one agent only when its advertised PCAP capability is eligible
-    /// for routing (including the reserved-name exclusion).
-    pub(crate) fn pcap_agent(&self, name: &str) -> Option<Arc<AgentEntry>> {
+    /// Return one agent only when its advertised `capability` is eligible
+    /// for source routing. The reserved server-local source name is never
+    /// an eligible remote source, whatever the capability.
+    pub(crate) fn capable_agent(&self, name: &str, capability: &str) -> Option<Arc<AgentEntry>> {
         if name == LOCAL_PCAP_SOURCE_NAME {
             return None;
         }
-        self.get(name)
-            .filter(|entry| entry.supports(CAPABILITY_PCAP))
+        self.get(name).filter(|entry| entry.supports(capability))
     }
 
-    /// Connected, eligible PCAP agents sorted by name.
-    pub(crate) fn pcap_agents(&self) -> Vec<Arc<AgentEntry>> {
+    /// Connected agents eligible to serve `capability`, sorted by name.
+    pub(crate) fn capable_agents(&self, capability: &str) -> Vec<Arc<AgentEntry>> {
         let mut entries: Vec<Arc<AgentEntry>> = self
             .state
             .read()
             .unwrap()
             .agents
             .values()
-            .filter(|entry| entry.supports(CAPABILITY_PCAP) && entry.name != LOCAL_PCAP_SOURCE_NAME)
+            .filter(|entry| entry.supports(capability) && entry.name != LOCAL_PCAP_SOURCE_NAME)
             .cloned()
             .collect();
         entries.sort_by(|a, b| a.name.cmp(&b.name));
         entries
     }
 
-    pub(crate) fn has_pcap(&self) -> bool {
+    /// Whether any connected agent is eligible to serve `capability`.
+    pub(crate) fn has_capability(&self, capability: &str) -> bool {
         self.state
             .read()
             .unwrap()
             .agents
             .values()
-            .any(|entry| entry.supports(CAPABILITY_PCAP) && entry.name != LOCAL_PCAP_SOURCE_NAME)
+            .any(|entry| entry.supports(capability) && entry.name != LOCAL_PCAP_SOURCE_NAME)
+    }
+
+    /// Connected, eligible PCAP agents sorted by name.
+    pub(crate) fn pcap_agents(&self) -> Vec<Arc<AgentEntry>> {
+        self.capable_agents(CAPABILITY_PCAP)
+    }
+
+    pub(crate) fn has_pcap(&self) -> bool {
+        self.has_capability(CAPABILITY_PCAP)
     }
 
     pub(crate) fn connected(&self) -> usize {
@@ -539,7 +549,11 @@ mod tests {
 
         assert!(registry.get(LOCAL_PCAP_SOURCE_NAME).is_some());
         assert!(entry.supports("future-rules"));
-        assert!(registry.pcap_agent(LOCAL_PCAP_SOURCE_NAME).is_none());
+        assert!(
+            registry
+                .capable_agent(LOCAL_PCAP_SOURCE_NAME, CAPABILITY_PCAP)
+                .is_none()
+        );
         assert!(registry.pcap_agents().is_empty());
         assert!(!registry.has_pcap());
         assert_eq!(registry.list()[0].capabilities.len(), 2);
