@@ -92,6 +92,10 @@ struct Args {
     #[arg(long, id = "pcap.directory", value_name = "DIR")]
     pcap_directory: Option<String>,
 
+    /// Serve files from this Suricata file-store v2 directory
+    #[arg(long, id = "filestore.directory", value_name = "DIR")]
+    filestore_directory: Option<String>,
+
     /// Filename prefix of the pcap spool files
     #[arg(long, id = "pcap.prefix", value_name = "PREFIX")]
     pcap_prefix: Option<String>,
@@ -137,40 +141,26 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     // The key determines the agent identity. The hostname remains useful
     // operational metadata and is the lab-mode fallback when the server
     // explicitly allows an unauthenticated control channel.
-    #[cfg(not(windows))]
     let agent_hostname = gethostname::gethostname().to_string_lossy().to_string();
 
-    // The packet-capture channel is optional and deliberately independent of
-    // the EVE importer tasks below. Direct-to-Elasticsearch mode has no
-    // EveBox server connection to carry control messages, so it cannot serve
-    // remote capture requests.
-    #[cfg(not(windows))]
-    let pcap_channel = build_pcap_channel(
+    // The transfer channel is optional and independent of EVE importer tasks.
+    // Direct-to-Elasticsearch mode has no server control connection.
+    let pcap_channel = build_transfer_channel(
         &config,
         &server_url,
         disable_certificate_check,
         &agent_hostname,
         server_key.clone(),
     )?;
-    #[cfg(windows)]
-    let pcap_channel = {
-        if config
-            .get_string("pcap.directory")
-            .map(|value| !value.trim().is_empty())
-            .unwrap_or(false)
-        {
-            warn!("Full packet capture is not supported on Windows; ignoring pcap configuration");
-        }
-        None::<()>
-    };
-
     // Collect EVE file and socket inputs.
     let eve_filenames = get_eve_filenames(&config)?;
     let delete_processed_spool_files = config.get_bool("input.delete-spool-files")?;
     let eve_sockets = eve::socket::get_inputs(&config)?;
     if eve_filenames.is_empty() && eve_sockets.is_empty() {
         if pcap_channel.is_some() {
-            info!("No EVE inputs configured; running in pcap-only mode (events are not shipped)");
+            info!(
+                "No EVE inputs configured; running in transfer-only mode (events are not shipped)"
+            );
         } else {
             bail!("No EVE inputs configured. Exiting as there is nothing to do.");
         }
@@ -274,10 +264,9 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
 
     // This forever-retrying task owns its own lifecycle. Keep it outside the
     // fail-fast EVE processor set so a control-channel reconnect can never
-    // terminate event shipping, and pcap-only mode can have an empty set.
-    #[cfg(not(windows))]
+    // terminate event shipping, and transfer-only mode can have an empty set.
     if let Some(channel) = pcap_channel {
-        info!("Starting full packet capture control channel");
+        info!("Starting agent transfer control channel");
         tokio::spawn(crate::agent::channel::run(channel));
     }
 
@@ -327,31 +316,40 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     }
 }
 
-/// Build the persistent packet-capture channel configuration, or return
-/// `None` when no spool directory is configured or packet capture is
-/// incompatible with the selected output.
-#[cfg(not(windows))]
-fn build_pcap_channel(
+/// Build the persistent channel when either remote capture or file retrieval
+/// is configured and the output is an EveBox server.
+fn build_transfer_channel(
     config: &Config,
     server_url: &str,
     disable_certificate_check: bool,
     hostname: &str,
     server_key: Option<String>,
 ) -> anyhow::Result<Option<crate::agent::channel::ChannelConfig>> {
-    // Packet capture is enabled by setting a spool directory, either
-    // `pcap.directory` in the configuration file or --pcap-directory on the
-    // command line; there is no separate enable flag, matching the server.
-    let Some(directory) = config
+    // Each capability is enabled by configuring its directory; there is no
+    // separate enable flag, matching the server.
+    let directory = config
         .get_string("pcap.directory")
         .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-    else {
-        return Ok(None);
+        .filter(|value| !value.is_empty());
+    #[cfg(windows)]
+    let directory = {
+        if directory.is_some() {
+            warn!("Full packet capture is not supported on Windows; ignoring pcap configuration");
+        }
+        None::<String>
     };
+    let filestore = config
+        .get_string("filestore.directory")
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from);
+    if directory.is_none() && filestore.is_none() {
+        return Ok(None);
+    }
 
     if config.get_bool("elasticsearch.enabled")? {
         warn!(
-            "Full packet capture is not supported with direct Elasticsearch output; ignoring pcap configuration"
+            "Remote capture and file retrieval require EveBox server output; ignoring transfer configuration"
         );
         return Ok(None);
     }
@@ -360,13 +358,19 @@ fn build_pcap_channel(
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
     let server_url = crate::agent::tls::normalize_server_url(server_url)?;
-    info!("Full packet capture enabled: spool {directory}");
+    if let Some(directory) = &directory {
+        info!("Full packet capture enabled: spool {directory}");
+    }
+    if let Some(directory) = &filestore {
+        info!("File retrieval enabled: {}", directory.display());
+    }
 
     Ok(Some(crate::agent::channel::ChannelConfig {
         server_url,
         hostname: hostname.to_string(),
         server_key,
-        spool: crate::pcap::SpoolConfig::new(directory, prefix),
+        spool: directory.map(|directory| crate::pcap::SpoolConfig::new(directory, prefix)),
+        filestore,
         disable_certificate_check,
     }))
 }
@@ -560,7 +564,7 @@ mod tests {
             .get_string("server.key")
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
-        build_pcap_channel(config, server_url, false, &hostname, server_key)
+        build_transfer_channel(config, server_url, false, &hostname, server_key)
     }
 
     fn yaml_config_with_args(yaml: &str, args: &[&str]) -> (tempfile::TempDir, Config) {
@@ -585,8 +589,14 @@ mod tests {
             .unwrap();
         assert_eq!(channel.server_key.as_deref(), Some("eba_test"));
         assert_eq!(channel.server_url, "https://evebox.test");
-        assert_eq!(channel.spool.directory, PathBuf::from("/captures"));
-        assert_eq!(channel.spool.prefix.as_deref(), Some("log.pcap"));
+        assert_eq!(
+            channel.spool.as_ref().unwrap().directory,
+            PathBuf::from("/captures")
+        );
+        assert_eq!(
+            channel.spool.as_ref().unwrap().prefix.as_deref(),
+            Some("log.pcap")
+        );
         drop(dir);
     }
 
@@ -621,8 +631,11 @@ mod tests {
         )
         .unwrap()
         .unwrap();
-        assert_eq!(channel.spool.directory, PathBuf::from("/captures"));
-        assert_eq!(channel.spool.prefix, None);
+        assert_eq!(
+            channel.spool.as_ref().unwrap().directory,
+            PathBuf::from("/captures")
+        );
+        assert_eq!(channel.spool.as_ref().unwrap().prefix, None);
         assert_eq!(channel.server_key, None);
         assert_eq!(channel.server_url, "https://evebox.test/base");
     }
@@ -645,8 +658,14 @@ mod tests {
         let channel = channel_from(&config, "https://evebox.test")
             .unwrap()
             .unwrap();
-        assert_eq!(channel.spool.directory, PathBuf::from("/captures"));
-        assert_eq!(channel.spool.prefix.as_deref(), Some("log.pcap"));
+        assert_eq!(
+            channel.spool.as_ref().unwrap().directory,
+            PathBuf::from("/captures")
+        );
+        assert_eq!(
+            channel.spool.as_ref().unwrap().prefix.as_deref(),
+            Some("log.pcap")
+        );
     }
 
     #[test]
@@ -660,8 +679,30 @@ mod tests {
         let channel = channel_from(&config, "https://evebox.test")
             .unwrap()
             .unwrap();
-        assert_eq!(channel.spool.directory, PathBuf::from("/from-cli"));
-        assert_eq!(channel.spool.prefix.as_deref(), Some("yaml."));
+        assert_eq!(
+            channel.spool.as_ref().unwrap().directory,
+            PathBuf::from("/from-cli")
+        );
+        assert_eq!(
+            channel.spool.as_ref().unwrap().prefix.as_deref(),
+            Some("yaml.")
+        );
+    }
+
+    #[test]
+    fn filestore_only_channel_and_cli_override() {
+        let (_dir, config) = yaml_config_with_args(
+            "elasticsearch:\n  enabled: false\nfilestore:\n  directory: /yaml-store\n",
+            &["--filestore-directory", "/cli-store"],
+        );
+        let channel = channel_from(&config, "https://evebox.test")
+            .unwrap()
+            .unwrap();
+        assert!(channel.spool.is_none());
+        assert_eq!(
+            channel.filestore.as_deref(),
+            Some(std::path::Path::new("/cli-store"))
+        );
     }
 
     #[test]

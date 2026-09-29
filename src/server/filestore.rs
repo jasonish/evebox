@@ -10,8 +10,11 @@
 //! reaches the filesystem is a validated 64-digit hex string, so a
 //! caller can never name an arbitrary path.
 
+use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::agent::protocol::CAPABILITY_FILESTORE;
 use crate::prelude::*;
@@ -249,14 +252,42 @@ fn open_no_follow(directory: &Path, sha256: &Sha256) -> Result<std::fs::File, Op
 }
 
 /// Extracted file retrieval: the optional server-local store.
-#[derive(Default)]
 pub(crate) struct FilestoreService {
     local: Option<LocalFilestore>,
+    global: Arc<Semaphore>,
+    agents: Mutex<HashMap<String, Arc<Semaphore>>>,
+}
+
+impl Default for FilestoreService {
+    fn default() -> Self {
+        Self::new(None)
+    }
 }
 
 impl FilestoreService {
     pub(crate) fn new(local: Option<LocalFilestore>) -> Self {
-        Self { local }
+        Self {
+            local,
+            global: Arc::new(Semaphore::new(16)),
+            agents: Mutex::new(HashMap::new()),
+        }
+    }
+
+    /// One file transfer per agent, independently of its pcap lane.
+    pub(crate) fn try_acquire(
+        &self,
+        agent: &str,
+    ) -> Option<(OwnedSemaphorePermit, OwnedSemaphorePermit)> {
+        let global = self.global.clone().try_acquire_owned().ok()?;
+        let lane = self
+            .agents
+            .lock()
+            .unwrap()
+            .entry(agent.to_string())
+            .or_insert_with(|| Arc::new(Semaphore::new(1)))
+            .clone();
+        let source = lane.try_acquire_owned().ok()?;
+        Some((global, source))
     }
 
     pub(crate) fn local(&self) -> Option<&LocalFilestore> {

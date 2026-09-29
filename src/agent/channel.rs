@@ -8,12 +8,16 @@
 //! without putting bulk data in WebSocket frames.
 
 use std::collections::HashMap;
+#[cfg(not(windows))]
 use std::io::Write;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
 use futures::{Sink, SinkExt, Stream, StreamExt};
-use tokio::sync::{Semaphore, mpsc, oneshot, watch};
+#[cfg(not(windows))]
+use tokio::sync::oneshot;
+use tokio::sync::{Semaphore, mpsc, watch};
 use tokio_tungstenite::connect_async_tls_with_config;
 use tokio_tungstenite::tungstenite::Error as WsError;
 use tokio_tungstenite::tungstenite::Message;
@@ -23,12 +27,20 @@ use tokio_tungstenite::tungstenite::http::header::SEC_WEBSOCKET_PROTOCOL;
 use tokio_util::sync::CancellationToken;
 
 use crate::agent::protocol::{
-    AGENT_HEADER, AgentHandshake, AgentMessage, CAPABILITY_PCAP, CONTROL_MESSAGE_MAX_BYTES,
-    PCAP_CONTENT_TYPE, PcapResult, PcapResultCode, PcapUploadStatus, SUBPROTOCOL, ServerMessage,
-    WireLimits, WirePcapFilter, WireStats, agent_pcap_upload_path,
+    AGENT_HEADER, AgentHandshake, AgentMessage, CAPABILITY_FILESTORE, CAPABILITY_PCAP,
+    CONTROL_MESSAGE_MAX_BYTES, FILE_CONTENT_TYPE, FileResult, FileResultCode, PcapUploadStatus,
+    SUBPROTOCOL, ServerMessage, WireLimits, WirePcapFilter, agent_file_upload_path,
 };
-use crate::pcap::{self, FetchError, PcapRequest, PcapSource, SpoolConfig};
+#[cfg(not(windows))]
+use crate::agent::protocol::{
+    PCAP_CONTENT_TYPE, PcapResult, PcapResultCode, WireStats, agent_pcap_upload_path,
+};
+use crate::pcap::SpoolConfig;
+#[cfg(not(windows))]
+use crate::pcap::{self, FetchError, PcapRequest, PcapSource};
 use crate::prelude::*;
+use crate::server::filestore::{LocalFilestore, OpenError, Sha256};
+use tokio::io::AsyncReadExt;
 
 const MIN_BACKOFF: Duration = Duration::from_secs(1);
 const MAX_BACKOFF: Duration = Duration::from_secs(30);
@@ -37,6 +49,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const RECEIVE_IDLE_TIMEOUT: Duration = Duration::from_secs(90);
 const CONTROL_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 const UPLOAD_STALL_TIMEOUT: Duration = Duration::from_secs(60);
+#[cfg(not(windows))]
 const UPLOAD_RESPONSE_TIMEOUT: Duration = Duration::from_secs(60);
 const CHUNK_SIZE: usize = 64 * 1024;
 const UPLOAD_CHANNEL_CAPACITY: usize = 8;
@@ -55,7 +68,8 @@ pub(crate) struct ChannelConfig {
     /// Agent key (`server.key` / `EVEBOX_SERVER_KEY`) presented as a bearer
     /// token on the WebSocket upgrade.
     pub(crate) server_key: Option<String>,
-    pub(crate) spool: SpoolConfig,
+    pub(crate) spool: Option<SpoolConfig>,
+    pub(crate) filestore: Option<PathBuf>,
     pub(crate) disable_certificate_check: bool,
 }
 
@@ -99,13 +113,14 @@ pub(crate) async fn run(config: ChannelConfig) {
     // Serializes disk extraction across connections: a blocking producer can
     // outlive the connection which started it.
     let extraction = Arc::new(Semaphore::new(1));
+    let files = Arc::new(Semaphore::new(1));
     // Building the upload client is deterministic; a failure would repeat on
     // every retry, so give up on the channel rather than spin.
     let client = match crate::agent::client::build_reqwest_client(config.disable_certificate_check)
     {
         Ok(client) => client,
         Err(err) => {
-            error!("agent channel: failed to build PCAP upload client: {err}; channel disabled");
+            error!("agent channel: failed to build upload client: {err}; channel disabled");
             return;
         }
     };
@@ -113,7 +128,7 @@ pub(crate) async fn run(config: ChannelConfig) {
     let mut warned = ConnectWarnings::default();
 
     loop {
-        let outcome = connect_and_run(&config, &client, &extraction, &mut warned).await;
+        let outcome = connect_and_run(&config, &client, &extraction, &files, &mut warned).await;
 
         let delay = match outcome {
             ConnectionOutcome::Disconnected { connected_for } => {
@@ -132,16 +147,28 @@ pub(crate) async fn run(config: ChannelConfig) {
     }
 }
 
+fn advertised_capabilities(config: &ChannelConfig) -> Vec<String> {
+    let mut capabilities = Vec::new();
+    if cfg!(not(windows)) && config.spool.is_some() {
+        capabilities.push(CAPABILITY_PCAP.to_string());
+    }
+    if config.filestore.is_some() {
+        capabilities.push(CAPABILITY_FILESTORE.to_string());
+    }
+    capabilities
+}
+
 async fn connect_and_run(
     config: &Arc<ChannelConfig>,
     client: &reqwest::Client,
     extraction: &Arc<Semaphore>,
+    files: &Arc<Semaphore>,
     warned: &mut ConnectWarnings,
 ) -> ConnectionOutcome {
     let handshake = AgentHandshake {
         hostname: config.hostname.clone(),
         version: crate::version::version().to_string(),
-        capabilities: vec![CAPABILITY_PCAP.to_string()],
+        capabilities: advertised_capabilities(config),
     };
     let handshake = match encode_handshake(&handshake) {
         Ok(handshake) => handshake,
@@ -195,7 +222,7 @@ async fn connect_and_run(
             *warned = ConnectWarnings::default();
             info!("agent channel: connected to {}", config.server_url);
             let connected_at = Instant::now();
-            run_connection(ws, config, client, extraction).await;
+            run_connection(ws, config, client, extraction, files).await;
             ConnectionOutcome::Disconnected {
                 connected_for: connected_at.elapsed(),
             }
@@ -279,6 +306,7 @@ async fn run_connection<S>(
     config: &Arc<ChannelConfig>,
     client: &reqwest::Client,
     extraction: &Arc<Semaphore>,
+    files: &Arc<Semaphore>,
 ) where
     S: Stream<Item = Result<Message, WsError>> + Sink<Message, Error = WsError> + Unpin,
 {
@@ -310,6 +338,7 @@ async fn run_connection<S>(
                             &jobs,
                             &result_tx,
                             extraction,
+                            files,
                             &mut control,
                         ) {
                             MessageOutcome::Continue => {}
@@ -377,6 +406,7 @@ enum ControlState {
     AwaitingHello,
     Ready {
         pcap: bool,
+        filestore: bool,
     },
 }
 
@@ -386,6 +416,9 @@ impl ControlState {
             (Self::AwaitingHello, ServerMessage::Hello { capabilities, .. }) => {
                 *self = Self::Ready {
                     pcap: capabilities.iter().any(|value| value == CAPABILITY_PCAP),
+                    filestore: capabilities
+                        .iter()
+                        .any(|value| value == CAPABILITY_FILESTORE),
                 };
                 true
             }
@@ -398,9 +431,20 @@ impl ControlState {
                 warn!("agent channel: received control message before server hello; reconnecting");
                 false
             }
-            (Self::Ready { pcap: false }, ServerMessage::PcapRequest { .. }) => {
+            (Self::Ready { pcap: false, .. }, ServerMessage::PcapRequest { .. }) => {
                 warn!(
                     "agent channel: server sent a pcap request without advertising the pcap capability; reconnecting"
+                );
+                false
+            }
+            (
+                Self::Ready {
+                    filestore: false, ..
+                },
+                ServerMessage::FileRequest { .. },
+            ) => {
+                warn!(
+                    "agent channel: file request without negotiated filestore capability; reconnecting"
                 );
                 false
             }
@@ -425,6 +469,7 @@ fn decode_server_message(text: &str) -> Option<ServerMessage> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_message(
     text: &str,
     config: &Arc<ChannelConfig>,
@@ -432,6 +477,7 @@ fn handle_message(
     jobs: &Jobs,
     result_tx: &mpsc::Sender<AgentMessage>,
     extraction: &Arc<Semaphore>,
+    files: &Arc<Semaphore>,
     control: &mut ControlState,
 ) -> MessageOutcome {
     let Some(message) = decode_server_message(text) else {
@@ -458,6 +504,12 @@ fn handle_message(
             end_us,
             limits,
         } => {
+            if config.spool.is_none() {
+                warn!(
+                    "agent channel: received pcap request without a configured spool; reconnecting"
+                );
+                return MessageOutcome::Fatal;
+            }
             match start_job(
                 config, client, jobs, result_tx, extraction, id, token, filter, start_us, end_us,
                 limits,
@@ -473,6 +525,25 @@ fn handle_message(
                     );
                     return MessageOutcome::Fatal;
                 }
+            }
+        }
+        ServerMessage::FileRequest {
+            id,
+            token,
+            sha256,
+            limits,
+        } => {
+            if config.filestore.is_none() {
+                warn!(
+                    "agent channel: received file request without a configured filestore; reconnecting"
+                );
+                return MessageOutcome::Fatal;
+            }
+            match start_file_job(
+                config, client, jobs, result_tx, files, id, token, sha256, limits,
+            ) {
+                StartJob::Started | StartJob::Duplicate => {}
+                StartJob::Conflict | StartJob::AtCapacity => return MessageOutcome::Fatal,
             }
         }
         ServerMessage::Cancel { id, token } => {
@@ -492,6 +563,349 @@ fn handle_message(
     MessageOutcome::Continue
 }
 
+#[allow(clippy::too_many_arguments)]
+fn start_file_job(
+    config: &Arc<ChannelConfig>,
+    client: &reqwest::Client,
+    jobs: &Jobs,
+    result_tx: &mpsc::Sender<AgentMessage>,
+    files: &Arc<Semaphore>,
+    id: String,
+    token: String,
+    sha256: String,
+    limits: WireLimits,
+) -> StartJob {
+    let cancel = CancellationToken::new();
+    {
+        let mut active = jobs.lock().unwrap();
+        if let Some(existing) = active.get(&id) {
+            return if existing.token == token {
+                StartJob::Duplicate
+            } else {
+                StartJob::Conflict
+            };
+        }
+        if active.len() >= MAX_ACTIVE_JOBS {
+            return StartJob::AtCapacity;
+        }
+        active.insert(
+            id.clone(),
+            ActiveJob {
+                token: token.clone(),
+                cancel: cancel.clone(),
+            },
+        );
+    }
+    let config = config.clone();
+    let client = client.clone();
+    let files = files.clone();
+    let results = result_tx.clone();
+    let jobs = jobs.clone();
+    tokio::spawn(async move {
+        let worker_id = id.clone();
+        let worker_token = token.clone();
+        let worker_results = results.clone();
+        let worker = tokio::spawn(async move {
+            run_file_job(
+                &config,
+                &client,
+                &files,
+                &worker_results,
+                &worker_id,
+                &worker_token,
+                &sha256,
+                limits,
+                &cancel,
+            )
+            .await
+        });
+        let result = match worker.await {
+            Ok(result) => result,
+            Err(err) => file_result(
+                FileResultCode::Error,
+                PcapUploadStatus::None,
+                None,
+                0,
+                Some(format!("file worker failed: {err}")),
+            ),
+        };
+        {
+            let mut active = jobs.lock().unwrap();
+            if active.get(&id).is_some_and(|job| job.token == token) {
+                active.remove(&id);
+            }
+        }
+        let _ = results
+            .send(AgentMessage::FileResult { id, token, result })
+            .await;
+    });
+    StartJob::Started
+}
+
+fn file_result(
+    code: FileResultCode,
+    upload: PcapUploadStatus,
+    size: Option<u64>,
+    bytes: u64,
+    message: Option<String>,
+) -> FileResult {
+    FileResult {
+        code,
+        upload,
+        message,
+        size,
+        bytes,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn run_file_job(
+    config: &ChannelConfig,
+    client: &reqwest::Client,
+    files: &Arc<Semaphore>,
+    results: &mpsc::Sender<AgentMessage>,
+    id: &str,
+    token: &str,
+    sha256: &str,
+    limits: WireLimits,
+    cancel: &CancellationToken,
+) -> FileResult {
+    use FileResultCode::{Cancelled, Complete, Error, NotFound};
+    use PcapUploadStatus::{Complete as Uploaded, Failed};
+    let no_upload = PcapUploadStatus::None;
+
+    if limits.scan_timeout_ms == 0 {
+        return file_result(
+            Error,
+            no_upload,
+            None,
+            0,
+            Some("file timeout must be positive".into()),
+        );
+    }
+    let deadline = tokio::time::Instant::now() + Duration::from_millis(limits.scan_timeout_ms);
+    let permit = tokio::select! {
+        biased;
+        _ = cancel.cancelled() => return file_result(Cancelled, no_upload, None, 0, None),
+        _ = tokio::time::sleep_until(deadline) => return file_result(Error, no_upload, None, 0, Some("file transfer timed out".into())),
+        result = files.clone().acquire_owned() => match result {
+            Ok(permit) => permit,
+            Err(err) => return file_result(Error, no_upload, None, 0, Some(err.to_string())),
+        },
+    };
+    let Some(hash) = Sha256::parse(sha256) else {
+        return file_result(Error, no_upload, None, 0, Some("invalid SHA-256".into()));
+    };
+    let store = LocalFilestore::new(
+        config
+            .filestore
+            .clone()
+            .expect("file jobs require a filestore"),
+    );
+    let opened = tokio::select! {
+        biased;
+        _ = cancel.cancelled() => return file_result(Cancelled, no_upload, None, 0, None),
+        _ = tokio::time::sleep_until(deadline) => return file_result(Error, no_upload, None, 0, Some("file open timed out".into())),
+        opened = store.open(&hash) => opened,
+    };
+    let (mut file, size) = match opened {
+        Ok(opened) => opened,
+        Err(OpenError::NotFound) => return file_result(NotFound, no_upload, None, 0, None),
+        Err(err) => return file_result(Error, no_upload, None, 0, Some(err.to_string())),
+    };
+    // The announced size is always the whole file; a nonzero max_bytes
+    // uploads only its start.
+    let upload_len = match limits.max_bytes {
+        0 => size,
+        max => size.min(max),
+    };
+    if cancel.is_cancelled() {
+        return file_result(Cancelled, no_upload, Some(size), 0, None);
+    }
+    let start = AgentMessage::FileStart {
+        id: id.into(),
+        token: token.into(),
+        size,
+    };
+    let sent = tokio::select! {
+        biased;
+        _ = cancel.cancelled() => return file_result(Cancelled, no_upload, Some(size), 0, None),
+        _ = tokio::time::sleep_until(deadline) => return file_result(Error, no_upload, Some(size), 0, Some("file transfer timed out".into())),
+        sent = results.send(start) => sent,
+    };
+    if sent.is_err() {
+        return file_result(
+            Error,
+            no_upload,
+            Some(size),
+            0,
+            Some("control channel closed".into()),
+        );
+    }
+    // Only a single file job runs per source. This bounded channel prevents
+    // an unresponsive server from causing unbounded disk reads or buffering.
+    let (tx, rx) = mpsc::channel::<Bytes>(UPLOAD_CHANNEL_CAPACITY);
+    let io_cancel = cancel.child_token();
+    let producer_cancel = io_cancel.clone();
+    let producer = tokio::spawn(async move {
+        let _permit = permit;
+        let mut remaining = upload_len;
+        let mut sent = 0_u64;
+        while remaining != 0 {
+            let mut buffer = vec![0; remaining.min(CHUNK_SIZE as u64) as usize];
+            let count = tokio::select! {
+                _ = producer_cancel.cancelled() => return Err("file read cancelled".to_string()),
+                read = file.read(&mut buffer) => read.map_err(|err| err.to_string())?,
+            };
+            if count == 0 {
+                return Err("file changed during upload (unexpected EOF)".into());
+            }
+            buffer.truncate(count);
+            tokio::select! {
+                _ = producer_cancel.cancelled() => return Err("file upload cancelled".to_string()),
+                result = tx.send(Bytes::from(buffer)) => result.map_err(|_| "upload body closed".to_string())?,
+            }
+            remaining -= count as u64;
+            sent += count as u64;
+        }
+        Ok::<u64, String>(sent)
+    });
+    // The first chunk is held outside the channel to use the same progress-
+    // aware upload body as PCAP; an empty file sends an empty body.
+    let (first, rx) = if upload_len == 0 {
+        (Bytes::new(), rx)
+    } else {
+        let mut rx = rx;
+        let first = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => { io_cancel.cancel(); let _ = producer.await; return file_result(Cancelled, no_upload, Some(size), 0, None); },
+            _ = tokio::time::sleep_until(deadline) => { io_cancel.cancel(); let _ = producer.await; return file_result(Error, no_upload, Some(size), 0, Some("file read timed out".into())); },
+            first = rx.recv() => first,
+        };
+        match first {
+            Some(first) => (first, rx),
+            None => {
+                let err = producer.await;
+                return file_result(
+                    Error,
+                    no_upload,
+                    Some(size),
+                    0,
+                    Some(format!("file read failed: {err:?}")),
+                );
+            }
+        }
+    };
+    let (stream, mut progress) = UploadBodyStream::new(first, rx, io_cancel.clone());
+    let request = client
+        .post(format!(
+            "{}{}",
+            config.server_url,
+            agent_file_upload_path(id)
+        ))
+        .bearer_auth(token)
+        .header(reqwest::header::CONTENT_TYPE, FILE_CONTENT_TYPE)
+        .header(reqwest::header::CONTENT_LENGTH, upload_len)
+        .body(reqwest::Body::wrap_stream(stream));
+    // The dispatched timeout bounds queueing, opening, and the first read,
+    // not the entire transfer. Once uploading, only lack of byte progress
+    // (or a missing response after body EOF) is timed out. Large, healthy
+    // files must not fail just because they take over a minute to send.
+    let mut upload = Box::pin(request.send());
+    let mut upload_deadline = tokio::time::Instant::now() + UPLOAD_STALL_TIMEOUT;
+    let mut last_bytes = 0;
+    let mut body_eof = false;
+    let mut progress_open = true;
+    let mut upload_timeout = None;
+    let uploaded = loop {
+        tokio::select! {
+            biased;
+            _ = cancel.cancelled() => { io_cancel.cancel(); break None; },
+            response = &mut upload => break Some(response),
+            changed = progress.changed(), if progress_open => {
+                if changed.is_err() {
+                    progress_open = false;
+                } else {
+                    match *progress.borrow_and_update() {
+                        UploadBodyProgress::Bytes(bytes) if bytes > last_bytes => {
+                            last_bytes = bytes;
+                            if !body_eof {
+                                upload_deadline = tokio::time::Instant::now() + UPLOAD_STALL_TIMEOUT;
+                            }
+                        }
+                        UploadBodyProgress::Eof => {
+                            // EOF means reqwest consumed the body, not that
+                            // every byte reached the server. A fixed response
+                            // deadline here would abort a slow but progressing
+                            // transfer. The server's upload/browser watchdogs
+                            // will cancel a stalled job over the control channel.
+                            body_eof = true;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ = tokio::time::sleep_until(upload_deadline), if !body_eof => {
+                upload_timeout = Some("file upload made no progress");
+                io_cancel.cancel();
+                break None;
+            }
+        }
+    };
+    if uploaded
+        .as_ref()
+        .is_none_or(|result| result.is_err() || !result.as_ref().unwrap().status().is_success())
+    {
+        io_cancel.cancel();
+    }
+    let produced = producer.await;
+    let bytes = match produced {
+        Ok(Ok(bytes)) => bytes,
+        _ => match *progress.borrow() {
+            UploadBodyProgress::Bytes(bytes) => bytes,
+            _ => 0,
+        },
+    };
+    if cancel.is_cancelled() {
+        return file_result(
+            Cancelled,
+            if uploaded.is_some() { Uploaded } else { Failed },
+            Some(size),
+            bytes,
+            None,
+        );
+    }
+    if let Some(message) = upload_timeout {
+        return file_result(Error, Failed, Some(size), bytes, Some(message.into()));
+    }
+    match uploaded {
+        Some(Ok(response)) if response.status().is_success() && bytes == upload_len => {
+            file_result(Complete, Uploaded, Some(size), bytes, None)
+        }
+        Some(Ok(response)) if !response.status().is_success() => file_result(
+            Error,
+            Failed,
+            Some(size),
+            bytes,
+            Some(format!("file upload rejected with {}", response.status())),
+        ),
+        Some(Err(err)) => file_result(
+            Error,
+            Failed,
+            Some(size),
+            bytes,
+            Some(format!("file upload failed: {err}")),
+        ),
+        _ => file_result(
+            Error,
+            Failed,
+            Some(size),
+            bytes,
+            Some("file read or upload failed".into()),
+        ),
+    }
+}
+
 enum StartJob {
     Started,
     Duplicate,
@@ -499,6 +913,25 @@ enum StartJob {
     AtCapacity,
 }
 
+#[cfg(windows)]
+#[allow(clippy::too_many_arguments)]
+fn start_job(
+    _config: &Arc<ChannelConfig>,
+    _client: &reqwest::Client,
+    _jobs: &Jobs,
+    _result_tx: &mpsc::Sender<AgentMessage>,
+    _extraction: &Arc<Semaphore>,
+    _id: String,
+    _token: String,
+    _filter: WirePcapFilter,
+    _start_us: u64,
+    _end_us: u64,
+    _limits: WireLimits,
+) -> StartJob {
+    StartJob::Conflict
+}
+
+#[cfg(not(windows))]
 #[allow(clippy::too_many_arguments)]
 fn start_job(
     config: &Arc<ChannelConfig>,
@@ -583,6 +1016,7 @@ fn start_job(
     StartJob::Started
 }
 
+#[cfg(not(windows))]
 async fn terminal_after_worker(
     worker: tokio::task::JoinHandle<PcapResult>,
     producer_done: oneshot::Receiver<()>,
@@ -686,6 +1120,7 @@ impl Stream for UploadBodyStream {
     }
 }
 
+#[cfg(not(windows))]
 #[allow(clippy::too_many_arguments)]
 async fn run_job(
     config: &ChannelConfig,
@@ -726,7 +1161,12 @@ async fn run_job(
         end: Some(end_us),
         limits: limits.into(),
     };
-    let source = PcapSource::Spool(config.spool.clone());
+    let source = PcapSource::Spool(
+        config
+            .spool
+            .clone()
+            .expect("pcap jobs require a configured spool"),
+    );
     let (tx, mut rx) = mpsc::channel::<Bytes>(UPLOAD_CHANNEL_CAPACITY);
     // Server cancellation propagates from the parent token. Local transport
     // failure cancels only this child, so the terminal code remains `error`
@@ -872,9 +1312,12 @@ async fn run_job(
     terminal_from_fetch(fetch_result.unwrap(), cancel, upload_status, upload_error)
 }
 
+#[cfg(not(windows))]
 type FetchJoinResult = Result<Result<pcap::FetchStats, FetchError>, tokio::task::JoinError>;
+#[cfg(not(windows))]
 type UploadJoinResult = Result<Result<reqwest::Response, reqwest::Error>, tokio::task::JoinError>;
 
+#[cfg(not(windows))]
 async fn finish_cancelled_fetch(
     fetch: &mut tokio::task::JoinHandle<Result<pcap::FetchStats, FetchError>>,
     fetched: Option<FetchJoinResult>,
@@ -884,6 +1327,7 @@ async fn finish_cancelled_fetch(
     finish_cancelled_fetch_with_timeout(fetch, fetched, cancel, upload, UPLOAD_STALL_TIMEOUT).await
 }
 
+#[cfg(not(windows))]
 async fn finish_cancelled_fetch_with_timeout(
     fetch: &mut tokio::task::JoinHandle<Result<pcap::FetchStats, FetchError>>,
     fetched: Option<FetchJoinResult>,
@@ -895,6 +1339,7 @@ async fn finish_cancelled_fetch_with_timeout(
     terminal_from_fetch(fetched, cancel, upload, None)
 }
 
+#[cfg(not(windows))]
 async fn finish_failed_upload(
     fetch: &mut tokio::task::JoinHandle<Result<pcap::FetchStats, FetchError>>,
     fetched: Option<FetchJoinResult>,
@@ -912,6 +1357,7 @@ async fn finish_failed_upload(
 /// that the source producer and its extraction permit were gone. The server
 /// has its own bounded settlement fallback, so it may release browser-facing
 /// resources while this agent-side job remains active until libpcap returns.
+#[cfg(not(windows))]
 async fn await_stopped_fetch(
     fetch: &mut tokio::task::JoinHandle<Result<pcap::FetchStats, FetchError>>,
     fetched: Option<FetchJoinResult>,
@@ -931,10 +1377,12 @@ async fn await_stopped_fetch(
     }
 }
 
+#[cfg(not(windows))]
 fn upload_succeeded(result: &UploadJoinResult) -> bool {
     matches!(result, Ok(Ok(response)) if response.status().is_success())
 }
 
+#[cfg(not(windows))]
 fn classify_upload(result: UploadJoinResult) -> (PcapUploadStatus, Option<String>) {
     match result {
         Ok(Ok(response)) if response.status().is_success() => (PcapUploadStatus::Complete, None),
@@ -953,6 +1401,7 @@ fn classify_upload(result: UploadJoinResult) -> (PcapUploadStatus, Option<String
     }
 }
 
+#[cfg(not(windows))]
 fn terminal_from_fetch(
     result: FetchJoinResult,
     cancel: &CancellationToken,
@@ -1018,6 +1467,7 @@ fn terminal_from_fetch(
 
 /// A bounded, cancellation-aware bridge from blocking `pcap::fetch` writes
 /// to the async HTTP request body.
+#[cfg(not(windows))]
 struct ChannelWriter {
     tx: mpsc::Sender<Bytes>,
     buffer: Vec<u8>,
@@ -1025,6 +1475,7 @@ struct ChannelWriter {
     first_sent: bool,
 }
 
+#[cfg(not(windows))]
 impl ChannelWriter {
     fn push(&mut self) -> std::io::Result<()> {
         if self.buffer.is_empty() {
@@ -1065,6 +1516,7 @@ impl ChannelWriter {
     }
 }
 
+#[cfg(not(windows))]
 impl Write for ChannelWriter {
     fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
         let mut remaining = data;
@@ -1092,6 +1544,7 @@ impl Write for ChannelWriter {
     }
 }
 
+#[cfg(not(windows))]
 fn pcap_upload_url(server_url: &str, id: &str) -> String {
     format!("{server_url}{}", agent_pcap_upload_path(id))
 }
@@ -1135,7 +1588,7 @@ fn jitter(delay: Duration) -> Duration {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(windows)))]
 mod tests {
     use super::*;
     use crate::agent::protocol::WireEndpoint;
@@ -1485,6 +1938,314 @@ mod tests {
         StatusCode::BAD_GATEWAY
     }
 
+    fn file_config(server_url: String, directory: &std::path::Path) -> ChannelConfig {
+        ChannelConfig {
+            server_url,
+            hostname: "host".into(),
+            server_key: None,
+            spool: None,
+            filestore: Some(directory.to_path_buf()),
+            disable_certificate_check: false,
+        }
+    }
+
+    #[test]
+    fn file_capabilities_and_negotiation() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = file_config("http://localhost".into(), dir.path());
+        assert_eq!(advertised_capabilities(&config), [CAPABILITY_FILESTORE]);
+        let request = ServerMessage::FileRequest {
+            id: "job".into(),
+            token: "token".into(),
+            sha256: "a".repeat(64),
+            limits: WireLimits {
+                max_bytes: 0,
+                scan_timeout_ms: 1000,
+            },
+        };
+        let mut state = ControlState::default();
+        assert!(!state.accept(&request));
+        assert!(state.accept(&hello(&[CAPABILITY_FILESTORE])));
+        assert!(state.accept(&request));
+        assert!(!state.accept(&pcap_request()));
+    }
+
+    #[tokio::test]
+    async fn file_job_starts_before_upload_and_reports_size_and_bytes() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let (captured_tx, captured_rx) = oneshot::channel();
+        let capture: UploadCapture = Arc::new(Mutex::new(Some(captured_tx)));
+        let app = Router::new()
+            .route("/api/agent/file/job", post(capture_upload))
+            .with_state(capture);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let store = tempfile::tempdir().unwrap();
+        let hash = "a".repeat(64);
+        std::fs::create_dir(store.path().join("aa")).unwrap();
+        std::fs::write(store.path().join("aa").join(&hash), b"test file").unwrap();
+        let config = file_config(format!("http://{addr}"), store.path());
+        let (tx, mut rx) = mpsc::channel(8);
+        let result = run_file_job(
+            &config,
+            &crate::agent::client::build_reqwest_client(false).unwrap(),
+            &Arc::new(Semaphore::new(1)),
+            &tx,
+            "job",
+            "secret",
+            &hash,
+            WireLimits {
+                max_bytes: 9,
+                scan_timeout_ms: 5000,
+            },
+            &CancellationToken::new(),
+        )
+        .await;
+        assert_eq!(
+            rx.recv().await.unwrap(),
+            AgentMessage::FileStart {
+                id: "job".into(),
+                token: "secret".into(),
+                size: 9
+            }
+        );
+        assert_eq!(result.code, FileResultCode::Complete);
+        assert_eq!(result.upload, PcapUploadStatus::Complete);
+        assert_eq!(result.size, Some(9));
+        assert_eq!(result.bytes, 9);
+        let (headers, body) = captured_rx.await.unwrap();
+        assert_eq!(
+            headers.get(reqwest::header::AUTHORIZATION).unwrap(),
+            "Bearer secret"
+        );
+        assert_eq!(
+            headers.get(reqwest::header::CONTENT_TYPE).unwrap(),
+            FILE_CONTENT_TYPE
+        );
+        assert_eq!(headers.get(reqwest::header::CONTENT_LENGTH).unwrap(), "9");
+        assert_eq!(body.as_ref(), b"test file");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn file_job_max_bytes_uploads_only_the_start() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let (captured_tx, captured_rx) = oneshot::channel();
+        let capture: UploadCapture = Arc::new(Mutex::new(Some(captured_tx)));
+        let app = Router::new()
+            .route("/api/agent/file/job", post(capture_upload))
+            .with_state(capture);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let store = tempfile::tempdir().unwrap();
+        let hash = "a".repeat(64);
+        std::fs::create_dir(store.path().join("aa")).unwrap();
+        std::fs::write(store.path().join("aa").join(&hash), b"test file").unwrap();
+        let config = file_config(format!("http://{addr}"), store.path());
+        let (tx, mut rx) = mpsc::channel(8);
+        let result = run_file_job(
+            &config,
+            &crate::agent::client::build_reqwest_client(false).unwrap(),
+            &Arc::new(Semaphore::new(1)),
+            &tx,
+            "job",
+            "secret",
+            &hash,
+            WireLimits {
+                max_bytes: 4,
+                scan_timeout_ms: 5000,
+            },
+            &CancellationToken::new(),
+        )
+        .await;
+        // The announcement and result carry the whole file's size.
+        assert_eq!(
+            rx.recv().await.unwrap(),
+            AgentMessage::FileStart {
+                id: "job".into(),
+                token: "secret".into(),
+                size: 9
+            }
+        );
+        assert_eq!(result.code, FileResultCode::Complete);
+        assert_eq!(result.upload, PcapUploadStatus::Complete);
+        assert_eq!(result.size, Some(9));
+        assert_eq!(result.bytes, 4);
+        let (headers, body) = captured_rx.await.unwrap();
+        assert_eq!(headers.get(reqwest::header::CONTENT_LENGTH).unwrap(), "4");
+        assert_eq!(body.as_ref(), b"test");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn file_transfer_can_outlast_its_first_byte_deadline() {
+        async fn delayed_response(body: Body) -> StatusCode {
+            let bytes = axum::body::to_bytes(body, 1024).await.unwrap();
+            assert_eq!(&bytes[..], b"test file");
+            tokio::time::sleep(Duration::from_millis(1250)).await;
+            StatusCode::OK
+        }
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let app = Router::new().route("/api/agent/file/job", post(delayed_response));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let store = tempfile::tempdir().unwrap();
+        let hash = "a".repeat(64);
+        std::fs::create_dir(store.path().join("aa")).unwrap();
+        std::fs::write(store.path().join("aa").join(&hash), b"test file").unwrap();
+        let config = file_config(format!("http://{addr}"), store.path());
+        let (tx, mut rx) = mpsc::channel(8);
+        let result = tokio::time::timeout(
+            Duration::from_secs(4),
+            run_file_job(
+                &config,
+                &crate::agent::client::build_reqwest_client(false).unwrap(),
+                &Arc::new(Semaphore::new(1)),
+                &tx,
+                "job",
+                "secret",
+                &hash,
+                WireLimits {
+                    max_bytes: 0,
+                    scan_timeout_ms: 1000,
+                },
+                &CancellationToken::new(),
+            ),
+        )
+        .await
+        .unwrap();
+        assert!(matches!(
+            rx.recv().await,
+            Some(AgentMessage::FileStart { size: 9, .. })
+        ));
+        assert_eq!(result.code, FileResultCode::Complete);
+        assert_eq!(result.bytes, 9);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn empty_file_still_sends_start_and_upload() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let (captured_tx, captured_rx) = oneshot::channel();
+        let capture: UploadCapture = Arc::new(Mutex::new(Some(captured_tx)));
+        let app = Router::new()
+            .route("/api/agent/file/job", post(capture_upload))
+            .with_state(capture);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let store = tempfile::tempdir().unwrap();
+        let hash = "d".repeat(64);
+        std::fs::create_dir(store.path().join("dd")).unwrap();
+        std::fs::write(store.path().join("dd").join(&hash), []).unwrap();
+        let config = file_config(format!("http://{addr}"), store.path());
+        let (tx, mut rx) = mpsc::channel(8);
+        let result = run_file_job(
+            &config,
+            &crate::agent::client::build_reqwest_client(false).unwrap(),
+            &Arc::new(Semaphore::new(1)),
+            &tx,
+            "job",
+            "token",
+            &hash,
+            WireLimits {
+                max_bytes: 0,
+                scan_timeout_ms: 5000,
+            },
+            &CancellationToken::new(),
+        )
+        .await;
+        assert_eq!(result.code, FileResultCode::Complete);
+        assert_eq!(result.size, Some(0));
+        assert_eq!(result.bytes, 0);
+        assert!(matches!(
+            rx.recv().await,
+            Some(AgentMessage::FileStart { size: 0, .. })
+        ));
+        assert!(captured_rx.await.unwrap().1.is_empty());
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn file_job_cancel_aborts_stalled_upload() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let (started_tx, started_rx) = oneshot::channel();
+        let started: UploadStarted = Arc::new(Mutex::new(Some(started_tx)));
+        let app = Router::new()
+            .route("/api/agent/file/job", post(stall_upload))
+            .with_state(started);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let store = tempfile::tempdir().unwrap();
+        let hash = "c".repeat(64);
+        std::fs::create_dir(store.path().join("cc")).unwrap();
+        std::fs::write(store.path().join("cc").join(&hash), b"cancel me").unwrap();
+        let config = file_config(format!("http://{addr}"), store.path());
+        let client = crate::agent::client::build_reqwest_client(false).unwrap();
+        let (tx, mut rx) = mpsc::channel(8);
+        let cancel = CancellationToken::new();
+        let worker_cancel = cancel.clone();
+        let worker = tokio::spawn(async move {
+            run_file_job(
+                &config,
+                &client,
+                &Arc::new(Semaphore::new(1)),
+                &tx,
+                "job",
+                "token",
+                &hash,
+                WireLimits {
+                    max_bytes: 0,
+                    scan_timeout_ms: 5000,
+                },
+                &worker_cancel,
+            )
+            .await
+        });
+        assert!(matches!(
+            rx.recv().await,
+            Some(AgentMessage::FileStart { size: 9, .. })
+        ));
+        tokio::time::timeout(Duration::from_secs(2), started_rx)
+            .await
+            .unwrap()
+            .unwrap();
+        cancel.cancel();
+        let result = tokio::time::timeout(Duration::from_secs(2), worker)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(result.code, FileResultCode::Cancelled);
+        assert_eq!(result.upload, PcapUploadStatus::Failed);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn file_job_missing_does_not_start_upload() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let store = tempfile::tempdir().unwrap();
+        let config = file_config("http://127.0.0.1:1".into(), store.path());
+        let client = crate::agent::client::build_reqwest_client(false).unwrap();
+        let files = Arc::new(Semaphore::new(1));
+        let (tx, mut rx) = mpsc::channel(8);
+        let hash = "b".repeat(64);
+        let limits = WireLimits {
+            max_bytes: 1,
+            scan_timeout_ms: 1000,
+        };
+        let cancel = CancellationToken::new();
+        let missing = run_file_job(
+            &config, &client, &files, &tx, "job", "token", &hash, limits, &cancel,
+        )
+        .await;
+        assert_eq!(missing.code, FileResultCode::NotFound);
+        assert!(rx.try_recv().is_err());
+    }
+
     #[tokio::test]
     async fn worker_extracts_and_uploads_a_complete_pcap() {
         let _ = rustls::crypto::ring::default_provider().install_default();
@@ -1508,7 +2269,8 @@ mod tests {
             server_url: format!("http://{address}"),
             hostname: "host".to_string(),
             server_key: None,
-            spool: SpoolConfig::new(directory.path(), None),
+            spool: Some(SpoolConfig::new(directory.path(), None)),
+            filestore: None,
             disable_certificate_check: false,
         };
         let client = crate::agent::client::build_reqwest_client(false).unwrap();
@@ -1572,7 +2334,8 @@ mod tests {
             server_url: format!("http://{address}"),
             hostname: "host".to_string(),
             server_key: None,
-            spool: SpoolConfig::new(directory.path(), None),
+            spool: Some(SpoolConfig::new(directory.path(), None)),
+            filestore: None,
             disable_certificate_check: false,
         };
         let client = crate::agent::client::build_reqwest_client(false).unwrap();
@@ -1631,7 +2394,8 @@ mod tests {
             server_url: format!("http://{address}"),
             hostname: "host".to_string(),
             server_key: None,
-            spool: SpoolConfig::new(directory.path(), None),
+            spool: Some(SpoolConfig::new(directory.path(), None)),
+            filestore: None,
             disable_certificate_check: false,
         };
         let client = crate::agent::client::build_reqwest_client(false).unwrap();

@@ -18,7 +18,8 @@ use bytes::Bytes;
 use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::agent::protocol::{
-    AgentMessage, PcapResult, PcapResultCode, PcapUploadStatus, WireStats,
+    AgentMessage, FileResult, FileResultCode, PcapResult, PcapResultCode, PcapUploadStatus,
+    WireStats,
 };
 use crate::server::agents::{AgentConnectionId, AgentMessageHandler};
 
@@ -39,15 +40,29 @@ struct Task {
     max_bytes: u64,
     body_tx: Mutex<Option<mpsc::Sender<Bytes>>>,
     upload_tx: watch::Sender<UploadState>,
-    result_tx: Mutex<Option<oneshot::Sender<PcapResult>>>,
+    result_tx: Mutex<Option<ResultSender>>,
+    start_tx: Mutex<Option<oneshot::Sender<u64>>>,
     uploading: AtomicBool,
+    file: bool,
     upload_allowed: AtomicBool,
+}
+
+enum ResultSender {
+    Pcap(oneshot::Sender<PcapResult>),
+    File(oneshot::Sender<FileResult>),
 }
 
 pub(crate) struct Handles {
     pub(crate) body_rx: mpsc::Receiver<Bytes>,
     pub(crate) upload_rx: watch::Receiver<UploadState>,
     pub(crate) result_rx: oneshot::Receiver<PcapResult>,
+}
+
+pub(crate) struct FileHandles {
+    pub(crate) body_rx: mpsc::Receiver<Bytes>,
+    pub(crate) upload_rx: watch::Receiver<UploadState>,
+    pub(crate) result_rx: oneshot::Receiver<FileResult>,
+    pub(crate) start_rx: oneshot::Receiver<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -148,13 +163,68 @@ impl Registry {
         generation: u64,
         max_bytes: u64,
     ) -> Result<Handles, RegisterError> {
+        let (result_tx, result_rx) = oneshot::channel();
+        let (body_rx, upload_rx) = self.insert(
+            id,
+            token,
+            agent,
+            generation,
+            max_bytes,
+            ResultSender::Pcap(result_tx),
+            None,
+        )?;
+        Ok(Handles {
+            body_rx,
+            upload_rx,
+            result_rx,
+        })
+    }
+
+    pub(crate) fn register_file(
+        &self,
+        id: String,
+        token: String,
+        agent: String,
+        generation: u64,
+        max_bytes: u64,
+    ) -> Result<FileHandles, RegisterError> {
+        let (result_tx, result_rx) = oneshot::channel();
+        let (start_tx, start_rx) = oneshot::channel();
+        let (body_rx, upload_rx) = self.insert(
+            id,
+            token,
+            agent,
+            generation,
+            max_bytes,
+            ResultSender::File(result_tx),
+            Some(start_tx),
+        )?;
+        Ok(FileHandles {
+            body_rx,
+            upload_rx,
+            result_rx,
+            start_rx,
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn insert(
+        &self,
+        id: String,
+        token: String,
+        agent: String,
+        generation: u64,
+        max_bytes: u64,
+        result_tx: ResultSender,
+        start_tx: Option<oneshot::Sender<u64>>,
+    ) -> Result<(mpsc::Receiver<Bytes>, watch::Receiver<UploadState>), RegisterError> {
         let (body_tx, body_rx) = mpsc::channel(BODY_CHANNEL_CAPACITY);
         let (upload_tx, upload_rx) = watch::channel(UploadState::Pending);
-        let (result_tx, result_rx) = oneshot::channel();
         let mut tasks = self.tasks.write().unwrap();
         if tasks.contains_key(&id) {
             return Err(RegisterError::DuplicateId);
         }
+        let file = matches!(result_tx, ResultSender::File(_));
         tasks.insert(
             id,
             Arc::new(Task {
@@ -165,15 +235,13 @@ impl Registry {
                 body_tx: Mutex::new(Some(body_tx)),
                 upload_tx,
                 result_tx: Mutex::new(Some(result_tx)),
+                start_tx: Mutex::new(start_tx),
+                file,
                 uploading: AtomicBool::new(false),
                 upload_allowed: AtomicBool::new(true),
             }),
         );
-        Ok(Handles {
-            body_rx,
-            upload_rx,
-            result_rx,
-        })
+        Ok((body_rx, upload_rx))
     }
 
     /// Remove exactly one token-bound task. A late result or upload for a
@@ -189,8 +257,16 @@ impl Registry {
     }
 
     pub(crate) fn begin_upload(&self, id: &str, token: &str) -> Option<UploadSink> {
+        self.begin_typed_upload(id, token, false)
+    }
+
+    pub(crate) fn begin_file_upload(&self, id: &str, token: &str) -> Option<UploadSink> {
+        self.begin_typed_upload(id, token, true)
+    }
+
+    fn begin_typed_upload(&self, id: &str, token: &str, file: bool) -> Option<UploadSink> {
         let task = self.tasks.read().unwrap().get(id)?.clone();
-        if !token_matches(&task.token, token) {
+        if task.file != file || !token_matches(&task.token, token) {
             return None;
         }
         // Serialize upload start with result delivery and disconnect
@@ -216,6 +292,24 @@ impl Registry {
         })
     }
 
+    /// The task `id` names, when it is the kind of job `file` says and
+    /// is bound to `connection` and `token`: a job belongs to the exact
+    /// connection it was dispatched on.
+    fn bound_task(
+        &self,
+        connection: &AgentConnectionId,
+        id: &str,
+        token: &str,
+        file: bool,
+    ) -> Option<Arc<Task>> {
+        let task = self.tasks.read().unwrap().get(id).cloned()?;
+        (task.file == file
+            && task.agent == connection.name
+            && task.generation == connection.generation
+            && token_matches(&task.token, token))
+        .then_some(task)
+    }
+
     fn deliver_result(
         &self,
         connection: &AgentConnectionId,
@@ -223,16 +317,9 @@ impl Registry {
         token: &str,
         result: PcapResult,
     ) {
-        let Some(task) = self.tasks.read().unwrap().get(id).cloned() else {
+        let Some(task) = self.bound_task(connection, id, token, false) else {
             return;
         };
-        // A job is bound to the exact connection it was dispatched on.
-        if task.agent != connection.name
-            || task.generation != connection.generation
-            || !token_matches(&task.token, token)
-        {
-            return;
-        }
         let body_tx_guard = task.body_tx.lock().unwrap();
         if !(result.code == PcapResultCode::Complete && result.upload == PcapUploadStatus::Complete)
         {
@@ -241,7 +328,39 @@ impl Registry {
             task.upload_allowed.store(false, Ordering::Release);
         }
         drop(body_tx_guard);
-        if let Some(tx) = task.result_tx.lock().unwrap().take() {
+        if let Some(ResultSender::Pcap(tx)) = task.result_tx.lock().unwrap().take() {
+            let _ = tx.send(result);
+        }
+    }
+
+    /// The announced size is the whole file's, which a job asking for
+    /// only the file's start may well exceed; `max_bytes` bounds the
+    /// upload, not the announcement.
+    fn file_start(&self, connection: &AgentConnectionId, id: &str, token: &str, size: u64) {
+        let Some(task) = self.bound_task(connection, id, token, true) else {
+            return;
+        };
+        if let Some(tx) = task.start_tx.lock().unwrap().take() {
+            let _ = tx.send(size);
+        }
+    }
+
+    fn deliver_file_result(
+        &self,
+        connection: &AgentConnectionId,
+        id: &str,
+        token: &str,
+        result: FileResult,
+    ) {
+        let Some(task) = self.bound_task(connection, id, token, true) else {
+            return;
+        };
+        let _body_tx = task.body_tx.lock().unwrap();
+        if !(result.code == FileResultCode::Complete && result.upload == PcapUploadStatus::Complete)
+        {
+            task.upload_allowed.store(false, Ordering::Release);
+        }
+        if let Some(ResultSender::File(tx)) = task.result_tx.lock().unwrap().take() {
             let _ = tx.send(result);
         }
     }
@@ -258,12 +377,25 @@ impl Registry {
             let _body_tx = task.body_tx.lock().unwrap();
             task.upload_allowed.store(false, Ordering::Release);
             if let Some(tx) = task.result_tx.lock().unwrap().take() {
-                let _ = tx.send(PcapResult {
-                    code: PcapResultCode::Error,
-                    upload: PcapUploadStatus::Failed,
-                    message: Some("agent disconnected".to_string()),
-                    stats: None,
-                });
+                match tx {
+                    ResultSender::Pcap(tx) => {
+                        let _ = tx.send(PcapResult {
+                            code: PcapResultCode::Error,
+                            upload: PcapUploadStatus::Failed,
+                            message: Some("agent disconnected".to_string()),
+                            stats: None,
+                        });
+                    }
+                    ResultSender::File(tx) => {
+                        let _ = tx.send(FileResult {
+                            code: FileResultCode::Error,
+                            upload: PcapUploadStatus::Failed,
+                            message: Some("agent disconnected".to_string()),
+                            size: None,
+                            bytes: 0,
+                        });
+                    }
+                }
             }
         }
     }
@@ -271,8 +403,17 @@ impl Registry {
 
 impl AgentMessageHandler for Registry {
     fn message(&self, connection: &AgentConnectionId, message: AgentMessage) {
-        if let AgentMessage::PcapResult { id, token, result } = message {
-            self.deliver_result(connection, &id, &token, result);
+        match message {
+            AgentMessage::PcapResult { id, token, result } => {
+                self.deliver_result(connection, &id, &token, result)
+            }
+            AgentMessage::FileResult { id, token, result } => {
+                self.deliver_file_result(connection, &id, &token, result)
+            }
+            AgentMessage::FileStart { id, token, size } => {
+                self.file_start(connection, &id, &token, size)
+            }
+            _ => {}
         }
     }
 
@@ -460,6 +601,115 @@ mod tests {
                 stats: None,
             },
         }
+    }
+
+    #[tokio::test]
+    async fn file_start_and_result_are_connection_bound_and_uploads_are_typed() {
+        let tasks = Registry::default();
+        let mut handles = tasks
+            .register_file("file-1".into(), "secret".into(), "sensor-a".into(), 7, 8)
+            .unwrap();
+        let correct = AgentConnectionId {
+            name: "sensor-a".into(),
+            generation: 7,
+        };
+        let old = AgentConnectionId {
+            name: "sensor-a".into(),
+            generation: 6,
+        };
+        tasks.message(
+            &old,
+            AgentMessage::FileStart {
+                id: "file-1".into(),
+                token: "secret".into(),
+                size: 4,
+            },
+        );
+        tasks.message(
+            &correct,
+            AgentMessage::FileStart {
+                id: "file-1".into(),
+                token: "wrong".into(),
+                size: 4,
+            },
+        );
+        assert!(handles.start_rx.try_recv().is_err());
+        tasks.message(
+            &correct,
+            AgentMessage::FileStart {
+                id: "file-1".into(),
+                token: "secret".into(),
+                size: 4,
+            },
+        );
+        assert_eq!(handles.start_rx.await.unwrap(), 4);
+        assert!(tasks.begin_upload("file-1", "secret").is_none());
+        let mut sink = tasks.begin_file_upload("file-1", "secret").unwrap();
+        sink.send(Bytes::from_static(b"data")).await.unwrap();
+        sink.complete();
+        assert_eq!(
+            handles.body_rx.recv().await.unwrap(),
+            Bytes::from_static(b"data")
+        );
+        tasks.message(
+            &old,
+            AgentMessage::FileResult {
+                id: "file-1".into(),
+                token: "secret".into(),
+                result: FileResult {
+                    code: FileResultCode::Complete,
+                    upload: PcapUploadStatus::Complete,
+                    message: None,
+                    size: Some(4),
+                    bytes: 4,
+                },
+            },
+        );
+        assert!(handles.result_rx.try_recv().is_err());
+        tasks.message(
+            &correct,
+            AgentMessage::FileResult {
+                id: "file-1".into(),
+                token: "secret".into(),
+                result: FileResult {
+                    code: FileResultCode::Complete,
+                    upload: PcapUploadStatus::Complete,
+                    message: None,
+                    size: Some(4),
+                    bytes: 4,
+                },
+            },
+        );
+        assert_eq!(handles.result_rx.await.unwrap().bytes, 4);
+    }
+
+    #[tokio::test]
+    async fn file_start_announces_the_whole_size_while_the_upload_is_capped() {
+        let tasks = Registry::default();
+        let handles = tasks
+            .register_file("file-1".into(), "secret".into(), "sensor-a".into(), 7, 4)
+            .unwrap();
+        let connection = AgentConnectionId {
+            name: "sensor-a".into(),
+            generation: 7,
+        };
+        // A request for the start of a large file: the announcement is
+        // the file's size, well beyond the 4-byte upload cap.
+        tasks.message(
+            &connection,
+            AgentMessage::FileStart {
+                id: "file-1".into(),
+                token: "secret".into(),
+                size: 4096,
+            },
+        );
+        assert_eq!(handles.start_rx.await.unwrap(), 4096);
+        let mut sink = tasks.begin_file_upload("file-1", "secret").unwrap();
+        sink.send(Bytes::from_static(b"data")).await.unwrap();
+        assert_eq!(
+            sink.send(Bytes::from_static(b"more")).await,
+            Err(UploadSendError::TooLarge)
+        );
     }
 
     #[test]

@@ -222,7 +222,7 @@ pub(crate) async fn get_agents(
     Json(context.agents.list())
 }
 
-/// Disable the application's global body limit for the streaming PCAP upload
+/// Disable the application's global body limit for streaming agent uploads
 /// route. The job's dispatched byte limit is still enforced while streaming.
 pub(crate) fn upload_body_limit() -> DefaultBodyLimit {
     DefaultBodyLimit::disable()
@@ -262,6 +262,37 @@ pub(crate) async fn upload_pcap(
     }
 }
 
+/// File uploads use the same token-bound, byte-limited streaming sink as pcap.
+pub(crate) async fn upload_file(
+    State(context): State<Arc<ServerContext>>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+    body: Body,
+) -> Response {
+    if !headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(';').next())
+        .is_some_and(|v| v.trim().eq_ignore_ascii_case("application/octet-stream"))
+    {
+        return (
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "file upload requires application/octet-stream",
+        )
+            .into_response();
+    }
+    let Some(bearer) = headers.typed_get::<Authorization<Bearer>>() else {
+        return unknown_upload().into_response();
+    };
+    let Some(sink) = context.pcap_tasks.begin_file_upload(&id, bearer.token()) else {
+        return unknown_upload().into_response();
+    };
+    match receive_upload(&id, sink, body, context.pcap.settings.stall_timeout).await {
+        Ok(()) => StatusCode::OK.into_response(),
+        Err(failure) => (failure.status(), failure.message()).into_response(),
+    }
+}
+
 fn is_pcap_content_type(headers: &HeaderMap) -> bool {
     headers
         .get(header::CONTENT_TYPE)
@@ -271,7 +302,7 @@ fn is_pcap_content_type(headers: &HeaderMap) -> bool {
 }
 
 fn unknown_upload() -> (StatusCode, &'static str) {
-    (StatusCode::GONE, "unknown or expired pcap job")
+    (StatusCode::GONE, "unknown or expired transfer job")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -305,11 +336,11 @@ impl UploadFailure {
 
     fn message(self) -> &'static str {
         match self {
-            Self::AgentError => "pcap upload body failed",
-            Self::AgentStalled => "pcap upload stalled",
-            Self::ClientClosed => "pcap request is no longer accepting upload data",
-            Self::ClientStalled => "pcap upload consumer stalled",
-            Self::TooLarge => "pcap upload exceeds the job limit",
+            Self::AgentError => "agent upload body failed",
+            Self::AgentStalled => "agent upload stalled",
+            Self::ClientClosed => "request is no longer accepting upload data",
+            Self::ClientStalled => "agent upload consumer stalled",
+            Self::TooLarge => "agent upload exceeds the job limit",
         }
     }
 }
@@ -329,14 +360,14 @@ async fn receive_upload(
         // A stream of immediately-ready empty frames must not evade the idle
         // bound by continually winning `timeout_at` without making progress.
         if tokio::time::Instant::now() >= deadline {
-            warn!("PCAP upload {id:?} stalled while reading the agent body");
+            warn!("Agent upload {id:?} stalled while reading the agent body");
             sink.fail(UploadFailure::AgentStalled.reason());
             return Err(UploadFailure::AgentStalled);
         }
         let next = match tokio::time::timeout_at(deadline, stream.next()).await {
             Ok(next) => next,
             Err(_) => {
-                warn!("PCAP upload {id:?} stalled while reading the agent body");
+                warn!("Agent upload {id:?} stalled while reading the agent body");
                 sink.fail(UploadFailure::AgentStalled.reason());
                 return Err(UploadFailure::AgentStalled);
             }
@@ -349,7 +380,7 @@ async fn receive_upload(
         let chunk = match chunk {
             Ok(chunk) => chunk,
             Err(err) => {
-                warn!("PCAP upload {id:?} body read failed: {err}");
+                warn!("Agent upload {id:?} body read failed: {err}");
                 sink.fail(UploadFailure::AgentError.reason());
                 return Err(UploadFailure::AgentError);
             }
@@ -363,17 +394,17 @@ async fn receive_upload(
                 deadline = tokio::time::Instant::now() + stall_timeout;
             }
             Ok(Err(UploadSendError::TooLarge)) => {
-                warn!("PCAP upload {id:?} exceeded its dispatched byte limit");
+                warn!("Agent upload {id:?} exceeded its dispatched byte limit");
                 sink.fail(UploadFailure::TooLarge.reason());
                 return Err(UploadFailure::TooLarge);
             }
             Ok(Err(UploadSendError::ReceiverClosed)) => {
-                debug!("PCAP upload {id:?} stopped because its consumer closed");
+                debug!("Agent upload {id:?} stopped because its consumer closed");
                 sink.fail(UploadFailure::ClientClosed.reason());
                 return Err(UploadFailure::ClientClosed);
             }
             Err(_) => {
-                warn!("PCAP upload {id:?} stalled while forwarding bytes");
+                warn!("Agent upload {id:?} stalled while forwarding bytes");
                 sink.fail(UploadFailure::ClientStalled.reason());
                 return Err(UploadFailure::ClientStalled);
             }
@@ -561,7 +592,10 @@ async fn connection(
 }
 
 fn server_capabilities() -> Vec<String> {
-    vec![CAPABILITY_PCAP.to_string()]
+    vec![
+        CAPABILITY_PCAP.to_string(),
+        crate::agent::protocol::CAPABILITY_FILESTORE.to_string(),
+    ]
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1029,7 +1063,8 @@ mod tests {
             server_url: format!("http://{address}"),
             hostname: "test-host".to_string(),
             server_key: Some(key),
-            spool: SpoolConfig::new(testdata("spool"), None),
+            spool: Some(SpoolConfig::new(testdata("spool"), None)),
+            filestore: None,
             disable_certificate_check: false,
         }));
         (address, server, agent, context, dir)
@@ -1532,6 +1567,85 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn remote_filestore_download_and_missing_file_over_loopback() {
+        let (address, server, context, dir) = serve_test_server(PcapSettings::default()).await;
+        let sha = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+        let store = dir.path().join("filestore");
+        tokio::fs::create_dir_all(store.join("2c")).await.unwrap();
+        tokio::fs::write(store.join("2c").join(sha), b"hello")
+            .await
+            .unwrap();
+        let empty = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        tokio::fs::create_dir_all(store.join("e3")).await.unwrap();
+        tokio::fs::write(store.join("e3").join(empty), b"")
+            .await
+            .unwrap();
+        let large = "2287d207f24a941ff3b56c04c8a25ad56b63e3023207b3bb5b4ac0c9869d74be";
+        tokio::fs::create_dir_all(store.join("22")).await.unwrap();
+        tokio::fs::write(store.join("22").join(large), vec![b'a'; 200_000])
+            .await
+            .unwrap();
+        let key = add_test_key(&context, "test-sensor").await;
+        let agent = tokio::spawn(channel::run(ChannelConfig {
+            server_url: format!("http://{address}"),
+            hostname: "test-host".to_string(),
+            server_key: Some(key),
+            spool: None,
+            filestore: Some(store),
+            disable_certificate_check: false,
+        }));
+        let client = reqwest::Client::new();
+        wait_for_agent(&client, address).await;
+        let sources: Value = client
+            .get(format!("http://{address}/api/filestore/sources"))
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        assert_eq!(sources["sources"][0]["name"], "test-sensor");
+        let url =
+            |sha: &str| format!("http://{address}/api/filestore?sha256={sha}&source=test-sensor");
+        let response = tokio::time::timeout(Duration::from_secs(10), client.get(url(sha)).send())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[reqwest::header::CONTENT_LENGTH], "5");
+        assert_eq!(
+            response.headers()[reqwest::header::CONTENT_TYPE],
+            "application/octet-stream"
+        );
+        assert_eq!(response.headers()["x-evebox-file-source"], "test-sensor");
+        assert_eq!(response.bytes().await.unwrap().as_ref(), b"hello");
+        let response = client.get(url(large)).send().await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers()[reqwest::header::CONTENT_LENGTH],
+            "200000"
+        );
+        assert_eq!(
+            response.bytes().await.unwrap().as_ref(),
+            vec![b'a'; 200_000]
+        );
+        let response = client.get(url(empty)).send().await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[reqwest::header::CONTENT_LENGTH], "0");
+        assert!(response.bytes().await.unwrap().is_empty());
+        let missing = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let response = client.get(url(missing)).send().await.unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(
+            response.json::<Value>().await.unwrap()["error"]["code"],
+            "file-not-found"
+        );
+        assert_eq!(context.pcap_tasks.len(), 0);
+        agent.abort();
+        server.abort();
+    }
+
+    #[tokio::test]
     async fn upload_endpoint_rejects_bad_and_reused_tokens_over_http() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let _handles = context
@@ -1559,6 +1673,47 @@ mod tests {
         assert_eq!(upload("secret").send().await.unwrap().status(), 410);
 
         context.pcap_tasks.remove("job-token-test", "secret");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn file_upload_rejects_wrong_token_type_and_reuse() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        let _handles = context
+            .pcap_tasks
+            .register_file(
+                "file-token-test".into(),
+                "secret".into(),
+                "test-sensor".into(),
+                1,
+                8,
+            )
+            .unwrap();
+        let client = reqwest::Client::new();
+        let url = format!("http://{address}/api/agent/file/file-token-test");
+        let upload = |token: &'static str| {
+            client
+                .post(url.clone())
+                .bearer_auth(token)
+                .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+                .body("data")
+        };
+        assert_eq!(upload("wrong").send().await.unwrap().status(), 410);
+        assert_eq!(
+            client
+                .post(format!("http://{address}/api/agent/pcap/file-token-test"))
+                .bearer_auth("secret")
+                .header(reqwest::header::CONTENT_TYPE, PCAP_CONTENT_TYPE)
+                .body("data")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            410
+        );
+        assert_eq!(upload("secret").send().await.unwrap().status(), 200);
+        assert_eq!(upload("secret").send().await.unwrap().status(), 410);
+        context.pcap_tasks.remove("file-token-test", "secret");
         server.abort();
     }
 

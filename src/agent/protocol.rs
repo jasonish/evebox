@@ -45,6 +45,14 @@ pub(crate) const PCAP_CONTENT_TYPE: &str = "application/vnd.tcpdump.pcap";
 #[cfg_attr(windows, allow(dead_code))]
 pub(crate) const AGENT_PCAP_UPLOAD_ROUTE: &str = "/api/agent/pcap/{id}";
 
+/// File-store upload endpoint and content type.
+pub(crate) const AGENT_FILE_UPLOAD_ROUTE: &str = "/api/agent/file/{id}";
+pub(crate) const FILE_CONTENT_TYPE: &str = "application/octet-stream";
+
+pub(crate) fn agent_file_upload_path(id: &str) -> String {
+    format!("/api/agent/file/{id}")
+}
+
 /// The concrete upload request path for one job.
 #[cfg_attr(windows, allow(dead_code))]
 pub(crate) fn agent_pcap_upload_path(id: &str) -> String {
@@ -92,9 +100,13 @@ pub(crate) enum WirePcapFilter {
 /// Effective extraction limits selected by the server.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct WireLimits {
-    /// Maximum output bytes, including the classic pcap file header.
+    /// Maximum output bytes. For a PCAP job this includes the classic
+    /// pcap file header and the output is truncated at it. For a file job
+    /// only the first `max_bytes` of the file are uploaded; 0 uploads the
+    /// whole file.
     pub(crate) max_bytes: u64,
-    /// Maximum scan time; output backpressure is not charged to this limit.
+    /// PCAP scan-time limit; for file jobs, bounds queueing, open and the
+    /// first read. Neither kind charges a progressing HTTP upload to it.
     pub(crate) scan_timeout_ms: u64,
 }
 
@@ -163,6 +175,26 @@ impl PcapResult {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum FileResultCode {
+    Complete,
+    NotFound,
+    Cancelled,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub(crate) struct FileResult {
+    pub(crate) code: FileResultCode,
+    pub(crate) upload: PcapUploadStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) size: Option<u64>,
+    pub(crate) bytes: u64,
+}
+
 /// Messages sent from the server to an agent.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "kebab-case")]
@@ -184,6 +216,13 @@ pub(crate) enum ServerMessage {
         end_us: u64,
         limits: WireLimits,
     },
+    /// Retrieve one content-addressed extracted file.
+    FileRequest {
+        id: String,
+        token: String,
+        sha256: String,
+        limits: WireLimits,
+    },
     /// Cancel a job. Best effort: a job whose control channel is gone is
     /// cancelled by the agent itself.
     Cancel { id: String, token: String },
@@ -196,6 +235,18 @@ pub(crate) enum ServerMessage {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub(crate) enum AgentMessage {
+    /// Emitted after opening and checking the file, before HTTP upload.
+    FileStart {
+        id: String,
+        token: String,
+        size: u64,
+    },
+    FileResult {
+        id: String,
+        token: String,
+        #[serde(flatten)]
+        result: FileResult,
+    },
     /// Exactly one terminal result is produced for every accepted job.
     PcapResult {
         id: String,
@@ -454,6 +505,48 @@ mod tests {
             serde_json::from_str::<AgentMessage>(&text).unwrap(),
             message
         );
+    }
+
+    #[test]
+    fn file_messages_round_trip() {
+        let request = ServerMessage::FileRequest {
+            id: "job".into(),
+            token: "secret".into(),
+            sha256: "a".repeat(64),
+            limits: WireLimits {
+                max_bytes: 0,
+                scan_timeout_ms: 60_000,
+            },
+        };
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains(r#""type":"file-request""#));
+        assert_eq!(
+            serde_json::from_str::<ServerMessage>(&json).unwrap(),
+            request
+        );
+        let start = AgentMessage::FileStart {
+            id: "job".into(),
+            token: "secret".into(),
+            size: 42,
+        };
+        assert_eq!(
+            serde_json::from_str::<AgentMessage>(&serde_json::to_string(&start).unwrap()).unwrap(),
+            start
+        );
+        let result = AgentMessage::FileResult {
+            id: "job".into(),
+            token: "secret".into(),
+            result: FileResult {
+                code: FileResultCode::Complete,
+                upload: PcapUploadStatus::Complete,
+                message: None,
+                size: Some(42),
+                bytes: 42,
+            },
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains(r#""type":"file-result""#));
+        assert_eq!(serde_json::from_str::<AgentMessage>(&json).unwrap(), result);
     }
 
     #[test]

@@ -116,6 +116,10 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
             crate::agent::protocol::AGENT_PCAP_UPLOAD_ROUTE,
             post(agent::upload_pcap).layer(agent::upload_body_limit()),
         )
+        .route(
+            crate::agent::protocol::AGENT_FILE_UPLOAD_ROUTE,
+            post(agent::upload_file).layer(agent::upload_body_limit()),
+        )
         .route("/api/pcap", post(pcap::post_pcap).get(pcap::get_pcap))
         .route("/api/pcap/validate", get(pcap::validate_pcap))
         .route("/api/pcap/sources", get(pcap::get_sources))
