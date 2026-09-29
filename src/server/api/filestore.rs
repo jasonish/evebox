@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 //! Extracted file retrieval API: `GET /api/filestore` streams a file
-//! Suricata stored with its file-store output.
+//! Suricata stored with its file-store output, and
+//! `GET /api/filestore/preview` returns the first 64 KiB of one.
 //!
 //! Extracted files are untrusted content captured off the network, so
-//! they are only ever served as opaque attachments named by their
-//! digest — never inline and never under the file name seen on the
-//! wire.
+//! downloads are only ever served as opaque attachments named by their
+//! digest — never inline as a document and never under the file name
+//! seen on the wire. A preview returns raw bytes for the UI to display
+//! as data (hex, text, strings); it is never meant for the browser to
+//! render, and carries the same no-sniff and sandbox headers.
 
 use crate::agent::protocol::{
     FileResult, FileResultCode, PcapUploadStatus, ServerMessage, WireLimits,
@@ -32,7 +35,7 @@ use crate::prelude::*;
 use crate::server::ServerContext;
 use crate::server::api::pcap::remote_addr;
 use crate::server::api::util::{error_response, present};
-use crate::server::filestore::{self, EventFile, OpenError, Sha256};
+use crate::server::filestore::{self, EventFile, Lane, OpenError, Sha256};
 use crate::server::main::SessionExtractor;
 use crate::server::routing::{Resolved, RouteError};
 
@@ -52,6 +55,21 @@ pub(crate) struct FileRequestParams {
     /// Optional explicit source name, bypassing routing.
     #[serde(default)]
     pub source: Option<String>,
+}
+
+/// How much of a file a preview returns: always the start of the file,
+/// never more than this. The rest has to be downloaded.
+pub(crate) const PREVIEW_LENGTH: u64 = 64 * 1024;
+
+/// What a request does once the file and its source are resolved.
+#[derive(Debug, Clone, Copy)]
+enum Mode {
+    /// Stream the whole file as an attachment.
+    Download,
+    /// Pre-flight for a download: resolve and check, but send nothing.
+    Validate,
+    /// Return the start of the file for in-app display.
+    Preview,
 }
 
 /// `GET /api/filestore`: stream an extracted file as an attachment.
@@ -84,6 +102,33 @@ pub(crate) async fn validate_file(
     let user = session.username.clone().unwrap_or_else(|| "-".to_string());
     let remote = remote_addr(&context, &headers, remote);
     match handle(&context, &params, &user, remote, true).await {
+        Ok(response) => response,
+        Err(response) => *response,
+    }
+}
+
+/// `GET /api/filestore/preview`: the first [`PREVIEW_LENGTH`] bytes of
+/// an extracted file, for the UI's hex, text and strings views. The
+/// response is fully buffered, so an agent failure is still a JSON error.
+pub(crate) async fn preview_file(
+    State(context): State<Arc<ServerContext>>,
+    SessionExtractor(session): SessionExtractor,
+    Extension(ConnectInfo(remote)): Extension<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+    Query(params): Query<FileRequestParams>,
+) -> Response {
+    let user = session.username.clone().unwrap_or_else(|| "-".to_string());
+    let remote = remote_addr(&context, &headers, remote);
+    preview(&context, &params, &user, remote).await
+}
+
+async fn preview(
+    context: &Arc<ServerContext>,
+    params: &FileRequestParams,
+    user: &str,
+    remote: String,
+) -> Response {
+    match handle_mode(context, params, user, remote, Mode::Preview).await {
         Ok(response) => response,
         Err(response) => *response,
     }
@@ -326,19 +371,16 @@ fn open_error(audit: &AuditContext, err: OpenError) -> Box<Response> {
     }
 }
 
-/// Response headers for a successful download. The content is untrusted:
-/// force a download, forbid sniffing, and sandbox it should a browser
-/// ever render it anyway.
-fn file_headers(audit: &AuditContext, sha256: &Sha256, size: u64) -> HeaderMap {
+/// Headers common to every response carrying file bytes. The content is
+/// untrusted: forbid sniffing, sandbox it should a browser ever render
+/// it anyway, and keep it out of caches.
+fn untrusted_bytes_headers(audit: &AuditContext, length: u64) -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(
         CONTENT_TYPE,
         HeaderValue::from_static("application/octet-stream"),
     );
-    if let Ok(value) = HeaderValue::from_str(&format!("attachment; filename=\"{sha256}\"")) {
-        headers.insert(CONTENT_DISPOSITION, value);
-    }
-    headers.insert(CONTENT_LENGTH, HeaderValue::from(size));
+    headers.insert(CONTENT_LENGTH, HeaderValue::from(length));
     headers.insert(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
     headers.insert(CONTENT_SECURITY_POLICY, HeaderValue::from_static("sandbox"));
     headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
@@ -348,6 +390,36 @@ fn file_headers(audit: &AuditContext, sha256: &Sha256, size: u64) -> HeaderMap {
     headers
 }
 
+/// Response headers for a successful download: the untrusted-bytes set,
+/// forced to download under the file's digest.
+fn file_headers(audit: &AuditContext, sha256: &Sha256, size: u64) -> HeaderMap {
+    let mut headers = untrusted_bytes_headers(audit, size);
+    if let Ok(value) = HeaderValue::from_str(&format!("attachment; filename=\"{sha256}\"")) {
+        headers.insert(CONTENT_DISPOSITION, value);
+    }
+    headers
+}
+
+/// A successful preview: the untrusted-bytes set plus the file's total
+/// size. No `Content-Disposition`: the UI fetches the bytes and displays
+/// them as data.
+fn preview_response(audit: &AuditContext, size: u64, bytes: Vec<u8>) -> Response {
+    let mut headers = untrusted_bytes_headers(audit, bytes.len() as u64);
+    headers.insert(
+        HeaderName::from_static("x-evebox-file-size"),
+        HeaderValue::from(size),
+    );
+    (headers, Body::from(bytes)).into_response()
+}
+
+/// Read up to `length` bytes from the start of an open local file.
+async fn read_local_prefix(file: tokio::fs::File, length: u64) -> std::io::Result<Vec<u8>> {
+    use tokio::io::AsyncReadExt;
+    let mut bytes = Vec::with_capacity(length as usize);
+    file.take(length).read_to_end(&mut bytes).await?;
+    Ok(bytes)
+}
+
 async fn handle(
     context: &Arc<ServerContext>,
     params: &FileRequestParams,
@@ -355,13 +427,28 @@ async fn handle(
     remote: String,
     dry_run: bool,
 ) -> FileResponseResult {
+    let mode = if dry_run {
+        Mode::Validate
+    } else {
+        Mode::Download
+    };
+    handle_mode(context, params, user, remote, mode).await
+}
+
+async fn handle_mode(
+    context: &Arc<ServerContext>,
+    params: &FileRequestParams,
+    user: &str,
+    remote: String,
+    mode: Mode,
+) -> FileResponseResult {
     let mut audit = AuditContext {
         user: user.to_string(),
         remote,
         event_id: params.event_id.clone().unwrap_or_else(|| "-".to_string()),
         sha256: "-".to_string(),
         source: "-".to_string(),
-        dry_run,
+        dry_run: matches!(mode, Mode::Validate),
     };
 
     let event = match present(&params.event_id) {
@@ -419,7 +506,27 @@ async fn handle(
                     "no local file store is configured",
                 ));
             };
-            if dry_run {
+            if matches!(mode, Mode::Preview) {
+                let (handle, size) = store
+                    .open(&file.sha256)
+                    .await
+                    .map_err(|err| open_error(&audit, err))?;
+                let length = size.min(PREVIEW_LENGTH);
+                let bytes = read_local_prefix(handle, length).await.map_err(|err| {
+                    error!("filestore: failed to read {}: {err}", audit.sha256);
+                    fail(
+                        &audit,
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "io",
+                        "failed to read the file store",
+                    )
+                })?;
+                // The file may have been shorter than its size at open
+                // (it never should be); report what was actually read.
+                audit.log("preview", Some(bytes.len() as u64));
+                return Ok(preview_response(&audit, size, bytes));
+            }
+            if matches!(mode, Mode::Validate) {
                 let size = store
                     .stat(&file.sha256)
                     .await
@@ -447,14 +554,23 @@ async fn handle(
             Ok((file_headers(&audit, &file.sha256, size), body).into_response())
         }
         Resolved::Agent(entry) => {
-            if dry_run {
-                return Ok(Json(json!({
-                    "ok": true, "sha256": file.sha256.as_str(),
-                    "filename": file.sha256.as_str(), "source": audit.source,
-                }))
-                .into_response());
-            }
-            let Some(permits) = context.filestore.try_acquire(&entry.name) else {
+            let preview = match mode {
+                Mode::Validate => {
+                    return Ok(Json(json!({
+                        "ok": true, "sha256": file.sha256.as_str(),
+                        "filename": file.sha256.as_str(), "source": audit.source,
+                    }))
+                    .into_response());
+                }
+                Mode::Download => false,
+                Mode::Preview => true,
+            };
+            let lane = if preview {
+                Lane::Preview
+            } else {
+                Lane::Download
+            };
+            let Some(permits) = context.filestore.try_acquire(&entry.name, lane) else {
                 return Err(fail(
                     &audit,
                     StatusCode::TOO_MANY_REQUESTS,
@@ -462,7 +578,11 @@ async fn handle(
                     "file source is busy",
                 ));
             };
-            stream_agent_file(context, entry, &file.sha256, audit, permits).await
+            if preview {
+                preview_agent_file(context, entry, &file.sha256, audit, permits).await
+            } else {
+                stream_agent_file(context, entry, &file.sha256, audit, permits).await
+            }
         }
     }
 }
@@ -531,18 +651,22 @@ fn late_result_error(result: &FileResult) -> (&'static str, &'static str) {
     }
 }
 
+/// Check a finished job: the agent's result, the upload and the bytes
+/// received must all agree. `size` is the file's announced size and
+/// `upload_len` how much of it the job was asked to upload.
 fn verify_file_result(
     result: &FileResult,
     upload: &UploadState,
     size: u64,
+    upload_len: u64,
     bytes: u64,
 ) -> std::io::Result<()> {
     if result.code != FileResultCode::Complete
         || result.upload != PcapUploadStatus::Complete
         || result.size != Some(size)
-        || result.bytes != size
-        || bytes != size
-        || !matches!(upload, UploadState::Complete { bytes: uploaded } if *uploaded == size)
+        || result.bytes != upload_len
+        || bytes != upload_len
+        || !matches!(upload, UploadState::Complete { bytes: uploaded } if *uploaded == upload_len)
     {
         return Err(std::io::Error::other(
             "file agent result, upload and announced size disagree",
@@ -586,17 +710,40 @@ async fn await_file_start(
     }
 }
 
-async fn stream_agent_file(
+/// A remote file job whose upload has begun: the announced size, the
+/// first chunk, and the channels to read the rest from.
+struct AgentFileStart {
+    size: u64,
+    first: Option<Bytes>,
+    body_rx: mpsc::Receiver<Bytes>,
+    upload_rx: watch::Receiver<UploadState>,
+    result_rx: oneshot::Receiver<FileResult>,
+    early_result: Option<FileResult>,
+    guard: FileJobGuard,
+}
+
+enum AgentFileOutcome {
+    /// A zero-byte file, already verified against the agent's result.
+    Empty,
+    /// A non-empty file with its upload under way.
+    Started(AgentFileStart),
+}
+
+/// Start a remote file job and wait for its upload to begin, so any
+/// failure up to that point can still be returned as a JSON error. A
+/// nonzero `max_bytes` asks the agent to upload only the file's start
+/// and caps what the upload endpoint accepts for the job.
+async fn start_agent_file(
     context: &Arc<ServerContext>,
     entry: Arc<AgentEntry>,
     sha256: &Sha256,
-    audit: AuditContext,
-    permits: (OwnedSemaphorePermit, OwnedSemaphorePermit),
-) -> FileResponseResult {
+    audit: &AuditContext,
+    max_bytes: u64,
+) -> Result<AgentFileOutcome, Box<Response>> {
     let settings = &context.pcap.settings;
     if !entry.probe_liveness(settings.liveness_timeout).await {
         return Err(fail(
-            &audit,
+            audit,
             StatusCode::SERVICE_UNAVAILABLE,
             "agent-unresponsive",
             "file agent is not responding",
@@ -620,11 +767,14 @@ async fn stream_agent_file(
             token.clone(),
             entry.name.clone(),
             entry.generation,
-            u64::MAX,
+            // The upload endpoint refuses more than was asked for. A
+            // whole-file request is bounded by the announced size once
+            // it streams.
+            if max_bytes == 0 { u64::MAX } else { max_bytes },
         )
         .map_err(|_| {
             fail(
-                &audit,
+                audit,
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",
                 "duplicate file job id",
@@ -642,7 +792,7 @@ async fn stream_agent_file(
         token,
         sha256: sha256.as_str().to_string(),
         limits: WireLimits {
-            max_bytes: 0,
+            max_bytes,
             // The agent's deadline for queueing, opening and announcing
             // the file is how long this side waits for the announcement,
             // as for packet capture.
@@ -654,7 +804,7 @@ async fn stream_agent_file(
     if context.agents.try_send_current(&entry, message).is_err() {
         guard.finished = true;
         return Err(fail(
-            &audit,
+            audit,
             StatusCode::SERVICE_UNAVAILABLE,
             "agent-unavailable",
             "file agent is not accepting requests",
@@ -676,26 +826,21 @@ async fn stream_agent_file(
                 && matches!(*upload_rx.borrow(), UploadState::Pending)
             {
                 return Err(fail(
-                    &audit,
+                    audit,
                     StatusCode::NOT_FOUND,
                     "file-not-found",
                     "the file is not in the file store (it was not stored, or has been pruned)",
                 ));
             }
             let (code, message) = late_result_error(&result);
-            return Err(fail(&audit, StatusCode::BAD_GATEWAY, code, message));
+            return Err(fail(audit, StatusCode::BAD_GATEWAY, code, message));
         }
         Ok(Err(message)) => {
-            return Err(fail(
-                &audit,
-                StatusCode::BAD_GATEWAY,
-                "agent-error",
-                message,
-            ));
+            return Err(fail(audit, StatusCode::BAD_GATEWAY, "agent-error", message));
         }
         Err(_) => {
             return Err(fail(
-                &audit,
+                audit,
                 StatusCode::GATEWAY_TIMEOUT,
                 "timeout",
                 "file agent did not respond in time",
@@ -731,15 +876,15 @@ async fn stream_agent_file(
         }
     }).await {
         Ok(Ok(first)) => first,
-        Ok(Err((code, message))) => return Err(fail(&audit, StatusCode::BAD_GATEWAY, code, message)),
-        Err(_) => return Err(fail(&audit, StatusCode::GATEWAY_TIMEOUT, "timeout", "file agent did not upload in time")),
+        Ok(Err((code, message))) => return Err(fail(audit, StatusCode::BAD_GATEWAY, code, message)),
+        Err(_) => return Err(fail(audit, StatusCode::GATEWAY_TIMEOUT, "timeout", "file agent did not upload in time")),
     };
     if first
         .as_ref()
         .is_some_and(|chunk| chunk.len() as u64 > size)
     {
         return Err(fail(
-            &audit,
+            audit,
             StatusCode::BAD_GATEWAY,
             "agent-protocol",
             "file upload exceeds announced size",
@@ -752,7 +897,7 @@ async fn stream_agent_file(
                 Ok(Ok(result)) => result,
                 _ => {
                     return Err(fail(
-                        &audit,
+                        audit,
                         StatusCode::GATEWAY_TIMEOUT,
                         "timeout",
                         "file agent omitted its result",
@@ -760,18 +905,92 @@ async fn stream_agent_file(
                 }
             },
         };
-        if verify_file_result(&result, &upload_rx.borrow(), 0, 0).is_err() {
+        if verify_file_result(&result, &upload_rx.borrow(), 0, 0, 0).is_err() {
             return Err(fail(
-                &audit,
+                audit,
                 StatusCode::BAD_GATEWAY,
                 "agent-error",
                 "file upload and result disagree",
             ));
         }
         guard.disarm();
-        audit.log("ok", Some(0));
-        return Ok((file_headers(&audit, sha256, 0), Body::empty()).into_response());
+        return Ok(AgentFileOutcome::Empty);
     }
+    Ok(AgentFileOutcome::Started(AgentFileStart {
+        size,
+        first,
+        body_rx,
+        upload_rx,
+        result_rx,
+        early_result,
+        guard,
+    }))
+}
+
+/// Once a remote file's bytes have all arrived, wait for the agent's
+/// terminal result and the upload's completion and check they agree
+/// with the announced size and the upload length asked for.
+async fn finish_agent_file(
+    early_result: Option<FileResult>,
+    result_rx: &mut oneshot::Receiver<FileResult>,
+    upload_rx: &mut watch::Receiver<UploadState>,
+    size: u64,
+    upload_len: u64,
+    bytes: u64,
+    stall: std::time::Duration,
+) -> std::io::Result<()> {
+    let result = if let Some(result) = early_result {
+        result
+    } else {
+        tokio::time::timeout(stall, &mut *result_rx)
+            .await
+            .map_err(|_| {
+                std::io::Error::new(std::io::ErrorKind::TimedOut, "file result timed out")
+            })?
+            .map_err(|_| std::io::Error::other("file result channel closed"))?
+    };
+    // Upload state and result delivery are independent. A clean EOF on
+    // the body channel precedes the upload's Complete watch state.
+    if !matches!(
+        *upload_rx.borrow(),
+        UploadState::Complete { .. } | UploadState::Failed { .. }
+    ) {
+        tokio::time::timeout(stall, upload_rx.changed())
+            .await
+            .map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "file upload completion timed out",
+                )
+            })?
+            .map_err(|_| std::io::Error::other("upload state channel closed"))?;
+    }
+    verify_file_result(&result, &upload_rx.borrow(), size, upload_len, bytes)
+}
+
+async fn stream_agent_file(
+    context: &Arc<ServerContext>,
+    entry: Arc<AgentEntry>,
+    sha256: &Sha256,
+    audit: AuditContext,
+    permits: (OwnedSemaphorePermit, OwnedSemaphorePermit),
+) -> FileResponseResult {
+    let AgentFileStart {
+        size,
+        first,
+        body_rx,
+        upload_rx,
+        result_rx,
+        early_result,
+        guard,
+    } = match start_agent_file(context, entry, sha256, &audit, 0).await? {
+        AgentFileOutcome::Empty => {
+            audit.log("ok", Some(0));
+            return Ok((file_headers(&audit, sha256, 0), Body::empty()).into_response());
+        }
+        AgentFileOutcome::Started(start) => start,
+    };
+    let settings = &context.pcap.settings;
     let stream = FileStream {
         body_rx,
         upload_rx,
@@ -864,39 +1083,114 @@ impl FileStream {
         Ok(Some(chunk))
     }
 
-    /// Wait for the agent's terminal result and the upload's completion,
-    /// check they agree with the announced size, and release the job.
+    /// Verify the ended upload against the agent's result and the
+    /// announced size, and release the job.
     async fn finish(&mut self, stall: std::time::Duration) -> std::io::Result<()> {
-        let result = if let Some(result) = self.result.take() {
-            result
-        } else {
-            tokio::time::timeout(stall, &mut self.result_rx)
-                .await
-                .map_err(|_| {
-                    std::io::Error::new(std::io::ErrorKind::TimedOut, "file result timed out")
-                })?
-                .map_err(|_| std::io::Error::other("file result channel closed"))?
-        };
-        // Upload state and result delivery are independent. A clean EOF
-        // on the body channel precedes the upload's Complete watch state.
-        if !matches!(
-            *self.upload_rx.borrow(),
-            UploadState::Complete { .. } | UploadState::Failed { .. }
-        ) {
-            tokio::time::timeout(stall, self.upload_rx.changed())
-                .await
-                .map_err(|_| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "file upload completion timed out",
-                    )
-                })?
-                .map_err(|_| std::io::Error::other("upload state channel closed"))?;
-        }
-        verify_file_result(&result, &self.upload_rx.borrow(), self.size, self.bytes)?;
+        finish_agent_file(
+            self.result.take(),
+            &mut self.result_rx,
+            &mut self.upload_rx,
+            self.size,
+            self.size,
+            self.bytes,
+            stall,
+        )
+        .await?;
         self.guard.disarm();
         Ok(())
     }
+}
+
+/// Preview the start of a remote file. The agent is asked to upload only
+/// the first [`PREVIEW_LENGTH`] bytes, and the preview is verified
+/// against its result like a download; a failed verification is an
+/// error, never partial data.
+async fn preview_agent_file(
+    context: &Arc<ServerContext>,
+    entry: Arc<AgentEntry>,
+    sha256: &Sha256,
+    audit: AuditContext,
+    _permits: (OwnedSemaphorePermit, OwnedSemaphorePermit),
+) -> FileResponseResult {
+    let AgentFileStart {
+        size,
+        first,
+        mut body_rx,
+        mut upload_rx,
+        mut result_rx,
+        early_result,
+        mut guard,
+    } = match start_agent_file(context, entry, sha256, &audit, PREVIEW_LENGTH).await? {
+        AgentFileOutcome::Empty => {
+            audit.log("preview", Some(0));
+            return Ok(preview_response(&audit, 0, Vec::new()));
+        }
+        AgentFileOutcome::Started(start) => start,
+    };
+    let end = size.min(PREVIEW_LENGTH);
+    let stall = context.pcap.settings.stall_timeout;
+    let stalled = |audit: &AuditContext| {
+        fail(
+            audit,
+            StatusCode::GATEWAY_TIMEOUT,
+            "timeout",
+            "file upload stalled",
+        )
+    };
+    let oversize = |audit: &AuditContext| {
+        fail(
+            audit,
+            StatusCode::BAD_GATEWAY,
+            "agent-protocol",
+            "file upload exceeds the requested length",
+        )
+    };
+    let mut bytes = Vec::with_capacity(end as usize);
+    let mut next = first;
+    loop {
+        let chunk = match next.take() {
+            Some(chunk) => chunk,
+            None => match tokio::time::timeout(stall, body_rx.recv()).await {
+                Ok(Some(chunk)) => chunk,
+                Ok(None) => break,
+                Err(_) => return Err(stalled(&audit)),
+            },
+        };
+        if bytes.len() as u64 + chunk.len() as u64 > end {
+            return Err(oversize(&audit));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    if (bytes.len() as u64) < end {
+        return Err(fail(
+            &audit,
+            StatusCode::BAD_GATEWAY,
+            "agent-error",
+            "file upload ended early",
+        ));
+    }
+    if let Err(err) = finish_agent_file(
+        early_result,
+        &mut result_rx,
+        &mut upload_rx,
+        size,
+        end,
+        bytes.len() as u64,
+        stall,
+    )
+    .await
+    {
+        debug!("filestore: preview of {sha256} failed verification: {err}");
+        return Err(fail(
+            &audit,
+            StatusCode::BAD_GATEWAY,
+            "agent-error",
+            "file upload and result disagree",
+        ));
+    }
+    guard.disarm();
+    audit.log("preview", Some(bytes.len() as u64));
+    Ok(preview_response(&audit, size, bytes))
 }
 
 #[cfg(test)]
@@ -984,9 +1278,10 @@ mod test {
             size: Some(5),
             bytes: 5,
         };
-        assert!(verify_file_result(&result, &UploadState::Complete { bytes: 5 }, 5, 5).is_ok());
-        assert!(verify_file_result(&result, &UploadState::Complete { bytes: 4 }, 5, 5).is_err());
-        assert!(verify_file_result(&result, &UploadState::Complete { bytes: 5 }, 5, 4).is_err());
+        let complete = |bytes| UploadState::Complete { bytes };
+        assert!(verify_file_result(&result, &complete(5), 5, 5, 5).is_ok());
+        assert!(verify_file_result(&result, &complete(4), 5, 5, 5).is_err());
+        assert!(verify_file_result(&result, &complete(5), 5, 5, 4).is_err());
         assert!(
             verify_file_result(
                 &result,
@@ -995,10 +1290,23 @@ mod test {
                     bytes: 5
                 },
                 5,
+                5,
                 5
             )
             .is_err()
         );
+
+        // A job asked for only the start of a file: the result keeps the
+        // file's size and reports the shorter upload.
+        let prefix = FileResult {
+            size: Some(9),
+            bytes: 5,
+            ..result.clone()
+        };
+        assert!(verify_file_result(&prefix, &complete(5), 9, 5, 5).is_ok());
+        assert!(verify_file_result(&prefix, &complete(5), 5, 5, 5).is_err());
+        assert!(verify_file_result(&prefix, &complete(5), 9, 9, 5).is_err());
+        assert!(verify_file_result(&result, &complete(5), 9, 5, 5).is_err());
     }
     use std::path::Path;
 
@@ -1240,5 +1548,119 @@ mod test {
 
         let response = validate(OTHER).await;
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    /// A second stored file, `BIG`, of `len` bytes where byte `i` is
+    /// `i % 251`, so any slice is recognisable.
+    const BIG: &str = "b1c5f1e2d4b6a8c0e1f3a5b7c9d0e2f4a6b8c0d1e3f5a7b9c1d2e4f6a8b0c2d4";
+
+    fn big_content(len: usize) -> Vec<u8> {
+        (0..len).map(|i| (i % 251) as u8).collect()
+    }
+
+    fn store_big(dir: &Path, len: usize) -> Vec<u8> {
+        let content = big_content(len);
+        let shard = dir.join("filestore").join(&BIG[..2]);
+        std::fs::create_dir_all(&shard).unwrap();
+        std::fs::write(shard.join(BIG), &content).unwrap();
+        content
+    }
+
+    fn by_digest(sha256: &str) -> FileRequestParams {
+        FileRequestParams {
+            sha256: Some(sha256.to_string()),
+            ..Default::default()
+        }
+    }
+
+    async fn preview_request(context: &Arc<ServerContext>, params: FileRequestParams) -> Response {
+        preview(context, &params, "tester", "127.0.0.1".to_string()).await
+    }
+
+    #[tokio::test]
+    async fn preview_returns_a_whole_small_local_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let context = context(dir.path(), vec![fileinfo_event(SHA)]).await;
+        let id = event_id(&context).await;
+        let response = preview_request(
+            &context,
+            FileRequestParams {
+                event_id: Some(id),
+                ..Default::default()
+            },
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let headers = response.headers();
+        assert_eq!(headers[CONTENT_TYPE], "application/octet-stream");
+        assert!(headers.get(CONTENT_DISPOSITION).is_none());
+        assert_eq!(headers[CONTENT_LENGTH], "5");
+        assert_eq!(headers[X_CONTENT_TYPE_OPTIONS], "nosniff");
+        assert_eq!(headers[CONTENT_SECURITY_POLICY], "sandbox");
+        assert_eq!(headers[CACHE_CONTROL], "no-store");
+        assert_eq!(headers["x-evebox-file-source"], "(server)");
+        assert_eq!(headers["x-evebox-file-size"], "5");
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(body.as_ref(), b"hello");
+    }
+
+    #[tokio::test]
+    async fn preview_is_capped_to_the_start_of_a_local_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let context = context(dir.path(), vec![]).await;
+        let len = PREVIEW_LENGTH as usize + 4096;
+        let content = store_big(dir.path(), len);
+        let response = preview_request(&context, by_digest(BIG)).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["x-evebox-file-size"], len.to_string());
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(body.as_ref(), &content[..PREVIEW_LENGTH as usize]);
+
+        // Range parameters are not part of the API and change nothing.
+        let uri: axum::http::Uri = format!("/?sha256={BIG}&offset=70000&length=1000")
+            .parse()
+            .unwrap();
+        let Query(params) = Query::<FileRequestParams>::try_from_uri(&uri).unwrap();
+        let response = preview_request(&context, params).await;
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(body.as_ref(), &content[..PREVIEW_LENGTH as usize]);
+    }
+
+    #[tokio::test]
+    async fn preview_errors_match_downloads() {
+        let dir = tempfile::tempdir().unwrap();
+        let context = context(dir.path(), vec![fileinfo_event(SHA)]).await;
+        let id = event_id(&context).await;
+        let cases = [
+            (
+                by_digest("../../etc/passwd"),
+                StatusCode::BAD_REQUEST,
+                "bad-sha256",
+            ),
+            (
+                FileRequestParams {
+                    event_id: Some(id),
+                    sha256: Some(OTHER.to_string()),
+                    ..Default::default()
+                },
+                StatusCode::BAD_REQUEST,
+                "file-not-in-event",
+            ),
+            (by_digest(OTHER), StatusCode::NOT_FOUND, "file-not-found"),
+            (
+                FileRequestParams {
+                    sha256: Some(SHA.to_string()),
+                    source: Some("sensor-x".to_string()),
+                    ..Default::default()
+                },
+                StatusCode::SERVICE_UNAVAILABLE,
+                "no-source",
+            ),
+        ];
+        for (params, status, code) in cases {
+            let response = preview_request(&context, params).await;
+            assert_eq!(response.status(), status);
+            assert_eq!(error_code(response).await, code);
+        }
     }
 }

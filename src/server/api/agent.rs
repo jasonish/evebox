@@ -1646,6 +1646,99 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn remote_filestore_preview_over_loopback() {
+        let (address, server, context, dir) = serve_test_server(PcapSettings::default()).await;
+        let store = dir.path().join("filestore");
+        let sha = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+        tokio::fs::create_dir_all(store.join("2c")).await.unwrap();
+        tokio::fs::write(store.join("2c").join(sha), b"hello")
+            .await
+            .unwrap();
+        // Large enough to span many upload chunks.
+        let large = "2287d207f24a941ff3b56c04c8a25ad56b63e3023207b3bb5b4ac0c9869d74be";
+        let content: Vec<u8> = (0..600_000).map(|i| (i % 251) as u8).collect();
+        tokio::fs::create_dir_all(store.join("22")).await.unwrap();
+        tokio::fs::write(store.join("22").join(large), &content)
+            .await
+            .unwrap();
+        let key = add_test_key(&context, "test-sensor").await;
+        let agent = tokio::spawn(channel::run(ChannelConfig {
+            server_url: format!("http://{address}"),
+            hostname: "test-host".to_string(),
+            server_key: Some(key),
+            spool: None,
+            filestore: Some(store),
+            disable_certificate_check: false,
+        }));
+        let client = reqwest::Client::new();
+        wait_for_agent(&client, address).await;
+        let url = |sha: &str, range: &str| {
+            format!("http://{address}/api/filestore/preview?sha256={sha}&source=test-sensor{range}")
+        };
+        let get = |url: String| {
+            let client = client.clone();
+            async move {
+                tokio::time::timeout(Duration::from_secs(10), client.get(url).send())
+                    .await
+                    .unwrap()
+                    .unwrap()
+            }
+        };
+
+        // A small file, whole: read to EOF and verified.
+        let response = get(url(sha, "")).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            response
+                .headers()
+                .get(reqwest::header::CONTENT_DISPOSITION)
+                .is_none()
+        );
+        assert_eq!(response.headers()["x-evebox-file-source"], "test-sensor");
+        assert_eq!(response.headers()["x-evebox-file-size"], "5");
+        assert_eq!(response.bytes().await.unwrap().as_ref(), b"hello");
+        wait_for_file_cleanup(&context).await;
+
+        // A large file: the agent uploads only the start. The preview is
+        // verified, so success means the agent's result and the upload
+        // both covered exactly the preview length. Range parameters are
+        // not part of the API.
+        let preview = crate::server::api::filestore::PREVIEW_LENGTH as usize;
+        for range in ["", "&offset=300000&length=1000"] {
+            let response = get(url(large, range)).await;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.headers()["x-evebox-file-size"], "600000");
+            assert_eq!(
+                response.bytes().await.unwrap().as_ref(),
+                &content[..preview]
+            );
+            wait_for_file_cleanup(&context).await;
+        }
+
+        let missing = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let response = get(url(missing, "")).await;
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(
+            response.json::<Value>().await.unwrap()["error"]["code"],
+            "file-not-found"
+        );
+        wait_for_file_cleanup(&context).await;
+        agent.abort();
+        server.abort();
+    }
+
+    /// Wait until no remote file job is registered.
+    async fn wait_for_file_cleanup(context: &ServerContext) {
+        tokio::time::timeout(Duration::from_secs(3), async {
+            while context.pcap_tasks.len() != 0 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("remote file job was not removed");
+    }
+
+    #[tokio::test]
     async fn upload_endpoint_rejects_bad_and_reused_tokens_over_http() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let _handles = context

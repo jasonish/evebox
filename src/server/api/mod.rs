@@ -79,6 +79,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/eve2pcap", post(eve2pcap::handler))
         .route("/api/filestore", get(filestore::get_file))
         .route("/api/filestore/validate", get(filestore::validate_file))
+        .route("/api/filestore/preview", get(filestore::preview_file))
         .route("/api/filestore/sources", get(filestore::get_sources))
         .route("/api/submit", post(submit::handler))
         // Keep this around for older agents.

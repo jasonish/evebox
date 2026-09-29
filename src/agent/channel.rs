@@ -113,7 +113,9 @@ pub(crate) async fn run(config: ChannelConfig) {
     // Serializes disk extraction across connections: a blocking producer can
     // outlive the connection which started it.
     let extraction = Arc::new(Semaphore::new(1));
-    let files = Arc::new(Semaphore::new(1));
+    // The server admits one download and one preview per agent at a
+    // time; a preview must not wait behind a long download.
+    let files = Arc::new(Semaphore::new(2));
     // Building the upload client is deterministic; a failure would repeat on
     // every retry, so give up on the channel rather than spin.
     let client = match crate::agent::client::build_reqwest_client(config.disable_certificate_check)
@@ -742,8 +744,9 @@ async fn run_file_job(
             Some("control channel closed".into()),
         );
     }
-    // Only a single file job runs per source. This bounded channel prevents
-    // an unresponsive server from causing unbounded disk reads or buffering.
+    // At most a download and a preview run per source. This bounded channel
+    // prevents an unresponsive server from causing unbounded disk reads or
+    // buffering.
     let (tx, rx) = mpsc::channel::<Bytes>(UPLOAD_CHANNEL_CAPACITY);
     let io_cancel = cancel.child_token();
     let producer_cancel = io_cancel.clone();

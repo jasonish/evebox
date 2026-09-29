@@ -252,10 +252,19 @@ fn open_no_follow(directory: &Path, sha256: &Sha256) -> Result<std::fs::File, Op
 }
 
 /// Extracted file retrieval: the optional server-local store.
+/// The kind of transfer a per-agent lane serializes. A preview is small
+/// and bounded, so one may run beside a download from the same agent
+/// instead of being refused for as long as the download lasts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum Lane {
+    Download,
+    Preview,
+}
+
 pub(crate) struct FilestoreService {
     local: Option<LocalFilestore>,
     global: Arc<Semaphore>,
-    agents: Mutex<HashMap<String, Arc<Semaphore>>>,
+    agents: Mutex<HashMap<(String, Lane), Arc<Semaphore>>>,
 }
 
 impl Default for FilestoreService {
@@ -273,17 +282,19 @@ impl FilestoreService {
         }
     }
 
-    /// One file transfer per agent, independently of its pcap lane.
+    /// One download and one preview at a time per agent, independently
+    /// of its pcap lane. The agent admits the same two jobs at once.
     pub(crate) fn try_acquire(
         &self,
         agent: &str,
+        lane: Lane,
     ) -> Option<(OwnedSemaphorePermit, OwnedSemaphorePermit)> {
         let global = self.global.clone().try_acquire_owned().ok()?;
         let lane = self
             .agents
             .lock()
             .unwrap()
-            .entry(agent.to_string())
+            .entry((agent.to_string(), lane))
             .or_insert_with(|| Arc::new(Semaphore::new(1)))
             .clone();
         let source = lane.try_acquire_owned().ok()?;
