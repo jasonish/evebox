@@ -45,7 +45,7 @@ import {
 import { parse_timestamp } from "./datetime";
 import { parseRule, RuleOption, ruleReferences } from "./rule";
 import { automaticPcapSource, pcapErrorMessage } from "./PcapDownload";
-import { eventFiles, FileDownloadButton } from "./FileDownload";
+import { eventFiles, FileActions } from "./FileDownload";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import { tinykeys } from "tinykeys";
 import { eventIsArchived, eventIsEscalated, eventSetArchived } from "./event";
@@ -110,12 +110,13 @@ export function EventView() {
     serverConfig()?.filestore != null ? eventFiles(event()?._source) : [],
   );
 
-  // The download action for a file card's header.
+  // The preview and download actions for a file card's header.
   const fileDownloadAddOn = () => (
     <Show when={downloadableFiles().length > 0}>
-      <FileDownloadButton
+      <FileActions
         eventId={String(event()!._id)}
         files={downloadableFiles()}
+        event={event()?._source}
         style={CARD_HEADER_BUTTON_STYLE}
       />
     </Show>

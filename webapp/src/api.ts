@@ -793,19 +793,63 @@ export namespace API {
       { signal: signal },
     );
     if (!response.ok) {
-      if (response.status === 401) {
-        SET_IS_AUTHENTICATED(false);
-      }
-      const fallback = `File request failed (${response.status}).`;
-      let json: any = undefined;
-      try {
-        json = await response.json();
-      } catch (e: any) {
-        if (e?.name === "AbortError") throw e;
-      }
-      throw fileErrorFromJson(json, fallback);
+      throw await fileResponseError(response);
     }
     return await response.json();
+  }
+
+  // Turn a failed filestore response into a FileDownloadError, marking
+  // the session unauthenticated on a 401.
+  async function fileResponseError(
+    response: Response,
+  ): Promise<FileDownloadError> {
+    if (response.status === 401) {
+      SET_IS_AUTHENTICATED(false);
+    }
+    const fallback = `File request failed (${response.status}).`;
+    let json: any = undefined;
+    try {
+      json = await response.json();
+    } catch (e: any) {
+      if (e?.name === "AbortError") throw e;
+    }
+    return fileErrorFromJson(json, fallback);
+  }
+
+  // The start of an extracted file from GET /api/filestore/preview.
+  export interface FilePreview {
+    bytes: Uint8Array;
+    // Total size of the file.
+    total: number;
+    // The file source that served the slice.
+    source: string;
+  }
+
+  // Fetch the start of an extracted file (the server caps it at 64 KiB)
+  // as raw bytes for display in the UI. The bytes are only ever read into
+  // memory: never turned into a URL, never navigated to and never
+  // rendered by the browser.
+  export async function previewFile(
+    params: FileRequestParams,
+    signal?: AbortSignal,
+  ): Promise<FilePreview> {
+    const q = fileParams(params);
+    const response = await fetch(`api/filestore/preview?${q}`, {
+      signal: signal,
+    });
+    if (!response.ok) {
+      throw await fileResponseError(response);
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const header = (name: string): number => {
+      const value = Number(response.headers.get(name));
+      return Number.isFinite(value) ? value : 0;
+    };
+    return {
+      bytes,
+      total: header("x-evebox-file-size"),
+      source: response.headers.get("x-evebox-file-source") ?? "",
+    };
   }
 
   // Native extracted-file download: the file streams straight to disk,

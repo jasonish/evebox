@@ -756,3 +756,25 @@ export function formatAddress(addr: string) {
   }
   return addr.replace(/(0000\:)+/, ":");
 }
+
+// Human readable byte size (1024-based), e.g. "1.5 KB". With `exact`
+// the exact count is kept too: "1.5 KB (1,536 bytes)", or just
+// "512 bytes" below a kilobyte.
+export function formatBytes(bytes: number, exact = false): string {
+  if (!Number.isFinite(bytes)) {
+    return "-";
+  }
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  if (exact && unit === 0) {
+    return `${bytes.toLocaleString()} bytes`;
+  }
+  const rounded = unit === 0 ? value : Math.round(value * 10) / 10;
+  const text = `${rounded} ${units[unit]}`;
+  return exact ? `${text} (${bytes.toLocaleString()} bytes)` : text;
+}

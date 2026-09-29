@@ -5,6 +5,7 @@ import { For, Show, Suspense, createResource, createSignal } from "solid-js";
 import { API } from "../../api";
 import { addError, addNotification } from "../../Notifications";
 import { distributionName } from "../../config";
+import { formatBytes } from "../../formatters";
 import { AdminPageHeader } from "./AdminLayout";
 
 interface IndexStats {
@@ -26,22 +27,6 @@ const DATE_RE = /(\d{4}\.\d{2}\.\d{2})/;
 
 async function fetchIndices(): Promise<IndexStats[]> {
   return await API.getJson("api/admin/elastic/indices");
-}
-
-// Human readable byte size (1024-based).
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes)) {
-    return "-";
-  }
-  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
-  let value = bytes;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  const rounded = unit === 0 ? value : Math.round(value * 10) / 10;
-  return `${rounded} ${units[unit]}`;
 }
 
 // Group indices by their date suffix so the daily event index and its companion
