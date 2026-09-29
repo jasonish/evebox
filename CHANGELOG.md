@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Added
+- Files extracted by Suricata's file-store (v2) output can be downloaded
+  from the event view for fileinfo events and alerts with file
+  information. Set `filestore.directory` (or `--filestore-directory`) on the
+  server for a local file store, or on an agent to serve its files
+  remotely. Agents can serve files without packet capture, including on
+  Windows.
+- Extracted files can be previewed in the event view as hex, text or
+  strings, with file type detection and warnings when the file name, HTTP
+  content type or Suricata's file magic disagree with the content, before
+  downloading. Nothing is rendered by the browser and no third-party
+  lookups are made.
+
+### Changed
+- The PCAP routing table in agent administration is now "Source Routing"
+  and also selects the source for extracted file downloads.
+
 ## 0.29.0 - 2026-09-20
 
 ### Added
