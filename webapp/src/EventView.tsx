@@ -59,6 +59,7 @@ import { SearchLink } from "./common/SearchLink";
 import * as api from "./api";
 import { FormattedTimestamp, AutoArchiveMenuElements } from "./components";
 import * as bootstrap from "bootstrap";
+import { base64ToBytes, prettyHex } from "./fileview/hex";
 
 // A card-header action sized to sit on the header's text line without
 // growing it.
@@ -1559,37 +1560,6 @@ export function EventView() {
   );
 }
 
-function toPrettyHex(data: string): [string, string][] {
-  let output: [string, string][] = [];
-  let chars = [];
-
-  for (let i = 0; i < data.length; i++) {
-    chars.push(data.charCodeAt(i));
-  }
-
-  while (chars.length > 0) {
-    const chunk = chars.splice(0, 16);
-    let hex = [];
-    let printable = [];
-    for (let i = 0; i < chunk.length; i++) {
-      const x = chunk[i].toString(16);
-      if (x.length === 1) {
-        hex.push("0" + x);
-      } else {
-        hex.push(x);
-      }
-      if (chunk[i] >= 32 && chunk[i] <= 127) {
-        printable.push(String.fromCharCode(chunk[i]));
-      } else {
-        printable.push(".");
-      }
-    }
-    output.push([hex.join(" "), printable.join("")]);
-  }
-
-  return output;
-}
-
 function formatTitle(event: Event): string {
   try {
     return `${event._source.event_type.toUpperCase()}: ${formatEventDescription(
@@ -1701,7 +1671,7 @@ function Base64BufferCard(props: {
               <div class="card-body p-2">
                 <table class={"m-0 table table-borderless table-striped"}>
                   <tbody>
-                    <For each={toPrettyHex(atob(props.buffer))}>
+                    <For each={prettyHex(base64ToBytes(props.buffer))}>
                       {(e) => (
                         <>
                           <tr class="app-hex-row">
