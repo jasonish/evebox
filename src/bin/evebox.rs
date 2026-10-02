@@ -308,10 +308,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(evebox::cli::test::command())
         .subcommand(evebox::cli::checkupdate::args())
         .subcommand(evebox::cli::util::args());
-    #[cfg(not(windows))]
-    {
-        parser = parser.subcommand(evebox::cli::pcap::command());
-    }
+    parser = parser.subcommand(evebox::cli::pcap::command());
     let matches = parser.clone().get_matches();
 
     // Initialize logging.
@@ -338,7 +335,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         Some(("oneshot", args)) => evebox::cli::oneshot::main(args).await,
-        #[cfg(not(windows))]
         Some(("pcap", args)) => evebox::cli::pcap::main(args).await,
         Some(("agent", args)) => evebox::cli::agent::main(args).await,
         Some(("config", args)) => evebox::cli::config::main(args).await,

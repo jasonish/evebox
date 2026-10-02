@@ -41,6 +41,10 @@ jobs:
         with:
           toolchain: stable
       - run: cargo test --all
+      # No Npcap SDK or runtime is installed by this job. Normal startup and
+      # CLI discovery must not depend on loading wpcap.dll.
+      - run: cargo run -- --version
+      - run: cargo run -- pcap extract --help
 
   msrv-check:
     name: Check MSRV

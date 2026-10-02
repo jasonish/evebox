@@ -81,6 +81,7 @@ indexmap = "2.14.2"
 tokio-stream = { version = "0.1.19", features = ["sync"] }
 tokio-util = { version = "0.7.19", features = ["io"] }
 async-trait = "0.1.92"
+same-file = "1.0.6"
 xz2 = { version = "0.1.7", features = ["static"] }
 
 # Agent WebSocket control channel. Keep its rustls stack aligned with
@@ -89,4 +90,7 @@ tokio-tungstenite = { version = "0.29", default-features = false, features = ["c
 
 [target.'cfg(not(windows))'.dependencies]
 pcap = { version = "2.5.0", default-features = false }
-same-file = "1.0.6"
+
+[target.'cfg(windows)'.dependencies]
+libloading = "0.8"
+windows-sys = { version = "0.61", features = ["Win32_System_SystemInformation", "Win32_System_LibraryLoader"] }

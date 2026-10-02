@@ -20,8 +20,6 @@ use crate::server::routing::{self, Resolved};
 pub(crate) enum ResolvedPcapSource {
     Local {
         name: String,
-        // Consumed by the local extraction path, which Windows omits.
-        #[cfg_attr(windows, allow(dead_code))]
         source: PcapSource,
         busy: Arc<Semaphore>,
     },
@@ -99,9 +97,7 @@ pub(crate) struct PcapSettings {
     /// Backstop for extractions using the shared blocking pool.
     pub(crate) max_concurrent: usize,
     /// Grace period for a cancelled extraction to acknowledge the
-    /// cancellation before its blocking task is detached. Read by the
-    /// local extraction supervisor, which Windows omits.
-    #[cfg_attr(windows, allow(dead_code))]
+    /// cancellation before its blocking task is detached.
     pub(crate) wedge_grace: Duration,
 }
 
@@ -130,9 +126,7 @@ pub(crate) struct PcapService {
     global: Arc<Semaphore>,
     local_busy: Arc<Semaphore>,
     /// Extraction worker threads currently alive, including detached
-    /// ones whose request was already answered. Read by the local
-    /// extraction path, which Windows omits.
-    #[cfg_attr(windows, allow(dead_code))]
+    /// ones whose request was already answered.
     pub(crate) inflight: Arc<std::sync::atomic::AtomicUsize>,
 }
 
@@ -166,7 +160,7 @@ impl PcapService {
         self.routing.read().unwrap().clone()
     }
 
-    #[cfg(all(test, not(windows)))]
+    #[cfg(test)]
     pub(crate) fn source(&self) -> Option<&PcapSource> {
         self.source.as_ref()
     }
@@ -242,15 +236,14 @@ pub(crate) fn configure(config: &crate::config::Config) -> PcapService {
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
 
-    // Local extraction needs libpcap, which Windows builds omit; agents
-    // remain the capture sources there.
-    #[cfg(windows)]
-    let directory = directory.and_then(|directory| -> Option<String> {
-        warn!(
-            "Ignoring pcap.directory {directory:?}: server-local pcap capture is not \
-             supported on Windows; run an EveBox agent on this host to serve its spool"
-        );
-        None
+    // Missing Npcap disables only the local source, not remote routing.
+    let directory = directory.filter(|_| {
+        if let Err(err) = crate::pcap::ensure_available() {
+            warn!("Ignoring pcap.directory: {err}");
+            false
+        } else {
+            true
+        }
     });
 
     let spool = directory.map(|directory| {
@@ -307,17 +300,30 @@ mod test {
         crate::config::Config::new(args, path.to_str()).unwrap()
     }
 
-    /// Server-local spool sources are not supported on Windows, where
-    /// configure() ignores pcap.directory.
+    /// Unix always has a linked local backend; Windows needs Npcap.
     #[test]
-    #[cfg(not(windows))]
     fn test_configure_local_spool() {
         let dir = tempfile::tempdir().unwrap();
         let yaml = format!("pcap:\n  directory: {}\n", dir.path().display());
         let config = yaml_config(dir.path(), &yaml);
         let service = configure(&config);
-        assert!(service.has_source());
+        assert_eq!(
+            service.has_source(),
+            crate::pcap::ensure_available().is_ok()
+        );
         assert_eq!(service.settings.max_bytes, 8_000_000);
+        if !service.has_source() {
+            // An unavailable local backend must not affect remote routing.
+            let agents = AgentRegistry::default();
+            register_agent(&agents, "remote", "remote-host");
+            assert!(matches!(
+                service
+                    .resolve_source(&agents, None, Some("remote"))
+                    .unwrap(),
+                ResolvedPcapSource::Agent(_)
+            ));
+            return;
+        }
         let Some(PcapSource::Spool(spool)) = service.source() else {
             panic!("expected a spool source");
         };

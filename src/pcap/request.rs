@@ -3,9 +3,8 @@
 
 //! Portable request types for the extraction engine.
 //!
-//! These carry no libpcap dependency: a Windows server uses them to
-//! describe a fetch dispatched to a remote agent, while the
-//! libpcap-backed [`super::fetch`] entry point is compiled out.
+//! These carry no libpcap dependency and describe both local extraction
+//! and fetches dispatched to a remote agent.
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -13,7 +12,6 @@ use std::time::Duration;
 use super::filter::FlowSelector;
 
 /// A directory of PCAP spool files to extract packets from.
-#[cfg_attr(windows, allow(dead_code))]
 #[derive(Debug, Clone)]
 pub(crate) struct SpoolConfig {
     pub(crate) directory: PathBuf,
@@ -36,7 +34,6 @@ impl SpoolConfig {
 }
 
 /// The local packet capture input served by the extraction engine.
-#[cfg_attr(windows, allow(dead_code))]
 #[derive(Debug, Clone)]
 pub(crate) enum PcapSource {
     /// A directory containing rotating packet capture files.
@@ -47,7 +44,6 @@ pub(crate) enum PcapSource {
 }
 
 /// Resource limits for a fetch.
-#[cfg_attr(windows, allow(dead_code))]
 #[derive(Debug, Clone)]
 pub(crate) struct Limits {
     /// Maximum number of bytes to write to the output, including the pcap
@@ -93,7 +89,6 @@ pub(crate) enum PcapFilter {
 }
 
 /// Statistics from a completed or partially-completed fetch.
-#[cfg_attr(windows, allow(dead_code))]
 #[derive(Debug, Default)]
 pub(crate) struct FetchStats {
     /// Number of packets written to the output.

@@ -143,7 +143,6 @@ enum EveInput {
 #[derive(Debug)]
 struct PreparedInput {
     eve_inputs: Vec<EveInput>,
-    #[cfg(not(windows))]
     pcap_paths: Option<Vec<PathBuf>>,
     workspace: Option<TempDir>,
 }
@@ -180,7 +179,6 @@ impl PreparedInput {
     fn eve(input: EveInput) -> Self {
         Self {
             eve_inputs: vec![input],
-            #[cfg(not(windows))]
             pcap_paths: None,
             workspace: None,
         }
@@ -203,7 +201,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
     let host = args.host.clone();
     let prepared_input = prepare_input(&args).await?;
     let inputs = prepared_input.eve_inputs.clone();
-    #[cfg(not(windows))]
     let pcap_paths = prepared_input.pcap_paths.clone();
     let generated_cleanup = prepared_input.cleanup_path();
 
@@ -286,7 +283,6 @@ pub async fn main(args: &clap::ArgMatches) -> anyhow::Result<()> {
                     Ok(mut context) => {
                         context.mode = crate::server::ServerMode::Oneshot;
                         context.defaults.time_range = Some("all".to_string());
-                        #[cfg(not(windows))]
                         if let Some(pcap_paths) = pcap_paths.clone() {
                             context.pcap = Arc::new(oneshot_pcap_service(pcap_paths));
                         }
@@ -454,7 +450,6 @@ async fn prepare_input(args: &Args) -> Result<PreparedInput> {
     }
     Ok(PreparedInput {
         eve_inputs,
-        #[cfg(not(windows))]
         pcap_paths: Some(pcaps),
         workspace: Some(workspace),
     })
@@ -545,8 +540,11 @@ async fn prepare_container_backend_with_runtime(
     })
 }
 
-#[cfg(not(windows))]
 fn oneshot_pcap_service(pcap_paths: Vec<PathBuf>) -> crate::server::pcap::PcapService {
+    if let Err(err) = crate::pcap::ensure_available() {
+        warn!("Packet downloads disabled: {err}");
+        return crate::server::pcap::PcapService::default();
+    }
     crate::server::pcap::PcapService::new(
         crate::server::pcap::PcapSettings::default(),
         Some(crate::pcap::PcapSource::Files(pcap_paths)),
@@ -1009,12 +1007,10 @@ mod tests {
             prepared.eve_inputs,
             [EveInput::File(file.path().to_path_buf())]
         );
-        #[cfg(not(windows))]
         assert!(prepared.pcap_paths.is_none());
         assert!(prepared.workspace.is_none());
     }
 
-    #[cfg(not(windows))]
     #[test]
     fn pcap_service_uses_all_original_input_files() {
         let paths = vec![
@@ -1022,6 +1018,13 @@ mod tests {
             PathBuf::from("/captures/second-input.pcap"),
         ];
         let service = oneshot_pcap_service(paths.clone());
+        assert_eq!(
+            service.has_source(),
+            crate::pcap::ensure_available().is_ok()
+        );
+        if !service.has_source() {
+            return;
+        }
         let Some(crate::pcap::PcapSource::Files(source_paths)) = service.source() else {
             panic!("expected an explicit-files pcap source");
         };

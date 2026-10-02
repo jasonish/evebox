@@ -5,13 +5,10 @@
 //! a server-local capture source or a connected agent.
 
 use std::collections::VecDeque;
-#[cfg(not(windows))]
 use std::io::Write;
 use std::net::SocketAddr;
 use std::sync::Arc;
-#[cfg(not(windows))]
 use std::sync::atomic::AtomicU64;
-#[cfg(not(windows))]
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
@@ -32,7 +29,6 @@ use crate::agent::protocol::{
 #[cfg(all(test, not(windows)))]
 use crate::pcap::SpoolConfig;
 use crate::pcap::{self, FetchStats, FlowSelector, Limits, PcapFilter, PcapRequest};
-#[cfg(not(windows))]
 use crate::pcap::{FetchError, PcapSource};
 use crate::prelude::*;
 use crate::server::ServerContext;
@@ -46,7 +42,6 @@ use crate::server::pcap::{PcapRouting, ResolvedPcapSource, RouteError};
 
 /// Chunk size streamed to the client; the writer buffers extraction
 /// output up to this before pushing a frame.
-#[cfg(not(windows))]
 const CHUNK_SIZE: usize = 64 * 1024;
 
 static PCAP_CONTENT_TYPE: HeaderValue =
@@ -511,16 +506,6 @@ async fn handle_inner(
     };
 
     match source {
-        // A Windows server cannot register a local spool, so a Local
-        // resolution is unreachable there; extraction is agent-only.
-        #[cfg(windows)]
-        ResolvedPcapSource::Local { .. } => Err(fail(
-            &audit,
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal",
-            "server-local pcap capture is not supported on this platform",
-        )),
-        #[cfg(not(windows))]
         ResolvedPcapSource::Local { source, .. } => {
             // A wedged local source can accumulate detached extraction threads.
             let backlog = context.pcap.inflight.load(Ordering::SeqCst);
@@ -648,7 +633,6 @@ fn empty_truncated_response(audit: &AuditContext, filename: &str) -> Response {
     (headers, Body::empty()).into_response()
 }
 
-#[cfg(not(windows))]
 #[allow(clippy::too_many_arguments)]
 async fn stream_local(
     context: Arc<ServerContext>,
@@ -1535,7 +1519,6 @@ fn remote_empty_response(
 
 /// The joined producer result the supervisor observes: the inner
 /// `Result` is the fetch outcome, the outer is the join status.
-#[cfg(not(windows))]
 type JoinedFetch = Result<Result<FetchStats, FetchError>, tokio::task::JoinError>;
 
 /// Wait for the producer's outcome under three bounds, returning
@@ -1552,7 +1535,6 @@ type JoinedFetch = Result<Result<FetchStats, FetchError>, tokio::task::JoinError
 ///   plus the `last_progress` stamp the writer advances on every frame,
 ///   so a slow-but-live client (whose parked sends keep completing and
 ///   stamping progress) is never reaped here.
-#[cfg(not(windows))]
 async fn await_outcome(
     handle: &mut tokio::task::JoinHandle<Result<FetchStats, FetchError>>,
     cancel: &CancellationToken,
@@ -1595,7 +1577,6 @@ async fn await_outcome(
 /// the success is DOWNGRADED to the send's io error: the client's body
 /// ends without a Done and hyper tears it, so the supervisor reports
 /// the torn transfer as client-stalled / client-closed, not outcome=ok.
-#[cfg(not(windows))]
 fn finish_producer(
     result: Result<FetchStats, FetchError>,
     writer: &mut ChannelWriter,
@@ -1625,7 +1606,6 @@ fn finish_producer(
 /// The blocking producer body: run the fetch, then push the buffered
 /// tail with a final flush whose error propagates — a client that
 /// stalls at the very tail must not be reported as outcome=ok.
-#[cfg(not(windows))]
 fn run_extraction(
     source: &PcapSource,
     request: &PcapRequest,
@@ -1653,9 +1633,6 @@ enum ProducerEnd {
     },
     NoCandidateFiles,
     NoMatch,
-    // Only the local producer constructs `Format`; the shared response
-    // side still matches it on Windows.
-    #[cfg_attr(windows, allow(dead_code))]
     Format(String),
     /// The detail is logged by the supervisor; the response body
     /// stays generic.
@@ -1663,7 +1640,6 @@ enum ProducerEnd {
 }
 
 /// Derive the terminal frame from the producer's result.
-#[cfg(not(windows))]
 fn producer_end(result: &Result<FetchStats, FetchError>) -> ProducerEnd {
     match result {
         Ok(stats) => ProducerEnd::Complete {
@@ -1705,7 +1681,6 @@ impl CancelReason {
         );
     }
 
-    #[cfg(not(windows))]
     fn get(&self) -> CancelCause {
         match self.0.load(Ordering::SeqCst) {
             value if value == CancelCause::Timeout as u8 => CancelCause::Timeout,
@@ -1718,10 +1693,8 @@ impl CancelReason {
 /// Counts the blocking extraction closure in the service's
 /// in-flight gauge for the closure's whole lifetime; the Drop makes
 /// it panic-safe.
-#[cfg(not(windows))]
 struct InflightGuard(Arc<AtomicUsize>);
 
-#[cfg(not(windows))]
 impl InflightGuard {
     fn arm(counter: Arc<AtomicUsize>) -> Self {
         counter.fetch_add(1, Ordering::SeqCst);
@@ -1729,7 +1702,6 @@ impl InflightGuard {
     }
 }
 
-#[cfg(not(windows))]
 impl Drop for InflightGuard {
     fn drop(&mut self) {
         self.0.fetch_sub(1, Ordering::SeqCst);
@@ -1938,7 +1910,6 @@ fn log_success(audit: &AuditContext, stats: &FetchStats) {
 /// unpins the blocking thread AND the permits (the deadline in
 /// `fetch` is only checked between packets, never while parked
 /// mid-send).
-#[cfg(not(windows))]
 struct ChannelWriter {
     tx: mpsc::Sender<Frame>,
     buf: Vec<u8>,
@@ -1954,7 +1925,6 @@ struct ChannelWriter {
     last_progress: Arc<AtomicU64>,
 }
 
-#[cfg(not(windows))]
 impl ChannelWriter {
     /// Push the buffered output as a data frame.
     fn push(&mut self) -> std::io::Result<()> {
@@ -2010,7 +1980,6 @@ impl ChannelWriter {
     }
 }
 
-#[cfg(not(windows))]
 impl Write for ChannelWriter {
     fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
         self.buf.extend_from_slice(data);
@@ -2228,8 +2197,8 @@ fn describe_selector(selector: &FlowSelector) -> String {
     )
 }
 
-// The suite drives the local extraction path end to end, so it is
-// compiled out with it on Windows.
+// These libpcap-based fixtures run on Unix; the Windows backend has
+// separate Npcap integration tests.
 #[cfg(all(test, not(windows)))]
 mod test {
     use super::*;

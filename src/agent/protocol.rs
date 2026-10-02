@@ -23,7 +23,6 @@ pub(crate) const AGENT_HEADER: &str = "x-evebox-agent";
 pub(crate) const AGENT_KEY_HEADER: &str = "x-evebox-agent-key";
 
 /// Path of the agent control-channel WebSocket endpoint.
-#[cfg_attr(windows, allow(dead_code))]
 pub(crate) const AGENT_WS_PATH: &str = "/api/agent/ws";
 
 /// Packet-capture control-channel capability.
@@ -37,12 +36,10 @@ pub(crate) const CONTROL_MESSAGE_MAX_BYTES: usize = 256 * 1024;
 
 /// Content type the agent sends on the PCAP upload data plane and the
 /// server's upload endpoint requires.
-#[cfg_attr(windows, allow(dead_code))]
 pub(crate) const PCAP_CONTENT_TYPE: &str = "application/vnd.tcpdump.pcap";
 
 /// Path of the per-job PCAP upload endpoint, as an axum route template.
 /// [`agent_pcap_upload_path`] produces the matching concrete request path.
-#[cfg_attr(windows, allow(dead_code))]
 pub(crate) const AGENT_PCAP_UPLOAD_ROUTE: &str = "/api/agent/pcap/{id}";
 
 /// File-store upload endpoint and content type.
@@ -54,7 +51,6 @@ pub(crate) fn agent_file_upload_path(id: &str) -> String {
 }
 
 /// The concrete upload request path for one job.
-#[cfg_attr(windows, allow(dead_code))]
 pub(crate) fn agent_pcap_upload_path(id: &str) -> String {
     format!("/api/agent/pcap/{id}")
 }
@@ -154,7 +150,6 @@ pub(crate) struct PcapResult {
     pub(crate) stats: Option<WireStats>,
 }
 
-#[cfg_attr(windows, allow(dead_code))]
 impl PcapResult {
     pub(crate) fn error(message: String) -> Self {
         Self {
@@ -302,10 +297,8 @@ mod pcap_conversions {
     }
 
     impl WirePcapFilter {
-        /// Convert the wire DTO to the engine filter. `All` maps to no
-        /// filter. Agent-side only, so compiled out with extraction on
-        /// Windows.
-        #[cfg(not(windows))]
+        /// Convert the wire DTO to the agent's engine filter.
+        /// `All` maps to no filter.
         pub(crate) fn into_pcap_filter(self) -> Option<PcapFilter> {
             match self {
                 Self::Flow { proto, a, b } => Some(PcapFilter::Flow(FlowSelector {
@@ -563,9 +556,7 @@ mod tests {
         );
     }
 
-    // Exercises the agent-side wire-to-engine direction, which
-    // Windows builds omit.
-    #[cfg(not(windows))]
+    // Exercises the agent-side wire-to-engine direction.
     #[test]
     fn pcap_filter_and_limits_convert_without_a_spool_path() {
         use std::time::Duration;

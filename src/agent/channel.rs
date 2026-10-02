@@ -8,14 +8,12 @@
 //! without putting bulk data in WebSocket frames.
 
 use std::collections::HashMap;
-#[cfg(not(windows))]
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
 use futures::{Sink, SinkExt, Stream, StreamExt};
-#[cfg(not(windows))]
 use tokio::sync::oneshot;
 use tokio::sync::{Semaphore, mpsc, watch};
 use tokio_tungstenite::connect_async_tls_with_config;
@@ -31,12 +29,10 @@ use crate::agent::protocol::{
     CONTROL_MESSAGE_MAX_BYTES, FILE_CONTENT_TYPE, FileResult, FileResultCode, PcapUploadStatus,
     SUBPROTOCOL, ServerMessage, WireLimits, WirePcapFilter, agent_file_upload_path,
 };
-#[cfg(not(windows))]
 use crate::agent::protocol::{
     PCAP_CONTENT_TYPE, PcapResult, PcapResultCode, WireStats, agent_pcap_upload_path,
 };
 use crate::pcap::SpoolConfig;
-#[cfg(not(windows))]
 use crate::pcap::{self, FetchError, PcapRequest, PcapSource};
 use crate::prelude::*;
 use crate::server::filestore::{LocalFilestore, OpenError, Sha256};
@@ -49,7 +45,6 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const RECEIVE_IDLE_TIMEOUT: Duration = Duration::from_secs(90);
 const CONTROL_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 const UPLOAD_STALL_TIMEOUT: Duration = Duration::from_secs(60);
-#[cfg(not(windows))]
 const UPLOAD_RESPONSE_TIMEOUT: Duration = Duration::from_secs(60);
 const CHUNK_SIZE: usize = 64 * 1024;
 const UPLOAD_CHANNEL_CAPACITY: usize = 8;
@@ -151,13 +146,34 @@ pub(crate) async fn run(config: ChannelConfig) {
 
 fn advertised_capabilities(config: &ChannelConfig) -> Vec<String> {
     let mut capabilities = Vec::new();
-    if cfg!(not(windows)) && config.spool.is_some() {
+    if config.spool.is_some() && pcap::ensure_available().is_ok() {
         capabilities.push(CAPABILITY_PCAP.to_string());
     }
     if config.filestore.is_some() {
         capabilities.push(CAPABILITY_FILESTORE.to_string());
     }
     capabilities
+}
+
+#[cfg(test)]
+#[test]
+fn pcap_capability_requires_an_available_backend() {
+    let mut config = ChannelConfig {
+        server_url: "http://localhost".to_string(),
+        hostname: "test".to_string(),
+        server_key: None,
+        spool: None,
+        filestore: Some(PathBuf::from("files")),
+        disable_certificate_check: false,
+    };
+    assert_eq!(advertised_capabilities(&config), [CAPABILITY_FILESTORE]);
+    config.spool = Some(SpoolConfig::new("captures", None));
+    let capabilities = advertised_capabilities(&config);
+    assert!(capabilities.iter().any(|cap| cap == CAPABILITY_FILESTORE));
+    assert_eq!(
+        capabilities.iter().any(|cap| cap == CAPABILITY_PCAP),
+        pcap::ensure_available().is_ok()
+    );
 }
 
 async fn connect_and_run(
@@ -916,25 +932,6 @@ enum StartJob {
     AtCapacity,
 }
 
-#[cfg(windows)]
-#[allow(clippy::too_many_arguments)]
-fn start_job(
-    _config: &Arc<ChannelConfig>,
-    _client: &reqwest::Client,
-    _jobs: &Jobs,
-    _result_tx: &mpsc::Sender<AgentMessage>,
-    _extraction: &Arc<Semaphore>,
-    _id: String,
-    _token: String,
-    _filter: WirePcapFilter,
-    _start_us: u64,
-    _end_us: u64,
-    _limits: WireLimits,
-) -> StartJob {
-    StartJob::Conflict
-}
-
-#[cfg(not(windows))]
 #[allow(clippy::too_many_arguments)]
 fn start_job(
     config: &Arc<ChannelConfig>,
@@ -1019,7 +1016,6 @@ fn start_job(
     StartJob::Started
 }
 
-#[cfg(not(windows))]
 async fn terminal_after_worker(
     worker: tokio::task::JoinHandle<PcapResult>,
     producer_done: oneshot::Receiver<()>,
@@ -1123,7 +1119,6 @@ impl Stream for UploadBodyStream {
     }
 }
 
-#[cfg(not(windows))]
 #[allow(clippy::too_many_arguments)]
 async fn run_job(
     config: &ChannelConfig,
@@ -1315,12 +1310,9 @@ async fn run_job(
     terminal_from_fetch(fetch_result.unwrap(), cancel, upload_status, upload_error)
 }
 
-#[cfg(not(windows))]
 type FetchJoinResult = Result<Result<pcap::FetchStats, FetchError>, tokio::task::JoinError>;
-#[cfg(not(windows))]
 type UploadJoinResult = Result<Result<reqwest::Response, reqwest::Error>, tokio::task::JoinError>;
 
-#[cfg(not(windows))]
 async fn finish_cancelled_fetch(
     fetch: &mut tokio::task::JoinHandle<Result<pcap::FetchStats, FetchError>>,
     fetched: Option<FetchJoinResult>,
@@ -1330,7 +1322,6 @@ async fn finish_cancelled_fetch(
     finish_cancelled_fetch_with_timeout(fetch, fetched, cancel, upload, UPLOAD_STALL_TIMEOUT).await
 }
 
-#[cfg(not(windows))]
 async fn finish_cancelled_fetch_with_timeout(
     fetch: &mut tokio::task::JoinHandle<Result<pcap::FetchStats, FetchError>>,
     fetched: Option<FetchJoinResult>,
@@ -1342,7 +1333,6 @@ async fn finish_cancelled_fetch_with_timeout(
     terminal_from_fetch(fetched, cancel, upload, None)
 }
 
-#[cfg(not(windows))]
 async fn finish_failed_upload(
     fetch: &mut tokio::task::JoinHandle<Result<pcap::FetchStats, FetchError>>,
     fetched: Option<FetchJoinResult>,
@@ -1360,7 +1350,6 @@ async fn finish_failed_upload(
 /// that the source producer and its extraction permit were gone. The server
 /// has its own bounded settlement fallback, so it may release browser-facing
 /// resources while this agent-side job remains active until libpcap returns.
-#[cfg(not(windows))]
 async fn await_stopped_fetch(
     fetch: &mut tokio::task::JoinHandle<Result<pcap::FetchStats, FetchError>>,
     fetched: Option<FetchJoinResult>,
@@ -1380,12 +1369,10 @@ async fn await_stopped_fetch(
     }
 }
 
-#[cfg(not(windows))]
 fn upload_succeeded(result: &UploadJoinResult) -> bool {
     matches!(result, Ok(Ok(response)) if response.status().is_success())
 }
 
-#[cfg(not(windows))]
 fn classify_upload(result: UploadJoinResult) -> (PcapUploadStatus, Option<String>) {
     match result {
         Ok(Ok(response)) if response.status().is_success() => (PcapUploadStatus::Complete, None),
@@ -1404,7 +1391,6 @@ fn classify_upload(result: UploadJoinResult) -> (PcapUploadStatus, Option<String
     }
 }
 
-#[cfg(not(windows))]
 fn terminal_from_fetch(
     result: FetchJoinResult,
     cancel: &CancellationToken,
@@ -1470,7 +1456,6 @@ fn terminal_from_fetch(
 
 /// A bounded, cancellation-aware bridge from blocking `pcap::fetch` writes
 /// to the async HTTP request body.
-#[cfg(not(windows))]
 struct ChannelWriter {
     tx: mpsc::Sender<Bytes>,
     buffer: Vec<u8>,
@@ -1478,7 +1463,6 @@ struct ChannelWriter {
     first_sent: bool,
 }
 
-#[cfg(not(windows))]
 impl ChannelWriter {
     fn push(&mut self) -> std::io::Result<()> {
         if self.buffer.is_empty() {
@@ -1519,7 +1503,6 @@ impl ChannelWriter {
     }
 }
 
-#[cfg(not(windows))]
 impl Write for ChannelWriter {
     fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
         let mut remaining = data;
@@ -1547,7 +1530,6 @@ impl Write for ChannelWriter {
     }
 }
 
-#[cfg(not(windows))]
 fn pcap_upload_url(server_url: &str, id: &str) -> String {
     format!("{server_url}{}", agent_pcap_upload_path(id))
 }

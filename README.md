@@ -136,6 +136,25 @@ locally installed Suricata (8.0.0 or newer) can be selected with
 `--suricata-backend local` and is the default on Windows and macOS. Rule
 updates require network access.
 
+### Packet capture on Windows
+
+Install a current [Npcap](https://npcap.com/) release to enable local packet
+extraction:
+server and agent `pcap.directory` sources, `evebox pcap extract`, and
+packet downloads in oneshot PCAP mode. Use Npcap matching the EveBox
+process architecture (64-bit for the Windows release build). The runtime must
+provide the libpcap 1.10+ initialization API for UTF-8 filename support.
+
+EveBox loads Npcap's `wpcap.dll` from the system Npcap directory at runtime.
+Npcap is not bundled, and its SDK is not required to build EveBox. Without
+a usable Npcap installation, EveBox still starts and can retrieve captures
+from remote agents; local sources are disabled with a warning and explicit
+extraction commands return an error. Restart EveBox after installing Npcap.
+
+This reads existing capture files; it does not enable live capture.
+Oneshot analysis still requires Suricata separately. Linux release binaries
+continue to bundle statically linked libpcap.
+
 More documentation can be found at http://evebox.readthedocs.io/en/latest/.
 
 ## Building EveBox
@@ -160,6 +179,15 @@ make
 Release artifacts are built separately using Docker:
 ```
 ./packaging/build-dist.sh
+```
+
+### Windows PCAP tests
+
+The normal Windows test suite does not require Npcap. After installing
+Npcap, also run the opt-in offline capture tests:
+
+```
+cargo test npcap -- --ignored
 ```
 
 ### Possible Issues

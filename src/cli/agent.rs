@@ -331,13 +331,14 @@ fn build_transfer_channel(
         .get_string("pcap.directory")
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
-    #[cfg(windows)]
-    let directory = {
-        if directory.is_some() {
-            warn!("Full packet capture is not supported on Windows; ignoring pcap configuration");
+    let directory = directory.filter(|_| {
+        if let Err(err) = crate::pcap::ensure_available() {
+            warn!("Ignoring pcap configuration: {err}");
+            false
+        } else {
+            true
         }
-        None::<String>
-    };
+    });
     let filestore = config
         .get_string("filestore.directory")
         .map(|value| value.trim().to_string())
@@ -544,6 +545,31 @@ fn get_bookmark_filename(input: &str, directory: Option<String>) -> Option<PathB
         }
     }
     None
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn transfer_channel_only_disables_unavailable_pcap() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent.yaml");
+    let available = crate::pcap::ensure_available().is_ok();
+    for with_filestore in [false, true] {
+        let mut yaml =
+            String::from("elasticsearch:\n  enabled: false\npcap:\n  directory: captures\n");
+        if with_filestore {
+            yaml.push_str("filestore:\n  directory: files\n");
+        }
+        std::fs::write(&path, yaml).unwrap();
+        let matches = Args::command().get_matches_from(["agent"]);
+        let config = Config::new(matches, path.to_str()).unwrap();
+        let channel =
+            build_transfer_channel(&config, "http://evebox.test", false, "sensor", None).unwrap();
+        assert_eq!(channel.is_some(), available || with_filestore);
+        if let Some(channel) = channel {
+            assert_eq!(channel.spool.is_some(), available);
+            assert_eq!(channel.filestore.is_some(), with_filestore);
+        }
+    }
 }
 
 #[cfg(all(test, not(windows)))]

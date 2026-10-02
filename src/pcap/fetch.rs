@@ -3,6 +3,7 @@
 
 //! The blocking PCAP fetch entry point.
 
+use super::backend as pcap;
 use crate::prelude::*;
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, VecDeque};
@@ -172,37 +173,6 @@ struct OpenCapture {
     path: PathBuf,
 }
 
-/// The public `pcap::BpfProgram::filter` helper synthesizes a packet
-/// header with `len == caplen`. Use libpcap's offline evaluator with
-/// the real packet header so free-form filters using `len` retain
-/// their normal libpcap semantics for snaplen-truncated packets.
-#[repr(C)]
-struct RawBpfProgram {
-    bf_len: libc::c_uint,
-    bf_insns: *const pcap::BpfInstruction,
-}
-
-unsafe extern "C" {
-    #[link_name = "pcap_offline_filter"]
-    fn offline_filter(
-        program: *const RawBpfProgram,
-        header: *const pcap::PacketHeader,
-        data: *const libc::c_uchar,
-    ) -> libc::c_int;
-}
-
-fn bpf_matches(program: &pcap::BpfProgram, packet: &pcap::Packet<'_>) -> bool {
-    let instructions = program.get_instructions();
-    let raw = RawBpfProgram {
-        bf_len: instructions.len() as libc::c_uint,
-        bf_insns: instructions.as_ptr(),
-    };
-    // SAFETY: `raw` points at the instructions owned by `program`, and
-    // the packet header and data remain valid for the duration of the
-    // call. Both structures have the C layouts expected by libpcap.
-    unsafe { offline_filter(&raw, packet.header, packet.data.as_ptr()) > 0 }
-}
-
 /// Walks one rotation group's files in order, holding at most one
 /// open capture and one pending matched packet.
 struct GroupCursor {
@@ -287,7 +257,7 @@ impl GroupCursor {
                         }
                     }
                     if let Some(program) = &open.filter_program
-                        && !bpf_matches(program, &pkt)
+                        && !pcap::bpf_matches(program, &pkt)
                     {
                         continue;
                     }
@@ -454,6 +424,9 @@ pub(crate) fn fetch(
     out: &mut dyn Write,
     cancel: &CancellationToken,
 ) -> Result<FetchStats, FetchError> {
+    // An unavailable backend is not an empty spool or a vanished file.
+    pcap::ensure_available()
+        .map_err(|err| FetchError::Io(std::io::Error::new(std::io::ErrorKind::Unsupported, err)))?;
     let started = Instant::now();
 
     // The wrapped and base renderings of a Flow filter, compiled per
@@ -643,7 +616,7 @@ pub(crate) fn fetch(
     Ok(stats)
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(windows)))]
 mod test {
     use super::*;
     use crate::pcap::testutil::{
@@ -828,7 +801,10 @@ mod test {
 
         let first = open.capture.next_packet().unwrap();
         assert_eq!(u16::from_be_bytes([first.data[36], first.data[37]]), 9999);
-        assert!(!bpf_matches(open.filter_program.as_ref().unwrap(), &first));
+        assert!(!pcap::bpf_matches(
+            open.filter_program.as_ref().unwrap(),
+            &first
+        ));
     }
 
     #[test]

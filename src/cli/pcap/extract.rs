@@ -53,6 +53,7 @@ pub(super) struct ExtractArgs {
 }
 
 pub(super) fn main(args: ExtractArgs) -> anyhow::Result<()> {
+    crate::pcap::ensure_available()?;
     validate_output(&args, std::io::stdout().is_terminal())?;
 
     let end = match args.duration {
@@ -88,6 +89,7 @@ pub(super) fn main(args: ExtractArgs) -> anyhow::Result<()> {
 
 /// Write an empty, header-only capture to the output, using the link type
 /// of the first spool file that was opened, if any.
+#[cfg(not(windows))]
 fn write_empty_output(args: &ExtractArgs, stats: FetchStats) -> Result<()> {
     let dead = pcap::Capture::dead(
         stats
@@ -97,6 +99,18 @@ fn write_empty_output(args: &ExtractArgs, stats: FetchStats) -> Result<()> {
     )?;
     let mut savefile = dead.savefile(output_filename(args))?;
     savefile.flush()?;
+    info!("No matching packets found, wrote an empty output capture");
+    Ok(())
+}
+
+// Avoid Npcap savefile/CRT APIs: output is written by Rust, just like the
+// extraction engine. Use Ethernet when no input file established a link type.
+#[cfg(windows)]
+fn write_empty_output(args: &ExtractArgs, stats: FetchStats) -> Result<()> {
+    let header = crate::util::pcap::create_header(stats.linktype.unwrap_or(1) as u32);
+    let mut out = LazyOutput::new(output_filename(args));
+    out.write_all(&header)?;
+    out.flush()?;
     info!("No matching packets found, wrote an empty output capture");
     Ok(())
 }
@@ -227,7 +241,58 @@ fn parse_start_time(input: &str) -> std::result::Result<u64, String> {
         .map_err(|_| "start time must be after the Unix epoch".to_string())
 }
 
-#[cfg(test)]
+#[cfg(all(test, windows))]
+mod windows_tests {
+    use super::*;
+
+    fn args(directory: &Path, output: &Path) -> ExtractArgs {
+        ExtractArgs {
+            directory: directory.to_str().unwrap().to_string(),
+            filter: None,
+            prefix: Some("input".to_string()),
+            start_time: None,
+            duration: None,
+            output: Some(output.to_str().unwrap().to_string()),
+        }
+    }
+
+    #[test]
+    fn unavailable_backend_preserves_output() {
+        if crate::pcap::ensure_available().is_ok() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("result.pcap");
+        std::fs::write(&output, b"keep me").unwrap();
+        let err = main(args(dir.path(), &output)).unwrap_err();
+        assert!(err.to_string().contains("Npcap"), "{err}");
+        assert_eq!(std::fs::read(&output).unwrap(), b"keep me");
+    }
+
+    #[test]
+    fn output_alias_is_rejected_without_npcap() {
+        let dir = tempfile::tempdir().unwrap();
+        let input = dir.path().join("input.pcap");
+        std::fs::write(&input, b"keep me").unwrap();
+        assert!(validate_output(&args(dir.path(), &input), false).is_err());
+        assert_eq!(std::fs::read(&input).unwrap(), b"keep me");
+    }
+
+    #[test]
+    #[ignore = "requires an installed Npcap runtime"]
+    fn npcap_extract_empty_spool_writes_header() {
+        crate::pcap::ensure_available().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("result.pcap");
+        main(args(dir.path(), &output)).unwrap();
+        let capture = std::fs::read(&output).unwrap();
+        assert_eq!(capture.len(), crate::util::pcap::FILE_HEADER_LEN);
+        assert_eq!(&capture[..4], &0xa1b2_c3d4u32.to_le_bytes());
+        assert_eq!(&capture[20..24], &1u32.to_le_bytes());
+    }
+}
+
+#[cfg(all(test, not(windows)))]
 mod test {
     use super::*;
     use crate::pcap::testutil::{count_packets, write_pcap_file, write_pcap_file_with_linktype};

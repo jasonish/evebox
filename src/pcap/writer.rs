@@ -3,6 +3,7 @@
 
 //! Streaming classic-pcap writer with a lazily written file header.
 
+use super::backend as pcap;
 use std::io::Write;
 
 use crate::util::pcap::{

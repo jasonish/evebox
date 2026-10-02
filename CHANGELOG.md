@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- Windows builds support local packet extraction when Npcap is installed,
+  including server and agent PCAP spools, `evebox pcap extract`, and packet
+  downloads from oneshot inputs. Npcap is detected at runtime and is not
+  required for other EveBox features.
 - Files extracted by Suricata's file-store (v2) output can be downloaded
   from the event view for fileinfo events and alerts with file
   information. Set `filestore.directory` (or `--filestore-directory`) on the
