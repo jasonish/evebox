@@ -230,6 +230,7 @@ fn open_no_follow(directory: &Path, sha256: &Sha256) -> Result<std::fs::File, Op
 fn open_no_follow(directory: &Path, sha256: &Sha256) -> Result<std::fs::File, OpenError> {
     use std::os::windows::fs::OpenOptionsExt;
     const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
 
     let shard = directory.join(&sha256.as_str()[..2]);
     match std::fs::symlink_metadata(&shard) {
@@ -242,7 +243,9 @@ fn open_no_follow(directory: &Path, sha256: &Sha256) -> Result<std::fs::File, Op
     }
     match std::fs::OpenOptions::new()
         .read(true)
-        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+        // Allow directory handles so the metadata check in open_in_store
+        // rejects them as NotAFile rather than an access-denied I/O error.
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS)
         .open(shard.join(sha256.as_str()))
     {
         Ok(file) => Ok(file),
@@ -419,10 +422,22 @@ mod test {
 
         let dir_entry = Sha256::parse(&"d".repeat(64)).unwrap();
         std::fs::create_dir_all(dir.path().join(dir_entry.relative_path())).unwrap();
+        let result = store.open(&dir_entry).await;
+        assert!(matches!(result, Err(OpenError::NotAFile)), "{result:?}");
         assert!(matches!(
-            store.open(&dir_entry).await,
+            store.stat(&dir_entry).await,
             Err(OpenError::NotAFile)
         ));
+    }
+
+    #[tokio::test]
+    async fn local_store_refuses_a_non_directory_shard() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = LocalFilestore::new(dir.path().to_path_buf());
+        let sha = Sha256::parse(SHA).unwrap();
+        std::fs::write(dir.path().join(&SHA[..2]), b"not a directory").unwrap();
+        assert!(matches!(store.open(&sha).await, Err(OpenError::NotAFile)));
+        assert!(matches!(store.stat(&sha).await, Err(OpenError::NotAFile)));
     }
 
     #[cfg(unix)]
