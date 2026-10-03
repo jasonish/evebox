@@ -10,6 +10,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::BufReader;
 use std::io::Read;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use super::ElasticResponseError;
@@ -33,6 +34,10 @@ pub(crate) struct Client {
     username: Option<String>,
     password: Option<String>,
     cert: Option<reqwest::Certificate>,
+    /// Lazily built and then reused for every request. Building a
+    /// reqwest client is not cheap: it sets up the TLS verifier which
+    /// scans the system CA store, so it must not happen per request.
+    http_client: Arc<OnceLock<reqwest::Client>>,
 }
 
 fn default_username() -> Option<String> {
@@ -83,6 +88,17 @@ impl Client {
     }
 
     pub fn get_http_client(&self) -> Result<reqwest::Client, reqwest::Error> {
+        if let Some(client) = self.http_client.get() {
+            return Ok(client.clone());
+        }
+        let client = self.build_http_client()?;
+        // If another caller won the race, use theirs so everyone shares
+        // the same connection pool.
+        let _ = self.http_client.set(client.clone());
+        Ok(self.http_client.get().cloned().unwrap_or(client))
+    }
+
+    fn build_http_client(&self) -> Result<reqwest::Client, reqwest::Error> {
         let mut builder = reqwest::Client::builder();
         if self.disable_certificate_validation {
             builder = builder.danger_accept_invalid_certs(true);
@@ -278,6 +294,8 @@ impl Client {
 
     pub fn set_disable_certificate_validation(&mut self, disable: bool) {
         self.disable_certificate_validation = disable;
+        // The TLS policy changed, drop any client built with the old one.
+        self.http_client = Default::default();
     }
 
     pub fn get_url(&self) -> &str {
@@ -424,6 +442,7 @@ impl ClientBuilder {
             username: self.username,
             password: self.password,
             cert: self.cert,
+            http_client: Default::default(),
         }
     }
 }

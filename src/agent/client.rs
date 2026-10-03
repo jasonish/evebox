@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use std::sync::{Arc, OnceLock};
+
 /// Build a reqwest client honoring the agent's certificate-check option.
 /// Shared by the event importer and the packet-capture upload channel so the
 /// TLS policy cannot drift between them.
@@ -25,6 +27,10 @@ pub(crate) struct Client {
     username: Option<String>,
     password: Option<String>,
     agent_key: Option<String>,
+    /// Built once and reused: constructing a reqwest client sets up the
+    /// TLS verifier (scanning the system CA store), which is too costly
+    /// and too noisy to repeat for every event batch.
+    http_client: Arc<OnceLock<reqwest::Client>>,
 }
 
 impl Client {
@@ -41,11 +47,17 @@ impl Client {
             username,
             password,
             agent_key,
+            http_client: Default::default(),
         }
     }
 
     pub fn get_http_client(&self) -> Result<reqwest::Client, reqwest::Error> {
-        build_reqwest_client(self.disable_certificate_validation)
+        if let Some(client) = self.http_client.get() {
+            return Ok(client.clone());
+        }
+        let client = build_reqwest_client(self.disable_certificate_validation)?;
+        let _ = self.http_client.set(client.clone());
+        Ok(self.http_client.get().cloned().unwrap_or(client))
     }
 
     pub fn post(&self, path: &str) -> Result<reqwest::RequestBuilder, reqwest::Error> {
