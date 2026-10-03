@@ -99,7 +99,7 @@ impl Client {
     }
 
     fn build_http_client(&self) -> Result<reqwest::Client, reqwest::Error> {
-        let mut builder = reqwest::Client::builder();
+        let mut builder = crate::util::http::client_builder(&self.url);
         if self.disable_certificate_validation {
             builder = builder.danger_accept_invalid_certs(true);
         }

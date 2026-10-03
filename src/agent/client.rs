@@ -3,16 +3,19 @@
 
 use std::sync::{Arc, OnceLock};
 
-/// Build a reqwest client honoring the agent's certificate-check option.
-/// Shared by the event importer and the packet-capture upload channel so the
-/// TLS policy cannot drift between them.
+/// Build a reqwest client for talking to the EveBox server at `url`,
+/// honoring the agent's certificate-check option. Shared by the event
+/// importer and the packet-capture upload channel so the TLS policy cannot
+/// drift between them.
 pub(crate) fn build_reqwest_client(
+    url: &str,
     disable_certificate_validation: bool,
 ) -> Result<reqwest::Client, reqwest::Error> {
     // Never follow redirects: the agent key travels in a custom header that
     // reqwest would not strip on a cross-origin redirect, and redirected
     // POST bodies (events, pcap uploads) are not useful anyway.
-    let mut builder = reqwest::Client::builder().redirect(reqwest::redirect::Policy::none());
+    let mut builder =
+        crate::util::http::client_builder(url).redirect(reqwest::redirect::Policy::none());
     if disable_certificate_validation {
         builder = builder.danger_accept_invalid_certs(true);
     }
@@ -55,7 +58,7 @@ impl Client {
         if let Some(client) = self.http_client.get() {
             return Ok(client.clone());
         }
-        let client = build_reqwest_client(self.disable_certificate_validation)?;
+        let client = build_reqwest_client(&self.url, self.disable_certificate_validation)?;
         let _ = self.http_client.set(client.clone());
         Ok(self.http_client.get().cloned().unwrap_or(client))
     }

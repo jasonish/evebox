@@ -113,8 +113,10 @@ pub(crate) async fn run(config: ChannelConfig) {
     let files = Arc::new(Semaphore::new(2));
     // Building the upload client is deterministic; a failure would repeat on
     // every retry, so give up on the channel rather than spin.
-    let client = match crate::agent::client::build_reqwest_client(config.disable_certificate_check)
-    {
+    let client = match crate::agent::client::build_reqwest_client(
+        &config.server_url,
+        config.disable_certificate_check,
+    ) {
         Ok(client) => client,
         Err(err) => {
             error!("agent channel: failed to build upload client: {err}; channel disabled");
@@ -1974,7 +1976,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(8);
         let result = run_file_job(
             &config,
-            &crate::agent::client::build_reqwest_client(false).unwrap(),
+            &crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap(),
             &Arc::new(Semaphore::new(1)),
             &tx,
             "job",
@@ -2032,7 +2034,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(8);
         let result = run_file_job(
             &config,
-            &crate::agent::client::build_reqwest_client(false).unwrap(),
+            &crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap(),
             &Arc::new(Semaphore::new(1)),
             &tx,
             "job",
@@ -2087,7 +2089,7 @@ mod tests {
             Duration::from_secs(4),
             run_file_job(
                 &config,
-                &crate::agent::client::build_reqwest_client(false).unwrap(),
+                &crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap(),
                 &Arc::new(Semaphore::new(1)),
                 &tx,
                 "job",
@@ -2130,7 +2132,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(8);
         let result = run_file_job(
             &config,
-            &crate::agent::client::build_reqwest_client(false).unwrap(),
+            &crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap(),
             &Arc::new(Semaphore::new(1)),
             &tx,
             "job",
@@ -2170,7 +2172,7 @@ mod tests {
         std::fs::create_dir(store.path().join("cc")).unwrap();
         std::fs::write(store.path().join("cc").join(&hash), b"cancel me").unwrap();
         let config = file_config(format!("http://{addr}"), store.path());
-        let client = crate::agent::client::build_reqwest_client(false).unwrap();
+        let client = crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap();
         let (tx, mut rx) = mpsc::channel(8);
         let cancel = CancellationToken::new();
         let worker_cancel = cancel.clone();
@@ -2214,7 +2216,7 @@ mod tests {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let store = tempfile::tempdir().unwrap();
         let config = file_config("http://127.0.0.1:1".into(), store.path());
-        let client = crate::agent::client::build_reqwest_client(false).unwrap();
+        let client = crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap();
         let files = Arc::new(Semaphore::new(1));
         let (tx, mut rx) = mpsc::channel(8);
         let hash = "b".repeat(64);
@@ -2258,7 +2260,7 @@ mod tests {
             filestore: None,
             disable_certificate_check: false,
         };
-        let client = crate::agent::client::build_reqwest_client(false).unwrap();
+        let client = crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap();
         let cancel = CancellationToken::new();
         let terminal = run_job(
             &config,
@@ -2323,7 +2325,7 @@ mod tests {
             filestore: None,
             disable_certificate_check: false,
         };
-        let client = crate::agent::client::build_reqwest_client(false).unwrap();
+        let client = crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap();
         let cancel = CancellationToken::new();
         let worker_cancel = cancel.clone();
         let job = tokio::spawn(async move {
@@ -2383,7 +2385,7 @@ mod tests {
             filestore: None,
             disable_certificate_check: false,
         };
-        let client = crate::agent::client::build_reqwest_client(false).unwrap();
+        let client = crate::agent::client::build_reqwest_client(&config.server_url, false).unwrap();
         let terminal = tokio::time::timeout(
             Duration::from_secs(2),
             run_job(

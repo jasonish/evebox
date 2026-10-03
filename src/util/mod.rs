@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+pub(crate) mod http;
 pub(crate) mod pcap;
 
 /// Given a time range in seconds, return a suitable date histogram
