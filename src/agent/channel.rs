@@ -1565,7 +1565,7 @@ fn encode_handshake(handshake: &AgentHandshake) -> Result<String, serde_json::Er
 }
 
 fn jitter(delay: Duration) -> Duration {
-    use rand::Rng;
+    use rand::RngExt;
 
     let max_millis = (delay.as_millis() / 2) as u64;
     if max_millis == 0 {

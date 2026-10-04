@@ -147,7 +147,7 @@ pub(crate) struct AgentKey {
 
 fn generate_agent_key() -> String {
     use base64::prelude::*;
-    use rand::RngCore;
+    use rand::Rng;
     let mut buf = [0u8; 32];
     rand::rng().fill_bytes(&mut buf);
     format!("{AGENT_KEY_PREFIX}{}", BASE64_URL_SAFE_NO_PAD.encode(buf))

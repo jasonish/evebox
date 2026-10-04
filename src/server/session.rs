@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use base64::prelude::*;
-use rand::RngCore;
+use rand::Rng;
 
 pub(crate) struct SessionStore {
     cache: Mutex<HashMap<String, Arc<Session>>>,

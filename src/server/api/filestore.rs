@@ -751,7 +751,7 @@ async fn start_agent_file(
     }
     let id = uuid::Uuid::new_v4().to_string();
     use base64::Engine;
-    use rand::RngCore;
+    use rand::Rng;
     let mut secret = [0u8; 32];
     rand::rng().fill_bytes(&mut secret);
     let token = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(secret);

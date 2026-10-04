@@ -339,7 +339,7 @@ fn is_authentication_required(config: &Config) -> bool {
 }
 
 async fn create_admin_user(context: &ServerContext) -> Result<(String, String)> {
-    use rand::Rng;
+    use rand::RngExt;
     let rng = rand::rng();
     let username = "admin";
     let password: String = rng
