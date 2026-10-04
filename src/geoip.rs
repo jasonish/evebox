@@ -37,7 +37,7 @@ impl GeoIP {
             return Err("No database file found".into());
         };
 
-        let build_epoch = reader.metadata.build_epoch as i64;
+        let build_epoch = reader.metadata().build_epoch as i64;
 
         // Warn if database older than 4 weeks.
         let now = DateTime::now();
@@ -128,7 +128,7 @@ impl GeoIP {
     pub fn add_geoip_to_eve(&self, eve: &mut serde_json::Value) {
         let mut inner = self.inner.lock().unwrap();
         if self.check_for_update(&mut inner) {
-            let build_time = DateTime::from_seconds(inner.reader.metadata.build_epoch as i64);
+            let build_time = DateTime::from_seconds(inner.reader.metadata().build_epoch as i64);
             info!("GeoIP database has been updated to {:?}", build_time);
         }
 
