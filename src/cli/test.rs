@@ -402,7 +402,10 @@ async fn run(args: &Args) -> Result<Report> {
             .unwrap_or_else(|| DEFAULT_EXISTING_INDEX.to_string())
     } else {
         let prefix = args.index.as_deref().unwrap_or(DEFAULT_IMPORT_INDEX);
-        format!("{prefix}-{}", ulid::Ulid::new().to_string().to_lowercase())
+        format!(
+            "{prefix}-{}",
+            ulid::Ulid::generate().to_string().to_lowercase()
+        )
     };
     let base = base.as_str();
 
@@ -609,8 +612,8 @@ async fn check_external_auto_archive(
     const DEST_IP: &str = "198.51.100.20";
     const RRNAME: &str = "archive.example";
 
-    let id = ulid::Ulid::new().to_string();
-    let nonmatching_id = ulid::Ulid::new().to_string();
+    let id = ulid::Ulid::generate().to_string();
+    let nonmatching_id = ulid::Ulid::generate().to_string();
     let index = format!("{base}-external-auto-archive");
     let now = DateTime::now();
     let event = serde_json::json!({
@@ -740,10 +743,10 @@ async fn check_elastic_alert_group_exact_fields(
 
     let now = DateTime::now();
     let index = format!("{base}-archive-group-exact-fields");
-    let dns_match_id = ulid::Ulid::new().to_string();
-    let dns_keep_id = ulid::Ulid::new().to_string();
-    let tls_match_id = ulid::Ulid::new().to_string();
-    let tls_keep_id = ulid::Ulid::new().to_string();
+    let dns_match_id = ulid::Ulid::generate().to_string();
+    let dns_keep_id = ulid::Ulid::generate().to_string();
+    let tls_match_id = ulid::Ulid::generate().to_string();
+    let tls_keep_id = ulid::Ulid::generate().to_string();
 
     let events = [
         (

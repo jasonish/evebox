@@ -63,7 +63,7 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter", "time", "local-time"] }
 tracing-log = "0.2.0"
 
-ulid = "1.2.1"
+ulid = "3.0.0"
 uuid = { version = "1.26.1", features = ["v4"] }
 webbrowser = "1.2.4"
 regex = "1.13.1"
