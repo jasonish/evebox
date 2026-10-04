@@ -25,13 +25,13 @@ axum = { version = "0.8.9", features = ["ws"] }
 axum-server = { version = "0.8.0", features = ["tls-rustls-no-provider"] }
 axum-extra = { version = "0.12.6", default-features = false, features = ["cookie", "typed-header", "form"] }
 tokio = { version = "1", default-features = false, features = ["signal", "macros", "rt-multi-thread", "fs", "net", "process", "sync", "time"] }
-tower-http = { version = "0.6", features = ["set-header", "trace", "limit"] }
+tower-http = { version = "0.7", features = ["set-header", "trace", "limit"] }
 futures = "0.3.34"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-pki-types = { version = "1.15", features = ["alloc", "std"] }
 
-base64 = "0.22.1"
-bcrypt = "0.17.1"
+base64 = "0.23.1"
+bcrypt = "0.19.3"
 bytes = "1.12.1"
 clap = { version = "4.6.7", features = ["env", "derive", "color"] }
 
@@ -43,7 +43,7 @@ glob = "0.3.4"
 humantime = "2.4.0"
 lazy_static = "1.5.1"
 maxminddb = "0.27.3"
-md5 = "0.7.0"
+md5 = "0.8.1"
 mime_guess = "2.0.5"
 nom = "8"
 rand = "0.9.5"
@@ -86,11 +86,11 @@ xz2 = { version = "0.1.7", features = ["static"] }
 
 # Agent WebSocket control channel. Keep its rustls stack aligned with
 # axum's WebSocket support; the verifying connector uses native roots.
-tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
 
 [target.'cfg(not(windows))'.dependencies]
 pcap = { version = "2.5.0", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
-libloading = "0.8"
+libloading = "0.9"
 windows-sys = { version = "0.61", features = ["Win32_System_SystemInformation", "Win32_System_LibraryLoader"] }
