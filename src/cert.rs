@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use anyhow::Result;
-use rcgen::{CertificateParams, DistinguishedName, DnType, Ia5String, KeyPair};
+use rcgen::string::Ia5String;
+use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::info;

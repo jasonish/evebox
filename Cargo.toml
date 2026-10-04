@@ -68,7 +68,7 @@ uuid = { version = "1.26.1", features = ["v4"] }
 webbrowser = "1.2.4"
 regex = "1.13.1"
 libc = { version = "0.2.190", default-features = false }
-rcgen = "0.13.2"
+rcgen = "0.14.10"
 directories = "6.0.0"
 gethostname = "1.1.0"
 tempfile = "3.27.0"
