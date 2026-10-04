@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.30.0 - 2026-10-04
+
 ### Added
 - Windows builds support local packet extraction when Npcap is installed,
   including server and agent PCAP spools, `evebox pcap extract`, and packet
@@ -22,6 +24,16 @@
 ### Changed
 - The PCAP routing table in agent administration is now "Source Routing"
   and also selects the source for extracted file downloads.
+- Elasticsearch/OpenSearch and agent connections now reuse HTTP clients and
+  connection pools, reducing connection overhead and repeated certificate
+  store warnings.
+
+### Fixed
+- Plain HTTP connections to Elasticsearch/OpenSearch and EveBox servers no
+  longer load the system certificate store, avoiding startup failures and
+  warnings when CA certificates are missing or unreadable. HTTPS certificate
+  validation is unchanged.
+  https://github.com/jasonish/evebox/issues/379
 
 ## 0.29.0 - 2026-09-20
 
