@@ -65,6 +65,15 @@ pub(crate) struct AgentHandshake {
     pub(crate) version: String,
     #[serde(default)]
     pub(crate) capabilities: Vec<String>,
+    /// Operating system and architecture, e.g. `linux/x86_64` or
+    /// `windows/x86_64`. Absent from agents older than 0.31.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) platform: Option<String>,
+}
+
+/// The platform string this build advertises in its handshake.
+pub(crate) fn platform() -> String {
+    format!("{}/{}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
 /// One endpoint of a direction-symmetric flow selector.
@@ -374,6 +383,25 @@ mod tests {
             serde_json::from_str(r#"{"hostname":"host","version":"0.27","future":true}"#).unwrap();
         assert!(handshake.capabilities.is_empty());
         assert_eq!(handshake.hostname, "host");
+        assert_eq!(handshake.platform, None);
+
+        let handshake: AgentHandshake = serde_json::from_str(
+            r#"{"hostname":"host","version":"0.31","platform":"windows/x86_64"}"#,
+        )
+        .unwrap();
+        assert_eq!(handshake.platform.as_deref(), Some("windows/x86_64"));
+
+        // An absent platform is omitted so older servers see the same
+        // shape they always did.
+        let legacy = serde_json::to_value(AgentHandshake {
+            hostname: "host".to_string(),
+            version: "0.31".to_string(),
+            capabilities: vec![],
+            platform: None,
+        })
+        .unwrap();
+        assert!(legacy.get("platform").is_none());
+        assert!(platform().contains('/'));
     }
 
     #[test]

@@ -68,6 +68,14 @@ pub(crate) struct ChannelConfig {
     pub(crate) disable_certificate_check: bool,
 }
 
+impl ChannelConfig {
+    /// True when the agent serves packet captures or extracted files over
+    /// this channel, as opposed to connecting only for presence.
+    pub(crate) fn has_transfer(&self) -> bool {
+        self.spool.is_some() || self.filestore.is_some()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ConnectionOutcome {
     Disconnected { connected_for: Duration },
@@ -189,6 +197,7 @@ async fn connect_and_run(
         hostname: config.hostname.clone(),
         version: crate::version::version().to_string(),
         capabilities: advertised_capabilities(config),
+        platform: Some(crate::agent::protocol::platform()),
     };
     let handshake = match encode_handshake(&handshake) {
         Ok(handshake) => handshake,
@@ -250,7 +259,8 @@ async fn connect_and_run(
         Ok(Err(WsError::Http(response))) if response.status() == 404 => {
             if !warned.too_old {
                 warn!(
-                    "agent channel: server at {} does not support {}; upgrade EveBox to enable remote PCAP",
+                    "agent channel: server at {} does not support {}; upgrade EveBox on the \
+                     server to enable agent status, remote PCAP and file retrieval",
                     config.server_url,
                     crate::agent::protocol::AGENT_WS_PATH
                 );
@@ -1675,6 +1685,7 @@ mod tests {
             hostname: "höst-🦀".to_string(),
             version: "1".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
+            platform: None,
         };
         let encoded = encode_handshake(&handshake).unwrap();
         assert!(encoded.is_ascii());

@@ -92,6 +92,7 @@ pub(crate) struct AgentEntry {
     pub(crate) name: String,
     pub(crate) hostname: String,
     pub(crate) version: String,
+    pub(crate) platform: Option<String>,
     pub(crate) capabilities: Vec<String>,
     pub(crate) connected_at: DateTime,
     pub(crate) generation: u64,
@@ -188,6 +189,10 @@ pub(crate) struct AgentInfo {
     pub(crate) name: String,
     pub(crate) hostname: String,
     pub(crate) version: String,
+    /// `os/arch` as advertised by the agent; absent for agents older than
+    /// 0.31.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) platform: Option<String>,
     pub(crate) capabilities: Vec<String>,
     pub(crate) connected_at: DateTime,
     pub(crate) last_seen: DateTime,
@@ -281,6 +286,7 @@ impl AgentRegistry {
             name,
             hostname: handshake.hostname,
             version: handshake.version,
+            platform: handshake.platform,
             capabilities: handshake.capabilities,
             connected_at: now.clone(),
             generation: self.next_generation.fetch_add(1, Ordering::Relaxed),
@@ -434,6 +440,7 @@ impl AgentRegistry {
                     name: entry.name.clone(),
                     hostname: entry.hostname.clone(),
                     version: entry.version.clone(),
+                    platform: entry.platform.clone(),
                     capabilities: entry.capabilities.clone(),
                     connected_at: entry.connected_at.clone(),
                     last_seen: entry.last_seen.read().unwrap().clone(),
@@ -463,6 +470,7 @@ mod tests {
             hostname: format!("{name}.example.test"),
             version: "0.27.0-dev".to_string(),
             capabilities: capabilities.iter().map(|value| value.to_string()).collect(),
+            platform: None,
         }
     }
 
@@ -584,6 +592,8 @@ mod tests {
         assert!(json.get("connected_at").is_some());
         assert!(json.get("last_seen").is_some());
         assert!(json.get("rtt_ms").is_none());
+        // Older agents send no platform; the field is omitted, not null.
+        assert!(json.get("platform").is_none());
     }
 
     #[test]

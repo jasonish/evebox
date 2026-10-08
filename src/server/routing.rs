@@ -216,6 +216,7 @@ mod test {
                     hostname: format!("{name}.host"),
                     version: "test".to_string(),
                     capabilities: capabilities.iter().map(|c| c.to_string()).collect(),
+                    platform: None,
                 },
                 None,
                 "127.0.0.1:0".parse().unwrap(),

@@ -5,8 +5,10 @@ server:
   url: http://127.0.0.1:5636
 
   # Agent key. Its server-side name identifies submitted events and the
-  # packet-capture source; it is also required for the packet-capture control
-  # channel (see the pcap section below). Create one on the server with:
+  # packet-capture source. With a key the agent keeps a control connection
+  # to the server so it shows as online on the Agents page, and the same
+  # connection serves packet capture and file retrieval when those are
+  # enabled below. Create one on the server with:
   #     evebox config agents add <name>
   # Also available as the EVEBOX_SERVER_KEY environment variable. Keep
   # this file's permissions restrictive when a key is set.
@@ -60,12 +62,12 @@ input:
   #  - path: /run/evebox/eve-dgram.sock
   #    type: unix_dgram
 
-# Keep a persistent control connection to the EveBox server and serve packet
-# capture requests from this host's Suricata pcap-log spool. Setting a
-# directory enables packet capture. The control channel requires an agent
-# key (server.key above) unless the server sets
-# agents.allow-unauthenticated. This requires EveBox server output;
-# it is ignored when direct Elasticsearch output above is enabled.
+# Serve packet capture requests over the control connection from this
+# host's Suricata pcap-log spool. Setting a directory enables packet
+# capture. The control connection requires an agent key (server.key above)
+# unless the server sets agents.allow-unauthenticated. This requires EveBox
+# server output; it is ignored when direct Elasticsearch output above is
+# enabled.
 #
 # The --pcap-directory and --pcap-prefix command line options can be used
 # instead.

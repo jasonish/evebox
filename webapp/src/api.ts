@@ -654,6 +654,9 @@ export namespace API {
     name: string;
     hostname: string;
     version: string;
+    // "os/arch" as advertised by the agent; absent for agents older
+    // than 0.31.
+    platform?: string;
     capabilities: string[];
     connected_at: string;
     last_seen: string;

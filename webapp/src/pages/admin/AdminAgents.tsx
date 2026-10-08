@@ -35,6 +35,7 @@ interface AgentRow {
   kind: "agent" | "server";
   hostname?: string;
   version?: string;
+  platform?: string;
   capabilities: string[];
   connected: boolean;
   // The live connection's last-seen for connected agents, the key's
@@ -82,6 +83,7 @@ async function fetchAgents(): Promise<AgentRow[]> {
       kind: "agent",
       hostname: agent.hostname,
       version: agent.version,
+      platform: agent.platform,
       capabilities: agent.capabilities,
       connected: true,
       last_seen: agent.last_seen,
@@ -566,6 +568,7 @@ export function AdminAgents() {
                     <th role="button" onClick={() => setSort("version")}>
                       Version{sortIndicator("version")}
                     </th>
+                    <th>Platform</th>
                     <th>Capabilities</th>
                     <th role="button" onClick={() => setSort("last_seen")}>
                       Last Seen{sortIndicator("last_seen")}
@@ -594,6 +597,7 @@ export function AdminAgents() {
                         </td>
                         <td class="align-middle">{row.hostname ?? "—"}</td>
                         <td class="align-middle">{row.version ?? "—"}</td>
+                        <td class="align-middle">{row.platform ?? "—"}</td>
                         <td class="align-middle">
                           <For each={row.capabilities}>
                             {(capability) => (
@@ -677,7 +681,7 @@ export function AdminAgents() {
                         when={row.key && revealed()[row.key.id] !== undefined}
                       >
                         <tr class="app-agent-key-detail">
-                          <td colspan="9">
+                          <td colspan="10">
                             <div class="d-flex align-items-center flex-wrap gap-2">
                               <span class="text-body-secondary text-nowrap">
                                 Agent key:

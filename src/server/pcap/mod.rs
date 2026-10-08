@@ -284,6 +284,7 @@ mod test {
                     hostname: hostname.to_string(),
                     version: "test".to_string(),
                     capabilities: vec![CAPABILITY_PCAP.to_string()],
+                    platform: None,
                 },
                 None,
                 "127.0.0.1:0".parse().unwrap(),

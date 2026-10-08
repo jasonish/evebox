@@ -143,9 +143,9 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     // explicitly allows an unauthenticated control channel.
     let agent_hostname = gethostname::gethostname().to_string_lossy().to_string();
 
-    // The transfer channel is optional and independent of EVE importer tasks.
+    // The control channel is optional and independent of EVE importer tasks.
     // Direct-to-Elasticsearch mode has no server control connection.
-    let pcap_channel = build_transfer_channel(
+    let control_channel = build_control_channel(
         &config,
         &server_url,
         disable_certificate_check,
@@ -157,7 +157,10 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     let delete_processed_spool_files = config.get_bool("input.delete-spool-files")?;
     let eve_sockets = eve::socket::get_inputs(&config)?;
     if eve_filenames.is_empty() && eve_sockets.is_empty() {
-        if pcap_channel.is_some() {
+        if control_channel
+            .as_ref()
+            .is_some_and(|channel| channel.has_transfer())
+        {
             info!(
                 "No EVE inputs configured; running in transfer-only mode (events are not shipped)"
             );
@@ -265,8 +268,8 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     // This forever-retrying task owns its own lifecycle. Keep it outside the
     // fail-fast EVE processor set so a control-channel reconnect can never
     // terminate event shipping, and transfer-only mode can have an empty set.
-    if let Some(channel) = pcap_channel {
-        info!("Starting agent transfer control channel");
+    if let Some(channel) = control_channel {
+        info!("Starting agent control channel");
         tokio::spawn(crate::agent::channel::run(channel));
     }
 
@@ -316,9 +319,15 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     }
 }
 
-/// Build the persistent channel when either remote capture or file retrieval
-/// is configured and the output is an EveBox server.
-fn build_transfer_channel(
+/// Build the persistent control channel when the output is an EveBox server
+/// and the agent has an identity (an agent key), or remote capture or file
+/// retrieval is configured.
+///
+/// A keyed agent without any transfer capability still connects so the
+/// server can show it as online: the server's WebSocket pings act as the
+/// heartbeat. Keyless agents only connect when they have something to
+/// serve, as the server will typically refuse them.
+fn build_control_channel(
     config: &Config,
     server_url: &str,
     disable_certificate_check: bool,
@@ -344,14 +353,17 @@ fn build_transfer_channel(
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .map(PathBuf::from);
-    if directory.is_none() && filestore.is_none() {
+    let has_transfer = directory.is_some() || filestore.is_some();
+    if !has_transfer && server_key.is_none() {
         return Ok(None);
     }
 
     if config.get_bool("elasticsearch.enabled")? {
-        warn!(
-            "Remote capture and file retrieval require EveBox server output; ignoring transfer configuration"
-        );
+        if has_transfer {
+            warn!(
+                "Remote capture and file retrieval require EveBox server output; ignoring transfer configuration"
+            );
+        }
         return Ok(None);
     }
     let prefix = config
@@ -563,7 +575,7 @@ fn transfer_channel_only_disables_unavailable_pcap() {
         let matches = Args::command().get_matches_from(["agent"]);
         let config = Config::new(matches, path.to_str()).unwrap();
         let channel =
-            build_transfer_channel(&config, "http://evebox.test", false, "sensor", None).unwrap();
+            build_control_channel(&config, "http://evebox.test", false, "sensor", None).unwrap();
         assert_eq!(channel.is_some(), available || with_filestore);
         if let Some(channel) = channel {
             assert_eq!(channel.spool.is_some(), available);
@@ -590,7 +602,7 @@ mod tests {
             .get_string("server.key")
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
-        build_transfer_channel(config, server_url, false, &hostname, server_key)
+        build_control_channel(config, server_url, false, &hostname, server_key)
     }
 
     fn yaml_config_with_args(yaml: &str, args: &[&str]) -> (tempfile::TempDir, Config) {
@@ -732,7 +744,37 @@ mod tests {
     }
 
     #[test]
+    fn agent_key_alone_starts_channel_without_transfer() {
+        let (_dir, config) =
+            yaml_config("elasticsearch:\n  enabled: false\nserver:\n  key: eba_test\n");
+        let channel = channel_from(&config, "https://evebox.test")
+            .unwrap()
+            .unwrap();
+        assert_eq!(channel.server_key.as_deref(), Some("eba_test"));
+        assert!(channel.spool.is_none());
+        assert!(channel.filestore.is_none());
+        assert!(!channel.has_transfer());
+
+        // Without a key or anything to serve there is no channel.
+        let (_dir, keyless) = yaml_config("elasticsearch:\n  enabled: false\n");
+        assert!(
+            channel_from(&keyless, "https://evebox.test")
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
     fn direct_elasticsearch_does_not_start_channel() {
+        // A key alone does not start the channel in direct mode either.
+        let (_dir, keyed) =
+            yaml_config("elasticsearch:\n  enabled: true\nserver:\n  key: eba_test\n");
+        assert!(
+            channel_from(&keyed, "http://evebox.test")
+                .unwrap()
+                .is_none()
+        );
+
         let (_dir, direct) =
             yaml_config("elasticsearch:\n  enabled: true\npcap:\n  directory: /captures\n");
         assert!(

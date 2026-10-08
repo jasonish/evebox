@@ -315,6 +315,7 @@ mod tests {
                     hostname: "sensor-a.example.test".to_string(),
                     version: "0.27.0-dev".to_string(),
                     capabilities: vec![crate::agent::protocol::CAPABILITY_PCAP.to_string()],
+                    platform: None,
                 },
                 Some(crate::server::agents::AgentKeyIdentity {
                     id,

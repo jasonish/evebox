@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Changed
+- Agents configured with an agent key now keep a persistent control
+  connection to the server even when packet capture and file retrieval are
+  not enabled, so every keyed agent shows as online or offline on the Agents
+  administration page and in `GET /api/agents`, with hostname, version,
+  connection time and last-seen. Presence is independent of EVE event
+  activity. Agents without a key still only connect when they have packet
+  captures or files to serve.
+- Agents report their platform (`os/arch`, for example `windows/x86_64`)
+  when connecting. It is shown on the Agents administration page and
+  returned as `platform` by `GET /api/agents`. Older agents omit it.
+
 ## 0.30.0 - 2026-10-04
 
 ### Added

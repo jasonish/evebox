@@ -1108,6 +1108,7 @@ mod tests {
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
+            platform: None,
         })
         .unwrap();
         if let Some(name) = legacy_name {
@@ -1172,6 +1173,7 @@ mod tests {
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
+            platform: None,
         })
         .unwrap();
 
@@ -1217,6 +1219,7 @@ mod tests {
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
+            platform: None,
         })
         .unwrap();
 
@@ -1262,6 +1265,7 @@ mod tests {
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
+            platform: None,
         })
         .unwrap();
 
@@ -1412,6 +1416,7 @@ mod tests {
             hostname: "test-host".to_string(),
             version: "test".to_string(),
             capabilities: vec![CAPABILITY_PCAP.to_string()],
+            platform: None,
         })
         .unwrap();
         assert_upgrade_rejected(
@@ -1424,6 +1429,48 @@ mod tests {
         )
         .await;
 
+        server.abort();
+    }
+
+    /// A keyed agent with neither a pcap spool nor a file store still
+    /// connects for presence and is listed with no capabilities.
+    #[tokio::test]
+    async fn presence_only_agent_is_listed_without_capabilities() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        let key = add_test_key(&context, "quiet-sensor").await;
+        let agent = tokio::spawn(channel::run(ChannelConfig {
+            server_url: format!("http://{address}"),
+            hostname: "quiet-host".to_string(),
+            server_key: Some(key),
+            spool: None,
+            filestore: None,
+            disable_certificate_check: false,
+        }));
+        wait_until(|| context.agents.connected() == 1).await;
+
+        let agents: Vec<Value> = reqwest::Client::new()
+            .get(format!("http://{address}/api/agents"))
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        let listed = agents
+            .iter()
+            .find(|agent| agent["name"] == "quiet-sensor")
+            .expect("presence-only agent is listed");
+        assert_eq!(listed["hostname"], "quiet-host");
+        assert_eq!(
+            listed["platform"],
+            crate::agent::protocol::platform().as_str()
+        );
+        assert_eq!(listed["capabilities"], json!([]));
+        assert!(listed.get("connected_at").is_some());
+        assert!(listed.get("last_seen").is_some());
+        assert!(!context.agents.has_pcap());
+
+        agent.abort();
         server.abort();
     }
 
