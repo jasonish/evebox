@@ -19,7 +19,8 @@ pub(crate) const SUBPROTOCOL: &str = "evebox-agent-v1";
 pub(crate) const AGENT_HEADER: &str = "x-evebox-agent";
 
 /// Agent key header used on event submission requests. A dedicated header
-/// leaves `Authorization` available for legacy HTTP Basic authentication.
+/// keeps the key clear of `Authorization`, which proxies and the server's
+/// session layer treat as a user credential.
 pub(crate) const AGENT_KEY_HEADER: &str = "x-evebox-agent-key";
 
 /// Path of the agent control-channel WebSocket endpoint.

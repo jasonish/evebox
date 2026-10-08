@@ -27,8 +27,6 @@ pub(crate) fn build_reqwest_client(
 pub(crate) struct Client {
     url: String,
     disable_certificate_validation: bool,
-    username: Option<String>,
-    password: Option<String>,
     agent_key: Option<String>,
     /// Built once and reused: constructing a reqwest client sets up the
     /// TLS verifier (scanning the system CA store), which is too costly
@@ -37,18 +35,10 @@ pub(crate) struct Client {
 }
 
 impl Client {
-    pub fn new(
-        url: &str,
-        username: Option<String>,
-        password: Option<String>,
-        agent_key: Option<String>,
-        disable_certificate_validation: bool,
-    ) -> Self {
+    pub fn new(url: &str, agent_key: Option<String>, disable_certificate_validation: bool) -> Self {
         Self {
             url: url.to_string(),
             disable_certificate_validation,
-            username,
-            password,
             agent_key,
             http_client: Default::default(),
         }
@@ -72,11 +62,6 @@ impl Client {
         if let Some(key) = &self.agent_key {
             request = request.header(crate::agent::protocol::AGENT_KEY_HEADER, key);
         }
-        let request = if let Some(username) = &self.username {
-            request.basic_auth(username, self.password.clone())
-        } else {
-            request
-        };
         Ok(request)
     }
 }
@@ -86,15 +71,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn agent_key_does_not_displace_basic_auth() {
+    fn agent_key_is_sent_as_a_header() {
         let _ = rustls::crypto::ring::default_provider().install_default();
-        let client = Client::new(
-            "https://evebox.test",
-            Some("legacy-user".to_string()),
-            Some("legacy-password".to_string()),
-            Some("eba_test".to_string()),
-            false,
-        );
+        let client = Client::new("https://evebox.test", Some("eba_test".to_string()), false);
         let request = client.post("api/submit").unwrap().build().unwrap();
         assert_eq!(
             request
@@ -103,9 +82,15 @@ mod tests {
                 .unwrap(),
             "eba_test"
         );
-        assert_eq!(
-            request.headers().get("authorization").unwrap(),
-            "Basic bGVnYWN5LXVzZXI6bGVnYWN5LXBhc3N3b3Jk"
+        assert!(request.headers().get("authorization").is_none());
+
+        let client = Client::new("https://evebox.test", None, false);
+        let request = client.post("api/submit").unwrap().build().unwrap();
+        assert!(
+            request
+                .headers()
+                .get(crate::agent::protocol::AGENT_KEY_HEADER)
+                .is_none()
         );
     }
 }

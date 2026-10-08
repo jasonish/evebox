@@ -14,6 +14,12 @@
   when connecting. It is shown on the Agents administration page and
   returned as `platform` by `GET /api/agents`. Older agents omit it.
 
+### Removed
+- The agent `server.username` and `server.password` options. Event
+  submission was never session-authenticated, so the credentials were sent
+  but never checked. Agent keys (`server.key`) are the agent credential.
+  Agents log a warning if the old options are still set.
+
 ## 0.30.0 - 2026-10-04
 
 ### Added

@@ -128,8 +128,15 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     let server_url = config
         .get_string("server.url")
         .unwrap_or_else(|| "http://localhost:5636".to_string());
-    let server_username = config.get_string("server.username");
-    let server_password = config.get_string("server.password");
+    // Event submission has never been session-authenticated, so these were
+    // sent but never checked. Agent keys are the credential now.
+    if config.get_string("server.username").is_some()
+        || config.get_string("server.password").is_some()
+    {
+        warn!(
+            "server.username and server.password are ignored; use an agent key (server.key) instead"
+        );
+    }
     let disable_certificate_check = config
         .get_bool("disable-certificate-check")
         .unwrap_or(false);
@@ -239,13 +246,7 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
             crate::elastic::importer::ElasticEventSink::new(client, &index, nodate, opensearch);
         EventSink::Elastic(importer)
     } else {
-        let client = Client::new(
-            &server_url,
-            server_username,
-            server_password,
-            server_key,
-            disable_certificate_check,
-        );
+        let client = Client::new(&server_url, server_key, disable_certificate_check);
         info!("Sending events to EveBox server: {server_url}");
         EventSink::EveBox(EveBoxEventSink::new(client))
     };
