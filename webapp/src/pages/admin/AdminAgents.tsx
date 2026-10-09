@@ -28,12 +28,12 @@ const SENSOR_TOOLTIP =
   "events. The sensor filter on the events view lists the known names.";
 
 // One display row: an agent — connected, key-only, or both, merged by
-// name since a key's name is the agent identity it authorizes — the
-// server-local source (pcap spool and/or file store), or an unregistered
-// agent connected without a key, which is never merged with a key.
+// name since a key's name is the agent identity it authorizes — or an
+// unregistered agent connected without a key, which is never merged with
+// a key.
 interface AgentRow {
   name: string;
-  kind: "agent" | "server" | "unregistered";
+  kind: "agent" | "unregistered";
   hostname?: string;
   version?: string;
   platform?: string;
@@ -46,6 +46,15 @@ interface AgentRow {
   key?: API.AgentKeyInfo;
   // Where an unregistered agent connected from.
   remote_addr?: string;
+}
+
+// What the page polls: the agent rows, plus the reserved name of the
+// server-local source when this server has its own pcap spool or file
+// store. That source is not an agent, so it has no row, but the routing
+// table accepts it.
+interface AgentsData {
+  rows: AgentRow[];
+  serverSource?: string;
 }
 
 // Server-local sources from GET /api/pcap/sources or
@@ -66,14 +75,10 @@ async function fetchServerSources(
   }
 }
 
-const hasServerSource = (sources: API.PcapSource[]) =>
-  sources.some((source) => source.kind === "server");
-
 // Merge connected agents (GET /api/agents) with issued agent keys
-// (GET /api/agents/keys) by name, then append the server-local source
-// when a local pcap spool or file store is configured, and finally the
-// unregistered agents.
-async function fetchAgents(): Promise<AgentRow[]> {
+// (GET /api/agents/keys) by name, then append the unregistered agents.
+// The server-local source, when configured, is reported by name only.
+async function fetchAgents(): Promise<AgentsData> {
   const [agents, keys, pcapSources, fileSources] = await Promise.all([
     API.getAgents(),
     API.getAgentKeys(),
@@ -128,32 +133,20 @@ async function fetchAgents(): Promise<AgentRow[]> {
       });
     }
   }
-  const rows = Array.from(byName.values());
-  // The server-local row carries the reserved name the routing table
-  // accepts, as the server reports it in either sources list.
+  // The server reports the server-local source under its reserved name
+  // in either sources list.
   const serverSource = [...pcapSources, ...fileSources].find(
     (source) => source.kind === "server",
   );
-  if (serverSource) {
-    rows.push({
-      name: serverSource.name,
-      kind: "server",
-      capabilities: [
-        ...(hasServerSource(pcapSources) ? ["pcap"] : []),
-        ...(hasServerSource(fileSources) ? ["filestore"] : []),
-      ],
-      connected: true,
-    });
-  }
-  return [...rows, ...unregistered];
+  return {
+    rows: [...byName.values(), ...unregistered],
+    serverSource: serverSource?.name,
+  };
 }
 
-// The server-local source is always live; agents are live if seen
-// within the stale window, key-only rows are offline.
+// Agents are live if seen within the stale window; key-only rows are
+// offline.
 function rowStatus(row: AgentRow): "live" | "stale" | "offline" {
-  if (row.kind === "server") {
-    return "live";
-  }
   if (!row.connected || !row.last_seen) {
     return "offline";
   }
@@ -255,12 +248,12 @@ export function AdminAgents() {
   // Catch fetch failures so a failed poll doesn't put the resource in
   // an error state, which would throw on reads of agents.latest.
   // Instead keep the last good data and note the error above the table.
-  const [agents, { refetch }] = createResource<AgentRow[] | undefined>(
+  const [agents, { refetch }] = createResource<AgentsData | undefined>(
     async (_k, info) => {
       try {
-        const rows = await fetchAgents();
+        const data = await fetchAgents();
         setFetchError(false);
-        return rows;
+        return data;
       } catch (_e) {
         setFetchError(true);
         return info.value;
@@ -335,17 +328,20 @@ export function AdminAgents() {
   // (keyed) agents that are currently offline — a rule may target an
   // agent before it connects. Unregistered agents never serve.
   const sourceOptions = createMemo(() => {
-    const names = (agents.latest ?? [])
+    const names = (agents.latest?.rows ?? [])
       .filter(
         (row) =>
-          row.kind === "server" ||
-          (row.kind === "agent" &&
-            (row.connected
-              ? row.capabilities.includes("pcap") ||
-                row.capabilities.includes("filestore")
-              : row.key !== undefined)),
+          row.kind === "agent" &&
+          (row.connected
+            ? row.capabilities.includes("pcap") ||
+              row.capabilities.includes("filestore")
+            : row.key !== undefined),
       )
       .map((row) => row.name);
+    const serverSource = agents.latest?.serverSource;
+    if (serverSource) {
+      names.push(serverSource);
+    }
     names.sort(compareText);
     return names;
   });
@@ -420,8 +416,8 @@ export function AdminAgents() {
   const [sortAsc, setSortAsc] = createSignal(true);
 
   const sorted = createMemo(() => {
-    const rows = (agents.latest ?? []).filter(
-      (row) => row.kind !== "unregistered",
+    const rows = (agents.latest?.rows ?? []).filter(
+      (row) => row.kind === "agent",
     );
     rows.sort((a, b) => compareRows(a, b, sortColumn(), sortAsc()));
     return rows;
@@ -430,7 +426,7 @@ export function AdminAgents() {
   // Unregistered agents have their own card, ordered by hostname and
   // address.
   const unregistered = createMemo(() =>
-    (agents.latest ?? [])
+    (agents.latest?.rows ?? [])
       .filter((row) => row.kind === "unregistered")
       .sort(
         (a, b) =>
@@ -586,8 +582,8 @@ export function AdminAgents() {
             <Show when={unregistered().length === 0}>
               <div class="card mt-2">
                 <div class="card-body">
-                  No agents yet. Connected agents, issued agent keys, and the
-                  server-local PCAP spool or file store will appear here.
+                  No agents yet. Connected agents and issued agent keys will
+                  appear here.
                 </div>
               </div>
             </Show>
@@ -601,7 +597,6 @@ export function AdminAgents() {
                     <th role="button" onClick={() => setSort("name")}>
                       Name{sortIndicator("name")}
                     </th>
-                    <th>Type</th>
                     <th role="button" onClick={() => setSort("hostname")}>
                       Hostname{sortIndicator("hostname")}
                     </th>
@@ -623,18 +618,6 @@ export function AdminAgents() {
                     <tbody class="app-agent-group">
                       <tr>
                         <td class="align-middle">{row.name}</td>
-                        <td class="align-middle">
-                          <Show
-                            when={row.kind === "agent"}
-                            fallback={
-                              <span class="badge text-bg-secondary">
-                                Server-local
-                              </span>
-                            }
-                          >
-                            <span class="badge text-bg-primary">Agent</span>
-                          </Show>
-                        </td>
                         <td class="align-middle">{row.hostname ?? "—"}</td>
                         <td class="align-middle">{row.version ?? "—"}</td>
                         <td class="align-middle">{row.platform ?? "—"}</td>
@@ -648,11 +631,9 @@ export function AdminAgents() {
                           </For>
                         </td>
                         <td class="align-middle">
-                          {row.kind === "server"
-                            ? "—"
-                            : row.last_seen === undefined
-                              ? "Never"
-                              : parse_timestamp(row.last_seen).fromNow()}
+                          {row.last_seen === undefined
+                            ? "Never"
+                            : parse_timestamp(row.last_seen).fromNow()}
                         </td>
                         <td class="align-middle text-end">
                           {row.rtt_ms === undefined ? "—" : `${row.rtt_ms} ms`}
@@ -680,19 +661,14 @@ export function AdminAgents() {
                           <Show
                             when={row.key}
                             fallback={
-                              <Show
-                                when={row.kind === "agent"}
-                                fallback={<span>—</span>}
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary"
+                                disabled={creating()}
+                                onClick={() => createKey(row.name)}
                               >
-                                <button
-                                  type="button"
-                                  class="btn btn-sm btn-outline-primary"
-                                  disabled={creating()}
-                                  onClick={() => createKey(row.name)}
-                                >
-                                  Add Key
-                                </button>
-                              </Show>
+                                Add Key
+                              </button>
                             }
                           >
                             <button
@@ -721,7 +697,7 @@ export function AdminAgents() {
                         when={row.key && revealed()[row.key.id] !== undefined}
                       >
                         <tr class="app-agent-key-detail">
-                          <td colspan="10">
+                          <td colspan="9">
                             <div class="d-flex align-items-center flex-wrap gap-2">
                               <span class="text-body-secondary text-nowrap">
                                 Agent key:
