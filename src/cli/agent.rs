@@ -572,13 +572,13 @@ fn transfer_channel_only_disables_unavailable_pcap() {
         std::fs::write(&path, yaml).unwrap();
         let matches = Args::command().get_matches_from(["agent"]);
         let config = Config::new(matches, path.to_str()).unwrap();
-        let channel =
-            build_control_channel(&config, "http://evebox.test", false, "sensor", None).unwrap();
-        assert_eq!(channel.is_some(), available || with_filestore);
-        if let Some(channel) = channel {
-            assert_eq!(channel.spool.is_some(), available);
-            assert_eq!(channel.filestore.is_some(), with_filestore);
-        }
+        // The channel always opens when shipping to a server, for presence
+        // if nothing else; an unavailable pcap backend only drops the spool.
+        let channel = build_control_channel(&config, "http://evebox.test", false, "sensor", None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(channel.spool.is_some(), available);
+        assert_eq!(channel.filestore.is_some(), with_filestore);
     }
 }
 
