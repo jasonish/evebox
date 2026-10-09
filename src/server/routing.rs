@@ -342,4 +342,52 @@ mod test {
             Err(RouteError::NoSource(Some("collector".to_string())))
         );
     }
+
+    #[test]
+    fn unregistered_agents_are_never_routing_sources() {
+        let registry = AgentRegistry::default();
+        let (tx, _rx) = tokio::sync::mpsc::channel(4);
+        registry.register_unregistered(
+            AgentHandshake {
+                hostname: "sensor-a".to_string(),
+                version: "test".to_string(),
+                capabilities: vec![CAPABILITY_PCAP.to_string()],
+                platform: None,
+            },
+            "127.0.0.1:0".parse().unwrap(),
+            "127.0.0.1".to_string(),
+            tx,
+        );
+        let routing = PcapRouting::default();
+        let none = Err(RouteError::NoSource(Some("sensor-a".to_string())));
+
+        // Neither the sensor identity, the hostname stamp nor an explicit
+        // request reaches an unregistered agent.
+        let event = serde_json::json!({
+            "host": "sensor-a",
+            "evebox": {"agent": {"hostname": "sensor-a"}},
+        });
+        assert_eq!(
+            names(resolve(
+                &registry,
+                CAPABILITY_PCAP,
+                false,
+                &routing,
+                Some(&event),
+                None
+            )),
+            none
+        );
+        assert_eq!(
+            names(resolve(
+                &registry,
+                CAPABILITY_PCAP,
+                false,
+                &routing,
+                None,
+                Some("sensor-a")
+            )),
+            none
+        );
+    }
 }

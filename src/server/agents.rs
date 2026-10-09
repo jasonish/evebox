@@ -48,8 +48,9 @@ pub(crate) struct AgentConnectionId {
     pub(crate) generation: u64,
 }
 
-/// The agent key a connection authenticated with. `None` only under
-/// `agents.allow-unauthenticated`.
+/// The agent key a connection authenticated with. `None` for keyless
+/// connections: trusted ones under `agents.allow-unauthenticated`, and
+/// unregistered ones, which live in a separate map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AgentKeyIdentity {
     pub(crate) id: i64,
@@ -98,6 +99,12 @@ pub(crate) struct AgentEntry {
     pub(crate) generation: u64,
     pub(crate) key: Option<AgentKeyIdentity>,
     pub(crate) remote: SocketAddr,
+    /// A keyless connection accepted for presence only. It has no
+    /// capabilities, is sent no work and is never a routing source.
+    pub(crate) unregistered: bool,
+    /// The address shown for an unregistered connection, which has no key
+    /// name to identify it.
+    pub(crate) remote_addr: Option<String>,
     pub(crate) outbound: mpsc::Sender<ServerMessage>,
     /// One server-side in-flight PCAP slot for this authenticated source name.
     ///
@@ -181,6 +188,22 @@ impl AgentEntry {
     fn is_cancelled(&self) -> bool {
         self.shutdown.is_cancelled()
     }
+
+    fn info(&self) -> AgentInfo {
+        let rtt_ms = self.rtt_ms.load(Ordering::Relaxed);
+        AgentInfo {
+            name: self.name.clone(),
+            hostname: self.hostname.clone(),
+            version: self.version.clone(),
+            platform: self.platform.clone(),
+            capabilities: self.capabilities.clone(),
+            connected_at: self.connected_at.clone(),
+            last_seen: self.last_seen.read().unwrap().clone(),
+            rtt_ms: (rtt_ms != u64::MAX).then_some(rtt_ms),
+            unregistered: self.unregistered,
+            remote_addr: self.remote_addr.clone(),
+        }
+    }
 }
 
 /// One row returned by `GET /api/agents`.
@@ -198,18 +221,32 @@ pub(crate) struct AgentInfo {
     pub(crate) last_seen: DateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) rtt_ms: Option<u64>,
+    /// A keyless connection listed for presence only: no capabilities, no
+    /// work and never a routing source. Its name is the hostname it
+    /// reported.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) unregistered: bool,
+    /// Where an unregistered agent connected from, as unregistered agents
+    /// may share a hostname.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) remote_addr: Option<String>,
 }
 
 #[derive(Default)]
 struct RegistryState {
     agents: HashMap<String, Arc<AgentEntry>>,
+    /// Unregistered connections by generation. Kept apart from `agents` so
+    /// they never replace or shadow a named agent, and capability and
+    /// routing lookups, which only read `agents`, never see them.
+    unregistered: HashMap<u64, Arc<AgentEntry>>,
     /// Key IDs deleted through the in-process admin API. Keeping them here
     /// closes the race where an upgrade authenticated just before deletion but
     /// reaches registration just after the live connection was bumped.
     revoked_key_ids: HashSet<i64>,
 }
 
-/// Live connected agents, keyed by their authenticated name.
+/// Live connected agents, keyed by their authenticated name, plus
+/// unregistered connections, which are listed but never routed to.
 pub(crate) struct AgentRegistry {
     state: RwLock<RegistryState>,
     next_generation: AtomicU64,
@@ -292,6 +329,8 @@ impl AgentRegistry {
             generation: self.next_generation.fetch_add(1, Ordering::Relaxed),
             key,
             remote,
+            unregistered: false,
+            remote_addr: None,
             outbound,
             pcap_busy,
             last_seen: RwLock::new(now),
@@ -319,10 +358,54 @@ impl AgentRegistry {
         Ok(entry)
     }
 
+    /// Register a keyless connection for presence only.
+    ///
+    /// Generations are unique, so two unregistered connections may share a
+    /// hostname, and none can displace a named agent. The advertised
+    /// capabilities are dropped: an unregistered agent is sent no work.
+    pub(crate) fn register_unregistered(
+        &self,
+        handshake: AgentHandshake,
+        remote: SocketAddr,
+        remote_addr: String,
+        outbound: mpsc::Sender<ServerMessage>,
+    ) -> Arc<AgentEntry> {
+        let now = DateTime::now();
+        let entry = Arc::new(AgentEntry {
+            name: handshake.hostname.clone(),
+            hostname: handshake.hostname,
+            version: handshake.version,
+            platform: handshake.platform,
+            capabilities: Vec::new(),
+            connected_at: now.clone(),
+            generation: self.next_generation.fetch_add(1, Ordering::Relaxed),
+            key: None,
+            remote,
+            unregistered: true,
+            remote_addr: Some(remote_addr),
+            outbound,
+            pcap_busy: Arc::new(Semaphore::new(1)),
+            last_seen: RwLock::new(now),
+            rtt_ms: AtomicU64::new(u64::MAX),
+            ping_request: Notify::new(),
+            pongs: watch::Sender::new(0),
+            shutdown: CancellationToken::new(),
+        });
+        self.state
+            .write()
+            .unwrap()
+            .unregistered
+            .insert(entry.generation, entry.clone());
+        entry
+    }
+
     /// Remove this generation only. Returns false when a replacement already
     /// owns the name.
     pub(crate) fn remove(&self, connection: &AgentConnectionId) -> bool {
         let mut state = self.state.write().unwrap();
+        if state.unregistered.remove(&connection.generation).is_some() {
+            return true;
+        }
         let is_current = state
             .agents
             .get(&connection.name)
@@ -422,33 +505,33 @@ impl AgentRegistry {
         self.has_capability(CAPABILITY_PCAP)
     }
 
+    /// Connected named agents. Unregistered connections are not counted.
     pub(crate) fn connected(&self) -> usize {
         self.state.read().unwrap().agents.len()
     }
 
-    /// General connected-agent read model, sorted by authenticated name.
+    #[cfg(test)]
+    pub(crate) fn unregistered_count(&self) -> usize {
+        self.state.read().unwrap().unregistered.len()
+    }
+
+    /// General connected-agent read model: named agents sorted by name,
+    /// then unregistered connections sorted by hostname and address.
     pub(crate) fn list(&self) -> Vec<AgentInfo> {
-        let mut rows: Vec<AgentInfo> = self
-            .state
-            .read()
-            .unwrap()
-            .agents
-            .values()
-            .map(|entry| {
-                let rtt_ms = entry.rtt_ms.load(Ordering::Relaxed);
-                AgentInfo {
-                    name: entry.name.clone(),
-                    hostname: entry.hostname.clone(),
-                    version: entry.version.clone(),
-                    platform: entry.platform.clone(),
-                    capabilities: entry.capabilities.clone(),
-                    connected_at: entry.connected_at.clone(),
-                    last_seen: entry.last_seen.read().unwrap().clone(),
-                    rtt_ms: (rtt_ms != u64::MAX).then_some(rtt_ms),
-                }
-            })
-            .collect();
+        let state = self.state.read().unwrap();
+        let mut rows: Vec<AgentInfo> = state.agents.values().map(|entry| entry.info()).collect();
         rows.sort_by(|a, b| a.name.cmp(&b.name));
+        let mut unregistered: Vec<AgentInfo> = state
+            .unregistered
+            .values()
+            .map(|entry| entry.info())
+            .collect();
+        unregistered.sort_by(|a, b| {
+            a.name
+                .cmp(&b.name)
+                .then_with(|| a.remote_addr.cmp(&b.remote_addr))
+        });
+        rows.extend(unregistered);
         rows
     }
 
@@ -594,6 +677,89 @@ mod tests {
         assert!(json.get("rtt_ms").is_none());
         // Older agents send no platform; the field is omitted, not null.
         assert!(json.get("platform").is_none());
+    }
+
+    fn register_unregistered(
+        registry: &AgentRegistry,
+        hostname: &str,
+        capabilities: &[&str],
+    ) -> Arc<AgentEntry> {
+        let (tx, _rx) = mpsc::channel(OUTBOUND_CAPACITY);
+        let handshake = AgentHandshake {
+            hostname: hostname.to_string(),
+            ..handshake(hostname, capabilities)
+        };
+        registry.register_unregistered(handshake, remote(), "10.0.0.5".to_string(), tx)
+    }
+
+    #[test]
+    fn unregistered_agents_are_listed_but_never_routable() {
+        let registry = AgentRegistry::default();
+        let entry = register_unregistered(&registry, "sensor-a", &[CAPABILITY_PCAP]);
+
+        assert!(entry.unregistered);
+        assert!(entry.capabilities.is_empty());
+        assert!(registry.get("sensor-a").is_none());
+        assert!(
+            registry
+                .capable_agent("sensor-a", CAPABILITY_PCAP)
+                .is_none()
+        );
+        assert!(registry.pcap_agents().is_empty());
+        assert!(!registry.has_pcap());
+        assert_eq!(registry.connected(), 0);
+        assert_eq!(registry.unregistered_count(), 1);
+
+        let rows = registry.list();
+        assert_eq!(rows.len(), 1);
+        let json = serde_json::to_value(&rows[0]).unwrap();
+        assert_eq!(json["name"], "sensor-a");
+        assert_eq!(json["unregistered"], true);
+        assert_eq!(json["remote_addr"], "10.0.0.5");
+        assert_eq!(json["capabilities"], serde_json::json!([]));
+
+        assert!(registry.remove(&entry.connection_id()));
+        assert_eq!(registry.unregistered_count(), 0);
+        assert!(registry.list().is_empty());
+    }
+
+    #[test]
+    fn unregistered_and_named_agents_with_one_name_coexist() {
+        let registry = AgentRegistry::default();
+        let keyed = register_with_key(&registry, "sensor-a", key(1)).unwrap();
+        let first = register_unregistered(&registry, "sensor-a", &[]);
+        let second = register_unregistered(&registry, "sensor-a", &[]);
+
+        assert!(!keyed.is_cancelled());
+        assert!(!first.is_cancelled());
+        assert_eq!(
+            registry.get("sensor-a").unwrap().generation,
+            keyed.generation
+        );
+        assert_eq!(registry.connected(), 1);
+        assert_eq!(registry.unregistered_count(), 2);
+
+        // Named agents first, then unregistered ones.
+        let rows = registry.list();
+        assert_eq!(rows.len(), 3);
+        assert!(!rows[0].unregistered);
+        assert!(rows[0].remote_addr.is_none());
+        assert!(rows[1].unregistered && rows[2].unregistered);
+        let json = serde_json::to_value(&rows[0]).unwrap();
+        assert!(json.get("unregistered").is_none());
+        assert!(json.get("remote_addr").is_none());
+
+        // Removal is by generation and never crosses between the maps.
+        assert!(registry.remove(&first.connection_id()));
+        assert_eq!(
+            registry.get("sensor-a").unwrap().generation,
+            keyed.generation
+        );
+        assert!(registry.remove(&keyed.connection_id()));
+        assert_eq!(registry.connected(), 0);
+        assert_eq!(registry.unregistered_count(), 1);
+        assert!(registry.remove(&second.connection_id()));
+        assert!(registry.list().is_empty());
     }
 
     #[test]

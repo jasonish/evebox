@@ -209,6 +209,11 @@ pub(crate) enum ServerMessage {
         server_version: String,
         #[serde(default)]
         capabilities: Vec<String>,
+        /// Set when the server accepted this connection without an agent
+        /// key. The agent is listed as unregistered and is sent no work.
+        /// Older servers never send it and older agents ignore it.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        unregistered: bool,
     },
     /// Execute a normalized request and upload any resulting bytes over HTTP.
     PcapRequest {
@@ -415,6 +420,7 @@ mod tests {
             ServerMessage::Hello {
                 server_version: "0.27.0".to_string(),
                 capabilities: vec!["pcap".to_string()],
+                unregistered: false,
             }
         );
         let encoded = serde_json::to_string(&message).unwrap();
@@ -422,13 +428,31 @@ mod tests {
             serde_json::from_str::<ServerMessage>(&encoded).unwrap(),
             message
         );
+        // A registered hello stays in the shape older agents know.
+        assert!(!encoded.contains("unregistered"));
         assert_eq!(
             serde_json::from_str::<ServerMessage>(r#"{"type":"hello","server_version":"0.27.0"}"#)
                 .unwrap(),
             ServerMessage::Hello {
                 server_version: "0.27.0".to_string(),
                 capabilities: Vec::new(),
+                unregistered: false,
             }
+        );
+    }
+
+    #[test]
+    fn unregistered_hello_round_trips() {
+        let message = ServerMessage::Hello {
+            server_version: "0.31.0".to_string(),
+            capabilities: Vec::new(),
+            unregistered: true,
+        };
+        let encoded = serde_json::to_string(&message).unwrap();
+        assert!(encoded.contains(r#""unregistered":true"#));
+        assert_eq!(
+            serde_json::from_str::<ServerMessage>(&encoded).unwrap(),
+            message
         );
     }
 

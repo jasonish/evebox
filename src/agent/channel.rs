@@ -235,6 +235,11 @@ async fn connect_and_run(
     let connector = crate::agent::tls::connector(config.disable_certificate_check);
     let connect = connect_async_tls_with_config(request, Some(ws_config), false, connector);
 
+    // Without a key or anything to transfer the agent connects only to be
+    // listed as unregistered, so a server that refuses it costs nothing
+    // else: say so quietly.
+    let quiet = config.server_key.is_none() && !config.has_transfer();
+
     match tokio::time::timeout(CONNECT_TIMEOUT, connect).await {
         Ok(Ok((mut ws, response))) => {
             let selected = response
@@ -258,23 +263,33 @@ async fn connect_and_run(
         }
         Ok(Err(WsError::Http(response))) if response.status() == 404 => {
             if !warned.too_old {
-                warn!(
+                let message = format!(
                     "agent channel: server at {} does not support {}; upgrade EveBox on the \
                      server to enable agent status, remote PCAP and file retrieval",
                     config.server_url,
                     crate::agent::protocol::AGENT_WS_PATH
                 );
+                if quiet {
+                    info!("{message}");
+                } else {
+                    warn!("{message}");
+                }
                 warned.too_old = true;
             }
             ConnectionOutcome::ServerTooOld
         }
         Ok(Err(WsError::Http(response))) if response.status() == 400 => {
             if !warned.too_old {
-                warn!(
+                let message = format!(
                     "agent channel: server at {} rejected the agent handshake; the server may be \
                      older than this agent, upgrade EveBox on the server",
                     config.server_url
                 );
+                if quiet {
+                    info!("{message}");
+                } else {
+                    warn!("{message}");
+                }
                 warned.too_old = true;
             }
             ConnectionOutcome::ServerTooOld
@@ -286,6 +301,14 @@ async fn connect_and_run(
                         "agent channel: the server at {} rejected the configured agent key \
                          (unknown or removed); issue a new one with `evebox config agents add <name>` \
                          on the server and update server.key",
+                        config.server_url
+                    );
+                } else if quiet {
+                    // Servers through 0.30 refuse agents without a key.
+                    info!(
+                        "agent channel: the server at {} does not accept agents without a key, so \
+                         this agent is not listed on its Agents page; upgrade EveBox on the server \
+                         or set server.key",
                         config.server_url
                     );
                 } else {
@@ -521,10 +544,24 @@ fn handle_message(
         ServerMessage::Hello {
             server_version,
             capabilities,
+            unregistered,
         } => {
             debug!(
-                "agent channel: server hello version={server_version} capabilities={capabilities:?}"
+                "agent channel: server hello version={server_version} capabilities={capabilities:?} unregistered={unregistered}"
             );
+            if unregistered {
+                info!(
+                    "agent channel: connected as an unregistered agent; to register it, add it on \
+                     the server's Agents page (or with `evebox config agents add <name>`) and set \
+                     the key as server.key"
+                );
+                if config.has_transfer() {
+                    warn!(
+                        "agent channel: packet capture and file retrieval are disabled until this \
+                         agent has an agent key (server.key)"
+                    );
+                }
+            }
         }
         ServerMessage::PcapRequest {
             id,
@@ -1603,6 +1640,7 @@ mod tests {
                 .iter()
                 .map(|capability| (*capability).to_string())
                 .collect(),
+            unregistered: false,
         }
     }
 

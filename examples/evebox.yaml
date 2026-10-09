@@ -147,14 +147,16 @@ geoip:
 
 # Agent identity and remote control channel. The server derives an agent's
 # identity from its key when events are submitted or a control connection is
-# established. Connecting agents must present a key regardless of
-# authentication.required, which only governs browser access.
+# established. A presented key is verified regardless of
+# authentication.required, which only governs browser access. Agents without
+# a key are accepted as unregistered: they are listed on the Agents page for
+# presence only, with no packet capture or file retrieval.
 # Manage keys with `evebox config agents add|list|rm`; set each agent's
 # key as server.key in its agent.yaml. Keys are stored as-is in the
 # configuration database, so keep that file's permissions restrictive.
 #agents:
-#  # Lab escape hatch: accept agents without a key. A presented key is
-#  # still verified.
+#  # Lab escape hatch: trust agents without a key, including packet capture
+#  # and file retrieval. A presented key is still verified.
 #  allow-unauthenticated: false
 
 # Event services: links that will be provided on events to link to additional

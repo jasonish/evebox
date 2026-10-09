@@ -146,8 +146,9 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
         .filter(|value| !value.is_empty());
 
     // The key determines the agent identity. The hostname remains useful
-    // operational metadata and is the lab-mode fallback when the server
-    // explicitly allows an unauthenticated control channel.
+    // operational metadata, and names an agent without a key: unregistered
+    // by default, or trusted when the server explicitly allows an
+    // unauthenticated control channel.
     let agent_hostname = gethostname::gethostname().to_string_lossy().to_string();
 
     // The control channel is optional and independent of EVE importer tasks.
@@ -320,14 +321,13 @@ pub async fn main(args_matches: &clap::ArgMatches) -> anyhow::Result<()> {
     }
 }
 
-/// Build the persistent control channel when the output is an EveBox server
-/// and the agent has an identity (an agent key), or remote capture or file
-/// retrieval is configured.
+/// Build the persistent control channel whenever the output is an EveBox
+/// server.
 ///
-/// A keyed agent without any transfer capability still connects so the
-/// server can show it as online: the server's WebSocket pings act as the
-/// heartbeat. Keyless agents only connect when they have something to
-/// serve, as the server will typically refuse them.
+/// An agent without any transfer capability still connects so the server
+/// can show it as online: the server's WebSocket pings act as the
+/// heartbeat. Without an agent key the server lists it as unregistered, for
+/// presence only.
 fn build_control_channel(
     config: &Config,
     server_url: &str,
@@ -355,9 +355,6 @@ fn build_control_channel(
         .filter(|value| !value.is_empty())
         .map(PathBuf::from);
     let has_transfer = directory.is_some() || filestore.is_some();
-    if !has_transfer && server_key.is_none() {
-        return Ok(None);
-    }
 
     if config.get_bool("elasticsearch.enabled")? {
         if has_transfer {
@@ -652,14 +649,14 @@ mod tests {
     }
 
     #[test]
-    fn blank_directory_disables_channel_and_other_strings_are_normalized() {
+    fn blank_directory_disables_capture_and_other_strings_are_normalized() {
         let (_dir, blank_directory) =
             yaml_config("elasticsearch:\n  enabled: false\npcap:\n  directory: '   '\n");
-        assert!(
-            channel_from(&blank_directory, "http://evebox.test")
-                .unwrap()
-                .is_none()
-        );
+        let channel = channel_from(&blank_directory, "http://evebox.test")
+            .unwrap()
+            .unwrap();
+        assert!(channel.spool.is_none());
+        assert!(!channel.has_transfer());
 
         let (_dir, normalized) = yaml_config(
             "elasticsearch:\n  enabled: false\nserver:\n  key: '   '\npcap:\n  directory: '  /captures  '\n  prefix: '   '\n",
@@ -745,7 +742,7 @@ mod tests {
     }
 
     #[test]
-    fn agent_key_alone_starts_channel_without_transfer() {
+    fn channel_starts_without_transfer_with_or_without_a_key() {
         let (_dir, config) =
             yaml_config("elasticsearch:\n  enabled: false\nserver:\n  key: eba_test\n");
         let channel = channel_from(&config, "https://evebox.test")
@@ -756,17 +753,24 @@ mod tests {
         assert!(channel.filestore.is_none());
         assert!(!channel.has_transfer());
 
-        // Without a key or anything to serve there is no channel.
+        // Without a key the agent still connects, as an unregistered agent.
         let (_dir, keyless) = yaml_config("elasticsearch:\n  enabled: false\n");
-        assert!(
-            channel_from(&keyless, "https://evebox.test")
-                .unwrap()
-                .is_none()
-        );
+        let channel = channel_from(&keyless, "https://evebox.test")
+            .unwrap()
+            .unwrap();
+        assert_eq!(channel.server_key, None);
+        assert!(!channel.has_transfer());
     }
 
     #[test]
     fn direct_elasticsearch_does_not_start_channel() {
+        let (_dir, keyless) = yaml_config("elasticsearch:\n  enabled: true\n");
+        assert!(
+            channel_from(&keyless, "http://evebox.test")
+                .unwrap()
+                .is_none()
+        );
+
         // A key alone does not start the channel in direct mode either.
         let (_dir, keyed) =
             yaml_config("elasticsearch:\n  enabled: true\nserver:\n  key: eba_test\n");

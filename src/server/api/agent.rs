@@ -5,10 +5,12 @@
 //!
 //! The HTTP request is upgraded once to a WebSocket. After that handshake the
 //! socket carries bounded JSON text frames using the `evebox-agent-v1`
-//! subprotocol. The upgrade requires a valid agent key — independent of
-//! `authentication.required`, which only governs browser access — unless
-//! `agents.allow-unauthenticated` is set, in which case accepting a keyless
-//! connection is logged prominently.
+//! subprotocol. A presented agent key must be valid — independent of
+//! `authentication.required`, which only governs browser access. An agent
+//! without a key is accepted as unregistered: it is listed for presence
+//! only, offered no capabilities and sent no work. Under
+//! `agents.allow-unauthenticated` keyless agents are trusted instead, which
+//! is logged prominently.
 
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -98,8 +100,8 @@ pub(crate) async fn websocket(
     Extension(ConnectInfo(remote)): Extension<ConnectInfo<SocketAddr>>,
     headers: HeaderMap,
 ) -> Response {
-    let key = match authenticate_agent(&context, &headers, remote).await {
-        Ok(key) => key,
+    let auth = match authenticate_agent(&context, &headers, remote).await {
+        Ok(auth) => auth,
         Err(response) => return *response,
     };
 
@@ -116,20 +118,26 @@ pub(crate) async fn websocket(
         Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
     };
 
-    // A key is both credential and identity. The hostname is only the
-    // fallback name for the explicitly unauthenticated lab mode.
-    let name = key
-        .as_ref()
-        .map(|key| key.name.clone())
-        .unwrap_or_else(|| handshake.hostname.clone());
-    if let Some(key) = &key {
-        debug!("Agent {name:?} from {remote} authenticated with its agent key");
-        debug_assert_eq!(name, key.name);
-    } else {
-        warn!(
-            "Accepting UNAUTHENTICATED agent {name:?} from {remote}: agents.allow-unauthenticated is enabled"
-        );
-    }
+    // A key is both credential and identity. Keyless connections are named
+    // by their hostname: trusted ones in the explicitly unauthenticated lab
+    // mode, and unregistered ones, which are only listed.
+    let name = match &auth {
+        AgentAuth::Key(key) => {
+            debug!(
+                "Agent {:?} from {remote} authenticated with its agent key",
+                key.name
+            );
+            key.name.clone()
+        }
+        AgentAuth::Unauthenticated => {
+            warn!(
+                "Accepting UNAUTHENTICATED agent {:?} from {remote}: agents.allow-unauthenticated is enabled",
+                handshake.hostname
+            );
+            handshake.hostname.clone()
+        }
+        AgentAuth::Unregistered { .. } => handshake.hostname.clone(),
+    };
 
     // Control messages should stay small. Keep the limits far below
     // tungstenite's defaults so an unauthenticated peer cannot make the
@@ -144,33 +152,52 @@ pub(crate) async fn websocket(
                 context.configdb.clone(),
                 name,
                 handshake,
-                key,
+                auth,
                 remote,
             )
         })
 }
 
+/// How a control-channel upgrade was authenticated.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AgentAuth {
+    /// A valid agent key, whose name is the agent's identity.
+    Key(AgentKeyIdentity),
+    /// No key, trusted under `agents.allow-unauthenticated`.
+    Unauthenticated,
+    /// No key: listed for presence only, with no capabilities and no work.
+    /// The address tells unregistered agents with one hostname apart.
+    Unregistered { remote_addr: String },
+}
+
 /// Resolve the agent key on a control-channel upgrade.
 ///
 /// A presented key must be valid even under `agents.allow-unauthenticated`:
-/// presented-but-wrong always fails closed. `Ok(None)` is the keyless
-/// allow-unauthenticated case.
+/// presented-but-wrong always fails closed, and is never downgraded to an
+/// unregistered connection. Only an upgrade without an `Authorization`
+/// header is keyless.
 async fn authenticate_agent(
     context: &ServerContext,
     headers: &HeaderMap,
     remote: SocketAddr,
-) -> Result<Option<AgentKeyIdentity>, Box<Response>> {
+) -> Result<AgentAuth, Box<Response>> {
     let Some(bearer) = headers.typed_get::<Authorization<Bearer>>() else {
         if context.config.agents_allow_unauthenticated {
-            return Ok(None);
+            return Ok(AgentAuth::Unauthenticated);
         }
-        debug!("Refusing agent connection from {remote}: no agent key presented");
-        return Err(Box::new(agent_key_error(
-            StatusCode::UNAUTHORIZED,
-            "agent-key-required",
-            "this server requires an agent key: create one with `evebox config agents add <name>` \
-             and set it as server.key in agent.yaml (or EVEBOX_SERVER_KEY)",
-        )));
+        if headers.contains_key(header::AUTHORIZATION) {
+            warn!(
+                "Refusing agent connection from {remote}: Authorization is not a bearer agent key"
+            );
+            return Err(Box::new(agent_key_error(
+                StatusCode::UNAUTHORIZED,
+                "agent-key-rejected",
+                "the Authorization header must carry an agent key as a bearer token",
+            )));
+        }
+        return Ok(AgentAuth::Unregistered {
+            remote_addr: display_addr(context, headers, remote),
+        });
     };
     match context.configdb.verify_agent_key(bearer.token()).await {
         Ok(Some(key)) => {
@@ -180,7 +207,7 @@ async fn authenticate_agent(
                     key.name
                 );
             }
-            Ok(Some(AgentKeyIdentity {
+            Ok(AgentAuth::Key(AgentKeyIdentity {
                 id: key.id,
                 name: key.name,
             }))
@@ -204,6 +231,20 @@ async fn authenticate_agent(
             ))
         }
     }
+}
+
+/// The address shown for an unregistered agent: `x-forwarded-for` when
+/// reverse-proxy support is enabled, else the peer IP without its
+/// ephemeral port.
+fn display_addr(context: &ServerContext, headers: &HeaderMap, remote: SocketAddr) -> String {
+    if context.config.http_reverse_proxy
+        && let Some(forwarded) = headers
+            .get("x-forwarded-for")
+            .and_then(|value| value.to_str().ok())
+    {
+        return forwarded.to_string();
+    }
+    remote.ip().to_string()
 }
 
 fn agent_key_error(status: StatusCode, code: &str, message: &str) -> Response {
@@ -445,15 +486,23 @@ async fn connection(
     configdb: Arc<ConfigDb>,
     name: String,
     handshake: AgentHandshake,
-    key: Option<AgentKeyIdentity>,
+    auth: AgentAuth,
     remote: SocketAddr,
 ) {
     let (mut sink, mut stream) = socket.split();
     // Guarantee that hello is the first application frame. Registration
     // happens only after this send, so dispatch cannot race ahead of it.
+    // An unregistered agent is offered no capabilities, so it rejects any
+    // request that could reach it.
+    let unregistered = matches!(auth, AgentAuth::Unregistered { .. });
     let hello = ServerMessage::Hello {
         server_version: crate::version::version().to_string(),
-        capabilities: server_capabilities(),
+        capabilities: if unregistered {
+            Vec::new()
+        } else {
+            server_capabilities()
+        },
+        unregistered,
     };
     let hello = serde_json::to_string(&hello).expect("server hello must serialize");
     if let Err(err) = send_websocket_message(&mut sink, Message::Text(hello.into())).await {
@@ -464,13 +513,29 @@ async fn connection(
     let (outbound, mut outbound_rx) = mpsc::channel::<ServerMessage>(OUTBOUND_CAPACITY);
     // The registry has already logged the refusal; the agent sees a close
     // and stays in its reconnect loop until the operator fixes the fleet.
-    let Ok(entry) = agents.register(name.clone(), handshake, key, remote, outbound) else {
+    let registered = match auth {
+        AgentAuth::Key(key) => {
+            agents.register(name.clone(), handshake, Some(key), remote, outbound)
+        }
+        AgentAuth::Unauthenticated => {
+            agents.register(name.clone(), handshake, None, remote, outbound)
+        }
+        AgentAuth::Unregistered { remote_addr } => {
+            Ok(agents.register_unregistered(handshake, remote, remote_addr, outbound))
+        }
+    };
+    let Ok(entry) = registered else {
         let _ = sink.close().await;
         return;
     };
     let connection_id = entry.connection_id();
+    let label = if entry.unregistered {
+        "Unregistered agent"
+    } else {
+        "Agent"
+    };
     info!(
-        "Agent {name:?} connected from {remote} (generation {})",
+        "{label} {name:?} connected from {remote} (generation {})",
         entry.generation
     );
 
@@ -513,7 +578,10 @@ async fn connection(
                 match incoming {
                     Some(Ok(Message::Text(text))) => {
                         entry.touch();
-                        if deliver_text(&agents, &connection_id, text.as_str()) == Delivery::Fatal {
+                        if entry.unregistered {
+                            // Never sent work, so it has nothing to report.
+                            debug!("Ignoring a control message from unregistered agent {name:?}");
+                        } else if deliver_text(&agents, &connection_id, text.as_str()) == Delivery::Fatal {
                             break;
                         }
                     }
@@ -574,7 +642,7 @@ async fn connection(
     agents.remove(&connection_id);
     agents.disconnected(&connection_id);
     info!(
-        "Agent {name:?} from {remote} disconnected (generation {})",
+        "{label} {name:?} from {remote} disconnected (generation {})",
         connection_id.generation
     );
 
@@ -1103,6 +1171,18 @@ mod tests {
         key: Option<&str>,
         legacy_name: Option<&str>,
     ) -> TestAgentSocket {
+        let (socket, hello) = open_test_agent(address, key, legacy_name).await;
+        assert!(matches!(hello, ServerMessage::Hello { .. }));
+        socket
+    }
+
+    /// Connect an agent advertising pcap and return its socket with the
+    /// first server frame.
+    async fn open_test_agent(
+        address: std::net::SocketAddr,
+        key: Option<&str>,
+        legacy_name: Option<&str>,
+    ) -> (TestAgentSocket, ServerMessage) {
         let uri: Uri = format!("ws://{address}/api/agent/ws").parse().unwrap();
         let mut handshake = serde_json::to_value(AgentHandshake {
             hostname: "test-host".to_string(),
@@ -1126,11 +1206,8 @@ mod tests {
             response.headers().get("sec-websocket-protocol").unwrap(),
             SUBPROTOCOL
         );
-        assert!(matches!(
-            next_server_control(&mut socket).await,
-            ServerMessage::Hello { .. }
-        ));
-        socket
+        let hello = next_server_control(&mut socket).await;
+        (socket, hello)
     }
 
     async fn assert_upgrade_rejected(
@@ -1154,6 +1231,7 @@ mod tests {
         }
 
         let connected_before = context.agents.connected();
+        let unregistered_before = context.agents.unregistered_count();
         let err = tokio_tungstenite::connect_async(request)
             .await
             .expect_err("invalid agent upgrade must be rejected");
@@ -1162,13 +1240,13 @@ mod tests {
         };
         assert_eq!(response.status().as_u16(), expected.as_u16());
         assert_eq!(context.agents.connected(), connected_before);
+        assert_eq!(context.agents.unregistered_count(), unregistered_before);
     }
 
     #[tokio::test]
     async fn invalid_agent_upgrades_are_rejected_without_registration() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let key = add_test_key(&context, "test-sensor").await;
-        let key = Some(key.as_str());
         let valid_handshake = serde_json::to_string(&AgentHandshake {
             hostname: "test-host".to_string(),
             version: "test".to_string(),
@@ -1177,43 +1255,48 @@ mod tests {
         })
         .unwrap();
 
+        // Keyless upgrades are accepted as unregistered, so these checks are
+        // all that stands between an anonymous client and the registry.
         let bad = StatusCode::BAD_REQUEST;
-        assert_upgrade_rejected(address, &context, key, None, Some(&valid_handshake), bad).await;
-        assert_upgrade_rejected(
-            address,
-            &context,
-            key,
-            Some("unsupported-v1"),
-            Some(&valid_handshake),
-            bad,
-        )
-        .await;
-        assert_upgrade_rejected(address, &context, key, Some(SUBPROTOCOL), None, bad).await;
-        assert_upgrade_rejected(
-            address,
-            &context,
-            key,
-            Some(SUBPROTOCOL),
-            Some("not-json"),
-            bad,
-        )
-        .await;
-        assert_upgrade_rejected(address, &context, key, Some(SUBPROTOCOL), Some(""), bad).await;
-        assert_upgrade_rejected(
-            address,
-            &context,
-            key,
-            Some(SUBPROTOCOL),
-            Some(r#"{"name":"legacy","hostname":"","version":"test"}"#),
-            bad,
-        )
-        .await;
+        for key in [Some(key.as_str()), None] {
+            assert_upgrade_rejected(address, &context, key, None, Some(&valid_handshake), bad)
+                .await;
+            assert_upgrade_rejected(
+                address,
+                &context,
+                key,
+                Some("unsupported-v1"),
+                Some(&valid_handshake),
+                bad,
+            )
+            .await;
+            assert_upgrade_rejected(address, &context, key, Some(SUBPROTOCOL), None, bad).await;
+            assert_upgrade_rejected(
+                address,
+                &context,
+                key,
+                Some(SUBPROTOCOL),
+                Some("not-json"),
+                bad,
+            )
+            .await;
+            assert_upgrade_rejected(address, &context, key, Some(SUBPROTOCOL), Some(""), bad).await;
+            assert_upgrade_rejected(
+                address,
+                &context,
+                key,
+                Some(SUBPROTOCOL),
+                Some(r#"{"name":"legacy","hostname":"","version":"test"}"#),
+                bad,
+            )
+            .await;
+        }
 
         server.abort();
     }
 
     #[tokio::test]
-    async fn agent_upgrades_require_a_valid_key() {
+    async fn presented_agent_keys_must_be_valid() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let handshake = serde_json::to_string(&AgentHandshake {
             hostname: "test-host".to_string(),
@@ -1234,7 +1317,6 @@ mod tests {
 
         let unauthorized = StatusCode::UNAUTHORIZED;
         for key in [
-            None,
             Some("eba_unknown"),
             Some("no-prefix"),
             Some(removed.as_str()),
@@ -1249,6 +1331,96 @@ mod tests {
             )
             .await;
         }
+
+        // Credentials that are not a bearer agent key are refused as well,
+        // never downgraded to an unregistered connection.
+        let uri: Uri = format!("ws://{address}/api/agent/ws").parse().unwrap();
+        let request = ClientRequestBuilder::new(uri)
+            .with_sub_protocol(SUBPROTOCOL)
+            .with_header(AGENT_HEADER, handshake.clone())
+            .with_header("authorization", "Basic dXNlcjpwYXNz");
+        let err = tokio_tungstenite::connect_async(request)
+            .await
+            .expect_err("non-bearer credentials must be rejected");
+        let tokio_tungstenite::tungstenite::Error::Http(response) = err else {
+            panic!("expected an HTTP upgrade rejection, got {err}");
+        };
+        assert_eq!(response.status().as_u16(), unauthorized.as_u16());
+        assert_eq!(context.agents.connected(), 0);
+        assert_eq!(context.agents.unregistered_count(), 0);
+
+        server.abort();
+    }
+
+    /// Without a key an agent is accepted as unregistered: offered no
+    /// capabilities, listed with its address, and invisible to capability
+    /// lookups and routing.
+    #[tokio::test]
+    async fn keyless_agent_is_accepted_as_unregistered() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+
+        // The test agent advertises pcap, but is offered nothing.
+        let (socket, hello) = open_test_agent(address, None, None).await;
+        let ServerMessage::Hello {
+            capabilities,
+            unregistered,
+            ..
+        } = hello
+        else {
+            panic!("expected a server hello, got {hello:?}");
+        };
+        assert!(capabilities.is_empty());
+        assert!(unregistered);
+        wait_until(|| context.agents.unregistered_count() == 1).await;
+        assert_eq!(context.agents.connected(), 0);
+        assert!(context.agents.get("test-host").is_none());
+        assert!(!context.agents.has_pcap());
+
+        let agents: Vec<Value> = reqwest::Client::new()
+            .get(format!("http://{address}/api/agents"))
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        assert_eq!(agents.len(), 1);
+        assert_eq!(agents[0]["name"], "test-host");
+        assert_eq!(agents[0]["hostname"], "test-host");
+        assert_eq!(agents[0]["unregistered"], true);
+        assert_eq!(agents[0]["remote_addr"], "127.0.0.1");
+        assert_eq!(agents[0]["capabilities"], json!([]));
+
+        drop(socket);
+        wait_until(|| context.agents.unregistered_count() == 0).await;
+
+        server.abort();
+    }
+
+    /// An unregistered agent whose hostname is a key's name neither
+    /// displaces the keyed agent nor takes over its routing.
+    #[tokio::test]
+    async fn unregistered_agent_cannot_displace_a_keyed_agent() {
+        let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
+        // The test agent's hostname is "test-host".
+        let key = add_test_key(&context, "test-host").await;
+
+        let _keyed = connect_test_agent(address, Some(key.as_str())).await;
+        wait_until(|| context.agents.connected() == 1).await;
+        let held = context.agents.get("test-host").unwrap().generation;
+
+        let _unregistered = connect_test_agent(address, None).await;
+        wait_until(|| context.agents.unregistered_count() == 1).await;
+        assert_eq!(context.agents.connected(), 1);
+        assert_eq!(context.agents.get("test-host").unwrap().generation, held);
+        let pcap_agents = context.agents.pcap_agents();
+        assert_eq!(pcap_agents.len(), 1);
+        assert_eq!(pcap_agents[0].generation, held);
+
+        let rows = context.agents.list();
+        assert_eq!(rows.len(), 2);
+        assert!(!rows[0].unregistered);
+        assert!(rows[1].unregistered);
 
         server.abort();
     }
@@ -1281,9 +1453,21 @@ mod tests {
         )
         .await;
 
-        // No key at all is accepted in this mode.
-        let _socket = connect_test_agent(address, None).await;
+        // No key at all is accepted in this mode, as a trusted agent rather
+        // than an unregistered one.
+        let (_socket, hello) = open_test_agent(address, None, None).await;
+        let ServerMessage::Hello {
+            capabilities,
+            unregistered,
+            ..
+        } = hello
+        else {
+            panic!("expected a server hello, got {hello:?}");
+        };
+        assert!(!capabilities.is_empty());
+        assert!(!unregistered);
         wait_until(|| context.agents.connected() == 1).await;
+        assert_eq!(context.agents.unregistered_count(), 0);
 
         server.abort();
     }
@@ -1469,6 +1653,47 @@ mod tests {
         assert!(listed.get("connected_at").is_some());
         assert!(listed.get("last_seen").is_some());
         assert!(!context.agents.has_pcap());
+
+        agent.abort();
+        server.abort();
+    }
+
+    /// The real agent channel stays connected as an unregistered agent when
+    /// it has no key, even with a spool it cannot serve.
+    #[tokio::test]
+    async fn keyless_channel_agent_is_listed_as_unregistered() {
+        let (address, server, context, dir) = serve_test_server(PcapSettings::default()).await;
+        let agent = tokio::spawn(channel::run(ChannelConfig {
+            server_url: format!("http://{address}"),
+            hostname: "keyless-host".to_string(),
+            server_key: None,
+            spool: Some(SpoolConfig::new(dir.path(), None)),
+            filestore: None,
+            disable_certificate_check: false,
+        }));
+        wait_until(|| context.agents.unregistered_count() == 1).await;
+
+        let listed = context.agents.list();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].hostname, "keyless-host");
+        assert!(listed[0].unregistered);
+        assert!(listed[0].capabilities.is_empty());
+        assert_eq!(
+            listed[0].platform.as_deref(),
+            Some(crate::agent::protocol::platform().as_str())
+        );
+        assert_eq!(context.agents.connected(), 0);
+        assert!(!context.agents.has_pcap());
+
+        // Still the same connection a little later: the agent accepted the
+        // empty hello rather than dropping into its reconnect loop.
+        let connected_at = |rows: &[crate::server::agents::AgentInfo]| {
+            serde_json::to_value(&rows[0]).unwrap()["connected_at"].clone()
+        };
+        let first = connected_at(&listed);
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert_eq!(context.agents.unregistered_count(), 1);
+        assert_eq!(connected_at(&context.agents.list()), first);
 
         agent.abort();
         server.abort();
