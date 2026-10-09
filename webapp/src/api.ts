@@ -661,6 +661,12 @@ export namespace API {
     connected_at: string;
     last_seen: string;
     rtt_ms?: number;
+    // An agent connected without a key, listed for presence only. Its
+    // name is its hostname, and it has no capabilities.
+    unregistered?: boolean;
+    // Where an unregistered agent connected from, as unregistered
+    // agents may share a hostname.
+    remote_addr?: string;
   }
 
   export async function getAgents(): Promise<AgentInfo[]> {

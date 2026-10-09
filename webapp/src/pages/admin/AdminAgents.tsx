@@ -28,11 +28,12 @@ const SENSOR_TOOLTIP =
   "events. The sensor filter on the events view lists the known names.";
 
 // One display row: an agent — connected, key-only, or both, merged by
-// name since a key's name is the agent identity it authorizes — or the
-// server-local source (pcap spool and/or file store).
+// name since a key's name is the agent identity it authorizes — the
+// server-local source (pcap spool and/or file store), or an unregistered
+// agent connected without a key, which is never merged with a key.
 interface AgentRow {
   name: string;
-  kind: "agent" | "server";
+  kind: "agent" | "server" | "unregistered";
   hostname?: string;
   version?: string;
   platform?: string;
@@ -43,6 +44,8 @@ interface AgentRow {
   last_seen?: string;
   rtt_ms?: number;
   key?: API.AgentKeyInfo;
+  // Where an unregistered agent connected from.
+  remote_addr?: string;
 }
 
 // Server-local sources from GET /api/pcap/sources or
@@ -68,7 +71,8 @@ const hasServerSource = (sources: API.PcapSource[]) =>
 
 // Merge connected agents (GET /api/agents) with issued agent keys
 // (GET /api/agents/keys) by name, then append the server-local source
-// when a local pcap spool or file store is configured.
+// when a local pcap spool or file store is configured, and finally the
+// unregistered agents.
 async function fetchAgents(): Promise<AgentRow[]> {
   const [agents, keys, pcapSources, fileSources] = await Promise.all([
     API.getAgents(),
@@ -77,7 +81,26 @@ async function fetchAgents(): Promise<AgentRow[]> {
     fetchServerSources(API.getFileSources),
   ]);
   const byName = new Map<string, AgentRow>();
+  const unregistered: AgentRow[] = [];
   for (const agent of agents) {
+    if (agent.unregistered) {
+      // Never merged by name: a key issued for this hostname but not
+      // yet installed must not make the agent look registered, and two
+      // unregistered agents may share a hostname.
+      unregistered.push({
+        name: agent.name,
+        kind: "unregistered",
+        hostname: agent.hostname,
+        version: agent.version,
+        platform: agent.platform,
+        capabilities: agent.capabilities,
+        connected: true,
+        last_seen: agent.last_seen,
+        rtt_ms: agent.rtt_ms,
+        remote_addr: agent.remote_addr,
+      });
+      continue;
+    }
     byName.set(agent.name, {
       name: agent.name,
       kind: "agent",
@@ -122,7 +145,7 @@ async function fetchAgents(): Promise<AgentRow[]> {
       connected: true,
     });
   }
-  return rows;
+  return [...rows, ...unregistered];
 }
 
 // The server-local source is always live; agents are live if seen
@@ -310,16 +333,17 @@ export function AdminAgents() {
   // Source choices for routing rules and the default: the server-local
   // source, connected pcap- or filestore-capable agents, and known
   // (keyed) agents that are currently offline — a rule may target an
-  // agent before it connects.
+  // agent before it connects. Unregistered agents never serve.
   const sourceOptions = createMemo(() => {
     const names = (agents.latest ?? [])
       .filter(
         (row) =>
           row.kind === "server" ||
-          (row.connected
-            ? row.capabilities.includes("pcap") ||
-              row.capabilities.includes("filestore")
-            : row.key !== undefined),
+          (row.kind === "agent" &&
+            (row.connected
+              ? row.capabilities.includes("pcap") ||
+                row.capabilities.includes("filestore")
+              : row.key !== undefined)),
       )
       .map((row) => row.name);
     names.sort(compareText);
@@ -396,10 +420,24 @@ export function AdminAgents() {
   const [sortAsc, setSortAsc] = createSignal(true);
 
   const sorted = createMemo(() => {
-    const rows = [...(agents.latest ?? [])];
+    const rows = (agents.latest ?? []).filter(
+      (row) => row.kind !== "unregistered",
+    );
     rows.sort((a, b) => compareRows(a, b, sortColumn(), sortAsc()));
     return rows;
   });
+
+  // Unregistered agents have their own card, ordered by hostname and
+  // address.
+  const unregistered = createMemo(() =>
+    (agents.latest ?? [])
+      .filter((row) => row.kind === "unregistered")
+      .sort(
+        (a, b) =>
+          compareText(a.name, b.name) ||
+          compareText(a.remote_addr ?? "", b.remote_addr ?? ""),
+      ),
+  );
 
   const setSort = (column: SortColumn) => {
     if (sortColumn() === column) {
@@ -545,12 +583,14 @@ export function AdminAgents() {
         <Show
           when={sorted().length > 0}
           fallback={
-            <div class="card mt-2">
-              <div class="card-body">
-                No agents yet. Connected agents, issued agent keys, and the
-                server-local PCAP spool or file store will appear here.
+            <Show when={unregistered().length === 0}>
+              <div class="card mt-2">
+                <div class="card-body">
+                  No agents yet. Connected agents, issued agent keys, and the
+                  server-local PCAP spool or file store will appear here.
+                </div>
               </div>
-            </div>
+            </Show>
           }
         >
           <div class="card mt-2">
@@ -698,6 +738,66 @@ export function AdminAgents() {
                   )}
                 </For>
               </table>
+            </div>
+          </div>
+        </Show>
+
+        {/* Agents connected without a key, listed for presence only. */}
+        <Show when={unregistered().length > 0}>
+          <div class="card mt-3">
+            <div class="card-header">Unregistered Agents</div>
+            <div class="card-body">
+              <p class="text-body-secondary">
+                Agents connected without an agent key. They are listed for
+                presence only and cannot serve packet capture or file retrieval.
+              </p>
+              <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>Hostname</th>
+                      <th>Address</th>
+                      <th>Version</th>
+                      <th>Platform</th>
+                      <th>Last Seen</th>
+                      <th class="text-end">RTT</th>
+                      <th class="text-end">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={unregistered()}>
+                      {(row) => (
+                        <tr>
+                          <td class="align-middle">{row.name}</td>
+                          <td class="align-middle">{row.remote_addr ?? "—"}</td>
+                          <td class="align-middle">{row.version ?? "—"}</td>
+                          <td class="align-middle">{row.platform ?? "—"}</td>
+                          <td class="align-middle">
+                            {row.last_seen === undefined
+                              ? "—"
+                              : parse_timestamp(row.last_seen).fromNow()}
+                          </td>
+                          <td class="align-middle text-end">
+                            {row.rtt_ms === undefined
+                              ? "—"
+                              : `${row.rtt_ms} ms`}
+                          </td>
+                          <td class="align-middle text-end">
+                            <Show
+                              when={rowStatus(row) === "live"}
+                              fallback={
+                                <span class="badge text-bg-warning">Stale</span>
+                              }
+                            >
+                              <span class="badge text-bg-success">Live</span>
+                            </Show>
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </Show>

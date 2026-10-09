@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+- Agents without an agent key are listed in their own Unregistered Agents
+  card on the Agents administration page, with their hostname, address,
+  version and platform. Agents must run 0.31.0 or later to appear.
+
 ### Changed
 - Agents now keep a persistent control connection to the server even when
   packet capture and file retrieval are not enabled, so they show on the
