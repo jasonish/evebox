@@ -37,6 +37,7 @@ pub(crate) mod elastic;
 pub(crate) mod eve2pcap;
 pub(crate) mod filestore;
 pub(crate) mod firehose;
+pub(crate) mod flow;
 pub(crate) mod genericquery;
 pub(crate) mod login;
 pub(crate) mod pcap;
@@ -70,6 +71,7 @@ pub(crate) fn router() -> axum::Router<Arc<ServerContext>> {
         .route("/api/alert-group/unstar", post(alert_group_unstar))
         .route("/api/alert-group/archive", post(alert_group_archive))
         .route("/api/event/{id}/archive", post(archive_event_by_id))
+        .route("/api/event/{id}/flow", get(flow::flow_events))
         .route("/api/event/{id}/escalate", post(escalate_event_by_id))
         .route("/api/event/{id}/comment", post(comment_by_event_id))
         .route("/api/event/{id}/de-escalate", post(deescalate_event_by_id))

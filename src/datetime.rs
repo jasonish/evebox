@@ -129,6 +129,11 @@ impl DateTime {
         let new = self.datetime - rhs;
         new.into()
     }
+
+    pub(crate) fn add(&self, rhs: chrono::Duration) -> Self {
+        let new = self.datetime + rhs;
+        new.into()
+    }
 }
 
 impl From<chrono::DateTime<chrono::FixedOffset>> for DateTime {
