@@ -46,17 +46,20 @@ OS_IMAGE="docker.io/opensearchproject/opensearch"
 VERSIONS=(
     "sqlite"
     "es|7.10.2"
-    "es|7.17.28"
-    "es|8.19.0"
-    "es|9.4.2"
+    "es|7.17.29"
+    "es|8.19.23"
+    "es|9.4.8"
+    "es|9.5.5"
     "os|2.6.0"
-    "os|2.19.5"
+    "os|2.19.6"
     "os|3.6.0"
     "os|3.7.0"
+    "os|3.8.0"
+    "os|3.9.0"
 )
 # NOTE: avoid Elasticsearch 7.17.0–7.17.x-with-old-JDK; their bundled JDK 17.0.1
 # crashes on cgroup v2 hosts (CgroupV2Subsystem NullPointerException) before ES
-# starts. 7.17.28 (latest at time of writing: 7.17.30) bundles a fixed JDK.
+# starts. 7.17.28 and later bundle a fixed JDK.
 if [ "$#" -gt 0 ]; then
     VERSIONS=("$@")
 fi
