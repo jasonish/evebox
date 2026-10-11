@@ -632,6 +632,7 @@ async fn configure_datastore(
                 is_opensearch,
             );
             eventstore.start_archive_processor();
+            eventstore.start_field_caps_refresh();
             debug!("Elasticsearch base index: {}", eventstore.get_base_index());
             debug!(
                 "Elasticsearch search index pattern: {}",

@@ -13,6 +13,7 @@ const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";
 
 impl ElasticEventRepo {
     pub async fn events(&self, params: eventrepo::EventQueryParams) -> Result<serde_json::Value> {
+        self.ensure_fields(&params.query_string, &[]).await;
         let mut filters = vec![request::exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
         let mut must_not = vec![];

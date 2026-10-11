@@ -8,6 +8,7 @@ use super::TAG_ESCALATED;
 use super::TAGS_AUTO_ARCHIVED;
 use super::query_string_query;
 use crate::datetime;
+use crate::elastic::fieldcaps::{self, FieldCaps, FieldKind};
 use crate::elastic::importer::ElasticEventSink;
 use crate::elastic::request::exists_filter;
 use crate::elastic::{ElasticResponse, TAG_ARCHIVED, TAGS_ARCHIVED, TAGS_ESCALATED, request};
@@ -41,6 +42,7 @@ pub(crate) struct ElasticEventRepo {
     ecs: bool,
     opensearch: bool,
     auto_archive_tx: Option<UnboundedSender<EventFilter>>,
+    field_caps: Arc<FieldCaps>,
 }
 
 impl ElasticEventRepo {
@@ -58,7 +60,60 @@ impl ElasticEventRepo {
             ecs,
             opensearch,
             auto_archive_tx: None,
+            field_caps: Arc::new(FieldCaps::default()),
         }
+    }
+
+    /// Load the field types of the event indices, and keep refreshing
+    /// them in the background.
+    pub fn start_field_caps_refresh(&self) {
+        let repo = self.clone();
+        tokio::spawn(async move {
+            loop {
+                if let Err(err) = repo
+                    .field_caps
+                    .refresh(&repo.client, &repo.index_pattern)
+                    .await
+                {
+                    warn!("Failed to load Elasticsearch field capabilities: {err:#}");
+                }
+                tokio::time::sleep(fieldcaps::REFRESH_INTERVAL).await;
+            }
+        });
+    }
+
+    /// Reload the field types now, returning how many text fields have a
+    /// keyword sub-field.
+    pub(crate) async fn refresh_field_caps(&self) -> Result<usize> {
+        self.field_caps
+            .refresh(&self.client, &self.index_pattern)
+            .await?;
+        Ok(self.field_caps.keyword_count())
+    }
+
+    /// Make sure the field table knows the fields used by a query, plus
+    /// any extra fields, refreshing it if needed.
+    pub(crate) async fn ensure_fields(&self, query: &[QueryElement], extra: &[&str]) {
+        let mut names: Vec<String> = extra.iter().map(|name| self.base_field(name)).collect();
+        for element in query {
+            if let queryparser::QueryValue::KeyValue(key, _) = &element.value
+                && !key.starts_with('@')
+            {
+                names.push(self.base_field(key));
+            }
+        }
+        if self.uses_dns_rrname(&names) {
+            names.push("dns.rrname".to_string());
+        }
+        names.sort();
+        names.dedup();
+        self.field_caps
+            .ensure(&self.client, &self.index_pattern, &names)
+            .await;
+    }
+
+    fn uses_dns_rrname(&self, names: &[String]) -> bool {
+        !self.ecs && names.iter().any(|name| name == "dns.queries.rrname")
     }
 
     pub fn start_archive_processor(&mut self) {
@@ -96,14 +151,9 @@ impl ElasticEventRepo {
         self.post(path, body).await
     }
 
-    /// Map field names as needed.
-    ///
-    /// For ECS some of the field names have been changed completely. This happens when using
-    /// Filebeat with the Suricata module.
-    ///
-    /// For plain old Eve in Elasticsearch we still need to map some fields to their keyword
-    /// variant.
-    pub fn map_field(&self, name: &str) -> String {
+    /// Resolve shorthand names, and for ECS the renamed fields, without
+    /// choosing between a field and its keyword sub-field.
+    fn base_field(&self, name: &str) -> String {
         // First resolve some quick shorthand.
         let name = match name {
             "@sid" => "alert.signature_id",
@@ -135,43 +185,124 @@ impl ElasticEventRepo {
             }
         } else {
             match name {
-                "alert.category" => "alert.category.keyword",
-                "alert.signature" => "alert.signature.keyword",
-                "anomaly.app_proto" => "anomaly.app_proto.keyword",
-                "anomaly.event" => "anomaly.event.keyword",
-                "anomaly.layer" => "anomaly.layer.keyword",
-                "anomaly.type" => "anomaly.type.keyword",
-                "app_proto" => "app_proto.keyword",
-                "community_id" => "community_id.keyword",
-                "dest_ip" => "dest_ip.keyword",
-                "dhcp.assigned_ip" => "dhcp.assigned_ip.keyword",
-                "dhcp.client_mac" => "dhcp.client_mac.keyword",
-                "dns.type" => "dns.type.keyword",
-                "dns.rcode" => "dns.rcode.keyword",
-                "dns.rdata" => "dns.rdata.keyword",
-                "dns.rrname" | "dns.queries.rrname" => "dns.queries.rrname.keyword",
-                "dns.rrtype" => "dns.rrtype.keyword",
-                "event_type" => "event_type.keyword",
-                "host" => "host.keyword",
-                "http.hostname" => "http.hostname.keyword",
-                "http.http_user_agent" => "http.http_user_agent.keyword",
-                "proto" => "proto.keyword",
-                "src_ip" => "src_ip.keyword",
-                "ssh.client.software_version" => "ssh.client.software_version.keyword",
-                "ssh.server.software_version" => "ssh.server.software_version.keyword",
-                "quic.sni" => "quic.sni.keyword",
-                "quic.ja4" => "quic.ja4.keyword",
-                "tls.issuerdn" => "tls.issuerdn.keyword",
-                "tls.sni" => "tls.sni.keyword",
-                "tls.subject" => "tls.subject.keyword",
-                "tls.ja4" => "tls.ja4.keyword",
-                "traffic.id" => "traffic.id.keyword",
-                "traffic.label" => "traffic.label.keyword",
-                "mdns.answers.rrname" => "mdns.answers.rrname.keyword",
-                "mdns.queries.rrname" => "mdns.queries.rrname.keyword",
-                _ => name,
+                // Suricata 8 moved the DNS query name; queries on it also
+                // match the old location.
+                "dns.rrname" => "dns.queries.rrname".to_string(),
+                _ => name.to_string(),
             }
-            .to_string()
+        }
+    }
+
+    /// Fields known to need their keyword sub-field in plain EVE indices,
+    /// used until the field types are loaded, or for fields the indices
+    /// don't have.
+    fn fallback_keyword(&self, base: &str) -> Option<String> {
+        if self.ecs {
+            return None;
+        }
+        let known = matches!(
+            base,
+            "alert.category"
+                | "alert.signature"
+                | "anomaly.app_proto"
+                | "anomaly.event"
+                | "anomaly.layer"
+                | "anomaly.type"
+                | "app_proto"
+                | "community_id"
+                | "dest_ip"
+                | "dhcp.assigned_ip"
+                | "dhcp.client_mac"
+                | "dns.type"
+                | "dns.rcode"
+                | "dns.rdata"
+                | "dns.queries.rrname"
+                | "dns.rrname"
+                | "dns.rrtype"
+                | "event_type"
+                | "host"
+                | "http.hostname"
+                | "http.http_user_agent"
+                | "proto"
+                | "src_ip"
+                | "ssh.client.software_version"
+                | "ssh.server.software_version"
+                | "quic.sni"
+                | "quic.ja4"
+                | "tls.issuerdn"
+                | "tls.sni"
+                | "tls.subject"
+                | "tls.ja4"
+                | "traffic.id"
+                | "traffic.label"
+                | "mdns.answers.rrname"
+                | "mdns.queries.rrname"
+        );
+        known.then(|| format!("{base}.keyword"))
+    }
+
+    /// The field to aggregate, sort or exact-match on for a resolved
+    /// field name: its keyword sub-field if it is analyzed text.
+    fn exact_field(&self, base: &str) -> String {
+        match self.field_caps.get(base) {
+            Some(FieldKind::Text {
+                keyword: Some(keyword),
+            }) => keyword,
+            Some(_) => base.to_string(),
+            None => self
+                .fallback_keyword(base)
+                .unwrap_or_else(|| base.to_string()),
+        }
+    }
+
+    /// Map a field name to the field to aggregate, sort or exact-match on.
+    ///
+    /// For ECS some of the field names have been changed completely. This
+    /// happens when using Filebeat with the Suricata module.
+    ///
+    /// String fields are usually mapped as analyzed text with a keyword
+    /// sub-field, which is looked up from the index field types.
+    pub fn map_field(&self, name: &str) -> String {
+        self.exact_field(&self.base_field(name))
+    }
+
+    /// A filter for a field having a value, as given in a query string.
+    ///
+    /// Matches the whole value exactly, so values with spaces, case or
+    /// punctuation work. Text fields not on the fallback keyword list were
+    /// queried with a term on the analyzed field before, which matched a
+    /// lowercase word of the value, so that is still matched too.
+    pub(crate) fn field_filter(&self, name: &str, value: &str) -> serde_json::Value {
+        let base = self.base_field(name);
+        // `text` is set when the field is known to be analyzed text.
+        let either = |fields: &[&str], text: bool| {
+            let mut should: Vec<serde_json::Value> = fields
+                .iter()
+                .map(|field| request::term_filter(field, value))
+                .collect();
+            // Long values are not indexed in the keyword sub-field
+            // (ignore_above defaults to 256).
+            if text && value.chars().count() > 256 {
+                should.push(json!({"match_phrase": {&base: value}}));
+            }
+            json!({"bool": {"should": should, MINIMUM_SHOULD_MATCH: 1}})
+        };
+        match self.field_caps.get(&base) {
+            Some(FieldKind::Text {
+                keyword: Some(keyword),
+            }) => {
+                if self.fallback_keyword(&base).is_some() {
+                    // Always matched exactly.
+                    request::term_filter(&keyword, value)
+                } else {
+                    either(&[&keyword, &base], true)
+                }
+            }
+            Some(_) => request::term_filter(&base, value),
+            None => match self.fallback_keyword(&base) {
+                Some(keyword) => request::term_filter(&keyword, value),
+                None => either(&[&base, &format!("{base}.keyword")], false),
+            },
         }
     }
 
@@ -519,24 +650,23 @@ impl ElasticEventRepo {
                             warn!("Query parameter starting with a space: {k}");
                         }
 
-                        let mapped_field = self.map_field(k);
+                        let base = self.base_field(k);
 
-                        if mapped_field.starts_with('@') {
+                        if base.starts_with('@') {
                             warn!("Unhandled @ parameter in query string: {k}");
                         }
 
-                        let expression = match mapped_field.as_ref() {
-                            "dns.queries.rrname.keyword" => {
-                                json!({
-                                    "bool": {
-                                        "should": [
-                                            {"term": {"dns.queries.rrname.keyword": v}},
-                                            {"term": {"dns.rrname.keyword": v}}
-                                        ]
-                                    }
-                                })
-                            }
-                            _ => request::term_filter(&mapped_field, v),
+                        let expression = if self.uses_dns_rrname(std::slice::from_ref(&base)) {
+                            json!({
+                                "bool": {
+                                    "should": [
+                                        request::term_filter(&self.exact_field("dns.queries.rrname"), v),
+                                        request::term_filter(&self.exact_field("dns.rrname"), v),
+                                    ]
+                                }
+                            })
+                        } else {
+                            self.field_filter(k, v)
                         };
 
                         if el.negated {
@@ -756,6 +886,7 @@ impl ElasticEventRepo {
         interval: Option<u64>,
         query: &[QueryElement],
     ) -> Result<Vec<serde_json::Value>> {
+        self.ensure_fields(query, &[]).await;
         let qs = QueryParser::new(query.to_vec());
         let mut filters = vec![exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
@@ -832,27 +963,87 @@ impl ElasticEventRepo {
         order: &str,
         query: Vec<queryparser::QueryElement>,
     ) -> Result<Vec<serde_json::Value>> {
+        self.ensure_fields(&query, &[field]).await;
+        let request = self.agg_request(field, size, order, &query);
+        let mut response: serde_json::Value = self.search(&request).await?.json().await?;
+
+        // A field that appeared since the field types were last loaded,
+        // within the refresh rate limit, is aggregated on as is, which
+        // fails for text. Reload the field types and retry once.
+        // With several indices, it can also fail on just some shards.
+        let fielddata_error = |response: &serde_json::Value| {
+            response["error"].to_string().contains("fielddata")
+                || response["_shards"]["failures"]
+                    .to_string()
+                    .contains("fielddata")
+        };
+        if fielddata_error(&response) && self.field_caps.get(&self.base_field(field)).is_none() {
+            let used = self.map_field(field);
+            if let Err(err) = self.refresh_field_caps().await {
+                warn!("Failed to refresh Elasticsearch field capabilities: {err:#}");
+            } else if self.map_field(field) != used {
+                let request = self.agg_request(field, size, order, &query);
+                response = self.search(&request).await?.json().await?;
+            }
+        }
+
+        if let Some(error) = response["error"].as_object() {
+            error!("Elasticsearch \"group_by\" query failed: {error:?}");
+            bail!("elasticsearch: {:?}", error);
+        } else {
+            let mut data = vec![];
+            if let serde_json::Value::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
+                for bucket in buckets {
+                    let entry = json!({
+                        "key": bucket["key"],
+                        "count": bucket["doc_count"],
+                    });
+                    data.push(entry);
+
+                    // Elasticsearch doesn't take a size for rare terms,
+                    // so stop when we've hit the requested size.
+                    if data.len() == size {
+                        break;
+                    }
+                }
+            }
+            Ok(data)
+        }
+    }
+
+    fn agg_request(
+        &self,
+        field: &str,
+        size: usize,
+        order: &str,
+        query: &[queryparser::QueryElement],
+    ) -> serde_json::Value {
         let mut filter = vec![];
         let mut should = vec![];
         let mut must_not = vec![];
 
-        self.apply_query_string(&query, &mut filter, &mut should, &mut must_not);
+        self.apply_query_string(query, &mut filter, &mut should, &mut must_not);
 
+        let base = self.base_field(field);
         let field = self.map_field(field);
 
         let mut agg = json!({});
 
-        match field.as_ref() {
-            "dns.queries.rrname.keyword" => {
+        match base.as_ref() {
+            "dns.queries.rrname" if !self.ecs => {
                 agg["script"] = json!({
                     "source": r#"
-                        if (doc.containsKey('dns.queries.rrname.keyword') && doc['dns.queries.rrname.keyword'].size() != 0) {
-                            return doc['dns.queries.rrname.keyword'];
+                        if (doc.containsKey(params.queries) && doc[params.queries].size() != 0) {
+                            return doc[params.queries];
                         }
-                        else if (doc.containsKey('dns.rrname.keyword') && doc['dns.rrname.keyword'].size() != 0) {
-                            return doc['dns.rrname.keyword'];
+                        else if (doc.containsKey(params.rrname) && doc[params.rrname].size() != 0) {
+                            return doc[params.rrname];
                         }
                         "#,
+                    "params": {
+                        "queries": self.exact_field("dns.queries.rrname"),
+                        "rrname": self.exact_field("dns.rrname"),
+                    },
                 });
             }
             _ => {
@@ -879,7 +1070,7 @@ impl ElasticEventRepo {
         filter.push(exists_filter(&self.map_field("event_type")));
 
         #[rustfmt::skip]
-        let mut query = json!({
+        let mut request = json!({
             "query": {
 		"bool": {
 		    "filter": filter,
@@ -895,34 +1086,11 @@ impl ElasticEventRepo {
         });
 
         if !should.is_empty() {
-            query["query"]["bool"]["should"] = should.into();
-            query["query"]["bool"][MINIMUM_SHOULD_MATCH] = 1.into();
+            request["query"]["bool"]["should"] = should.into();
+            request["query"]["bool"][MINIMUM_SHOULD_MATCH] = 1.into();
         }
 
-        let response: serde_json::Value = self.search(&query).await?.json().await?;
-
-        if let Some(error) = response["error"].as_object() {
-            error!("Elasticsearch \"group_by\" query failed: {error:?}");
-            bail!("elasticsearch: {:?}", error);
-        } else {
-            let mut data = vec![];
-            if let serde_json::Value::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
-                for bucket in buckets {
-                    let entry = json!({
-                        "key": bucket["key"],
-                        "count": bucket["doc_count"],
-                    });
-                    data.push(entry);
-
-                    // Elasticsearch doesn't take a size for rare terms,
-                    // so stop when we've hit the requested size.
-                    if data.len() == size {
-                        break;
-                    }
-                }
-            }
-            Ok(data)
-        }
+        request
     }
 
     fn build_alert_group_filter(
@@ -1114,6 +1282,7 @@ impl ElasticEventRepo {
 
     /// Count the events matching a query string.
     pub(crate) async fn count(&self, query: &[QueryElement]) -> Result<u64> {
+        self.ensure_fields(query, &[]).await;
         let mut filter = vec![exists_filter(&self.map_field("event_type"))];
         let mut should = vec![];
         let mut must_not = vec![];
@@ -1192,5 +1361,154 @@ mod file_reference_test {
         hoist_file_references(&mut source);
         assert_eq!(source["fileinfo"]["sha256"], "c".repeat(64));
         assert!(source["files"].is_null());
+    }
+}
+
+#[cfg(test)]
+mod field_mapping_test {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn repo(ecs: bool) -> ElasticEventRepo {
+        ElasticEventRepo::new(
+            "logstash".to_string(),
+            "logstash-*".to_string(),
+            Client::new("http://localhost:9200"),
+            ecs,
+            false,
+        )
+    }
+
+    fn text(keyword: Option<&str>) -> FieldKind {
+        FieldKind::Text {
+            keyword: keyword.map(String::from),
+        }
+    }
+
+    /// A repo whose field table is loaded with typical dynamic mappings.
+    fn loaded_repo() -> ElasticEventRepo {
+        let repo = repo(false);
+        repo.field_caps.set(HashMap::from([
+            ("tls.version".to_string(), text(Some("tls.version.keyword"))),
+            ("tls.sni".to_string(), text(Some("tls.sni.keyword"))),
+            ("http.url".to_string(), text(None)),
+            ("flow.bytes_toserver".to_string(), FieldKind::Plain),
+            // Mapped as keyword by a custom template.
+            ("src_ip".to_string(), FieldKind::Plain),
+            (
+                "dns.queries.rrname".to_string(),
+                text(Some("dns.queries.rrname.keyword")),
+            ),
+            ("dns.rrname".to_string(), text(Some("dns.rrname.keyword"))),
+        ]));
+        repo
+    }
+
+    #[test]
+    fn map_field_without_field_types_uses_fallback_list() {
+        let repo = repo(false);
+        assert_eq!(repo.map_field("src_ip"), "src_ip.keyword");
+        assert_eq!(repo.map_field("dns.rrname"), "dns.queries.rrname.keyword");
+        assert_eq!(repo.map_field("@sig"), "alert.signature.keyword");
+        assert_eq!(repo.map_field("tls.version"), "tls.version");
+        assert_eq!(repo.map_field("alert.signature_id"), "alert.signature_id");
+    }
+
+    #[test]
+    fn map_field_uses_field_types() {
+        let repo = loaded_repo();
+        assert_eq!(repo.map_field("tls.version"), "tls.version.keyword");
+        assert_eq!(repo.map_field("tls.sni"), "tls.sni.keyword");
+        assert_eq!(repo.map_field("http.url"), "http.url");
+        assert_eq!(repo.map_field("flow.bytes_toserver"), "flow.bytes_toserver");
+        // Keyword by mapping, so the fallback .keyword is not added.
+        assert_eq!(repo.map_field("src_ip"), "src_ip");
+        // Unknown fields still use the fallback list.
+        assert_eq!(repo.map_field("dest_ip"), "dest_ip.keyword");
+        assert_eq!(repo.map_field("flow.state"), "flow.state");
+    }
+
+    #[test]
+    fn map_field_ecs() {
+        let repo = repo(true);
+        assert_eq!(repo.map_field("src_ip"), "source.address");
+        assert_eq!(repo.map_field("tls.version"), "suricata.eve.tls.version");
+        repo.field_caps.set(HashMap::from([(
+            "suricata.eve.tls.version".to_string(),
+            text(Some("suricata.eve.tls.version.keyword")),
+        )]));
+        assert_eq!(
+            repo.map_field("tls.version"),
+            "suricata.eve.tls.version.keyword"
+        );
+    }
+
+    #[test]
+    fn field_filter() {
+        let repo = loaded_repo();
+
+        // Exact on the keyword, plus the old term on the text field.
+        assert_eq!(
+            repo.field_filter("tls.version", "TLS 1.2"),
+            json!({"bool": {"should": [
+                {"term": {"tls.version.keyword": "TLS 1.2"}},
+                {"term": {"tls.version": "TLS 1.2"}},
+            ], "minimum_should_match": 1}})
+        );
+
+        // Fallback-list fields were always exact.
+        assert_eq!(
+            repo.field_filter("tls.sni", "example.com"),
+            json!({"term": {"tls.sni.keyword": "example.com"}})
+        );
+        assert_eq!(
+            repo.field_filter("dest_ip", "10.0.0.1"),
+            json!({"term": {"dest_ip.keyword": "10.0.0.1"}})
+        );
+
+        // Not text, or text without a keyword sub-field: as before.
+        assert_eq!(
+            repo.field_filter("flow.bytes_toserver", "100"),
+            json!({"term": {"flow.bytes_toserver": "100"}})
+        );
+        assert_eq!(
+            repo.field_filter("http.url", "/index.html"),
+            json!({"term": {"http.url": "/index.html"}})
+        );
+
+        // Unknown fields match either form.
+        assert_eq!(
+            repo.field_filter("flow.state", "closed"),
+            json!({"bool": {"should": [
+                {"term": {"flow.state": "closed"}},
+                {"term": {"flow.state.keyword": "closed"}},
+            ], "minimum_should_match": 1}})
+        );
+    }
+
+    #[test]
+    fn field_filter_long_value_matches_phrase() {
+        let repo = loaded_repo();
+        let value = "a ".repeat(200);
+        let filter = repo.field_filter("tls.version", &value);
+        assert_eq!(
+            filter["bool"]["should"][2],
+            json!({"match_phrase": {"tls.version": value}})
+        );
+    }
+
+    #[test]
+    fn dns_rrname_query_uses_both_names() {
+        let repo = loaded_repo();
+        let elements = queryparser::parse("dns.rrname:example.com", None).unwrap();
+        let (mut filter, mut should, mut must_not) = (vec![], vec![], vec![]);
+        repo.apply_query_string(&elements, &mut filter, &mut should, &mut must_not);
+        assert_eq!(
+            filter,
+            vec![json!({"bool": {"should": [
+                {"term": {"dns.queries.rrname.keyword": "example.com"}},
+                {"term": {"dns.rrname.keyword": "example.com"}},
+            ]}})]
+        );
     }
 }

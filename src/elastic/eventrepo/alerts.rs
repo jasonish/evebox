@@ -224,6 +224,11 @@ impl ElasticEventRepo {
         options: AlertQueryOptions,
         auto_archive: Arc<RwLock<AutoArchive>>,
     ) -> Result<AlertsResult> {
+        if let Some(q) = &options.query_string
+            && let Ok(elements) = queryparser::parse(q, None)
+        {
+            self.ensure_fields(&elements, &[]).await;
+        }
         let mut query = self.build_inbox_query(options);
         let auto_archive_filters = auto_archive.read().unwrap().filters().to_vec();
         self.add_auto_archive_aggregation(&mut query, &auto_archive_filters);

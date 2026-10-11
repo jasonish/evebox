@@ -35,6 +35,15 @@
   but never checked. Agent keys (`server.key`) are the agent credential.
   Agents log a warning if the old options are still set.
 
+### Fixed
+- Elasticsearch/OpenSearch: searching a field for a value with spaces,
+  capitals or punctuation, such as `tls.version:"TLS 1.2"`, found nothing
+  for most fields, and aggregations on them returned no rows. EveBox now
+  reads the index field types to pick each string field's keyword
+  sub-field, instead of a fixed list, and picks up new fields as event
+  types start arriving. Values are matched exactly, as on SQLite; single
+  lowercase words that matched before still do.
+
 ## 0.30.0 - 2026-10-04
 
 ### Added

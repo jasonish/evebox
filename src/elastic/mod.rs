@@ -15,6 +15,7 @@ pub(crate) use importer::ElasticEventSink;
 pub(crate) mod autoarchive;
 pub(crate) mod client;
 pub(crate) mod eventrepo;
+pub(crate) mod fieldcaps;
 pub(crate) mod importer;
 pub(crate) mod request;
 pub(crate) mod retention;

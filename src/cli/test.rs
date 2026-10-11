@@ -2073,6 +2073,30 @@ async fn run_common_read_query_checks(repo: &EventRepo, checks: &mut Vec<Check>)
         Ok(Some(format!("rows={}", rows.len())))
     });
 
+    if let EventRepo::Elastic(repo) = repo {
+        check!(checks, "field_caps", {
+            let keyword_fields = repo.refresh_field_caps().await?;
+            Ok(Some(format!("keyword_fields={keyword_fields}")))
+        });
+    }
+
+    // tls.version is not on the fallback keyword list, and its values have
+    // spaces and capitals, so both need the field types to work.
+    check!(checks, "agg_text_field_exact_filter", {
+        let rows = repo.agg("tls.version", 10, "desc", vec![]).await?;
+        let Some(row) = rows.first() else {
+            return Ok(Some("no tls events".to_string()));
+        };
+        let value = row["key"].as_str().unwrap_or_default();
+        let expected = row["count"].as_u64().unwrap_or_default();
+        let query = queryparser::parse(&format!("tls.version:\"{value}\""), None)?;
+        let count = repo.count(&query).await?;
+        if count != expected {
+            bail!("tls.version:\"{value}\" matched {count} events, agg counted {expected}");
+        }
+        Ok(Some(format!("tls.version:\"{value}\"={count}")))
+    });
+
     // alerts — the big nested aggregation; also captures an alert group.
     {
         let start = Instant::now();
