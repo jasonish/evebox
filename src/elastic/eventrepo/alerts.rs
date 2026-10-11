@@ -239,6 +239,7 @@ impl ElasticEventRepo {
         if let Some(error) = &response.error {
             bail!("elasticsearch: {}", error.first_reason());
         }
+        crate::elastic::warn_shard_failures("alert", &response.shards);
 
         debug!(
             "Elasticsearch alert query took {:?}, es-time: {}, response-size: {}, timed-out: {}",

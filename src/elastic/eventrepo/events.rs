@@ -93,15 +93,7 @@ impl ElasticEventRepo {
 
         // Another way we can get errors from
         // Elasticsearch/Opensearch, even with a 200 status code.
-        if let Some(failure) = response["_shards"]["failures"]
-            .as_array()
-            .and_then(|v| v.first())
-        {
-            warn!(
-                "Elasticsearch reported failures, the first being: {:?}",
-                failure
-            );
-        }
+        crate::elastic::warn_shard_failures("event", &response["_shards"]);
 
         let hits = &response["hits"]["hits"];
 

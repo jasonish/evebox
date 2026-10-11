@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::datetime::DateTime;
+use crate::prelude::*;
 
 pub(crate) use client::Version;
 pub(crate) use client::compatibility_warning;
@@ -151,9 +152,29 @@ pub(crate) fn query_string_query(query_string: &str) -> serde_json::Value {
     })
 }
 
+/// Warn about shards that failed a search. Elasticsearch still returns
+/// 200 with the results of the other shards, which can be none, so
+/// without this a failing query just looks like it matched nothing.
+pub(crate) fn warn_shard_failures(query: &str, shards: &serde_json::Value) {
+    let Some(failure) = shards["failures"].as_array().and_then(|v| v.first()) else {
+        return;
+    };
+    let reason = &failure["reason"];
+    warn!(
+        "Elasticsearch {query} query failed on {} of {} shards, first failure: index={}, {}: {}",
+        shards["failed"],
+        shards["total"],
+        failure["index"].as_str().unwrap_or("?"),
+        reason["type"].as_str().unwrap_or("?"),
+        reason["reason"].as_str().unwrap_or("?"),
+    );
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct ElasticResponse {
     pub hits: Option<serde_json::Value>,
+    #[serde(rename = "_shards", default)]
+    pub shards: serde_json::Value,
     pub error: Option<ElasticResponseError>,
     pub updated: Option<u64>,
     pub aggregations: Option<serde_json::Value>,

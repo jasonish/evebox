@@ -942,6 +942,7 @@ impl ElasticEventRepo {
         });
 
         let response: serde_json::Value = self.search(&request).await?.json().await?;
+        super::warn_shard_failures("histogram", &response["_shards"]);
         let buckets = &response["aggregations"]["histogram"]["buckets"];
         let mut data = Vec::new();
         if let serde_json::Value::Array(buckets) = buckets {
@@ -991,6 +992,7 @@ impl ElasticEventRepo {
             error!("Elasticsearch \"group_by\" query failed: {error:?}");
             bail!("elasticsearch: {:?}", error);
         } else {
+            super::warn_shard_failures("aggregation", &response["_shards"]);
             let mut data = vec![];
             if let serde_json::Value::Array(buckets) = &response["aggregations"]["agg"]["buckets"] {
                 for bucket in buckets {
@@ -1300,6 +1302,7 @@ impl ElasticEventRepo {
         });
 
         let response: serde_json::Value = self.search(&request).await?.json().await?;
+        super::warn_shard_failures("count", &response["_shards"]);
         response["hits"]["total"]
             .as_u64()
             .ok_or_else(|| anyhow!("Elasticsearch response had no field hits.total"))

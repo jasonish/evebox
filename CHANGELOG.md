@@ -43,6 +43,10 @@
   sub-field, instead of a fixed list, and picks up new fields as event
   types start arriving. Values are matched exactly, as on SQLite; single
   lowercase words that matched before still do.
+- Elasticsearch/OpenSearch: searches that fail on some shards are now logged
+  as a warning for the inbox, dashboards and counts too, not just the events
+  view. Such searches return partial or no results, for example free-text
+  searches that exceed OpenSearch's limit of 1024 clauses on wide indices.
 
 ## 0.30.0 - 2026-10-04
 
