@@ -46,6 +46,7 @@ import { parse_timestamp } from "./datetime";
 import { parseRule, RuleOption, ruleReferences } from "./rule";
 import { automaticPcapSource, pcapErrorMessage } from "./PcapDownload";
 import { eventFiles, FileActions } from "./FileDownload";
+import { FlowEvents } from "./FlowEvents";
 import { formatAddressWithPort, formatEventDescription } from "./formatters";
 import { tinykeys } from "tinykeys";
 import { eventIsArchived, eventIsEscalated, eventSetArchived } from "./event";
@@ -1215,6 +1216,8 @@ export function EventView() {
               </Col>
             </Row>
           </Show>
+
+          <FlowEvents event={event()!} />
 
           <History
             history={history()}

@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- The event view shows a Flow card listing the other events Suricata
+  logged for the same flow, such as app-layer records, file info and the
+  flow record, with a summary of the flow's duration and traffic. Repeated
+  alerts are grouped by signature with their count, and runs of identical
+  events are collapsed. Also available as `GET /api/event/{id}/flow`.
 - Agents without an agent key are listed in their own Unregistered Agents
   card on the Agents administration page, with their hostname, address,
   version and platform. Agents must run 0.31.0 or later to appear.

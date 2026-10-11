@@ -243,6 +243,37 @@ export async function getEventById(id: string): Promise<EventWrapper> {
   return get(`api/event/${id}`).then((response) => response.data);
 }
 
+export interface FlowAlertGroup {
+  // Alerts for this signature in the flow.
+  count: number;
+  // The first of them.
+  first: EventWrapper;
+  last_timestamp: string;
+}
+
+export interface FlowEventsResponse {
+  // Null when the event has no flow ID.
+  flow_id: string | null;
+  // Event counts in the flow by event type.
+  counts: { [eventType: string]: number };
+  // Alerts grouped by signature.
+  alerts: FlowAlertGroup[];
+  // Other events, oldest first, without payload and packet fields.
+  events: EventWrapper[];
+  // The flow record, if Suricata logged one, even when truncated.
+  flow: EventWrapper | null;
+  // More non-alert events exist than were returned.
+  truncated: boolean;
+}
+
+// The events Suricata logged for the same flow as an event, including
+// the event itself.
+export async function getFlowEvents(id: string): Promise<FlowEventsResponse> {
+  return get(`api/event/${encodeURIComponent(id)}/flow`).then(
+    (response) => response.data,
+  );
+}
+
 export async function getVersion(): Promise<{
   revision: string;
   version: string;
