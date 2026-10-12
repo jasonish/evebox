@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.31.0 - 2026-10-12
+
 ### Added
 - The event view shows a Flow card listing the other events Suricata
   logged for the same flow, such as app-layer records, file info and the
