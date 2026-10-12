@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { TIME_RANGE, Top } from "../Top";
-import { createEffect, createSignal, onCleanup } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { API, fetchAgg } from "../api";
 import { RefreshButton } from "../common/RefreshButton";
 import { Chart, ChartConfiguration } from "chart.js";
@@ -88,6 +88,16 @@ export function AlertsDashboard() {
   const [categories, setCategories] = createStore<Model>(defaultModel());
 
   const [appProtos, setAppProtos] = createStore<Model>(defaultModel());
+
+  // From rule metadata, as provided by rulesets like ET Open.
+  const [tactics, setTactics] = createStore<Model>(defaultModel());
+
+  const [techniques, setTechniques] = createStore<Model>(defaultModel());
+
+  const [attackTargets, setAttackTargets] = createStore<Model>(defaultModel());
+
+  const [ruleSeverities, setRuleSeverities] =
+    createStore<Model>(defaultModel());
 
   const [stats, setStats] = createStore<Stats>(defaultStats());
 
@@ -268,6 +278,34 @@ export function AlertsDashboard() {
         order: "desc",
         setter: setAppProtos,
       },
+      // MITRE ATT&CK tactics from rule metadata.
+      {
+        field: "alert.metadata.mitre_tactic_name",
+        q: "event_type:alert",
+        order: "desc",
+        setter: setTactics,
+      },
+      // MITRE ATT&CK techniques from rule metadata.
+      {
+        field: "alert.metadata.mitre_technique_name",
+        q: "event_type:alert",
+        order: "desc",
+        setter: setTechniques,
+      },
+      // The kind of host a rule targets, from rule metadata.
+      {
+        field: "alert.metadata.attack_target",
+        q: "event_type:alert",
+        order: "desc",
+        setter: setAttackTargets,
+      },
+      // The rule author's severity, from rule metadata.
+      {
+        field: "alert.metadata.signature_severity",
+        q: "event_type:alert",
+        order: "desc",
+        setter: setRuleSeverities,
+      },
     ];
 
     for (const loader of loaders) {
@@ -311,6 +349,11 @@ export function AlertsDashboard() {
 
   const formatCount = (count: number | null) =>
     count === null ? null : count.toLocaleString();
+
+  // Rule metadata tables are hidden when the ruleset doesn't provide the
+  // metadata, once loaded.
+  const hasRows = (...models: Model[]) =>
+    models.some((model) => model.loading || model.rows.length > 0);
 
   const percentOfAlerts = (count: number | null) => {
     if (count === null || !stats.alerts) {
@@ -477,6 +520,68 @@ export function AlertsDashboard() {
             />
           </div>
         </div>
+
+        <Show when={hasRows(tactics, techniques)}>
+          <div class="row">
+            <div class="col mt-2">
+              <CountValueDataTable
+                title={"MITRE ATT&CK Tactics"}
+                label={"Tactic"}
+                searchField="alert.metadata.mitre_tactic_name"
+                tooltip={
+                  "The MITRE ATT&CK tactic, the attacker's goal, from the alerting rule's metadata."
+                }
+                rows={tactics.rows}
+                loading={tactics.loading}
+                suffix={formatSuffix(tactics.timestamp)}
+              />
+            </div>
+            <div class="col mt-2">
+              <CountValueDataTable
+                title={"MITRE ATT&CK Techniques"}
+                label={"Technique"}
+                searchField="alert.metadata.mitre_technique_name"
+                tooltip={
+                  "The MITRE ATT&CK technique, how the goal is achieved, from the alerting rule's metadata."
+                }
+                rows={techniques.rows}
+                loading={techniques.loading}
+                suffix={formatSuffix(techniques.timestamp)}
+              />
+            </div>
+          </div>
+        </Show>
+
+        <Show when={hasRows(attackTargets, ruleSeverities)}>
+          <div class="row">
+            <div class="col mt-2">
+              <CountValueDataTable
+                title={"Attack Targets"}
+                label={"Target"}
+                searchField="alert.metadata.attack_target"
+                tooltip={
+                  "The kind of host the alerting rule is written to protect, from its metadata."
+                }
+                rows={attackTargets.rows}
+                loading={attackTargets.loading}
+                suffix={formatSuffix(attackTargets.timestamp)}
+              />
+            </div>
+            <div class="col mt-2">
+              <CountValueDataTable
+                title={"Rule Severity"}
+                label={"Severity"}
+                searchField="alert.metadata.signature_severity"
+                tooltip={
+                  "The severity assigned by the rule author in the rule's metadata, separate from the alert severity (priority)."
+                }
+                rows={ruleSeverities.rows}
+                loading={ruleSeverities.loading}
+                suffix={formatSuffix(ruleSeverities.timestamp)}
+              />
+            </div>
+          </div>
+        </Show>
 
         <div class="row">
           <div class="col mt-2">

@@ -8,6 +8,9 @@
   flow record, with a summary of the flow's duration and traffic. Repeated
   alerts are grouped by signature with their count, and runs of identical
   events are collapsed. Also available as `GET /api/event/{id}/flow`.
+- The Alerts dashboard adds MITRE ATT&CK tactic and technique, attack
+  target and rule severity tables from rule metadata, as provided by
+  rulesets such as ET Open. They are hidden when no alerts carry it.
 - Agents without an agent key are listed in their own Unregistered Agents
   card on the Agents administration page, with their hostname, address,
   version and platform. Agents must run 0.31.0 or later to appear.
