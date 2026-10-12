@@ -12,7 +12,7 @@
 //! `agents.allow-unauthenticated` keyless agents are trusted instead, which
 //! is logged prominently.
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
 
 use axum::Json;
@@ -38,6 +38,7 @@ use crate::server::ServerContext;
 use crate::server::agents::{
     AgentConnectionId, AgentKeyIdentity, AgentRegistry, OUTBOUND_CAPACITY,
 };
+use crate::server::client_addr::client_ip;
 use crate::server::main::SessionExtractor;
 use crate::server::pcap::tasks::{UploadSendError, UploadSink};
 use crate::sqlite::configdb::ConfigDb;
@@ -100,6 +101,9 @@ pub(crate) async fn websocket(
     Extension(ConnectInfo(remote)): Extension<ConnectInfo<SocketAddr>>,
     headers: HeaderMap,
 ) -> Response {
+    // Behind a reverse proxy the TCP peer is the proxy: identify the agent
+    // by the address the proxy forwarded, for the agents list and logs.
+    let remote = client_ip(context.config.http_reverse_proxy, &headers, remote);
     let auth = match authenticate_agent(&context, &headers, remote).await {
         Ok(auth) => auth,
         Err(response) => return *response,
@@ -136,7 +140,7 @@ pub(crate) async fn websocket(
             );
             handshake.hostname.clone()
         }
-        AgentAuth::Unregistered { .. } => handshake.hostname.clone(),
+        AgentAuth::Unregistered => handshake.hostname.clone(),
     };
 
     // Control messages should stay small. Keep the limits far below
@@ -166,8 +170,7 @@ enum AgentAuth {
     /// No key, trusted under `agents.allow-unauthenticated`.
     Unauthenticated,
     /// No key: listed for presence only, with no capabilities and no work.
-    /// The address tells unregistered agents with one hostname apart.
-    Unregistered { remote_addr: String },
+    Unregistered,
 }
 
 /// Resolve the agent key on a control-channel upgrade.
@@ -179,7 +182,7 @@ enum AgentAuth {
 async fn authenticate_agent(
     context: &ServerContext,
     headers: &HeaderMap,
-    remote: SocketAddr,
+    remote: IpAddr,
 ) -> Result<AgentAuth, Box<Response>> {
     let Some(bearer) = headers.typed_get::<Authorization<Bearer>>() else {
         if context.config.agents_allow_unauthenticated {
@@ -195,9 +198,7 @@ async fn authenticate_agent(
                 "the Authorization header must carry an agent key as a bearer token",
             )));
         }
-        return Ok(AgentAuth::Unregistered {
-            remote_addr: display_addr(context, headers, remote),
-        });
+        return Ok(AgentAuth::Unregistered);
     };
     match context.configdb.verify_agent_key(bearer.token()).await {
         Ok(Some(key)) => {
@@ -231,20 +232,6 @@ async fn authenticate_agent(
             ))
         }
     }
-}
-
-/// The address shown for an unregistered agent: `x-forwarded-for` when
-/// reverse-proxy support is enabled, else the peer IP without its
-/// ephemeral port.
-fn display_addr(context: &ServerContext, headers: &HeaderMap, remote: SocketAddr) -> String {
-    if context.config.http_reverse_proxy
-        && let Some(forwarded) = headers
-            .get("x-forwarded-for")
-            .and_then(|value| value.to_str().ok())
-    {
-        return forwarded.to_string();
-    }
-    remote.ip().to_string()
 }
 
 fn agent_key_error(status: StatusCode, code: &str, message: &str) -> Response {
@@ -487,14 +474,14 @@ async fn connection(
     name: String,
     handshake: AgentHandshake,
     auth: AgentAuth,
-    remote: SocketAddr,
+    remote: IpAddr,
 ) {
     let (mut sink, mut stream) = socket.split();
     // Guarantee that hello is the first application frame. Registration
     // happens only after this send, so dispatch cannot race ahead of it.
     // An unregistered agent is offered no capabilities, so it rejects any
     // request that could reach it.
-    let unregistered = matches!(auth, AgentAuth::Unregistered { .. });
+    let unregistered = matches!(auth, AgentAuth::Unregistered);
     let hello = ServerMessage::Hello {
         server_version: crate::version::version().to_string(),
         capabilities: if unregistered {
@@ -513,16 +500,17 @@ async fn connection(
     let (outbound, mut outbound_rx) = mpsc::channel::<ServerMessage>(OUTBOUND_CAPACITY);
     // The registry has already logged the refusal; the agent sees a close
     // and stays in its reconnect loop until the operator fixes the fleet.
+    // The registry keeps a socket address; the port of a forwarded
+    // connection is unknown and of a direct one irrelevant.
+    let address = SocketAddr::new(remote, 0);
     let registered = match auth {
         AgentAuth::Key(key) => {
-            agents.register(name.clone(), handshake, Some(key), remote, outbound)
+            agents.register(name.clone(), handshake, Some(key), address, outbound)
         }
         AgentAuth::Unauthenticated => {
-            agents.register(name.clone(), handshake, None, remote, outbound)
+            agents.register(name.clone(), handshake, None, address, outbound)
         }
-        AgentAuth::Unregistered { remote_addr } => {
-            Ok(agents.register_unregistered(handshake, remote, remote_addr, outbound))
-        }
+        AgentAuth::Unregistered => Ok(agents.register_unregistered(handshake, address, outbound)),
     };
     let Ok(entry) = registered else {
         let _ = sink.close().await;
@@ -1395,6 +1383,54 @@ mod tests {
         wait_until(|| context.agents.unregistered_count() == 0).await;
 
         server.abort();
+    }
+
+    /// Connect a keyed agent through a pretend reverse proxy and return
+    /// the address `GET /api/agents` lists for it.
+    async fn listed_address(reverse_proxy: bool) -> String {
+        let config = ServerConfig {
+            http_reverse_proxy: reverse_proxy,
+            ..ServerConfig::default()
+        };
+        let (address, server, context, _dir) =
+            serve_test_server_with_config(PcapSettings::default(), config).await;
+        let key = add_test_key(&context, "test-sensor").await;
+
+        let uri: Uri = format!("ws://{address}/api/agent/ws").parse().unwrap();
+        let handshake = serde_json::to_string(&AgentHandshake {
+            hostname: "test-host".to_string(),
+            version: "test".to_string(),
+            capabilities: vec![],
+            platform: None,
+        })
+        .unwrap();
+        let request = ClientRequestBuilder::new(uri)
+            .with_sub_protocol(SUBPROTOCOL)
+            .with_header(AGENT_HEADER, handshake)
+            .with_header("authorization", format!("Bearer {key}"))
+            .with_header("x-forwarded-for", "203.0.113.7");
+        let (_socket, _) = tokio_tungstenite::connect_async(request).await.unwrap();
+        wait_until(|| context.agents.connected() == 1).await;
+
+        let agents: Vec<Value> = reqwest::Client::new()
+            .get(format!("http://{address}/api/agents"))
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        server.abort();
+        assert_eq!(agents[0]["name"], "test-sensor");
+        agents[0]["remote_addr"].as_str().unwrap().to_string()
+    }
+
+    /// Registered agents list their address too, the forwarded one behind
+    /// a reverse proxy, and forwarded headers are ignored otherwise.
+    #[tokio::test]
+    async fn agent_address_uses_forwarded_header_behind_reverse_proxy() {
+        assert_eq!(listed_address(true).await, "203.0.113.7");
+        assert_eq!(listed_address(false).await, "127.0.0.1");
     }
 
     /// An unregistered agent whose hostname is a key's name neither

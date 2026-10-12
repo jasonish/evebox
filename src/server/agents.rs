@@ -98,13 +98,12 @@ pub(crate) struct AgentEntry {
     pub(crate) connected_at: DateTime,
     pub(crate) generation: u64,
     pub(crate) key: Option<AgentKeyIdentity>,
+    /// Where the agent connected from: the TCP peer, or with
+    /// `http.reverse-proxy` the address the proxy forwarded.
     pub(crate) remote: SocketAddr,
     /// A keyless connection accepted for presence only. It has no
     /// capabilities, is sent no work and is never a routing source.
     pub(crate) unregistered: bool,
-    /// The address shown for an unregistered connection, which has no key
-    /// name to identify it.
-    pub(crate) remote_addr: Option<String>,
     pub(crate) outbound: mpsc::Sender<ServerMessage>,
     /// One server-side in-flight PCAP slot for this authenticated source name.
     ///
@@ -201,7 +200,7 @@ impl AgentEntry {
             last_seen: self.last_seen.read().unwrap().clone(),
             rtt_ms: (rtt_ms != u64::MAX).then_some(rtt_ms),
             unregistered: self.unregistered,
-            remote_addr: self.remote_addr.clone(),
+            remote_addr: self.remote.ip().to_string(),
         }
     }
 }
@@ -226,10 +225,9 @@ pub(crate) struct AgentInfo {
     /// reported.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub(crate) unregistered: bool,
-    /// Where an unregistered agent connected from, as unregistered agents
-    /// may share a hostname.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) remote_addr: Option<String>,
+    /// The IP the agent connected from. Also tells unregistered agents
+    /// sharing a hostname apart.
+    pub(crate) remote_addr: String,
 }
 
 #[derive(Default)]
@@ -292,8 +290,10 @@ impl AgentRegistry {
             && state.revoked_key_ids.contains(&key.id)
         {
             warn!(
-                "REFUSING agent {:?} from {remote}: key {:?} was revoked",
-                name, key.name
+                "REFUSING agent {:?} from {}: key {:?} was revoked",
+                name,
+                remote.ip(),
+                key.name
             );
             return Err(RegistrationRefused::RevokedKey);
         }
@@ -303,8 +303,12 @@ impl AgentRegistry {
             && held.id != claimed.id
         {
             warn!(
-                "REFUSING agent {:?} from {remote} using key {:?}: the name is held by a connection from {} authenticated with key {:?}",
-                name, claimed.name, previous.remote, held.name
+                "REFUSING agent {:?} from {} using key {:?}: the name is held by a connection from {} authenticated with key {:?}",
+                name,
+                remote.ip(),
+                claimed.name,
+                previous.remote.ip(),
+                held.name
             );
             return Err(RegistrationRefused::NameHeldByOtherKey);
         }
@@ -330,7 +334,6 @@ impl AgentRegistry {
             key,
             remote,
             unregistered: false,
-            remote_addr: None,
             outbound,
             pcap_busy,
             last_seen: RwLock::new(now),
@@ -367,7 +370,6 @@ impl AgentRegistry {
         &self,
         handshake: AgentHandshake,
         remote: SocketAddr,
-        remote_addr: String,
         outbound: mpsc::Sender<ServerMessage>,
     ) -> Arc<AgentEntry> {
         let now = DateTime::now();
@@ -382,7 +384,6 @@ impl AgentRegistry {
             key: None,
             remote,
             unregistered: true,
-            remote_addr: Some(remote_addr),
             outbound,
             pcap_busy: Arc::new(Semaphore::new(1)),
             last_seen: RwLock::new(now),
@@ -689,7 +690,7 @@ mod tests {
             hostname: hostname.to_string(),
             ..handshake(hostname, capabilities)
         };
-        registry.register_unregistered(handshake, remote(), "10.0.0.5".to_string(), tx)
+        registry.register_unregistered(handshake, "10.0.0.5:0".parse().unwrap(), tx)
     }
 
     #[test]
@@ -743,11 +744,11 @@ mod tests {
         let rows = registry.list();
         assert_eq!(rows.len(), 3);
         assert!(!rows[0].unregistered);
-        assert!(rows[0].remote_addr.is_none());
+        assert_eq!(rows[0].remote_addr, "127.0.0.1");
         assert!(rows[1].unregistered && rows[2].unregistered);
         let json = serde_json::to_value(&rows[0]).unwrap();
         assert!(json.get("unregistered").is_none());
-        assert!(json.get("remote_addr").is_none());
+        assert_eq!(json["remote_addr"], "127.0.0.1");
 
         // Removal is by generation and never crosses between the maps.
         assert!(registry.remove(&first.connection_id()));

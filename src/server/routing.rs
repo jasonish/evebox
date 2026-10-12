@@ -355,7 +355,6 @@ mod test {
                 platform: None,
             },
             "127.0.0.1:0".parse().unwrap(),
-            "127.0.0.1".to_string(),
             tx,
         );
         let routing = PcapRouting::default();

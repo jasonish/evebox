@@ -33,6 +33,7 @@ use crate::pcap::{FetchError, PcapSource};
 use crate::prelude::*;
 use crate::server::ServerContext;
 use crate::server::agents::AgentEntry;
+use crate::server::client_addr::client_ip;
 // A blank `filter` collapses to the same match-all/derived semantics as
 // an absent one, and a blank time field never selects a mode.
 use crate::server::api::util::{error_response, present};
@@ -265,21 +266,19 @@ pub(crate) async fn validate_pcap(
     }
 }
 
-/// The client address for the audit log: `x-forwarded-for` when
-/// reverse-proxy support is enabled, else the socket peer.
+/// The client address for the audit log: with `http.reverse-proxy`, the
+/// address forwarded by the proxy, else the socket peer.
 pub(crate) fn remote_addr(
     context: &ServerContext,
     headers: &HeaderMap,
     remote: SocketAddr,
 ) -> String {
-    if context.config.http_reverse_proxy
-        && let Some(forwarded) = headers
-            .get("x-forwarded-for")
-            .and_then(|value| value.to_str().ok())
-    {
-        return forwarded.to_string();
+    let ip = client_ip(context.config.http_reverse_proxy, headers, remote);
+    if ip == remote.ip() {
+        remote.to_string()
+    } else {
+        ip.to_string()
     }
-    remote.to_string()
 }
 
 /// Extract-and-stream entry point (real download): validate, take
