@@ -8,6 +8,11 @@
   flow record, with a summary of the flow's duration and traffic. Repeated
   alerts are grouped by signature with their count, and runs of identical
   events are collapsed. Also available as `GET /api/event/{id}/flow`.
+- New TLS dashboard with summary cards for TLS volume, legacy TLS/SSL use
+  and distinct server names, clients and servers, plus TLS activity over
+  time, negotiated versions, servers still using SSLv2 to TLS 1.1, the most
+  and least requested server names, certificate issuers and subjects, JA4
+  and JA3S fingerprints, and TLS on ports other than 443.
 - The Alerts dashboard adds MITRE ATT&CK tactic and technique, attack
   target and rule severity tables from rule metadata, as provided by
   rulesets such as ET Open. They are hidden when no alerts carry it.

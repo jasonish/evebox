@@ -242,6 +242,9 @@ export function Top(props: {
                 <A href={"/dashboards/dns"} class={"dropdown-item"}>
                   DNS
                 </A>
+                <A href={"/dashboards/tls"} class={"dropdown-item"}>
+                  TLS
+                </A>
                 <A href={"/dashboards/anomalies"} class={"dropdown-item"}>
                   Anomalies
                 </A>
