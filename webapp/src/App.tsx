@@ -28,6 +28,8 @@ import { Overview } from "./dashboards/Overview";
 import { DHCP } from "./dashboards/DHCP";
 import { DnsDashboard } from "./dashboards/DNS";
 import { TlsDashboard } from "./dashboards/TLS";
+import { HttpDashboard } from "./dashboards/HTTP";
+import { SshDashboard } from "./dashboards/SSH";
 import { AnomaliesDashboard } from "./dashboards/Anomalies";
 import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 import { PcapDownload } from "./PcapDownload";
@@ -67,6 +69,8 @@ export function AppRouter() {
         <Route path={"dashboards/dhcp"} component={DHCP} />
         <Route path={"dashboards/dns"} component={DnsDashboard} />
         <Route path={"dashboards/tls"} component={TlsDashboard} />
+        <Route path={"dashboards/http"} component={HttpDashboard} />
+        <Route path={"dashboards/ssh"} component={SshDashboard} />
         <Route path={"dashboards/anomalies"} component={AnomaliesDashboard} />
         <Route path={"dashboards/address/:address"} component={Address} />
         <Route path={"stats"} component={Stats} />

@@ -13,6 +13,17 @@
   time, negotiated versions, servers still using SSLv2 to TLS 1.1, the most
   and least requested server names, certificate issuers and subjects, JA4
   and JA3S fingerprints, and TLS on ports other than 443.
+- New HTTP dashboard with summary cards for request volume, error
+  responses and distinct hosts, clients and servers, plus HTTP activity
+  over time, the most and least requested hosts, URLs, content types, the
+  most and least common user agents, methods and status codes, hosts
+  serving executables, HTTP on ports other than 80, referrers and top
+  servers. Methods, status codes and referrers need extended HTTP logging.
+- New SSH dashboard with summary cards for session volume, SSH-1 use and
+  distinct clients, servers and client software, plus SSH activity over
+  time, the most and least common client and server software, HASSH
+  fingerprints, top clients and servers, SSH on ports other than 22 and
+  server protocol versions.
 - The Alerts dashboard adds MITRE ATT&CK tactic and technique, attack
   target and rule severity tables from rule metadata, as provided by
   rulesets such as ET Open. They are hidden when no alerts carry it.
