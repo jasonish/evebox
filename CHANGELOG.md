@@ -54,6 +54,9 @@
   packet capture and file download audit logs use the proxy's `X-Real-Ip`
   header, or else the last `X-Forwarded-For` entry, when it holds a valid IP
   address.
+- The agents table no longer has a row for the server's own packet capture
+  spool and file store, or a Type column, as the server is not an agent.
+  `(server)` is still offered as a source in Source Routing.
 
 ### Removed
 - The agent `server.username` and `server.password` options. Event
