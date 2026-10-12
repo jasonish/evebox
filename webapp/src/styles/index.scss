@@ -218,10 +218,10 @@ html {
   border-top: 0.5rem solid var(--bs-body-bg);
 }
 
-// Cap the admin layout narrower than the default container so the
-// settings-style pages stay composed on large displays.
+// Cap the admin layout so the settings-style pages stay composed on large
+// displays, while leaving room for the agents table.
 .app-admin-container {
-  max-width: 1140px;
+  max-width: 1600px;
 }
 
 // Admin section sidebar navigation.

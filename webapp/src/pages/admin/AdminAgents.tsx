@@ -44,7 +44,8 @@ interface AgentRow {
   last_seen?: string;
   rtt_ms?: number;
   key?: API.AgentKeyInfo;
-  // Where an unregistered agent connected from.
+  // The IP a connected agent connected from: the reverse proxy's
+  // forwarded address with http.reverse-proxy.
   remote_addr?: string;
 }
 
@@ -116,6 +117,7 @@ async function fetchAgents(): Promise<AgentsData> {
       connected: true,
       last_seen: agent.last_seen,
       rtt_ms: agent.rtt_ms,
+      remote_addr: agent.remote_addr,
     });
   }
   for (const key of keys) {
@@ -154,6 +156,13 @@ function rowStatus(row: AgentRow): "live" | "stale" | "offline" {
   return Date.now() - lastSeen.valueOf() < STALE_SECONDS * 1000
     ? "live"
     : "stale";
+}
+
+// Relative last-seen time, with dayjs's "a few seconds ago" shortened to
+// keep the column narrow.
+function lastSeen(timestamp: string): string {
+  const text = parse_timestamp(timestamp).fromNow();
+  return text === "a few seconds ago" ? "seconds ago" : text;
 }
 
 type SortColumn = "name" | "hostname" | "version" | "last_seen";
@@ -600,6 +609,7 @@ export function AdminAgents() {
                     <th role="button" onClick={() => setSort("hostname")}>
                       Hostname{sortIndicator("hostname")}
                     </th>
+                    <th>Address</th>
                     <th role="button" onClick={() => setSort("version")}>
                       Version{sortIndicator("version")}
                     </th>
@@ -619,8 +629,15 @@ export function AdminAgents() {
                       <tr>
                         <td class="align-middle">{row.name}</td>
                         <td class="align-middle">{row.hostname ?? "—"}</td>
-                        <td class="align-middle">{row.version ?? "—"}</td>
-                        <td class="align-middle">{row.platform ?? "—"}</td>
+                        <td class="align-middle text-nowrap">
+                          {row.remote_addr ?? "—"}
+                        </td>
+                        <td class="align-middle text-nowrap">
+                          {row.version ?? "—"}
+                        </td>
+                        <td class="align-middle text-nowrap">
+                          {row.platform ?? "—"}
+                        </td>
                         <td class="align-middle">
                           <For each={row.capabilities}>
                             {(capability) => (
@@ -630,10 +647,10 @@ export function AdminAgents() {
                             )}
                           </For>
                         </td>
-                        <td class="align-middle">
+                        <td class="align-middle text-nowrap">
                           {row.last_seen === undefined
                             ? "Never"
-                            : parse_timestamp(row.last_seen).fromNow()}
+                            : lastSeen(row.last_seen)}
                         </td>
                         <td class="align-middle text-end">
                           {row.rtt_ms === undefined ? "—" : `${row.rtt_ms} ms`}
@@ -697,7 +714,7 @@ export function AdminAgents() {
                         when={row.key && revealed()[row.key.id] !== undefined}
                       >
                         <tr class="app-agent-key-detail">
-                          <td colspan="9">
+                          <td colspan="10">
                             <div class="d-flex align-items-center flex-wrap gap-2">
                               <span class="text-body-secondary text-nowrap">
                                 Agent key:
@@ -745,13 +762,19 @@ export function AdminAgents() {
                       {(row) => (
                         <tr>
                           <td class="align-middle">{row.name}</td>
-                          <td class="align-middle">{row.remote_addr ?? "—"}</td>
-                          <td class="align-middle">{row.version ?? "—"}</td>
-                          <td class="align-middle">{row.platform ?? "—"}</td>
-                          <td class="align-middle">
+                          <td class="align-middle text-nowrap">
+                            {row.remote_addr ?? "—"}
+                          </td>
+                          <td class="align-middle text-nowrap">
+                            {row.version ?? "—"}
+                          </td>
+                          <td class="align-middle text-nowrap">
+                            {row.platform ?? "—"}
+                          </td>
+                          <td class="align-middle text-nowrap">
                             {row.last_seen === undefined
                               ? "—"
-                              : parse_timestamp(row.last_seen).fromNow()}
+                              : lastSeen(row.last_seen)}
                           </td>
                           <td class="align-middle text-end">
                             {row.rtt_ms === undefined

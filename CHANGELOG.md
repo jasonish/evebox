@@ -47,6 +47,13 @@
   source. `GET /api/agents` lists them with `unregistered: true` and their
   `remote_addr`. `agents.allow-unauthenticated` still trusts keyless agents
   fully.
+- The Agents administration page shows the address each connected agent
+  connected from, and `GET /api/agents` returns `remote_addr` for every
+  agent. The admin pages are wider to fit it. Behind a reverse proxy with
+  `http.reverse-proxy: true`, agent addresses, agent connection logs and the
+  packet capture and file download audit logs use the proxy's `X-Real-Ip`
+  header, or else the last `X-Forwarded-For` entry, when it holds a valid IP
+  address.
 
 ### Removed
 - The agent `server.username` and `server.password` options. Event

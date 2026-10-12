@@ -695,8 +695,8 @@ export namespace API {
     // An agent connected without a key, listed for presence only. Its
     // name is its hostname, and it has no capabilities.
     unregistered?: boolean;
-    // Where an unregistered agent connected from, as unregistered
-    // agents may share a hostname.
+    // The IP the agent connected from, forwarded by the reverse proxy
+    // with http.reverse-proxy. Absent from servers older than 0.31.
     remote_addr?: string;
   }
 
