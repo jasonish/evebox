@@ -9,12 +9,20 @@ use crate::sqlite::prelude::*;
 use crate::{
     LOG_QUERY_PLAN,
     queryparser::QueryElement,
-    sqlite::{builder::EventQueryBuilder, log_query_plan},
+    sqlite::{
+        builder::{EventQueryBuilder, is_array_field},
+        log_query_plan,
+    },
 };
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::instrument;
 
 use super::SqliteEventRepo;
+
+/// Join an array field's elements as `_agg`, one row per element.
+fn array_join(field: &str) -> String {
+    format!("LEFT JOIN json_each(events.source, '$.{field}') AS _agg")
+}
 
 fn to_sorted_vec<'a>(results: &'a HashMap<String, i64>, order: &str) -> Vec<(&'a String, &'a i64)> {
     let mut sorted: Vec<_> = results.iter().collect();
@@ -42,6 +50,9 @@ impl SqliteEventRepo {
             let coa =
                 "coalesce(source->>'dns'->>'queries'->>0->>'rrname', source->>'dns'->>'rrname')";
             builder.select(format!("{coa} as agg"));
+        } else if is_array_field(field) {
+            builder.add_left_join(array_join(field));
+            builder.select("CAST(_agg.value AS TEXT) as agg");
         } else {
             // Always cast to TEXT to handle both strings and integers consistently
             builder.select(format!(
@@ -142,6 +153,10 @@ impl SqliteEventRepo {
                 "coalesce(source->>'dns'->>'queries'->>0->>'rrname', source->>'dns'->>'rrname')";
             builder.select(format!("count({coa}) as count"));
             builder.select(format!("{coa} as agg"));
+        } else if is_array_field(field) {
+            builder.add_left_join(array_join(field));
+            builder.select("count(_agg.value) as count");
+            builder.select("CAST(_agg.value AS TEXT) as agg");
         } else {
             builder.select(format!(
                 "count(json_extract(events.source, '$.{field}')) as count"

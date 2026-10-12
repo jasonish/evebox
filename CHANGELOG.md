@@ -36,6 +36,9 @@
   Agents log a warning if the old options are still set.
 
 ### Fixed
+- SQLite: searches on rule metadata, such as
+  `alert.metadata.attack_target:Client_Endpoint`, matched nothing, as its
+  values are arrays. They now match any element.
 - Elasticsearch/OpenSearch: searching a field for a value with spaces,
   capitals or punctuation, such as `tls.version:"TLS 1.2"`, found nothing
   for most fields, and aggregations on them returned no rows. EveBox now

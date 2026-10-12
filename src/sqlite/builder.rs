@@ -4,6 +4,13 @@
 use crate::queryparser;
 use crate::sqlite::prelude::*;
 
+/// Fields whose values are arrays of strings, matched and aggregated on
+/// their elements: the rule metadata in alerts, such as
+/// `alert.metadata.attack_target`.
+pub(crate) fn is_array_field(field: &str) -> bool {
+    field.starts_with("alert.metadata.")
+}
+
 #[derive(Default)]
 pub(crate) struct EventQueryBuilder<'a> {
     /// Is FTS available?
@@ -238,6 +245,15 @@ impl<'a> EventQueryBuilder<'a> {
                                 }
                             }
                         }
+                        // Rule metadata values are arrays, so match any
+                        // element.
+                        _ if is_array_field(k) => {
+                            let op = if e.negated { "NOT EXISTS" } else { "EXISTS" };
+                            self.push_where(format!(
+                                "{op} (SELECT 1 FROM json_each(events.source, '$.{k}') WHERE json_each.value = ?)"
+                            ));
+                            self.push_arg(v)?;
+                        }
                         _ => {
                             if e.negated {
                                 self.where_source_json_extract(k, "!=", v)?;
@@ -420,5 +436,21 @@ mod tests {
         assert!(wheres_for("-is:archived").contains(&"events.archived = ?".to_string()));
         assert!(wheres_for("is:escalated").contains(&"events.escalated = ?".to_string()));
         assert!(wheres_for("-is:escalated").contains(&"events.escalated = ?".to_string()));
+    }
+
+    #[test]
+    fn rule_metadata_matches_array_elements() {
+        assert_eq!(
+            wheres_for("alert.metadata.attack_target:Client_Endpoint"),
+            vec![
+                "EXISTS (SELECT 1 FROM json_each(events.source, '$.alert.metadata.attack_target') WHERE json_each.value = ?)"
+            ]
+        );
+        assert_eq!(
+            wheres_for("-alert.metadata.attack_target:Client_Endpoint"),
+            vec![
+                "NOT EXISTS (SELECT 1 FROM json_each(events.source, '$.alert.metadata.attack_target') WHERE json_each.value = ?)"
+            ]
+        );
     }
 }

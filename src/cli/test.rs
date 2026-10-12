@@ -2097,6 +2097,27 @@ async fn run_common_read_query_checks(repo: &EventRepo, checks: &mut Vec<Check>)
         Ok(Some(format!("tls.version:\"{value}\"={count}")))
     });
 
+    // Rule metadata values are arrays; aggregations and filters work on
+    // their elements.
+    check!(checks, "agg_array_field_filter", {
+        let field = "alert.metadata.signature_severity";
+        let rows = repo.agg(field, 10, "desc", vec![]).await?;
+        let Some(row) = rows.first() else {
+            return Ok(Some("no rule metadata".to_string()));
+        };
+        let value = row["key"].as_str().unwrap_or_default();
+        if value.starts_with('[') {
+            bail!("{field} aggregated as an array: {value}");
+        }
+        let expected = row["count"].as_u64().unwrap_or_default();
+        let query = queryparser::parse(&format!("{field}:\"{value}\""), None)?;
+        let count = repo.count(&query).await?;
+        if count != expected {
+            bail!("{field}:\"{value}\" matched {count} events, agg counted {expected}");
+        }
+        Ok(Some(format!("{field}:\"{value}\"={count}")))
+    });
+
     // alerts — the big nested aggregation; also captures an alert group.
     {
         let start = Instant::now();
