@@ -6,7 +6,7 @@ import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 
 import { tinykeys } from "tinykeys";
-import { BiGear } from "./icons";
+import { BiGear, BiThreeDots } from "./icons";
 import { HelpModal } from "./Help";
 import { QUEUE_SIZE, SERVER_REVISION } from "./api";
 import * as api from "./api";
@@ -158,6 +158,12 @@ export function Top(props: {
         }
         navigate("/events");
       },
+      "g l": (e: any) => {
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+          return;
+        }
+        navigate("/live");
+      },
       "Control+\\": (e: any) => {
         if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
           return;
@@ -254,6 +260,21 @@ export function Top(props: {
                 <A href={"/dashboards/anomalies"} class={"dropdown-item"}>
                   Anomalies
                 </A>
+              </NavDropdown>
+              {
+                // Unlabelled menu for views that don't warrant their own
+                // top level item.
+              }
+              <NavDropdown
+                class="app-nav-more"
+                title={<BiThreeDots />}
+                active={location.pathname.startsWith("/live")}
+              >
+                <Show when={serverConfig()?.mode !== "oneshot"}>
+                  <A href={"/live"} class={"dropdown-item"}>
+                    Live
+                  </A>
+                </Show>
               </NavDropdown>
             </Nav>
             <Nav>

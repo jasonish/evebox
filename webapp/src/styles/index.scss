@@ -475,3 +475,35 @@ tr:focus-within .app-show-on-hover {
     border-color: $danger;
   }
 }
+
+// Live view: flash newly inserted rows so arrivals are visible as the
+// older rows are pushed down.
+@keyframes app-live-row-flash {
+  from {
+    box-shadow: inset 0 0 0 100vmax rgba(var(--bs-primary-rgb), 0.35);
+  }
+  to {
+    box-shadow: inset 0 0 0 100vmax transparent;
+  }
+}
+
+.app-live-row > td {
+  animation: app-live-row-flash 1.5s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-live-row > td {
+    animation: none;
+  }
+}
+
+// Live view: a marker row for events known to be missing.
+.app-live-gap > td {
+  border-top: 2px dashed var(--bs-warning);
+  border-bottom: 2px dashed var(--bs-warning);
+}
+
+// The unlabelled "more" menu in the navbar: just the icon, no caret.
+.app-nav-more .dropdown-toggle::after {
+  display: none;
+}

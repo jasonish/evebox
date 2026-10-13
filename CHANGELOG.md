@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Added
+- New Live view showing events as they arrive, without aggregation.
+  Events can be limited by sensor, event type and an EveBox query string
+  such as `src_ip:10.1.1.1` or `@sid:2016149`, with the filtering done
+  on the server so the view keeps the most recent matching events even
+  on a busy sensor. The stream can be paused and resumed, and rows
+  expanded to show the full event. Gaps are marked in the view when
+  events were dropped by the server, discarded while paused, or possibly
+  missed over a reconnect. Events read from EVE files and sockets are
+  now included in the live stream alongside events submitted by agents.
+  The `/api/firehose/sse` and `/api/firehose` endpoints accept
+  `event_type`, `sensor` and `q` parameters, and the SSE stream reports
+  dropped events as a `gap` event rather than queueing without bound.
+
 ## 0.31.0 - 2026-10-12
 
 ### Added

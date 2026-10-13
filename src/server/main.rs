@@ -258,6 +258,13 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             context.auto_archive.clone(),
             metrics.clone(),
         ));
+        // Not a filter but a tap: publishes file and socket events to the
+        // firehose for live subscribers. Agent submitted events are
+        // published by the submit handler itself, so this is not added to
+        // the submitted event chain.
+        filters.add_filter(crate::eve::filters::FirehoseFilter::new(
+            context.firehose.clone(),
+        ));
 
         let end = config.get_bool("end")?;
         let delete_processed_spool_files = config.get_bool("input.delete-spool-files")?;

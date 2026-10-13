@@ -220,6 +220,32 @@ fn mark_auto_archived(event: &mut serde_json::Value, cause: &str) {
         .push(serde_json::json!(history));
 }
 
+/// A tap rather than a filter: the event is left unchanged, and a copy
+/// is published to the server's firehose so live subscribers (such as
+/// the Live view) see events read from local files and sockets, not just
+/// events submitted by agents. It sits in the filter chain because that
+/// is the one place every locally ingested event passes through.
+#[derive(Debug)]
+pub(crate) struct FirehoseFilter {
+    firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
+}
+
+impl FirehoseFilter {
+    pub(crate) fn new(firehose: tokio::sync::broadcast::Sender<serde_json::Value>) -> Self {
+        Self { firehose }
+    }
+}
+
+impl EveFilterTrait for FirehoseFilter {
+    fn run(&self, event: &mut serde_json::Value) {
+        // Avoid the clone when nobody is listening.
+        if self.firehose.receiver_count() == 0 {
+            return;
+        }
+        let _ = self.firehose.send(event.clone());
+    }
+}
+
 pub(crate) trait EveFilterTrait: std::fmt::Debug {
     fn run(&self, event: &mut serde_json::Value);
 }

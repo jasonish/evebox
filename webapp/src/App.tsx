@@ -20,6 +20,7 @@ import { Settings } from "./Settings";
 import { EventView } from "./EventView";
 import { Notifications } from "./Notifications";
 import { Events } from "./Events";
+import { Live } from "./Live";
 import { Stats } from "./Stats";
 import { serverConfig, serverConfigSet } from "./config";
 import { Address } from "./dashboards/Address";
@@ -61,6 +62,7 @@ export function AppRouter() {
         </Route>
 
         <Route path={"events"} component={Events} />
+        <Route path={"live"} component={Live} />
         <Route path={"event/:id"} component={EventView} />
         <Route path={"pcap"} component={PcapDownload} />
         <Route path={"settings"} component={Settings} />
