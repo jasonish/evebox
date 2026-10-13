@@ -224,20 +224,26 @@ fn mark_auto_archived(event: &mut serde_json::Value, cause: &str) {
 /// is published to the server's firehose so live subscribers (such as
 /// the Live view) see events read from local files and sockets, not just
 /// events submitted by agents. It sits in the filter chain because that
-/// is the one place every locally ingested event passes through.
+/// is the one place every locally ingested event passes through, which
+/// also makes it the place to count them.
 #[derive(Debug)]
 pub(crate) struct FirehoseFilter {
     firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
+    metrics: Arc<Metrics>,
 }
 
 impl FirehoseFilter {
-    pub(crate) fn new(firehose: tokio::sync::broadcast::Sender<serde_json::Value>) -> Self {
-        Self { firehose }
+    pub(crate) fn new(
+        firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
+        metrics: Arc<Metrics>,
+    ) -> Self {
+        Self { firehose, metrics }
     }
 }
 
 impl EveFilterTrait for FirehoseFilter {
     fn run(&self, event: &mut serde_json::Value) {
+        self.metrics.incr_events_input(1);
         // Avoid the clone when nobody is listening.
         if self.firehose.receiver_count() == 0 {
             return;

@@ -62,6 +62,9 @@ pub(crate) struct ServerContext {
     pub auto_archive: Arc<RwLock<AutoArchive>>,
     pub metrics: Arc<Metrics>,
     pub firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
+    /// True when the server reads EVE files or sockets itself. Reported
+    /// to the webapp so the live view can explain an empty stream.
+    pub input_enabled: bool,
     pub(crate) agents: Arc<agents::AgentRegistry>,
     pub(crate) pcap_tasks: Arc<pcap::tasks::Registry>,
     pub pcap: Arc<pcap::PcapService>,
@@ -91,6 +94,7 @@ impl ServerContext {
             auto_archive,
             metrics,
             firehose,
+            input_enabled: false,
             agents,
             pcap_tasks,
             pcap: Arc::new(pcap::PcapService::default()),

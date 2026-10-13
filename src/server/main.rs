@@ -207,6 +207,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
     }
 
     if is_input_enabled(&config) {
+        context.input_enabled = true;
         let input_patterns = get_input_patterns(&config)?;
         let input_sockets = socket::get_inputs(&config)?;
         if input_patterns.is_empty() && input_sockets.is_empty() {
@@ -264,6 +265,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
         // the submitted event chain.
         filters.add_filter(crate::eve::filters::FirehoseFilter::new(
             context.firehose.clone(),
+            metrics.clone(),
         ));
 
         let end = config.get_bool("end")?;

@@ -174,6 +174,15 @@ pub(crate) async fn config(
     } else {
         serde_json::Value::Null
     };
+    // What feeds the live view: whether this server reads EVE inputs
+    // itself, and how many events have passed through it from inputs and
+    // agents since start. Lets the webapp explain an empty live stream
+    // when events reach the datastore some other way.
+    let live = json!({
+        "inputs": context.input_enabled,
+        "agents": context.agents.connected(),
+        "ingested": context.metrics.events_ingested(),
+    });
     let config = json!({
         "ElasticSearchIndex": context.config.elastic_index,
         "event-services": context.event_services,
@@ -183,6 +192,7 @@ pub(crate) async fn config(
         "distribution": distribution,
         "pcap": pcap,
         "filestore": filestore,
+        "live": live,
     });
     Json(config)
 }

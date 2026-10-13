@@ -25,7 +25,10 @@ pub(crate) struct Metrics {
     pub autoarchived_by_filter: AtomicU64,
     pub autoarchived_by_user: AtomicU64,
     pub sqlite_event_consumer: Arc<Mutex<SqliteEventConsumerMetrics>>,
+    /// Events submitted by agents.
     pub events_rx: AtomicU64,
+    /// Events read by the server's own EVE file and socket inputs.
+    pub events_input: AtomicU64,
 }
 
 impl Metrics {
@@ -48,6 +51,18 @@ impl Metrics {
     pub fn incr_events_rx(&self, n: u64) {
         self.events_rx
             .fetch_add(n, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub fn incr_events_input(&self, n: u64) {
+        self.events_input
+            .fetch_add(n, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Total events that have passed through this server from any
+    /// source: agent submissions plus local file and socket inputs.
+    pub fn events_ingested(&self) -> u64 {
+        self.events_rx.load(std::sync::atomic::Ordering::Relaxed)
+            + self.events_input.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -75,5 +90,15 @@ mod test {
                 .load(std::sync::atomic::Ordering::Relaxed),
             2
         );
+    }
+
+    #[test]
+    fn events_ingested_sums_all_sources() {
+        let metrics = Metrics::default();
+        assert_eq!(metrics.events_ingested(), 0);
+        metrics.incr_events_rx(3);
+        assert_eq!(metrics.events_ingested(), 3);
+        metrics.incr_events_input(2);
+        assert_eq!(metrics.events_ingested(), 5);
     }
 }

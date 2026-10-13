@@ -29,6 +29,7 @@ import { TimestampCell } from "./components";
 import { AlertDescription } from "./Alerts";
 import { AppProtoBadge, EVENT_TYPES, eventNameFromType } from "./Events";
 import { SensorSelect } from "./common/SensorSelect";
+import { serverConfig } from "./config";
 
 const MAX_ROW_OPTIONS = [100, 250, 500, 1000];
 const DEFAULT_MAX_ROWS = 500;
@@ -429,6 +430,23 @@ export function Live() {
     () => !!(searchParams.event_type || searchParams.sensor || searchParams.q),
   );
 
+  // The server reports how many events have passed through it since it
+  // started (refreshed with the config every few seconds). While that is
+  // zero nothing can show here, typically because another tool writes
+  // events straight to the datastore. Only events that pass through
+  // EveBox reach the live view. The wording states what the server knows
+  // rather than concluding nothing will ever arrive: a legacy agent that
+  // posts events without a persistent connection isn't counted as
+  // connected, so "no agents" doesn't mean "no agents will submit".
+  const noSource = createMemo(() => {
+    const live = serverConfig()?.live;
+    return live !== undefined && live.ingested === 0 && received() === 0;
+  });
+  const noSourceConfigured = createMemo(() => {
+    const live = serverConfig()?.live;
+    return live !== undefined && !live.inputs && live.agents === 0;
+  });
+
   return (
     <>
       <Top disableRange />
@@ -558,6 +576,32 @@ export function Live() {
             </form>
           </Col>
         </Row>
+
+        <Show when={noSource()}>
+          <Row>
+            <Col class="mt-2">
+              <div class="alert alert-warning mb-0" role="alert">
+                <Show
+                  when={noSourceConfigured()}
+                  fallback={
+                    <>
+                      <strong>No events have reached this server yet.</strong>{" "}
+                      The live view only shows events that pass through EveBox,
+                      from its EVE file or socket inputs or from agents.
+                    </>
+                  }
+                >
+                  <strong>This server has no event sources.</strong> No EVE file
+                  or socket inputs are configured, no agents are connected, and
+                  no events have been submitted since it started. The live view
+                  only shows events that pass through EveBox, so events that
+                  other tools write directly to Elasticsearch or OpenSearch will
+                  not appear here.
+                </Show>
+              </div>
+            </Col>
+          </Row>
+        </Show>
 
         <Row>
           <Col class="mt-2">

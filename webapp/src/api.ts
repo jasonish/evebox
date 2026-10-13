@@ -103,6 +103,14 @@ export interface ConfigResponse {
   pcap?: {
     max_size_bytes?: number;
   } | null;
+  // What feeds the live view: whether the server reads EVE inputs itself,
+  // how many agents are connected, and how many events have passed
+  // through the server since it started.
+  live?: {
+    inputs: boolean;
+    agents: number;
+    ingested: number;
+  };
 }
 
 export async function getConfig(): Promise<ConfigResponse> {

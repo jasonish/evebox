@@ -15,6 +15,9 @@
   The `/api/firehose/sse` and `/api/firehose` endpoints accept
   `event_type`, `sensor` and `q` parameters, and the SSE stream reports
   dropped events as a `gap` event rather than queueing without bound.
+  When no events have passed through the server, for example when
+  another tool writes events directly to Elasticsearch or OpenSearch,
+  the view says so instead of waiting silently.
 
 ## 0.31.0 - 2026-10-12
 
