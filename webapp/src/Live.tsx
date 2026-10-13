@@ -604,7 +604,7 @@ export function Live() {
         </Show>
 
         <Row>
-          <Col class="mt-2">
+          <Col class="mt-2 d-flex align-items-center flex-wrap app-live-status">
             <span
               classList={{
                 badge: true,
@@ -632,7 +632,7 @@ export function Live() {
               <span class="badge text-bg-warning me-2">Paused</span>
             </Show>
             <span
-              class="badge me-2 font-monospace"
+              class="badge me-2 font-monospace app-live-rate"
               classList={{
                 "text-bg-primary": rate() > 0,
                 "text-bg-secondary": rate() === 0,

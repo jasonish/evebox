@@ -507,3 +507,14 @@ tr:focus-within .app-show-on-hover {
 .app-nav-more .dropdown-toggle::after {
   display: none;
 }
+
+// Live view status line: fixed-width rate badge and tabular digits so the
+// counters don't shift the text as they change.
+.app-live-status {
+  font-variant-numeric: tabular-nums;
+}
+
+.app-live-rate {
+  min-width: 4.5em;
+  text-align: center;
+}
