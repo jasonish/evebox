@@ -61,6 +61,7 @@ interface LiveGapRow {
 const REASON_SERVER = "server could not keep up";
 const REASON_CLIENT = "browser could not keep up";
 const REASON_PAUSED = "discarded while paused";
+const REASON_HIDDEN = "page was hidden";
 const REASON_RECONNECT = "connection lost";
 
 function gapMessage(row: LiveGapRow): string {
@@ -85,6 +86,15 @@ export function Live() {
     equals: false,
   });
   const [paused, setPaused] = createSignal(false);
+  // Nothing is rendered while the page is hidden (background tab, locked
+  // screen, minimized window). Browsers throttle timers in hidden pages
+  // and, at least in Chromium, don't release DOM nodes removed while
+  // hidden until the page is shown again, so a hidden page with rows
+  // churning through it grows without bound. Events keep arriving and
+  // are counted, with the newest kept for display when shown again.
+  const [hidden, setHidden] = createSignal(
+    document.visibilityState === "hidden",
+  );
   const [connection, setConnection] =
     createSignal<ConnectionState>("connecting");
   const [received, setReceived] = createSignal(0);
@@ -95,9 +105,6 @@ export function Live() {
   // while paused.
   const [dropped, setDropped] = createSignal(0);
   const [maxRows, setMaxRows] = createSignal(DEFAULT_MAX_ROWS);
-  const [expanded, setExpanded] = createSignal<Set<number>>(new Set(), {
-    equals: false,
-  });
   const [eventTypes, setEventTypes] =
     createSignal<{ name: string; eventType: string }[]>(EVENT_TYPES);
 
@@ -112,6 +119,7 @@ export function Live() {
   let flushTimer: number | undefined;
   let rateTimer: number | undefined;
   let lastReceived = 0;
+  let lastRateAt = 0;
   let keybindings: (() => void) | null = null;
 
   const eventRows = createMemo(
@@ -156,7 +164,7 @@ export function Live() {
     if (incoming.length === 0) {
       return;
     }
-    if (paused()) {
+    if (paused() || hidden()) {
       setPendingCount(incoming.length);
       return;
     }
@@ -195,8 +203,9 @@ export function Live() {
     }
     // Bound the buffer, keeping the most recent events and counting what
     // was lost so a gap can be shown on the next flush. This is normally
-    // only reached while paused; unpaused, the buffer is flushed every
-    // FLUSH_INTERVAL_MS. Evicted gap markers are folded into that gap.
+    // only reached while paused or hidden; otherwise the buffer is flushed
+    // every FLUSH_INTERVAL_MS. Evicted gap markers are folded into that
+    // gap.
     const max = maxRows();
     if (incomingEvents > max) {
       let removedEvents = 0;
@@ -211,10 +220,12 @@ export function Live() {
         }
       }
       pausedDropped += removedEvents;
-      pausedReasons.add(paused() ? REASON_PAUSED : REASON_CLIENT);
+      pausedReasons.add(
+        paused() ? REASON_PAUSED : hidden() ? REASON_HIDDEN : REASON_CLIENT,
+      );
       setDropped((n) => n + removedEvents);
     }
-    if (paused()) {
+    if (paused() || hidden()) {
       setPendingCount(incoming.length);
     }
   }
@@ -308,8 +319,8 @@ export function Live() {
     setReceived(0);
     setDropped(0);
     lastReceived = 0;
+    lastRateAt = performance.now();
     setRows([]);
-    setExpanded(new Set<number>());
   }
 
   function togglePaused() {
@@ -319,15 +330,11 @@ export function Live() {
     }
   }
 
-  function toggleExpanded(seq: number) {
-    setExpanded((set) => {
-      if (set.has(seq)) {
-        set.delete(seq);
-      } else {
-        set.add(seq);
-      }
-      return set;
-    });
+  function onVisibilityChange() {
+    setHidden(document.visibilityState === "hidden");
+    if (!hidden()) {
+      flush();
+    }
   }
 
   function isInput(e: KeyboardEvent): boolean {
@@ -376,11 +383,18 @@ export function Live() {
 
   onMount(() => {
     loadEventTypes();
+    document.addEventListener("visibilitychange", onVisibilityChange);
     flushTimer = window.setInterval(flush, FLUSH_INTERVAL_MS);
+    // Measured against the clock rather than assuming a one second tick,
+    // as timers run late in hidden pages.
+    lastRateAt = performance.now();
     rateTimer = window.setInterval(() => {
       const now = received();
-      setRate(Math.max(0, now - lastReceived));
+      const at = performance.now();
+      const elapsed = Math.max(1, (at - lastRateAt) / 1000);
+      setRate(Math.max(0, Math.round((now - lastReceived) / elapsed)));
       lastReceived = now;
+      lastRateAt = at;
     }, 1000);
     keybindings = tinykeys(window, {
       p: (e) => {
@@ -397,6 +411,7 @@ export function Live() {
 
   onCleanup(() => {
     disconnect();
+    document.removeEventListener("visibilitychange", onVisibilityChange);
     if (flushTimer !== undefined) {
       window.clearInterval(flushTimer);
     }
@@ -643,7 +658,7 @@ export function Live() {
             </span>
             <span class="text-body-secondary small">
               {received().toLocaleString()} received, {eventRows().length} shown
-              <Show when={paused() && pendingCount() > 0}>
+              <Show when={(paused() || hidden()) && pendingCount() > 0}>
                 , {pendingCount().toLocaleString()} waiting
               </Show>
               <Show when={dropped() > 0}>
@@ -694,11 +709,7 @@ export function Live() {
                           </tr>
                         </Match>
                         <Match when={row.kind === "event"}>
-                          <LiveEventRows
-                            row={row as LiveEventRow}
-                            expanded={expanded().has(row.seq)}
-                            onclick={() => toggleExpanded(row.seq)}
-                          />
+                          <LiveEventRowView row={row as LiveEventRow} />
                         </Match>
                       </Switch>
                     )}
@@ -713,11 +724,7 @@ export function Live() {
   );
 }
 
-function LiveEventRows(props: {
-  row: LiveEventRow;
-  expanded: boolean;
-  onclick: () => void;
-}) {
+function LiveEventRowView(props: { row: LiveEventRow }) {
   const event = props.row.event;
   const source = event._source;
   const severity = source.alert?.severity;
@@ -727,57 +734,44 @@ function LiveEventRows(props: {
   const addresses = source.src_ip ? source : source.arp;
 
   return (
-    <>
-      <tr
-        class="app-live-row"
-        style={"cursor: pointer;"}
-        onclick={props.onclick}
-        classList={{
-          "table-info": isAlert && severity! > 2,
-          "table-warning": isAlert && severity === 2,
-          "table-danger": isAlert && severity === 1,
-        }}
-      >
-        <td class="app-col-timestamp">
-          <TimestampCell timestamp={source.timestamp} />
-        </td>
-        <td class="app-col-event-type">
-          {source.event_type?.toUpperCase() || "???"}
-        </td>
-        <td class="app-col-event-type">{source.host}</td>
-        <td class="app-col-address" style={"width: 0%;"}>
-          <Show when={addresses?.src_ip}>
-            S: {formatAddressWithPort(addresses.src_ip, addresses.src_port)}
-            <br />
-          </Show>
-          <Show when={addresses?.dest_ip}>
-            D: {formatAddressWithPort(addresses.dest_ip, addresses.dest_port)}
-          </Show>
-        </td>
-        <td class="app-break-anywhere col-auto">
-          <Switch
-            fallback={
-              <>
-                {formatEventDescription(event)}
-                <AppProtoBadge event={event} class={"ms-2"} />
-              </>
-            }
-          >
-            <Match when={isAlert}>
-              <AlertDescription event={event} />
-            </Match>
-          </Switch>
-        </td>
-      </tr>
-      <Show when={props.expanded}>
-        <tr>
-          <td colspan={5}>
-            <pre class="mb-0 small" style={"white-space: pre-wrap;"}>
-              {JSON.stringify(source, null, 2)}
-            </pre>
-          </td>
-        </tr>
-      </Show>
-    </>
+    <tr
+      class="app-live-row"
+      classList={{
+        "table-info": isAlert && severity! > 2,
+        "table-warning": isAlert && severity === 2,
+        "table-danger": isAlert && severity === 1,
+      }}
+    >
+      <td class="app-col-timestamp">
+        <TimestampCell timestamp={source.timestamp} />
+      </td>
+      <td class="app-col-event-type">
+        {source.event_type?.toUpperCase() || "???"}
+      </td>
+      <td class="app-col-event-type">{source.host}</td>
+      <td class="app-col-address" style={"width: 0%;"}>
+        <Show when={addresses?.src_ip}>
+          S: {formatAddressWithPort(addresses.src_ip, addresses.src_port)}
+          <br />
+        </Show>
+        <Show when={addresses?.dest_ip}>
+          D: {formatAddressWithPort(addresses.dest_ip, addresses.dest_port)}
+        </Show>
+      </td>
+      <td class="app-break-anywhere col-auto">
+        <Switch
+          fallback={
+            <>
+              {formatEventDescription(event)}
+              <AppProtoBadge event={event} class={"ms-2"} />
+            </>
+          }
+        >
+          <Match when={isAlert}>
+            <AlertDescription event={event} />
+          </Match>
+        </Switch>
+      </td>
+    </tr>
   );
 }
