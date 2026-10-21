@@ -15,6 +15,11 @@ use super::{ElasticEventRepo, MINIMUM_SHOULD_MATCH};
 
 const AUTO_ARCHIVE_AGGREGATION: &str = "auto_archive_filters";
 
+/// Groups alerts without a source or destination address. It must be an
+/// IP address for indices mapping the addresses as IP fields, so one from
+/// the discard-only prefix (RFC 6666) that shouldn't be seen on the wire.
+const MISSING_ADDR: &str = "100::";
+
 fn record_unique_filter(filters: &mut Vec<EventFilter>, filter: &EventFilter) -> bool {
     if filters.contains(filter) {
         false
@@ -155,14 +160,14 @@ impl ElasticEventRepo {
                             "terms": {
                                 "field": self.map_field("src_ip"),
                                 "size": 1000,
-                                "missing": "null",
+                                "missing": MISSING_ADDR,
                             },
                             "aggs": {
                                 "destinations": {
                                     "terms": {
                                         "field": self.map_field("dest_ip"),
                                         "size": 500,
-                                        "missing": "null",
+                                        "missing": MISSING_ADDR,
                                     },
                                     "aggs": {
                                         "escalated": {
@@ -402,7 +407,7 @@ mod tests {
     use crate::sqlite::configdb::{EventFilter, FilterAction, FilterCondition, FilterOperator};
     use serde_json::json;
 
-    use super::{AUTO_ARCHIVE_AGGREGATION, record_unique_filter};
+    use super::{AUTO_ARCHIVE_AGGREGATION, MISSING_ADDR, record_unique_filter};
 
     fn test_repo() -> ElasticEventRepo {
         ElasticEventRepo::new(
@@ -536,6 +541,11 @@ mod tests {
         assert!(filters.contains(&json!({
             "term": {"tls.sni.keyword": "gateway.discord.com"}
         })));
+    }
+
+    #[test]
+    fn missing_addr_is_an_ip() {
+        assert!(MISSING_ADDR.parse::<std::net::IpAddr>().is_ok());
     }
 
     #[test]

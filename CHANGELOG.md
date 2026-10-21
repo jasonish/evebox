@@ -19,6 +19,12 @@
   another tool writes events directly to Elasticsearch or OpenSearch,
   the view says so instead of waiting silently.
 
+### Fixed
+- The inbox, escalated and alerts views failed with "'null' is not an IP
+  string literal" on Elasticsearch and OpenSearch indices that map
+  `src_ip` and `dest_ip` as IP fields, such as with ClearNDR. Introduced
+  in 0.31.0.
+
 ## 0.31.0 - 2026-10-12
 
 ### Added
