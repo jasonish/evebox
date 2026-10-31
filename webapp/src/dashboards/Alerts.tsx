@@ -67,7 +67,10 @@ export function AlertsDashboard() {
   const [searchParams, setSearchParams] = useSearchParams<{
     sensor?: string;
     q?: string;
+    exclude_archived?: string;
   }>();
+
+  const excludeArchived = () => searchParams.exclude_archived === "true";
 
   const [mostAlerting, setMostAlerting] = createStore<Model>(defaultModel());
 
@@ -173,6 +176,9 @@ export function AlertsDashboard() {
     }
     if (searchParams.sensor) {
       queryString.push(`host:${searchParams.sensor}`);
+    }
+    if (excludeArchived()) {
+      queryString.push("-is:archived");
     }
 
     API.histogramTime({
@@ -369,7 +375,19 @@ export function AlertsDashboard() {
       <div class="container-fluid">
         <div class="row mt-2">
           <div class="col">
-            <form class="d-flex flex-wrap align-items-center gap-2">
+            <form
+              class="d-flex flex-wrap align-items-center gap-2"
+              onsubmit={(e) => {
+                e.preventDefault();
+                const value = e.currentTarget.filter.value.trim();
+                setSearchParams({ q: value === "" ? undefined : value });
+                for (const input of e.currentTarget.getElementsByTagName(
+                  "input",
+                )) {
+                  input.blur();
+                }
+              }}
+            >
               <div>
                 <RefreshButton loading={loading()} refresh={refresh} />
               </div>
@@ -381,49 +399,60 @@ export function AlertsDashboard() {
                   }}
                 />
               </div>
-            </form>
-          </div>
-
-          <div class="col">
-            <form
-              class="input-group"
-              onsubmit={(e) => {
-                e.preventDefault();
-                // blurInputs();
-                // applyFilter(e.currentTarget.filter.value);
-                setSearchParams({ q: e.currentTarget.filter.value });
-              }}
-            >
-              <input
-                id="filter-input"
-                type="text"
-                class="form-control"
-                name="filter"
-                placeholder="Search..."
-                value={searchParams.q || ""}
-                onkeydown={(e) => {
-                  if (
-                    e.code === "Escape" ||
-                    e.key === "Escape" ||
-                    e.keyCode === 27
-                  ) {
-                    // blurInputs();
-                  }
-                  e.stopPropagation();
-                }}
-              />
-              <button class="btn btn-secondary" type="submit">
-                Apply
-              </button>
-              <button
-                class="btn btn-secondary"
-                type="button"
-                onclick={() => {
-                  setSearchParams({ q: undefined });
-                }}
+              <div
+                class="input-group flex-grow-1 w-auto"
+                style={{ "min-width": "20rem" }}
               >
-                Clear
-              </button>
+                <input
+                  id="filter-input"
+                  type="text"
+                  class="form-control"
+                  name="filter"
+                  placeholder="Search..."
+                  value={searchParams.q || ""}
+                  onkeydown={(e) => {
+                    if (e.key === "Escape") {
+                      e.currentTarget.blur();
+                    }
+                    e.stopPropagation();
+                  }}
+                />
+                <button class="btn btn-secondary" type="submit">
+                  Apply
+                </button>
+                <button
+                  class="btn btn-secondary"
+                  type="button"
+                  onclick={() => {
+                    setSearchParams({ q: undefined });
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+              <div
+                class="input-group w-auto"
+                title="Exclude archived alerts from every panel on this dashboard."
+              >
+                <div class="input-group-text">
+                  <input
+                    class="form-check-input mt-0"
+                    type="checkbox"
+                    id="alerts-exclude-archived"
+                    checked={excludeArchived()}
+                    onchange={(e) => {
+                      setSearchParams({
+                        exclude_archived: e.currentTarget.checked
+                          ? "true"
+                          : undefined,
+                      });
+                    }}
+                  />
+                </div>
+                <label class="input-group-text" for="alerts-exclude-archived">
+                  Exclude archived
+                </label>
+              </div>
             </form>
           </div>
         </div>

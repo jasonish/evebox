@@ -20,6 +20,7 @@ export function RefreshButton(props: {
   return (
     <span class="position-relative d-inline-flex app-refresh-button-wrap">
       <button
+        type="button"
         class="btn btn-primary position-relative app-refresh-button"
         disabled={isLoading()}
         onclick={props.refresh}

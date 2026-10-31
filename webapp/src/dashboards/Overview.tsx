@@ -69,7 +69,11 @@ export function Overview() {
 
   const [searchParams, setSearchParams] = useSearchParams<{
     sensor?: string;
+    q?: string;
+    exclude_archived?: string;
   }>();
+
+  const excludeArchived = () => searchParams.exclude_archived === "true";
 
   const [stats, setStats] = createStore<Stats>(defaultStats());
 
@@ -123,10 +127,16 @@ export function Overview() {
   async function refresh() {
     setVersion((version) => version + 1);
 
-    let q = "";
+    // The user's query comes first, then the sensor and archived
+    // filters. Each panel appends its own event type restriction.
+    const parts = [searchParams.q];
     if (searchParams.sensor) {
-      q += `host:${searchParams.sensor}`;
+      parts.push(`host:${searchParams.sensor}`);
     }
+    if (excludeArchived()) {
+      parts.push("-is:archived");
+    }
+    const q = parts.filter((p) => p && p.trim() !== "").join(" ");
 
     // Stat cards. The event type aggregation provides the total, the
     // alert count, and the distinct types seen.
@@ -508,7 +518,19 @@ export function Overview() {
       <div class="container-fluid">
         <div class="row">
           <div class="mt-2 col">
-            <form class="d-flex flex-wrap align-items-center gap-2">
+            <form
+              class="d-flex flex-wrap align-items-center gap-2"
+              onsubmit={(e) => {
+                e.preventDefault();
+                const value = e.currentTarget.searchInput.value.trim();
+                setSearchParams({ q: value === "" ? undefined : value });
+                for (const input of e.currentTarget.getElementsByTagName(
+                  "input",
+                )) {
+                  input.blur();
+                }
+              }}
+            >
               <div>
                 <RefreshButton loading={loading()} refresh={refresh} />
               </div>
@@ -519,6 +541,60 @@ export function Overview() {
                     setSearchParams({ sensor: sensor });
                   }}
                 />
+              </div>
+              <div
+                class="input-group flex-grow-1 w-auto"
+                style={{ "min-width": "20rem" }}
+              >
+                <input
+                  id="searchInput"
+                  type="text"
+                  class="form-control"
+                  name="searchInput"
+                  placeholder="Search..."
+                  value={searchParams.q || ""}
+                  onkeydown={(e) => {
+                    if (e.key === "Escape") {
+                      e.currentTarget.blur();
+                    }
+                    e.stopPropagation();
+                  }}
+                />
+                <button class="btn btn-secondary" type="submit">
+                  Apply
+                </button>
+                <button
+                  class="btn btn-secondary"
+                  type="button"
+                  onclick={() => {
+                    setSearchParams({ q: undefined });
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+              <div
+                class="input-group w-auto"
+                title="Exclude archived alerts. Only alerts can be archived, so this affects the alert count and the top alerts."
+              >
+                <div class="input-group-text">
+                  <input
+                    class="form-check-input mt-0"
+                    type="checkbox"
+                    id="overview-exclude-archived"
+                    checked={excludeArchived()}
+                    onchange={(e) => {
+                      setSearchParams({
+                        exclude_archived: e.currentTarget.checked
+                          ? "true"
+                          : undefined,
+                      });
+                    }}
+                  />
+                </div>
+                <label class="input-group-text" for="overview-exclude-archived">
+                  Exclude archived
+                </label>
               </div>
             </form>
           </div>

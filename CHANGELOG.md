@@ -18,6 +18,12 @@
   When no events have passed through the server, for example when
   another tool writes events directly to Elasticsearch or OpenSearch,
   the view says so instead of waiting silently.
+- The Overview dashboard has a search input accepting the same query
+  syntax as the Alerts and Events pages, and an "Exclude archived"
+  checkbox to leave archived alerts out of the alert count and top
+  alerts. The Alerts dashboard has the same checkbox. Both settings are
+  kept in the URL alongside the sensor selection.
+  https://github.com/jasonish/evebox/issues/385
 
 ### Fixed
 - The inbox, escalated and alerts views failed with "'null' is not an IP
