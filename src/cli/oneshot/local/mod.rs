@@ -378,7 +378,7 @@ impl WorkspaceLayout {
                 "outputs": [{"console": {"enabled": true}}]
             }
         });
-        let yaml = serde_yaml::to_string(&suricata_config)
+        let yaml = yaml_serde::to_string(&suricata_config)
             .context("failed to generate the local Suricata configuration")?;
         std::fs::write(&self.suricata_config, format!("%YAML 1.1\n---\n{yaml}")).with_context(
             || {
@@ -395,7 +395,7 @@ impl WorkspaceLayout {
         });
         std::fs::write(
             &self.updater_config,
-            serde_yaml::to_string(&updater_config)
+            yaml_serde::to_string(&updater_config)
                 .context("failed to generate the isolated suricata-update configuration")?,
         )?;
 

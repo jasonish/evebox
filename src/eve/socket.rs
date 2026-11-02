@@ -982,7 +982,7 @@ mod tests {
     use std::path::Path;
 
     fn parse(yaml: &str) -> Result<Vec<SocketInput>> {
-        let values = serde_yaml::from_str::<Vec<SocketInputValue>>(yaml)?;
+        let values = yaml_serde::from_str::<Vec<SocketInputValue>>(yaml)?;
         validate_inputs(values)
     }
 

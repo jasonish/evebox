@@ -37,7 +37,7 @@ use tracing::{Level, debug, error, info, warn};
 
 fn load_event_services(filename: &str) -> Result<serde_json::Value> {
     let finput = std::fs::File::open(filename)?;
-    let yaml_value: serde_yaml::Value = serde_yaml::from_reader(finput)?;
+    let yaml_value: yaml_serde::Value = yaml_serde::from_reader(finput)?;
     let json_value = serde_json::to_value(&yaml_value["event-services"])?;
     Ok(json_value)
 }
@@ -245,7 +245,7 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             }
         }
 
-        let additional_fields: Option<HashMap<String, serde_yaml::Value>> =
+        let additional_fields: Option<HashMap<String, yaml_serde::Value>> =
             config.get_value("input.additional-fields")?;
         if let Some(fields) = additional_fields {
             for (k, v) in fields {

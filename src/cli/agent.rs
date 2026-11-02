@@ -441,7 +441,7 @@ fn find_config_filename() -> Option<&'static str> {
 fn get_additional_fields(
     config: &Config,
 ) -> anyhow::Result<Option<HashMap<String, serde_json::Value>>> {
-    let additional_fields: Option<HashMap<String, serde_yaml::Value>> =
+    let additional_fields: Option<HashMap<String, yaml_serde::Value>> =
         config.get_value("additional-fields")?;
     if let Some(fields) = &additional_fields {
         // Convert to JSON.

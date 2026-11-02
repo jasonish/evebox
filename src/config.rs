@@ -4,11 +4,11 @@
 use anyhow::Result;
 use clap::{ArgMatches, parser::ValueSource};
 use serde::de::DeserializeOwned;
-use serde_yaml::Value;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tracing::{debug, error, info};
+use yaml_serde::Value;
 
 use crate::file;
 
@@ -30,7 +30,7 @@ impl Config {
 
     fn load_file(filename: &str) -> anyhow::Result<Value> {
         let input = std::fs::File::open(filename)?;
-        Ok(serde_yaml::from_reader(&input)?)
+        Ok(yaml_serde::from_reader(&input)?)
     }
 
     /// Get a a value and deserialize into a type.
@@ -80,7 +80,7 @@ impl Config {
 
         // Now the configuration file.
         if let Some(val) = self.get_node(&self.root, name) {
-            return Ok(Some(serde_yaml::from_value(val.clone())?));
+            return Ok(Some(yaml_serde::from_value(val.clone())?));
         }
 
         Ok(default_value)
@@ -91,8 +91,8 @@ impl Config {
         T: DeserializeOwned,
     {
         if let Ok(v) = std::env::var(name) {
-            let value: serde_yaml::Value = serde_yaml::from_str(&v)?;
-            return Ok(serde_yaml::from_value(value)?);
+            let value: yaml_serde::Value = yaml_serde::from_str(&v)?;
+            return Ok(yaml_serde::from_value(value)?);
         }
         Ok(None)
     }
@@ -121,7 +121,7 @@ impl Config {
             if let Value::Null = value {
                 Ok(None)
             } else {
-                Ok(Some(serde_yaml::from_value(value.clone())?))
+                Ok(Some(yaml_serde::from_value(value.clone())?))
             }
         } else {
             Ok(None)
@@ -148,7 +148,7 @@ impl Config {
     /// Get a configuration value explicitly from the configuration file.
     pub fn get_config_value<T: DeserializeOwned>(&self, name: &str) -> anyhow::Result<Option<T>> {
         if let Some(node) = self.get_node(&self.root, name) {
-            Ok(Some(serde_yaml::from_value(node.clone())?))
+            Ok(Some(yaml_serde::from_value(node.clone())?))
         } else {
             Ok(None)
         }
