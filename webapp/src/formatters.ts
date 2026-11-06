@@ -778,3 +778,55 @@ export function formatBytes(bytes: number, exact = false): string {
   const text = `${rounded} ${units[unit]}`;
   return exact ? `${text} (${bytes.toLocaleString()} bytes)` : text;
 }
+
+// Compress an IPv6 address for display, as recommended by RFC 5952:
+// lowercase, no leading zeros, and the longest run of two or more zero
+// groups (the first on a tie) replaced with "::". Suricata logs IPv6
+// addresses fully expanded. Anything that isn't a plain IPv6 address,
+// including IPv4 and IPv4-mapped forms, is returned unchanged.
+export function compressIpv6(addr: string): string {
+  if (!addr.includes(":") || addr.includes(".")) {
+    return addr;
+  }
+  let groups: string[];
+  const halves = addr.split("::");
+  if (halves.length > 2) {
+    return addr;
+  } else if (halves.length === 2) {
+    const head = halves[0] ? halves[0].split(":") : [];
+    const tail = halves[1] ? halves[1].split(":") : [];
+    const missing = 8 - head.length - tail.length;
+    if (missing < 1) {
+      return addr;
+    }
+    groups = [...head, ...Array(missing).fill("0"), ...tail];
+  } else {
+    groups = addr.split(":");
+  }
+  if (groups.length !== 8 || !groups.every((g) => /^[0-9a-f]{1,4}$/i.test(g))) {
+    return addr;
+  }
+  groups = groups.map((g) => parseInt(g, 16).toString(16));
+
+  let bestStart = -1;
+  let bestLen = 0;
+  for (let i = 0; i < 8; ) {
+    if (groups[i] !== "0") {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < 8 && groups[j] === "0") j++;
+    if (j - i > bestLen) {
+      bestStart = i;
+      bestLen = j - i;
+    }
+    i = j;
+  }
+  if (bestLen < 2) {
+    return groups.join(":");
+  }
+  const head = groups.slice(0, bestStart).join(":");
+  const tail = groups.slice(bestStart + bestLen).join(":");
+  return `${head}::${tail}`;
+}

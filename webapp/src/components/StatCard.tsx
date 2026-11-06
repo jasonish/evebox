@@ -9,11 +9,15 @@ export function StatCard(props: {
   value: string | null;
   label: string;
   sub?: string;
+  // Extra classes for the value, such as a text colour for a warning.
+  valueClass?: string;
 }) {
   return (
     <div class="card h-100">
       <div class="card-body d-flex flex-column align-items-center justify-content-center px-3 py-2 text-center">
-        <span class="fs-4 fw-semibold lh-sm">{props.value ?? "-"}</span>
+        <span class={`fs-4 fw-semibold lh-sm ${props.valueClass ?? ""}`}>
+          {props.value ?? "-"}
+        </span>
         <span class="app-event-summary-label mt-1 text-body-secondary fw-medium lh-sm text-uppercase">
           {props.label}
         </span>

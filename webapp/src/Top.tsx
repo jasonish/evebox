@@ -268,11 +268,17 @@ export function Top(props: {
               <NavDropdown
                 class="app-nav-more"
                 title={<BiThreeDots />}
-                active={location.pathname.startsWith("/live")}
+                active={
+                  location.pathname.startsWith("/live") ||
+                  location.pathname.startsWith("/top")
+                }
               >
                 <Show when={serverConfig()?.mode !== "oneshot"}>
                   <A href={"/live"} class={"dropdown-item"}>
                     Live
+                  </A>
+                  <A href={"/top"} class={"dropdown-item"}>
+                    Top
                   </A>
                 </Show>
               </NavDropdown>

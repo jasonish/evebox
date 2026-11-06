@@ -32,6 +32,7 @@ import { TlsDashboard } from "./dashboards/TLS";
 import { HttpDashboard } from "./dashboards/HTTP";
 import { SshDashboard } from "./dashboards/SSH";
 import { AnomaliesDashboard } from "./dashboards/Anomalies";
+import { TopView } from "./TopView";
 import { IS_AUTHENTICATED, SET_IS_AUTHENTICATED } from "./global";
 import { PcapDownload } from "./PcapDownload";
 import { Admin } from "./pages/admin/Admin";
@@ -63,6 +64,7 @@ export function AppRouter() {
 
         <Route path={"events"} component={Events} />
         <Route path={"live"} component={Live} />
+        <Route path={"top"} component={TopView} />
         <Route path={"event/:id"} component={EventView} />
         <Route path={"pcap"} component={PcapDownload} />
         <Route path={"settings"} component={Settings} />
