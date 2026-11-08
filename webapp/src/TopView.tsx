@@ -27,6 +27,8 @@ import { A, useSearchParams } from "@solidjs/router";
 import { Container } from "solid-bootstrap";
 import { SensorSelect } from "./common/SensorSelect";
 import { StatCard } from "./components/StatCard";
+import { NoEventSourceNotice } from "./components/NoEventSourceNotice";
+import { LiveButton, LiveConnection } from "./components/LiveButton";
 import { EVENT_TYPES, eventNameFromType } from "./Events";
 import { SearchLink } from "./common/SearchLink";
 import { compressIpv6 } from "./formatters";
@@ -1165,9 +1167,8 @@ export function TopView() {
   const [received, setReceived] = createSignal(0);
   const [rate, setRate] = createSignal(0);
   const [dropped, setDropped] = createSignal(0);
-  const [connection, setConnection] = createSignal<
-    "connecting" | "open" | "reconnecting" | "closed"
-  >("connecting");
+  const [connection, setConnection] =
+    createSignal<LiveConnection>("connecting");
   const [baseline, setBaseline] = createSignal<"loading" | "ready" | "failed">(
     "loading",
   );
@@ -1900,15 +1901,6 @@ export function TopView() {
     ),
   );
 
-  const status = (): "live" | "paused" | "connecting" | "closed" =>
-    paused()
-      ? "paused"
-      : connection() === "open"
-        ? "live"
-        : connection() === "closed"
-          ? "closed"
-          : "connecting";
-
   // At most MAX_TYPE_CARDS event type cards so they fit on one row; past
   // that the smallest are combined into an "Other" card.
   const eventTypeCards = (): [string, number][] => {
@@ -1954,6 +1946,8 @@ export function TopView() {
           This page is under construction and subject to change.
         </div>
 
+        <NoEventSourceNotice received={received()} />
+
         {/* Controls, with the sensor filter on the right. */}
         <div class="row mt-2">
           <div class="col">
@@ -1961,38 +1955,11 @@ export function TopView() {
               class="d-flex flex-wrap align-items-center gap-2"
               onsubmit={(e) => e.preventDefault()}
             >
-              {/* Doubles as the connection status. */}
-              <button
-                type="button"
-                classList={{
-                  btn: true,
-                  "btn-success": status() === "live",
-                  "btn-warning": status() === "paused",
-                  "btn-secondary": status() === "connecting",
-                  "btn-danger": status() === "closed",
-                }}
-                style={"min-width: 7.5em;"}
-                onclick={(e) => {
-                  setPaused((p) => !p);
-                  e.currentTarget.blur();
-                }}
-                title={
-                  paused()
-                    ? "Paused, click to resume"
-                    : status() === "closed"
-                      ? "Disconnected from the server"
-                      : "Click to pause updates"
-                }
-              >
-                {
-                  {
-                    live: "● Live",
-                    paused: "Paused",
-                    connecting: "Connecting",
-                    closed: "Closed",
-                  }[status()]
-                }
-              </button>
+              <LiveButton
+                paused={paused()}
+                connection={connection()}
+                onclick={() => setPaused((p) => !p)}
+              />
               <button
                 type="button"
                 class="btn btn-secondary"

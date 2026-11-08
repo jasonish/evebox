@@ -29,7 +29,8 @@ import { TimestampCell } from "./components";
 import { AlertDescription } from "./Alerts";
 import { AppProtoBadge, EVENT_TYPES, eventNameFromType } from "./Events";
 import { SensorSelect } from "./common/SensorSelect";
-import { serverConfig } from "./config";
+import { NoEventSourceNotice } from "./components/NoEventSourceNotice";
+import { LiveButton, LiveConnection } from "./components/LiveButton";
 
 const MAX_ROW_OPTIONS = [100, 250, 500, 1000];
 const DEFAULT_MAX_ROWS = 500;
@@ -74,8 +75,6 @@ function gapMessage(row: LiveGapRow): string {
 
 type LiveRow = LiveEventRow | LiveGapRow;
 
-type ConnectionState = "connecting" | "open" | "reconnecting" | "closed";
-
 export function Live() {
   const [searchParams, setSearchParams] = useSearchParams<{
     event_type?: string;
@@ -96,7 +95,7 @@ export function Live() {
     document.visibilityState === "hidden",
   );
   const [connection, setConnection] =
-    createSignal<ConnectionState>("connecting");
+    createSignal<LiveConnection>("connecting");
   const [received, setReceived] = createSignal(0);
   // Events per second, sampled once a second from the received counter.
   const [rate, setRate] = createSignal(0);
@@ -445,45 +444,20 @@ export function Live() {
     () => !!(searchParams.event_type || searchParams.sensor || searchParams.q),
   );
 
-  // The server reports how many events have passed through it since it
-  // started (refreshed with the config every few seconds). While that is
-  // zero nothing can show here, typically because another tool writes
-  // events straight to the datastore. Only events that pass through
-  // EveBox reach the live view. The wording states what the server knows
-  // rather than concluding nothing will ever arrive: a legacy agent that
-  // posts events without a persistent connection isn't counted as
-  // connected, so "no agents" doesn't mean "no agents will submit".
-  const noSource = createMemo(() => {
-    const live = serverConfig()?.live;
-    return live !== undefined && live.ingested === 0 && received() === 0;
-  });
-  const noSourceConfigured = createMemo(() => {
-    const live = serverConfig()?.live;
-    return live !== undefined && !live.inputs && live.agents === 0;
-  });
-
   return (
     <>
       <Top disableRange />
       <Container fluid>
+        <NoEventSourceNotice received={received()} />
+
         <Row>
           <div class="col-auto mt-2 d-flex flex-wrap align-items-center gap-2">
-            <button
-              type="button"
-              classList={{
-                btn: true,
-                "btn-secondary": !paused(),
-                "btn-warning": paused(),
-              }}
-              style={"width: 6.5em;"}
-              onclick={(e) => {
-                togglePaused();
-                e.currentTarget.blur();
-              }}
-              title="Pause or resume the live stream (p)"
-            >
-              {paused() ? "Resume" : "Pause"}
-            </button>
+            <LiveButton
+              paused={paused()}
+              connection={connection()}
+              onclick={togglePaused}
+              shortcut="p"
+            />
             <button
               type="button"
               class="btn btn-secondary"
@@ -592,60 +566,8 @@ export function Live() {
           </Col>
         </Row>
 
-        <Show when={noSource()}>
-          <Row>
-            <Col class="mt-2">
-              <div class="alert alert-warning mb-0" role="alert">
-                <Show
-                  when={noSourceConfigured()}
-                  fallback={
-                    <>
-                      <strong>No events have reached this server yet.</strong>{" "}
-                      The live view only shows events that pass through EveBox,
-                      from its EVE file or socket inputs or from agents.
-                    </>
-                  }
-                >
-                  <strong>This server has no event sources.</strong> No EVE file
-                  or socket inputs are configured, no agents are connected, and
-                  no events have been submitted since it started. The live view
-                  only shows events that pass through EveBox, so events that
-                  other tools write directly to Elasticsearch or OpenSearch will
-                  not appear here.
-                </Show>
-              </div>
-            </Col>
-          </Row>
-        </Show>
-
         <Row>
           <Col class="mt-2 d-flex align-items-center flex-wrap app-live-status">
-            <span
-              classList={{
-                badge: true,
-                "me-2": true,
-                "text-bg-success": connection() === "open",
-                "text-bg-secondary": connection() === "connecting",
-                "text-bg-warning": connection() === "reconnecting",
-                "text-bg-danger": connection() === "closed",
-              }}
-            >
-              <Switch>
-                <Match when={connection() === "open"}>Connected</Match>
-                <Match when={connection() === "connecting"}>
-                  Connecting...
-                </Match>
-                <Match when={connection() === "reconnecting"}>
-                  Disconnected, reconnecting...
-                </Match>
-                <Match when={connection() === "closed"}>
-                  Connection failed, check the filter or reload
-                </Match>
-              </Switch>
-            </span>
-            <Show when={paused()}>
-              <span class="badge text-bg-warning me-2">Paused</span>
-            </Show>
             <span
               class="badge me-2 font-monospace app-live-rate"
               classList={{
@@ -668,6 +590,11 @@ export function Live() {
                 </span>
               </Show>
             </span>
+            <Show when={connection() === "closed"}>
+              <span class="text-danger small ms-2">
+                Connection failed, check the filter or reload.
+              </span>
+            </Show>
           </Col>
         </Row>
 
