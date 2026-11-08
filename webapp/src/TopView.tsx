@@ -27,8 +27,9 @@ import { A, useSearchParams } from "@solidjs/router";
 import { Container } from "solid-bootstrap";
 import { SensorSelect } from "./common/SensorSelect";
 import { StatCard } from "./components/StatCard";
-import { NoEventSourceNotice } from "./components/NoEventSourceNotice";
+import { LiveFeedNotice } from "./components/LiveFeedNotice";
 import { LiveButton, LiveConnection } from "./components/LiveButton";
+import { EventRate, parkWhileHidden, parseFeedStatus } from "./livefeed";
 import { EVENT_TYPES, eventNameFromType } from "./Events";
 import { SearchLink } from "./common/SearchLink";
 import { compressIpv6 } from "./formatters";
@@ -1169,6 +1170,11 @@ export function TopView() {
   const [dropped, setDropped] = createSignal(0);
   const [connection, setConnection] =
     createSignal<LiveConnection>("connecting");
+  // The feed's status from the server, null until the first one arrives.
+  const [feedStatus, setFeedStatus] = createSignal<API.FeedStatus | null>(null);
+  // Events have been skipped since the last reset, while polling the
+  // datastore was behind. The status only says whether the last poll was.
+  const [skipped, setSkipped] = createSignal(false);
   const [baseline, setBaseline] = createSignal<"loading" | "ready" | "failed">(
     "loading",
   );
@@ -1194,8 +1200,7 @@ export function TopView() {
   let tickTimer: number | undefined;
   let seq = 0;
   let receivedCount = 0;
-  let lastReceived = 0;
-  let lastTickAt = performance.now();
+  const eventRate = new EventRate();
 
   // Previous tick's counts, to show what moved since the last update.
   let prevCounts = new Map<string, number>();
@@ -1629,11 +1634,7 @@ export function TopView() {
   // sampled here so an extra render, such as on a range change, doesn't
   // measure it over a fraction of a second.
   function tick() {
-    const at = performance.now();
-    const elapsed = Math.max(0.001, (at - lastTickAt) / 1000);
-    setRate(Math.round((receivedCount - lastReceived) / elapsed));
-    lastReceived = receivedCount;
-    lastTickAt = at;
+    setRate(eventRate.sample(receivedCount, feedStatus()));
     render();
   }
 
@@ -1804,11 +1805,25 @@ export function TopView() {
     const query = params.toString();
     const es = new EventSource("api/firehose/sse" + (query ? `?${query}` : ""));
     eventSource = es;
-    es.onopen = () => setConnection("open");
-    es.onerror = () =>
-      setConnection(
-        es.readyState === EventSource.CLOSED ? "closed" : "reconnecting",
-      );
+    // Events sent while the browser reconnects on its own are lost, so
+    // the counts are incomplete. A failed first connection that then
+    // succeeds missed nothing.
+    let lostConnection = false;
+    es.onopen = () => {
+      if (lostConnection && receivedCount > 0) {
+        setSkipped(true);
+      }
+      lostConnection = false;
+      setConnection("open");
+    };
+    es.onerror = () => {
+      if (es.readyState === EventSource.CLOSED) {
+        setConnection("closed");
+      } else {
+        lostConnection = true;
+        setConnection("reconnecting");
+      }
+    };
     es.onmessage = (message) => {
       let event: any;
       try {
@@ -1825,6 +1840,16 @@ export function TopView() {
         const n = Number(JSON.parse(message.data)?.dropped) || 0;
         setDropped((total) => total + n);
       } catch (_e) {}
+    });
+    // Sent first on every connection and again whenever it changes.
+    es.addEventListener("status", (message: MessageEvent) => {
+      const status = parseFeedStatus(message);
+      if (status) {
+        setFeedStatus(status);
+        if (status.behind) {
+          setSkipped(true);
+        }
+      }
     });
   }
 
@@ -1854,12 +1879,15 @@ export function TopView() {
     alerts = [];
     sensors.clear();
     receivedCount = 0;
-    lastReceived = 0;
+    eventRate.reset();
     setDropped(0);
+    setSkipped(false);
     render();
   }
 
   let rangeLabelRef: HTMLLabelElement | undefined;
+
+  let stopParking: (() => void) | null = null;
 
   onMount(() => {
     if (rangeLabelRef) {
@@ -1868,6 +1896,20 @@ export function TopView() {
     loadBaseline();
     loadDhcpBaseline();
     tickTimer = window.setInterval(tick, TICK_MS);
+    // A page left hidden while reading from the datastore, or navigated
+    // away from, lets go of the connection, so the server can stop
+    // polling. What arrived meanwhile isn't counted, which the Events
+    // card mentions.
+    stopParking = parkWhileHidden(
+      () => feedStatus()?.source === "datastore",
+      disconnect,
+      () => {
+        if (receivedCount > 0) {
+          setSkipped(true);
+        }
+        connect();
+      },
+    );
   });
 
   onCleanup(() => {
@@ -1875,6 +1917,7 @@ export function TopView() {
     if (tickTimer !== undefined) {
       window.clearInterval(tickTimer);
     }
+    stopParking?.();
   });
 
   createEffect(
@@ -1928,6 +1971,23 @@ export function TopView() {
     ...(view().dhcpSeen ? (["cmac"] as FeedKind[]) : []),
   ];
 
+  // Missed events are a known count from the server. Events skipped while
+  // polling the datastore is behind have no count, so they are only
+  // mentioned. Like the counts, both are since the last reset, or now, if
+  // polling is still behind after a reset.
+  const eventsSub = () => {
+    let text = `${received().toLocaleString()} received`;
+    if (dropped() > 0) {
+      text += `, ${fmtCount(dropped())} missed`;
+    }
+    const behind =
+      feedStatus()?.source === "datastore" && feedStatus()?.behind === true;
+    if (skipped() || behind) {
+      text += ", some skipped";
+    }
+    return text;
+  };
+
   // Shown on each card header.
   const windowLabel = () =>
     windowSpec().secs > 0
@@ -1946,7 +2006,7 @@ export function TopView() {
           This page is under construction and subject to change.
         </div>
 
-        <NoEventSourceNotice received={received()} />
+        <LiveFeedNotice received={received()} feed={feedStatus()} counts />
 
         {/* Controls, with the sensor filter on the right. */}
         <div class="row mt-2">
@@ -1958,6 +2018,7 @@ export function TopView() {
               <LiveButton
                 paused={paused()}
                 connection={connection()}
+                feed={feedStatus()}
                 onclick={() => setPaused((p) => !p)}
               />
               <button
@@ -2022,11 +2083,7 @@ export function TopView() {
             <StatCard
               value={`${rate().toLocaleString()}/s`}
               label="Events"
-              sub={
-                dropped() > 0
-                  ? `${received().toLocaleString()} received, ${fmtCount(dropped())} missed`
-                  : `${received().toLocaleString()} received`
-              }
+              sub={eventsSub()}
             />
           </div>
           <div class="col topview-stat-col">

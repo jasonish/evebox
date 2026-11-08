@@ -16,6 +16,8 @@ pub(crate) struct MetricsSnapshot {
     /// Read directly from the agent registry so same-name replacement and
     /// generation-safe removal cannot make a maintained gauge drift.
     pub agents_connected: usize,
+    /// Subscribers and polling of the live feed behind Live and Top.
+    pub live_feed: crate::server::livefeed::FeedMetrics,
 }
 
 #[derive(Debug, Default, Serialize)]

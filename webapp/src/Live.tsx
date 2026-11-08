@@ -29,8 +29,10 @@ import { TimestampCell } from "./components";
 import { AlertDescription } from "./Alerts";
 import { AppProtoBadge, EVENT_TYPES, eventNameFromType } from "./Events";
 import { SensorSelect } from "./common/SensorSelect";
-import { NoEventSourceNotice } from "./components/NoEventSourceNotice";
+import { LiveFeedNotice } from "./components/LiveFeedNotice";
 import { LiveButton, LiveConnection } from "./components/LiveButton";
+import { EventRate, parkWhileHidden, parseFeedStatus } from "./livefeed";
+import { distributionName } from "./config";
 
 const MAX_ROW_OPTIONS = [100, 250, 500, 1000];
 const DEFAULT_MAX_ROWS = 500;
@@ -64,6 +66,11 @@ const REASON_CLIENT = "browser could not keep up";
 const REASON_PAUSED = "discarded while paused";
 const REASON_HIDDEN = "page was hidden";
 const REASON_RECONNECT = "connection lost";
+// Reasons for events lost while reading from the datastore, which can't
+// tell how many.
+const REASON_BEHIND = "polling could not keep up";
+const reasonUnreadable = () => `could not read from ${distributionName()}`;
+const reasonPartial = () => `part of ${distributionName()} did not answer`;
 
 function gapMessage(row: LiveGapRow): string {
   const reasons = row.reasons.join(", ");
@@ -96,6 +103,8 @@ export function Live() {
   );
   const [connection, setConnection] =
     createSignal<LiveConnection>("connecting");
+  // The feed's status from the server, null until the first one arrives.
+  const [feedStatus, setFeedStatus] = createSignal<API.FeedStatus | null>(null);
   const [received, setReceived] = createSignal(0);
   // Events per second, sampled once a second from the received counter.
   const [rate, setRate] = createSignal(0);
@@ -117,9 +126,9 @@ export function Live() {
   let lostConnection = false;
   let flushTimer: number | undefined;
   let rateTimer: number | undefined;
-  let lastReceived = 0;
-  let lastRateAt = 0;
+  const eventRate = new EventRate();
   let keybindings: (() => void) | null = null;
+  let stopParking: (() => void) | null = null;
 
   const eventRows = createMemo(
     () => rows().filter((row) => row.kind === "event") as LiveEventRow[],
@@ -260,6 +269,35 @@ export function Live() {
     queue(gapRow(n, [REASON_SERVER]));
   }
 
+  // Sent first on every connection and again whenever it changes. While
+  // events are read from the datastore, falling behind or failing to read
+  // can lose events without a count, so the change is marked as a gap with
+  // no number, which isn't added to the dropped count. As on reconnect,
+  // only if there was something to miss.
+  function onStatus(message: MessageEvent) {
+    const status = parseFeedStatus(message);
+    if (!status) {
+      return;
+    }
+    const prev = feedStatus();
+    setFeedStatus(status);
+    if (status.source !== "datastore" || received() === 0) {
+      return;
+    }
+    const reasons: string[] = [];
+    if (status.partial && !prev?.partial) {
+      reasons.push(reasonPartial());
+    } else if (status.behind && !prev?.behind) {
+      reasons.push(REASON_BEHIND);
+    }
+    if (status.state === "retrying" && prev?.state !== "retrying") {
+      reasons.push(reasonUnreadable());
+    }
+    if (reasons.length > 0) {
+      queue(gapRow(0, reasons));
+    }
+  }
+
   function connect() {
     disconnect();
     setConnection("connecting");
@@ -300,6 +338,7 @@ export function Live() {
     };
     es.onmessage = onMessage;
     es.addEventListener("gap", onGap);
+    es.addEventListener("status", onStatus);
   }
 
   function disconnect() {
@@ -317,8 +356,7 @@ export function Live() {
     setPendingCount(0);
     setReceived(0);
     setDropped(0);
-    lastReceived = 0;
-    lastRateAt = performance.now();
+    eventRate.reset();
     setRows([]);
   }
 
@@ -383,17 +421,22 @@ export function Live() {
   onMount(() => {
     loadEventTypes();
     document.addEventListener("visibilitychange", onVisibilityChange);
+    // A page left hidden while reading from the datastore, or navigated
+    // away from, lets go of the connection, so the server can stop
+    // polling. Events from while it was disconnected aren't shown.
+    stopParking = parkWhileHidden(
+      () => feedStatus()?.source === "datastore",
+      disconnect,
+      () => {
+        if (received() > 0) {
+          queue(gapRow(0, [REASON_HIDDEN]));
+        }
+        connect();
+      },
+    );
     flushTimer = window.setInterval(flush, FLUSH_INTERVAL_MS);
-    // Measured against the clock rather than assuming a one second tick,
-    // as timers run late in hidden pages.
-    lastRateAt = performance.now();
     rateTimer = window.setInterval(() => {
-      const now = received();
-      const at = performance.now();
-      const elapsed = Math.max(1, (at - lastRateAt) / 1000);
-      setRate(Math.max(0, Math.round((now - lastReceived) / elapsed)));
-      lastReceived = now;
-      lastRateAt = at;
+      setRate(eventRate.sample(received(), feedStatus()));
     }, 1000);
     keybindings = tinykeys(window, {
       p: (e) => {
@@ -420,6 +463,7 @@ export function Live() {
     if (keybindings) {
       keybindings();
     }
+    stopParking?.();
   });
 
   // Reconnect when any server side filter changes. Clear the view as the
@@ -444,17 +488,33 @@ export function Live() {
     () => !!(searchParams.event_type || searchParams.sensor || searchParams.q),
   );
 
+  // The server is reading what is already in the datastore, so that only
+  // newer events are sent. Only while connected, as the button shows it:
+  // the last status stays after the connection is lost.
+  const starting = () =>
+    connection() === "open" &&
+    feedStatus()?.source === "datastore" &&
+    feedStatus()?.state === "starting";
+
   return (
     <>
       <Top disableRange />
       <Container fluid>
-        <NoEventSourceNotice received={received()} />
+        <div
+          class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center"
+          role="status"
+        >
+          This page is under construction and subject to change.
+        </div>
+
+        <LiveFeedNotice received={received()} feed={feedStatus()} />
 
         <Row>
           <div class="col-auto mt-2 d-flex flex-wrap align-items-center gap-2">
             <LiveButton
               paused={paused()}
               connection={connection()}
+              feed={feedStatus()}
               onclick={togglePaused}
               shortcut="p"
             />
@@ -604,9 +664,15 @@ export function Live() {
               when={rows().length > 0}
               fallback={
                 <div class="text-body-secondary mt-3">
-                  <Show when={filtered()} fallback={<>Waiting for events...</>}>
-                    Waiting for matching events...
-                  </Show>
+                  <Switch fallback={<>Waiting for events...</>}>
+                    <Match when={starting()}>
+                      Reading what is already in {distributionName()}, then
+                      waiting for new events...
+                    </Match>
+                    <Match when={filtered()}>
+                      Waiting for matching events...
+                    </Match>
+                  </Switch>
                 </div>
               }
             >

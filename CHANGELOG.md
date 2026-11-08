@@ -15,9 +15,18 @@
   The `/api/firehose/sse` and `/api/firehose` endpoints accept
   `event_type`, `sensor` and `q` parameters, and the SSE stream reports
   dropped events as a `gap` event rather than queueing without bound.
-  When no events have passed through the server, for example when
-  another tool writes events directly to Elasticsearch or OpenSearch,
-  the view says so instead of waiting silently.
+- The Live view also works when another tool, such as Filebeat or
+  Logstash, writes events directly to Elasticsearch or OpenSearch. When
+  no events are ingested through EveBox itself, EveBox polls the
+  datastore every second while anyone is watching, rechecking the last
+  5 minutes for events that arrive late, and shows each new event once.
+  This is best effort, and the view says so: events that arrive later
+  than that, or faster than a poll can read on a very busy system, can be
+  missed. Nothing is polled while nobody is watching, all viewers share
+  the same polling, and while EveBox is ingesting events itself, from its
+  EVE inputs or from agents, it shows those and doesn't poll. The SSE
+  stream now starts with a `status` event saying where its events come
+  from and whether polling is working.
 - The Overview dashboard has a search input accepting the same query
   syntax as the Alerts and Events pages, and an "Exclude archived"
   checkbox to leave archived alerts out of the alert count and top

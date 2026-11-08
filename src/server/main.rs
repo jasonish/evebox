@@ -208,6 +208,9 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
 
     if is_input_enabled(&config) {
         context.input_enabled = true;
+        // Events are ingested here, so the live views get them as they
+        // are, and the datastore is never polled for them.
+        context.live_feed.set_ingest_configured(true);
         let input_patterns = get_input_patterns(&config)?;
         let input_sockets = socket::get_inputs(&config)?;
         if input_patterns.is_empty() && input_sockets.is_empty() {
@@ -260,11 +263,11 @@ pub async fn main(args: &clap::ArgMatches) -> Result<()> {
             metrics.clone(),
         ));
         // Not a filter but a tap: publishes file and socket events to the
-        // firehose for live subscribers. Agent submitted events are
+        // live feed for live subscribers. Agent submitted events are
         // published by the submit handler itself, so this is not added to
         // the submitted event chain.
         filters.add_filter(crate::eve::filters::FirehoseFilter::new(
-            context.firehose.clone(),
+            context.live_feed.clone(),
             metrics.clone(),
         ));
 

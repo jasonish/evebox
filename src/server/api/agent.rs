@@ -1541,7 +1541,7 @@ mod tests {
     async fn an_agent_key_stamps_its_name_on_submitted_events() {
         let (address, server, context, _dir) = serve_test_server(PcapSettings::default()).await;
         let key = add_test_key(&context, "keyed-sensor").await;
-        let mut events = context.firehose.subscribe();
+        let mut subscription = context.live_feed.subscribe();
         let mut event = matching_event();
         event["evebox"]["agent"]["id"] = "untrusted-agent-id".into();
 
@@ -1553,7 +1553,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        let submitted = events.recv().await.unwrap();
+        let submitted = subscription.events.recv().await.unwrap();
         assert_eq!(submitted["evebox"]["agent"]["id"], "keyed-sensor");
 
         // Without a key the stamp is untrusted and removed.
@@ -1566,7 +1566,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        let submitted = events.recv().await.unwrap();
+        let submitted = subscription.events.recv().await.unwrap();
         assert!(submitted["evebox"]["agent"]["id"].is_null());
 
         // Stripping must not add empty structure to events without a stamp.
@@ -1579,7 +1579,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        let submitted = events.recv().await.unwrap();
+        let submitted = subscription.events.recv().await.unwrap();
         assert!(submitted.get("evebox").is_none());
 
         let response = reqwest::Client::new()

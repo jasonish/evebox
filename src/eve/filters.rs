@@ -221,34 +221,32 @@ fn mark_auto_archived(event: &mut serde_json::Value, cause: &str) {
 }
 
 /// A tap rather than a filter: the event is left unchanged, and a copy
-/// is published to the server's firehose so live subscribers (such as
+/// is published to the server's live feed so live subscribers (such as
 /// the Live view) see events read from local files and sockets, not just
 /// events submitted by agents. It sits in the filter chain because that
-/// is the one place every locally ingested event passes through, which
-/// also makes it the place to count them.
-#[derive(Debug)]
+/// is the one place every locally ingested event passes through, before
+/// it is indexed, which also makes it the place to count them.
 pub(crate) struct FirehoseFilter {
-    firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
+    live_feed: crate::server::livefeed::LiveFeed,
     metrics: Arc<Metrics>,
 }
 
+impl std::fmt::Debug for FirehoseFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FirehoseFilter").finish_non_exhaustive()
+    }
+}
+
 impl FirehoseFilter {
-    pub(crate) fn new(
-        firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
-        metrics: Arc<Metrics>,
-    ) -> Self {
-        Self { firehose, metrics }
+    pub(crate) fn new(live_feed: crate::server::livefeed::LiveFeed, metrics: Arc<Metrics>) -> Self {
+        Self { live_feed, metrics }
     }
 }
 
 impl EveFilterTrait for FirehoseFilter {
     fn run(&self, event: &mut serde_json::Value) {
         self.metrics.incr_events_input(1);
-        // Avoid the clone when nobody is listening.
-        if self.firehose.receiver_count() == 0 {
-            return;
-        }
-        let _ = self.firehose.send(event.clone());
+        self.live_feed.publish_ingested(event);
     }
 }
 

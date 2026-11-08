@@ -57,6 +57,9 @@ pub(crate) async fn handler(
             return (StatusCode::NOT_IMPLEMENTED, "").into_response();
         }
     };
+    // Published to the live feed once committed, so a batch the agent
+    // sends again after a failed commit isn't shown twice.
+    let mut published = Vec::new();
     let mut errors = Vec::new();
 
     let mut buf = &body[..];
@@ -102,11 +105,13 @@ pub(crate) async fn handler(
                             }
                         }
 
-                        if let Err(err) = importer.submit(event.clone()).await {
-                            error!("Failed to submit event to importer: {}", err);
+                        if context.live_feed.listening() {
+                            published.push(event.clone());
                         }
 
-                        let _ = context.firehose.send(event);
+                        if let Err(err) = importer.submit(event).await {
+                            error!("Failed to submit event to importer: {}", err);
+                        }
                     }
                 }
             }
@@ -124,9 +129,16 @@ pub(crate) async fn handler(
         return Json(response).into_response();
     }
 
+    // Held from before the events can be indexed until the commit is done,
+    // so the live feed doesn't poll the datastore for them in the meantime
+    // and deliver them twice. Elasticsearch, the only datastore polled,
+    // indexes nothing before the commit. Not taken for a batch without
+    // events, which mustn't stop polling.
+    let _ingesting = context.live_feed.ingesting();
     match importer.commit().await {
         Ok(n) => {
             context.metrics.incr_events_rx(count);
+            context.live_feed.publish_ingested_all(published);
             let response = json!({
                 // Kept capitolized for compatibility with the Go agent.
                 "Count": n,

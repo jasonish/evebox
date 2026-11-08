@@ -113,6 +113,31 @@ export interface ConfigResponse {
   };
 }
 
+// The live feed's status, sent as a "status" event on the firehose SSE
+// stream first on every connection and again whenever it changes.
+export interface FeedStatus {
+  // "ingest": events as EveBox ingests them. "datastore": nothing is
+  // ingested through EveBox, so the server polls Elasticsearch or
+  // OpenSearch for new events while someone is watching.
+  source: "ingest" | "datastore";
+  // "starting": reading what is already in the datastore, so that only
+  // newer events are sent. "retrying": the last poll failed.
+  state: "starting" | "ok" | "retrying";
+  // Seconds between polls (datastore only).
+  interval?: number;
+  // Seconds of event time each poll re-checks for events that arrive late
+  // (datastore only). Less than configured when the window is busy.
+  lookback?: number;
+  // Events are being, or may have been, skipped: more arrive than can be
+  // read, or part of the datastore isn't answering (see `partial`).
+  behind: boolean;
+  // Why the last poll was answered from only part of the datastore, such
+  // as an index whose shards failed; events stored there are skipped.
+  partial?: string;
+  // Why the last poll failed, while retrying.
+  error?: string;
+}
+
 export async function getConfig(): Promise<ConfigResponse> {
   return get("api/config").then((response) => response.data);
 }

@@ -562,6 +562,18 @@ async fn run(args: &Args) -> Result<Report> {
         });
     }
 
+    // The live feed polls in either mode: it only reads.
+    check!(checks, "live_feed_poll", {
+        check_live_feed_poll(&repo).await
+    });
+    if args.existing {
+        checks.push(Check::skip("live_feed", "read-only mode (existing data)"));
+    } else {
+        check!(checks, "live_feed", {
+            check_live_feed(&client, &repo, base).await
+        });
+    }
+
     // Cleanup. Never in --existing mode (we created nothing); the unique per-run
     // prefix means import-mode cleanup can only delete this run's indices.
     if args.existing {
@@ -596,6 +608,271 @@ async fn run(args: &Args) -> Result<Report> {
         known,
         skipped,
     })
+}
+
+/// How long the live feed checks wait for something to happen.
+const LIVE_FEED_WAIT: Duration = Duration::from_secs(30);
+
+/// Wait for the live feed to finish its baseline, failing if it can't.
+async fn wait_live_feed_ok(subscription: &mut crate::server::livefeed::Subscription) -> Result<()> {
+    use crate::server::livefeed::{FeedSourceKind, FeedState};
+    let deadline = Instant::now() + LIVE_FEED_WAIT;
+    let mut last_error = None;
+    loop {
+        {
+            let status = subscription.status.borrow_and_update();
+            if status.source == FeedSourceKind::Datastore && status.state == FeedState::Ok {
+                return Ok(());
+            }
+            if status.error.is_some() {
+                last_error = status.error.clone();
+            }
+        }
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero()
+            || tokio::time::timeout(remaining, subscription.status.changed())
+                .await
+                .is_err()
+        {
+            bail!(
+                "the live feed did not complete a baseline: {}",
+                last_error.as_deref().unwrap_or("timed out")
+            );
+        }
+    }
+}
+
+/// Poll the event indices as the live feed does, read-only: a baseline and
+/// a few polls must complete without errors.
+async fn check_live_feed_poll(repo: &ElasticEventRepo) -> Result<Option<String>> {
+    use crate::server::livefeed::{FeedConfig, LiveFeed};
+    use std::sync::atomic::Ordering;
+    let feed = LiveFeed::with_config(
+        Some(Arc::new(repo.clone())),
+        FeedConfig {
+            interval: Duration::from_millis(250),
+            ..FeedConfig::default()
+        },
+    );
+    let mut subscription = feed.subscribe();
+    let start = Instant::now();
+    wait_live_feed_ok(&mut subscription).await?;
+    let baseline = start.elapsed();
+    let polls = || feed.stats().polls.load(Ordering::SeqCst);
+    let target = polls() + 3;
+    let deadline = Instant::now() + LIVE_FEED_WAIT;
+    while polls() < target {
+        if let Some(error) = &subscription.status.borrow().error {
+            bail!("polling failed: {error}");
+        }
+        if Instant::now() > deadline {
+            bail!("polls did not complete");
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let status = subscription.status.borrow().clone();
+    // Read before unsubscribing, which forgets what was seen.
+    let seen = feed.stats().seen.load(Ordering::SeqCst);
+    drop(subscription);
+    if feed.subscribers() != 0 {
+        bail!("subscription was not released");
+    }
+    Ok(Some(format!(
+        "baseline_ms={} seen={seen} lookback={}s behind={}",
+        baseline.as_millis(),
+        status.lookback.unwrap_or_default(),
+        status.behind,
+    )))
+}
+
+/// Write documents straight to the datastore, as Filebeat or Logstash would,
+/// and check that the live feed reports each new one exactly once: not
+/// what was there before it started, not updates, and not documents older
+/// than its lookback. Pages of 4 make it page through a group of equal
+/// timestamps that straddles a page boundary.
+async fn check_live_feed(
+    client: &elastic::Client,
+    repo: &ElasticEventRepo,
+    base: &str,
+) -> Result<Option<String>> {
+    use crate::server::livefeed::{FeedConfig, LiveFeed};
+    use chrono::{SecondsFormat, Utc};
+    use std::collections::HashMap;
+    use std::sync::atomic::Ordering;
+
+    let index_a = format!("{base}-live-a");
+    let index_b = format!("{base}-live-b");
+    let index_ecs = format!("{base}-live-ecs");
+    let index_nanos = format!("{base}-live-nanos");
+    client
+        .put(&index_nanos)?
+        .json(&serde_json::json!({
+            "mappings": {"properties": {"@timestamp": {"type": "date_nanos"}}}
+        }))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    let now = Utc::now();
+    let ts = |offset_ms: i64| {
+        (now - chrono::Duration::milliseconds(offset_ms))
+            .to_rfc3339_opts(SecondsFormat::Millis, true)
+    };
+    let event = |id: &str, timestamp: &str| {
+        serde_json::json!({
+            "@timestamp": timestamp,
+            "timestamp": timestamp,
+            "event_type": "alert",
+            "host": "live-sensor",
+            "live_test_id": id,
+        })
+    };
+
+    // Already there when the feed starts: the baseline.
+    bulk_index(
+        client,
+        &[
+            (&index_a, "baseline-1", event("baseline-1", &ts(30_000))),
+            (&index_a, "baseline-2", event("baseline-2", &ts(20_000))),
+            (&index_b, "shared-id", event("shared-id-b", &ts(10_000))),
+        ],
+    )
+    .await?;
+
+    let feed = LiveFeed::with_config(
+        Some(Arc::new(repo.clone())),
+        FeedConfig {
+            interval: Duration::from_millis(250),
+            page_size: 4,
+            fetch_chunk: 2,
+            ..FeedConfig::default()
+        },
+    );
+    let mut subscription = feed.subscribe();
+    wait_live_feed_ok(&mut subscription).await?;
+
+    // Newest first: new and shared-id-a, ecs, then the three ties, of which
+    // the first page holds one.
+    let tie = ts(1_000);
+    let nanos =
+        (now - chrono::Duration::milliseconds(1_500)).to_rfc3339_opts(SecondsFormat::Nanos, true);
+    let mut ecs = event("ecs", &ts(200));
+    ecs["host"] = serde_json::json!({"name": "os-hostname"});
+    ecs["agent"] = serde_json::json!({"name": "ecs-sensor"});
+    let mut updated = event("baseline-1", &ts(30_000));
+    updated["tags"] = serde_json::json!(["evebox.archived"]);
+    bulk_index(
+        client,
+        &[
+            (&index_a, "new", event("new", &ts(0))),
+            // Equal timestamps, across a page boundary and two indices.
+            (&index_a, "tie-1", event("tie-1", &tie)),
+            (&index_a, "tie-2", event("tie-2", &tie)),
+            (&index_b, "tie-3", event("tie-3", &tie)),
+            // Arrives late, but within the lookback.
+            (&index_a, "late", event("late", &ts(120_000))),
+            // Same id as a baseline document, in another index.
+            (&index_a, "shared-id", event("shared-id-a", &ts(0))),
+            (&index_nanos, "nanos", event("nanos", &nanos)),
+            (&index_ecs, "ecs", ecs),
+            // Older than the lookback: not reported.
+            (&index_a, "too-old", event("too-old", &ts(600_000))),
+            // An update to a baseline document: not reported.
+            (&index_a, "baseline-1", updated),
+        ],
+    )
+    .await?;
+
+    let expected = [
+        "new",
+        "tie-1",
+        "tie-2",
+        "tie-3",
+        "late",
+        "shared-id-a",
+        "nanos",
+        "ecs",
+    ];
+    let mut seen: HashMap<String, usize> = HashMap::new();
+    let mut hosts: HashMap<String, serde_json::Value> = HashMap::new();
+    let deadline = Instant::now() + LIVE_FEED_WAIT;
+    let mut settle_until: Option<Instant> = None;
+    loop {
+        let wait_until = settle_until.unwrap_or(deadline);
+        let remaining = wait_until.saturating_duration_since(Instant::now());
+        match tokio::time::timeout(remaining, subscription.events.recv()).await {
+            Ok(Ok(event)) => {
+                let id = event["live_test_id"].as_str().unwrap_or("?").to_string();
+                hosts.insert(id.clone(), event["host"].clone());
+                *seen.entry(id).or_default() += 1;
+                if settle_until.is_none() && expected.iter().all(|id| seen.contains_key(*id)) {
+                    // Everything arrived; watch a few more polls for extras.
+                    settle_until = Some(Instant::now() + Duration::from_secs(2));
+                }
+            }
+            Ok(Err(err)) => bail!("live feed: {err}"),
+            Err(_) => break,
+        }
+    }
+    let missing: Vec<&str> = expected
+        .iter()
+        .copied()
+        .filter(|id| !seen.contains_key(*id))
+        .collect();
+    if !missing.is_empty() {
+        bail!("not reported: {missing:?}, reported: {seen:?}");
+    }
+    let extra: Vec<String> = seen
+        .iter()
+        .filter(|(id, n)| **n > 1 || !expected.contains(&id.as_str()))
+        .map(|(id, n)| format!("{id}x{n}"))
+        .collect();
+    if !extra.is_empty() {
+        bail!("reported unexpectedly or more than once: {extra:?}");
+    }
+    if hosts["ecs"] != "ecs-sensor" || hosts["new"] != "live-sensor" {
+        bail!("sensor names not normalized: {hosts:?}");
+    }
+
+    drop(subscription);
+    if feed.subscribers() != 0 {
+        bail!("subscription was not released");
+    }
+    // Over several poll intervals, not a single poll more, once a poll
+    // that was finishing as the subscription went has had a moment.
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let polls = feed.stats().polls.load(Ordering::SeqCst);
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    if feed.stats().polls.load(Ordering::SeqCst) != polls {
+        bail!("still polling after the last subscriber left");
+    }
+    Ok(Some(format!("reported={} polls={polls}", seen.len())))
+}
+
+/// Index documents with given ids and make them searchable at once.
+async fn bulk_index(
+    client: &elastic::Client,
+    docs: &[(&String, &str, serde_json::Value)],
+) -> Result<()> {
+    let mut body = String::new();
+    for (index, id, doc) in docs {
+        body.push_str(&serde_json::json!({"index": {"_index": index, "_id": id}}).to_string());
+        body.push('\n');
+        body.push_str(&doc.to_string());
+        body.push('\n');
+    }
+    let response: serde_json::Value = client
+        .post("_bulk?refresh=true")?
+        .body(body)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    if response["errors"].as_bool() != Some(false) {
+        bail!("bulk request had errors: {response}");
+    }
+    Ok(())
 }
 
 /// Insert an alert directly into Elasticsearch/OpenSearch, bypassing EveBox's

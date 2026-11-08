@@ -29,6 +29,7 @@ mod alerts;
 mod dhcp;
 mod dns;
 mod events;
+mod live;
 mod stats;
 
 const MINIMUM_SHOULD_MATCH: &str = "minimum_should_match";

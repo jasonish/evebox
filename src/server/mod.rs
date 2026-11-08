@@ -17,6 +17,7 @@ pub(crate) mod api;
 pub(crate) mod autoarchive;
 pub(crate) mod client_addr;
 pub(crate) mod filestore;
+pub(crate) mod livefeed;
 pub(crate) mod main;
 pub(super) mod metrics;
 pub(crate) mod pcap;
@@ -61,7 +62,9 @@ pub(crate) struct ServerContext {
     pub filters: Option<crate::eve::filters::EveFilterChain>,
     pub auto_archive: Arc<RwLock<AutoArchive>>,
     pub metrics: Arc<Metrics>,
-    pub firehose: tokio::sync::broadcast::Sender<serde_json::Value>,
+    /// Events for the live views: as EveBox ingests them, or polled from
+    /// Elasticsearch or OpenSearch when nothing is ingested through EveBox.
+    pub live_feed: livefeed::LiveFeed,
     /// True when the server reads EVE files or sockets itself. Reported
     /// to the webapp so the live view can explain an empty stream.
     pub input_enabled: bool,
@@ -78,7 +81,11 @@ impl ServerContext {
         datastore: EventRepo,
         metrics: Arc<Metrics>,
     ) -> Self {
-        let (firehose, _) = tokio::sync::broadcast::channel::<serde_json::Value>(8192);
+        let feed_source: Option<Arc<dyn livefeed::FeedSource>> = match &datastore {
+            EventRepo::Elastic(repo) => Some(Arc::new(repo.clone())),
+            EventRepo::SQLite(_) => None,
+        };
+        let live_feed = livefeed::LiveFeed::new(feed_source);
         let auto_archive: Arc<RwLock<AutoArchive>> = Default::default();
         let pcap_tasks = Arc::new(pcap::tasks::Registry::default());
         let agents = Arc::new(agents::AgentRegistry::new(pcap_tasks.clone()));
@@ -93,7 +100,7 @@ impl ServerContext {
             filters: None,
             auto_archive,
             metrics,
-            firehose,
+            live_feed,
             input_enabled: false,
             agents,
             pcap_tasks,

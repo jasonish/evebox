@@ -487,6 +487,7 @@ pub(crate) async fn metrics(
     Json(crate::server::metrics::MetricsSnapshot {
         metrics: context.metrics.clone(),
         agents_connected: context.agents.connected(),
+        live_feed: context.live_feed.metrics(),
     })
 }
 

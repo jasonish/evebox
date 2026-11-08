@@ -1,18 +1,22 @@
 // SPDX-FileCopyrightText: (C) 2025 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-//! Live event stream. Every event the server ingests, whether read from
-//! a file or socket or submitted by an agent, is published to the
-//! firehose. Clients subscribe with optional server-side filters so a
-//! "watch this IP" subscription stays usable on a busy sensor.
+//! Live event stream, fed by the server's live feed: events as the
+//! server ingests them, read from a file or socket or submitted by an
+//! agent, or, with Elasticsearch or OpenSearch and nothing ingested
+//! through EveBox, events polled from the datastore. Clients subscribe
+//! with optional server-side filters so a "watch this IP" subscription
+//! stays usable on a busy sensor.
 
 use crate::error::AppError;
 use crate::prelude::*;
 use crate::queryparser::{self, QueryElement, QueryValue};
+use crate::server::livefeed::{FeedStatus, Subscription};
 use crate::server::{ServerContext, main::SessionExtractor};
 use axum::Extension;
 use axum::body::Body;
 use axum::extract::Query;
+use axum::http::header;
 use axum::response::sse::Event;
 use axum::response::{IntoResponse, Sse};
 use futures::Stream;
@@ -20,10 +24,8 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TrySendError;
-use tokio_stream::StreamExt;
-use tokio_stream::wrappers::BroadcastStream;
-use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 
 /// Events queued per client between the firehose and the HTTP response.
 /// A client that can't keep up has events dropped rather than queued
@@ -73,6 +75,9 @@ impl FirehoseParams {
     }
 }
 
+/// The sensor filter value for events without a sensor.
+const NO_SENSOR: &str = "(no-name)";
+
 /// Server-side filter for a firehose subscription.
 #[derive(Debug, Default)]
 struct FirehoseMatcher {
@@ -92,10 +97,17 @@ impl FirehoseMatcher {
                 return false;
             }
         }
-        if let Some(sensor) = &self.sensor
-            && event["host"].as_str() != Some(sensor.as_str())
-        {
-            return false;
+        if let Some(sensor) = &self.sensor {
+            let identity = crate::server::routing::sensor_identity(event);
+            // As the sensor list names events without a sensor.
+            let matched = if sensor == NO_SENSOR {
+                identity.is_none()
+            } else {
+                identity == Some(sensor.as_str())
+            };
+            if !matched {
+                return false;
+            }
         }
         if self.query.is_empty() {
             return true;
@@ -185,93 +197,149 @@ fn gap_event(dropped: u64) -> Option<Event> {
         .ok()
 }
 
+/// The feed's status, as a named event so it is never mistaken for an
+/// EVE event.
+fn status_event(status: &FeedStatus) -> Option<Event> {
+    Event::default().event("status").json_data(status).ok()
+}
+
+type SseSender = mpsc::Sender<Result<Event, Infallible>>;
+
+/// Server-sent events: the feed's status first, then matching events, and
+/// the status again whenever it changes. Events dropped because the client
+/// or the server couldn't keep up are reported as a `gap` event with the
+/// number dropped.
 pub(crate) async fn sse(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Query(params): Query<FirehoseParams>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, AppError> {
     let matcher = params.matcher()?;
-    let mut firehose = context.firehose.subscribe();
+    let subscription = context.live_feed.subscribe();
+    let (sse_tx, sse_rx) = mpsc::channel(CLIENT_QUEUE_SIZE);
+    tokio::spawn(forward_sse(subscription, matcher, sse_tx));
+    Ok(
+        Sse::new(tokio_stream::wrappers::ReceiverStream::new(sse_rx)).keep_alive(
+            axum::response::sse::KeepAlive::new()
+                .interval(Duration::from_secs(1))
+                .text("keep-alive-text"),
+        ),
+    )
+}
 
-    let (sse_tx, sse_rx) =
-        tokio::sync::mpsc::channel::<Result<Event, Infallible>>(CLIENT_QUEUE_SIZE);
-    let sse_stream = tokio_stream::wrappers::ReceiverStream::new(sse_rx);
-
-    tokio::spawn(async move {
-        // Events dropped since the client was last told about a gap,
-        // either because the firehose lagged or the client queue was full.
-        let mut dropped: u64 = 0;
-        loop {
-            let event = tokio::select! {
-                // Leave as soon as the client disconnects, even if no
-                // matching events arrive to reveal the closed response.
-                _ = sse_tx.closed() => return,
-                event = firehose.recv() => match event {
+/// Forward the feed to one client until it goes away. The subscription
+/// is held here, so it ends with the client even while no events arrive.
+async fn forward_sse(mut subscription: Subscription, matcher: FirehoseMatcher, tx: SseSender) {
+    // The client queue is still empty, so this always fits.
+    let status = subscription.status.borrow_and_update().clone();
+    if let Some(event) = status_event(&status)
+        && tx.try_send(Ok(event)).is_err()
+    {
+        return;
+    }
+    // A status change that didn't fit in the client queue, to be sent as
+    // soon as there's room. Events can be dropped, but the client must
+    // not be left with a stale status.
+    let mut status_pending = false;
+    // Events dropped since the client was last told about a gap, either
+    // because the feed lagged or the client queue was full.
+    let mut dropped: u64 = 0;
+    loop {
+        tokio::select! {
+            // Leave as soon as the client disconnects, even if no
+            // matching events arrive to reveal the closed response.
+            _ = tx.closed() => return,
+            permit = tx.reserve(), if status_pending => {
+                let Ok(permit) = permit else { return };
+                let status = subscription.status.borrow_and_update().clone();
+                if let Some(event) = status_event(&status) {
+                    permit.send(Ok(event));
+                }
+                status_pending = false;
+            }
+            changed = subscription.status.changed() => {
+                if changed.is_err() {
+                    return;
+                }
+                let status = subscription.status.borrow_and_update().clone();
+                if let Some(event) = status_event(&status) {
+                    match tx.try_send(Ok(event)) {
+                        Ok(()) => status_pending = false,
+                        Err(TrySendError::Full(_)) => status_pending = true,
+                        Err(TrySendError::Closed(_)) => return,
+                    }
+                }
+            }
+            event = subscription.events.recv() => {
+                let event = match event {
                     Ok(event) => event,
                     Err(RecvError::Lagged(n)) => {
                         dropped += n;
                         continue;
                     }
                     Err(RecvError::Closed) => return,
-                },
-            };
-            if !matcher.matches(&event) {
-                continue;
-            }
-            if dropped > 0
-                && let Some(gap) = gap_event(dropped)
-            {
-                match sse_tx.try_send(Ok(gap)) {
-                    Ok(()) => dropped = 0,
-                    Err(TrySendError::Full(_)) => {
-                        dropped += 1;
-                        continue;
+                };
+                if !matcher.matches(&event) {
+                    continue;
+                }
+                if dropped > 0
+                    && let Some(gap) = gap_event(dropped)
+                {
+                    match tx.try_send(Ok(gap)) {
+                        Ok(()) => dropped = 0,
+                        Err(TrySendError::Full(_)) => {
+                            dropped += 1;
+                            continue;
+                        }
+                        Err(TrySendError::Closed(_)) => return,
                     }
+                }
+                let Ok(event) = Event::default().json_data(&*event) else {
+                    continue;
+                };
+                match tx.try_send(Ok(event)) {
+                    Ok(()) => {}
+                    Err(TrySendError::Full(_)) => dropped += 1,
                     Err(TrySendError::Closed(_)) => return,
                 }
             }
-            let event = match Event::default().json_data(event) {
-                Ok(event) => event,
-                Err(_) => continue,
-            };
-            match sse_tx.try_send(Ok(event)) {
-                Ok(()) => {}
-                Err(TrySendError::Full(_)) => dropped += 1,
-                Err(TrySendError::Closed(_)) => return,
-            }
         }
-    });
-
-    Ok(Sse::new(sse_stream).keep_alive(
-        axum::response::sse::KeepAlive::new()
-            .interval(Duration::from_secs(1))
-            .text("keep-alive-text"),
-    ))
+    }
 }
 
+/// Newline delimited JSON: one matching event per line, nothing else.
+/// Events the client couldn't keep up with are dropped silently, as this
+/// format has nowhere to report them.
 pub(crate) async fn stream(
     _session: SessionExtractor,
     Extension(context): Extension<Arc<ServerContext>>,
     Query(params): Query<FirehoseParams>,
 ) -> Result<impl IntoResponse, AppError> {
     let matcher = params.matcher()?;
-    let firehose: tokio::sync::broadcast::Receiver<serde_json::Value> =
-        context.firehose.subscribe();
-
-    let stream = BroadcastStream::new(firehose).filter_map(move |result| match result {
-        Ok(value) => {
-            if !matcher.matches(&value) {
-                return None;
+    // Held by the response body, so it ends when the body is dropped.
+    let subscription = context.live_feed.subscribe();
+    let stream = futures::stream::unfold(
+        (subscription, matcher),
+        |(mut subscription, matcher)| async move {
+            loop {
+                match subscription.events.recv().await {
+                    Ok(event) => {
+                        if matcher.matches(&event) {
+                            let mut line = event.to_string();
+                            line.push('\n');
+                            let line = axum::body::Bytes::from(line);
+                            return Some((Ok::<_, Infallible>(line), (subscription, matcher)));
+                        }
+                    }
+                    Err(RecvError::Lagged(_)) => {}
+                    Err(RecvError::Closed) => return None,
+                }
             }
-            let mut string = value.to_string();
-            string.push('\n');
-            let bytes = axum::body::Bytes::from(string);
-            Some(Ok::<bytes::Bytes, BroadcastStreamRecvError>(bytes))
-        }
-        Err(_) => None,
-    });
+        },
+    );
 
     Ok(axum::response::Response::builder()
+        .header(header::CONTENT_TYPE, "application/x-ndjson")
         .body(Body::from_stream(stream))
         .unwrap())
 }
@@ -389,5 +457,364 @@ mod test {
 
         // Time bounds are ignored for a live stream.
         assert!(matcher(None, None, Some("@from:2024")).matches(&alert));
+    }
+
+    #[test]
+    fn sensor_filtering_uses_the_sensor_identity() {
+        // ECS shaped: the sensor is agent.name, host is an object.
+        let ecs = serde_json::json!({
+            "host": {"name": "os-hostname"},
+            "agent": {"name": "sensor-a"},
+        });
+        assert!(matcher(None, Some("sensor-a"), None).matches(&ecs));
+        assert!(!matcher(None, Some("os-hostname"), None).matches(&ecs));
+    }
+
+    #[test]
+    fn the_no_name_sensor_matches_events_without_a_sensor() {
+        let no_name = matcher(None, Some("(no-name)"), None);
+        assert!(no_name.matches(&serde_json::json!({"event_type": "alert"})));
+        assert!(!no_name.matches(&alert()));
+    }
+
+    /// The endpoints over HTTP.
+    mod http {
+        use super::*;
+        use crate::eventrepo::EventRepo;
+        use crate::server::ServerConfig;
+        use crate::server::livefeed::LiveFeed;
+        use crate::server::livefeed::testing::*;
+        use crate::server::main::build_axum_service;
+        use crate::server::metrics::Metrics;
+        use crate::sqlite::connection::{ConnectionBuilder, init_event_db};
+        use crate::sqlite::eventrepo::SqliteEventRepo;
+        use futures::StreamExt;
+        use serde_json::json;
+        use std::net::SocketAddr;
+        use std::pin::Pin;
+        use std::sync::atomic::Ordering;
+        use tokio::io::AsyncWriteExt;
+
+        /// Serve the API with `feed` as its live feed, or with a SQLite
+        /// server's own feed of ingested events.
+        async fn serve(
+            feed: Option<LiveFeed>,
+        ) -> (
+            SocketAddr,
+            tokio::task::JoinHandle<()>,
+            tempfile::TempDir,
+            Arc<ServerContext>,
+        ) {
+            let _ = rustls::crypto::ring::default_provider().install_default();
+            let dir = tempfile::tempdir().unwrap();
+            let builder = ConnectionBuilder::filename(Some(&dir.path().join("events.sqlite")));
+            let mut writer = builder.open_connection(true).await.unwrap();
+            init_event_db(&mut writer).await.unwrap();
+            let pool = builder.open_pool(false).await.unwrap();
+            let datastore = EventRepo::SQLite(SqliteEventRepo::new(
+                Arc::new(tokio::sync::Mutex::new(writer)),
+                pool,
+                Arc::new(Metrics::default()),
+            ));
+            let configdb = crate::sqlite::configdb::open(Some(&dir.path().join("config.sqlite")))
+                .await
+                .unwrap();
+            let mut context = ServerContext::new(
+                ServerConfig::default(),
+                Arc::new(configdb),
+                datastore,
+                Arc::new(Metrics::default()),
+            );
+            if let Some(feed) = feed {
+                context.live_feed = feed;
+            }
+            let context = Arc::new(context);
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let service = build_axum_service(context.clone());
+            let server = tokio::spawn(async move {
+                axum::serve(listener, service).await.unwrap();
+            });
+            (address, server, dir, context)
+        }
+
+        type BodyStream =
+            Pin<Box<dyn futures::Stream<Item = reqwest::Result<axum::body::Bytes>> + Send>>;
+
+        /// Reads server-sent events.
+        struct SseReader {
+            body: BodyStream,
+            buffer: String,
+        }
+
+        impl SseReader {
+            async fn connect(address: SocketAddr, query: &str) -> Self {
+                let response = reqwest::Client::new()
+                    .get(format!("http://{address}/api/firehose/sse{query}"))
+                    .send()
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+                Self {
+                    body: Box::pin(response.bytes_stream()),
+                    buffer: String::new(),
+                }
+            }
+
+            /// The next event's name ("message" if unnamed) and data,
+            /// skipping keep-alive comments.
+            async fn next(&mut self) -> (String, serde_json::Value) {
+                loop {
+                    if let Some(end) = self.buffer.find("\n\n") {
+                        let block: String = self.buffer.drain(..end + 2).collect();
+                        let mut name = "message".to_string();
+                        let mut data = None;
+                        for line in block.lines() {
+                            if let Some(value) = line.strip_prefix("event:") {
+                                name = value.trim().to_string();
+                            } else if let Some(value) = line.strip_prefix("data:") {
+                                data = Some(value.trim_start().to_string());
+                            }
+                        }
+                        if let Some(data) = data {
+                            return (name, serde_json::from_str(&data).unwrap());
+                        }
+                        continue;
+                    }
+                    let chunk = tokio::time::timeout(WAIT, self.body.next())
+                        .await
+                        .expect("timed out waiting for an event")
+                        .expect("the stream ended")
+                        .unwrap();
+                    self.buffer.push_str(std::str::from_utf8(&chunk).unwrap());
+                }
+            }
+
+            /// The next status, skipping any until `want` holds.
+            async fn status_until(
+                &mut self,
+                want: impl Fn(&serde_json::Value) -> bool,
+            ) -> serde_json::Value {
+                loop {
+                    let (name, data) = self.next().await;
+                    assert_eq!(name, "status", "expected a status, got {data}");
+                    if want(&data) {
+                        return data;
+                    }
+                }
+            }
+
+            async fn next_event(&mut self) -> serde_json::Value {
+                loop {
+                    let (name, data) = self.next().await;
+                    if name == "message" {
+                        return data;
+                    }
+                }
+            }
+        }
+
+        fn is_ok(status: &serde_json::Value) -> bool {
+            status["state"] == "ok"
+        }
+
+        #[tokio::test]
+        async fn sse_sends_the_status_first_then_events() {
+            let (address, server, _dir, context) = serve(None).await;
+            let mut sse = SseReader::connect(address, "").await;
+            let (name, status) = sse.next().await;
+            assert_eq!(name, "status");
+            assert_eq!(
+                status,
+                json!({"source": "ingest", "state": "ok", "behind": false})
+            );
+            context
+                .live_feed
+                .publish_ingested(&json!({"event_type": "alert", "id": "a"}));
+            assert_eq!(
+                sse.next().await,
+                (
+                    "message".to_string(),
+                    json!({"event_type": "alert", "id": "a"})
+                )
+            );
+            server.abort();
+        }
+
+        #[tokio::test]
+        async fn sse_reports_polling_and_sends_polled_events() {
+            let harness = Harness::new();
+            harness.source.add("i", "old", NOW - 1_000);
+            let (address, server, _dir, _context) = serve(Some(harness.feed.clone())).await;
+            let mut sse = SseReader::connect(address, "").await;
+            let (name, status) = sse.next().await;
+            assert_eq!(name, "status");
+            assert_eq!(status["source"], "datastore");
+            if status["state"] != "ok" {
+                assert_eq!(status["state"], "starting");
+                sse.status_until(is_ok).await;
+            }
+            harness.source.add("i", "new", NOW);
+            assert_eq!(sse.next_event().await["id"], "new");
+            server.abort();
+        }
+
+        #[tokio::test]
+        async fn an_empty_submission_doesnt_stop_polling() {
+            let harness = Harness::new();
+            let (address, server, _dir, _context) = serve(Some(harness.feed.clone())).await;
+            let mut sse = SseReader::connect(address, "").await;
+            sse.status_until(is_ok).await;
+            // As the Go agent has been seen to send, or anyone, as
+            // submitting needs no login.
+            let response = reqwest::Client::new()
+                .post(format!("http://{address}/api/submit"))
+                .body("")
+                .send()
+                .await
+                .unwrap();
+            let response: serde_json::Value = response.json().await.unwrap();
+            assert_eq!(response["Count"], 0);
+            // Not taken for ingest, which would have started polling over
+            // later, with this in the new baseline.
+            harness.source.add("i", "new", NOW);
+            assert_eq!(sse.next_event().await["id"], "new");
+            server.abort();
+        }
+
+        #[tokio::test]
+        async fn filters_apply_per_client_to_one_shared_poll() {
+            let harness = Harness::new();
+            let (address, server, _dir, _context) = serve(Some(harness.feed.clone())).await;
+            let mut alerts = SseReader::connect(address, "?event_type=alert").await;
+            let mut dns = SseReader::connect(address, "?event_type=dns").await;
+            alerts.status_until(is_ok).await;
+            dns.status_until(is_ok).await;
+            assert_eq!(harness.feed.subscribers(), 2);
+            assert_eq!(harness.stats().tasks.load(Ordering::SeqCst), 1);
+
+            for (id, event_type) in [
+                ("a1", "alert"),
+                ("d1", "dns"),
+                ("a2", "alert"),
+                ("d2", "dns"),
+            ] {
+                harness
+                    .source
+                    .add_event("i", id, NOW, json!({"event_type": event_type, "id": id}));
+            }
+            let mut got_alerts = vec![
+                alerts.next_event().await["id"].clone(),
+                alerts.next_event().await["id"].clone(),
+            ];
+            let mut got_dns = vec![
+                dns.next_event().await["id"].clone(),
+                dns.next_event().await["id"].clone(),
+            ];
+            got_alerts.sort_by_key(|id| id.to_string());
+            got_dns.sort_by_key(|id| id.to_string());
+            assert_eq!(got_alerts, vec![json!("a1"), json!("a2")]);
+            assert_eq!(got_dns, vec![json!("d1"), json!("d2")]);
+            server.abort();
+        }
+
+        #[tokio::test]
+        async fn an_idle_sse_client_leaving_ends_its_subscription() {
+            let harness = Harness::new();
+            let (address, server, _dir, _context) = serve(Some(harness.feed.clone())).await;
+            let mut sse = SseReader::connect(address, "").await;
+            sse.status_until(is_ok).await;
+            assert_eq!(harness.feed.subscribers(), 1);
+            drop(sse);
+            wait_for(|| harness.feed.subscribers() == 0).await;
+            wait_for(|| harness.source.in_flight.load(Ordering::SeqCst) == 0).await;
+            let scans = harness.source.scans();
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            assert_eq!(harness.source.scans(), scans);
+            server.abort();
+        }
+
+        #[tokio::test]
+        async fn ndjson_sends_one_event_per_line() {
+            let harness = Harness::new();
+            let (address, server, _dir, _context) = serve(Some(harness.feed.clone())).await;
+            let response = reqwest::Client::new()
+                .get(format!("http://{address}/api/firehose?event_type=alert"))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                response.headers()[header::CONTENT_TYPE],
+                "application/x-ndjson"
+            );
+            let mut body = response.bytes_stream();
+            wait_for(|| harness.stats().baselines.load(Ordering::SeqCst) == 1).await;
+            harness
+                .source
+                .add_event("i", "d", NOW, json!({"event_type": "dns", "id": "d"}));
+            harness
+                .source
+                .add_event("i", "a", NOW, json!({"event_type": "alert", "id": "a"}));
+            let mut text = String::new();
+            while !text.contains('\n') {
+                let chunk = tokio::time::timeout(WAIT, body.next())
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .unwrap();
+                text.push_str(std::str::from_utf8(&chunk).unwrap());
+            }
+            assert_eq!(text, "{\"event_type\":\"alert\",\"id\":\"a\"}\n");
+            drop(body);
+            wait_for(|| harness.feed.subscribers() == 0).await;
+            server.abort();
+        }
+
+        #[tokio::test]
+        async fn an_idle_ndjson_client_leaving_ends_its_subscription() {
+            let harness = Harness::new();
+            let (address, server, _dir, _context) = serve(Some(harness.feed.clone())).await;
+            // A plain connection that reads nothing, so the only sign of
+            // the client leaving is the connection closing.
+            let mut stream = tokio::net::TcpStream::connect(address).await.unwrap();
+            stream
+                .write_all(b"GET /api/firehose HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .await
+                .unwrap();
+            wait_for(|| harness.feed.subscribers() == 1).await;
+            wait_for(|| harness.stats().baselines.load(Ordering::SeqCst) == 1).await;
+            drop(stream);
+            wait_for(|| harness.feed.subscribers() == 0).await;
+            server.abort();
+        }
+
+        #[tokio::test]
+        async fn sse_and_ndjson_clients_share_one_poll() {
+            let harness = Harness::new();
+            let (address, server, _dir, _context) = serve(Some(harness.feed.clone())).await;
+            let mut sse = SseReader::connect(address, "").await;
+            sse.status_until(is_ok).await;
+            let response = reqwest::Client::new()
+                .get(format!("http://{address}/api/firehose"))
+                .send()
+                .await
+                .unwrap();
+            let mut ndjson = response.bytes_stream();
+            wait_for(|| harness.feed.subscribers() == 2).await;
+            harness.source.add("i", "shared", NOW);
+            assert_eq!(sse.next_event().await["id"], "shared");
+            let chunk = tokio::time::timeout(WAIT, ndjson.next())
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
+            assert!(std::str::from_utf8(&chunk).unwrap().contains("\"shared\""));
+            // One period, one baseline, the event fetched once.
+            assert_eq!(harness.stats().tasks.load(Ordering::SeqCst), 1);
+            assert_eq!(harness.stats().baselines.load(Ordering::SeqCst), 1);
+            assert_eq!(harness.stats().emitted.load(Ordering::SeqCst), 1);
+            server.abort();
+        }
     }
 }
