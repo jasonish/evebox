@@ -30,7 +30,9 @@ export const Login = () => {
   });
   const [error, setError] = createSignal(false);
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams<{
+    redirectTo?: string;
+  }>();
   const [loginOptions] = createResource(getLoginOptions);
   const navigate = useNavigate();
 

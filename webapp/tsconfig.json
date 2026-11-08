@@ -3,13 +3,18 @@
     "strict": true,
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "types": ["vite/client"],
     "noEmit": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "paths": {
+      // tinykeys' package exports don't point at its type declarations.
+      "tinykeys": ["./node_modules/tinykeys/dist/tinykeys.d.ts"]
+    }
   }
 }

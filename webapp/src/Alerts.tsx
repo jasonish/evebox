@@ -132,7 +132,7 @@ export function Alerts() {
   // For display of the filters. Reactiveness comes from the searchParams.
   const [filters, setFilters] = createSignal<string[]>(searchParams.f || []);
 
-  let toggleSelectAllRef: HTMLInputElement | null = null;
+  let toggleSelectAllRef: HTMLInputElement | undefined;
   let bindings: any = null;
   let view: View | undefined = undefined;
 
@@ -339,8 +339,8 @@ export function Alerts() {
       indeterminate = true;
     }
     if (toggleSelectAllRef) {
-      toggleSelectAllRef!.checked = checked;
-      toggleSelectAllRef!.indeterminate = indeterminate;
+      toggleSelectAllRef.checked = checked;
+      toggleSelectAllRef.indeterminate = indeterminate;
     }
   });
 
@@ -944,7 +944,7 @@ export function Alerts() {
                     <th class={"app-w-1"}></th>
                     <th class={"app-w-1"}>
                       <input
-                        ref={toggleSelectAllRef!}
+                        ref={toggleSelectAllRef}
                         type={"checkbox"}
                         class="form-check-input"
                         onchange={(e) => {
@@ -1382,7 +1382,7 @@ function PagerRow(props: {
   events: EventWrapper[];
   offset: number;
   setOffset: any;
-  timedOut: boolean;
+  timedOut?: boolean;
 }) {
   const [first, setFirst] = createSignal(props.offset + 1);
   const [last, setLast] = createSignal(props.offset + getRowCount());

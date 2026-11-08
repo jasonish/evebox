@@ -336,7 +336,7 @@ export function formatEventDescription(event: Event): string {
         return parts.join(" ");
       }
       case "mqtt": {
-        const mqtt = event._source.mqtt;
+        const mqtt = event._source.mqtt!;
 
         if (mqtt.publish) {
           const publish = mqtt.publish;
