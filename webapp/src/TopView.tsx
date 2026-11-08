@@ -93,9 +93,9 @@ const BASELINE_SIZE = 10000;
 type NoveltyKind = "dns" | "sni" | "http" | "sig";
 
 // First Seen also lists addresses, by which side of the event they were
-// on, and Ethernet (MAC) addresses when Suricata logs them. These have
-// no history check.
-type FeedKind = NoveltyKind | "src" | "dest" | "smac" | "dmac";
+// on, and Ethernet (MAC) addresses when Suricata logs them or from DHCP
+// client addresses. These have no history check.
+type FeedKind = NoveltyKind | "src" | "dest" | "smac" | "dmac" | "cmac";
 
 const FEED_LABELS: Record<FeedKind, string> = {
   dns: "DNS",
@@ -106,6 +106,7 @@ const FEED_LABELS: Record<FeedKind, string> = {
   dest: "DEST",
   smac: "SRC MAC",
   dmac: "DEST MAC",
+  cmac: "DHCP",
 };
 
 // Search field for each kind; IP addresses link to the Address dashboard
@@ -119,12 +120,18 @@ const FEED_FIELDS: Record<FeedKind, string> = {
   dest: "dest_ip",
   smac: "ether.src_mac",
   dmac: "ether.dest_mac",
+  cmac: "dhcp.client_mac",
 };
 
 const NOVELTY_KINDS: NoveltyKind[] = ["dns", "sni", "http", "sig"];
 const IP_KINDS: FeedKind[] = ["src", "dest"];
 const ETHER_KINDS: FeedKind[] = ["smac", "dmac"];
-const FEED_KINDS: FeedKind[] = [...NOVELTY_KINDS, ...IP_KINDS, ...ETHER_KINDS];
+const FEED_KINDS: FeedKind[] = [
+  ...NOVELTY_KINDS,
+  ...IP_KINDS,
+  ...ETHER_KINDS,
+  "cmac",
+];
 
 // First Seen is split over three cards so one busy kind doesn't scroll
 // the others away.
@@ -132,7 +139,7 @@ type FeedGroup = "names" | "ip" | "mac";
 
 function feedGroup(kind: FeedKind): FeedGroup {
   if (kind === "src" || kind === "dest") return "ip";
-  if (kind === "smac" || kind === "dmac") return "mac";
+  if (kind === "smac" || kind === "dmac" || kind === "cmac") return "mac";
   return "names";
 }
 
@@ -143,6 +150,32 @@ const BASELINES: { kind: NoveltyKind; field: string; q: string }[] = [
   { kind: "http", field: "http.hostname", q: "event_type:http" },
   { kind: "sig", field: "alert.signature_id", q: "event_type:alert" },
 ];
+
+// DHCP clients kept; past this the least recently active are dropped.
+const MAX_DHCP_CLIENTS = 1000;
+// Steps of one DHCP exchange kept for display.
+const MAX_DHCP_STEPS = 6;
+// Messages that end an exchange; the next message starts a new one.
+const DHCP_FINAL = new Set(["ack", "nak", "release", "decline"]);
+// Baseline of DHCP client MACs, to badge devices not seen before.
+const DHCP_BASELINE = {
+  field: "dhcp.client_mac",
+  q: "event_type:dhcp",
+};
+
+const DHCP_STATE_CLASSES: Record<string, string> = {
+  ack: "text-bg-success",
+  offer: "text-bg-info",
+  nak: "text-bg-danger",
+  decline: "text-bg-danger",
+};
+
+const DHCP_TOOLTIP =
+  "Devices by MAC address as they request an address over DHCP, " +
+  "updated as each exchange moves along (discover, offer, request, " +
+  "ack). New marks a MAC not seen in DHCP in the last " +
+  `${BASELINE_RANGE}. Suricata only logs ACKs unless its DHCP ` +
+  'logger has "extended: yes". Reset clears it.';
 
 const SEVERITY_COLORS: Record<number, string> = {
   1: "var(--bs-danger)",
@@ -335,9 +368,42 @@ interface FeedItem {
   eventType: string;
   src?: string;
   dest?: string;
+  // The IP address that goes with a MAC address, when not taken from
+  // the event's own addresses, as for a DHCP client.
+  ip?: string;
 }
 
 type NovelItem = FeedItem & { kind: NoveltyKind };
+
+// One DHCP client, replaced rather than changed on each message so the
+// rows only redraw when something happened.
+interface DhcpClient {
+  mac: string;
+  firstAt: number;
+  at: number;
+  // The last message, such as "discover" or "ack".
+  state: string;
+  // The messages of the current exchange.
+  steps: string[];
+  // A renewal by a client that already has an address.
+  renew: boolean;
+  // Acknowledged or in use.
+  ip?: string;
+  // Offered or requested, but not acknowledged yet.
+  pending?: string;
+  hostname?: string;
+  server?: string;
+  lease?: number;
+  vendor?: string;
+}
+
+interface DhcpServerRow {
+  ip: string;
+  replies: number;
+  offers: number;
+  acks: number;
+  naks: number;
+}
 
 interface RecentAlert {
   seq: number;
@@ -396,6 +462,10 @@ interface View {
   destMacs: TopRow[];
   srcMacDistinct: string;
   destMacDistinct: string;
+  // DHCP, only once DHCP events are seen.
+  dhcpSeen: boolean;
+  dhcpServers: DhcpServerRow[];
+  dhcpServerCount: number;
   dnsNames: TopRow[];
   snis: TopRow[];
   httpHosts: TopRow[];
@@ -420,6 +490,9 @@ function emptyView(): View {
     destMacs: [],
     srcMacDistinct: "0",
     destMacDistinct: "0",
+    dhcpSeen: false,
+    dhcpServers: [],
+    dhcpServerCount: 0,
     dnsNames: [],
     snis: [],
     httpHosts: [],
@@ -433,6 +506,7 @@ function emptyView(): View {
       dest: 0,
       smac: 0,
       dmac: 0,
+      cmac: 0,
     },
     sensor: null,
   };
@@ -479,6 +553,22 @@ function fmtEndpoint(ip: any, port: any): string {
 
 function fmtTime(ms: number): string {
   return new Date(ms).toLocaleTimeString([], { hour12: false });
+}
+
+// A DHCP lease time, in seconds, as "30m", "12h" or "1d 2h".
+function fmtDuration(secs: number): string {
+  if (secs >= 86400) {
+    const d = Math.floor(secs / 86400);
+    const h = Math.floor((secs % 86400) / 3600);
+    return h ? `${d}d ${h}h` : `${d}d`;
+  }
+  if (secs >= 3600) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    return m ? `${h}h ${m}m` : `${h}h`;
+  }
+  if (secs >= 60) return `${Math.floor(secs / 60)}m`;
+  return `${secs}s`;
 }
 
 function eventTime(timestamp: any): string {
@@ -678,6 +768,7 @@ function newFeedSets(): Record<FeedKind, Set<string>> {
     dest: new Set(),
     smac: new Set(),
     dmac: new Set(),
+    cmac: new Set(),
   };
 }
 
@@ -802,7 +893,13 @@ function FeedTable(props: {
                   <Show when={context() === "ip"}>
                     <td class="app-break-anywhere">
                       <AddressLink
-                        address={isSrc(item) ? item.src : item.dest}
+                        address={
+                          item.kind === "cmac"
+                            ? item.ip
+                            : isSrc(item)
+                              ? item.src
+                              : item.dest
+                        }
                       />
                     </td>
                   </Show>
@@ -874,6 +971,177 @@ function TopList(props: {
   );
 }
 
+// Leaves out the placeholder addresses of DHCP and similar, which
+// aren't a host: unspecified and IPv4 broadcast.
+function isHostAddress(addr: any): addr is string {
+  return (
+    typeof addr === "string" &&
+    addr !== "0.0.0.0" &&
+    addr !== "255.255.255.255" &&
+    compressIpv6(addr) !== "::"
+  );
+}
+
+function sameSet<T>(a: Set<T>, b: Set<T>): boolean {
+  if (a.size !== b.size) return false;
+  for (const v of a) {
+    if (!b.has(v)) return false;
+  }
+  return true;
+}
+
+// DHCP clients, most recently active first, with the steps of the
+// current exchange so you can watch a device get its address.
+function DhcpClientsTable(props: {
+  clients: DhcpClient[];
+  isNew: (mac: string) => boolean;
+}) {
+  const hasVendor = () => props.clients.some((c) => c.vendor);
+  return (
+    <Show
+      when={props.clients.length > 0}
+      fallback={<div class="card-body">Waiting for DHCP.</div>}
+    >
+      <div class="topview-scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Last Seen</th>
+              <th>MAC</th>
+              <th>Hostname</th>
+              <th>IP</th>
+              <th>State</th>
+              <th>Server</th>
+              <th>Lease</th>
+              <Show when={hasVendor()}>
+                <th>Vendor</th>
+              </Show>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={props.clients}>
+              {(c) => (
+                <tr classList={{ "topview-fresh": Date.now() - c.at < 10000 }}>
+                  <td class="text-nowrap">{fmtTime(c.at)}</td>
+                  <td class="text-nowrap">
+                    <SearchLink target="_blank" field="@mac" value={c.mac}>
+                      {c.mac}
+                    </SearchLink>
+                    <Show when={props.isNew(c.mac)}>
+                      <span
+                        class="badge topview-badge ms-2"
+                        title={`Not seen in DHCP in the last ${BASELINE_RANGE}`}
+                      >
+                        new
+                      </span>
+                    </Show>
+                  </td>
+                  <td class="app-break-anywhere">
+                    <Show when={c.hostname}>
+                      <SearchLink
+                        target="_blank"
+                        field="dhcp.hostname"
+                        value={c.hostname}
+                      />
+                    </Show>
+                  </td>
+                  <td class="text-nowrap">
+                    <Show
+                      when={c.ip}
+                      fallback={
+                        <Show when={c.pending}>
+                          <span
+                            class="text-muted"
+                            title="Offered or requested, not acknowledged yet"
+                          >
+                            {c.pending} ?
+                          </span>
+                        </Show>
+                      }
+                    >
+                      <AddressLink address={c.ip} />
+                    </Show>
+                  </td>
+                  <td class="text-nowrap">
+                    <span
+                      class={`badge ${DHCP_STATE_CLASSES[c.state] ?? "text-bg-secondary"}`}
+                    >
+                      {c.state.toUpperCase() || "?"}
+                    </span>
+                    <Show when={c.renew}>
+                      <span class="small text-muted ms-1">renew</span>
+                    </Show>
+                    <Show when={c.steps.length > 1}>
+                      <div class="small text-muted">{c.steps.join(" › ")}</div>
+                    </Show>
+                  </td>
+                  <td class="text-nowrap">
+                    <AddressLink address={c.server} />
+                  </td>
+                  <td class="text-nowrap">
+                    {c.lease !== undefined ? fmtDuration(c.lease) : ""}
+                  </td>
+                  <Show when={hasVendor()}>
+                    <td class="app-break-anywhere">
+                      <Show when={c.vendor}>
+                        <SearchLink
+                          target="_blank"
+                          field="dhcp.vendor_class_identifier"
+                          value={c.vendor}
+                        />
+                      </Show>
+                    </td>
+                  </Show>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </div>
+    </Show>
+  );
+}
+
+// Addresses sending DHCP replies, by message type.
+function DhcpServersTable(props: { rows: DhcpServerRow[] }) {
+  return (
+    <Show
+      when={props.rows.length > 0}
+      fallback={<div class="card-body">No data</div>}
+    >
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Server</th>
+            <th class="text-end">Offers</th>
+            <th class="text-end">ACKs</th>
+            <th class="text-end">NAKs</th>
+          </tr>
+        </thead>
+        <tbody>
+          <For each={props.rows}>
+            {(row) => (
+              <tr>
+                <td class="app-break-anywhere">
+                  <AddressLink address={row.ip} />
+                </td>
+                <td class="text-end">{row.offers.toLocaleString()}</td>
+                <td class="text-end">{row.acks.toLocaleString()}</td>
+                <td
+                  class="text-end"
+                  classList={{ "text-danger": row.naks > 0 }}
+                >
+                  {row.naks.toLocaleString()}
+                </td>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>
+    </Show>
+  );
+}
+
 // ---------------------------------------------------------------------
 
 export function TopView() {
@@ -892,6 +1160,8 @@ export function TopView() {
     { names: [], ip: [], mac: [] },
   );
   const [recentAlerts, setRecentAlerts] = createSignal<RecentAlert[]>([]);
+  const [dhcpRows, setDhcpRows] = createSignal<DhcpClient[]>([]);
+  const [dhcpNew, setDhcpNew] = createSignal<Set<string>>(new Set());
   const [received, setReceived] = createSignal(0);
   const [rate, setRate] = createSignal(0);
   const [dropped, setDropped] = createSignal(0);
@@ -906,6 +1176,14 @@ export function TopView() {
   // Set once any event carries Ethernet addresses (an opt-in Suricata
   // setting), to show the MAC cards. Cleared by reset.
   let etherSeen = false;
+  // Likewise for DHCP.
+  let dhcpSeen = false;
+  // DHCP clients by MAC address.
+  let dhcpClients = new Map<string, DhcpClient>();
+  // DHCP client MACs from the last BASELINE_RANGE, plus those seen on
+  // this page before the last reset. Null until loaded or if the lookup
+  // failed, when nothing is badged as new.
+  let dhcpKnown: Set<string> | null = null;
   const [startedAt, setStartedAt] = createSignal(Date.now());
 
   let ranges = new Ranges(Date.now());
@@ -951,6 +1229,7 @@ export function TopView() {
     value: string,
     label: string,
     event: any,
+    ip?: string,
   ) {
     if (!value || sessionSeen[kind].has(value)) return;
     sessionSeen[kind].add(value);
@@ -964,6 +1243,7 @@ export function TopView() {
       eventType: event.event_type || "",
       src: event.src_ip,
       dest: event.dest_ip,
+      ip,
     });
     if (items.length > MAX_FEED) {
       items.length = MAX_FEED;
@@ -996,6 +1276,110 @@ export function TopView() {
     for (const mac of dest) {
       ranges.add("dmac", mac);
       noticedFirst("dmac", mac, mac, event);
+    }
+  }
+
+  // A DHCP message: updates the client it is for, keyed by MAC address,
+  // and counts replies by server.
+  function onDhcp(event: any) {
+    const d = event.dhcp;
+    const mac = d.client_mac;
+    if (typeof mac !== "string" || !mac) return;
+    dhcpSeen = true;
+    const addr = (v: any): string | undefined =>
+      typeof v === "string" && v && v !== "0.0.0.0" ? v : undefined;
+    const now = Date.now();
+    const msg = typeof d.dhcp_type === "string" ? d.dhcp_type : "";
+    const prev = dhcpClients.get(mac);
+    const c: DhcpClient = prev
+      ? { ...prev, at: now }
+      : { mac, firstAt: now, at: now, state: "", steps: [], renew: false };
+
+    if (typeof d.hostname === "string" && d.hostname) {
+      c.hostname = d.hostname;
+    }
+    if (typeof d.vendor_class_identifier === "string") {
+      c.vendor = d.vendor_class_identifier;
+    }
+    c.state = msg || d.type || "";
+    if (msg) {
+      const last = c.steps[c.steps.length - 1];
+      if (msg === "discover" || !last || DHCP_FINAL.has(last)) {
+        c.steps = [msg];
+      } else if (msg !== last) {
+        c.steps = [...c.steps, msg].slice(-MAX_DHCP_STEPS);
+      }
+    }
+
+    // The client address is only set once the client has a lease, so
+    // a request with one is a renewal.
+    const clientIp = addr(d.client_ip);
+    switch (msg) {
+      case "discover":
+        c.pending = undefined;
+        c.renew = false;
+        break;
+      case "offer":
+        c.pending = addr(d.assigned_ip) ?? c.pending;
+        break;
+      case "request":
+        c.renew = !!clientIp;
+        if (clientIp) {
+          c.ip = clientIp;
+        } else {
+          c.pending = addr(d.requested_ip) ?? c.pending;
+        }
+        break;
+      case "ack": {
+        c.renew = !!clientIp;
+        c.ip = addr(d.assigned_ip) ?? clientIp ?? c.ip;
+        c.pending = undefined;
+        if (typeof d.lease_time === "number") {
+          c.lease = d.lease_time;
+        }
+        break;
+      }
+      case "nak":
+      case "decline":
+        c.pending = undefined;
+        break;
+    }
+
+    if (d.type === "reply") {
+      const server = addr(event.src_ip);
+      if (server) {
+        c.server = server;
+        ranges.add("dhcpsrv", server);
+        if (msg === "offer" || msg === "ack" || msg === "nak") {
+          ranges.add(`dhcpsrv:${msg}`, server);
+        }
+      }
+    }
+
+    dhcpClients.set(mac, c);
+    if (!prev && dhcpClients.size > MAX_DHCP_CLIENTS) {
+      let oldest: DhcpClient | null = null;
+      for (const other of dhcpClients.values()) {
+        if (!oldest || other.at < oldest.at) oldest = other;
+      }
+      dhcpClients.delete(oldest!.mac);
+    }
+
+    noticedFirst("cmac", mac, mac, event, c.ip);
+    if (c.ip && c.ip !== prev?.ip) {
+      setFirstIp("cmac", mac, c.ip);
+    }
+  }
+
+  // Fill in the IP address of a MAC already in First Seen, replacing the
+  // item so its row redraws.
+  function setFirstIp(kind: FeedKind, value: string, ip: string) {
+    const items = firstItems[feedGroup(kind)];
+    const i = items.findIndex(
+      (item) => item.kind === kind && item.value === value,
+    );
+    if (i >= 0 && items[i].ip !== ip) {
+      items[i] = { ...items[i], ip };
     }
   }
 
@@ -1046,10 +1430,10 @@ export function TopView() {
     const type: string = event.event_type || "unknown";
     ranges.add("type", type);
     ranges.add("events", "");
-    if (typeof event.src_ip === "string") {
+    if (isHostAddress(event.src_ip)) {
       noticedFirst("src", event.src_ip, event.src_ip, event);
     }
-    if (typeof event.dest_ip === "string") {
+    if (isHostAddress(event.dest_ip)) {
       noticedFirst("dest", event.dest_ip, event.dest_ip, event);
     }
     if (event.ether && typeof event.ether === "object") {
@@ -1112,6 +1496,11 @@ export function TopView() {
       }
       case "stats":
         onStats(event);
+        break;
+      case "dhcp":
+        if (event.dhcp && typeof event.dhcp === "object") {
+          onDhcp(event);
+        }
         break;
     }
   }
@@ -1265,6 +1654,35 @@ export function TopView() {
     const destMacs = topRows("dmac", null, now);
     rememberCounts(["dnsname", "sni", "http", "asrc", "adst", "smac", "dmac"]);
 
+    // DHCP clients active within the range, new ones first.
+    const secs = windowSpec().secs;
+    const newMacs = new Set<string>();
+    const clients: DhcpClient[] = [];
+    for (const c of dhcpClients.values()) {
+      if (secs > 0 && now - c.at > secs * 1000) continue;
+      clients.push(c);
+      if (
+        dhcpKnown &&
+        !dhcpKnown.has(c.mac) &&
+        now - c.firstAt < NEW_BADGE_MS
+      ) {
+        newMacs.add(c.mac);
+      }
+    }
+    clients.sort(
+      (a, b) =>
+        Number(newMacs.has(b.mac)) - Number(newMacs.has(a.mac)) || b.at - a.at,
+    );
+    const dhcpServers = win()
+      .top("dhcpsrv", TOP_N)
+      .map(([ip, replies]) => ({
+        ip,
+        replies,
+        offers: win().total("dhcpsrv:offer", ip),
+        acks: win().total("dhcpsrv:ack", ip),
+        naks: win().total("dhcpsrv:nak", ip),
+      }));
+
     setView({
       sensor: summarizeSensors(now),
       eventsInWindow: win().total("events"),
@@ -1291,6 +1709,9 @@ export function TopView() {
       destMacs,
       srcMacDistinct: win().distinct("smac"),
       destMacDistinct: win().distinct("dmac"),
+      dhcpSeen,
+      dhcpServers,
+      dhcpServerCount: win().totals.get("dhcpsrv")?.size ?? 0,
       dnsNames,
       snis,
       httpHosts,
@@ -1311,6 +1732,31 @@ export function TopView() {
       mac: [...firstItems.mac],
     });
     setRecentAlerts([...alerts]);
+    setDhcpRows(clients);
+    if (!sameSet(newMacs, dhcpNew())) {
+      setDhcpNew(newMacs);
+    }
+  }
+
+  // Separate from the names baseline so either can fail alone.
+  async function loadDhcpBaseline() {
+    try {
+      const response = await API.fetchAgg({
+        field: DHCP_BASELINE.field,
+        q: DHCP_BASELINE.q,
+        time_range: BASELINE_RANGE,
+        size: BASELINE_SIZE,
+      });
+      const known = new Set<string>();
+      for (const row of response.rows) {
+        if (typeof row.key === "string" && row.key) {
+          known.add(row.key);
+        }
+      }
+      dhcpKnown = known;
+    } catch (e) {
+      console.log(`Top: failed to load DHCP baseline: ${e}`);
+    }
   }
 
   async function loadBaseline() {
@@ -1396,6 +1842,13 @@ export function TopView() {
     feedItems = [];
     sessionSeen = newFeedSets();
     etherSeen = false;
+    // Devices seen before a reset aren't new afterwards, the same as
+    // names.
+    for (const mac of dhcpClients.keys()) {
+      dhcpKnown?.add(mac);
+    }
+    dhcpClients = new Map();
+    dhcpSeen = false;
     firstItems = { names: [], ip: [], mac: [] };
     alerts = [];
     sensors.clear();
@@ -1412,6 +1865,7 @@ export function TopView() {
       new Tooltip(rangeLabelRef, { trigger: "hover" });
     }
     loadBaseline();
+    loadDhcpBaseline();
     tickTimer = window.setInterval(tick, TICK_MS);
   });
 
@@ -1473,6 +1927,14 @@ export function TopView() {
       .reduce((total, [, count]) => total + count, 0);
     return [...types.filter(([type]) => keep.has(type)), [OTHER_TYPES, other]];
   };
+
+  // First Seen MAC gets its addresses from Ethernet logging, DHCP, or
+  // both.
+  const showMacs = () => view().etherSeen || view().dhcpSeen;
+  const macKinds = (): FeedKind[] => [
+    ...(view().etherSeen ? ETHER_KINDS : []),
+    ...(view().dhcpSeen ? (["cmac"] as FeedKind[]) : []),
+  ];
 
   // Shown on each card header.
   const windowLabel = () =>
@@ -1841,17 +2303,67 @@ export function TopView() {
           </div>
         </div>
 
+        {/* DHCP clients and servers, only once DHCP is seen. */}
+        <Show when={view().dhcpSeen}>
+          <div class="row mt-2 g-2">
+            <div class="col-xl-9">
+              <Panel
+                title="DHCP Clients"
+                window={windowLabel()}
+                tooltip={DHCP_TOOLTIP}
+                extra={
+                  <>
+                    <Show when={dhcpNew().size > 0}>
+                      <span class="text-warning">{dhcpNew().size} new</span>
+                    </Show>
+                    <span>
+                      {dhcpRows().length.toLocaleString()}{" "}
+                      {dhcpRows().length === 1 ? "client" : "clients"}
+                    </span>
+                  </>
+                }
+                table
+                fill
+              >
+                <DhcpClientsTable
+                  clients={dhcpRows()}
+                  isNew={(mac) => dhcpNew().has(mac)}
+                />
+              </Panel>
+            </div>
+            <div class="col-xl-3">
+              <Panel
+                title="DHCP Servers"
+                window={windowLabel()}
+                tooltip="Addresses sending DHCP offers and acknowledgements. More than one can mean a misconfigured or rogue DHCP server, though relays and separate networks also show up here."
+                extra={
+                  <span
+                    classList={{ "text-warning": view().dhcpServerCount > 1 }}
+                  >
+                    {view().dhcpServerCount}{" "}
+                    {view().dhcpServerCount === 1 ? "server" : "servers"}
+                  </span>
+                }
+                table
+                fill
+              >
+                <DhcpServersTable rows={view().dhcpServers} />
+              </Panel>
+            </div>
+          </div>
+        </Show>
+
         {/* First seen on this page, no history check: MAC and IP
             addresses side by side, then names and signatures. */}
         <div class="row mt-2 g-2">
-          <Show when={view().etherSeen}>
+          <Show when={showMacs()}>
             <div class="col-6">
               <Panel
                 title="First Seen MAC Addresses"
                 window={windowLabel()}
-                tooltip="Each Ethernet address the first time this page sees it, as a source or destination, with the IP address it was using. Reset clears it."
+                tooltip="Each Ethernet address the first time this page sees it, as a source or destination or as a DHCP client, with the IP address it was using. Reset clears it."
                 extra={
-                  <KindCounts kinds={ETHER_KINDS} counts={view().firstCounts} />
+                  <KindCounts kinds={macKinds()} counts={view().firstCounts} />
                 }
                 table
               >
@@ -1866,8 +2378,8 @@ export function TopView() {
           </Show>
           <div
             classList={{
-              "col-6": view().etherSeen,
-              "col-12": !view().etherSeen,
+              "col-6": showMacs(),
+              "col-12": !showMacs(),
             }}
           >
             <Panel
@@ -2012,7 +2524,7 @@ const TOPVIEW_CSS = `
 .topview .topview-delta { color: var(--bs-success); font-size: 0.75em; }
 .topview .topview-badge { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); }
 .topview .topview-kind { min-width: 3.4em; }
-.topview .topview-kind-smac, .topview .topview-kind-dmac { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
+.topview .topview-kind-smac, .topview .topview-kind-dmac, .topview .topview-kind-cmac { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
 .topview .topview-kind-dns { background: var(--bs-info-bg-subtle); color: var(--bs-info-text-emphasis); }
 .topview .topview-kind-sni { background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); }
 .topview .topview-kind-http { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); }
