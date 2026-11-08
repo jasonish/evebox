@@ -80,6 +80,7 @@ owo-colors = "4.4.0"
 indexmap = "2.14.2"
 tokio-stream = "0.1.19"
 tokio-util = { version = "0.7.20", features = ["io"] }
+socket2 = "0.6.5"
 async-trait = "0.1.92"
 same-file = "1.0.6"
 xz2 = { version = "0.1.7", features = ["static"] }

@@ -439,10 +439,39 @@ pub(crate) async fn run_axum_server_with_tls(
             err
         )
     })?;
-    axum_server::bind_rustls(addr, tls_config)
+    let acceptor =
+        axum_server::tls_rustls::RustlsAcceptor::new(tls_config).acceptor(KeepaliveAcceptor);
+    axum_server::bind(addr)
+        .acceptor(acceptor)
         .serve(service)
         .await?;
     Ok(())
+}
+
+/// Enables TCP keepalive on accepted connections, so a client that drops
+/// off the network without closing its connections is noticed. A live feed
+/// client sent nothing, such as an NDJSON client whose filter matches
+/// nothing, would otherwise hold its subscription, and with it the polling
+/// of the datastore, until the server restarts.
+#[derive(Clone, Copy, Debug)]
+struct KeepaliveAcceptor;
+
+impl<S> axum_server::accept::Accept<tokio::net::TcpStream, S> for KeepaliveAcceptor {
+    type Stream = tokio::net::TcpStream;
+    type Service = S;
+    type Future = std::future::Ready<std::io::Result<(Self::Stream, Self::Service)>>;
+
+    fn accept(&self, stream: tokio::net::TcpStream, service: S) -> Self::Future {
+        // Probed once idle for a minute, then every 10 seconds, and given
+        // up on after a few unanswered probes, about two and a half minutes.
+        let keepalive = socket2::TcpKeepalive::new().with_time(std::time::Duration::from_secs(60));
+        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+        let keepalive = keepalive.with_interval(std::time::Duration::from_secs(10));
+        if let Err(err) = socket2::SockRef::from(&stream).set_tcp_keepalive(&keepalive) {
+            debug!("Failed to enable TCP keepalive on a connection: {err}");
+        }
+        std::future::ready(Ok((stream, service)))
+    }
 }
 
 async fn load_rustls_config(
@@ -489,7 +518,10 @@ pub(crate) async fn run_axum_server(
     let port: u16 = config.port;
     let addr: SocketAddr = format!("{}:{}", config.host, port).parse()?;
     let service = build_axum_service(context.clone());
-    axum_server::bind(addr).serve(service).await?;
+    axum_server::bind(addr)
+        .acceptor(KeepaliveAcceptor)
+        .serve(service)
+        .await?;
     Ok(())
 }
 
@@ -902,6 +934,19 @@ mod tests {
     use super::*;
     use clap::Command;
     use std::io::Write;
+
+    #[tokio::test]
+    async fn accepted_connections_have_tcp_keepalive() {
+        use axum_server::accept::Accept;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let _client = tokio::net::TcpStream::connect(listener.local_addr().unwrap())
+            .await
+            .unwrap();
+        let (stream, _) = listener.accept().await.unwrap();
+        assert!(!socket2::SockRef::from(&stream).keepalive().unwrap());
+        let (stream, ()) = KeepaliveAcceptor.accept(stream, ()).await.unwrap();
+        assert!(socket2::SockRef::from(&stream).keepalive().unwrap());
+    }
 
     fn matches(args: &[&str]) -> clap::ArgMatches {
         Command::new("test")

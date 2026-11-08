@@ -874,6 +874,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "socket2",
  "sqlx",
  "suricatax-rule-parser",
  "tar",
