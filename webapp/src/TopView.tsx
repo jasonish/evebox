@@ -2122,7 +2122,7 @@ export function TopView() {
                     ? "text-warning"
                     : ""
               }
-              label="Drops"
+              label="Capture Drops"
               sub={
                 view().sensor?.dropPct != null
                   ? view().sensor!.worst
