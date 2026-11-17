@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+pub(crate) mod backoff;
 #[allow(clippy::module_inception)]
 pub(crate) mod eve;
 pub(crate) mod filters;

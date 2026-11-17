@@ -144,6 +144,7 @@ pub(crate) fn spawn(
 #[cfg(unix)]
 mod imp {
     use super::*;
+    use crate::eve::backoff::RetryBackoff;
     use crate::eve::filters::AddAgentFilenameFilter;
     use std::io::ErrorKind;
     use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
@@ -406,18 +407,28 @@ mod imp {
         }
 
         async fn commit(&mut self) {
+            let mut backoff = RetryBackoff::new();
             loop {
                 match self.sink.commit().await {
                     Ok(_) => {
+                        if backoff.attempts() > 0 {
+                            info!(
+                                "Committed EVE events from socket {} after {} failed attempts",
+                                self.path.display(),
+                                backoff.attempts()
+                            );
+                        }
                         self.commits += 1;
                         return;
                     }
                     Err(err) => {
+                        let delay = backoff.next_delay();
                         error!(
-                            "Failed to commit EVE events from socket {} (will retry): {err:#}",
-                            self.path.display()
+                            "Failed to commit EVE events from socket {} (will retry in {}s): {err:#}",
+                            self.path.display(),
+                            delay.as_secs()
                         );
-                        tokio::time::sleep(FLUSH_INTERVAL).await;
+                        tokio::time::sleep(delay).await;
                     }
                 }
             }

@@ -9,6 +9,7 @@
 use crate::prelude::*;
 
 use crate::bookmark;
+use crate::eve::backoff::RetryBackoff;
 use crate::eve::reader::EveReader;
 use crate::importer::EventSink;
 use std::path::PathBuf;
@@ -184,15 +185,29 @@ impl Processor {
     }
 
     async fn commit(&mut self) {
+        let mut backoff = RetryBackoff::new();
         loop {
             match self.importer.commit().await {
                 Ok(_n) => {
+                    if backoff.attempts() > 0 {
+                        info!(
+                            "Committed events from {} after {} failed attempts",
+                            self.reader.filename.display(),
+                            backoff.attempts()
+                        );
+                    }
                     self.checkpoint();
                     break;
                 }
                 Err(err) => {
-                    error!("Failed to commit events (will try again): {}", err);
-                    self.sleep_for(1000).await;
+                    let delay = backoff.next_delay();
+                    error!(
+                        "Failed to commit events from {} (will try again in {}s): {}",
+                        self.reader.filename.display(),
+                        delay.as_secs(),
+                        err
+                    );
+                    tokio::time::sleep(delay).await;
                 }
             }
         }

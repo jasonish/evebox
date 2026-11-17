@@ -41,6 +41,13 @@
   kept in the URL alongside the sensor selection.
   https://github.com/jasonish/evebox/issues/385
 
+### Changed
+- When events cannot be sent to the EveBox server or Elasticsearch, for
+  example when an agent cannot connect to the server, the retry interval
+  now backs off from 1 second up to at most 1 minute instead of retrying
+  and logging an error every second. This applies to the agent and to
+  EVE inputs read by the server.
+
 ### Fixed
 - The inbox, escalated and alerts views failed with "'null' is not an IP
   string literal" on Elasticsearch and OpenSearch indices that map
