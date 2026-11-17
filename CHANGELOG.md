@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.32.0 - 2026-11-17
 
 ### Added
 - New Live view showing events as they arrive, without aggregation.
