@@ -2,13 +2,6 @@
 
 ## Unreleased
 
-### Changed
-- API time ranges and custom PCAP durations now accept integer seconds or
-  integer components with `s`, `m`, `h`, `d`, and `w` suffixes, such as `30s`,
-  `5m`, or `1h30m` (also `1h 30m`). Spelled-out units, fractions, subsecond
-  units, months, and years are no longer accepted. Existing time-range
-  dropdowns and PCAP duration presets are unchanged.
-
 ### Added
 - New Live view showing events as they arrive, without aggregation.
   Events can be limited by sensor, event type and an EveBox query string
@@ -22,12 +15,20 @@
   The `/api/firehose/sse` and `/api/firehose` endpoints accept
   `event_type`, `sensor` and `q` parameters, and the SSE stream reports
   dropped events as a `gap` event rather than queueing without bound.
-- The Live view also works when another tool, such as Filebeat or
+- New Top view under the "..." menu, showing a live summary of the event
+  stream: sensor statistics, event types, alert severities and categories,
+  top hosts, DNS and TLS server names, and newly seen addresses, names and
+  signatures. DHCP cards show clients, their address assignments and
+  exchange progress, and servers seen replying. Counts cover a rolling
+  time window or the period since opening or resetting the view, and can
+  be limited by sensor. The view can be paused and resumed. It is marked
+  as under construction and subject to change.
+- The Live and Top views also work when another tool, such as Filebeat or
   Logstash, writes events directly to Elasticsearch or OpenSearch. When
   no events are ingested through EveBox itself, EveBox polls the
   datastore every second while anyone is watching, rechecking the last
   5 minutes for events that arrive late, and shows each new event once.
-  This is best effort, and the view says so: events that arrive later
+  This is best effort, and the views say so: events that arrive later
   than that, or faster than a poll can read on a very busy system, can be
   missed. Nothing is polled while nobody is watching, all viewers share
   the same polling, and while EveBox is ingesting events itself, from its
