@@ -5,7 +5,6 @@ use crate::pcap::{
     FetchError, FetchStats, Limits, PcapFilter, PcapRequest, PcapSource, SpoolConfig,
 };
 use crate::prelude::*;
-use chrono::TimeZone;
 use clap::Parser as ClapParser;
 use same_file::Handle;
 use std::io::IsTerminal;
@@ -220,25 +219,49 @@ fn end_time(args: &ExtractArgs) -> Result<u64> {
 }
 
 fn parse_start_time(input: &str) -> std::result::Result<u64, String> {
-    let datetime =
-        if let Ok(datetime) = chrono::DateTime::parse_from_str(input, "%Y%m%dT%H:%M:%S%.f%#z") {
-            datetime.fixed_offset()
-        } else {
-            let naive = chrono::NaiveDateTime::parse_from_str(input, "%Y%m%dT%H:%M:%S%.f")
-                .or_else(|_| {
-                    chrono::NaiveDate::parse_from_str(input, "%Y%m%d")
-                        .map(|date| date.and_hms_opt(0, 0, 0).unwrap())
-                })
-                .map_err(|_| "expected YYYYMMDD or YYYYMMDDTHH:MM:SS[.ffffff][TZ]".to_string())?;
-            chrono::Local
-                .from_local_datetime(&naive)
-                .single()
-                .ok_or_else(|| "time is ambiguous or invalid in the local timezone".to_string())?
-                .fixed_offset()
-        };
-
-    u64::try_from(datetime.timestamp_micros())
+    let pattern = regex::Regex::new(
+        r"^\d{8}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?P<offset>Z|[+-]\d{2}:?\d{2})?)?$",
+    )
+    .unwrap();
+    let captures = pattern
+        .captures(input)
+        .ok_or_else(|| "expected YYYYMMDD or YYYYMMDDTHH:MM:SS[.ffffff][TZ]".to_string())?;
+    let datetime = crate::datetime::parse(input, None)
+        .map_err(|err| err.to_string())?
+        .datetime;
+    let nanos = if captures.name("offset").is_some() {
+        datetime.unix_timestamp_nanos()
+    } else {
+        let timezone = jiff::tz::TimeZone::try_system().map_err(|err| err.to_string())?;
+        local_timestamp(datetime, &timezone)?.as_nanosecond()
+    };
+    // Floor before converting so even a fractional microsecond before the
+    // epoch is rejected, for both explicit offsets and local times.
+    u64::try_from(nanos.div_euclid(1_000))
         .map_err(|_| "start time must be after the Unix epoch".to_string())
+}
+
+/// Resolve a wall-clock time without guessing across a daylight-saving gap or
+/// overlap. `time` supplies fixed-offset timestamps, not timezone rules.
+fn local_timestamp(
+    datetime: time::OffsetDateTime,
+    timezone: &jiff::tz::TimeZone,
+) -> std::result::Result<jiff::Timestamp, String> {
+    let civil = jiff::civil::DateTime::new(
+        datetime.year() as i16,
+        datetime.month() as i8,
+        datetime.day() as i8,
+        datetime.hour() as i8,
+        datetime.minute() as i8,
+        datetime.second() as i8,
+        datetime.nanosecond() as i32,
+    )
+    .map_err(|err| err.to_string())?;
+    timezone
+        .to_ambiguous_zoned_datetime(civil)
+        .unambiguous()
+        .map(|zoned| zoned.timestamp())
+        .map_err(|_| "time is ambiguous or invalid in the local timezone".to_string())
 }
 
 #[cfg(all(test, windows))]
@@ -622,12 +645,40 @@ mod test {
             1_704_067_200_000_000
         );
 
-        let local_midnight = chrono::Local
-            .with_ymd_and_hms(2024, 1, 1, 0, 0, 0)
-            .single()
-            .unwrap()
-            .timestamp_micros() as u64;
+        let local_midnight = local_timestamp(
+            time::macros::datetime!(2024-01-01 00:00 UTC),
+            &jiff::tz::TimeZone::try_system().unwrap(),
+        )
+        .unwrap()
+        .as_microsecond() as u64;
         assert_eq!(parse_start_time("20240101").unwrap(), local_midnight);
         assert!(parse_start_time("1704067200").is_err());
+        assert!(parse_start_time("19600101T00:00:00Z").is_err());
+        assert!(parse_start_time("19691231T23:59:59.999999999Z").is_err());
+        assert_eq!(
+            parse_start_time("20240101T01:00:00+0100").unwrap(),
+            1_704_067_200_000_000
+        );
+    }
+
+    #[test]
+    fn local_time_rejects_dst_gaps_and_overlaps() {
+        let timezone = jiff::tz::TimeZone::get("America/New_York").unwrap();
+        for input in ["2024-03-10T02:30:00Z", "2024-11-03T01:30:00Z"] {
+            let wall_clock = crate::datetime::parse(input, None).unwrap().datetime;
+            assert!(local_timestamp(wall_clock, &timezone).is_err(), "{input}");
+        }
+        let winter =
+            local_timestamp(time::macros::datetime!(2024-01-01 00:00 UTC), &timezone).unwrap();
+        let summer =
+            local_timestamp(time::macros::datetime!(2024-07-01 00:00 UTC), &timezone).unwrap();
+        assert_eq!(winter.to_string(), "2024-01-01T05:00:00Z");
+        assert_eq!(summer.to_string(), "2024-07-01T04:00:00Z");
+        let before_epoch = local_timestamp(
+            time::macros::datetime!(1969-12-31 23:59:59.999999999 UTC),
+            &jiff::tz::TimeZone::UTC,
+        )
+        .unwrap();
+        assert_eq!(before_epoch.as_nanosecond(), -1);
     }
 }

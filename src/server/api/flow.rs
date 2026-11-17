@@ -40,11 +40,11 @@ const MAX_EVENT_TYPES: usize = 50;
 
 /// Slack around known flow start and end times, for events logged
 /// slightly outside them.
-const SLACK: chrono::TimeDelta = chrono::TimeDelta::minutes(1);
+const SLACK: time::Duration = time::Duration::minutes(1);
 
 /// How far to look from the event when the flow start or end is not
 /// known.
-const UNKNOWN_BOUND: chrono::TimeDelta = chrono::TimeDelta::hours(24);
+const UNKNOWN_BOUND: time::Duration = time::Duration::hours(24);
 
 /// Fields dropped from returned events; they are large and the flow
 /// listing does not use them.

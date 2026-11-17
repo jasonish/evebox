@@ -11,6 +11,7 @@ mod bookmark;
 mod cert;
 mod config;
 mod datetime;
+mod duration;
 mod elastic;
 mod error;
 mod eve;

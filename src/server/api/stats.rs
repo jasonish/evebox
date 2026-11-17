@@ -29,7 +29,7 @@ impl StatsAggQuery {
         }
 
         // Default to 24 hours ago if no min_timestamp provided
-        let delta = chrono::Duration::hours(24);
+        let delta = time::Duration::hours(24);
         let now = DateTime::now();
         Ok((now.datetime - delta).into())
     }

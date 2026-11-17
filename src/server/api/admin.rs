@@ -95,8 +95,10 @@ pub(super) async fn delete_filter(
 pub(crate) struct AgentKeyInfo {
     pub id: i64,
     pub name: String,
-    pub created_at: crate::datetime::ChronoDateTime,
-    pub last_seen: Option<crate::datetime::ChronoDateTime>,
+    #[serde(serialize_with = "crate::datetime::serialize_rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    #[serde(serialize_with = "crate::datetime::serialize_optional_rfc3339")]
+    pub last_seen: Option<time::OffsetDateTime>,
 }
 
 impl From<AgentKey> for AgentKeyInfo {

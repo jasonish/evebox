@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2020 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
+use crate::datetime::DateTime;
 use crate::{
     datetime,
     elastic::{TAG_ARCHIVED, TAG_ESCALATED},
@@ -12,7 +13,6 @@ use crate::{
     },
 };
 use anyhow::Result;
-use chrono::DateTime;
 use clap::CommandFactory;
 use clap::{ArgMatches, Command, FromArgMatches, Parser, Subcommand};
 use futures::TryStreamExt;
@@ -220,7 +220,7 @@ async fn info(args: &InfoArgs) -> Result<()> {
     let min_timestamp = sqlx::query("SELECT MIN(timestamp) FROM events")
         .try_map(|row: SqliteRow| {
             let timestamp: i64 = row.try_get(0)?;
-            Ok(DateTime::from_timestamp_nanos(timestamp))
+            Ok(DateTime::from_nanos(timestamp))
         })
         .fetch_optional(&pool)
         .await?;
@@ -228,7 +228,7 @@ async fn info(args: &InfoArgs) -> Result<()> {
     let max_timestamp = sqlx::query("SELECT MAX(timestamp) FROM events")
         .try_map(|row: SqliteRow| {
             let timestamp: i64 = row.try_get(0)?;
-            Ok(DateTime::from_timestamp_nanos(timestamp))
+            Ok(DateTime::from_nanos(timestamp))
         })
         .fetch_optional(&pool)
         .await?;
@@ -382,7 +382,7 @@ async fn optimize(args: &OptimizeArgs) -> Result<()> {
     let repo = SqliteEventRepo::new(conn, pool.clone(), Arc::new(Metrics::default()));
 
     info!("Running inbox style query");
-    let gte = datetime::DateTime::now().sub(chrono::Duration::days(1));
+    let gte = datetime::DateTime::now().sub(time::Duration::days(1));
     repo.alerts(AlertQueryOptions {
         timestamp_gte: Some(gte),
         ..Default::default()

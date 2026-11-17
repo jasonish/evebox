@@ -15,8 +15,8 @@ use axum::{Form, Json, extract::State, response::IntoResponse};
 use futures::Stream;
 use serde::Deserialize;
 use std::convert::Infallible;
+use std::sync::Arc;
 use std::time::Duration;
-use std::{ops::Sub, sync::Arc};
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct AggParams {
@@ -66,9 +66,12 @@ pub(crate) async fn agg_sse(
         .unwrap_or_default();
 
     let min_timestamp = parse_duration(&form.time_range)
-        .map(|d| chrono::Utc::now().sub(d))
-        .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))
-        .unwrap();
+        .and_then(|d| {
+            Ok(crate::datetime::DateTime::now()
+                .checked_sub_std(d)?
+                .datetime)
+        })
+        .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))?;
     query_string.push(QueryElement {
         negated: false,
         value: QueryValue::From(min_timestamp.into()),
@@ -163,7 +166,11 @@ pub(crate) async fn agg(
         .unwrap_or_default();
 
     let min_timestamp = parse_duration(&form.time_range)
-        .map(|d| chrono::Utc::now().sub(d))
+        .and_then(|d| {
+            Ok(crate::datetime::DateTime::now()
+                .checked_sub_std(d)?
+                .datetime)
+        })
         .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))?;
     query_string.push(QueryElement {
         negated: false,
@@ -195,7 +202,11 @@ pub(crate) async fn event_types(
 ) -> Result<impl IntoResponse, AppError> {
     let mut query_string = vec![];
     let min_timestamp = parse_duration(&form.time_range)
-        .map(|d| chrono::Utc::now().sub(d))
+        .and_then(|d| {
+            Ok(crate::datetime::DateTime::now()
+                .checked_sub_std(d)?
+                .datetime)
+        })
         .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))?;
     query_string.push(QueryElement {
         negated: false,

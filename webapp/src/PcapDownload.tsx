@@ -342,6 +342,7 @@ function PresetTextField(props: {
   setValue: (v: string) => void;
   presets: string[];
   placeholder: string;
+  help?: string;
 }) {
   const controlId = createUniqueId();
   return (
@@ -372,6 +373,9 @@ function PresetTextField(props: {
           </Dropdown.Menu>
         </Dropdown>
       </div>
+      <Show when={props.help}>
+        <Form.Text>{props.help}</Form.Text>
+      </Show>
     </Form.Group>
   );
 }
@@ -389,6 +393,7 @@ function DurationField(props: {
       setValue={props.setValue}
       presets={DURATION_PRESETS}
       placeholder={"1m"}
+      help={"Use whole seconds or s/m/h/d/w units, e.g. 30s, 5m, 1h30m."}
     />
   );
 }

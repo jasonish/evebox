@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+- API time ranges and custom PCAP durations now accept integer seconds or
+  integer components with `s`, `m`, `h`, `d`, and `w` suffixes, such as `30s`,
+  `5m`, or `1h30m` (also `1h 30m`). Spelled-out units, fractions, subsecond
+  units, months, and years are no longer accepted. Existing time-range
+  dropdowns and PCAP duration presets are unchanged.
+
 ### Added
 - New Live view showing events as they arrive, without aggregation.
   Events can be limited by sensor, event type and an EveBox query string

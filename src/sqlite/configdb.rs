@@ -40,8 +40,10 @@ pub(crate) struct FilterRow {
     pub filter: sqlx::types::Json<EventFilter>,
     pub user_id: i64,
     pub enabled: bool,
-    pub created_at: crate::datetime::ChronoDateTime,
-    pub updated_at: crate::datetime::ChronoDateTime,
+    #[serde(serialize_with = "crate::datetime::serialize_rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    #[serde(serialize_with = "crate::datetime::serialize_rfc3339")]
+    pub updated_at: time::OffsetDateTime,
     pub comment: Option<String>,
 }
 
@@ -141,8 +143,10 @@ pub(crate) struct AgentKey {
     pub id: i64,
     pub name: String,
     pub key: String,
-    pub created_at: crate::datetime::ChronoDateTime,
-    pub last_seen: Option<crate::datetime::ChronoDateTime>,
+    #[serde(serialize_with = "crate::datetime::serialize_rfc3339")]
+    pub created_at: time::OffsetDateTime,
+    #[serde(serialize_with = "crate::datetime::serialize_optional_rfc3339")]
+    pub last_seen: Option<time::OffsetDateTime>,
 }
 
 fn generate_agent_key() -> String {

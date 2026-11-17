@@ -7,7 +7,6 @@ use crate::sqlite::prelude::*;
 use std::collections::HashSet;
 use std::time::Instant;
 
-use chrono::Timelike;
 use indexmap::IndexMap;
 use sqlx::Row;
 use sqlx::sqlite::{SqliteArguments, SqliteRow};
@@ -313,7 +312,10 @@ impl SqliteEventRepo {
 
             if now.elapsed() > std::time::Duration::from_secs(timeout) {
                 timed_out = true;
-                abort_at = DateTime::from_nanos(timestamp).datetime.with_nanosecond(0);
+                abort_at = DateTime::from_nanos(timestamp)
+                    .datetime
+                    .replace_nanosecond(0)
+                    .ok();
             }
         }
 

@@ -153,7 +153,7 @@ impl SqliteEventRepo {
         let field = format!("$.{}", qp.field);
         let start_time = qp.start_time.to_nanos();
         let end_time = qp.end_time.to_nanos();
-        let range = (qp.end_time.datetime - qp.start_time.datetime).num_seconds();
+        let range = (qp.end_time.datetime - qp.start_time.datetime).whole_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut args = SqliteArguments::default();
@@ -259,7 +259,7 @@ impl SqliteEventRepo {
         let field = format!("$.{}", params.field);
         let start_time = params.start_time.to_nanos();
         let end_time = params.end_time.to_nanos();
-        let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
+        let range = (params.end_time.datetime - params.start_time.datetime).whole_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut args = SqliteArguments::default();
@@ -329,7 +329,7 @@ impl SqliteEventRepo {
         let field = format!("$.{}", params.field);
         let start_time = params.start_time.to_nanos();
         let end_time = params.end_time.to_nanos();
-        let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
+        let range = (params.end_time.datetime - params.start_time.datetime).whole_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut args = SqliteArguments::default();

@@ -19,7 +19,7 @@ impl SqliteEventRepo {
         let before = before.unwrap_or_else(DateTime::now);
 
         // Set after to 24 hours before before.
-        let after: DateTime = (before.datetime - chrono::Duration::hours(1)).into();
+        let after: DateTime = (before.datetime - time::Duration::hours(1)).into();
 
         let mut builder = crate::sqlite::builder::EventQueryBuilder::new(self.fts().await);
         builder.select("DISTINCT COALESCE(events.source->>'dns'->>'queries'->>0->>'rrname', events.source->>'dns'->>'rrname')");

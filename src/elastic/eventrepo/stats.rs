@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 impl ElasticEventRepo {
     pub async fn stats_agg(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
         let range = params.end_time.datetime - params.start_time.datetime;
-        let range = range.num_seconds();
+        let range = range.whole_seconds();
         let interval = util::histogram_interval(range);
 
         let start_time = params.start_time.to_rfc3339_utc();
@@ -84,7 +84,7 @@ impl ElasticEventRepo {
     pub async fn stats_agg_diff(&self, params: &StatsAggQueryParams) -> Result<serde_json::Value> {
         let start_time = params.start_time.to_rfc3339_utc();
         let end_time = params.end_time.to_rfc3339_utc();
-        let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
+        let range = (params.end_time.datetime - params.start_time.datetime).whole_seconds();
         let interval = crate::util::histogram_interval(range);
         let mut filters = vec![];
         filters.push(json!({"term": {self.map_field("event_type"): "stats"}}));
@@ -177,7 +177,7 @@ impl ElasticEventRepo {
         params: &StatsAggQueryParams,
     ) -> Result<serde_json::Value> {
         let range = params.end_time.datetime - params.start_time.datetime;
-        let range = range.num_seconds();
+        let range = range.whole_seconds();
         let interval = util::histogram_interval(range);
 
         let start_time = params.start_time.to_rfc3339_utc();
@@ -288,7 +288,7 @@ impl ElasticEventRepo {
     ) -> Result<serde_json::Value> {
         let start_time = params.start_time.to_rfc3339_utc();
         let end_time = params.end_time.to_rfc3339_utc();
-        let range = (params.end_time.datetime - params.start_time.datetime).num_seconds();
+        let range = (params.end_time.datetime - params.start_time.datetime).whole_seconds();
         let interval = crate::util::histogram_interval(range);
 
         let mut filters = vec![];

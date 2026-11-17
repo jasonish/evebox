@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2025 Jason Ish <jason@codemonkey.net>
 // SPDX-License-Identifier: MIT
 
-use chrono::TimeZone;
+use time::{Date, Month, OffsetDateTime};
 
 use crate::elastic::{HistoryEntryBuilder, TAG_ARCHIVED, TAG_AUTO_ARCHIVED};
 use crate::server::metrics::Metrics;
@@ -59,7 +59,7 @@ pub(crate) async fn do_delete_indices(
     let mut count = 0;
     for index in &indices {
         if let Some(date) = parse_index_date(&index.name) {
-            let age = chrono::Utc::now().signed_duration_since(date).num_days();
+            let age = (OffsetDateTime::now_utc() - date).whole_days();
             if age > days as i64 {
                 info!("Deleting index older than {} days: {}", days, index.name);
                 if force {
@@ -100,8 +100,11 @@ async fn auto_archive(
     }
 
     let now = DateTime::now();
-    let interval = chrono::Duration::days(config.value as i64).to_std()?;
-    let then = now - interval;
+    let seconds = config
+        .value
+        .checked_mul(86400)
+        .ok_or_else(|| anyhow!("retention duration out of range"))?;
+    let then = now.checked_sub_std(std::time::Duration::from_secs(seconds))?;
 
     let mut filter = vec![];
     filter.push(json!({"exists": {"field": repo.map_field("event_type")}}));
@@ -134,7 +137,7 @@ async fn auto_archive(
     Ok(())
 }
 
-pub(crate) fn parse_index_date(name: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+pub(crate) fn parse_index_date(name: &str) -> Option<OffsetDateTime> {
     let re = regex::Regex::new(r"(\d{4})\.(\d{2})\.(\d{2})").unwrap();
     // Retention scans the broad `{base}*` pattern, which now includes the
     // separate `{base}-stats-{date}` indices as well as any index that may not
@@ -142,23 +145,24 @@ pub(crate) fn parse_index_date(name: &str) -> Option<chrono::DateTime<chrono::Ut
     // parseable date rather than panicking.
     let caps = re.captures(name)?;
     let year = caps.get(1)?.as_str().parse::<i32>().ok()?;
-    let month = caps.get(2)?.as_str().parse::<u32>().ok()?;
-    let day = caps.get(3)?.as_str().parse::<u32>().ok()?;
-    match chrono::Utc.with_ymd_and_hms(year, month, day, 0, 0, 0) {
-        chrono::offset::LocalResult::Single(dt) => Some(dt),
-        chrono::offset::LocalResult::Ambiguous(_, _) => None,
-        chrono::offset::LocalResult::None => None,
-    }
+    let month = Month::try_from(caps.get(2)?.as_str().parse::<u8>().ok()?).ok()?;
+    let day = caps.get(3)?.as_str().parse::<u8>().ok()?;
+    Some(
+        Date::from_calendar_date(year, month, day)
+            .ok()?
+            .midnight()
+            .assume_utc(),
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_index_date;
+    use super::{DateTime, parse_index_date};
 
     #[test]
     fn parses_main_index_date() {
         let dt = parse_index_date("logstash-2026.06.28").unwrap();
-        assert_eq!(dt.format("%Y.%m.%d").to_string(), "2026.06.28");
+        assert_eq!(DateTime::from(dt).yyyymmdd("."), "2026.06.28");
     }
 
     #[test]
@@ -166,7 +170,7 @@ mod tests {
         // Stats events live in their own `{base}-stats-{date}` index; retention
         // must still recognise and age these out.
         let dt = parse_index_date("logstash-stats-2026.06.28").unwrap();
-        assert_eq!(dt.format("%Y.%m.%d").to_string(), "2026.06.28");
+        assert_eq!(DateTime::from(dt).yyyymmdd("."), "2026.06.28");
     }
 
     #[test]

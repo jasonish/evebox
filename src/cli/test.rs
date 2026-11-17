@@ -696,7 +696,6 @@ async fn check_live_feed(
     base: &str,
 ) -> Result<Option<String>> {
     use crate::server::livefeed::{FeedConfig, LiveFeed};
-    use chrono::{SecondsFormat, Utc};
     use std::collections::HashMap;
     use std::sync::atomic::Ordering;
 
@@ -713,11 +712,9 @@ async fn check_live_feed(
         .await?
         .error_for_status()?;
 
-    let now = Utc::now();
-    let ts = |offset_ms: i64| {
-        (now - chrono::Duration::milliseconds(offset_ms))
-            .to_rfc3339_opts(SecondsFormat::Millis, true)
-    };
+    let now = time::OffsetDateTime::now_utc();
+    let ts =
+        |offset_ms: i64| DateTime::from(now - time::Duration::milliseconds(offset_ms)).to_elastic();
     let event = |id: &str, timestamp: &str| {
         serde_json::json!({
             "@timestamp": timestamp,
@@ -755,7 +752,9 @@ async fn check_live_feed(
     // the first page holds one.
     let tie = ts(1_000);
     let nanos =
-        (now - chrono::Duration::milliseconds(1_500)).to_rfc3339_opts(SecondsFormat::Nanos, true);
+        (now - time::Duration::milliseconds(1_500)).format(time::macros::format_description!(
+            "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:9]Z"
+        ))?;
     let mut ecs = event("ecs", &ts(200));
     ecs["host"] = serde_json::json!({"name": "os-hostname"});
     ecs["agent"] = serde_json::json!({"name": "ecs-sensor"});
@@ -1598,8 +1597,8 @@ fn event_result_has_id(value: &serde_json::Value, id: &str) -> bool {
 }
 
 fn inclusive_date_shortcut_query(ts: &DateTime) -> String {
-    let from: DateTime = (ts.datetime - chrono::Duration::seconds(1)).into();
-    let to: DateTime = (ts.datetime + chrono::Duration::seconds(1)).into();
+    let from: DateTime = (ts.datetime - time::Duration::seconds(1)).into();
+    let to: DateTime = (ts.datetime + time::Duration::seconds(1)).into();
     format!(
         "@from:{} @to:{}",
         quote_value(&from.to_rfc3339_utc()),

@@ -81,13 +81,13 @@ pub(crate) async fn post(
         context.session_store.put(session.clone()).unwrap();
 
         // Create expiry data one week in the future.
-        let expiry = chrono::Utc::now() + chrono::Duration::weeks(1);
+        let expiry = time::OffsetDateTime::now_utc() + time::Duration::weeks(1);
         if let Err(err) = context
             .configdb
             .save_session(
                 session.session_id.as_ref().unwrap(),
                 &user.uuid,
-                expiry.timestamp(),
+                expiry.unix_timestamp(),
             )
             .await
         {
@@ -99,7 +99,7 @@ pub(crate) async fn post(
             let cookie = format!(
                 "x-evebox-session-id={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}",
                 session_id,
-                chrono::Duration::days(365).num_seconds()
+                time::Duration::days(365).whole_seconds()
             );
             headers.insert(SET_COOKIE, cookie.parse().unwrap());
         }

@@ -34,13 +34,10 @@ fn event_timestamp(event: &serde_json::Value) -> Result<DateTime> {
 }
 
 /// Checked timestamp arithmetic: hostile EVE timestamps near the
-/// chrono range limits must produce an error, never a panic.
-fn checked(
-    datetime: chrono::DateTime<chrono::FixedOffset>,
-    delta: chrono::Duration,
-) -> Result<chrono::DateTime<chrono::FixedOffset>> {
+/// timestamp range limits must produce an error, never a panic.
+fn checked(datetime: time::OffsetDateTime, delta: time::Duration) -> Result<time::OffsetDateTime> {
     datetime
-        .checked_add_signed(delta)
+        .checked_add(delta)
         .ok_or_else(|| anyhow!("timestamp out of range"))
 }
 
@@ -54,8 +51,8 @@ pub(crate) fn derive_window(event: &serde_json::Value) -> Result<Window> {
     };
     let flow_start = flow["start"].as_str().map(parse_ts).transpose()?;
 
-    let one_sec = chrono::Duration::seconds(1);
-    let one_min = chrono::Duration::minutes(1);
+    let one_sec = time::Duration::seconds(1);
+    let one_min = time::Duration::minutes(1);
 
     let (start, end) = match (event_type, flow_start) {
         ("flow" | "netflow", Some(flow_start)) => {
@@ -84,10 +81,7 @@ pub(crate) fn derive_window(event: &serde_json::Value) -> Result<Window> {
     window(start, end)
 }
 
-fn window(
-    start: chrono::DateTime<chrono::FixedOffset>,
-    end: chrono::DateTime<chrono::FixedOffset>,
-) -> Result<Window> {
+fn window(start: time::OffsetDateTime, end: time::OffsetDateTime) -> Result<Window> {
     if end < start {
         bail!("capture window ends before it starts");
     }
@@ -100,7 +94,7 @@ fn window(
 
 /// A free-form window: `[start, start + span]`.
 /// Used by the API's free-form (PCAP Filter / standalone) mode.
-pub(crate) fn window_from_start(start: &DateTime, span: chrono::Duration) -> Result<Window> {
+pub(crate) fn window_from_start(start: &DateTime, span: time::Duration) -> Result<Window> {
     let end = checked(start.datetime, span)?;
     window(start.datetime, end)
 }
@@ -109,8 +103,8 @@ pub(crate) fn window_from_start(start: &DateTime, span: chrono::Duration) -> Res
 /// used by the API's event-relative mode.
 pub(crate) fn window_around_event(
     event: &serde_json::Value,
-    before: chrono::Duration,
-    after: chrono::Duration,
+    before: time::Duration,
+    after: time::Duration,
 ) -> Result<Window> {
     let center = event_timestamp(event)?;
     let start = checked(center.datetime, -before)?;
@@ -350,14 +344,9 @@ mod test {
 
     #[test]
     fn test_hostile_timestamps_error_not_panic() {
-        // chrono parses extended years right up to its range limits;
-        // window arithmetic within a minute of the boundary must
-        // error, never panic.
-        let near_min =
-            (chrono::DateTime::<chrono::Utc>::MIN_UTC + chrono::Duration::seconds(30)).to_rfc3339();
-        let near_max =
-            (chrono::DateTime::<chrono::Utc>::MAX_UTC - chrono::Duration::seconds(30)).to_rfc3339();
-        for timestamp in [near_min, near_max] {
+        // Out-of-range input and arithmetic near the supported upper bound
+        // must return an error, never panic.
+        for timestamp in ["-999999-01-01T00:00:30Z", "9999-12-31T23:59:30Z"] {
             let event = json!({
                 "event_type": "dns",
                 "timestamp": timestamp,

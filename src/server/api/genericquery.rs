@@ -39,7 +39,26 @@ impl TimeRange {
 
     pub fn parse_time_range_as_min_timestamp(&self) -> Result<DateTime, AppError> {
         let range: std::time::Duration = self.parse_time_range()?;
-        let range: chrono::Duration = chrono::Duration::from_std(range).unwrap();
-        Ok(DateTime::now().sub(range))
+        DateTime::now()
+            .checked_sub_std(range)
+            .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_and_out_of_range_durations_are_bad_requests() {
+        for input in ["2 hours", "-1s", "10000000d", "18446744073709551616s"] {
+            assert!(
+                matches!(
+                    TimeRange(input.to_string()).parse_time_range_as_min_timestamp(),
+                    Err(AppError::BadRequest(_))
+                ),
+                "{input}"
+            );
+        }
     }
 }

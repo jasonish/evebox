@@ -11,12 +11,12 @@ use std::time::UNIX_EPOCH;
 
 /// Parse a string representing a duration.
 ///
-/// This is a wrapper around humantime with special handlers for "",
-/// "all" and "*" which will return the duration since the unix epoch.
+/// The shared duration parser with special handlers for "", "all" and "*",
+/// which return the duration since the Unix epoch.
 pub(crate) fn parse_duration(duration: &str) -> Result<Duration> {
     match duration {
         "" | "all" | "*" => Ok(UNIX_EPOCH.elapsed()?),
-        _ => Ok(humantime::parse_duration(duration)?),
+        _ => crate::duration::parse(duration),
     }
 }
 
@@ -33,4 +33,21 @@ pub(crate) fn error_response(status: StatusCode, code: &str, message: &str) -> R
 /// (empty or whitespace) reads as absent.
 pub(crate) fn present(value: &Option<String>) -> Option<&str> {
     value.as_deref().map(str::trim).filter(|s| !s.is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_time_sentinels_are_preserved() {
+        for input in ["", "all", "*"] {
+            let before = UNIX_EPOCH.elapsed().unwrap();
+            let duration = parse_duration(input).unwrap();
+            let after = UNIX_EPOCH.elapsed().unwrap();
+            assert!(duration >= before && duration <= after, "{input:?}");
+        }
+        assert_eq!(parse_duration("1h30m").unwrap(), Duration::from_secs(5400));
+        assert!(parse_duration("1 month").is_err());
+    }
 }

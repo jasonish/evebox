@@ -21,8 +21,6 @@ use serde::Deserialize;
 use serde_json::json;
 use stats::earliest_timestamp;
 use std::collections::HashMap;
-use std::ops::Sub;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use self::genericquery::TimeRange;
@@ -339,7 +337,11 @@ pub(crate) async fn histogram_time(
         && !time_range.is_empty()
     {
         let min_timestamp = parse_duration(time_range)
-            .map(|d| chrono::Utc::now().sub(d))
+            .and_then(|d| {
+                Ok(crate::datetime::DateTime::now()
+                    .checked_sub_std(d)?
+                    .datetime)
+            })
             .map_err(|err| AppError::BadRequest(format!("time_range: {err}")))?;
         query_string.push(QueryElement {
             negated: false,
@@ -542,16 +544,14 @@ fn parse_then_from_duration(
     duration: &str,
 ) -> Option<crate::datetime::DateTime> {
     // First parse to a somewhat standard duration.
-    let duration = match humantime::Duration::from_str(duration) {
+    let duration = match crate::duration::parse(duration) {
         Ok(duration) => duration,
         Err(err) => {
             error!("Failed to parse duration: {}: {}", duration, err);
             return None;
         }
     };
-    let d: std::time::Duration = duration.into();
-    let d = chrono::Duration::from_std(d).unwrap();
-    Some(now.sub(d))
+    now.checked_sub_std(duration).ok()
 }
 
 impl IntoResponse for AppError {

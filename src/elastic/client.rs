@@ -461,10 +461,7 @@ impl BulkResponse {
         if let Some(errors) = self.errors {
             return errors;
         }
-        if self.error.is_some() {
-            return true;
-        }
-        false
+        self.error.is_some()
     }
 
     pub fn first_error(&self) -> Option<String> {

@@ -255,7 +255,11 @@ impl Default for FeedConfig {
             ingest_idle: Duration::from_secs(120),
             ingest_check: Duration::from_secs(5),
             capacity: 8192,
-            clock: Arc::new(|| chrono::Utc::now().timestamp_millis()),
+            clock: Arc::new(|| {
+                (time::OffsetDateTime::now_utc()
+                    .unix_timestamp_nanos()
+                    .div_euclid(1_000_000)) as i64
+            }),
         }
     }
 }

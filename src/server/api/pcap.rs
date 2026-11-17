@@ -545,7 +545,7 @@ async fn handle_inner(
 /// A window bound as unix microseconds for the engine; pre-epoch
 /// times clamp to zero.
 fn to_micros(datetime: &crate::datetime::DateTime) -> u64 {
-    u64::try_from(datetime.datetime.timestamp_micros()).unwrap_or(0)
+    u64::try_from(datetime.datetime.unix_timestamp_nanos().div_euclid(1_000)).unwrap_or(0)
 }
 
 /// Fields for the single audit log line emitted per request.
@@ -2013,10 +2013,10 @@ fn fail(audit: &AuditContext, status: StatusCode, code: &str, message: &str) -> 
 
 /// Parse a `duration`/`before`/`after` span, defaulting to `1m` when
 /// blank or absent, using the shared duration parser.
-fn parse_span(value: &Option<String>) -> Result<chrono::Duration, String> {
+fn parse_span(value: &Option<String>) -> Result<time::Duration, String> {
     let raw = present(value).unwrap_or("1m");
     let std = crate::server::pcap::parse_duration_seconds(raw)?;
-    chrono::Duration::from_std(std).map_err(|err| format!("duration out of range: {err}"))
+    time::Duration::try_from(std).map_err(|err| format!("duration out of range: {err}"))
 }
 
 /// Parse a per-request `max_size`: a size string (`50mb`, `2gb`) or a

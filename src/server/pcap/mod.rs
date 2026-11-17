@@ -216,13 +216,9 @@ impl PcapService {
     }
 }
 
-/// Parse a duration: a humantime string (`60s`, `5m`) or a bare
-/// number of seconds.
+/// Parse a duration (`60s`, `5m`, `1h30m`) or a bare number of seconds.
 pub(crate) fn parse_duration_seconds(input: &str) -> Result<std::time::Duration, String> {
-    if let Ok(secs) = input.trim().parse::<u64>() {
-        return Ok(std::time::Duration::from_secs(secs));
-    }
-    humantime::parse_duration(input).map_err(|err| err.to_string())
+    crate::duration::parse(input).map_err(|err| err.to_string())
 }
 
 /// Build the server-local packet capture service from configuration.
